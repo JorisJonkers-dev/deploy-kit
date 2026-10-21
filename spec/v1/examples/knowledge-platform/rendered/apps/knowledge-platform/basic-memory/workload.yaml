@@ -28,6 +28,9 @@ spec:
         app.kubernetes.io/part-of: basic-memory
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: python
+      annotations:
+        image.jorisjonkers.dev/basic-memory: v0.14.2
+        image.jorisjonkers.dev/git-sync: 1.0.0
     spec:
       serviceAccountName: basic-memory
       automountServiceAccountToken: false

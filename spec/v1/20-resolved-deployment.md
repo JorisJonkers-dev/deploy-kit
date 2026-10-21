@@ -432,14 +432,19 @@ One entry per image alias a document names, keyed by the alias. It resolves the
 alias to one image, written `<repository>@<digest>` wherever it is rendered, and
 records the user the image runs as, which the hardening posture needs and no
 Process authors ([chapter 10](10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group)).
-Any entry may also record its `version`: the version of the software inside
+Every entry also records its `version`: the version of the software inside
 the image, as that software's own release names it (`6.3.0.10514-ls314`,
 `v3.7.12`). For an image built on an upstream base it is the base's version,
 never the wrapping repository's release; the image build stamps it as the
 image's `org.opencontainers.image.version` label, and publish reads it back
 into the lock. The render writes it on every pod that runs the image
-([chapter 10](10-project-intent.md#the-label-set)). An entry without one is not
-refused yet, and renders no annotation.
+([chapter 10](10-project-intent.md#the-label-set)). An entry without one is
+`E_IMAGE_VERSION_MISSING`, at `/images/<alias>`, wherever a lock is read:
+`publish` refuses the share before a fragment carries it, and composition
+refuses a share or the platform's lock before resolution runs
+([0113](../../docs/adr/model/0113-every-images-lock-entry-records-its-version.md)).
+It is a refusal of its own, apart from `E_ENGINE_VERSION_MISSING` below, which
+holds a version that is present to the shape a Move reads.
 
 An image a Process runs whose engine's Platform entry names a
 [`move`](14-platform-intent.md#move-methods) records its `version` as
@@ -464,6 +469,7 @@ project ([chapter 40](40-composition.md#fragments)).
 | refused before resolution | error |
 |---|---|
 | the node contract's digest is not the Platform document's `metadata.nodeContract` | `E_NODE_CONTRACT_MISMATCH` |
+| an images lock entry records no `version` | `E_IMAGE_VERSION_MISSING` |
 | a Process's or a sidecar's `image` names an alias the images lock does not hold | `E_UNLOCKED_IMAGE` |
 | no node in the node contract is eligible for a Process ([Layer 2 does not assign a node](#layer-2-does-not-assign-a-node)), or for the Vault policy job ([The Vault policy job](#the-vault-policy-job)) | `E_PLACEMENT_UNSATISFIABLE` |
 

@@ -2684,7 +2684,7 @@ describe("composeEstate, for a Rollback's backup", () => {
     }
   });
 
-  it("annotates each Job's pod with its method's version where the lock records one", () => {
+  it("annotates each Job's pod with the version the lock records for its method", () => {
     const versioned: Fragment = {
       ...PLATFORM_HANDED_OVER,
       files: PLATFORM_HANDED_OVER.files.map((file) =>
@@ -2692,8 +2692,8 @@ describe("composeEstate, for a Rollback's backup", () => {
           ? {
               ...file,
               text: file.text.replace(
-                /(\n {2}postgres-backup:\n(?: {4}.*\n)*? {4}gid: \d+\n)/,
-                '$1    version: "2.1.0"\n',
+                /(\n {2}postgres-backup:\n(?: {4}.*\n)*? {4}version: )".*"/,
+                '$1"2.1.0"',
               ),
             }
           : file,
@@ -2714,7 +2714,10 @@ describe("composeEstate, for a Rollback's backup", () => {
           (spec.template.metadata as { annotations?: Record<string, string> })
             .annotations,
       ),
-    ).toStrictEqual([{ "image.jorisjonkers.dev/backup": "2.1.0" }, undefined]);
+    ).toStrictEqual([
+      { "image.jorisjonkers.dev/backup": "2.1.0" },
+      { "image.jorisjonkers.dev/backup": "1.2.0" },
+    ]);
   });
 
   it("runs each Job as the identity, with the method and claims, the scheduled backup uses", () => {

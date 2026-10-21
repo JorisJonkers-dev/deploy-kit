@@ -407,8 +407,9 @@ and auth roles into the Secret Store, before any Application holding a grant
 starts. Derived from the Platform document's `policyJob`, never declared as a
 Process, and named by the digest of the documents it is handed ([chapter 30](spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 
-**Images lock**: every image alias a document names, resolved to one digest and
-the user the image runs as; a pinned input, and never a tag
+**Images lock**: every image alias a document names, resolved to one digest,
+the user the image runs as and the version of the software in it; a pinned
+input, and never a tag
 ([chapter 20](spec/v1/20-resolved-deployment.md#the-images-lock)). A fragment
 carries its **share**, the aliases its project file names, and composition
 unions the shares ([chapter 40](spec/v1/40-composition.md#fragments)).

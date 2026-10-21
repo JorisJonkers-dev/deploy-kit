@@ -60,7 +60,13 @@ const DATA = [
 const LOCK = parseYaml(text("platform/images.lock.yml")) as {
   images: Record<
     string,
-    { repository: string; digest: string; uid: number; gid: number }
+    {
+      repository: string;
+      digest: string;
+      uid: number;
+      gid: number;
+      version: string;
+    }
   >;
 };
 
@@ -1506,6 +1512,7 @@ describe("what an Asset and a sidecar derive", () => {
       {
         name: "exporter",
         image: `${LOCK.images["postgres-exporter"]?.repository ?? ""}@${LOCK.images["postgres-exporter"]?.digest ?? ""}`,
+        imageVersion: LOCK.images["postgres-exporter"]?.version,
         memory: "32Mi",
         cpu: "5m",
       },
@@ -1575,7 +1582,7 @@ describe("what a managed migration derives", () => {
     processes:
 ${serving("notes-api", "        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n")}`;
   const LOCKED = (lock: string) =>
-    `${lock.trimEnd()}\n  notes-migration:\n    repository: ghcr.io/jorisjonkers-dev/notes/notes-migration\n    digest: "sha256:${"7".repeat(64)}"\n    uid: 1000\n    gid: 1000\n`;
+    `${lock.trimEnd()}\n  notes-migration:\n    repository: ghcr.io/jorisjonkers-dev/notes/notes-migration\n    digest: "sha256:${"7".repeat(64)}"\n    uid: 1000\n    gid: 1000\n    version: "1.0.0"\n`;
   const PROOF = (body: string): AuthoredFile => ({
     name: "minimal/migration-proof.yml",
     text: `apiVersion: proof.jorisjonkers.dev/v1\nkind: MigrationProof\nschemaVersion: 1.0.0\napplications:\n${body}`,
@@ -1619,6 +1626,7 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
   it("runs the image the lock holds for the Application, as a first release where no proof names it", () => {
     expect(migration()).toStrictEqual({
       runner: `ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}`,
+      runnerVersion: "1.0.0",
       uid: 1000,
       gid: 1000,
       nonTransactional: false,
@@ -1628,6 +1636,7 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
       migration([PROOF("  - { id: other, nonTransactional: true }\n")]),
     ).toStrictEqual({
       runner: `ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}`,
+      runnerVersion: "1.0.0",
       uid: 1000,
       gid: 1000,
       nonTransactional: false,
@@ -1639,8 +1648,8 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     const plan = application(managed, {
       lock: (lock) =>
         LOCKED(lock).replace(
-          /uid: 1000\n {4}gid: 1000\n$/,
-          "uid: 1001\n    gid: 1002\n",
+          /uid: 1000\n {4}gid: 1000\n( {4}version: .*\n)$/,
+          "uid: 1001\n    gid: 1002\n$1",
         ),
       platform: (platform) =>
         platform
@@ -1862,6 +1871,7 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
 
     expect(migration([proof])).toStrictEqual({
       runner: `ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}`,
+      runnerVersion: "1.0.0",
       uid: 1000,
       gid: 1000,
       testedAgainst: `sha256:${"8".repeat(64)}`,
@@ -2656,6 +2666,7 @@ describe("a volume and what its class derives", () => {
           retain: 14,
           method:
             "ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2",
+          methodVersion: LOCK.images["rabbitmq-backup"]?.version,
           uid: LOCK.images["rabbitmq-backup"]?.uid,
           gid: LOCK.images["rabbitmq-backup"]?.gid,
           identity: "notes-store-backup",
@@ -2677,6 +2688,7 @@ describe("a volume and what its class derives", () => {
           offCluster: "s3://backup-storage/jorisjonkers-dev",
           method:
             "ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2",
+          methodVersion: LOCK.images["rabbitmq-backup"]?.version,
           uid: LOCK.images["rabbitmq-backup"]?.uid,
           gid: LOCK.images["rabbitmq-backup"]?.gid,
           identity: "notes-store-backup",
@@ -2985,6 +2997,7 @@ describe("the Vault policy job", () => {
       namespace: "secrets-system",
       image:
         "ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7",
+      imageVersion: "1.0.0",
       uid: 65532,
       gid: 65532,
       role: "policy-admin",

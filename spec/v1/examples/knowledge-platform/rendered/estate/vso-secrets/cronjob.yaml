@@ -32,6 +32,8 @@ spec:
             app.kubernetes.io/part-of: vault-policy
             app.kubernetes.io/managed-by: deploy-kit
             app.kubernetes.io/component: none
+          annotations:
+            image.jorisjonkers.dev/vault-policy: 1.0.0
         spec:
           serviceAccountName: vault-policy
           automountServiceAccountToken: true

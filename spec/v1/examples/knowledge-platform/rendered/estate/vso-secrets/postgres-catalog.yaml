@@ -51,6 +51,8 @@ spec:
         app.kubernetes.io/part-of: postgres-catalog
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/postgres-catalog: 1.0.0
     spec:
       serviceAccountName: postgres-catalog
       automountServiceAccountToken: true
@@ -140,6 +142,8 @@ spec:
             app.kubernetes.io/part-of: postgres-catalog
             app.kubernetes.io/managed-by: deploy-kit
             app.kubernetes.io/component: none
+          annotations:
+            image.jorisjonkers.dev/postgres-catalog: 1.0.0
         spec:
           serviceAccountName: postgres-catalog
           automountServiceAccountToken: true

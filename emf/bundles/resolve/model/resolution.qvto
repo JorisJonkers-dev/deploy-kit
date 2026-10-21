@@ -73,8 +73,15 @@ property LIBRARY_SIZE : String = '1Gi';
 property POLICIES : String = 'estate/vso-secrets/policies/';
 
 main() {
+	assert fatal (unversioned()->isEmpty())
+		with log(unversioned()->first() + ' records no version: E_IMAGE_VERSION_MISSING');
 	projects->select(p | p.project = project)->any(true).map deployment();
 }
+
+-- Every alias the lock records no version for, sorted
+-- (spec/v1/20-resolved-deployment.md#the-images-lock): each refuses the set.
+query unversioned() : Sequence(String) =
+	lock.images->select(i | i.version = null)->collect(i | i.alias)->sortedBy(a | a)->asSequence();
 
 -- ============================================================== the document
 

@@ -90,6 +90,7 @@ class ResolutionTest {
         image.setDigest("sha256:" + "ab".repeat(32));
         image.setUid(1000);
         image.setGid(1000);
+        image.setVersion("1.0.0");
         lock.getImages().add(image);
         ClusterState snapshot = PINNED.createClusterState();
         snapshot.setCluster("production");
@@ -171,6 +172,16 @@ class ResolutionTest {
         assertThatThrownBy(() -> Resolution.resolve(List.of(project(), platform()), pinned(), "absent", INTEGRITY))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageStartingWith("absent did not resolve");
+    }
+
+    @Test
+    void aLockEntryThatRecordsNoVersionRefusesTheSetByItsAlias() {
+        List<EObject> pinned = pinned();
+        ((ImagesLock) pinned.get(1)).getImages().get(0).setVersion(null);
+
+        assertThatThrownBy(() -> Resolution.resolve(List.of(project(), platform()), pinned, "jobs", INTEGRITY))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("worker records no version: E_IMAGE_VERSION_MISSING");
     }
 
     @Test

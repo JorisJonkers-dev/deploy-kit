@@ -28,6 +28,8 @@ spec:
         app.kubernetes.io/part-of: collector
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/collector: 1.0.0
     spec:
       serviceAccountName: collector
       automountServiceAccountToken: true

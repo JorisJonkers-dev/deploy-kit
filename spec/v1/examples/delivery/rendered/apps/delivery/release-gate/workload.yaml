@@ -31,6 +31,8 @@ spec:
         app.kubernetes.io/part-of: release-gate
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/release-gate: 1.0.0
     spec:
       serviceAccountName: release-gate
       automountServiceAccountToken: true

@@ -1446,8 +1446,8 @@ describe("each container's software version", () => {
   const LOCK = "platform/images.lock.yml";
   const versioned = (alias: string, version: string) => (document: string) =>
     document.replace(
-      new RegExp(`(\\n  ${alias}:\\n(?: {4}.*\\n)*? {4}gid: \\d+\\n)`),
-      `$1    version: "${version}"\n`,
+      new RegExp(`(\\n  ${alias}:\\n(?: {4}.*\\n)*? {4}version: )".*"`),
+      `$1"${version}"`,
     );
   const knowledgePlatform = (
     edits: Readonly<Record<string, (text: string) => string>> = {},
@@ -1497,29 +1497,34 @@ describe("each container's software version", () => {
       deploymentTemplate(tree, "apps/knowledge-platform/karakeep/workload.yaml")
         .metadata.annotations,
     ).toStrictEqual({
+      "image.jorisjonkers.dev/chrome": "124.0.6367.78",
       "image.jorisjonkers.dev/karakeep": "0.33.2",
       "image.jorisjonkers.dev/meilisearch": "v1.41.0",
       "image.jorisjonkers.dev/vpn": "v3.40.0",
     });
   });
 
-  it("annotates no container whose image the lock records no version for", () => {
-    const tree = asTree(artifact(knowledgePlatform(), "knowledge-platform"));
+  it("refuses a lock entry that records no version, at its alias, before anything renders", () => {
+    const result = renderIntentSet(
+      files({
+        [LOCK]: (document) =>
+          document.replace(
+            /(\n {2}karakeep-chrome:\n(?: {4}.*\n)*?) {4}version: .*\n/,
+            "$1",
+          ),
+      }),
+      OPTIONS,
+    );
 
     expect(
-      Object.keys(
-        deploymentTemplate(
-          tree,
-          "apps/knowledge-platform/karakeep/workload.yaml",
-        ).metadata.annotations ?? {},
-      ),
-    ).not.toContain("image.jorisjonkers.dev/chrome");
-    expect(
-      deploymentTemplate(
-        tree,
-        "apps/knowledge-platform/hindsight/workload.yaml",
-      ).metadata.annotations,
-    ).toBeUndefined();
+      result.ok
+        ? []
+        : result.diagnostics.map(
+            ({ code, document, path }) => `${code} ${String(document)} ${path}`,
+          ),
+    ).toStrictEqual([
+      "E_IMAGE_VERSION_MISSING platform/images.lock.yml /images/karakeep-chrome",
+    ]);
   });
 
   it("annotates a backup's pod with its method's version", () => {

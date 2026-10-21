@@ -93,7 +93,7 @@ const spelled = ({
   gid,
   version,
 }: LockedImage): string =>
-  `${repository}@${digest} as ${String(uid)}:${String(gid)}${version === undefined ? "" : ` at ${version}`}`;
+  `${repository}@${digest} as ${String(uid)}:${String(gid)} at ${version}`;
 
 type Held = readonly [string, readonly Share[]];
 // Aliases are distinct keys, so `<=` would order the same list.
@@ -121,10 +121,7 @@ export function unionOf(
     const image = (share: Share): LockedImage =>
       share.lock.images[alias] as LockedImage;
     const [first] = held as [Share, ...Share[]];
-    // A share that records the version says more of the same image.
-    images[alias] =
-      held.map(image).find(({ version }) => version !== undefined) ??
-      image(first);
+    images[alias] = image(first);
     if (held.every((share) => sameImage(image(share), image(first)))) continue;
 
     // What the unchanged shares hold stands, when they hold one thing.
