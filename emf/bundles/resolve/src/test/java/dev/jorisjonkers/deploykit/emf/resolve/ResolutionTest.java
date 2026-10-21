@@ -11,6 +11,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.Node;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.NodeContract;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Asset;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.DependencyEdge;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.EffectiveProject;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.HardeningClass;
@@ -19,6 +20,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Runtime;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ReconcileUnit;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import java.util.List;
@@ -114,6 +116,54 @@ class ResolutionTest {
         assertThat(batch.getRevision()).matches("sha256:[0-9a-f]{64}");
         assertThat(deployment.getProvenance().getRenderHash()).startsWith("sha256:");
         assertThat(deployment.getProvenance().getSchemaPackageIntegrity()).isEqualTo(INTEGRITY);
+    }
+
+    /** A second project, `observability`, whose `observer` serves `http`. */
+    private static EffectiveProject observability() {
+        Process observer = INTENT.createProcess();
+        observer.setName("observer");
+        observer.setLifecycle(Lifecycle.JOB);
+        observer.setImage("worker");
+        observer.setRuntime(Runtime.NONE);
+        observer.setPlacement(INTENT.createPlacement());
+        observer.getPlacement().setMemory("64Mi");
+        observer.getPlacement().setCpu("10m");
+        observer.getProvides().put("http", 8080);
+        EffectiveApplication application = INTENT.createEffectiveApplication();
+        application.setId("observer");
+        application.getProcesses().add(observer);
+        EffectiveProject project = INTENT.createEffectiveProject();
+        project.setProject("observability");
+        project.setOwner("joris");
+        project.getApplications().add(application);
+        return project;
+    }
+
+    /** The jobs project with its worker's one edge to the observer, required or not. */
+    private static EffectiveProject reaching(Boolean required) {
+        EffectiveProject project = project();
+        DependencyEdge edge = INTENT.createDependencyEdge();
+        edge.setApplication("observer");
+        edge.setSurface("http");
+        edge.setRequired(required);
+        project.getApplications().get(0).getProcesses().get(0).getDependsOn().add(edge);
+        return project;
+    }
+
+    private static List<String> unitsFollowed(EffectiveProject project) {
+        ResolvedDeployment deployment =
+                Resolution.resolve(List.of(project, observability(), platform()), pinned(), "jobs", INTEGRITY);
+        return deployment.getReconcileUnits().get(0).getAfter().stream()
+                .map(ReconcileUnit::getName)
+                .toList();
+    }
+
+    @Test
+    void aUnitFollowsAnotherProjectOnlyThroughARequiredEdge() {
+        // An optional edge orders nothing (spec/v1/55-delivery.md#release-order), so two projects
+        // naming each other optionally never wait on each other.
+        assertThat(unitsFollowed(reaching(false))).isEmpty();
+        assertThat(unitsFollowed(reaching(true))).containsExactly("apps-observability");
     }
 
     @Test

@@ -70,9 +70,11 @@ const synced = (processes: readonly ResolvedProcess[]): boolean =>
   );
 
 /**
- * The units that must be Ready first: every other project an edge reaches, and
- * the secrets-provisioning unit wherever a Process holds a grant
- * (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+ * The units that must be Ready first: every other project a required edge
+ * reaches, and the secrets-provisioning unit wherever a Process holds a grant
+ * (spec/v1/20-resolved-deployment.md#the-reconcile-unit). An optional edge
+ * orders nothing (spec/v1/55-delivery.md#release-order), so two projects that
+ * name each other optionally never wait on each other.
  */
 function reconcileAfter(
   application: EffectiveApplication,
@@ -82,6 +84,7 @@ function reconcileAfter(
     // A missing list and any fallback resolve no provider alike.
     // Stryker disable next-line ArrayDeclaration
     (dependsOn ?? [])
+      .filter(({ required }) => required !== false)
       .map(({ application: provider }) => context.projectOf.get(provider))
       .flatMap((project) =>
         project === undefined || project === context.project

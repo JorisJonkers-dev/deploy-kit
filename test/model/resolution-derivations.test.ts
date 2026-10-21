@@ -1076,6 +1076,23 @@ ${serving("notes-api", `        dependsOn:\n${edges}`)}  - id: notes-worker
         cutover: interrupted
 ${serving("notes-worker").replace("provides: { http: 8080 }", "provides: { jobs: 7000 }")}`;
 
+  it("orders a unit after another project's only through a required edge", () => {
+    const after = (edge: string) =>
+      projectNamed(projects(consumer(edge)), "notes").applications[0]
+        ?.reconcileAfter;
+
+    expect(
+      after(
+        "          - { application: otel-collector, surface: otlp, required: false }\n",
+      ),
+    ).toBeUndefined();
+    expect(
+      after(
+        "          - { application: otel-collector, surface: otlp, required: true }\n",
+      ),
+    ).toStrictEqual(["apps-observability"]);
+  });
+
   it("resolves an edge into another project to its alias, one into the same project to its Service, and one to an IP as it stands", () => {
     const all = projects(
       consumer(`          - { application: otel-collector, surface: otlp }

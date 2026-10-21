@@ -118,11 +118,13 @@ mapping EffectiveProject::unit() : ReconcileUnit {
 
 query unitOf(prj : String) : String = 'apps-' + prj;
 
--- The units that must be Ready first: every other project an edge reaches, and
--- the secrets-provisioning unit wherever a Process holds a grant
--- (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+-- The units that must be Ready first: every other project a required edge
+-- reaches, and the secrets-provisioning unit wherever a Process holds a grant
+-- (spec/v1/20-resolved-deployment.md#the-reconcile-unit). An optional edge
+-- orders nothing (spec/v1/55-delivery.md#release-order).
 query afterOf(prj : EffectiveProject) : Sequence(String) =
 	(prj.applications.processes.dependsOn
+		->select(e | not (e.required = false))
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
@@ -1878,6 +1880,8 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 -- secrets unit wherever one of its Processes holds a grant.
 query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(String) =
 	(app.processes.dependsOn
+		-- An optional edge orders nothing (spec/v1/55-delivery.md#release-order).
+		->select(e | not (e.required = false))
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
