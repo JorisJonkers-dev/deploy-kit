@@ -207,13 +207,21 @@ the one it replaces leaves the render with it. Both implementations compute the
 name from those alone, so it is the same name wherever the same grants are
 rendered under the same job.
 
+The name covers what the job is handed, not everything the render spells into
+its template: a hardening control or a label the compiler adds changes the
+template under the same name. The Job therefore carries
+`kustomize.toolkit.fluxcd.io/force: Enabled`, so the applier recreates it
+where an update would be refused, and it runs once more from the same
+documents. Every catalog method's Job carries the same mark, and neither
+`CronJob` does, since a CronJob's template can be updated in place.
+
 Five files sit beside `policies/`, in `estate/vso-secrets/`, and the directory's
 index applies the first four:
 
 | file | adapter | holds |
 |---|---|---|
 | `configmap.yaml` | `vault-policy` | the immutable `ConfigMap`, each document under its file name as canonical JSON on one line, in name order |
-| `job.yaml` | `vault-policy` | the `Job`: the locked image, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` the platform's role, `POLICIES_DIR` where the ConfigMap is mounted read-only, `restartPolicy: OnFailure`, the token mounted because the job logs in with it; the pod's `activeDeadlineSeconds` the platform's deadline, so it bounds one attempt, and a required node affinity on `kubernetes.io/hostname` `In` the job's `eligibleNodes`; the Job's `backoffLimit` `2147483647`, the most the API holds, and no deadline of its own, so it retries until an attempt succeeds |
+| `job.yaml` | `vault-policy` | the `Job`, marked `kustomize.toolkit.fluxcd.io/force: Enabled`: the locked image, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` the platform's role, `POLICIES_DIR` where the ConfigMap is mounted read-only, `restartPolicy: OnFailure`, the token mounted because the job logs in with it; the pod's `activeDeadlineSeconds` the platform's deadline, so it bounds one attempt, and a required node affinity on `kubernetes.io/hostname` `In` the job's `eligibleNodes`; the Job's `backoffLimit` `2147483647`, the most the API holds, and no deadline of its own, so it retries until an attempt succeeds |
 | `cronjob.yaml` | `vault-policy` | the `CronJob` `vault-policy`: the same pod and the same `backoffLimit` as the Job, `@hourly`, `concurrencyPolicy: Forbid`, so a Vault restored without what the render holds gets it back within the hour |
 | `serviceaccount.yaml` | `vault-policy` | the `ServiceAccount` `vault-policy`, the one identity the platform's role is bound to |
 | `networkpolicy.yaml` | `networking` | the job's own policy: egress to the Secret Store and the cluster's DNS, no ingress; listed by no index, like every policy |
@@ -225,7 +233,7 @@ policy and auth role to `policies/`, beside every other identity's:
 
 | file | adapter | holds |
 |---|---|---|
-| `<process>-catalog.yaml` | `kubernetes` | the `ServiceAccount` `<process>-catalog`; the immutable `ConfigMap` `<process>-catalog-<12 hex>`, the catalog as canonical JSON on one line under `catalog.json`; the `Job` of the same name, the locked method image, `CATALOG_FILE` where the ConfigMap is mounted read-only, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` `<namespace>-<process>-catalog`, the policy job's requests and deadline, `restartPolicy: OnFailure`, the token mounted because the method logs in with it; and the `CronJob` `<process>-catalog`, the same pod, `@hourly`, `concurrencyPolicy: Forbid`. The twelve hex digits are the first of the SHA-256 of the canonical JSON of the `catalog`, and the `image`, `uid`, `gid`, `memory` and `cpu` it runs with |
+| `<process>-catalog.yaml` | `kubernetes` | the `ServiceAccount` `<process>-catalog`; the immutable `ConfigMap` `<process>-catalog-<12 hex>`, the catalog as canonical JSON on one line under `catalog.json`; the `Job` of the same name, marked `kustomize.toolkit.fluxcd.io/force: Enabled`, the locked method image, `CATALOG_FILE` where the ConfigMap is mounted read-only, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` `<namespace>-<process>-catalog`, the policy job's requests and deadline, `restartPolicy: OnFailure`, the token mounted because the method logs in with it; and the `CronJob` `<process>-catalog`, the same pod, `@hourly`, `concurrencyPolicy: Forbid`. The twelve hex digits are the first of the SHA-256 of the canonical JSON of the `catalog`, and the `image`, `uid`, `gid`, `memory` and `cpu` it runs with |
 | `<process>-catalog-networkpolicy.yaml` | `networking` | the method's own policy: egress to the datastore's surface, the Secret Store and the cluster's DNS, no ingress; listed by no index |
 
 All of them are in the datastore's namespace: the method runs beside the

@@ -1479,6 +1479,8 @@
       namespace: [d.job.namespace/]
       labels:
         [d.job.identity.labelSet('none', d.job.identity)/]
+      annotations:
+        kustomize.toolkit.fluxcd.io/force: Enabled
     spec:
       backoffLimit: 2147483647
       template:
@@ -1634,6 +1636,8 @@
       namespace: [d.job.namespace/]
       labels:
         [d.job.identity.labelSet('none', d.job.identity)/]
+      annotations:
+        kustomize.toolkit.fluxcd.io/force: Enabled
     spec:
       backoffLimit: 2147483647
       template:

@@ -14,7 +14,11 @@ import type {
 import { wholeSeconds } from "../shared/durations.ts";
 import { labelsOf, podMetadataOf } from "../shared/labels.ts";
 import { SECRETS_DIRECTORY } from "../shared/paths.ts";
-import { nodeAffinityOf, UNTIL_SUCCEEDED } from "../shared/placement.ts";
+import {
+  nodeAffinityOf,
+  RECREATED,
+  UNTIL_SUCCEEDED,
+} from "../shared/placement.ts";
 import { ADAPTER } from "./render.ts";
 
 /** How many hex digits of the digest the method's name carries. */
@@ -105,7 +109,12 @@ export function renderCatalogJob(
   const run: Job = {
     apiVersion: "batch/v1",
     kind: "Job",
-    metadata: { name, namespace: job.namespace, labels },
+    metadata: {
+      name,
+      namespace: job.namespace,
+      labels,
+      annotations: RECREATED,
+    },
     // Every Reconcile Unit that holds a grant waits on this run, so it retries
     // until it succeeds rather than failing for good on one slow start.
     spec: { backoffLimit: UNTIL_SUCCEEDED, template: pod },
