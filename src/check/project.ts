@@ -422,6 +422,44 @@ function generatedKeyRefusals(
   );
 }
 
+/**
+ * The claims a volume reserves in its project's namespace: its own, and the
+ * backup claim a durability that derives a backup adds beside it.
+ */
+const claimsOf = ({
+  claim,
+  durability,
+}: NonNullable<Process["volumes"]>[number]): readonly string[] =>
+  BACKED_UP.has(durability) ? [claim, `${claim}-backup`] : [claim];
+
+/**
+ * A project's Processes share one namespace, and a claim is named as written,
+ * so every claim a volume reserves is the project's alone: a volume reserving
+ * one an earlier volume already holds is refused.
+ */
+function duplicateClaimRefusals(document: ProjectIntentDocument): Refusal[] {
+  const held = new Set<string>();
+  return document.applications.flatMap((application, a) =>
+    application.processes.flatMap((process, p) =>
+      (process.volumes ?? []).flatMap((volume, v) => {
+        const claims = claimsOf(volume);
+        const taken = claims.filter((claim) => held.has(claim));
+        for (const claim of claims) held.add(claim);
+        return taken.length === 0
+          ? []
+          : [
+              {
+                code: "E_DUPLICATE_CLAIM" as const,
+                path: `/applications/${a}/processes/${p}/volumes/${v}`,
+                message: `the volume claiming ${volume.claim} reserves a claim an earlier volume of this project already holds`,
+                hint: `Rename the claim: a project's Processes share one namespace, and a durability that derives a backup also reserves \`<claim>-backup\`.`,
+              },
+            ];
+      }),
+    ),
+  );
+}
+
 /** One Application of a project moves its database's schema, or none does. */
 function migrationOwnerRefusals(document: ProjectIntentDocument): Refusal[] {
   const moving = document.applications.flatMap((application, index) =>
@@ -519,6 +557,7 @@ export function ruleDiagnostics(
       ),
     ]),
     ...migrationOwnerRefusals(document),
+    ...duplicateClaimRefusals(document),
     ...(document.secrets ?? []).flatMap((grant, index) =>
       grantRefusals(grant, `/secrets/${index}`),
     ),

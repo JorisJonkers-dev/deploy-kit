@@ -54,6 +54,24 @@ context Volume
 		(durability = DurabilityClass::recoverable or durability = DurabilityClass::irreplaceable) implies
 			oclContainer().oclAsType(Process).engine <> Engine::absent
 
+context Volume
+	-- The claims a volume reserves in its project's namespace: its own, and the
+	-- backup claim a durability that derives a backup adds beside it.
+	def: reserved : Sequence(String) =
+		if durability = DurabilityClass::reconstructible
+		then Sequence{claim}
+		else Sequence{claim, claim.concat('-backup')}
+		endif
+
+	-- A project's Processes share one namespace, and a claim is named as
+	-- written: a volume reserving a claim an earlier volume of the project
+	-- already holds would mount the same PersistentVolumeClaim.
+	inv E_DUPLICATE_CLAIM:
+		let project : Project = oclContainer().oclContainer().oclContainer().oclAsType(Project) in
+		let volumes : Sequence(Volume) = project.applications.processes.volumes in
+		volumes->select(v | volumes->indexOf(v) < volumes->indexOf(self))
+			->collect(v | v.reserved)->excludesAll(reserved)
+
 context Rotation
 	-- An environment variable is read once, when the process starts.
 	inv E_ENV_CANNOT_RELOAD:

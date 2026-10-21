@@ -1,0 +1,55 @@
+# REFUSED: E_DUPLICATE_CLAIM
+#
+# The first Process's `recoverable` volume derives a backup claim named
+# `<claim>-backup`, here `library-backup`, and a second Process declares a
+# volume of that name. Both would mount one PersistentVolumeClaim: the backup's
+# copies and the second Process's data in one directory
+# (spec/v1/10-project-intent.md#storage-and-durability).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: duplicate-backup-claim
+    processes:
+      - name: duplicate-backup-claim-store
+        lifecycle: application
+        image: duplicate-backup-claim-store
+        runtime: static
+        engine: files
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: interrupted
+        volumes:
+          - claim: library
+            mountAt: /library
+            size: 1Gi
+            durability: recoverable
+      - name: duplicate-backup-claim-cache
+        lifecycle: application
+        image: duplicate-backup-claim-cache
+        runtime: static
+        provides:
+          http: 8081
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8081 }
+          liveness: { path: /healthz/live, port: 8081 }
+        startupBudget: 20s
+        cutover: interrupted
+        volumes:
+          - claim: library-backup
+            mountAt: /cache
+            size: 1Gi
+            durability: reconstructible

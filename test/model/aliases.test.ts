@@ -53,4 +53,15 @@ describe("what a consumer dials", () => {
       });
     },
   );
+
+  it("is the alias for a host name that only starts with digits, which is no IP", () => {
+    expect(
+      reachOf(SMTP, { host: "1password.example.com", port: 25 }, "auth", [
+        SMTP,
+      ]),
+    ).toStrictEqual({
+      address: "stalwart:25",
+      target: "1password.example.com",
+    });
+  });
 });
