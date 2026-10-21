@@ -29,9 +29,9 @@ import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "vso";
 
-const API = "secrets.hashicorp.com/v1beta1";
+export const API = "secrets.hashicorp.com/v1beta1";
 /** The connection every VaultAuth of a namespace names. */
-const CONNECTION = "secret-store";
+export const CONNECTION = "secret-store";
 /** The KV-v2 mount every kv grant is read through, and its data segment. */
 const KV_MOUNT = "secret";
 const KV_DATA = `${KV_MOUNT}/data/`;
@@ -41,7 +41,7 @@ const KV_DATA = `${KV_MOUNT}/data/`;
  */
 const REFRESH = "10m";
 /** Flagger never counts a Vault-delivered Secret as a new revision. */
-const UNTRACKED = { "flagger.app/config-tracking": "disabled" };
+export const UNTRACKED = { "flagger.app/config-tracking": "disabled" };
 
 /**
  * A gated Application's sync objects outlive the release that drops them: Flux
@@ -106,7 +106,7 @@ function staticSecretOf(
 }
 
 /** Where a database credential is issued: the engine's mount, and the path below it. */
-const DATABASE_MOUNT = "database";
+export const DATABASE_MOUNT = "database";
 
 /** What a rotation restarts, where it restarts anything. */
 const restartsOf = (

@@ -74,6 +74,14 @@ they ended. The workflow reads that and only then commits the Rollback itself.
 The Jobs are estate-scoped, at the render the Project is pinned to, so asking
 for a backup restarts nothing of the Project it protects.
 
+**The Project's own database is dumped with its own credential, into a claim of
+its own.** The Job runs in the Project's namespace as the identity that already
+holds a credential to the Project's database, the owner's where one does, so it
+reaches that one database and the Secret Store gains no path. The datastore's
+backup claim is in another namespace no such Job can mount, and a Project with
+a database often has no backup claim of its own, so the first Rollback creates
+`<project>-rollback`, sized like the datastore's volume, and Flux keeps it after.
+
 ## Alternatives
 
 | option | cost if taken | why rejected |
@@ -85,6 +93,8 @@ for a backup restarts nothing of the Project it protects.
 | No backup before a Rollback | faster | the one operation most likely to damage data has no undo of its own |
 | The workflow runs the backup itself, with a cluster credential | one phase, no Collector change | a cluster credential in Actions, and a second applier beside Flux |
 | The backup Jobs in the Project's own render | no estate-scoped unit | re-rendering with today's Platform document can roll the Project during its own backup |
+| Dump the database in the datastore's namespace, into its backup claim, with its backup credential | no claim per Project, and the copy sits beside the Durability Class's own | that credential reaches every database, where the Project's own reaches its own |
+| Stream the dump off-cluster only | no claim in the cluster | the off-cluster credential in the Project's namespace: a new Secret Store path |
 
 ## Reversibility
 
@@ -98,6 +108,8 @@ Becomes expensive once the dashboard and notifications read the annotations.
 - A Rollback reaches only one release back while the Migration Proof names one
   `testedAgainst`, paid by whoever wants an older one: they fix forward.
 - Every Rollback costs one backup kept 7 days, paid in storage.
+- A Project with a database keeps a `<project>-rollback` claim from its first
+  Rollback on, paid in storage that holds nothing once its copies are a week old.
 - A Rollback waits on Flux and on the Collector's next snapshot before its pin
   moves, up to 45 minutes, paid in time to recover: a backup that has not ended
   by then stops the Rollback and leaves the Project paused.

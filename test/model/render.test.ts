@@ -1361,6 +1361,194 @@ describe("the sync objects of a gated Application", () => {
   });
 });
 
+// A Rollback's backup also dumps the Project's own database, with the database
+// credential its Application already holds, into a claim of its own
+// (spec/v1/30-deliverables.md#a-rollbacks-backup).
+describe("a Rollback's database dump", () => {
+  const REQUEST = "39645885317";
+  const BACKUPS = "estate/rollback-backups/";
+  const rendered = (project: string, more: readonly string[]) => {
+    const result = renderIntentSet(
+      [...SET.filter((name) => !name.startsWith("minimal/")), ...more].map(
+        (name) => ({ name, text: text(name) }),
+      ),
+      {
+        ...OPTIONS,
+        projects: [project],
+        rollbackBackups: new Map([[project, REQUEST]]),
+      },
+    );
+    return asTree(result.ok ? artifact(result.value, "_estate") : undefined);
+  };
+  const auth = () =>
+    rendered("auth", [
+      "auth/auth.project.yml",
+      "auth/env/auth-api/base.env",
+      "auth/migration-proof.yml",
+    ]);
+  type Doc = Record<string, never> & {
+    kind: string;
+    metadata: { name: string; namespace: string };
+  };
+  const documents = (file: string | undefined): Doc[] =>
+    parseAllDocuments(file ?? "")
+      .map((document) => document.toJSON() as Doc | null)
+      .filter((document): document is Doc => document !== null);
+  const named = (file: string | undefined, kind: string, name: string) =>
+    documents(file).find(
+      (document) => document.kind === kind && document.metadata.name === name,
+    ) as unknown as Record<string, unknown> | undefined;
+
+  it("dumps the Project's database as its owner, into a rollback claim of its own", () => {
+    const file = auth()[`${BACKUPS}auth.yaml`];
+    const job = named(file, "Job", `auth-database-${REQUEST}`) as {
+      spec: {
+        template: {
+          spec: {
+            containers: {
+              image: string;
+              env: { name: string; value?: string; valueFrom?: unknown }[];
+              volumeMounts: { name: string; mountPath: string }[];
+            }[];
+            volumes: {
+              name: string;
+              persistentVolumeClaim: { claimName: string };
+            }[];
+          };
+        };
+      };
+    };
+    const [container] = job.spec.template.spec.containers;
+    const secret = (key: string) => ({
+      secretKeyRef: { name: `auth-database-${REQUEST}`, key },
+    });
+
+    const datastore = JSON.parse(text("data/expected/resolved.json")) as {
+      processes: { volumes: { backup: { method: string } }[] }[];
+    };
+
+    expect(container?.image).toBe(
+      datastore.processes[0]?.volumes[0]?.backup.method,
+    );
+    expect(container?.env).toStrictEqual([
+      { name: "BACKUP_RETAIN", value: "1" },
+      { name: "BACKUP_ROLLBACK", value: REQUEST },
+      { name: "BACKUP_DATABASE", value: "auth_db" },
+      { name: "BACKUP_HOST", value: "postgres.data-system.svc.cluster.local" },
+      { name: "BACKUP_PORT", value: "5432" },
+      { name: "PGUSER", valueFrom: secret("username") },
+      { name: "PGPASSWORD", valueFrom: secret("password") },
+    ]);
+    expect(job.spec.template.spec.volumes).toStrictEqual([
+      { name: "backup", persistentVolumeClaim: { claimName: "auth-rollback" } },
+    ]);
+    expect(named(file, "PersistentVolumeClaim", "auth-rollback")).toMatchObject(
+      {
+        metadata: {
+          namespace: "auth-system",
+          annotations: { "kustomize.toolkit.fluxcd.io/prune": "disabled" },
+        },
+        spec: { resources: { requests: { storage: "20Gi" } } },
+      },
+    );
+  });
+
+  it("reads that credential through the identity that already holds it", () => {
+    const file = auth()[`${BACKUPS}auth-vso.yaml`];
+
+    expect(named(file, "VaultAuth", `auth-database-${REQUEST}`)).toMatchObject({
+      metadata: { namespace: "auth-system" },
+      spec: {
+        kubernetes: {
+          role: "auth-system-auth-migration",
+          serviceAccount: "auth-migration",
+        },
+      },
+    });
+    expect(
+      named(file, "VaultDynamicSecret", `auth-database-${REQUEST}`),
+    ).toMatchObject({
+      spec: {
+        vaultAuthRef: `auth-database-${REQUEST}`,
+        mount: "database",
+        path: "creds/auth-owner",
+        destination: { name: `auth-database-${REQUEST}`, create: true },
+      },
+    });
+  });
+
+  it("admits the dump to the datastore's surface and nowhere else", () => {
+    const file = auth()[`${BACKUPS}auth-networkpolicy.yaml`];
+    const peer = (namespace: string, labels: Record<string, string>) => ({
+      namespaceSelector: {
+        matchLabels: { "kubernetes.io/metadata.name": namespace },
+      },
+      podSelector: { matchLabels: labels },
+    });
+    const dump = { "app.kubernetes.io/instance": "auth-database-dump" };
+
+    expect(
+      (
+        named(file, "NetworkPolicy", "auth-database-dump") as {
+          spec: unknown;
+        }
+      ).spec,
+    ).toStrictEqual({
+      podSelector: { matchLabels: dump },
+      policyTypes: ["Ingress", "Egress"],
+      egress: [
+        {
+          to: [
+            peer("data-system", { "app.kubernetes.io/instance": "postgres" }),
+          ],
+          ports: [{ protocol: "TCP", port: 5432 }],
+        },
+        {
+          to: [
+            {
+              namespaceSelector: {
+                matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+              },
+            },
+          ],
+          ports: [
+            { protocol: "UDP", port: 53 },
+            { protocol: "TCP", port: 53 },
+          ],
+        },
+      ],
+    });
+    expect(
+      named(file, "NetworkPolicy", "auth-database-dump-ingress") as unknown,
+    ).toMatchObject({
+      metadata: { namespace: "data-system" },
+      spec: {
+        podSelector: {
+          matchLabels: { "app.kubernetes.io/instance": "postgres" },
+        },
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: [peer("auth-system", dump)],
+            ports: [{ protocol: "TCP", port: 5432 }],
+          },
+        ],
+      },
+    });
+  });
+
+  it("dumps nothing for a Project that holds no database", () => {
+    const tree = rendered("notes", [
+      "minimal/notes.project.yml",
+      "minimal/env/notes-api/base.env",
+    ]);
+
+    expect(
+      Object.keys(tree).filter((path) => path.startsWith(BACKUPS)),
+    ).toStrictEqual([]);
+  });
+});
+
 // REQ-068 (docs/requirements.md): VSO is the one delivery path, so no rendered
 // tree asks the Vault Agent injector for anything.
 describe("the Vault Agent injector", () => {

@@ -10,6 +10,9 @@ import {
 } from "../adapters/registry.ts";
 import { renderEvents } from "../adapters/kubernetes/events.ts";
 import { renderRollbackBackups } from "../adapters/kubernetes/rollback-backups.ts";
+import { renderRollbackPolicies } from "../adapters/networking/rollback.ts";
+import { rollbackDumpOf } from "../adapters/shared/rollback-dump.ts";
+import { renderRollbackCredential } from "../adapters/vso/rollback.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
   ESTATE_DIRECTORY,
@@ -208,7 +211,17 @@ export function renderResolvedSet(
   );
   const backups = rendering.flatMap((project) => {
     const request = options.rollbackBackups?.get(project.project);
-    return request === undefined ? [] : renderRollbackBackups(project, request);
+    if (request === undefined) return [];
+    const dump = rollbackDumpOf(project, request, resolved.projects);
+    return [
+      ...renderRollbackBackups(project, request, dump),
+      ...(dump === undefined
+        ? []
+        : [
+            ...renderRollbackCredential(project.project, dump),
+            ...renderRollbackPolicies(project.project, dump),
+          ]),
+    ];
   });
   const catalogs = catalogJobsOf(resolved, options.projects, options.hash);
   const rendered = [

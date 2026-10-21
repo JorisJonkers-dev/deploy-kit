@@ -489,7 +489,11 @@ user the images lock records for it, writes one copy, and prunes `/backup` to
 the newest `BACKUP_RETAIN` before it exits.
 
 A Rollback's one-shot run ([chapter 55](55-delivery.md#pause-and-rollback)) is
-handed the same, and the request it runs for as `BACKUP_ROLLBACK`. It writes
+handed the same, and the request it runs for as `BACKUP_ROLLBACK`. Its dump of
+the Project's own database is handed that database as `BACKUP_DATABASE` and the
+Project's own credential in place of the backup's, and a method that dumps over
+the network dumps that one database alone
+([chapter 30](30-deliverables.md#a-rollbacks-backup)). It writes
 its copy under a name of its own that the `BACKUP_RETAIN` count never counts,
 and every run of the method, scheduled or one-shot, deletes such a copy once it
 is 7 days old.

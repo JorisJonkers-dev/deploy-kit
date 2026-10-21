@@ -310,10 +310,37 @@ to the `kubernetes` adapter, which renders the scheduled backups they copy. A
 Project with no backed-up volume renders no file, and a Project still on the old
 path renders none either: the old path runs its backups.
 
-The dump of the Project's own database, which chapter 55 also asks for, runs
-with the database grant the Project's Application already holds. It is not
-rendered yet: JorisJonkers-dev/deploy-kit#423 renders it beside the volume
-Jobs.
+Where the Project holds a credential to its own database, the Rollback also
+dumps that database ([0084](../../docs/adr/model/0084-pause-and-rollback.md)),
+from the same tree:
+
+- **The credential is one the Project already holds.** The identity is the one
+  that holds `database/creds/<project>-owner`, the migration identity's or a
+  Process's, or failing one, `database/creds/<project>-data`. The `vso` adapter
+  writes `estate/rollback-backups/<project>-vso.yaml`: a `VaultAuth` and a
+  `VaultDynamicSecret`, both named `<project>-database-<request>`, that read
+  that credential under the identity's own role. No Secret Store path is
+  written, and the lease ends when the request leaves the tree.
+- **The claim is the Project's own.** `<project>-rollback`, in the Project's
+  namespace, as large as the volume the datastore's own backup copies, kept by
+  Flux (`kustomize.toolkit.fluxcd.io/prune: disabled`) once the request is gone,
+  so its copies are there for their 7 days.
+- **The Job runs the datastore's method.** `<project>-database-<request>` runs
+  the method image the datastore's backup runs, as its user, handed
+  `BACKUP_DATABASE: <project>_db`, `BACKUP_HOST` and `BACKUP_PORT` of the
+  datastore's backup, `BACKUP_ROLLBACK`, `BACKUP_RETAIN: 1`, and the credential's
+  `username` and `password` as `PGUSER` and `PGPASSWORD`. It writes to the claim
+  at `/backup`, mounts no token, and is labelled with the request like the
+  volume Jobs, in `estate/rollback-backups/<project>.yaml` beside the claim.
+- **Its policies admit the dump and nothing else.** The `networking` adapter
+  writes `estate/rollback-backups/<project>-networkpolicy.yaml`: the dump's
+  pods, `app.kubernetes.io/instance: <project>-database-dump`, reach the
+  datastore's Process on its surface and the cluster's DNS, and nothing reaches
+  them; and a second policy in the datastore's namespace admits them to that
+  surface.
+
+A Project with no credential to a database, or whose datastore's backup dumps
+nothing over the network, renders no dump.
 
 ## Attribution
 
