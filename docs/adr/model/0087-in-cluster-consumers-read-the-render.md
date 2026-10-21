@@ -8,14 +8,15 @@ normative: spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applie
 rests-on: ["0006"]
 ---
 
-# An in-cluster job applies the rendered Vault policies, and the Release Gate reads its inputs from a rendered ConfigMap
+# An in-cluster job applies each Project's rendered Vault policies, and the Release Gate reads its inputs from a rendered ConfigMap
 
 The Vault policies and auth roles the `vault-policy` adapter renders are written
-into Vault by the **Vault policy job**, a Job in the `estate-vso-secrets` Reconcile
-Unit that runs before any Application holding a grant, authenticating as a
-dedicated policy-admin role. The job is derived from what the Platform document
-states about it, runs in the Secret Store's namespace, and is named by the
-digest of the documents it is handed. The Release Gate reads each Application's
+into Vault by the **Vault policy job**, one per Project that holds a Vault
+document. Each is a Job in that Project's own Reconcile Unit and runs before any
+of its Applications that hold a grant. It authenticates as a writer role
+confined to that Project's own policy and role names. The job is derived from
+what the Platform document states about it, runs in the Project's own
+namespace, and is named by the digest of that Project's documents alone. The Release Gate reads each Application's
 `releaseGate` element from a ConfigMap the `kubernetes` adapter renders in that
 Application's namespace. Both read only what the signed render put in the
 cluster ([chapter 30](../../../spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied),
@@ -29,10 +30,15 @@ consumer that reads from it reads an input that is already pinned, verified and
 in the cluster, and needs no other source.
 
 **False if:** a policy in Vault differs from the rendered document for its
-identity once the job has run, or the Release Gate answers from anything but the
-ConfigMap of the Application its webhook names. **Settled by:** render a changed
-grant, let the job run, and diff `vault policy read` against the document; then
-delete an Application's gate ConfigMap and observe the gate answer no.
+identity once its Project's job has run, a Project's job can write a policy
+or role named for another Project, anything but that Project's job can
+authenticate as its writer, or the Release Gate answers from anything
+but the ConfigMap of the Application its webhook names. **Settled by:** render a
+changed grant, let the job run, and diff `vault policy read` against the
+document; have one Project's writer role try another Project's policy name and
+observe Vault refuse it; check that no other pod in the namespace runs as the
+job's ServiceAccount, and that no Process there may create pods; then delete an Application's gate ConfigMap and observe
+the gate answer no.
 
 ## Why
 
@@ -40,9 +46,9 @@ delete an Application's gate ConfigMap and observe the gate answer no.
 open who writes the policies. Writing from CI would need a Vault credential
 outside the cluster, the push path pull delivery rules out
 ([0050](0050-delivery-is-part-of-the-model.md)). A Job applied by Flux from the
-same artifact writes exactly what the render holds, and the existing Reconcile
-Unit order already runs `estate-vso-secrets` before any Application that reads a
-grant.
+same artifact writes exactly what the render holds. Inside the Project's own
+unit, the job runs before the Applications that read the grants it writes, so
+the ordering needs no unit of its own.
 
 **The gate needs no lock reader.** The gate's inputs are derived in layer 2
 ([chapter 20](../../../spec/v1/20-resolved-deployment.md#the-release-gate)). Reading
@@ -52,35 +58,49 @@ describes, in the same signed render, so the gate never sees a Canary without
 its inputs, and a missing ConfigMap is a gate that answers no.
 
 **The job is derived, because its input is the render.** A Process declares
-what it needs from the model: an image, a surface, a grant. This job needs the
-policy documents of every project a render holds, which no project file can
-name and which do not exist until the render does. So it is derived, as a
-backup and a migration are, from facts the platform states: the image alias,
-the Vault role, what it requests and how long it may take. Declaring it as a
-Process would need a job lifecycle the render does not spell, a way to move one
-project's Process into the estate-scoped artifact, and a way to hand it the
-render, all for one consumer.
+what it needs from the model: an image, a surface, a grant. This job needs its
+Project's policy documents, which do not exist until the render does. So it is
+derived, as a backup and a migration are, from facts the platform states: the
+image alias, the Vault role, what it requests and how long it may take.
+Declaring it as a Process would need a job lifecycle the render does not spell
+and a way to hand it the render, in every Project that holds a grant.
 
-**It runs beside the store it writes into.** The job's ServiceAccount is the
-one pair the platform's Vault role is bound to, by a fixture. The Secret
-Store's namespace is one the platform already owns for exactly that component,
-and the job's policy then admits egress within one namespace. In the `delivery`
-project's namespace the estate-scoped artifact would write an object into a
-namespace another artifact owns.
+**It is the Project's, because its documents are.** The documents are one per
+identity and named by the Project's namespace, so the set partitions by
+Project with nothing lost. A job per Project writes only what exists because
+of that Project, so a change to one Project's grants moves only that Project's
+artifact, and a failed job holds only that Project's unit. One job for every
+Project held every Project with a grant whenever any one changed
+([0116](0116-a-project-owns-every-object-it-delivers.md)).
+
+**It runs in the Project's own namespace, with a writer confined to its own
+names.** The Project's artifact then writes into no namespace another artifact
+owns. Its ServiceAccount is bound to a writer role whose policy admits only
+policy and role names under that Project's own prefix, through a path keyed on
+the ServiceAccount's namespace. Vault confines a writer by the names it may
+write, not by what a policy grants, so the writer can still grant its own
+Project any path. The writer is therefore trusted exactly as far as the
+render, as the one estate-wide writer was: only a render that composition
+checked and signed reaches the cluster, only Flux creates pods in a Project's
+namespace, and only the job's pod runs as its ServiceAccount. A Process that
+could create pods in that namespace would hold the writer, which is why the
+settling test checks it.
 
 **The name is the documents' digest, computed from the documents alone.** Both
 implementations render the same documents and must give the Job the same name,
 so the name is defined over what both hold: the canonical JSON of one object,
-each document under its file name. Neither hashes a file it wrote.
+each of the Project's documents under its file name. Neither hashes a file it
+wrote, and no other Project's document enters it.
 
 ## Alternatives
 
 | option | cost if taken | why rejected |
 |---|---|---|
 | The composition workflow writes the policies | no Job | a Vault credential in CI |
-| A Vault operator reconciling policy objects | continuous reconcile | a CRD and an operator for a set of documents that change at deploy time only |
-| Declare the job as a `lifecycle: job` Process of the `delivery` project | the ticket's own wording; no Platform block | a job lifecycle, a move across artifacts and a hand-over of the render, for one consumer whose input no project can name |
-| Run the job in the `delivery` project's namespace | beside the other binaries of its repository | the estate-scoped artifact writes into a namespace another artifact owns, and the policy crosses namespaces |
+| One job for every Project, in the estate-scoped artifact | one Job, one privileged identity | every Project with a grant waits on it, and one Project's change or failure holds them all ([0116](0116-a-project-owns-every-object-it-delivers.md)) |
+| A Vault configuration operator (vault-config-operator) reconciling a `Policy` and a `KubernetesAuthEngineRole` per Project | continuous reconcile, no Job | no narrower privilege than a confined writer, since nothing confines a policy's content, and an operator, its CRDs and its webhook certificate for documents that change at deploy time only |
+| Declare the job as a `lifecycle: job` Process of each Project | no Platform block | a job lifecycle and a hand-over of the render, authored in every Project for what the platform can derive |
+| Run each Project's job in the Secret Store's namespace | one namespace for every writer | each Project's artifact writes into a namespace another artifact owns, and its policy crosses namespaces |
 | The gate reads the composition lock | one document | the gate fetches and verifies artifacts, a second reader of the lock |
 | The gate's inputs as Canary annotations | no extra object | spreads one Application's inputs over every member |
 
@@ -91,9 +111,14 @@ reader, a day.
 
 ## Consequences
 
-- A policy-admin Vault role exists, created as a platform fixture with the auth
-  method, since the job cannot grant itself its own privilege, paid once.
-- A changed grant reaches Vault on the next apply of `estate-vso-secrets`, before
-  the Application that needs it starts, through a new Job named by the
-  documents' digest, paid in one Job run per change.
+- A writer Vault role exists, created as a platform fixture with the auth
+  method and keyed on the ServiceAccount's namespace, since the job cannot
+  grant itself its own privilege, paid once for every Project.
+- A changed grant reaches Vault on the next apply of its Project's own unit,
+  before the Application that needs it starts, through a new Job named by
+  that Project's documents' digest, paid in one Job run per change to that
+  Project.
+- Each Project that holds a Vault document carries one more Job and ConfigMap,
+  paid in render size; the move is delivered in both implementations by
+  [#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548).
 - Every gated Application carries one more ConfigMap, paid in render size.

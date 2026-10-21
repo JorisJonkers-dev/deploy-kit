@@ -155,6 +155,7 @@ and linted by the same script with `emf` as its root.
 |---|---|---|
 | [0050](model/0050-delivery-is-part-of-the-model.md) | Delivery is part of the model: Flux pulls a signed, pinned render, and Flagger switches what must keep serving | open |
 | [0051](model/0051-a-project-is-delivered-as-a-signed-artifact.md) | A Project is delivered as a signed OCI artifact pinned by digest, and a deploy is a pin commit | open |
+| [0116](model/0116-a-project-owns-every-object-it-delivers.md) | A Project owns every object it delivers, depends on another only by name, and only the Stable Addresses stay estate-scoped | open |
 | [0052](model/0052-an-application-is-the-release-unit.md) | An Application is the unit of atomic release, and a first-party Release Gate holds its members at a barrier and fails closed | open |
 | [0053](model/0053-rotating-a-secret-is-not-a-release.md) | Rotating a secret is not a release, so it never starts a switchover | open |
 | [0115](model/0115-a-removed-grant-outlives-the-release-that-removes-it.md) | A removed grant's sync objects outlive the release that removes them, and the Release Gate deletes them once the Application serves | open |
@@ -164,7 +165,7 @@ and linted by the same script with `emf` as its root.
 | [0084](model/0084-pause-and-rollback.md) | A Pause freezes a Project's pin, and a Rollback re-composes an earlier proven release with the schema at its newest | open |
 | [0085](model/0085-composition-isolates-a-refused-project.md) | Composition isolates a refused Project, and every other Project still composes | open |
 | [0086](model/0086-the-collector-runs-in-the-cluster.md) | The ClusterState Collector runs in the cluster, reads only, and commits the snapshot when it changes | open |
-| [0087](model/0087-in-cluster-consumers-read-the-render.md) | An in-cluster job applies the rendered Vault policies, and the Release Gate reads its inputs from a rendered ConfigMap | open |
+| [0087](model/0087-in-cluster-consumers-read-the-render.md) | An in-cluster job applies each Project's rendered Vault policies, and the Release Gate reads its inputs from a rendered ConfigMap | open |
 | [0094](model/0094-a-move-is-derived-from-one-authored-edit.md) | A Move is derived from one authored edit, and the Release Gate runs it as sync, lag, fence, flip, unfence and reverse inside the provider's release | open |
 | [0099](model/0099-a-rollout-is-a-github-deployment-driven-by-the-clusters-events.md) | A Rollout is a GitHub Deployment that composition names and the cluster's own events drive | open |
 | [0111](model/0111-a-member-starts-after-the-stop-start-providers-of-its-project.md) | A gated member starts only after the stop-start Processes it requires in its own Project have started | open |

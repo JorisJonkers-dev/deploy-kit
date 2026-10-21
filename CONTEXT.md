@@ -66,6 +66,20 @@ file holds one project's `owner`, every Application in it, and any Shared Intent
 the whole file holds. A project never spans repositories
 ([0009](docs/adr/model/0009-intent-is-authored-one-file-per-project.md)).
 
+**Platform Project**: a Project holding an Application that the Platform
+document names for a platform role: a tier's proxy, the Secret Store, the
+telemetry collector and the metrics stack, the delivery machinery, the Release
+Gate and the Reporter. API access alone does not make one.
+Authored, published and resolved like any Project; other Projects reach it
+through that role, never through an edge they write. Derived from the Platform
+document, never marked in a project file
+([0116](docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+
+**Application Project**: every Project that is not a Platform Project. One may
+depend on another, a UI on an API or one API on another, and only by name: an
+Application Id and a Surface
+([0116](docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+
 **Application**: the release unit, and the thing an owner reasons about. Holds one
 or more Processes, its observability, its exposure, and any Shared Intent its
 Processes share
