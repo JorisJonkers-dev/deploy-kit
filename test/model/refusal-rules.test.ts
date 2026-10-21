@@ -88,7 +88,7 @@ function refusals(
 
 const AT = "/applications/0/processes/0";
 const PLACEHOLDER_HINT =
-  "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, or `username` or `password` where that edge delivers its credential `env`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`.";
+  "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, or `username` or `password` where that edge delivers its credential `env`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`; a client placeholder reads `issuer`, `id` or the whole `secret` of its own Application's Client.";
 
 describe("a dependency or exposure placeholder", () => {
   const edges = `        dependsOn:

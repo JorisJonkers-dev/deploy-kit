@@ -11,6 +11,7 @@ import {
   ARCHITECTURES,
   AUDIENCES,
   CONTENT_POLICIES,
+  CLIENT_CREDENTIALS,
   CUTOVERS,
   DATABASE_ENGINES,
   DELIVERIES,
@@ -23,6 +24,7 @@ import {
   MEDIA,
   PLACEHOLDER_KINDS,
   RUNTIMES,
+  SIGN_IN_MODES,
   TOLERANCES,
   TRANSIT_ENGINES,
   TRANSIT_OPERATIONS,
@@ -359,6 +361,30 @@ const exposure = z
   })
   .meta({ id: "Exposure" });
 
+// How an Application signs people in (spec/v1/17-sign-in.md#the-client-block).
+// Every path is a path on the host of the exposure the Client names; which
+// field a mode takes is a rule with its own code, not the schema's. The
+// bounds are the Client kind's own, so a render never writes an object the
+// API server refuses.
+const appRole = z.string().regex(/^[a-z][a-z0-9-]{0,62}$/);
+const client = z
+  .strictObject({
+    signIn: z.enum(SIGN_IN_MODES).meta({ id: "SignInMode" }),
+    exposure: text.exactOptional(),
+    label: text.max(100).exactOptional(),
+    description: text.max(200).exactOptional(),
+    iconPath: requestPath.exactOptional(),
+    launchPath: requestPath.exactOptional(),
+    redirectPaths: z.array(requestPath).min(1).max(16).exactOptional(),
+    protectedPath: requestPath.exactOptional(),
+    credential: z
+      .enum(CLIENT_CREDENTIALS)
+      .meta({ id: "ClientCredential" })
+      .exactOptional(),
+    roles: z.array(appRole).min(1).max(63).exactOptional(),
+  })
+  .meta({ id: "Client" });
+
 const scrape = z
   .strictObject({
     process: processReference,
@@ -379,6 +405,7 @@ const application = z
     observability: observability.exactOptional(),
     exposure: z.array(exposure).min(1).exactOptional(),
     migration: migration.exactOptional(),
+    client: client.exactOptional(),
     ...sharedIntent,
     processes: z.array(process).min(1),
   })
@@ -406,6 +433,7 @@ export type Asset = NonNullable<ProcessDocument["assets"]>[number];
 export type Placement = NonNullable<ProcessDocument["placement"]>;
 export type LibraryMount = NonNullable<ProcessDocument["libraries"]>[number];
 export type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
+export type Client = NonNullable<ApplicationDocument["client"]>;
 
 /** The eight families of spec/v1/10-project-intent.md#shared-intent that the
  * project file carries; the eighth, `env`, is the env files beside it. */

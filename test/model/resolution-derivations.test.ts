@@ -1214,6 +1214,51 @@ describe("the quantities eligibility compares", () => {
   });
 });
 
+// spec/v1/17-sign-in.md#credentials-and-placeholders: a client placeholder
+// reads the Issuer the platform names and the Client's id, its Application's.
+describe("a client placeholder", () => {
+  it("resolves the Issuer and the Client's id, each with what follows it", () => {
+    const signedIn = application(
+      `  - id: notes
+    exposure:
+      - name: app
+        host: notes.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: notes-api, surface: http }
+    client:
+      signIn: token
+    processes:
+${serving("notes-api")}`,
+      {
+        platform: (platform) =>
+          platform.replace(
+            "hardening:",
+            "signIn:\n  issuer: https://auth.jorisjonkers.dev\n  provider: edge/traefik-public\nhardening:",
+          ),
+        env: [
+          {
+            name: "minimal/env/notes-api/base.env",
+            text: "ISSUER=${client:issuer}/.well-known/openid-configuration\nCLIENT_ID=${client:id}\n",
+          },
+        ],
+      },
+    );
+
+    expect(
+      signedIn.processes[0]?.environment?.filter(({ name }) =>
+        ["ISSUER", "CLIENT_ID"].includes(name),
+      ),
+    ).toStrictEqual([
+      { name: "CLIENT_ID", value: "notes" },
+      {
+        name: "ISSUER",
+        value: "https://auth.jorisjonkers.dev/.well-known/openid-configuration",
+      },
+    ]);
+  });
+});
+
 describe("what a grant derives", () => {
   const granted = (grant: string) =>
     one(serving("notes-api", `        secrets:\n          - ${grant}\n`));

@@ -6,6 +6,7 @@
 import { dumpedSurfaceOf } from "../model/backup.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
 import {
+  holds,
   OTLP_SURFACE,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
@@ -582,6 +583,26 @@ export function setDiagnostics(
             hint: "Name the Secret Store as `<project>/<application>`, an Application its Project declares with an `http` surface on one of its Processes.",
           },
         ];
+  // The sign-in provider is an Application its Project declares
+  // (spec/v1/14-platform-intent.md#sign-in).
+  const provider = platform.document.signIn?.provider;
+  const issuing: Diagnostic[] =
+    provider === undefined ||
+    projects.some(({ document }) =>
+      document.applications.some(({ id }) =>
+        holds(provider, document.project, id),
+      ),
+    )
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_SIGN_IN_PROVIDER",
+            document: platform.name,
+            path: "/signIn",
+            message: `no project file declares the sign-in provider ${provider}`,
+            hint: "Name the Identity Provider as `<project>/<application>`, an Application its Project declares.",
+          },
+        ];
   // A stated location stands for an Application the old path still runs, and
   // an instance for its one Process.
   const legacy = new Set(platform.document.handover?.legacy);
@@ -624,6 +645,7 @@ export function setDiagnostics(
     ...release,
     ...reporting,
     ...secrets,
+    ...issuing,
     ...serving,
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({

@@ -348,7 +348,8 @@ signIn:
 | `provider` | the Application that is the Identity Provider; its Process is granted write on every derived client credential path |
 
 An Application declaring `client` while the Platform document has no `signIn`
-is `E_NO_SIGN_IN_PROVIDER`. A tier carrying a `gated` Client names the
+is `E_NO_SIGN_IN_PROVIDER`, and a `provider` no project file declares is
+`E_UNKNOWN_SIGN_IN_PROVIDER`, as an unknown Secret Store is. A tier carrying a `gated` Client names the
 provider's Gate as its `forwardAuth` endpoint ([Tiers](#tiers)).
 
 ## Durability policy

@@ -337,6 +337,23 @@ const CREDENTIAL: ReadonlySet<string> = new Set(["username", "password"]);
 /** The fields of an exposure a placeholder may read. */
 const FIELDS: ReadonlySet<string> = new Set(["url", "host", "scheme"]);
 
+/** What a Client hands its own Application (spec/v1/17-sign-in.md#credentials-and-placeholders). */
+const CLIENT_FIELDS: ReadonlySet<string> = new Set(["issuer", "id", "secret"]);
+
+/** Why a client placeholder names nothing its Application's Client hands out. */
+function unresolvedClient(
+  source: string,
+  suffix: string | undefined,
+  application: EffectiveApplication,
+): string | undefined {
+  if (application.client === undefined)
+    return `${application.id} declares no Client`;
+  if (!CLIENT_FIELDS.has(source)) return `a Client hands out no ${source}`;
+  return source === "secret" && suffix !== undefined
+    ? "a secret is a whole value, never part of one"
+    : undefined;
+}
+
 /** Why a placeholder names nothing, or nothing where it resolves; an Application nothing declares is not its to say. */
 function unresolved(
   kind: "dependency" | "exposure",
@@ -739,10 +756,13 @@ export const INVARIANTS: readonly Invariant[] = [
     needsPlatform: false,
     answer: (union) =>
       union.flatMap(heldIn).flatMap((held) =>
-        (["dependency", "exposure"] as const).flatMap((kind) =>
+        (["dependency", "exposure", "client"] as const).flatMap((kind) =>
           placeholders(held.process, kind).flatMap(
             ({ name, source, suffix }) => {
-              const why = unresolved(kind, source, suffix, held.process, union);
+              const why =
+                kind === "client"
+                  ? unresolvedClient(source, suffix, held.application)
+                  : unresolved(kind, source, suffix, held.process, union);
               return why === undefined
                 ? []
                 : [
@@ -751,7 +771,7 @@ export const INVARIANTS: readonly Invariant[] = [
                       document: held.document,
                       path: held.path,
                       message: `${name} reads \${${kind}:${source}}, and ${why}`,
-                      hint: "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, or `username` or `password` where that edge delivers its credential `env`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`.",
+                      hint: "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, or `username` or `password` where that edge delivers its credential `env`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`; a client placeholder reads `issuer`, `id` or the whole `secret` of its own Application's Client.",
                     },
                   ];
             },
@@ -853,6 +873,48 @@ export const INVARIANTS: readonly Invariant[] = [
                     },
                   ]
                 : [],
+            ),
+          ),
+  },
+  // Chapter 17's composition rules (spec/v1/17-sign-in.md#what-is-checked).
+  {
+    code: "E_CLIENT_PLACEHOLDER_WITHOUT_SECRET",
+    needsPlatform: false,
+    answer: (union) =>
+      union.flatMap(heldIn).flatMap((held) =>
+        held.application.client === undefined ||
+        held.application.client.credential === "secret"
+          ? []
+          : placeholders(held.process, "client")
+              .filter(({ source }) => source === "secret")
+              .map(({ name }) => ({
+                code: "E_CLIENT_PLACEHOLDER_WITHOUT_SECRET" as const,
+                document: held.document,
+                path: held.path,
+                message: `${name} reads \${client:secret}, and the Client of ${held.application.id} holds no secret`,
+                hint: "Declare `credential: secret` on a native Client, or drop the placeholder: a pkce, gated or token Client has no secret.",
+              })),
+      ),
+  },
+  {
+    code: "E_NO_SIGN_IN_PROVIDER",
+    needsPlatform: true,
+    answer: (union, platform) =>
+      platform.signIn !== undefined
+        ? []
+        : union.flatMap(({ name, effective }) =>
+            effective.applications.flatMap((application, a) =>
+              application.client === undefined
+                ? []
+                : [
+                    {
+                      code: "E_NO_SIGN_IN_PROVIDER" as const,
+                      document: name,
+                      path: `/applications/${String(a)}/client`,
+                      message: `${application.id} declares a Client, and the platform names no sign-in provider`,
+                      hint: "Name the Issuer and the Identity Provider in the Platform document's `signIn`.",
+                    },
+                  ],
             ),
           ),
   },

@@ -54,6 +54,9 @@
           "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
         },
+        "signIn": {
+          "$ref": "#/$defs/SignIn"
+        },
         "hardening": {
           "$ref": "#/$defs/HardeningClass"
         },
@@ -528,6 +531,25 @@
       "required": [
         "collector",
         "metrics"
+      ],
+      "additionalProperties": false
+    },
+    "SignIn": {
+      "type": "object",
+      "properties": {
+        "issuer": {
+          "type": "string",
+          "pattern": "^https:\\/\\/[^\\s/]+(\\/[^\\s]*)?$"
+        },
+        "provider": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
+          "reference": "Application"
+        }
+      },
+      "required": [
+        "issuer",
+        "provider"
       ],
       "additionalProperties": false
     },

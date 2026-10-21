@@ -1,0 +1,49 @@
+# REFUSED: E_NO_SIGN_IN_PROVIDER
+#
+# An Application declares a Client, and the Platform document beside it names
+# no sign-in provider: nothing issues the Client's tokens
+# (spec/v1/14-platform-intent.md #sign-in).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: grafana
+    exposure:
+      - name: public
+        host: grafana.refusals.jorisjonkers.dev
+        audience: internal
+        routes:
+          - { path: /, match: prefix, process: grafana, surface: http }
+    client:
+      signIn: token
+    processes:
+      - name: grafana
+        lifecycle: application
+        image: grafana
+        runtime: none
+        provides: { http: 8080 }
+        placement: { memory: 128Mi, cpu: 25m }
+        probes: { readiness: { tcp: 8080 } }
+        cutover: continuous
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: edge-proxy
+        runtime: none
+        provides: { http: 8080 }
+        placement: { memory: 128Mi, cpu: 25m }
+        probes: { readiness: { tcp: 8080 } }
+        cutover: continuous
+  - id: identity
+    processes:
+      - name: identity
+        lifecycle: application
+        image: identity
+        runtime: none
+        provides: { http: 8080 }
+        placement: { memory: 128Mi, cpu: 25m }
+        probes: { readiness: { tcp: 8080 } }
+        cutover: continuous
