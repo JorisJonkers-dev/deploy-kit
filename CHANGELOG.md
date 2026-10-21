@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.28.0...v0.29.0) (2026-10-21)
+
+
+### Features
+
+* **model:** an images-lock entry without a version is refused ([#540](https://github.com/JorisJonkers-dev/deploy-kit/issues/540)) ([ce78178](https://github.com/JorisJonkers-dev/deploy-kit/commit/ce78178af3ea22ec6e8582d058e50c00ce4bdd9a))
+
 ## [0.28.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.27.1...v0.28.0) (2026-10-21)
 
 
