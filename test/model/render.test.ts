@@ -304,6 +304,17 @@ describe("renderIntentSet", () => {
       expect(cron).toContain(`name: ${String(named)}\n`);
     });
 
+    it("is recreated when the compiler alone changes its pod template, which a Job never lets an update change", () => {
+      const tree = asTree(artifact(render(undefined, ["data"]), "_estate"));
+      const job = tree["estate/vso-secrets/job.yaml"] ?? "";
+      const cron = tree["estate/vso-secrets/cronjob.yaml"] ?? "";
+
+      expect(job).toContain(
+        "  annotations:\n    kustomize.toolkit.fluxcd.io/force: Enabled\n",
+      );
+      expect(cron).not.toContain("kustomize.toolkit.fluxcd.io/force");
+    });
+
     it("is named by the digest of the documents, each under its file name, and of what the pod runs with", () => {
       const digested: unknown[] = [];
       const result = renderIntentSet(files(), {
@@ -999,6 +1010,20 @@ describe("the database catalog", () => {
     expect(tree["estate/vso-secrets/kustomization.yaml"]).not.toContain(
       "networkpolicy",
     );
+  });
+
+  it("is recreated when the compiler alone changes its pod template, and its hourly copy is not", () => {
+    const documents = (estate()[CATALOG] ?? "").split("---\n");
+    const job = documents.find((document) => document.includes("kind: Job\n"));
+    const cron = documents.find((document) =>
+      document.includes("kind: CronJob\n"),
+    );
+
+    expect(job).toContain(
+      "  annotations:\n    kustomize.toolkit.fluxcd.io/force: Enabled\n",
+    );
+    expect(cron).toBeDefined();
+    expect(cron).not.toContain("kustomize.toolkit.fluxcd.io/force");
   });
 
   it("is a new Job when its method's image changes", () => {

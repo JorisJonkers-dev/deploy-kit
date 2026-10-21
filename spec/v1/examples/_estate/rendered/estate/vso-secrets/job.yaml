@@ -11,6 +11,8 @@ metadata:
     app.kubernetes.io/part-of: vault-policy
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/force: Enabled
 spec:
   backoffLimit: 2147483647
   template:
