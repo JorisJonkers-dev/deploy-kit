@@ -412,6 +412,16 @@ const vpnPolicy = stated(
   settingsUnderived,
 );
 
+// Who issues sign-ins for the estate (spec/v1/14-platform-intent.md#sign-in):
+// the Issuer every Client trusts, and the Application that is the Identity
+// Provider, declared in a project file.
+const signIn = z
+  .strictObject({
+    issuer: z.string().regex(/^https:\/\/[^\s/]+(\/[^\s]*)?$/),
+    provider: holder,
+  })
+  .meta({ id: "SignIn" });
+
 const provider = z
   .strictObject({
     name: text,
@@ -438,6 +448,7 @@ export const platformIntent = z
     // Application a project file the platform owns declares
     // (spec/v1/14-platform-intent.md#the-secret-store).
     secretStore: holder.exactOptional(),
+    signIn: signIn.exactOptional(),
     hardening: hardeningClass,
     probes: probeCadence,
     ephemeral: ephemeralPolicy,

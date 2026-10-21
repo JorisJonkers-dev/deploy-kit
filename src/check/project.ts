@@ -287,6 +287,130 @@ function mixedCutoverRefusals(
   ];
 }
 
+// -- Sign-in (spec/v1/17-sign-in.md#the-client-block).
+
+type Client = NonNullable<Application["client"]>;
+type ClientField = Exclude<keyof Client, "signIn" | "exposure" | "roles">;
+
+/** The fields each Sign-in Mode takes, and the ones it requires. */
+const CLIENT_FIELDS: Readonly<
+  Record<
+    Client["signIn"],
+    { takes: readonly ClientField[]; requires: readonly ClientField[] }
+  >
+> = {
+  native: {
+    takes: [
+      "label",
+      "description",
+      "iconPath",
+      "launchPath",
+      "redirectPaths",
+      "protectedPath",
+      "credential",
+    ],
+    requires: ["label", "redirectPaths", "protectedPath", "credential"],
+  },
+  gated: {
+    takes: ["label", "description", "iconPath", "launchPath"],
+    requires: ["label"],
+  },
+  token: { takes: [], requires: [] },
+};
+
+/** The audiences each Sign-in Mode's exposure may carry. */
+const CLIENT_AUDIENCES: Readonly<Record<Client["signIn"], readonly string[]>> =
+  {
+    native: ["authenticated"],
+    gated: ["authenticated"],
+    token: ["authenticated", "internal"],
+  };
+
+/** The path the Gate takes back on a gated host, which no route of its own may claim. */
+const GATE_PATH = "/.auth";
+
+/** The exposure a Client names, or the only one its Application declares. */
+export function clientExposure(
+  application: Application,
+): NonNullable<Application["exposure"]>[number] | undefined {
+  const exposures = application.exposure ?? [];
+  const named = application.client?.exposure;
+  if (named !== undefined) return exposures.find(({ name }) => name === named);
+  return exposures.length === 1 ? exposures[0] : undefined;
+}
+
+function clientRefusals(application: Application, at: string): Refusal[] {
+  const client = application.client;
+  if (client === undefined) return [];
+  const where = `${at}/client`;
+  const refusals: Refusal[] = [];
+  const fields = CLIENT_FIELDS[client.signIn];
+  for (const field of Object.keys(client) as (keyof Client)[])
+    if (
+      field !== "signIn" &&
+      field !== "exposure" &&
+      field !== "roles" &&
+      !fields.takes.includes(field)
+    )
+      refusals.push({
+        code: "E_CLIENT_FIELD_FOR_MODE",
+        path: `${where}/${field}`,
+        message: `a ${client.signIn} Client takes no ${field}`,
+        hint: "Remove the field, or choose the Sign-in Mode that takes it.",
+      });
+  const missing = fields.requires.filter((field) => !(field in client));
+  if (missing.length > 0)
+    refusals.push({
+      code: "E_CLIENT_FIELD_FOR_MODE",
+      path: where,
+      message: `a ${client.signIn} Client requires ${missing.join(", ")}`,
+      hint: "Declare every field the Sign-in Mode requires.",
+    });
+  const exposure = clientExposure(application);
+  if (exposure === undefined)
+    refusals.push({
+      code: "E_CLIENT_EXPOSURE_UNRESOLVED",
+      path: client.exposure === undefined ? where : `${where}/exposure`,
+      message:
+        client.exposure === undefined
+          ? `${application.id} declares ${String((application.exposure ?? []).length)} exposures, and the Client names none of them`
+          : `${application.id} declares no exposure ${client.exposure}`,
+      hint: "Name one exposure of the Application in `exposure`, or declare the one exposure the Client signs people in on.",
+    });
+  else if (!CLIENT_AUDIENCES[client.signIn].includes(exposure.audience))
+    refusals.push({
+      code: "E_CLIENT_AUDIENCE",
+      path: where,
+      message: `a ${client.signIn} Client cannot sign people in on the ${exposure.audience} exposure ${exposure.name}`,
+      hint: "A native or gated Client's exposure is authenticated; a token Client's is authenticated or internal.",
+    });
+  const seen = new Set(["user"]);
+  for (const [index, role] of (client.roles ?? []).entries()) {
+    if (seen.has(role))
+      refusals.push({
+        code: "E_DUPLICATE_APP_ROLE",
+        path: `${where}/roles/${String(index)}`,
+        message:
+          role === "user"
+            ? "every Client has the user role already"
+            : `the role ${role} is listed twice`,
+        hint: "List each App Role once, and never `user`.",
+      });
+    seen.add(role);
+  }
+  if (client.signIn === "gated")
+    for (const [e, { routes }] of (application.exposure ?? []).entries())
+      for (const [r, { path }] of routes.entries())
+        if (path === GATE_PATH || path.startsWith(`${GATE_PATH}/`))
+          refusals.push({
+            code: "E_GATE_PATH_CLAIMED",
+            path: `${at}/exposure/${String(e)}/routes/${String(r)}`,
+            message: `${path} is the Gate's own on a gated host`,
+            hint: "Move the route out from under /.auth/: the Gate receives its sign-in there.",
+          });
+  return refusals;
+}
+
 function applicationRefusals(
   application: Application,
   project: ProjectIntentDocument,
@@ -296,6 +420,7 @@ function applicationRefusals(
     ...duplicateRefusals(application, [project], at),
     ...quantityRefusals(application, at),
     ...mixedCutoverRefusals(application, project, at),
+    ...clientRefusals(application, at),
   ];
   if (
     application.observability !== undefined &&
