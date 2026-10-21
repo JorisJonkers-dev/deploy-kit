@@ -101,7 +101,7 @@ function pulled(): string {
     document,
     readFileSync(document, "utf8")
       // No Reporter, so the estate-scoped artifact holds no route to one.
-      .replace("  reporter: reporter\n", "")
+      .replace("  reporter: delivery/reporter\n", "")
       .replace(
         /\nhandover:\n(?: {2}.*\n)+/,
         "\nhandover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, delivery, edge, knowledge]\n  estate: [notes, observability, secrets]\n",
@@ -160,8 +160,8 @@ describe("deploy-kit validate", () => {
     expect(human.stdout).toBe("");
     expect(human.stderr.split("\n")[2]).toMatch(/^E_UNKNOWN_TIER_PROXY /);
     expect(human.stderr.split("\n").slice(0, 2)).toEqual([
-      `E_UNKNOWN_TIER_PROXY ${example("platform/platform.intent.yml")}#/tiers/0: no project file declares the Application traefik-public this tier's proxy names`,
-      "  Declare the proxy Application in a project file the platform owns.",
+      `E_UNKNOWN_TIER_PROXY ${example("platform/platform.intent.yml")}#/tiers/0: no project file declares the Application edge/traefik-public this tier's proxy names`,
+      "  Name the proxy as `<project>/<application>`, an Application its Project declares.",
     ]);
 
     const json = run(

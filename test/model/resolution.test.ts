@@ -143,7 +143,7 @@ describe("resolveIntentSet", () => {
       "events" in
         eventsOf({
           [PLATFORM]: (platform) =>
-            platform.replace("  reporter: reporter\n", ""),
+            platform.replace("  reporter: delivery/reporter\n", ""),
         }),
     ).toBe(false);
   });
@@ -208,7 +208,7 @@ describe("resolveIntentSet", () => {
       expect(
         admitted({
           [PLATFORM]: (platform) =>
-            platform.replace("  reporter: reporter\n", ""),
+            platform.replace("  reporter: delivery/reporter\n", ""),
         }),
       ).toStrictEqual({
         flagger: [],

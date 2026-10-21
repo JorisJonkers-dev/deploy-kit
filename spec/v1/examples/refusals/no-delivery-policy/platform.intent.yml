@@ -35,7 +35,7 @@ tiers:
     audiences: [lan]
     listener: plain
     certificates: none
-    traefik: edge-proxy
+    traefik: refusals/edge-proxy
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }

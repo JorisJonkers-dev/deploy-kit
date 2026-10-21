@@ -4,7 +4,10 @@
 // the precedence the model decides rather than the proxy.
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { ApplicationDocument } from "../model/project-intent.ts";
-import type { PlatformIntentDocument } from "../model/platform-intent.ts";
+import {
+  applicationOf,
+  type PlatformIntentDocument,
+} from "../model/platform-intent.ts";
 import type {
   ResolvedExposure,
   ResolvedRoute,
@@ -96,7 +99,7 @@ function resolveOne(
     listener: tier.listener,
     certificates: tier.certificates,
     proxy: {
-      application: tier.traefik,
+      application: applicationOf(tier.traefik),
       namespace: (proxy as { namespace: string }).namespace,
     },
     routes: exposure.routes.map((route) => ({

@@ -141,13 +141,14 @@ class IntentSetTest {
                 "platform.intent.yml",
                 Examples.read("platform/platform.intent.yml")
                         .replace("secretsEncryption: false", "secretsEncryption: true")
-                        .replace("traefik: traefik-public", "traefik: notes")
-                        .replace("traefik: traefik-lan", "traefik: notes")
+                        .replace("traefik: edge/traefik-public", "traefik: notes/notes")
+                        .replace("traefik: edge/traefik-lan", "traefik: notes/notes")
                         .replace(
-                                "machinery: [traefik-public, traefik-lan, flagger, release-gate]", "machinery: [notes]")
-                        .replace("gate: release-gate", "gate: notes")
-                        .replace("reporter: reporter", "reporter: notes")
-                        .replace("secretStore: vault", "secretStore: notes")
+                                "machinery: [edge/traefik-public, edge/traefik-lan, delivery/flagger, delivery/release-gate]",
+                                "machinery: [notes/notes]")
+                        .replace("gate: delivery/release-gate", "gate: notes/notes")
+                        .replace("reporter: delivery/reporter", "reporter: notes/notes")
+                        .replace("secretStore: secrets/vault", "secretStore: notes/notes")
                         .replaceFirst(TELEMETRY, "\n")
                         .replaceFirst(API_ACCESS, "\n"));
 
@@ -181,14 +182,14 @@ class IntentSetTest {
                         .replace("audiences: [anonymous, authenticated]", "audiences: [lan]")
                         .replaceFirst("\n\\s+forwardAuth: [^\n]*", "")
                         .replace("secretsEncryption: false", "secretsEncryption: true")
-                        .replace("traefik: traefik-public", "traefik: knowledge")
-                        .replace("traefik: traefik-lan", "traefik: knowledge")
+                        .replace("traefik: edge/traefik-public", "traefik: knowledge/knowledge")
+                        .replace("traefik: edge/traefik-lan", "traefik: knowledge/knowledge")
                         .replace(
-                                "machinery: [traefik-public, traefik-lan, flagger, release-gate]",
-                                "machinery: [knowledge]")
-                        .replace("gate: release-gate", "gate: knowledge")
-                        .replace("reporter: reporter", "reporter: knowledge")
-                        .replace("secretStore: vault", "secretStore: knowledge")
+                                "machinery: [edge/traefik-public, edge/traefik-lan, delivery/flagger, delivery/release-gate]",
+                                "machinery: [knowledge/knowledge]")
+                        .replace("gate: delivery/release-gate", "gate: knowledge/knowledge")
+                        .replace("reporter: delivery/reporter", "reporter: knowledge/knowledge")
+                        .replace("secretStore: secrets/vault", "secretStore: knowledge/knowledge")
                         .replaceFirst(TELEMETRY, "\n")
                         .replaceFirst(API_ACCESS, "\n"));
         Path knowledge = Examples.write(
@@ -213,7 +214,9 @@ class IntentSetTest {
                 directory,
                 "platform.intent.yml",
                 Examples.read("platform/platform.intent.yml")
-                        .replace("holders: [flagger, release-gate, collector, reporter]", "holders: [flagger, gone]"));
+                        .replace(
+                                "holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter]",
+                                "holders: [delivery/flagger, delivery/gone]"));
         List<Path> admitted = new java.util.ArrayList<>(WORKED.subList(1, WORKED.size()));
         admitted.add(0, platform);
 

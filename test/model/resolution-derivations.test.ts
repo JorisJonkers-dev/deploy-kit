@@ -1336,7 +1336,8 @@ describe("what a grant derives", () => {
     expect(
       codesOf(
         resolve(granted(SELF), {
-          platform: (document) => document.replace("secretStore: vault\n", ""),
+          platform: (document) =>
+            document.replace("secretStore: secrets/vault\n", ""),
         }),
       ),
     ).toStrictEqual(["E_NO_SECRET_STORE"]);
@@ -1697,7 +1698,8 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     const refusedNotes = (applications: string) => {
       const result = resolve(applications, {
         env: DATA,
-        platform: (document) => document.replace("secretStore: vault\n", ""),
+        platform: (document) =>
+          document.replace("secretStore: secrets/vault\n", ""),
       });
       return result.ok
         ? []
@@ -2592,7 +2594,7 @@ describe("a volume and what its class derives", () => {
           ),
           {
             platform: (document) =>
-              document.replace("secretStore: vault\n", ""),
+              document.replace("secretStore: secrets/vault\n", ""),
           },
         ),
       ),
@@ -2613,7 +2615,7 @@ describe("a volume and what its class derives", () => {
             ),
           {
             platform: (document) =>
-              document.replace("secretStore: vault\n", ""),
+              document.replace("secretStore: secrets/vault\n", ""),
           },
         ),
       );
@@ -3015,7 +3017,7 @@ describe("the Vault policy job", () => {
     // Not a job that is undefined: no job at all.
     expect(
       Object.keys(
-        set((platform) => platform.replace("secretStore: vault\n", "")),
+        set((platform) => platform.replace("secretStore: secrets/vault\n", "")),
       ),
       // What the set does derive is where Flux's events go: the worked
       // platform names a Reporter.

@@ -776,7 +776,11 @@ export const INVARIANTS: readonly Invariant[] = [
       union.flatMap(({ name, effective }) =>
         effective.applications.flatMap((application, a) => {
           // Machinery rolls rather than switches, so nothing gates it.
-          if (platform.delivery?.machinery.includes(application.id) === true)
+          if (
+            platform.delivery?.machinery.includes(
+              `${effective.project}/${application.id}`,
+            ) === true
+          )
             return [];
           const gated = application.processes.filter(
             ({ lifecycle, cutover }) =>

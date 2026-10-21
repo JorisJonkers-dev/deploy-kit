@@ -5,6 +5,7 @@ import {
   GATE_SURFACE,
   REPORTER_SURFACE,
   OTLP_SURFACE,
+  holds,
   type PlatformIntentDocument,
 } from "./platform-intent.ts";
 import type { Runtime } from "./vocabularies.ts";
@@ -107,7 +108,7 @@ export function surfaceAddress(
 ): string | undefined {
   for (const { project, applications } of projects)
     for (const { id, processes } of applications)
-      if (id === application)
+      if (holds(application, project, id))
         for (const process of processes) {
           const port = process.provides?.[surface];
           if (port !== undefined)
@@ -162,8 +163,8 @@ export const gateProjects = <Project extends Declares>(
   platform: PlatformIntentDocument,
   projects: readonly Project[],
 ): Project[] =>
-  projects.filter(({ applications }) =>
-    applications.some(({ id }) => id === platform.delivery?.gate),
+  projects.filter(({ project, applications }) =>
+    applications.some(({ id }) => holds(platform.delivery?.gate, project, id)),
   );
 
 /**

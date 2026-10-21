@@ -146,6 +146,7 @@ and linted by the same script with `emf` as its root.
 | [0091](model/0091-a-backup-identity-has-a-policy-of-its-own.md) | A backup identity has a network policy of its own, from facts the platform states: the surface its method dumps and where its off-cluster copy goes | settled |
 | [0092](model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md) | A Process declares the Kubernetes API access it needs, and the Platform document admits who may hold any | settled |
 | [0095](model/0095-each-engine-states-how-its-data-moves.md) | Each engine states how its data moves: a method image, which version change breaks the data in place, and when it can replicate back | open |
+| [0113](model/0113-a-privileged-role-names-the-project-that-holds-it.md) | A privileged role names the Project that holds it, as `<project>/<application>`, and an Application id alone binds no role | open |
 
 ## Delivery and release
 

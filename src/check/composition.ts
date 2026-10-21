@@ -230,7 +230,7 @@ function ungatedRefusals(
   const machinery = new Set(platform.delivery?.machinery ?? []);
   return project.applications.flatMap((application, a) =>
     typeof application.migration === "object" &&
-    (machinery.has(application.id) ||
+    (machinery.has(`${project.project}/${application.id}`) ||
       !application.processes.some(
         (process) =>
           process.lifecycle === "application" &&
@@ -373,7 +373,9 @@ function projectRefusals(
       // not the one the platform meant, and nothing here can tell which is.
       if (
         process.api !== undefined &&
-        (platform.apiAccess?.holders.includes(application.id) !== true ||
+        (platform.apiAccess?.holders.includes(
+          `${project.project}/${application.id}`,
+        ) !== true ||
           estate.repeated.has(application.id))
       )
         refusals.push({
@@ -382,7 +384,7 @@ function projectRefusals(
           message: estate.repeated.has(application.id)
             ? `${process.name} declares Kubernetes API access, and more than one Application carries the id ${application.id}, so the platform admits none of them`
             : `${process.name} declares Kubernetes API access, and the platform does not admit the Application ${application.id} to hold any`,
-          hint: "Name the Application in the Platform document's `apiAccess.holders`, under an id no other Application carries, or drop `api`.",
+          hint: "Name the Application in the Platform document's `apiAccess.holders` as `<project>/<application>`, under an id no other Application carries, or drop `api`.",
         });
       for (const [v, volume] of volumes.entries())
         if (platform.durability[volume.durability] === undefined)
@@ -416,6 +418,13 @@ export function setDiagnostics(
       document.applications.map(({ id }) => id),
     ),
   );
+  // A privileged role links to the Application its Project declares, never
+  // to one another project file declares under the same id.
+  const holders = new Set(
+    projects.flatMap(({ document }) =>
+      document.applications.map(({ id }) => `${document.project}/${id}`),
+    ),
+  );
   const ids = projects.flatMap(({ document }) =>
     document.applications.map(({ id }) => id),
   );
@@ -437,7 +446,7 @@ export function setDiagnostics(
   };
   const proxies: Diagnostic[] = platform.document.tiers.flatMap(
     (tier, index) =>
-      declared.has(tier.traefik)
+      holders.has(tier.traefik)
         ? []
         : [
             {
@@ -445,7 +454,7 @@ export function setDiagnostics(
               document: platform.name,
               path: `/tiers/${index}`,
               message: `no project file declares the Application ${tier.traefik} this tier's proxy names`,
-              hint: "Declare the proxy Application in a project file the platform owns.",
+              hint: "Name the proxy as `<project>/<application>`, an Application its Project declares.",
             },
           ],
   );
@@ -453,7 +462,7 @@ export function setDiagnostics(
   const machinery: Diagnostic[] = (
     platform.document.delivery?.machinery ?? []
   ).flatMap((name) =>
-    declared.has(name)
+    holders.has(name)
       ? []
       : [
           {
@@ -461,16 +470,16 @@ export function setDiagnostics(
             document: platform.name,
             path: "/delivery",
             message: `no project file declares the Application ${name} the delivery machinery names`,
-            hint: "Declare the Application in a project file the platform owns, or drop it from `delivery.machinery`.",
+            hint: "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `delivery.machinery`.",
           },
         ],
   );
   // A holder of API access names an Application a project file declares, as
   // the machinery does.
-  const holders: Diagnostic[] = (
+  const apiHolders: Diagnostic[] = (
     platform.document.apiAccess?.holders ?? []
   ).flatMap((name) =>
-    declared.has(name)
+    holders.has(name)
       ? []
       : [
           {
@@ -478,7 +487,7 @@ export function setDiagnostics(
             document: platform.name,
             path: "/apiAccess",
             message: `no project file declares the Application ${name} the platform admits to hold Kubernetes API access`,
-            hint: "Declare the Application in a project file the platform owns, or drop it from `apiAccess.holders`.",
+            hint: "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `apiAccess.holders`.",
           },
         ],
   );
@@ -499,13 +508,13 @@ export function setDiagnostics(
             document: platform.name,
             path: "/telemetry",
             message: `no project file declares an Application ${collector} whose Process provides an \`${OTLP_SURFACE}\` surface`,
-            hint: "Declare the collector in a project file the platform owns, with an `otlp` surface on one of its Processes.",
+            hint: "Name the collector as `<project>/<application>`, an Application its Project declares with an `otlp` surface on one of its Processes.",
           },
         ];
   // The metrics stack is an Application a project file declares, as a proxy is.
   const metrics = platform.document.telemetry?.metrics;
   const stack: Diagnostic[] =
-    metrics === undefined || declared.has(metrics)
+    metrics === undefined || holders.has(metrics)
       ? []
       : [
           {
@@ -513,7 +522,7 @@ export function setDiagnostics(
             document: platform.name,
             path: "/telemetry",
             message: `no project file declares the Application ${metrics} the metrics stack names`,
-            hint: "Declare the metrics stack in a project file the platform owns.",
+            hint: "Name the metrics stack as `<project>/<application>`, an Application its Project declares.",
           },
         ];
   // The gate answers every Canary on its `http` surface.
@@ -532,7 +541,7 @@ export function setDiagnostics(
             document: platform.name,
             path: "/delivery",
             message: `no project file declares an Application ${gate} whose Process provides an \`http\` surface`,
-            hint: "Declare the Release Gate in a project file the platform owns, with an `http` surface on one of its Processes.",
+            hint: "Name the Release Gate as `<project>/<application>`, an Application its Project declares with an `http` surface on one of its Processes.",
           },
         ];
   // The Reporter receives Flux's events on its `http` surface.
@@ -551,7 +560,7 @@ export function setDiagnostics(
             document: platform.name,
             path: "/delivery",
             message: `the project file that declares the Release Gate declares no Application ${reporter} whose Process provides an \`http\` surface`,
-            hint: "Declare the Reporter beside the Release Gate, in the same project file, with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
+            hint: "Name the Reporter as `<project>/<application>` in the Release Gate's Project, an Application with an `http` surface on one of its Processes, or drop `delivery.reporter`.",
           },
         ];
   // The Secret Store answers every grant on its `http` surface.
@@ -570,7 +579,7 @@ export function setDiagnostics(
             document: platform.name,
             path: "/secretStore",
             message: `no project file declares an Application ${store} whose Process provides an \`http\` surface`,
-            hint: "Declare the Secret Store in a project file the platform owns, with an `http` surface on one of its Processes.",
+            hint: "Name the Secret Store as `<project>/<application>`, an Application its Project declares with an `http` surface on one of its Processes.",
           },
         ];
   // A stated location stands for an Application the old path still runs, and
@@ -609,7 +618,7 @@ export function setDiagnostics(
   return [
     ...proxies,
     ...machinery,
-    ...holders,
+    ...apiHolders,
     ...telemetry,
     ...stack,
     ...release,

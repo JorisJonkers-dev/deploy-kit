@@ -32,11 +32,13 @@ class PlatformIntentTest {
     @Test
     void aTiersProxyReadAloneIsWrittenAsTheNameTheDocumentGaveIt(@TempDir Path directory) {
         Parsed quoted = Pipeline.intent(Examples.write(
-                directory, "platform.intent.yml", WORKED.replace("traefik: traefik-lan", "traefik: 'traefik-lan'")));
+                directory,
+                "platform.intent.yml",
+                WORKED.replace("traefik: edge/traefik-lan", "traefik: 'edge/traefik-lan'")));
 
         assertThat(tiers(quoted))
                 .extracting(tier -> tier.get("traefik"))
-                .containsExactly("traefik-public", "traefik-lan");
+                .containsExactly("edge/traefik-public", "edge/traefik-lan");
     }
 
     @Test

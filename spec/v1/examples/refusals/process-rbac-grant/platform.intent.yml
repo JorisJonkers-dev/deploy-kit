@@ -34,7 +34,7 @@ tiers:
     audiences: [lan]
     listener: plain
     certificates: none
-    traefik: edge-proxy
+    traefik: refusals/edge-proxy
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }
@@ -51,6 +51,6 @@ ephemeral: { size: 64Mi }
 # The platform admits no Application to hold Kubernetes API access: the
 # document carries no `apiAccess` block at all.
 delivery:
-  machinery: [edge-proxy]
-  gate: edge-proxy
+  machinery: [refusals/edge-proxy]
+  gate: refusals/edge-proxy
   analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms }

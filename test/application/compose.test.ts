@@ -60,7 +60,7 @@ const LEDGER = `handover:
   estate: [notes, observability, secrets]
 `;
 /** The line of the worked Platform document that names its Reporter. */
-const REPORTER = "  reporter: reporter\n";
+const REPORTER = "  reporter: delivery/reporter\n";
 const withLedger = (platform: string, ledger: string): string =>
   platform.replace(/\nhandover:\n(?: {2}.*\n)+/, `\n${ledger}`);
 
@@ -1121,10 +1121,10 @@ describe("composeEstate, for an artifact whose pin moves", () => {
         ] as never,
         {
           tiers: [
-            { name: "public", traefik: "proxy-public" },
-            { name: "lan", traefik: "proxy-lan" },
+            { name: "public", traefik: "edge/proxy-public" },
+            { name: "lan", traefik: "edge/proxy-lan" },
             // A tier no route reaches: the artifact holds no index for it.
-            { name: "idle", traefik: "proxy-lan" },
+            { name: "idle", traefik: "edge/proxy-lan" },
           ],
           bootstrap: {
             flux: {
@@ -2504,8 +2504,8 @@ describe("composeEstate, for the route Flux's events take", () => {
                 text: withLedger(
                   named
                     ? file.text.replace(
-                        "  gate: release-gate\n",
-                        `  gate: release-gate\n${REPORTER}`,
+                        "  gate: delivery/release-gate\n",
+                        `  gate: delivery/release-gate\n${REPORTER}`,
                       )
                     : file.text,
                   ledger,

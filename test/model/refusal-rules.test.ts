@@ -434,7 +434,7 @@ describe("a Runtime Profile key written in an env file", () => {
   const telemetry = (text: string) =>
     text.replace(
       "\nmonitors:",
-      "\ntelemetry:\n  collector: collector\n  metrics: edge-proxy\nmonitors:",
+      "\ntelemetry:\n  collector: refusals/collector\n  metrics: refusals/edge-proxy\nmonitors:",
     );
 
   it.each([
@@ -534,7 +534,7 @@ describe("an Asset", () => {
 
 describe("a platform that names no Secret Store", () => {
   const withoutStore = (text: string) =>
-    text.replace("secretStore: edge-proxy\n", "");
+    text.replace("secretStore: refusals/edge-proxy\n", "");
 
   it.each([
     [

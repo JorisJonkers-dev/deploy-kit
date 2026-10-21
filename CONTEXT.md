@@ -294,7 +294,8 @@ counterpart is the Edge credential, which the Secret Store issues and renews
 ([chapter 10](spec/v1/10-project-intent.md#delivery)).
 
 **Secret Store**: the Application every Grant is read from, which the Platform
-document names in `secretStore` and a project file the platform owns declares.
+document names in `secretStore` as `<project>/<application>`, a
+[Privileged role](#composition-many-repositories-one-estate).
 It answers on its `http` surface; a Process that holds a Grant egresses to it,
 and its Application is ordered after the unit that materialises the credentials
 ([chapter 14](spec/v1/14-platform-intent.md#the-secret-store)).
@@ -342,6 +343,14 @@ visible ([0043](docs/adr/model/0043-participants-list-staleness.md)).
 **Schema version**: the data model's own semver, carried by each document
 family and separate from the toolkit's package version
 ([0044](docs/adr/model/0044-artifact-schema-versioning.md)).
+
+**Privileged role**: what a Platform document field hands the Application it
+names and no project file can give itself: a tier's proxy, the delivery
+machinery, the Release Gate, the Reporter, a holder of API access, the
+telemetry collector, the metrics stack, the Secret Store. Each names its holder
+as `<project>/<application>`, so an Application id alone claims no role
+([0113](docs/adr/model/0113-a-privileged-role-names-the-project-that-holds-it.md),
+[chapter 14](spec/v1/14-platform-intent.md#privileged-roles)).
 
 ## Layer 2: what the platform decides
 

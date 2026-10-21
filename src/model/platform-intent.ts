@@ -32,6 +32,26 @@ export const ERROR_RATE = /^(100|\d{1,2}(\.\d{1,2})?)%$/;
 export const LATENCY = /^[1-9]\d*(ms|s)$/;
 const port = z.int().min(1).max(65535);
 
+/**
+ * A privileged role's holder: the Project that may hold it and the Application
+ * it declares, as `<project>/<application>`
+ * (spec/v1/14-platform-intent.md#privileged-roles). The id alone binds nothing,
+ * so a project file cannot claim a role by declaring an Application under it.
+ */
+export const HOLDER = /^[^/\s]+\/[^/\s]+$/;
+const holder = z.string().regex(HOLDER).meta({ reference: "Application" });
+
+/** Whether `reference` names the Application `id` that `project` declares. */
+export const holds = (
+  reference: string | undefined,
+  project: string,
+  id: string,
+): boolean => reference === `${project}/${id}`;
+
+/** The Application a holder names, without its Project. */
+export const applicationOf = (reference: string): string =>
+  reference.slice(reference.indexOf("/") + 1);
+
 const audience = z.enum(AUDIENCES).meta({ id: "Audience" });
 const datastore = z.enum(DATASTORES).meta({ id: "Datastore" });
 const policyController = z
@@ -102,7 +122,7 @@ const tier = z
     proxiedBy: forwarder.exactOptional(),
     // The platform Application whose proxy this tier is, declared in a project
     // file the platform owns: a reference into another document.
-    traefik: text.meta({ reference: "Application" }),
+    traefik: holder,
   })
   .meta({ id: "Tier" });
 
@@ -194,15 +214,15 @@ const analysisPolicy = z
 
 const deliveryPolicy = z
   .strictObject({
-    machinery: z.array(text.meta({ reference: "Application" })).min(1),
+    machinery: z.array(holder).min(1),
     // The Release Gate every Canary asks, on its `http` surface
     // (spec/v1/55-delivery.md#the-release-gate).
-    gate: text.meta({ reference: "Application" }),
+    gate: holder,
     analysis: analysisPolicy,
     // The Reporter, which Flux's events about every Project's unit are sent
     // to, on its `http` surface (spec/v1/55-delivery.md#rollouts). A platform
     // that names none reports no Rollout past `pinned`.
-    reporter: text.meta({ reference: "Application" }).exactOptional(),
+    reporter: holder.exactOptional(),
   })
   .meta({ id: "DeliveryPolicy" });
 
@@ -225,7 +245,7 @@ const vaultPolicyJob = z
 // Processes may declare `api`, and the ranges an egress policy admits for it.
 const apiAccessPolicy = z
   .strictObject({
-    holders: z.array(text.meta({ reference: "Application" })).min(1),
+    holders: z.array(holder).min(1),
     server: z.array(destinationRange).min(1),
   })
   .meta({ id: "ApiAccessPolicy" });
@@ -289,9 +309,9 @@ export const fluxNamespaceOf = (platform: {
 
 const telemetryPolicy = z
   .strictObject({
-    collector: text.meta({ reference: "Application" }),
+    collector: holder,
     // The metrics stack every declared scrape surface admits.
-    metrics: text.meta({ reference: "Application" }),
+    metrics: holder,
   })
   .meta({ id: "TelemetryPolicy" });
 
@@ -417,7 +437,7 @@ export const platformIntent = z
     // The Secret Store every grant is read from, on its `http` surface: an
     // Application a project file the platform owns declares
     // (spec/v1/14-platform-intent.md#the-secret-store).
-    secretStore: text.meta({ reference: "Application" }).exactOptional(),
+    secretStore: holder.exactOptional(),
     hardening: hardeningClass,
     probes: probeCadence,
     ephemeral: ephemeralPolicy,

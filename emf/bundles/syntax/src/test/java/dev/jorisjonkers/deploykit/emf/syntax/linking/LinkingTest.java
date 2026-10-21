@@ -178,7 +178,7 @@ class LinkingTest {
 
     @Test
     void aTiersProxyLinksToAnApplicationAnotherDocumentDeclares() throws IOException {
-        Resource platform = platform("elsewhere");
+        Resource platform = platform("links/elsewhere");
         Tier tier = ((Platform) platform.getContents().get(0)).getTiers().get(0);
 
         assertThat(platform.getErrors()).isEmpty();
@@ -187,46 +187,61 @@ class LinkingTest {
     }
 
     @Test
+    void aPrivilegedRoleNamedUnderAProjectThatDoesNotDeclareItLinksToNothing() throws IOException {
+        // `links` declares `elsewhere`; no Project called `impostor` is read, so the id alone binds nothing.
+        assertThat(codes(platform("impostor/elsewhere")))
+                .containsExactly("E_UNKNOWN_TIER_PROXY no project file declares the Application impostor/elsewhere");
+        assertThat(codes(platform("links/elsewhere", "secretStore: impostor/elsewhere\n")))
+                .containsExactly("E_UNKNOWN_SECRET_STORE no project file declares an Application impostor/elsewhere"
+                        + " whose Process provides an `http` surface");
+    }
+
+    @Test
     void aTiersProxyThatNoDocumentDeclaresIsUnknown() throws IOException {
-        assertThat(codes(platform("traefik-lan")))
-                .containsExactly("E_UNKNOWN_TIER_PROXY no project file declares the Application traefik-lan");
+        assertThat(codes(platform("links/traefik-lan")))
+                .containsExactly("E_UNKNOWN_TIER_PROXY no project file declares the Application links/traefik-lan");
     }
 
     @Test
     void theTelemetryCollectorLinksOnlyToADeclaredApplicationThatReceivesOnOtlp() throws IOException {
         // `elsewhere` is declared, and provides only `http`: it is not a collector, so it is not in scope.
-        assertThat(codes(platform("elsewhere", "telemetry: { collector: elsewhere, metrics: elsewhere }\n")))
-                .containsExactly("E_UNKNOWN_TELEMETRY_COLLECTOR no project file declares an Application elsewhere"
+        assertThat(codes(platform(
+                        "links/elsewhere", "telemetry: { collector: links/elsewhere, metrics: links/elsewhere }\n")))
+                .containsExactly("E_UNKNOWN_TELEMETRY_COLLECTOR no project file declares an Application links/elsewhere"
                         + " whose Process provides an `otlp` surface");
-        assertThat(codes(platform("elsewhere", "telemetry: { collector: gone, metrics: elsewhere }\n")))
-                .containsExactly("E_UNKNOWN_TELEMETRY_COLLECTOR no project file declares an Application gone"
+        assertThat(codes(platform(
+                        "links/elsewhere", "telemetry: { collector: links/gone, metrics: links/elsewhere }\n")))
+                .containsExactly("E_UNKNOWN_TELEMETRY_COLLECTOR no project file declares an Application links/gone"
                         + " whose Process provides an `otlp` surface");
     }
 
     @Test
     void theReleaseGateAndTheMetricsStackLinkOnlyToWhatTheyNeed() throws IOException {
         // `elsewhere` provides `http`, so it may be the gate; `gone` is declared nowhere.
-        String delivery = "delivery: { machinery: [elsewhere], gate: gone, "
+        String delivery = "delivery: { machinery: [links/elsewhere], gate: links/gone, "
                 + "analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms } }\n";
 
-        assertThat(codes(platform("elsewhere", delivery + "telemetry: { collector: gone, metrics: gone }\n")))
+        assertThat(codes(platform(
+                        "links/elsewhere", delivery + "telemetry: { collector: links/gone, metrics: links/gone }\n")))
                 .contains(
-                        "E_UNKNOWN_RELEASE_GATE no project file declares an Application gone whose Process provides"
+                        "E_UNKNOWN_RELEASE_GATE no project file declares an Application links/gone whose Process provides"
                                 + " an `http` surface",
-                        "E_UNKNOWN_METRICS_STACK no project file declares the Application gone the metrics stack names");
+                        "E_UNKNOWN_METRICS_STACK no project file declares the Application links/gone the metrics stack names");
     }
 
     @Test
     void theReporterLinksOnlyToADeclaredApplicationThatAnswersOnHttp() throws IOException {
         // `elsewhere` provides `http` beside the gate, so it may be the Reporter; `gone` is declared nowhere.
         String analysis = "analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms } }\n";
-        String linked = "delivery: { machinery: [elsewhere], gate: elsewhere, reporter: elsewhere, " + analysis;
-        String unlinked = "delivery: { machinery: [elsewhere], gate: elsewhere, reporter: gone, " + analysis;
+        String linked = "delivery: { machinery: [links/elsewhere], gate: links/elsewhere, reporter: links/elsewhere, "
+                + analysis;
+        String unlinked =
+                "delivery: { machinery: [links/elsewhere], gate: links/elsewhere, reporter: links/gone, " + analysis;
 
-        assertThat(codes(platform("elsewhere", linked))).isEmpty();
-        assertThat(codes(platform("elsewhere", unlinked)))
+        assertThat(codes(platform("links/elsewhere", linked))).isEmpty();
+        assertThat(codes(platform("links/elsewhere", unlinked)))
                 .containsExactly("E_UNKNOWN_REPORTER the project file that declares the Release Gate declares no"
-                        + " Application gone whose Process provides an `http` surface");
+                        + " Application links/gone whose Process provides an `http` surface");
     }
 
     @Test
@@ -235,15 +250,18 @@ class LinkingTest {
         // to be declared, however many Applications of its name the set holds.
         String analysis = "analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms } }\n";
         String refused = "E_UNKNOWN_REPORTER the project file that declares the Release Gate declares no"
-                + " Application elsewhere whose Process provides an `http` surface";
+                + " Application links/elsewhere whose Process provides an `http` surface";
 
         assertThat(codes(platform(
-                        "elsewhere",
-                        "delivery: { machinery: [elsewhere], gate: gone, reporter: elsewhere, " + analysis)))
+                        "links/elsewhere",
+                        "delivery: { machinery: [links/elsewhere], gate: links/gone, reporter: links/elsewhere, "
+                                + analysis)))
                 .contains(refused);
         // A delivery policy that names no gate at all is the parser's to refuse; the Reporter
         // still links to nothing.
-        assertThat(platform("elsewhere", "delivery: { machinery: [elsewhere], reporter: elsewhere, " + analysis)
+        assertThat(platform(
+                                "links/elsewhere",
+                                "delivery: { machinery: [links/elsewhere], reporter: links/elsewhere, " + analysis)
                         .getErrors())
                 .filteredOn(XtextLinkingDiagnostic.class::isInstance)
                 .extracting(error -> ((XtextLinkingDiagnostic) error).getCode() + " " + error.getMessage())
@@ -253,30 +271,31 @@ class LinkingTest {
     @Test
     void theSecretStoreLinksOnlyToADeclaredApplicationThatAnswersOnHttp() throws IOException {
         // `elsewhere` provides `http`, so it may be the Secret Store; `gone` is declared nowhere.
-        Resource platform = platform("elsewhere", "secretStore: elsewhere\n");
+        Resource platform = platform("links/elsewhere", "secretStore: links/elsewhere\n");
 
         assertThat(platform.getErrors()).isEmpty();
         assertThat(((Platform) platform.getContents().get(0)).getSecretStore().getId())
                 .isEqualTo("elsewhere");
-        assertThat(codes(platform("elsewhere", "secretStore: gone\n")))
-                .containsExactly("E_UNKNOWN_SECRET_STORE no project file declares an Application gone whose Process"
-                        + " provides an `http` surface");
+        assertThat(codes(platform("links/elsewhere", "secretStore: links/gone\n")))
+                .containsExactly(
+                        "E_UNKNOWN_SECRET_STORE no project file declares an Application links/gone whose Process"
+                                + " provides an `http` surface");
     }
 
     @Test
     void theDeliveryMachineryLinksToDeclaredApplicationsAndReportsEachOneThatIsNot() throws IOException {
-        String delivery = "delivery: { machinery: [elsewhere, gone], gate: elsewhere, "
+        String delivery = "delivery: { machinery: [links/elsewhere, links/gone], gate: links/elsewhere, "
                 + "analysis: { interval: 30s, iterations: 4, threshold: 3, errorRate: 1%, latency: 500ms } }\n";
 
-        assertThat(codes(platform("elsewhere", delivery)))
+        assertThat(codes(platform("links/elsewhere", delivery)))
                 .containsExactly(
-                        "E_UNKNOWN_MACHINERY no project file declares the Application gone the delivery machinery names");
+                        "E_UNKNOWN_MACHINERY no project file declares the Application links/gone the delivery machinery names");
     }
 
     @Test
     void aHolderOfApiAccessLinksToADeclaredApplicationAndReportsEachOneThatIsNot() throws IOException {
         String server = "  server:\n    - { cidr: 10.43.0.1/32, port: 443 }\n";
-        Resource platform = platform("elsewhere", "apiAccess:\n  holders: [elsewhere]\n" + server);
+        Resource platform = platform("links/elsewhere", "apiAccess:\n  holders: [links/elsewhere]\n" + server);
 
         assertThat(platform.getErrors()).isEmpty();
         assertThat(((Platform) platform.getContents().get(0))
@@ -285,8 +304,9 @@ class LinkingTest {
                         .get(0)
                         .getId())
                 .isEqualTo("elsewhere");
-        assertThat(codes(platform("elsewhere", "apiAccess:\n  holders: [elsewhere, gone]\n" + server)))
-                .containsExactly("E_UNKNOWN_API_HOLDER no project file declares the Application gone the platform"
+        assertThat(codes(
+                        platform("links/elsewhere", "apiAccess:\n  holders: [links/elsewhere, links/gone]\n" + server)))
+                .containsExactly("E_UNKNOWN_API_HOLDER no project file declares the Application links/gone the platform"
                         + " admits to hold Kubernetes API access");
     }
 }
