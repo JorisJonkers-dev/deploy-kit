@@ -5,6 +5,10 @@
 // fields against the schemas for the k3s version the Cluster Context records,
 // plus the CRDs the estate actually uses: Traefik, VSO, Prometheus, Flux.
 //
+// It also holds every pod template to Pod Security's `restricted` profile, the
+// bar chapter 10's posture promises (scripts/lib/pod-security.ts). That check
+// is in-process and always runs.
+//
 // kubeconform fetches the schemas from pinned upstreams, so a machine without
 // the binary skips loudly rather than passing quietly. Nothing here talks to a
 // cluster.
@@ -13,10 +17,11 @@
 // binary, and `node scripts/lint-manifests.ts [root]` is the command, which
 // takes the binary from KUBECONFORM, or from the PATH.
 import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { join, sep } from "node:path";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 import { isEntrypoint } from "./lib/entrypoint.ts";
 import { processOutput, type GateOutput } from "./lib/output.ts";
+import { podSecurityFindings } from "./lib/pod-security.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
@@ -48,19 +53,20 @@ export function lintManifests(
   bin: string,
   output: GateOutput,
 ): number {
+  const files = renderedFiles(root);
+  if (files.length === 0) {
+    output.err("manifest lint: no rendered examples found\n");
+    return 1;
+  }
+
+  const restricted = podSecurity(root, files, output);
   const probe = spawnSync(bin, ["-v"], { encoding: "utf8" });
   if (probe.error) {
     output.out(
       `manifest lint: SKIPPED because ${bin} is not on PATH. ` +
         "CI installs a pinned release; set KUBECONFORM to run it locally.\n",
     );
-    return 0;
-  }
-
-  const files = renderedFiles(root);
-  if (files.length === 0) {
-    output.err("manifest lint: no rendered examples found\n");
-    return 1;
+    return restricted;
   }
 
   const run = spawnSync(
@@ -84,7 +90,23 @@ export function lintManifests(
   }
   output.out(run.stdout);
   output.err(run.stderr);
-  return run.status ?? 1;
+  return run.status === 0 ? restricted : (run.status ?? 1);
+}
+
+/** Hold every pod template in `files` to the restricted profile; 1 on any finding. */
+function podSecurity(
+  root: string,
+  files: readonly string[],
+  output: GateOutput,
+): number {
+  const findings = files.flatMap((file) =>
+    podSecurityFindings(readFileSync(file, "utf8")).map(
+      (finding) => `${relative(root, file)}: ${finding}\n`,
+    ),
+  );
+  for (const finding of findings)
+    output.err(`manifest lint: not restricted: ${finding}`);
+  return findings.length === 0 ? 0 : 1;
 }
 
 /** Lint the tree named by argv[0], or this repository. */

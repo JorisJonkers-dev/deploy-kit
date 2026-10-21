@@ -21,6 +21,11 @@ import { temporary } from "./setup.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 const NAMESPACE = "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: x\n";
+// A pod that kubeconform accepts and the restricted profile refuses.
+const PRIVILEGED =
+  "apiVersion: v1\nkind: Pod\nmetadata:\n  name: p\nspec:\n" +
+  "  containers:\n    - name: app\n      image: x\n" +
+  "      securityContext:\n        privileged: true\n";
 
 /** A tree whose worked examples hold `files`, relative to spec/v1/examples. */
 function tree(
@@ -61,6 +66,26 @@ describe("the manifest lint", () => {
 
   it("fails the build when kubeconform fails", () => {
     expect(lintManifests(tree(), kubeconform(1), collect())).toBe(1);
+  });
+
+  it("refuses a pod that breaks the restricted profile, even with no kubeconform", () => {
+    const output = collect();
+    const absent = join(temporary(), "definitely-not-here");
+    const root = tree({ "x/rendered/pod.yaml": PRIVILEGED });
+    expect(lintManifests(root, absent, output)).toBe(1);
+    expect(output.text()).toMatch(
+      /not restricted: spec\/v1\/examples\/x\/rendered\/pod\.yaml: Pod\/p container "app": privileged/,
+    );
+  });
+
+  it("fails on a restricted finding when kubeconform passes", () => {
+    const root = tree({ "x/rendered/pod.yaml": PRIVILEGED });
+    expect(lintManifests(root, kubeconform(0), collect())).toBe(1);
+  });
+
+  it("keeps kubeconform's own exit status when it fails", () => {
+    const root = tree({ "x/rendered/pod.yaml": PRIVILEGED });
+    expect(lintManifests(root, kubeconform(3), collect())).toBe(3);
   });
 
   it("fails loudly when there are no rendered examples", () => {
