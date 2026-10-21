@@ -72,6 +72,7 @@ export const PENDING: readonly Pending[] = [
       "E_AVAILABILITY_UNSUPPORTED",
       "E_AVAILABILITY_WITHOUT_ENGINE",
       "E_DUPLICATE_NODE",
+      "E_ENGINE_VERSION_MISSING",
       "E_FORWARD_ONLY_UNUSED",
       "E_MOVE_IRREVERSIBLE",
       "E_MOVE_OPEN",

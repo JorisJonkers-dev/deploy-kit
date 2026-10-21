@@ -441,11 +441,16 @@ into the lock. The render writes it on every pod that runs the image
 ([chapter 10](10-project-intent.md#the-label-set)). An entry without one is not
 refused yet, and renders no annotation.
 
-An image a Process with an `engine` runs records its `version` as
-`major.minor.patch`, the release the digest was resolved from: it is the one
-fact a [Move](#the-move) is derived from that a digest cannot carry. An engine
-Process whose image the lock records with a version of any other shape is
-`E_ENGINE_VERSION_MISSING`, at the Process's `image`. A version is recorded,
+An image a Process runs whose engine's Platform entry names a
+[`move`](14-platform-intent.md#move-methods) records its `version` as
+`major.minor.patch`, the release the digest was resolved from: the component
+`move.breaksOn` names is read off it, and it is the one fact a
+[Move](#the-move) is derived from that a digest cannot carry. Such a Process
+whose image the lock records with a version of any other shape is
+`E_ENGINE_VERSION_MISSING`, at the Process's `image`. An engine whose entry
+names no `move` derives no Move, so its image's `version` takes any shape, as
+every other image's does: `files`, which a linuxserver image's
+`6.3.0.10514-ls314` keys, as much as a `postgres` built on a composite tag. A version is recorded,
 never authored: bumping it is moving the digest, which is the one edit a
 provider's owner makes, so a version only ever changes with its digest.
 An alias a Process or a sidecar names that the lock holds no entry for is

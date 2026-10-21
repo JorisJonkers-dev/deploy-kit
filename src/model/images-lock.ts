@@ -62,9 +62,6 @@ export const sameImage = (a: LockedImage, b: LockedImage): boolean =>
     b.version === undefined ||
     a.version === b.version);
 
-/** The version an engine's Move is derived from: `major.minor.patch`. */
-export const ENGINE_VERSION = /^\d+\.\d+\.\d+$/;
-
 /** The locked version beside a resolved image, under `key`, where the lock records one. */
 export const versionOf = <K extends string>(
   key: K,

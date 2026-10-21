@@ -12,7 +12,6 @@ import type {
   EffectiveProcess,
   EffectiveProject,
 } from "../model/effective-intent.ts";
-import { ENGINE_VERSION } from "../model/images-lock.ts";
 import { migrationImage } from "../model/migration-proof.ts";
 import type { PinnedSet } from "../model/resolution.ts";
 
@@ -100,7 +99,6 @@ function processRefusals(
             message: `the images lock holds no entry for ${image}`,
             hint: "Lock the alias, or name one the images lock holds.",
           })),
-        ...engineVersionRefusals(set, process, `${at}/image`, document),
         ...(eligibleNodes(process, set.nodeContract, set.platform).length === 0
           ? [
               {
@@ -116,34 +114,6 @@ function processRefusals(
     }),
   );
 }
-
-/**
- * An engine's image records its version as `major.minor.patch`, the one fact a
- * Move is derived from that a digest cannot carry
- * (spec/v1/20-resolved-deployment.md#the-images-lock). A lock that records no
- * version is not refused yet.
- */
-const engineVersionRefusals = (
-  set: PinnedSet,
-  process: EffectiveProcess,
-  path: string,
-  document: string,
-): Diagnostic[] => {
-  const version = set.imagesLock.images[process.image]?.version;
-  return process.engine === undefined ||
-    version === undefined ||
-    ENGINE_VERSION.test(version)
-    ? []
-    : [
-        {
-          code: "E_ENGINE_VERSION_MISSING",
-          document,
-          path,
-          message: `the images lock records ${process.image}'s version as ${version}, not major.minor.patch`,
-          hint: "Record the release the digest was resolved from as major.minor.patch.",
-        },
-      ];
-};
 
 /** Every backup and catalog method the platform names is an image the lock holds. */
 const methodRefusals = (set: PinnedSet, platform: string): Diagnostic[] =>
