@@ -42,12 +42,12 @@
     <assertj.version>3.27.7</assertj.version>
     <archunit.version>1.5.1</archunit.version>
 
-    <kotlin.version>2.4.20</kotlin.version>
+    <kotlin.version>2.4.21</kotlin.version>
 
     <palantir-java-format.version>2.98.0</palantir-java-format.version>
     <ktlint.version>1.7.1</ktlint.version>
     <jacoco.version>0.8.15</jacoco.version>
-    <pitest.version>1.30.0</pitest.version>
+    <pitest.version>1.30.1</pitest.version>
     <pitest-junit5.version>1.2.3</pitest-junit5.version>
     <tycho.version>5.0.4</tycho.version>
   </properties>
@@ -91,7 +91,7 @@
         <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-deploy-plugin</artifactId><version>3.2.0</version></plugin>
         <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-site-plugin</artifactId><version>3.22.0</version></plugin>
         <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-enforcer-plugin</artifactId><version>3.6.3</version></plugin>
-        <plugin><groupId>com.diffplug.spotless</groupId><artifactId>spotless-maven-plugin</artifactId><version>3.10.2</version></plugin>
+        <plugin><groupId>com.diffplug.spotless</groupId><artifactId>spotless-maven-plugin</artifactId><version>3.10.4</version></plugin>
         <plugin><groupId>org.jacoco</groupId><artifactId>jacoco-maven-plugin</artifactId><version>${jacoco.version}</version></plugin>
         <plugin><groupId>org.pitest</groupId><artifactId>pitest-maven</artifactId><version>${pitest.version}</version></plugin>
         <plugin><groupId>org.eclipse.tycho</groupId><artifactId>tycho-compiler-plugin</artifactId><version>${tycho.version}</version></plugin>
