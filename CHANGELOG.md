@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.28.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.27.1...v0.28.0) (2026-10-21)
+
+
+### ⚠ BREAKING CHANGES
+
+* **model:** every Platform document writes these eight fields as <project>/<application>.
+
+### Bug Fixes
+
+* **delivery:** a removed grant's sync objects outlive the release that removes it ([#542](https://github.com/JorisJonkers-dev/deploy-kit/issues/542)) ([e0c2380](https://github.com/JorisJonkers-dev/deploy-kit/commit/e0c2380b663bf2eebdc7193eb0fbb981c14c7ed6))
+* **model:** a privileged role names the Project that holds it ([#539](https://github.com/JorisJonkers-dev/deploy-kit/issues/539)) ([5f86b64](https://github.com/JorisJonkers-dev/deploy-kit/commit/5f86b64e2a129913b75e3ea4e7d65a018965c662))
+
 ## [0.27.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.27.0...v0.27.1) (2026-10-21)
 
 
