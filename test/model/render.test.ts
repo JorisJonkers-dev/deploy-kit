@@ -1361,6 +1361,308 @@ describe("the sync objects of a gated Application", () => {
   });
 });
 
+// A Rollback's backup also dumps the Project's own database, with the owner
+// credential the Project already holds, into a claim of its own
+// (spec/v1/30-deliverables.md#a-rollbacks-backup).
+describe("a Rollback's database dump", () => {
+  const REQUEST = "39645885317";
+  const BACKUPS = "estate/rollback-backups/";
+  const NAME = `auth-database-${REQUEST}`;
+  const rendered = (
+    project: string,
+    more: readonly string[],
+    edit: (name: string, body: string) => string = (_, body) => body,
+  ) => {
+    const result = renderIntentSet(
+      [...SET.filter((name) => !name.startsWith("minimal/")), ...more].map(
+        (name) => ({ name, text: edit(name, text(name)) }),
+      ),
+      {
+        ...OPTIONS,
+        projects: [project],
+        rollbackBackups: new Map([[project, REQUEST]]),
+      },
+    );
+    return asTree(result.ok ? artifact(result.value, "_estate") : undefined);
+  };
+  const AUTH = [
+    "auth/auth.project.yml",
+    "auth/env/auth-api/base.env",
+    "auth/migration-proof.yml",
+    // Beside another Project the catalog creates a database for.
+    ...KNOWLEDGE_PLATFORM,
+  ];
+  const onEstatePath = (name: string, body: string) =>
+    name === "platform/platform.intent.yml"
+      ? body
+          .replace(
+            "legacy: [auth, data, knowledge, notes]",
+            "legacy: [data, knowledge, notes]",
+          )
+          .replace("estate: [delivery,", "estate: [auth, delivery,")
+      : body;
+  const documents = (file: string | undefined): unknown[] =>
+    parseAllDocuments(file ?? "")
+      .map((document) => document.toJSON() as unknown)
+      .filter((document) => document !== null);
+  const labels = {
+    "app.kubernetes.io/name": "auth-database-dump",
+    "app.kubernetes.io/instance": "auth-database-dump",
+    "app.kubernetes.io/part-of": "auth",
+    "app.kubernetes.io/managed-by": "deploy-kit",
+    "app.kubernetes.io/component": "none",
+  };
+  const marked = {
+    ...labels,
+    "estate.jorisjonkers.dev/rollback-backup": REQUEST,
+  };
+  const namespaced = (namespace: string, instance?: string) => ({
+    namespaceSelector: {
+      matchLabels: { "kubernetes.io/metadata.name": namespace },
+    },
+    ...(instance === undefined
+      ? {}
+      : {
+          podSelector: {
+            matchLabels: { "app.kubernetes.io/instance": instance },
+          },
+        }),
+  });
+  const secret = (key: string) => ({
+    valueFrom: { secretKeyRef: { name: NAME, key } },
+  });
+
+  it("dumps the Project's database as its owner, into a rollback claim Flux keeps", () => {
+    const datastore = JSON.parse(text("data/expected/resolved.json")) as {
+      processes: { volumes: { backup: { method: string } }[] }[];
+    };
+
+    expect(documents(auth()[`${BACKUPS}auth.yaml`])).toStrictEqual([
+      {
+        apiVersion: "v1",
+        kind: "PersistentVolumeClaim",
+        metadata: {
+          name: "auth-rollback",
+          namespace: "auth-system",
+          labels,
+          annotations: { "kustomize.toolkit.fluxcd.io/prune": "disabled" },
+        },
+        spec: {
+          accessModes: ["ReadWriteOnce"],
+          resources: { requests: { storage: "20Gi" } },
+        },
+      },
+      {
+        apiVersion: "batch/v1",
+        kind: "Job",
+        metadata: { name: NAME, namespace: "auth-system", labels: marked },
+        spec: {
+          backoffLimit: 0,
+          activeDeadlineSeconds: 7200,
+          template: {
+            metadata: {
+              labels: marked,
+              annotations: { "image.jorisjonkers.dev/backup": "1.2.0" },
+            },
+            spec: {
+              serviceAccountName: "auth-migration",
+              automountServiceAccountToken: false,
+              restartPolicy: "Never",
+              securityContext: {
+                runAsNonRoot: true,
+                runAsUser: 999,
+                runAsGroup: 999,
+                fsGroup: 999,
+                seccompProfile: { type: "RuntimeDefault" },
+              },
+              containers: [
+                {
+                  name: "backup",
+                  image: datastore.processes[0]?.volumes[0]?.backup.method,
+                  env: [
+                    { name: "BACKUP_RETAIN", value: "1" },
+                    { name: "BACKUP_ROLLBACK", value: REQUEST },
+                    { name: "BACKUP_DATABASE", value: "auth_db" },
+                    {
+                      name: "BACKUP_HOST",
+                      value: "postgres.data-system.svc.cluster.local",
+                    },
+                    { name: "BACKUP_PORT", value: "5432" },
+                    { name: "PGUSER", ...secret("username") },
+                    { name: "PGPASSWORD", ...secret("password") },
+                  ],
+                  securityContext: {
+                    allowPrivilegeEscalation: false,
+                    readOnlyRootFilesystem: true,
+                    capabilities: { drop: ["ALL"] },
+                  },
+                  volumeMounts: [{ name: "backup", mountPath: "/backup" }],
+                },
+              ],
+              volumes: [
+                {
+                  name: "backup",
+                  persistentVolumeClaim: { claimName: "auth-rollback" },
+                },
+              ],
+            },
+          },
+        },
+      },
+    ]);
+  });
+
+  it("reads that credential as the identity that already holds it", () => {
+    const metadata = { name: NAME, namespace: "auth-system", labels };
+
+    expect(documents(auth()[`${BACKUPS}auth-vso.yaml`])).toStrictEqual([
+      {
+        apiVersion: "secrets.hashicorp.com/v1beta1",
+        kind: "VaultAuth",
+        metadata,
+        spec: {
+          vaultConnectionRef: "secret-store",
+          method: "kubernetes",
+          mount: "kubernetes",
+          kubernetes: {
+            role: "auth-system-auth-migration",
+            serviceAccount: "auth-migration",
+          },
+        },
+      },
+      {
+        apiVersion: "secrets.hashicorp.com/v1beta1",
+        kind: "VaultDynamicSecret",
+        metadata,
+        spec: {
+          vaultAuthRef: NAME,
+          mount: "database",
+          path: "creds/auth-owner",
+          destination: {
+            name: NAME,
+            create: true,
+            annotations: { "flagger.app/config-tracking": "disabled" },
+          },
+        },
+      },
+    ]);
+  });
+
+  it("admits the dump to the datastore's surface and nowhere else", () => {
+    expect(
+      documents(auth()[`${BACKUPS}auth-networkpolicy.yaml`]),
+    ).toStrictEqual([
+      {
+        apiVersion: "networking.k8s.io/v1",
+        kind: "NetworkPolicy",
+        metadata: {
+          name: "auth-database-dump",
+          namespace: "auth-system",
+          labels,
+        },
+        spec: {
+          podSelector: {
+            matchLabels: { "app.kubernetes.io/instance": "auth-database-dump" },
+          },
+          policyTypes: ["Ingress", "Egress"],
+          egress: [
+            {
+              to: [namespaced("data-system", "postgres")],
+              ports: [{ protocol: "TCP", port: 5432 }],
+            },
+            {
+              to: [namespaced("kube-system")],
+              ports: [
+                { protocol: "UDP", port: 53 },
+                { protocol: "TCP", port: 53 },
+              ],
+            },
+          ],
+        },
+      },
+      {
+        apiVersion: "networking.k8s.io/v1",
+        kind: "NetworkPolicy",
+        metadata: {
+          name: "auth-database-dump-ingress",
+          namespace: "data-system",
+          labels,
+        },
+        spec: {
+          podSelector: {
+            matchLabels: { "app.kubernetes.io/instance": "postgres" },
+          },
+          policyTypes: ["Ingress"],
+          ingress: [
+            {
+              from: [namespaced("auth-system", "auth-database-dump")],
+              ports: [{ protocol: "TCP", port: 5432 }],
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it("dumps as the Process that holds the owner credential where the Application migrates itself", () => {
+    const tree = rendered("knowledge-platform", KNOWLEDGE_PLATFORM);
+    const [auth] = documents(tree[`${BACKUPS}knowledge-platform-vso.yaml`]) as {
+      metadata: { labels: Record<string, string> };
+      spec: { kubernetes: unknown };
+    }[];
+
+    expect([
+      auth?.metadata.labels["app.kubernetes.io/part-of"],
+      auth?.spec.kubernetes,
+    ]).toStrictEqual([
+      "hindsight",
+      {
+        role: "knowledge-platform-system-hindsight-api",
+        serviceAccount: "hindsight-api",
+      },
+    ]);
+  });
+
+  it("dumps nothing for a Project still on the old path, whose database no catalog creates", () => {
+    const tree = rendered("auth", AUTH);
+
+    expect(
+      Object.keys(tree).filter((path) => path.startsWith(BACKUPS)),
+    ).toStrictEqual([]);
+  });
+
+  it("dumps nothing where the datastore keeps no backup to run", () => {
+    const tree = rendered("auth", AUTH, (name, body) =>
+      name === "data/data.project.yml"
+        ? body.replace(
+            "size: 20Gi\n            durability: irreplaceable",
+            "size: 20Gi\n            durability: reconstructible",
+          )
+        : onEstatePath(name, body),
+    );
+
+    expect(
+      Object.keys(tree).filter((path) => path.startsWith(BACKUPS)),
+    ).toStrictEqual([]);
+  });
+
+  it("dumps nothing for a Project that holds no database", () => {
+    const tree = rendered("notes", [
+      "minimal/notes.project.yml",
+      "minimal/env/notes-api/base.env",
+    ]);
+
+    expect(
+      Object.keys(tree).filter((path) => path.startsWith(BACKUPS)),
+    ).toStrictEqual([]);
+  });
+
+  // auth on the estate path, where the catalog creates its database.
+  function auth() {
+    return rendered("auth", AUTH, onEstatePath);
+  }
+});
+
 // REQ-068 (docs/requirements.md): VSO is the one delivery path, so no rendered
 // tree asks the Vault Agent injector for anything.
 describe("the Vault Agent injector", () => {

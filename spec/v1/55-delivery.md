@@ -250,7 +250,7 @@ one the current inputs produce. In order:
    pauses the Project and asks for the backup with `rollback-backup`, naming
    the request by the workflow run. While a pin asks, composition renders the
    Project at the release it is pinned to and adds one one-shot backup `Job`
-   per backed-up volume to the estate-scoped artifact, in the unit
+   per backed-up volume, and one that dumps its database, to the estate-scoped artifact, in the unit
    `estate-rollback-backups` ([chapter 30](30-deliverables.md#a-rollbacks-backup)),
    so neither the Project's render nor its pin moves while it runs. The
    Collector reports how each Job ended in the cluster state's `backups`

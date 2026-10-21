@@ -29,7 +29,7 @@ import {
 
 export const ADAPTER = "networking";
 
-const tcp = (port: number): PolicyPort => ({ protocol: "TCP", port });
+export const tcp = (port: number): PolicyPort => ({ protocol: "TCP", port });
 
 /** Every IPv4 address; internet egress admits it less the ranges below. */
 const ANY_IPV4 = "0.0.0.0/0";
@@ -47,7 +47,7 @@ const NOT_PUBLIC = [
   "127.0.0.0/8",
 ] as const;
 
-const peerOf = (
+export const peerOf = (
   namespace: string,
   process: string | undefined,
 ): PolicyPeer => ({

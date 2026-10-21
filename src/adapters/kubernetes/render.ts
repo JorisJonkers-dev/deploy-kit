@@ -68,11 +68,11 @@ const WEBHOOKS = [
 ] as const;
 
 /** The mark that keeps the applier from ever deleting a claim (spec/v1/30-deliverables.md#flagger-ready-objects). */
-const NEVER_PRUNED = { "kustomize.toolkit.fluxcd.io/prune": "disabled" };
+export const NEVER_PRUNED = { "kustomize.toolkit.fluxcd.io/prune": "disabled" };
 
 /** Where a backup's method reads the volume, and where it writes its copies. */
 const BACKUP_SOURCE = "/data";
-const BACKUP_TARGET = "/backup";
+export const BACKUP_TARGET = "/backup";
 
 /** A family this adapter does not spell yet stops the render rather than leaving it out. */
 function notYet(process: ResolvedProcess): void {
@@ -272,7 +272,7 @@ const gpuShareOf = (
         limits: { ...resources.limits, [process.gpu.resource]: "1" },
       };
 
-const RESTRICTED: Container["securityContext"] = {
+export const RESTRICTED: Container["securityContext"] = {
   allowPrivilegeEscalation: false,
   readOnlyRootFilesystem: true,
   capabilities: { drop: ["ALL"] },
@@ -296,7 +296,7 @@ const VPN_STARTUP = {
  * credential from the Secret only it is given.
  */
 const VPN_CONTAINER = "vpn";
-const BACKUP_CONTAINER = "backup";
+export const BACKUP_CONTAINER = "backup";
 
 const vpnContainerOf = (
   vpn: NonNullable<ResolvedProcess["vpn"]>,
