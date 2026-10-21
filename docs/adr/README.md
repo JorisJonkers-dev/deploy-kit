@@ -156,6 +156,7 @@ and linted by the same script with `emf` as its root.
 | [0051](model/0051-a-project-is-delivered-as-a-signed-artifact.md) | A Project is delivered as a signed OCI artifact pinned by digest, and a deploy is a pin commit | open |
 | [0052](model/0052-an-application-is-the-release-unit.md) | An Application is the unit of atomic release, and a first-party Release Gate holds its members at a barrier and fails closed | open |
 | [0053](model/0053-rotating-a-secret-is-not-a-release.md) | Rotating a secret is not a release, so it never starts a switchover | open |
+| [0115](model/0115-a-removed-grant-outlives-the-release-that-removes-it.md) | A removed grant's sync objects outlive the release that removes them, and the Release Gate deletes them once the Application serves | open |
 | [0054](model/0054-projects-are-handed-over-one-at-a-time.md) | Projects are handed over to the estate path one at a time, recorded in a ledger, and never delivered by both paths | open |
 | [0055](model/0055-the-render-leaves-flaggers-objects-to-flagger.md) | The render leaves Flagger's objects to Flagger, so Flux and Flagger never own the same field | open |
 | [0083](model/0083-a-fragment-publishes-on-a-release-tag.md) | A fragment publishes on a release tag and carries that release's version | open |

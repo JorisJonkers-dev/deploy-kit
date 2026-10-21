@@ -1205,7 +1205,10 @@
 [/template]
 
 [comment For each holder, how the operator authenticates as it, then one synced Secret per grant, read
-  every hour from the kv mount, never tracked by Flagger, and restarting what is serving. /]
+  every hour from the kv mount, never tracked by Flagger, and restarting what is serving. A gated
+  Application's sync objects outlive the release that drops them: Flux keeps them, and the Release
+  Gate removes an older revision's once the Application serves
+  (spec/v1/55-delivery.md#a-removed-grant-outlives-its-release). /]
 [template private objects(d : resolveddeployment::SecretFile)]
   [for (h : resolveddeployment::SecretHolder | d.holders)]
     ---
@@ -1240,6 +1243,11 @@
     namespace: [d.application.namespace/]
     labels:
       [h.identity.labelSet(h.component, d.application.id)/]
+  [if (d.application.releaseGate <> null)]
+      annotations:
+        estate.jorisjonkers.dev/revision: [d.application.revision/]
+        kustomize.toolkit.fluxcd.io/prune: disabled
+  [/if]
   spec:
     vaultAuthRef: [h.identity/]
     mount: secret
@@ -1266,6 +1274,11 @@
     namespace: [d.application.namespace/]
     labels:
       [h.identity.labelSet(h.component, d.application.id)/]
+  [if (d.application.releaseGate <> null)]
+      annotations:
+        estate.jorisjonkers.dev/revision: [d.application.revision/]
+        kustomize.toolkit.fluxcd.io/prune: disabled
+  [/if]
   spec:
     vaultAuthRef: [h.identity/]
     mount: database
@@ -1294,6 +1307,11 @@
   namespace: [a.namespace/]
   labels:
     [h.identity.labelSet(h.component, a.id)/]
+  [if (a.releaseGate <> null)]
+    annotations:
+      estate.jorisjonkers.dev/revision: [a.revision/]
+      kustomize.toolkit.fluxcd.io/prune: disabled
+  [/if]
 [/template]
 
 [comment ============================================================ Vault /]

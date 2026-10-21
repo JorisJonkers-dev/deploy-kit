@@ -43,6 +43,23 @@ const REFRESH = "10m";
 /** Flagger never counts a Vault-delivered Secret as a new revision. */
 const UNTRACKED = { "flagger.app/config-tracking": "disabled" };
 
+/**
+ * A gated Application's sync objects outlive the release that drops them: Flux
+ * keeps them, and the Release Gate removes those of an older revision once the
+ * Application serves the new one (spec/v1/55-delivery.md#a-removed-grant-outlives-its-release).
+ */
+const keptOf = (
+  application: ResolvedApplicationDocument,
+): { annotations?: Record<string, string> } =>
+  application.releaseGate === undefined
+    ? {}
+    : {
+        annotations: {
+          "estate.jorisjonkers.dev/revision": application.revision,
+          "kustomize.toolkit.fluxcd.io/prune": "disabled",
+        },
+      };
+
 /** The Deployment a rotation restarts: a blue-green Process serves from its primary. */
 function servingOf(
   name: string,
@@ -72,6 +89,7 @@ function staticSecretOf(
       name: destination,
       namespace: application.namespace,
       labels: holder.labels,
+      ...keptOf(application),
     },
     spec: {
       vaultAuthRef: holder.identity,
@@ -119,6 +137,7 @@ function dynamicSecretOf(
       name: grant.destination,
       namespace: application.namespace,
       labels: holder.labels,
+      ...keptOf(application),
     },
     spec: {
       vaultAuthRef: holder.identity,
@@ -144,6 +163,7 @@ const authOf = (
     name: holder.identity,
     namespace: application.namespace,
     labels: holder.labels,
+    ...keptOf(application),
   },
   spec: {
     vaultConnectionRef: CONNECTION,

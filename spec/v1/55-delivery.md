@@ -416,7 +416,10 @@ reads it for the proof ([Migration safety](#migration-safety)), for the down
 reported as ([Held releases](#held-releases)). An Application with no record
 serves nothing under the model, which is a first release; a record that is
 there and cannot be read is a question the gate cannot answer. Besides the
-record, the gate writes one field: `suspend`, on the Jobs it starts.
+record, the gate writes one field, `suspend`, on the Jobs it starts, and
+deletes one kind of object: a sync object of an older revision, once the
+Application serves the new one
+([A removed grant outlives its release](#a-removed-grant-outlives-its-release)).
 
 **Delivery machinery is never gated.** Flagger, the Release Gate and the edge
 proxies are listed in the Platform document as the delivery machinery
@@ -869,6 +872,34 @@ because it names a Flagger object rather than a model concept. Restarting
 `<name>` instead would be worse than useless: it patches the pod template
 Flagger watches, and so starts the very release this section rules out. The
 primary is Flagger's ([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)).
+
+## A removed grant outlives its release
+
+A release that drops a synced grant, or replaces one with another, must still
+promote. Until it does, the primary runs the previous release's pod template,
+which reads the Secret the dropped grant syncs. Pruning that grant's sync
+objects with the release deletes the Secret under the serving copy, so the
+next restart of the primary cannot start, and the restart a new grant's first
+sync triggers ([Secret rotation](#secret-rotation)) comes at exactly that
+moment ([#466](https://github.com/JorisJonkers-dev/deploy-kit/issues/466)).
+
+So a gated Application's sync objects (each `VaultAuth`, `VaultStaticSecret`
+and `VaultDynamicSecret` the `vso` adapter renders for it) are kept by Flux and
+say which revision rendered them. Each carries
+`kustomize.toolkit.fluxcd.io/prune: disabled` and
+`estate.jorisjonkers.dev/revision: <revision>`, the Application's revision
+([chapter 20](20-resolved-deployment.md#the-release-gate)). A release that no
+longer renders one leaves it in place, and its Secret with it.
+
+The Release Gate removes them. Once its record shows the Application serving a
+revision ([The Release Gate](#the-release-gate)), it deletes every sync object
+labelled `app.kubernetes.io/part-of: <application>` in the Application's
+namespace whose revision annotation names another revision. By then every
+primary runs the template that no longer reads them. A release that is held
+never serves its revision, so nothing is deleted under the copy still serving.
+
+An Application nothing gates is pruned as usual: it switches `rolling` or
+`stop-start`, so no copy keeps serving the previous template past its release.
 
 ## What the render leaves to Flagger
 
