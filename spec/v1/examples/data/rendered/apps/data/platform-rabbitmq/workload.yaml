@@ -28,6 +28,8 @@ spec:
         app.kubernetes.io/part-of: platform-rabbitmq
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/rabbitmq: 4.0.7
     spec:
       serviceAccountName: rabbitmq
       automountServiceAccountToken: false

@@ -521,8 +521,8 @@ render writes `image.jorisjonkers.dev/<container>` on every pod template, set to
 the `version` the images lock records for that container's image
 ([chapter 20](20-resolved-deployment.md#the-images-lock)): the Process's own
 container, its sidecars, its VPN, and the pods of its backups, its migration,
-the Vault policy job and a database catalog's method. A container whose image
-the lock records no version for has none. It is never selected on, and a label
+the Vault policy job and a database catalog's method. The lock records a
+version for every image, so every container has one. It is never selected on, and a label
 value cannot hold every version string. A version changes only with its digest,
 so the annotation never restarts a pod the image change would not. It is apart
 from `app.kubernetes.io/version`, which names the Project's release, not the

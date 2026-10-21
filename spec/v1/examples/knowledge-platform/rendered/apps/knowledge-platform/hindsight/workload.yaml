@@ -30,6 +30,8 @@ spec:
         app.kubernetes.io/part-of: hindsight
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: python
+      annotations:
+        image.jorisjonkers.dev/hindsight-api: 0.4.0
     spec:
       serviceAccountName: hindsight-api
       automountServiceAccountToken: false
@@ -161,6 +163,8 @@ spec:
         app.kubernetes.io/part-of: hindsight
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: python
+      annotations:
+        image.jorisjonkers.dev/hindsight-worker: 0.4.0
     spec:
       serviceAccountName: hindsight-worker
       automountServiceAccountToken: false
@@ -302,6 +306,8 @@ spec:
         app.kubernetes.io/part-of: hindsight
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: node
+      annotations:
+        image.jorisjonkers.dev/hindsight-control-plane: 0.4.0
     spec:
       serviceAccountName: hindsight-control-plane
       automountServiceAccountToken: false

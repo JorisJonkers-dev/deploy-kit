@@ -33,7 +33,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:e0fbf0f01548835aef6d26074d37e4ec4dc2c48891b0e429b733da2b433eadb0
+          revision: sha256:00357e7772a764ed26d70a769b490d3012127001f8a46ee2bffd41b7c51f6c55
           paths: /
           readiness: /health
           hostnames: memory-api.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:e0fbf0f01548835aef6d26074d37e4ec4dc2c48891b0e429b733da2b433eadb0
+          revision: sha256:00357e7772a764ed26d70a769b490d3012127001f8a46ee2bffd41b7c51f6c55
           paths: /
           readiness: /health
           hostnames: memory-api.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:e0fbf0f01548835aef6d26074d37e4ec4dc2c48891b0e429b733da2b433eadb0
+          revision: sha256:00357e7772a764ed26d70a769b490d3012127001f8a46ee2bffd41b7c51f6c55
           paths: /
           readiness: /health
           hostnames: memory-api.jorisjonkers.dev
@@ -97,7 +97,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-worker
-          revision: sha256:e0fbf0f01548835aef6d26074d37e4ec4dc2c48891b0e429b733da2b433eadb0
+          revision: sha256:00357e7772a764ed26d70a769b490d3012127001f8a46ee2bffd41b7c51f6c55
           readiness: /health
           errorRate: 1%
           latency: 500ms
@@ -107,7 +107,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-worker
-          revision: sha256:e0fbf0f01548835aef6d26074d37e4ec4dc2c48891b0e429b733da2b433eadb0
+          revision: sha256:00357e7772a764ed26d70a769b490d3012127001f8a46ee2bffd41b7c51f6c55
           readiness: /health
           errorRate: 1%
           latency: 500ms
@@ -117,7 +117,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-worker
-          revision: sha256:e0fbf0f01548835aef6d26074d37e4ec4dc2c48891b0e429b733da2b433eadb0
+          revision: sha256:00357e7772a764ed26d70a769b490d3012127001f8a46ee2bffd41b7c51f6c55
           readiness: /health
           errorRate: 1%
           latency: 500ms
@@ -155,7 +155,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-control-plane
-          revision: sha256:e0fbf0f01548835aef6d26074d37e4ec4dc2c48891b0e429b733da2b433eadb0
+          revision: sha256:00357e7772a764ed26d70a769b490d3012127001f8a46ee2bffd41b7c51f6c55
           paths: /
           hostnames: memory.jorisjonkers.dev
           errorRate: 1%
@@ -166,7 +166,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-control-plane
-          revision: sha256:e0fbf0f01548835aef6d26074d37e4ec4dc2c48891b0e429b733da2b433eadb0
+          revision: sha256:00357e7772a764ed26d70a769b490d3012127001f8a46ee2bffd41b7c51f6c55
           paths: /
           hostnames: memory.jorisjonkers.dev
           errorRate: 1%
@@ -177,7 +177,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-control-plane
-          revision: sha256:e0fbf0f01548835aef6d26074d37e4ec4dc2c48891b0e429b733da2b433eadb0
+          revision: sha256:00357e7772a764ed26d70a769b490d3012127001f8a46ee2bffd41b7c51f6c55
           paths: /
           hostnames: memory.jorisjonkers.dev
           errorRate: 1%

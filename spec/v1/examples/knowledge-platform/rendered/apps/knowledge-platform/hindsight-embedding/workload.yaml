@@ -28,6 +28,8 @@ spec:
         app.kubernetes.io/part-of: hindsight-embedding
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/hindsight-tei-embedding: 1.7.0
     spec:
       serviceAccountName: hindsight-tei-embedding
       automountServiceAccountToken: false

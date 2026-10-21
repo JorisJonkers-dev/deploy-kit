@@ -28,6 +28,8 @@ spec:
         app.kubernetes.io/part-of: platform-valkey
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/valkey: 8.1.0
     spec:
       serviceAccountName: valkey
       automountServiceAccountToken: false

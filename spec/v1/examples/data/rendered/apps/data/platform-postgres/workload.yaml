@@ -28,6 +28,9 @@ spec:
         app.kubernetes.io/part-of: platform-postgres
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/postgres: 17.2.0
+        image.jorisjonkers.dev/postgres-exporter: v0.17.1
     spec:
       serviceAccountName: postgres
       automountServiceAccountToken: false

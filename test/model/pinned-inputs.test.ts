@@ -7,6 +7,7 @@ import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
 import { clusterState } from "../../src/model/cluster-state.ts";
 import { imagesLock } from "../../src/model/images-lock.ts";
+import { readImagesLock } from "../../src/read/pinned-inputs.ts";
 
 const PLATFORM = join(
   import.meta.dirname,
@@ -27,6 +28,7 @@ const IMAGE = {
   digest: `sha256:${"a".repeat(64)}`,
   uid: 1,
   gid: 1,
+  version: "1.0.0",
 };
 
 describe("the images lock", () => {
@@ -59,6 +61,71 @@ describe("the images lock", () => {
       imagesLock.safeParse({ ...LOCK, images: { x: { ...IMAGE, digest } } })
         .success,
     ).toBe(admitted);
+  });
+});
+
+// Spec chapter 20, the images lock: every entry records its version.
+describe("an images lock entry's version", () => {
+  const refused = (images: Record<string, unknown>) => {
+    const read = readImagesLock({ ...LOCK, images });
+    return read.ok
+      ? []
+      : read.diagnostics.map(({ code, path }) => `${code} ${path}`);
+  };
+  const { version: _, ...unversioned } = IMAGE;
+
+  it("is required: an entry without one is refused at its alias, by name", () => {
+    const read = readImagesLock({ ...LOCK, images: { x: unversioned } });
+
+    expect(read.ok ? [] : read.diagnostics).toStrictEqual([
+      {
+        code: "E_IMAGE_VERSION_MISSING",
+        path: "/images/x",
+        message: "the images lock records no version for x",
+        hint: "Record the version of the software in the image, as its org.opencontainers.image.version label names it.",
+      },
+    ]);
+  });
+
+  it("is refused once per entry that lacks it, and never for one that records it", () => {
+    expect(refused({ a: unversioned, b: IMAGE, c: unversioned })).toStrictEqual(
+      [
+        "E_IMAGE_VERSION_MISSING /images/a",
+        "E_IMAGE_VERSION_MISSING /images/c",
+      ],
+    );
+  });
+
+  it.each([
+    ["empty", ""],
+    ["a number", 1],
+    ["null", null],
+  ])("is a schema refusal where it is present but %s", (_, version) => {
+    expect(refused({ x: { ...IMAGE, version } })).toStrictEqual([
+      "schema /images/x/version",
+    ]);
+  });
+
+  it("leaves every other missing field to the schema, reported beside it", () => {
+    const { uid: __, ...unowned } = unversioned;
+
+    expect(refused({ x: unowned })).toStrictEqual([
+      "E_IMAGE_VERSION_MISSING /images/x",
+      "schema /images/x/uid",
+    ]);
+  });
+
+  it("is no field outside an entry: a lock without a name is the schema's alone", () => {
+    const { name: __, ...nameless } = LOCK;
+
+    expect(
+      ((read) =>
+        read.ok
+          ? []
+          : read.diagnostics.map(({ code, path }) => `${code} ${path}`))(
+        readImagesLock(nameless),
+      ),
+    ).toStrictEqual(["schema /name"]);
   });
 });
 

@@ -57,11 +57,17 @@ beforeEach(() => {
 });
 
 const digest = (character: string): string => `sha256:${character.repeat(64)}`;
-const image = (character: string, uid = 1000, gid = 1000): LockedImage => ({
+const image = (
+  character: string,
+  uid = 1000,
+  gid = 1000,
+  version = "1.4.0",
+): LockedImage => ({
   repository: "ghcr.io/jorisjonkers-dev/notes/notes-api",
   digest: digest(character),
   uid,
   gid,
+  version,
 });
 const lock = (
   name: string,
@@ -115,6 +121,7 @@ describe("a project's share of the images lock", () => {
         "sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d",
       uid: 101,
       gid: 101,
+      version: "2.3.0",
     });
   });
 
@@ -185,6 +192,24 @@ describe("a project's share of the images lock", () => {
       !notALock.ok && new Set(notALock.diagnostics.map(({ code }) => code)),
     ).toEqual(new Set(["schema"]));
   });
+
+  it("refuses an entry that records no version, at its alias in the file it was read from", () => {
+    const unversioned = shareOf(
+      {
+        ...ESTATE,
+        text: ESTATE.text.replace('    version: "1.4.0"\n', ""),
+      },
+      NOTES,
+    );
+
+    expect(
+      unversioned.ok
+        ? []
+        : unversioned.diagnostics.map(
+            ({ code, document, path }) => `${code} ${String(document)}#${path}`,
+          ),
+    ).toEqual(["E_IMAGE_VERSION_MISSING ci/images.lock.yml#/images/notes-api"]);
+  });
 });
 
 describe("the union of every share", () => {
@@ -236,24 +261,6 @@ describe("the union of every share", () => {
     expect(union).toMatchObject({ ok: true, value: { images: shared } });
   });
 
-  it("keeps the version one share records of an image another share locks without one", () => {
-    const versioned = { ...image("d"), version: "0.33.2" };
-    for (const shares of [
-      [
-        share("notes", true, { karakeep: image("d") }),
-        share("auth", true, { karakeep: versioned }),
-      ],
-      [
-        share("notes", true, { karakeep: versioned }),
-        share("auth", true, { karakeep: image("d") }),
-      ],
-    ])
-      expect(unionOf(shares, "estate", "1.0.0")).toMatchObject({
-        ok: true,
-        value: { images: { karakeep: versioned } },
-      });
-  });
-
   it("refuses an alias two shares lock to one digest at different versions", () => {
     expect(
       refusedAt([
@@ -282,13 +289,14 @@ describe("the union of every share", () => {
     );
   });
 
-  it("refuses an alias locked differently in any of the four things a lock records", () => {
+  it("refuses an alias locked differently in any of the five things a lock records", () => {
     const base = image("a");
     for (const other of [
       { ...base, repository: "ghcr.io/jorisjonkers-dev/other/notes-api" },
       { ...base, digest: digest("b") },
       { ...base, uid: 1001 },
       { ...base, gid: 1001 },
+      { ...base, version: "1.5.0" },
     ])
       expect(
         refusedAt([
@@ -352,7 +360,7 @@ describe("the union of every share", () => {
           code: "E_IMAGE_LOCK_CONFLICT",
           document: "notes/images.lock.yml",
           path: "/images/notes-api",
-          message: `notes-api is locked to ghcr.io/jorisjonkers-dev/notes/notes-api@${digest("b")} as 1001:1002 here, and to ghcr.io/jorisjonkers-dev/notes/notes-api@${digest("a")} as 1000:1000 in _platform/images.lock.yml`,
+          message: `notes-api is locked to ghcr.io/jorisjonkers-dev/notes/notes-api@${digest("b")} as 1001:1002 at 1.4.0 here, and to ghcr.io/jorisjonkers-dev/notes/notes-api@${digest("a")} as 1000:1000 at 1.4.0 in _platform/images.lock.yml`,
           hint: "One alias resolves to one image estate-wide: lock the same digest, uid, gid and version, or name another alias.",
         },
       ],
