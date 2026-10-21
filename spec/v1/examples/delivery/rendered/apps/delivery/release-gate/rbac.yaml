@@ -45,6 +45,15 @@ rules:
       - canaries
     verbs:
       - get
+  - apiGroups:
+      - secrets.hashicorp.com
+    resources:
+      - vaultauths
+      - vaultstaticsecrets
+      - vaultdynamicsecrets
+    verbs:
+      - list
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding

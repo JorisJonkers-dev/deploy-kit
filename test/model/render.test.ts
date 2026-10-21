@@ -1313,6 +1313,54 @@ describe("a static secret the operator syncs", () => {
   });
 });
 
+// A grant a release removes stays synced until the release promotes
+// (spec/v1/55-delivery.md#a-removed-grant-outlives-its-release): Flux keeps a
+// gated Application's sync objects, and the Release Gate sweeps those of an
+// older revision once the Application serves the new one.
+describe("the sync objects of a gated Application", () => {
+  const documents = (application: string): Record<string, unknown>[] => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({ name, text: text(name) })),
+      { ...OPTIONS, projects: ["knowledge-platform"] },
+    );
+    const file =
+      asTree(
+        result.ok ? artifact(result.value, "knowledge-platform") : undefined,
+      )[`apps/knowledge-platform/${application}/vso.yaml`] ?? "";
+    return parseAllDocuments(file).map(
+      (document) => document.toJSON() as Record<string, unknown>,
+    );
+  };
+  const annotationsOf = (object: Record<string, unknown>) =>
+    (object["metadata"] as { annotations?: Record<string, string> })
+      .annotations;
+
+  it("are kept by Flux and carry the revision that rendered them", () => {
+    const { revision } = JSON.parse(
+      text("knowledge-platform/expected/resolved.hindsight.json"),
+    ) as { revision: string };
+    const objects = documents("hindsight");
+
+    expect(objects.map(({ kind }) => kind)).toContain("VaultAuth");
+    expect(objects.map(annotationsOf)).toStrictEqual(
+      objects.map(() => ({
+        "estate.jorisjonkers.dev/revision": revision,
+        "kustomize.toolkit.fluxcd.io/prune": "disabled",
+      })),
+    );
+  });
+
+  it("are pruned as usual where nothing gates the Application", () => {
+    expect(documents("basic-memory").map(annotationsOf)).toStrictEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+});
+
 // REQ-068 (docs/requirements.md): VSO is the one delivery path, so no rendered
 // tree asks the Vault Agent injector for anything.
 describe("the Vault Agent injector", () => {
