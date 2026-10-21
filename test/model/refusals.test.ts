@@ -440,6 +440,74 @@ describe("a library mount", () => {
   });
 });
 
+describe("a claim", () => {
+  /** One Process `store` with an engine, declaring `volumes` as given. */
+  const withVolumes = (...volumes: readonly [string, string][]): string =>
+    `apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: store
+    processes:
+      - name: store
+        lifecycle: job
+        image: store
+        runtime: none
+        engine: files
+        placement: { memory: 64Mi, cpu: 10m }
+        cutover: interrupted
+        volumes:
+${volumes
+  .map(
+    ([claim, durability], index) =>
+      `          - { claim: ${claim}, mountAt: /v${String(index)}, size: 1Gi, durability: ${durability} }\n`,
+  )
+  .join("")}`;
+
+  it("declared twice by one Process is refused at the second volume", () => {
+    expect(
+      refusalsOf(
+        withVolumes(["data", "recoverable"], ["data", "reconstructible"]),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_DUPLICATE_CLAIM",
+        path: "/applications/0/processes/0/volumes/1",
+      },
+    ]);
+  });
+
+  it("is refused where a later volume's backup claim takes an earlier volume's name", () => {
+    expect(
+      refusalsOf(
+        withVolumes(
+          ["data-backup", "reconstructible"],
+          ["data", "recoverable"],
+        ),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_DUPLICATE_CLAIM",
+        path: "/applications/0/processes/0/volumes/1",
+      },
+    ]);
+  });
+
+  it("ending in -backup is accepted beside its stem where neither derives a backup", () => {
+    expect(
+      refusalsOf(
+        withVolumes(
+          ["data", "reconstructible"],
+          ["data-backup", "reconstructible"],
+          ["logs", "irreplaceable"],
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+});
+
 describe("the refusal fixtures", () => {
   it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
     expect(fixtures).toStrictEqual([
@@ -451,6 +519,8 @@ describe("the refusal fixtures", () => {
       "cutover-interrupted-over-rwo",
       "cutover-missing",
       "cutover-mixed",
+      "duplicate-backup-claim",
+      "duplicate-claim",
       "duplicate-route-match",
       "durability-policy-incomplete",
       "durability-without-engine",
@@ -503,7 +573,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(54);
+    expect(refused).toHaveLength(56);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

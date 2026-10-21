@@ -1,0 +1,54 @@
+# REFUSED: E_DUPLICATE_CLAIM
+#
+# Two Processes of one project each declare `claim: config`. A project's
+# Processes share one namespace, and a claim is named as written, so both would
+# mount one PersistentVolumeClaim and write their own /config into the same
+# directory. JorisJonkers-dev/arr 1.0.0 declared exactly this on sonarr, radarr
+# and bazarr (spec/v1/10-project-intent.md#storage-and-durability).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: duplicate-claim
+    processes:
+      - name: duplicate-claim-sonarr
+        lifecycle: application
+        image: duplicate-claim-sonarr
+        runtime: static
+        provides:
+          http: 8989
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /ping, port: 8989 }
+          liveness: { path: /ping, port: 8989 }
+        startupBudget: 20s
+        cutover: interrupted
+        volumes:
+          - claim: config
+            mountAt: /config
+            size: 1Gi
+            durability: reconstructible
+      - name: duplicate-claim-radarr
+        lifecycle: application
+        image: duplicate-claim-radarr
+        runtime: static
+        provides:
+          http: 7878
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /ping, port: 7878 }
+          liveness: { path: /ping, port: 7878 }
+        startupBudget: 20s
+        cutover: interrupted
+        volumes:
+          - claim: config
+            mountAt: /config
+            size: 1Gi
+            durability: reconstructible

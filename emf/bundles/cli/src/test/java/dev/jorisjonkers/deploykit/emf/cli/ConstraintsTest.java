@@ -1,6 +1,7 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import java.io.IOException;
@@ -106,6 +107,20 @@ class ConstraintsTest {
                         .diagnostics())
                 .extracting(Diagnostic::code)
                 .containsExactly("E_ENGINE_WITHOUT_DURABILITY");
+    }
+
+    @Test
+    void aClaimIsTheProjectsAloneBackupClaimIncluded() {
+        // A project's Processes share one namespace, and a claim is named as written
+        // (spec/v1/10-project-intent.md#storage-and-durability).
+        assertThat(Pipeline.intent(Examples.of("refusals/duplicate-claim.project.yml"))
+                        .diagnostics())
+                .extracting(Diagnostic::code, Diagnostic::path)
+                .containsExactly(tuple("E_DUPLICATE_CLAIM", "/applications/0/processes/1/volumes/0"));
+        assertThat(Pipeline.intent(Examples.of("refusals/duplicate-backup-claim.project.yml"))
+                        .diagnostics())
+                .extracting(Diagnostic::code, Diagnostic::path)
+                .containsExactly(tuple("E_DUPLICATE_CLAIM", "/applications/0/processes/1/volumes/0"));
     }
 
     @Test
