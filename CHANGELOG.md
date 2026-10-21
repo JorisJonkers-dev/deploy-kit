@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.26.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.26.0...v0.26.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* a fresh Project is Ready before its first backup ([#527](https://github.com/JorisJonkers-dev/deploy-kit/issues/527)) ([cc1e2c1](https://github.com/JorisJonkers-dev/deploy-kit/commit/cc1e2c1b04288dfbf64055342ce73b54a93ffbba)), closes [#485](https://github.com/JorisJonkers-dev/deploy-kit/issues/485)
+
 ## [0.26.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.25.0...v0.26.0) (2026-10-20)
 
 
