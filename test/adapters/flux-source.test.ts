@@ -4,6 +4,7 @@
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import {
+  CLAIM_HEALTH,
   ESTATE_SOURCE,
   FORCE_ANNOTATION,
   RECREATE_DEPLOYMENTS,
@@ -108,6 +109,7 @@ describe("a pin source", () => {
         interval: "10m",
         prune: true,
         wait: true,
+        healthCheckExprs: [CLAIM_HEALTH],
         sourceRef: { kind: "OCIRepository", name: "project-notes" },
         path: "./apps/notes",
       },
@@ -115,6 +117,18 @@ describe("a pin source", () => {
     expect(
       (second as { spec: Record<string, unknown> }).spec["dependsOn"],
     ).toStrictEqual([{ name: "apps-data" }, { name: "estate-vso-secrets" }]);
+  });
+
+  // JorisJonkers-dev/deploy-kit#485: `local-path` binds a claim on its first
+  // consumer, and a backup claim's only consumer is its nightly CronJob.
+  it("counts a claim still waiting for its first consumer as healthy, and one the scheduler placed only once bound", () => {
+    expect(CLAIM_HEALTH).toStrictEqual({
+      apiVersion: "v1",
+      kind: "PersistentVolumeClaim",
+      current:
+        "status.phase == 'Bound' || status.phase == 'Pending' && " +
+        "!(has(metadata.annotations) && 'volume.kubernetes.io/selected-node' in metadata.annotations)",
+    });
   });
 
   it("carries a unit's annotations on that unit alone, and none where it is given none", () => {

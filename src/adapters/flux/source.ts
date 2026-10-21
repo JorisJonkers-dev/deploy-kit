@@ -52,6 +52,23 @@ const exactly = (text: string): string =>
 export { FORCE_ANNOTATION };
 
 /**
+ * How a unit reads a claim's health: Bound, or still waiting for its first
+ * consumer. `local-path` binds a claim on that consumer's node, and a backup
+ * claim's only consumer is its nightly CronJob, so a fresh Project would
+ * otherwise wait for its first backup to be Ready. The scheduler names the
+ * node the moment a consumer is placed, and a claim still Pending after that
+ * holds the unit, as Flux's own reading of a claim would
+ * (spec/v1/55-delivery.md#what-a-pin-source-holds).
+ */
+export const CLAIM_HEALTH = {
+  apiVersion: "v1",
+  kind: "PersistentVolumeClaim",
+  current:
+    "status.phase == 'Bound' || status.phase == 'Pending' && " +
+    "!(has(metadata.annotations) && 'volume.kubernetes.io/selected-node' in metadata.annotations)",
+} as const;
+
+/**
  * The patch a Project's first delivery applies: every Deployment it holds is
  * marked for recreation. A live Deployment that the old path applied selects
  * on fewer labels than the render's, and a selector is immutable, so taking it
@@ -201,6 +218,7 @@ export function renderPinSource(
             // A unit is Ready when what it applied is: a Job that fails holds
             // every unit that follows it.
             wait: true,
+            healthCheckExprs: [CLAIM_HEALTH],
             sourceRef: { kind: "OCIRepository", name: source },
             path: `./${path}`,
             ...(after.length === 0

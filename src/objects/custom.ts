@@ -172,6 +172,11 @@ export interface FluxKustomization {
     readonly interval: string;
     readonly prune: true;
     readonly wait: true;
+    readonly healthCheckExprs: readonly {
+      readonly apiVersion: string;
+      readonly kind: string;
+      readonly current: string;
+    }[];
     readonly sourceRef: {
       readonly kind: "OCIRepository";
       readonly name: string;
