@@ -501,7 +501,7 @@ ${volumes
     expect(
       refusalsOf(
         DOCUMENT.replace("GRANTS", "").replace(
-          /    processes:\n[^]*$/,
+          / {4}processes:\n[^]*$/,
           `    processes:\n${process("first")}${process("second")}`,
         ),
       ),
