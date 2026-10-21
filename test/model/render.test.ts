@@ -1552,22 +1552,13 @@ describe("each container's software version", () => {
     ).toStrictEqual(["        image.jorisjonkers.dev/notes-api: 1.5.0"]);
   });
 
-  it("refuses an engine's image whose version is not major.minor.patch", () => {
+  it("accepts any version on an engine whose platform entry names no move method", () => {
     const result = renderIntentSet(
-      files({ [LOCK]: versioned("postgres", "pg17") }),
+      files({ [LOCK]: versioned("postgres", "14-vectorchord0.4.3") }),
       { ...OPTIONS, projects: ["data"] },
     );
 
-    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
-      expect.objectContaining({
-        code: "E_ENGINE_VERSION_MISSING",
-        document: "data/data.project.yml",
-        path: "/applications/0/processes/0/image",
-        message:
-          "the images lock records postgres's version as pg17, not major.minor.patch",
-        hint: "Record the release the digest was resolved from as major.minor.patch.",
-      }),
-    ]);
+    expect(result.ok).toBe(true);
   });
 
   it("accepts an engine's image whose version is major.minor.patch", () => {
