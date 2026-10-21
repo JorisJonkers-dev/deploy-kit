@@ -35,6 +35,10 @@ spec:
   interval: 10m
   prune: true
   wait: true
+  healthCheckExprs:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      current: status.phase == 'Bound' || status.phase == 'Pending' && !(has(metadata.annotations) && 'volume.kubernetes.io/selected-node' in metadata.annotations)
   sourceRef:
     kind: OCIRepository
     name: project-data
