@@ -15,6 +15,7 @@ import { rollbackDumpOf } from "../adapters/shared/rollback-dump.ts";
 import { renderRollbackCredential } from "../adapters/vso/rollback.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
+  applicationDirectory,
   ESTATE_DIRECTORY,
   SECRETS_DIRECTORY,
 } from "../adapters/shared/paths.ts";
@@ -28,6 +29,7 @@ import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
 import type { ServiceAccount } from "../objects/kubernetes.ts";
+import { catalogKeyOf } from "../resolve/catalog-job.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
   resolveIntentSet,
@@ -174,26 +176,41 @@ function policyJobOf(
 }
 
 /**
- * Each datastore's catalog method whose catalog names a project of this
- * render (spec/v1/16-dependencies.md#applying-the-catalog): its objects, its
- * policy, and the Vault documents the policy job writes for it.
+ * Each datastore's catalog method this render holds
+ * (spec/v1/16-dependencies.md#applying-the-catalog): its objects, its policy,
+ * and the Vault documents the policy job writes for it. A datastore whose own
+ * Project is on the estate path has its method in that Project's share, where
+ * that Project renders. One the old path still runs has it estate-scoped,
+ * where a project its catalog names renders.
  */
 function catalogJobsOf(
   resolved: ResolvedSet,
   projects: readonly string[],
   hash: Hasher,
 ): Deliverable[] {
-  return (resolved.catalogJobs ?? [])
-    .filter(({ catalog }) =>
-      catalog.databases.some(({ name }) =>
-        projects.some((project) => name === `${project}_db`),
+  return (resolved.catalogJobs ?? []).flatMap((job) => {
+    const home = resolved.catalogHomes?.get(catalogKeyOf(job));
+    const held =
+      home === undefined
+        ? job.catalog.databases.some(({ name }) =>
+            projects.some((project) => name === `${project}_db`),
+          )
+        : projects.includes(home.project);
+    if (!held) return [];
+    const directory =
+      home === undefined
+        ? SECRETS_DIRECTORY
+        : applicationDirectory(home.project, home.application);
+    return [
+      renderCatalogJob(job, hash(catalogDigestOf(job)), directory),
+      renderPolicyJobPolicy(
+        job,
+        `${job.identity}-networkpolicy.yaml`,
+        directory,
       ),
-    )
-    .flatMap((job) => [
-      renderCatalogJob(job, hash(catalogDigestOf(job))),
-      renderPolicyJobPolicy(job, `${job.identity}-networkpolicy.yaml`),
       ...renderCatalogVault(job),
-    ]);
+    ];
+  });
 }
 
 /** A set already resolved, rendered: the half of {@link renderIntentSet} after resolution. */

@@ -227,9 +227,13 @@ index applies the first four:
 | `networkpolicy.yaml` | `networking` | the job's own policy: egress to the Secret Store and the cluster's DNS, no ingress; listed by no index, like every policy |
 
 Each datastore whose catalog the render applies
-([chapter 16](16-dependencies.md#applying-the-catalog)) adds its own files to the
-same directory, named for its identity, `<process>-catalog`, and its identity's
-policy and auth role to `policies/`, beside every other identity's:
+([chapter 16](16-dependencies.md#applying-the-catalog)) adds two files named for
+its identity, `<process>-catalog`, and its identity's policy and auth role to
+`policies/`, beside every other identity's. The two files are its own
+Project's: they land in `apps/<project>/<application>/`, the directory of the
+Application that runs the datastore, and that directory's index lists the
+first. Only while the datastore's Project is `legacy` do they land in this
+directory instead, listed by its index:
 
 | file | adapter | holds |
 |---|---|---|
@@ -237,7 +241,10 @@ policy and auth role to `policies/`, beside every other identity's:
 | `<process>-catalog-networkpolicy.yaml` | `networking` | the method's own policy: egress to the datastore's surface, the Secret Store and the cluster's DNS, no ingress; listed by no index |
 
 All of them are in the datastore's namespace: the method runs beside the
-datastore it writes into, as the policy job runs beside the store.
+datastore it writes into, as the policy job runs beside the store. Its Vault
+documents stay with the policy job's, wherever its two files land, until each
+Project writes its own
+([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)).
 
 All four are in the **Secret Store's namespace**, the `<project>-system` of the
 project that declares it, or, while that project is `legacy`, the namespace the

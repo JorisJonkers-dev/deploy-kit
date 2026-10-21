@@ -253,9 +253,19 @@ an old-path Application still owns.
 the platform names the Vault policy job and the applied catalog names a
 database, the render derives one identity, `<process>-catalog`, in the
 datastore's namespace, or the namespace a `serving` location states while the
-datastore's Project is `legacy`. Its objects are in the estate-scoped artifact,
-in the `estate-vso-secrets` Reconcile Unit, so no Application that reads a
-database starts before its catalog is applied:
+datastore's Project is `legacy`. Its objects are its datastore's own: they are
+in the artifact of the Project that runs the datastore, applied by that
+Project's unit with the datastore itself, so the method signs in once the
+datastore answers and retries until it does
+([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+That unit follows the secrets-provisioning unit, which writes the method's own
+role ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)), and an
+Application of another Project that reads the database follows that unit
+through its required edge. While the datastore's Project is `legacy` it has no
+unit on the estate path, so its catalog's objects are in the estate-scoped
+artifact instead, in the `estate-vso-secrets` Reconcile Unit, which the
+Applications that read a database follow. Either way the catalog never waits
+on a namespace or a Process that the unit applying it does not bring up:
 
 | object | holds |
 |---|---|

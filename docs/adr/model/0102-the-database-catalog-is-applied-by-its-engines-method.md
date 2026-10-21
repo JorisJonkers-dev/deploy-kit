@@ -10,8 +10,10 @@ rests-on: ["0004", "0005"]
 
 # The database catalog is applied in the cluster by its engine's method, which adopts a database that exists and writes the Secret Store's database roles
 
-A Job of the estate-scoped artifact runs the engine's catalog method beside the
-datastore, before any Application that reads a database starts, and every hour.
+A Job in the unit of the Project that runs the datastore runs the engine's
+catalog method beside the datastore, before any Application of another Project
+that reads a database starts, and every hour. While that Project is still on the
+old path it has no unit, and the estate-scoped artifact applies the Job instead.
 It creates each estate-path project's database and its owner and data roles,
 adopts a database that already exists, and writes the database roles the Secret
 Store issues credentials from. While the datastore is on the old path, it signs
@@ -27,10 +29,12 @@ method the platform's ([0026](0026-migration-is-declared-on-the-application.md))
 and writing to a live system is delivery, done in the cluster by an identity of
 the render ([0087](0087-in-cluster-consumers-read-the-render.md)).
 
-**False if:** a project's database must exist before the estate-scoped artifact
-applies, or the Secret Store's database connection can only be configured by a
-person. **Settled by:** a project moved onto the estate path whose database and
-credentials appear with no `cluster.sh` stage.
+**False if:** a project's database must exist before the unit that applies its
+catalog does, the unit that applies a catalog waits on a namespace or a Process it
+does not bring up, or the Secret Store's database connection can only be
+configured by a person. **Settled by:** a project moved onto the estate path whose
+database and credentials appear with no `cluster.sh` stage, and a Project that
+runs its own Postgres, as immich does, reconciling from an empty namespace.
 
 ## Why
 
@@ -50,6 +54,19 @@ the owner role once, and making the old owner a member of it, hands the schema
 to the estate path while every old-path login keeps its access until that path
 is retired. Re-running reassigns what the old owner created since.
 
+**The datastore's Project applies it.** The catalog exists because of the
+datastore, so it is that Project's object
+([0116](0116-a-project-owns-every-object-it-delivers.md)). In the
+estate-scoped unit, a catalog for a datastore a Project runs itself deadlocked
+twice: its ServiceAccount went into a namespace only that Project's unit
+creates, and its Job waited on a Process that unit would start, while the unit
+waited on the estate-scoped one
+([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)). Every
+estate Project was held with it. In the datastore's own unit both exist, the Job
+retries until the datastore answers, and a failed catalog holds only that
+datastore's readers. A shared datastore's catalog still names every Project
+that reads it, the one provider-side list the move keeps.
+
 **Only estate-path projects.** A legacy project's database is still the old
 path's, so the catalog never takes over a database an old-path Application owns.
 
@@ -67,6 +84,8 @@ location names where the old path keeps it, and goes with the location.
 | Reassign objects without keeping the old owner a member | a cleaner role graph | every old-path login loses its schema the moment the catalog applies, before its route moves |
 | A one-time copy of the admin login into the derived path | no ledger field | a Vault write by hand, and a second copy of the superuser password to keep in step |
 | Apply the catalog for legacy projects too | one rule for all | the estate path would take over databases old-path Applications still migrate |
+| Keep every catalog in the estate-scoped unit, and create the namespace there first | no move | the Job still waits on a Process the Project's own unit starts, so the estate-scoped unit deadlocks on it and holds every Project |
+| A unit of its own per datastore | a catalog failure holds no workload | one more unit and pin source per datastore, and it still has to follow the Project that runs the datastore |
 
 ## Reversibility
 

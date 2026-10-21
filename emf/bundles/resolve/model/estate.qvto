@@ -30,11 +30,30 @@ property NAME_DIGITS : Integer = 12;
 main() {
 	var deployments : Sequence(ResolvedDeployment) := rendered.rootObjects()[ResolvedDeployment]->asSequence();
 	-- Each catalog method whose catalog names a project of the render, before the policy job's
-	-- documents are gathered: its own policy and role are among them.
+	-- documents are gathered: its own policy and role are among them. A method its datastore's
+	-- own project already planned, on the estate path, is that project's; only its Vault
+	-- documents are the job's.
 	var catalogs : Sequence(String) := Sequence{};
 	if (deployments->notEmpty()) {
 		var projectsRendered : Set(String) := deployments.applications.project->asSet();
+		var owned : Set(String) := deployments.deliverables
+			->select(d | d.oclIsKindOf(CatalogJobFile))->collect(d | d.oclAsType(CatalogJobFile))
+			->select(f | f.part = 'objects')->collect(f | f.job.namespace + '/' + f.job.identity)->asSet();
 		deployments->first().catalogJobs
+			->select(c | owned->includes(c.namespace + '/' + c.identity))
+			->forEach(c) {
+				deployments->first().deliverables += object CatalogJobFile {
+					path := POLICIES + c.role + '.policy.json';
+					adapter := AdapterName::vaultPolicy;
+					part := 'policy'; job := c; };
+				deployments->first().deliverables += object VaultRoleFile {
+					path := POLICIES + c.role + '.role.json';
+					adapter := AdapterName::vaultPolicy;
+					namespace := c.namespace;
+					identity := c.identity; };
+			};
+		deployments->first().catalogJobs
+			->select(c | not owned->includes(c.namespace + '/' + c.identity))
 			->select(c | c.catalog.databases->exists(db | projectsRendered->exists(p | db.name = p + '_db')))
 			->forEach(c) {
 				var catalog : String := c.catalog.catalogJson();

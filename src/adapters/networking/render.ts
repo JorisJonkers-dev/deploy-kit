@@ -207,6 +207,7 @@ function backupPoliciesOf(
 export function renderPolicyJobPolicy(
   job: ResolvedPolicyJob | ResolvedCatalogJob,
   file = "networkpolicy.yaml",
+  directory: string = SECRETS_DIRECTORY,
 ): Deliverable {
   const policy: NetworkPolicy = {
     apiVersion: "networking.k8s.io/v1",
@@ -229,7 +230,7 @@ export function renderPolicyJobPolicy(
     },
   };
   return {
-    path: `${SECRETS_DIRECTORY}/${file}`,
+    path: `${directory}/${file}`,
     adapter: ADAPTER,
     objects: [policy],
   };

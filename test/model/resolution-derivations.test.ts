@@ -1338,6 +1338,29 @@ describe("what a grant derives", () => {
     ).toBeUndefined();
   });
 
+  it("orders a datastore whose engine applies a catalog after the unit that writes its method's role, though it holds no grant", () => {
+    const store = `      - name: store
+        lifecycle: application
+        image: notes-api
+        runtime: none
+        engine: postgres
+        provides: { postgres: 5432 }
+        placement: { memory: 64Mi, cpu: 10m }
+        cutover: interrupted
+        volumes: [{ claim: data, mountAt: /data, size: 1Gi, durability: recoverable }]
+`;
+
+    expect(application(one(store)).reconcileAfter).toStrictEqual([
+      "estate-vso-secrets",
+    ]);
+    expect(
+      application(one(store), {
+        platform: (document) =>
+          document.replace(", catalog: postgres-catalog }", " }"),
+      }).reconcileAfter,
+    ).toBeUndefined();
+  });
+
   it("refuses a grant under a platform that names no Secret Store", () => {
     expect(
       codesOf(

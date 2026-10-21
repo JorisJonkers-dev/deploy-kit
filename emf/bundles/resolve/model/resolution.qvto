@@ -115,6 +115,25 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 		result.deliverables[MigrationFile]->forEach(planned) {
 			planned.upTag := tagOf(planned.application.revision);
 		};
+		-- A datastore this project runs on the estate path applies its own catalog from this
+		-- project's unit (spec/v1/16-dependencies.md#applying-the-catalog). Its Vault documents
+		-- stay the policy job's, planned with it.
+		if (not legacy(self.project)) {
+			self.applications->forEach(app) {
+				app.processes->select(p | ownsDatabases(p))->forEach(p) {
+					var root : String := 'apps/' + self.project + '/' + app.id + '/';
+					result.catalogJobs->select(c | c.identity = p.name + '-catalog'
+							and c.namespace = homeNamespace(self.project, app.id))->forEach(c) {
+						result.deliverables += c.catalogFilesUnder(root);
+						var index : IndexFile := result.deliverables[IndexFile]
+							->select(i | i.path = root + 'kustomization.yaml')->any(true);
+						-- Every Application's directory has its index: applicationFiles plans one.
+						assert fatal (index <> null) with log('no index under ' + root);
+						index.resources := index.resources->append(c.identity + '.yaml')->sortedBy(r | r);
+					};
+				};
+			};
+		};
 	}
 }
 
@@ -137,7 +156,7 @@ query afterOf(prj : EffectiveProject) : Sequence(String) =
 		->collect(other | unitOf(other))
 	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
 				or p.dependsOn->exists(e | reachesDatabase(e)))
-			or prj.applications->exists(a | managed(a))
+			or prj.applications->exists(a | managed(a) or appliesCatalog(a))
 		then Sequence{SECRETS_UNIT} else Sequence{} endif))
 	->asSet()->sortedBy(n | n)->asSequence();
 
@@ -286,6 +305,13 @@ query datastoreOf(app : EffectiveApplication) : Sequence(PolicyPeer) =
 -- Whether a Process's inbound edges derive a database.
 query ownsDatabases(p : PI::Process) : Boolean =
 	p.oclAsType(ECORE::EObject).states('engine') and p.engine = Engine::postgres;
+
+-- Whether an Application runs a datastore whose engine applies a catalog, where the platform
+-- names the Vault policy job: the method's role is written first
+-- (spec/v1/16-dependencies.md#applying-the-catalog).
+query appliesCatalog(app : EffectiveApplication) : Boolean =
+	estate.policyJob <> null and estate.engines.postgres <> null and estate.engines.postgres.catalog <> null
+		and app.processes->exists(p | ownsDatabases(p));
 
 query unreached(application : String) : PolicyPeer {
 	assert fatal (false) with log(application + ': a migration whose Application reaches no surface of the datastore holding its database is not checked yet');
@@ -1894,7 +1920,7 @@ query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(
 		->collect(other | unitOf(other))
 	->union(if app.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
 			or p.dependsOn->exists(e | reachesDatabase(e)))
-			or managed(app)
+			or managed(app) or appliesCatalog(app)
 		then Sequence{SECRETS_UNIT} else Sequence{} endif))
 	->asSet()->sortedBy(n | n)->asSequence();
 
@@ -2122,6 +2148,56 @@ query ResolvedGrant::json() : String = obj(Sequence{
 			Tuple{k = 'adopt', v = if x.adoptPath = null then null else obj(Sequence{
 				Tuple{k = 'path', v = str(x.adoptPath)},
 				Tuple{k = 'key', v = str(x.adoptKey)}}) endif}}))) endif}});
+
+-- ===================================================== a catalog method's files
+
+-- How many hex digits of a digest a derived name carries, after the algorithm it opens with.
+property ALGORITHM : String = 'sha256:';
+property NAME_DIGITS : Integer = 12;
+
+-- A catalog method's objects and its own policy, under one directory: its Job is named by the
+-- digest of the catalog and of everything its pod runs with, so a changed one is a new Job.
+query ResolvedCatalogJob::catalogFilesUnder(root : String) : Sequence(Deliverable) =
+	let catalog : String = self.catalog.catalogJson() in
+	let digest : String = obj(Sequence{
+		Tuple{k = 'catalog', v = catalog},
+		Tuple{k = 'image', v = str(self.image)},
+		Tuple{k = 'uid', v = self.uid.toString()},
+		Tuple{k = 'gid', v = self.gid.toString()},
+		Tuple{k = 'memory', v = str(self.memory)},
+		Tuple{k = 'cpu', v = str(self.cpu)},
+		Tuple{k = 'deadline', v = str(self.deadline)},
+		Tuple{k = 'eligibleNodes', v = arr(self.eligibleNodes->collect(n | str(n)))}}).rawDigestOf() in
+	Sequence{
+		object CatalogJobFile {
+			path := root + self.identity + '.yaml';
+			adapter := AdapterName::kubernetes;
+			part := 'objects';
+			name := self.identity + '-' + digest.substring(ALGORITHM.size() + 1, ALGORITHM.size() + NAME_DIGITS);
+			catalogJson := catalog;
+			job := self;
+		}.oclAsType(Deliverable),
+		object CatalogJobFile {
+			path := root + self.identity + '-networkpolicy.yaml';
+			adapter := AdapterName::networking;
+			part := 'networkpolicy';
+			job := self;
+		}.oclAsType(Deliverable)};
+
+-- A catalog as its method is handed it.
+query ResolvedCatalog::catalogJson() : String =
+	obj(Sequence{
+		Tuple{k = 'admin', v = obj(Sequence{
+			Tuple{k = 'path', v = str(self.admin.path)},
+			Tuple{k = 'user', v = str(self.admin.user)},
+			Tuple{k = 'password', v = str(self.admin.password)}})},
+		Tuple{k = 'connection', v = str(self.connection)},
+		Tuple{k = 'databases', v = arr(self.databases->collect(d | obj(Sequence{
+			Tuple{k = 'name', v = str(d.name)},
+			Tuple{k = 'owner', v = str(d.owner)},
+			Tuple{k = 'data', v = str(d.data)}}))->asSequence())},
+		Tuple{k = 'host', v = str(self.host)},
+		Tuple{k = 'port', v = self.port.toString()}});
 
 -- ===================================================== canonical JSON text
 

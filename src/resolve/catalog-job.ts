@@ -147,3 +147,54 @@ export function resolveCatalogJobs(
     ),
   );
 }
+
+/** Where a catalog method's objects belong: the Project and Application that run its datastore. */
+export interface CatalogHome {
+  readonly project: string;
+  readonly application: string;
+}
+
+/** The key a catalog method is found under: its namespace and its identity. */
+export const catalogKeyOf = ({
+  namespace,
+  identity,
+}: Pick<ResolvedCatalogJob, "namespace" | "identity">): string =>
+  `${namespace}/${identity}`;
+
+/**
+ * The home of each catalog method whose datastore's own Project is on the
+ * estate path (spec/v1/16-dependencies.md#applying-the-catalog): that
+ * Project's unit applies it. A method absent here belongs to a datastore the
+ * old path still runs, and is estate-scoped.
+ */
+export function catalogHomesOf(
+  set: PinnedSet,
+  jobs: readonly ResolvedCatalogJob[],
+): ReadonlyMap<string, CatalogHome> {
+  const derived = new Set(jobs.map(catalogKeyOf));
+  return new Map(
+    set.projects
+      .filter(({ project }) => onEstatePath(set, project))
+      .flatMap((owner) =>
+        owner.applications.flatMap((application) =>
+          application.processes.filter(ownsDatabases).map((process) => {
+            const { namespace } = homeOf(
+              set.platform,
+              owner.project,
+              application.id,
+              process.name,
+            );
+            const key = catalogKeyOf({
+              namespace,
+              identity: catalogIdentityOf(process.name),
+            });
+            return [
+              key,
+              { project: owner.project, application: application.id },
+            ] as const;
+          }),
+        ),
+      )
+      .filter(([key]) => derived.has(key)),
+  );
+}
