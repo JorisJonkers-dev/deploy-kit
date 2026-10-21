@@ -443,15 +443,15 @@ function duplicateClaimRefusals(document: ProjectIntentDocument): Refusal[] {
     application.processes.flatMap((process, p) =>
       (process.volumes ?? []).flatMap((volume, v) => {
         const claims = claimsOf(volume);
-        const taken = claims.find((claim) => held.has(claim));
+        const taken = claims.filter((claim) => held.has(claim));
         for (const claim of claims) held.add(claim);
-        return taken === undefined
+        return taken.length === 0
           ? []
           : [
               {
                 code: "E_DUPLICATE_CLAIM" as const,
                 path: `/applications/${a}/processes/${p}/volumes/${v}`,
-                message: `the claim ${taken} is already reserved by an earlier volume of this project`,
+                message: `the volume claiming ${volume.claim} reserves a claim an earlier volume of this project already holds`,
                 hint: `Rename the claim: a project's Processes share one namespace, and a durability that derives a backup also reserves \`<claim>-backup\`.`,
               },
             ];

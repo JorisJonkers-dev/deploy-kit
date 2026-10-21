@@ -495,6 +495,19 @@ ${volumes
     ]);
   });
 
+  it("is reserved by no Process that declares no volume", () => {
+    const process = (name: string): string =>
+      `      - name: ${name}\n        lifecycle: job\n        image: ${name}\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        cutover: interrupted\n`;
+    expect(
+      refusalsOf(
+        DOCUMENT.replace("GRANTS", "").replace(
+          /    processes:\n[^]*$/,
+          `    processes:\n${process("first")}${process("second")}`,
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
   it("ending in -backup is accepted beside its stem where neither derives a backup", () => {
     expect(
       refusalsOf(
