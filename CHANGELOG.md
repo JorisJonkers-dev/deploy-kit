@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.27.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.27.0...v0.27.1) (2026-10-21)
+
+
+### Bug Fixes
+
+* a required: false edge orders no Reconcile Unit ([#538](https://github.com/JorisJonkers-dev/deploy-kit/issues/538)) ([b0cfee0](https://github.com/JorisJonkers-dev/deploy-kit/commit/b0cfee01f6d0316e07f9a6c0e61c0c37a67e282d)), closes [#537](https://github.com/JorisJonkers-dev/deploy-kit/issues/537)
+* recreate the catalog and Vault policy Jobs where only the render changed their template ([#534](https://github.com/JorisJonkers-dev/deploy-kit/issues/534)) ([2472c9e](https://github.com/JorisJonkers-dev/deploy-kit/commit/2472c9ea4ef95d54b315f741f3e5fc7a658cfb2b)), closes [#529](https://github.com/JorisJonkers-dev/deploy-kit/issues/529)
+* refuse a claim two volumes of one project reserve ([#536](https://github.com/JorisJonkers-dev/deploy-kit/issues/536)) ([ae94351](https://github.com/JorisJonkers-dev/deploy-kit/commit/ae9435196b263f87f3ad3750e8accffe7b0b4114))
+
 ## [0.27.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.26.1...v0.27.0) (2026-10-21)
 
 
