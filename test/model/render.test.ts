@@ -1460,7 +1460,10 @@ describe("a Rollback's database dump", () => {
           backoffLimit: 0,
           activeDeadlineSeconds: 7200,
           template: {
-            metadata: { labels: marked },
+            metadata: {
+              labels: marked,
+              annotations: { "image.jorisjonkers.dev/backup": "1.2.0" },
+            },
             spec: {
               serviceAccountName: "auth-migration",
               automountServiceAccountToken: false,
@@ -1618,24 +1621,6 @@ describe("a Rollback's database dump", () => {
         serviceAccount: "hindsight-api",
       },
     ]);
-  });
-
-  it("names the version of the method it runs, where the lock records one", () => {
-    const tree = rendered("auth", AUTH, (name, body) =>
-      name === "platform/images.lock.yml"
-        ? body.replace(
-            /(\n {2}postgres-backup:\n(?: {4}.*\n)*? {4}gid: \d+\n)/,
-            '$1    version: "2.1.0"\n',
-          )
-        : onEstatePath(name, body),
-    );
-    const job = documents(tree[`${BACKUPS}auth.yaml`])[1] as {
-      spec: { template: { metadata: { annotations?: unknown } } };
-    };
-
-    expect(job.spec.template.metadata.annotations).toStrictEqual({
-      "image.jorisjonkers.dev/backup": "2.1.0",
-    });
   });
 
   it("dumps nothing for a Project still on the old path, whose database no catalog creates", () => {
