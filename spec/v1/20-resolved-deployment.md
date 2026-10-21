@@ -1152,9 +1152,11 @@ Bidirectional Ledger entry with an owner while it is replaced
 
 The Reconcile Unit is **derived from the dependency graph**, never declared
 ([0033](../../docs/adr/model/0033-reconcile-unit-derived.md)). An Application's unit is
-`apps-<project>`; the ordering between units is the edge set of
+`apps-<project>`; the ordering between units is the required edges of
 [chapter 16](16-dependencies.md#dependency-edges) projected onto projects, plus an
 edge to the secrets-provisioning unit wherever an Application holds any grant.
+A `required: false` edge orders nothing ([chapter 55](55-delivery.md#release-order)),
+so two projects that name each other optionally do not wait on each other.
 
 Two kinds of unit belong to no Project, because what they apply is
 estate-scoped ([The path plan](#the-path-plan)):
