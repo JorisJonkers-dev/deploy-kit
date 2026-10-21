@@ -442,7 +442,7 @@ into the lock. The render writes it on every pod that runs the image
 `E_IMAGE_VERSION_MISSING`, at `/images/<alias>`, wherever a lock is read:
 `publish` refuses the share before a fragment carries it, and composition
 refuses a share or the platform's lock before resolution runs
-([0113](../../docs/adr/model/0113-every-images-lock-entry-records-its-version.md)).
+([0114](../../docs/adr/model/0114-every-images-lock-entry-records-its-version.md)).
 It is a refusal of its own, apart from `E_ENGINE_VERSION_MISSING` below, which
 holds a version that is present to the shape a Move reads.
 
