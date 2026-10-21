@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.27.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.26.1...v0.27.0) (2026-10-21)
+
+
+### Features
+
+* hold every rendered pod template to Pod Security's restricted profile ([#530](https://github.com/JorisJonkers-dev/deploy-kit/issues/530)) ([4350fc1](https://github.com/JorisJonkers-dev/deploy-kit/commit/4350fc1fa7f847be01a12432d629dff6e606ac93)), closes [#484](https://github.com/JorisJonkers-dev/deploy-kit/issues/484)
+
+
+### Bug Fixes
+
+* **model:** only an engine with a move method needs its image's version as major.minor.patch ([#532](https://github.com/JorisJonkers-dev/deploy-kit/issues/532)) ([5fe1a03](https://github.com/JorisJonkers-dev/deploy-kit/commit/5fe1a03588265da074c9f6e502fa9c530d96c675))
+
 ## [0.26.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.26.0...v0.26.1) (2026-10-21)
 
 
