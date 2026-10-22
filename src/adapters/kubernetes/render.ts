@@ -658,13 +658,9 @@ const backupLabels = (
 /**
  * The pod one backed-up volume's method runs in: the engine's method image, as
  * the backup identity, reading the volume at `/data` and writing its copies to
- * the backup claim at `/backup`. `more` is what a one-shot run is handed beside
- * what every run is.
+ * the backup claim at `/backup`.
  */
-export function backupPodOf(
-  { claim, backup }: Backed,
-  more: readonly EnvVar[] = [],
-): PodSpec {
+function backupPodOf({ claim, backup }: Backed): PodSpec {
   const env: EnvVar[] = [
     { name: "BACKUP_RETAIN", value: String(backup.retain) },
     ...(backup.offCluster === undefined
@@ -676,7 +672,6 @@ export function backupPodOf(
           { name: "BACKUP_HOST", value: backup.peer.host },
           { name: "BACKUP_PORT", value: String(backup.peer.port) },
         ]),
-    ...more,
   ];
   // Each credential's keys reach the method as variables: the off-cluster
   // destination's, and the peer's.
@@ -757,16 +752,6 @@ function backupsOf(
     };
   });
 }
-
-/** The backed-up volumes of a Process, each with its identity's labels. */
-export const backupsToRun = (
-  process: ResolvedProcess,
-  application: ResolvedApplicationDocument,
-): { readonly volume: Backed; readonly labels: Labels }[] =>
-  backedUp(process).map((volume) => ({
-    volume,
-    labels: backupLabels(volume.backup, application),
-  }));
 
 /** The Process's own ServiceAccount, and one per backup identity it derives. */
 const serviceAccountsOf = (

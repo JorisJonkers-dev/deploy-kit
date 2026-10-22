@@ -2617,10 +2617,52 @@ describe("composeEstate, for the route Flux's events take", () => {
   });
 });
 
-// REQ-060 (docs/requirements.md).
-describe("composeEstate, for a Rollback's backup", () => {
-  const BACKUPS = "estate/rollback-backups/";
-  const REQUEST = "38526643693";
+// While a datastore the old path runs has a catalog an estate-path Project
+// reads, the estate-scoped artifact holds that catalog alone during the
+// handover, applied by its own unit after the Secret Store's Project.
+describe("composeEstate, for the catalog of a datastore the old path runs", () => {
+  const HANDING_OVER =
+    "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, edge, knowledge, observability]\n  estate: [delivery, notes, secrets]\n  serving:\n    - application: platform-postgres\n      namespace: data-system\n      admin: { path: secret/data/platform/postgres, user: postgres.user, password: postgres.password }\n";
+  const reading = (body: string) =>
+    body
+      .replace("  - id: notes\n", "  - id: notes\n    migration: none\n")
+      .replace(
+        "        runtime: node\n",
+        "        runtime: node\n        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n",
+      );
+
+  it("delivers the catalog's Jobs and documents alone, by a unit that follows the Secret Store's Project", () => {
+    const composed = compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? { ...file, text: withLedger(file.text, HANDING_OVER) }
+            : file,
+        ),
+      },
+      fragments: RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "notes"
+          ? release("notes", "1.0.0", reading)
+          : fragment,
+      ),
+    });
+    const estate = composed.artifacts.find(({ name }) => name === "_estate");
+
+    expect(estate?.files.map(({ path }) => path)).toContain(
+      "estate/vso-secrets/postgres-catalog.yaml",
+    );
+    expect(
+      estate?.files.every(({ path }) => path.startsWith("estate/vso-secrets/")),
+    ).toBe(true);
+    expect(
+      composed.sources.find(({ name }) => name === "_estate")?.text,
+    ).toContain("name: estate-vso-secrets");
+  });
+});
+
+// REQ-060 (docs/requirements.md): a Rollback takes no backup of its own.
+describe("composeEstate, for a Rollback", () => {
   const HANDED_OVER =
     "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, delivery, edge, knowledge, notes, observability]\n  estate: [data, secrets]\n";
   const PLATFORM_HANDED_OVER: Fragment = {
@@ -2631,229 +2673,31 @@ describe("composeEstate, for a Rollback's backup", () => {
         : file,
     ),
   };
-  const NEWER = RELEASES.map((fragment) =>
-    fragment.manifest.spec.project === "data"
-      ? release("data", "1.1.0")
-      : fragment,
-  );
-  const ASKED = { ...PAUSE, [PIN_ANNOTATIONS.rollbackBackup]: REQUEST };
 
-  /** The data Project composed once, then again with `annotations` on its pin and a newer release published. */
-  function asked(annotations: Pin["annotations"]): Composition {
+  it("renders no backup of its own, and nothing estate-scoped, for a pin that still asks for one", () => {
     const first = compose({ platform: PLATFORM_HANDED_OVER });
-    return compose({
+    const asked = compose({
       platform: PLATFORM_HANDED_OVER,
-      fragments: NEWER,
-      held: RELEASES,
-      pins: pinned(first, { data: annotations }),
-      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
-    });
-  }
-  const estateFiles = (composition: Composition) =>
-    composition.artifacts.find(({ name }) => name === "_estate")?.files ?? [];
-  interface RenderedJob {
-    apiVersion: string;
-    kind: string;
-    metadata: {
-      name: string;
-      namespace: string;
-      labels: Record<string, string>;
-    };
-    spec: {
-      backoffLimit: number;
-      activeDeadlineSeconds: number;
-      template: {
-        metadata: { labels: Record<string, string> };
-        spec: {
-          serviceAccountName: string;
-          restartPolicy: string;
-          containers: { env: { name: string; value: string }[] }[];
-        };
-      };
-    };
-  }
-  const jobsOf = (composition: Composition): RenderedJob[] =>
-    parseAllDocuments(
-      estateFiles(composition).find(
-        ({ path }) => path === `${BACKUPS}data.yaml`,
-      )?.text ?? "",
-    ).map((document) => document.toJSON() as RenderedJob);
-
-  it("renders one one-shot Job per backed-up volume, run as its backup is and marked with the request", () => {
-    const jobs = jobsOf(asked(ASKED));
-
-    expect(
-      estateFiles(asked(ASKED))
-        .map(({ path }) => path)
-        .filter((path) => path.startsWith(BACKUPS)),
-    ).toStrictEqual([`${BACKUPS}data.yaml`, `${BACKUPS}kustomization.yaml`]);
-    expect(jobs.map(({ metadata }) => metadata.name)).toStrictEqual([
-      `postgres-data-backup-${REQUEST}`,
-      `rabbitmq-data-backup-${REQUEST}`,
-    ]);
-    for (const { apiVersion, kind, metadata, spec } of jobs) {
-      expect([apiVersion, kind]).toStrictEqual(["batch/v1", "Job"]);
-      expect(metadata.namespace).toBe("data-system");
-      expect(metadata.labels["estate.jorisjonkers.dev/rollback-backup"]).toBe(
-        REQUEST,
-      );
-      expect(spec.template.metadata.labels).toStrictEqual(metadata.labels);
-      expect(spec.backoffLimit).toBe(0);
-      expect(spec.activeDeadlineSeconds).toBe(7200);
-      expect(spec.template.spec.restartPolicy).toBe("Never");
-      expect(spec.template.spec.containers[0]?.env).toContainEqual({
-        name: "BACKUP_ROLLBACK",
-        value: REQUEST,
-      });
-    }
-  });
-
-  it("annotates each Job's pod with the version the lock records for its method", () => {
-    const versioned: Fragment = {
-      ...PLATFORM_HANDED_OVER,
-      files: PLATFORM_HANDED_OVER.files.map((file) =>
-        file.name === "images.lock.yml"
-          ? {
-              ...file,
-              text: file.text.replace(
-                /(\n {2}postgres-backup:\n(?: {4}.*\n)*? {4}version: )".*"/,
-                '$1"2.1.0"',
-              ),
-            }
-          : file,
+      fragments: RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "data"
+          ? release("data", "1.1.0")
+          : fragment,
       ),
-    };
-    const first = compose({ platform: versioned });
-    const composition = compose({
-      platform: versioned,
-      fragments: NEWER,
       held: RELEASES,
-      pins: pinned(first, { data: ASKED }),
+      pins: pinned(first, {
+        data: { ...PAUSE, [PIN_ANNOTATIONS.rollbackBackup]: "38526643693" },
+      }),
       previous: { lock: first.lock, commit: hex("estate-commit", 40) },
     });
 
     expect(
-      jobsOf(composition).map(
-        ({ spec }) =>
-          (spec.template.metadata as { annotations?: Record<string, string> })
-            .annotations,
-      ),
-    ).toStrictEqual([
-      { "image.jorisjonkers.dev/backup": "2.1.0" },
-      { "image.jorisjonkers.dev/backup": "1.2.0" },
-    ]);
-  });
-
-  it("runs each Job as the identity, with the method and claims, the scheduled backup uses", () => {
-    const composition = asked(ASKED);
-    const scheduled = parseAllDocuments(
-      composition.artifacts
-        .find(({ name }) => name === "data")
-        ?.files.find(({ path }) =>
-          path.endsWith("/platform-postgres/backup.yaml"),
-        )?.text ?? "",
-    ).map(
-      (document) =>
-        document.toJSON() as {
-          spec: {
-            jobTemplate: {
-              spec: {
-                template: { spec: RenderedJob["spec"]["template"]["spec"] };
-              };
-            };
-          };
-        },
-    )[0]?.spec.jobTemplate.spec.template.spec;
-    const [postgres] = jobsOf(composition);
-    const { restartPolicy, containers, ...rest } = postgres?.spec.template
-      .spec as RenderedJob["spec"]["template"]["spec"];
-    const {
-      restartPolicy: scheduledPolicy,
-      containers: scheduledContainers,
-      ...scheduledRest
-    } = scheduled as RenderedJob["spec"]["template"]["spec"];
-
-    expect([restartPolicy, scheduledPolicy]).toStrictEqual([
-      "Never",
-      "OnFailure",
-    ]);
-    expect(rest).toStrictEqual(scheduledRest);
-    expect(containers[0]?.env).toStrictEqual([
-      ...(scheduledContainers[0]?.env ?? []),
-      { name: "BACKUP_ROLLBACK", value: REQUEST },
-    ]);
-  });
-
-  it("backs up the release the Project is pinned to, and moves none of its pin", () => {
-    const composition = asked(ASKED);
-
-    expect(composition.lock.spec.fragments["data"]?.version).toBe("1.0.0");
-    expect(
-      composition.artifacts.find(({ name }) => name === "data")?.moves,
-    ).toBe(false);
-  });
-
-  it("applies the Jobs as a unit of the estate's pin source that follows nothing", () => {
-    const unit = parseAllDocuments(
-      asked(ASKED).sources.find(({ name }) => name === "_estate")?.text ?? "",
-    )
-      .map(
-        (document) =>
-          document.toJSON() as {
-            kind: string;
-            metadata: { name: string };
-            spec: Record<string, unknown>;
-          },
-      )
-      .find(({ metadata }) => metadata.name === "estate-rollback-backups");
-
-    expect(unit?.kind).toBe("Kustomization");
-    expect(unit?.spec["path"]).toBe("./estate/rollback-backups");
-    expect(unit === undefined || "dependsOn" in unit.spec).toBe(false);
-  });
-
-  it("renders nothing for a Project that is only paused, or that never composed", () => {
-    const paused = asked(PAUSE);
-    const never = compose({
-      platform: PLATFORM_HANDED_OVER,
-      pins: { data: { contentHash: "sha256:0", annotations: ASKED } },
-    });
-
-    for (const composition of [paused, never])
-      expect(
-        estateFiles(composition).some(({ path }) => path.startsWith(BACKUPS)),
-      ).toBe(false);
-    expect(paused.lock.spec.fragments["data"]?.version).toBe("1.1.0");
-  });
-
-  it("renders nothing for a Project on the estate path with no backed-up volume", () => {
-    const first = compose({ platform: PLATFORM_HANDED_OVER });
-    const composition = compose({
-      platform: PLATFORM_HANDED_OVER,
-      held: RELEASES,
-      pins: pinned(first, { secrets: ASKED }),
-      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
-    });
-
-    expect(
-      estateFiles(composition).some(({ path }) => path.startsWith(BACKUPS)),
-    ).toBe(false);
-    expect(
-      composition.artifacts.find(({ name }) => name === "secrets")?.moves,
-    ).toBe(false);
-  });
-
-  it("renders nothing for a Project still on the old path", () => {
-    const first = compose();
-    const composition = compose({
-      fragments: NEWER,
-      held: RELEASES,
-      pins: pinned(first, { data: ASKED }),
-      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
-    });
-
-    expect(
-      estateFiles(composition).some(({ path }) => path.startsWith(BACKUPS)),
-    ).toBe(false);
+      asked.artifacts
+        .flatMap(({ files }) => files.map(({ path }) => path))
+        .filter(
+          (path) =>
+            path.includes("backup-38526643693") ||
+            path.startsWith("estate/rollback-backups/"),
+        ),
+    ).toStrictEqual([]);
   });
 });

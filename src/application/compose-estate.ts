@@ -410,34 +410,17 @@ function composed(
       PIN_ANNOTATIONS.rollbackFragment
     ];
 
-  // A Rollback's backup runs against what the Project is pinned to, so it is
-  // composed at the fragment it last composed at; one that never composed has
-  // nothing to back up.
-  const backups = new Map(
-    Object.entries(input.pins).flatMap(([project, { annotations }]) => {
-      const request = (annotations as Record<string, string>)[
-        PIN_ANNOTATIONS.rollbackBackup
-      ];
-      return request === undefined || previous[project] === undefined
-        ? []
-        : [[project, request] as const];
-    }),
-  );
-
-  // A Rollback composes its Project at the held fragment, and its backup at
-  // the pinned one; every other Project at its newest.
+  // A Rollback composes its Project at the held fragment, and every other
+  // Project at its newest. A Rollback takes no backup of its own: it relies on
+  // the scheduled backups each volume's Durability Class derives
+  // (spec/v1/55-delivery.md#pause-and-rollback).
   const candidates = new Map<string, Fragment>(
     input.fragments.map((fragment) => {
       const project = fragment.manifest.spec.project;
       const rollback = rollbackOf(project);
-      const pinned = previous[project]?.ref;
       return [
         project,
-        rollback !== undefined
-          ? heldAt(input.held, rollback)
-          : backups.has(project)
-            ? heldAt(input.held, pinned as string)
-            : fragment,
+        rollback === undefined ? fragment : heldAt(input.held, rollback),
       ];
     }),
   );
@@ -489,7 +472,7 @@ function composed(
       ? resolveIntentSet(files, { ...options, imagesLock: lock.value })
       : lock;
     const outcome = resolved.ok
-      ? deliver(input, resolved.value, options, backups)
+      ? deliver(input, resolved.value, options)
       : resolved;
     if (outcome.ok)
       return {
@@ -547,14 +530,12 @@ function deliver(
   input: Composing,
   resolved: ResolvedSet,
   options: ComposeOptions,
-  rollbackBackups: ReadonlyMap<string, string>,
 ): Result<Delivered> {
   // A resolved set holds a Platform document that parsed.
   const platform = platformOf(input.platform);
   const ledger = platform.handover;
   const rendered = renderResolvedSet(resolved, {
     ...options,
-    rollbackBackups,
     projects: resolved.projects
       .map(({ project }) => project)
       .filter(

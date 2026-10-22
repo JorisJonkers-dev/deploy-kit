@@ -309,64 +309,6 @@ every object no other subsystem does. They are Flux's kinds and not a
 workload's, but a seventh adapter for two objects that vary with nothing but
 one address would be a registration with no subsystem behind it.
 
-## A Rollback's backup
-
-While a Project's pin asks for a Rollback's backup
-([chapter 55](55-delivery.md#pause-and-rollback)), composition renders that
-Project at the release it is pinned to and adds
-`estate/rollback-backups/<project>.yaml`, with the index that applies it: one
-`batch/v1` `Job` per backed-up volume, named `<backup claim>-<request>`. Each
-runs the pod the volume's scheduled backup runs, as the same backup identity,
-reading the same volume and writing to the same backup claim, with the request
-handed to the method as `BACKUP_ROLLBACK`
-([chapter 14](14-platform-intent.md#engines)). It is never retried
-(`backoffLimit: 0`, `restartPolicy: Never`), it gives up after two hours as the
-method does, and it and its pod carry the label
-`estate.jorisjonkers.dev/rollback-backup: <request>`, which is how the
-Collector finds it.
-
-The Jobs are estate-scoped rather than the Project's own, so the Project's
-render and its pin do not move while the backup runs, and they are attributed
-to the `kubernetes` adapter, which renders the scheduled backups they copy. A
-Project with no backed-up volume renders no file, and a Project still on the old
-path renders none either: the old path runs its backups.
-
-Where the Project holds a credential to its own database, the Rollback also
-dumps that database ([0084](../../docs/adr/model/0084-pause-and-rollback.md)),
-from the same tree:
-
-- **The credential is one the Project already holds.** The identity is the one
-  that holds `database/creds/<project>-owner`: the migration identity of an
-  Application whose changelog the runner applies, or the Process of one that
-  migrates itself. The `vso` adapter
-  writes `estate/rollback-backups/<project>-vso.yaml`: a `VaultAuth` and a
-  `VaultDynamicSecret`, both named `<project>-database-<request>`, that read
-  that credential under the identity's own role. No Secret Store path is
-  written, and the lease ends when the request leaves the tree.
-- **The claim is the Project's own.** `<project>-rollback`, in the Project's
-  namespace, as large as the volume the datastore's own backup copies, kept by
-  Flux (`kustomize.toolkit.fluxcd.io/prune: disabled`) once the request is gone,
-  so its copies are there for their 7 days.
-- **The Job runs the datastore's method.** `<project>-database-<request>` runs
-  the method image the datastore's backup runs, as its user, handed
-  `BACKUP_DATABASE: <project>_db`, `BACKUP_HOST` and `BACKUP_PORT` of the
-  datastore's backup, `BACKUP_ROLLBACK`, `BACKUP_RETAIN: 1`, and the credential's
-  `username` and `password` as `PGUSER` and `PGPASSWORD`. It writes to the claim
-  at `/backup`, mounts no token, and is labelled with the request like the
-  volume Jobs, in `estate/rollback-backups/<project>.yaml` beside the claim.
-- **Its policies admit the dump and nothing else.** The `networking` adapter
-  writes `estate/rollback-backups/<project>-networkpolicy.yaml`: the dump's
-  pods, `app.kubernetes.io/instance: <project>-database-dump`, reach the
-  datastore's Process on its surface and the cluster's DNS, and nothing reaches
-  them; and a second policy in the datastore's namespace admits them to that
-  surface.
-
-The datastore is the one whose catalog creates `<project>_db`
-([chapter 16](16-dependencies.md#the-database-catalog)), and its host and port
-are the catalog's. A Project whose database no catalog creates, which includes
-one still on the old path, or whose datastore keeps no backup that dumps over
-the network, renders no dump.
-
 ## Attribution
 
 **Every Deliverable is attributed to exactly one Adapter**
