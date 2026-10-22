@@ -376,12 +376,19 @@ public final class Outputs {
      * The {@code (code, document, path)} triples the parity contract fixes, in an order no run can
      * change, so a refusal's file is the set the contract compares rather than one reading of it.
      */
-    private static List<Object> triples(List<Diagnostic> diagnostics) {
+    static List<Object> triples(List<Diagnostic> diagnostics) {
         return diagnostics.stream()
-                .map(diagnostic -> (Object) new TreeMap<>(Map.of(
-                        "code", diagnostic.code(),
-                        "document", diagnostic.document(),
-                        "path", diagnostic.path())))
+                .map(diagnostic -> {
+                    // A refusal of the render's plan, such as a path with two owners, names no
+                    // document, and the triple leaves it out, as the production implementation does.
+                    Map<String, String> triple = new TreeMap<>();
+                    triple.put("code", diagnostic.code());
+                    if (diagnostic.document() != null) {
+                        triple.put("document", diagnostic.document());
+                    }
+                    triple.put("path", diagnostic.path());
+                    return (Object) triple;
+                })
                 .sorted(Comparator.comparing(Object::toString))
                 .toList();
     }
