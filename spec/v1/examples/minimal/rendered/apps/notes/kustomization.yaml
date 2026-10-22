@@ -6,3 +6,4 @@ resources:
   - libraries.yaml
   - namespace.yaml
   - notes
+  - rollout-events

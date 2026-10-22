@@ -1,7 +1,7 @@
 -- The estate-wide pass (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
 -- the Resolved Deployments of every project rendered together, to what no single project's
 -- resolution owns while the estate is handed over: the catalog of a datastore the old path
--- still runs, the job that writes that catalog's documents, and the route Flux's events take.
+-- still runs, and the job that writes that catalog's documents.
 -- Each Project's own policy job is its resolution's. What is planned here is added to the first
 -- document's Deliverables.
 --
@@ -19,8 +19,6 @@ property DIRECTORY : String = 'estate/vso-secrets/';
 -- Where every identity's Vault documents land, a catalog method's among them.
 property POLICIES : String = 'estate/vso-secrets/policies/';
 
--- The estate-wide directory the route Flux's events take lands in.
-property EVENTS_DIRECTORY : String = 'estate/rollout-events/';
 
 -- How many hex digits of the documents' digest the job's name carries, after
 -- the algorithm a digest opens with.
@@ -123,29 +121,6 @@ main() {
 				->union(catalogs)->sortedBy(r | r);
 		};
 	};
-	routeOf(deployments);
-}
-
--- The route Flux's events take to the Reporter, where the platform names one: a Provider and
--- an Alert in the estate-wide tree, applied by an index of their own. One render has one
--- platform, so every project's document carries the same route.
-helper routeOf(deployments : Sequence(ResolvedDeployment)) {
-	var routes : Sequence(ResolvedEvents) := deployments.events->select(e | e <> null)->asSequence();
-	if (routes->notEmpty()) {
-		deployments->first().deliverables += Sequence{'alert', 'provider'}
-			->collect(piece | object EventsFile {
-				path := EVENTS_DIRECTORY + piece + '.yaml';
-				adapter := AdapterName::kubernetes;
-				part := piece;
-				events := routes->first();
-			});
-		deployments->first().deliverables += object IndexFile {
-			path := EVENTS_DIRECTORY + 'kustomization.yaml';
-			adapter := AdapterName::kubernetes;
-			resources := Sequence{'alert.yaml', 'provider.yaml'};
-		};
-	};
-	return;
 }
 
 -- A Vault document as the job is handed it: its file name, and its content as

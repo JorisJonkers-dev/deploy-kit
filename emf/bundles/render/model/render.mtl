@@ -1367,7 +1367,7 @@
   [if (d.part = 'provider')]
     kind: Provider
     metadata:
-      name: reporter
+      name: reporter-[d.project/]
       namespace: [d.events.namespace/]
       labels:
         app.kubernetes.io/managed-by: deploy-kit
@@ -1377,17 +1377,17 @@
   [else]
     kind: Alert
     metadata:
-      name: rollouts
+      name: rollouts-[d.project/]
       namespace: [d.events.namespace/]
       labels:
         app.kubernetes.io/managed-by: deploy-kit
     spec:
       providerRef:
-        name: reporter
+        name: reporter-[d.project/]
       eventSeverity: info
       eventSources:
         - kind: Kustomization
-          name: "*"
+          name: apps-[d.project/]
           matchLabels:
             app.kubernetes.io/managed-by: deploy-kit
   [/if]

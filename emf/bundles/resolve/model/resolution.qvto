@@ -160,6 +160,27 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 				->select(i | i.path = 'apps/' + self.project + '/kustomization.yaml')->any(true);
 			top.resources := top.resources->append('vault-policy')->sortedBy(r | r);
 		};
+		-- The route Flux's events about this Project's unit take to the Reporter, where the
+		-- platform names one: its own Provider and Alert, in Flux's namespace, applied by this
+		-- Project's unit (spec/v1/55-delivery.md#rollouts).
+		if (result.events <> null) {
+			var root : String := 'apps/' + self.project + '/rollout-events/';
+			result.deliverables += Sequence{'alert', 'provider'}->collect(piece | object EventsFile {
+				path := root + piece + '.yaml';
+				adapter := AdapterName::kubernetes;
+				part := piece;
+				project := self.project;
+				events := result.events;
+			}.oclAsType(Deliverable));
+			result.deliverables += object IndexFile {
+				path := root + 'kustomization.yaml';
+				adapter := AdapterName::kubernetes;
+				resources := Sequence{'alert.yaml', 'provider.yaml'};
+			};
+			var index : IndexFile := result.deliverables[IndexFile]
+				->select(i | i.path = 'apps/' + self.project + '/kustomization.yaml')->any(true);
+			index.resources := index.resources->append('rollout-events')->sortedBy(r | r);
+		};
 	}
 }
 

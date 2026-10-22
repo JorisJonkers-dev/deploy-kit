@@ -8,3 +8,4 @@ resources:
   - namespace.yaml
   - release-gate
   - reporter
+  - rollout-events

@@ -3,7 +3,7 @@
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Provider
 metadata:
-  name: reporter
+  name: reporter-auth
   namespace: flux-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit

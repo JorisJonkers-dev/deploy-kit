@@ -102,10 +102,11 @@ releases delivered and unreported. Nothing in the render depends on a Rollout.
   no Application, so nothing else could say who may receive its events: the
   named Application's `http` Process admits Flux's notification controller, the
   one peer of the bootstrap set a policy names.
-- The estate-scoped artifact holds the `Provider` and the `Alert` that send
-  Flux's events to the Reporter, as a unit of its own. The Alert selects units
-  by the label every pin source's unit carries, so no Project is named in it
-  and none has to be added to it.
+- Each Project's own artifact holds the `Provider` and the `Alert` that send
+  Flux's events about its unit to the Reporter, applied by that unit
+  ([0116](0116-a-project-owns-every-object-it-delivers.md)). One cluster-wide
+  `Alert` would make every Project's reporting one object's concern; one per
+  Project names only its own unit, and a Project that joins brings its own.
 - An event tells the Reporter which unit to read and nothing more. The route
   is unsigned, so a status is written only from what the Reporter itself reads
   from the cluster, and a forged event changes none. Signing the route would

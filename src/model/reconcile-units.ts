@@ -8,11 +8,8 @@
 /** The unit of a project's Applications. */
 export const unitOf = (project: string): string => `apps-${project}`;
 
-/** The unit that materialises every grant's credentials before a Process may hold one. */
+/** The unit that applies the catalog of a datastore the old path still runs, while one does. */
 export const SECRETS_UNIT = "estate-vso-secrets";
-
-/** The unit that applies the route Flux's events take to the Reporter. */
-export const EVENTS_UNIT = "estate-rollout-events";
 
 /** The unit that applies a Rollback's one-shot backup Jobs. */
 export const ROLLBACK_BACKUPS_UNIT = "estate-rollback-backups";

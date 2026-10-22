@@ -157,7 +157,7 @@ export interface FluxAlert {
     readonly eventSeverity: "info";
     readonly eventSources: readonly {
       readonly kind: "Kustomization";
-      readonly name: "*";
+      readonly name: string;
       readonly matchLabels: Labels;
     }[];
   };
