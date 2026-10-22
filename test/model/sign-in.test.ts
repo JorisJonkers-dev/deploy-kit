@@ -27,11 +27,21 @@ const SIGN_IN = `signIn:
   provider: signin/identity
 `;
 
-/** The base platform with a public tier carrying every audience a Client takes, and a sign-in provider. */
-const platformOf = (signIn = SIGN_IN): string =>
+/** The bootstrap set's entry for the Client kind. */
+const CLIENT_CRD = "    - identity.jorisjonkers.dev/v1\n";
+
+/**
+ * The base platform with a public tier carrying every audience a Client takes,
+ * a sign-in provider, and the Client kind in its bootstrap set.
+ */
+const platformOf = (signIn = SIGN_IN, crd = CLIENT_CRD): string =>
   BASE.replace(
-    "tiers:\n",
-    `tiers:
+    "    - traefik.io/v1alpha1\n",
+    `    - traefik.io/v1alpha1\n${crd}`,
+  )
+    .replace(
+      "tiers:\n",
+      `tiers:
   - name: public
     audiences: [anonymous, authenticated, internal]
     listener: tls
@@ -39,7 +49,7 @@ const platformOf = (signIn = SIGN_IN): string =>
     forwardAuth: "${GATE}"
     traefik: signin/edge-proxy
 `,
-  )
+    )
     .replaceAll("refusals/edge-proxy", "signin/edge-proxy")
     .replace("hardening:", `${signIn}hardening:`);
 
@@ -324,6 +334,43 @@ ${PROCESSES("grafana")}`),
     expect(
       refusals(grafana(NATIVE), { platform: platformOf("") }),
     ).toContainEqual({ code: "E_NO_SIGN_IN_PROVIDER", path: AT });
+  });
+});
+
+describe("the Client kind", () => {
+  it("is refused where the bootstrap set does not list it, since no cluster could apply a Client then", () => {
+    expect(
+      refusals(grafana(NATIVE), { platform: platformOf(SIGN_IN, "") }),
+    ).toStrictEqual([{ code: "E_CLIENT_CRD_NOT_BOOTSTRAPPED", path: AT }]);
+  });
+
+  it("is refused for every mode, a token Client's too", () => {
+    expect(
+      refusals(grafana("signIn: token", exposureOf("api", "internal")), {
+        platform: platformOf(SIGN_IN, ""),
+      }),
+    ).toStrictEqual([{ code: "E_CLIENT_CRD_NOT_BOOTSTRAPPED", path: AT }]);
+  });
+});
+
+describe("a Client holding a secret", () => {
+  const storeless = platformOf().replace(
+    "secretStore: signin/edge-proxy\n",
+    "",
+  );
+
+  it("is refused where the platform names no Secret Store to hold the secret", () => {
+    expect(refusals(grafana(NATIVE), { platform: storeless })).toStrictEqual([
+      { code: "E_NO_SECRET_STORE", path: "/applications/0" },
+    ]);
+  });
+
+  it("is not refused for a PKCE Client, which holds no secret", () => {
+    expect(
+      refusals(grafana(NATIVE.replace("secret", "pkce")), {
+        platform: storeless,
+      }),
+    ).toStrictEqual([]);
   });
 });
 

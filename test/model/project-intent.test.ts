@@ -89,6 +89,7 @@ describe("parseProjectIntent", () => {
       "data",
       "delivery",
       "edge",
+      "identity",
       "knowledge",
       "knowledge-platform",
       "minimal",

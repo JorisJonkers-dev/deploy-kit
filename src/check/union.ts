@@ -12,7 +12,10 @@ import type {
   EffectiveProcess,
   EffectiveProject,
 } from "../model/effective-intent.ts";
-import type { PlatformIntentDocument } from "../model/platform-intent.ts";
+import {
+  CLIENT_API_VERSION,
+  type PlatformIntentDocument,
+} from "../model/platform-intent.ts";
 import type {
   DependencyEdge,
   EnvVariable,
@@ -842,6 +845,9 @@ export const INVARIANTS: readonly Invariant[] = [
         : union.flatMap(({ name, effective }) =>
             effective.applications.flatMap((application, a) =>
               typeof application.migration === "object" ||
+              // A Client holding a secret keeps it in the Secret Store
+              // (spec/v1/17-sign-in.md#credentials-and-placeholders).
+              application.client?.credential === "secret" ||
               application.processes.some(
                 ({ secrets, volumes, dependsOn }) =>
                   (secrets?.length ?? 0) > 0 ||
@@ -895,6 +901,28 @@ export const INVARIANTS: readonly Invariant[] = [
                 hint: "Declare `credential: secret` on a native Client, or drop the placeholder: a pkce, gated or token Client has no secret.",
               })),
       ),
+  },
+  {
+    code: "E_CLIENT_CRD_NOT_BOOTSTRAPPED",
+    needsPlatform: true,
+    answer: (union, platform) =>
+      platform.bootstrap.crds.includes(CLIENT_API_VERSION)
+        ? []
+        : union.flatMap(({ name, effective }) =>
+            effective.applications.flatMap((application, a) =>
+              application.client === undefined
+                ? []
+                : [
+                    {
+                      code: "E_CLIENT_CRD_NOT_BOOTSTRAPPED" as const,
+                      document: name,
+                      path: `/applications/${String(a)}/client`,
+                      message: `${application.id} declares a Client, and the bootstrap set lists no ${CLIENT_API_VERSION} to apply it with`,
+                      hint: `List ${CLIENT_API_VERSION} in the Platform document's \`bootstrap.crds\` once the cluster holds the Client kind.`,
+                    },
+                  ],
+            ),
+          ),
   },
   {
     code: "E_NO_SIGN_IN_PROVIDER",

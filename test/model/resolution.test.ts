@@ -41,6 +41,8 @@ const MINIMAL_SET = [
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "secrets/secrets.project.yml",
+  "identity/identity.project.yml",
+  "identity/env/grafana/base.env",
 ];
 
 /** The set, with `edit` applied to the file named `name`. */
@@ -424,12 +426,27 @@ describe("resolveIntentSet", () => {
     );
   });
 
-  it.each(["delivery", "edge", "observability", "secrets"])(
+  it.each(["delivery", "edge", "identity", "observability", "secrets"])(
     "resolves the foundation's %s dependency edges to its committed oracle, byte for byte",
     (name) => {
       expect(canonicalJson(project(resolved(), name).dependencies)).toBe(
         text(`${name}/expected/dependencies.json`),
       );
+    },
+  );
+
+  // spec/v1/17-sign-in.md: the sign-in provider and the three Clients beside
+  // it, one per way chapter 17 works through, each to its committed projection.
+  it.each(["identity", "grafana", "portal", "whoami"])(
+    "resolves identity's %s to its committed projection, byte for byte",
+    (id) => {
+      expect(
+        canonicalJson(
+          project(resolved(), "identity").applications.find(
+            (application) => application.id === id,
+          ),
+        ),
+      ).toBe(text(`identity/expected/resolved.${id}.json`));
     },
   );
 
@@ -456,6 +473,7 @@ describe("resolveIntentSet", () => {
       "edge",
       "observability",
       "secrets",
+      "identity",
     ]);
   });
 
@@ -467,6 +485,7 @@ describe("resolveIntentSet", () => {
     ).toStrictEqual([
       "intent-fragment delivery",
       "intent-fragment edge",
+      "intent-fragment identity",
       "intent-fragment notes",
       "intent-fragment observability",
       "intent-fragment secrets",

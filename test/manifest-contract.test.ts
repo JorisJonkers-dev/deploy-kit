@@ -8,9 +8,17 @@
 // REQ-003 (docs/requirements.md): every rendered manifest in the worked
 // examples validates against its pinned schema.
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
+import { Ajv2020 } from "ajv/dist/2020.js";
 import { describe, expect, it } from "vitest";
+import { parseAllDocuments } from "yaml";
 import {
   lintManifests,
   main,
@@ -62,6 +70,48 @@ describe("the manifest lint", () => {
     expect(lintManifests(tree(), kubeconform(0), output)).toBe(0);
     expect(output.text()).toMatch(/fake kubeconform .*ns\.yaml/);
     expect(output.text()).toMatch(/-kubernetes-version 1\.31\.4/);
+  });
+
+  // spec/v1/17-sign-in.md#the-client: no public catalog carries the Client
+  // kind, so its schema is this repository's own.
+  it("hands kubeconform this repository's schema for the Client kind, after the catalogs", () => {
+    const output = collect();
+    expect(lintManifests(tree(), kubeconform(0), output)).toBe(0);
+    expect(output.text()).toContain(
+      `-schema-location ${join(REPOSITORY, "scripts", "schemas")}/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json`,
+    );
+  });
+
+  it("holds every rendered Client to that schema, which refuses one missing what the kind requires", () => {
+    const schema = JSON.parse(
+      readFileSync(
+        join(
+          REPOSITORY,
+          "scripts",
+          "schemas",
+          "identity.jorisjonkers.dev",
+          "client_v1.json",
+        ),
+        "utf8",
+      ),
+    ) as object;
+    const valid = new Ajv2020({ strict: true }).compile(schema);
+    const clients = renderedFiles(REPOSITORY)
+      .filter((file) => file.endsWith("/client.yaml"))
+      .flatMap((file) =>
+        parseAllDocuments(readFileSync(file, "utf8")).map(
+          (document) => document.toJS() as Record<string, unknown>,
+        ),
+      );
+
+    expect(clients.length).toBeGreaterThan(0);
+    expect(clients.filter((client) => !valid(client))).toStrictEqual([]);
+    const [first] = clients as [{ spec: Record<string, unknown> }];
+    const { host: _, ...hostless } = first.spec;
+    expect(valid({ ...first, spec: hostless })).toBe(false);
+    expect(valid({ ...first, spec: { ...first.spec, extra: true } })).toBe(
+      false,
+    );
   });
 
   it("fails the build when kubeconform fails", () => {

@@ -12,7 +12,7 @@ import type {
   ResolvedProcess,
   StartupProbe,
 } from "../../model/resolved-deployment.ts";
-import type { Canary, Webhook } from "../../objects/custom.ts";
+import type { Canary, Client, Webhook } from "../../objects/custom.ts";
 import type { Deliverable, RenderedObject } from "../../objects/deliverable.ts";
 import type {
   AliasService,
@@ -44,7 +44,12 @@ import {
 } from "./capacity.ts";
 import { migrationOf } from "./migration.ts";
 import { wholeSeconds } from "../shared/durations.ts";
-import { isSynced, type Grant, type KvGrant } from "../shared/holders.ts";
+import {
+  isSynced,
+  type EngineGrant,
+  type Grant,
+  type KvGrant,
+} from "../shared/holders.ts";
 import {
   applicationLabels,
   consumerLabelsOf,
@@ -57,6 +62,7 @@ import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
 import { nodeAffinityOf } from "../shared/placement.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 import { clusterNameOf } from "../../model/runtime-profiles.ts";
+import { CLIENT_API_VERSION } from "../../model/platform-intent.ts";
 import { VPN_DIRECTORY } from "../../model/vpn.ts";
 
 export const ADAPTER = "kubernetes";
@@ -104,7 +110,7 @@ function notYet(process: ResolvedProcess): void {
     );
 }
 
-type FileGrant = Grant & { readonly destination: string };
+type FileGrant = (KvGrant | EngineGrant) & { readonly destination: string };
 
 /** A kv grant's file is one key; a credential's files are its username and password. */
 const isKv = (grant: FileGrant): grant is KvGrant & FileGrant =>
@@ -658,6 +664,44 @@ const gateConfigMapOf = (
         },
       ];
 
+/**
+ * The Client an Application declares (spec/v1/17-sign-in.md#the-client):
+ * cluster-scoped, so it names no namespace, and named by the Application Id,
+ * which is its Client id.
+ */
+const clientOf = (application: ResolvedApplicationDocument): Client[] =>
+  application.client === undefined
+    ? []
+    : [
+        {
+          apiVersion: CLIENT_API_VERSION,
+          kind: "Client",
+          metadata: {
+            name: application.id,
+            labels: applicationLabels(application.id),
+          },
+          spec: {
+            signIn: application.client.signIn,
+            host: application.client.host,
+            ...pick(application.client, "launchUrl"),
+            ...pick(application.client, "iconUrl"),
+            ...pick(application.client, "redirectUris"),
+            ...pick(application.client, "credential"),
+            ...pick(application.client, "secretPath"),
+            roles: application.client.roles,
+            ...pick(application.client, "label"),
+            ...pick(application.client, "description"),
+          },
+        },
+      ];
+
+/** One optional field, where the value holds it, so the object's keys keep their order. */
+const pick = <T extends object, K extends keyof T>(
+  value: T,
+  key: K,
+): Partial<Pick<T, K>> =>
+  value[key] === undefined ? {} : ({ [key]: value[key] } as Pick<T, K>);
+
 /** The labels of a backup's own identity: never the Process's, which a Service selects. */
 const backupLabels = (
   backup: Backed["backup"],
@@ -871,8 +915,9 @@ function canaryOf(
   const { interval, iterations, threshold, errorRate, latency } = gate.analysis;
   // Every Route to the Process, with the host it is served on.
   const routes = (application.exposure ?? []).flatMap(({ host, routes: all }) =>
+    // The Gate's own route is no Process's.
     all
-      .filter((route) => route.process === process.name)
+      .filter((route) => "process" in route && route.process === process.name)
       .map((route) => ({ host, ...route })),
   );
   // A member's readiness is asked over HTTP or by opening a port, and only
@@ -1078,6 +1123,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
       const { processes } = application;
       const files: [string, RenderedObject[]][] = [
         ["workload.yaml", processes.map((p) => deploymentOf(p, application))],
+        ["client.yaml", clientOf(application)],
         [
           "serviceaccount.yaml",
           processes.flatMap((p) => serviceAccountsOf(p, application)),

@@ -1,0 +1,65 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: whoami
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/name: whoami
+    app.kubernetes.io/instance: whoami
+    app.kubernetes.io/part-of: whoami
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: whoami
+  progressDeadlineSeconds: 720
+  service:
+    port: 8080
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: whoami
+          process: whoami
+          revision: sha256:a70708253ea6e3042f5bd24a23a25352808eeb837740ed17218c9a838f662aa6
+          paths: / /health
+          readiness: /health
+          hostnames: whoami.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: whoami
+          process: whoami
+          revision: sha256:a70708253ea6e3042f5bd24a23a25352808eeb837740ed17218c9a838f662aa6
+          paths: / /health
+          readiness: /health
+          hostnames: whoami.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: whoami
+          process: whoami
+          revision: sha256:a70708253ea6e3042f5bd24a23a25352808eeb837740ed17218c9a838f662aa6
+          paths: / /health
+          readiness: /health
+          hostnames: whoami.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms

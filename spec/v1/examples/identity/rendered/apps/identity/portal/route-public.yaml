@@ -1,0 +1,26 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: portal-public
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/part-of: portal
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`home.jorisjonkers.dev`) && PathPrefix(`/`)
+      priority: 999
+      middlewares:
+        - name: security-headers
+          namespace: edge-system
+      services:
+        - name: portal
+          namespace: identity-system
+          port: 8080
+  tls:
+    certResolver: acme

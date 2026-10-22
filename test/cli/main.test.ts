@@ -47,6 +47,8 @@ const SET = [
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "secrets/secrets.project.yml",
+  "identity/identity.project.yml",
+  "identity/env/grafana/base.env",
 ].map(example);
 
 /** Each project file of the union, and the repository that publishes it. */
@@ -100,8 +102,10 @@ function pulled(): string {
   writeFileSync(
     document,
     readFileSync(document, "utf8")
-      // No Reporter, so the estate-scoped artifact holds no route to one.
+      // No Reporter, so the estate-scoped artifact holds no route to one, and
+      // no sign-in provider, since no Project composed here declares a Client.
       .replace("  reporter: delivery/reporter\n", "")
+      .replace(/\nsignIn:\n(?: {2}.*\n)+/, "\n")
       .replace(
         /\nhandover:\n(?: {2}.*\n)+/,
         "\nhandover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, delivery, edge, knowledge]\n  estate: [notes, observability, secrets]\n",
@@ -132,7 +136,7 @@ describe("deploy-kit validate", () => {
   it("accepts a set the checks accept", () => {
     expect(run("validate", ...SET)).toEqual({
       code: 0,
-      stdout: "accepted (7 read)\n",
+      stdout: "accepted (9 read)\n",
       stderr: "",
     });
   });

@@ -1,0 +1,13 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: portal-release-gate
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/part-of: portal
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"720s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"portal","readiness":{"path":"/","port":8080}}],"protectedPath":"/api/me"}

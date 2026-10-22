@@ -190,11 +190,13 @@ export function storeOf(
 
 /**
  * The baseline every egress policy carries, the cluster's DNS, and the Secret
- * Store for a Process that holds a grant.
+ * Store for a Process that holds a grant, its own or one its Application's
+ * Client derives (spec/v1/17-sign-in.md#credentials-and-placeholders).
  */
 export const egressOf = (
   process: EffectiveProcess,
   context: PolicyContext,
+  derived = false,
 ): Egress[] => [
   {
     rule: "cluster-dns",
@@ -203,5 +205,7 @@ export const egressOf = (
   },
   // A missing list and an empty one hold no grant alike.
   // Stryker disable next-line ArrayDeclaration
-  ...((process.secrets ?? []).length === 0 ? [] : [storeOf(context)]),
+  ...((process.secrets ?? []).length === 0 && !derived
+    ? []
+    : [storeOf(context)]),
 ];

@@ -56,6 +56,7 @@ bootstrap:
     - secrets.hashicorp.com/v1beta1
     - monitoring.coreos.com/v1
     - flagger.app/v1beta1 # the Canary every blue-green Process renders
+    - identity.jorisjonkers.dev/v1 # the Client every client block renders
 
 # Where the edge terminates. Four facts per tier; the traefik adapter owns every
 # Traefik spelling. A route's audience is the only way it reaches a tier, so a
@@ -66,7 +67,8 @@ tiers:
     audiences: [anonymous, authenticated]
     listener: tls
     certificates: acme
-    forwardAuth: "http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward"
+    forwardAuth: "http://identity.identity-system.svc.cluster.local:8080/gate/forward" # the
+    # sign-in provider's Gate, which every gated Client's routes ask
     proxiedBy: cloudflare # every public host is proxied, so a client is the address Cloudflare forwards
     traefik: edge/traefik-public # the declared Application in the platform edge project,
     # placed on the public-ingress node
@@ -125,6 +127,13 @@ telemetry:
 # Application the worked `secrets` project declares
 # (spec/v1/14-platform-intent.md#the-secret-store).
 secretStore: secrets/vault
+
+# Who issues sign-ins (spec/v1/14-platform-intent.md#sign-in): the Issuer every
+# Client trusts, and the Identity Provider the worked `identity` project
+# declares, whose Process writes every derived client credential.
+signIn:
+  issuer: "https://id.jorisjonkers.dev"
+  provider: identity/identity
 
 # NO rule catalog, no receivers, no severity map. Those belong to the monitoring
 # stack, which reads the published projection; this document decides how often
@@ -201,7 +210,7 @@ policyJob:
 handover:
   retireBy: 2027-03-31
   legacy: [auth, data, knowledge, notes]
-  estate: [delivery, edge, knowledge-platform, observability, secrets]
+  estate: [delivery, edge, identity, knowledge-platform, observability, secrets]
   # Where the old path keeps the legacy Postgres's administrative login, which
   # applies the catalog of the estate path's databases until data moves.
   serving:

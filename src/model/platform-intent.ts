@@ -412,6 +412,13 @@ const vpnPolicy = stated(
   settingsUnderived,
 );
 
+/**
+ * The API group and version of the Identity Provider's Client, which the
+ * bootstrap set lists before any Client can apply
+ * (spec/v1/17-sign-in.md#the-client).
+ */
+export const CLIENT_API_VERSION = "identity.jorisjonkers.dev/v1";
+
 // Who issues sign-ins for the estate (spec/v1/14-platform-intent.md#sign-in):
 // the Issuer every Client trusts, and the Application that is the Identity
 // Provider, declared in a project file.

@@ -46,6 +46,8 @@ const SET = [
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "secrets/secrets.project.yml",
+  "identity/identity.project.yml",
+  "identity/env/grafana/base.env",
   "data/data.project.yml",
   "data/env/postgres/base.env",
   "data/config/postgresql.conf",
@@ -782,6 +784,15 @@ describe("renderIntentSet", () => {
     ).toStrictEqual(committed("delivery/rendered"));
   });
 
+  // spec/v1/17-sign-in.md: the sign-in provider's share renders every Client
+  // object, the gated Client's derived /.auth/ route, the provider's write and
+  // the native Client's read on the client secret, and equals its committed tree.
+  it("renders the identity project's share of the tree to its committed tree, byte for byte", () => {
+    expect(
+      asTree(artifact(render(undefined, ["identity"]), "identity")),
+    ).toStrictEqual(committed("identity/rendered"));
+  });
+
   // REQ-053 (docs/requirements.md): the knowledge platform, fleet-infra's
   // replacement for knowledge-system, renders with its file grant, its sidecars
   // and its in-project edges, and equals its committed tree.
@@ -1044,8 +1055,8 @@ describe("the database catalog", () => {
             "legacy: [auth, data, knowledge, knowledge-platform, notes]",
           )
           .replace(
-            "estate: [delivery, edge, knowledge-platform, observability, secrets]",
-            "estate: [delivery, edge, observability, secrets]",
+            "estate: [delivery, edge, identity, knowledge-platform, observability, secrets]",
+            "estate: [delivery, edge, identity, observability, secrets]",
           ),
     });
 
@@ -1079,8 +1090,8 @@ describe("the database catalog", () => {
           "legacy: [auth, knowledge, notes]",
         )
         .replace(
-          "estate: [delivery, edge, knowledge-platform, observability, secrets]",
-          "estate: [data, delivery, edge, knowledge-platform, observability, secrets]",
+          "estate: [delivery, edge, identity, knowledge-platform, observability, secrets]",
+          "estate: [data, delivery, edge, identity, knowledge-platform, observability, secrets]",
         )
         .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
   };
@@ -1264,8 +1275,8 @@ describe("the database catalog", () => {
             "legacy: [data, knowledge, notes]",
           )
           .replace(
-            "estate: [delivery, edge, knowledge-platform, observability, secrets]",
-            "estate: [auth, delivery, edge, knowledge-platform, observability, secrets]",
+            "estate: [delivery, edge, identity, knowledge-platform, observability, secrets]",
+            "estate: [auth, delivery, edge, identity, knowledge-platform, observability, secrets]",
           ),
     };
     const tree = estate(both, ["knowledge-platform"], AUTH);
@@ -1319,8 +1330,8 @@ describe("the database catalog", () => {
             "legacy: [auth, data, knowledge, knowledge-platform, notes]",
           )
           .replace(
-            "estate: [delivery, edge, knowledge-platform, observability, secrets]",
-            "estate: [delivery, edge, observability, secrets]",
+            "estate: [delivery, edge, identity, knowledge-platform, observability, secrets]",
+            "estate: [delivery, edge, identity, observability, secrets]",
           ),
     };
 

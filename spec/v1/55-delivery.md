@@ -382,6 +382,15 @@ member answered, and what it answers a stranger is the Application's own
 business. An iteration in which every request times out fails, because no data
 is no.
 
+**A native Client proves that it signs people in.** Where the Application's
+release-gate inputs carry a `protectedPath`, which they do exactly when its
+Client is `native` ([chapter 17](17-sign-in.md#what-is-checked)), the gate
+requests that path without credentials from the new version before it lets any
+member be promoted. A 2xx answer is `E_CLIENT_OPEN`: the image serves to anyone
+what it said it refuses, and the release is held as a failed analysis holds it.
+Any other answer, a redirect to sign in or a `401` included, passes. The path is
+all the model hands over; the request is the gate's own.
+
 **After promotion the gate warms up.** It requests the same paths once more
 through each hostname the Canary hands it, the host of every Route the internet
 reaches, so the request crosses the edge to the new primary. A 5xx there fails

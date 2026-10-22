@@ -25,6 +25,8 @@ const WORKED = [
   "data/data.project.yml",
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
+  "identity/identity.project.yml",
+  "identity/env/grafana/base.env",
   "knowledge/knowledge.project.yml",
   "minimal/notes.project.yml",
   "observability/observability.project.yml",
@@ -113,6 +115,7 @@ describe("checkIntentSet", () => {
       "data",
       "delivery",
       "edge",
+      "identity",
       "knowledge",
       "notes",
       "observability",
@@ -134,6 +137,7 @@ describe("checkIntentSet", () => {
         .replace("gate: delivery/release-gate", "gate: notes/notes")
         .replace("reporter: delivery/reporter", "reporter: notes/notes")
         .replace("secretStore: secrets/vault", "secretStore: notes/notes")
+        .replace("provider: identity/identity", "provider: notes/notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
     };
@@ -161,6 +165,7 @@ describe("checkIntentSet", () => {
         .replace("gate: delivery/release-gate", "gate: notes/notes")
         .replace("reporter: delivery/reporter", "reporter: notes/notes")
         .replace("secretStore: secrets/vault", "secretStore: notes/notes")
+        .replace("provider: identity/identity", "provider: notes/notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
     };

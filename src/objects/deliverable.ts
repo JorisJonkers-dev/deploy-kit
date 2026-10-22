@@ -2,6 +2,7 @@
 // render, the objects it holds, and the one adapter it is attributed to.
 import type {
   Canary,
+  Client,
   FluxAlert,
   FluxKustomization,
   FluxProvider,
@@ -48,6 +49,7 @@ export type RenderedObject =
   | PersistentVolumeClaim
   | PersistentVolume
   | Canary
+  | Client
   | PodMonitor
   | ServiceMonitor
   | IngressRoute

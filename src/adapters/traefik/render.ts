@@ -1,6 +1,7 @@
 // The `traefik` adapter (spec/v1/30-deliverables.md#adapters): per exposure
 // the IngressRoute that serves it, in its Application's own directory and
-// namespace, so a Project's routes are its own and its unit applies them. The one
+// namespace, so a Project's routes are its own and its unit applies them, the
+// Gate's own route of a gated Client among them. The one
 // place Traefik's vocabulary is spelled: a listener is an entry point, an
 // `acme` certificate source a resolver, a precedence a priority, a rate limit a
 // RateLimit Middleware of the route's own.
@@ -63,6 +64,31 @@ function rateLimitOf(
   };
 }
 
+/**
+ * The Service a route is served by: its Process's, in the Application's
+ * namespace on the surface it names, or for the Gate's own route the Service
+ * the tier's forward-auth endpoint names (spec/v1/17-sign-in.md#what-the-edge-derives).
+ */
+function serviceOf(
+  route: ResolvedRoute,
+  application: ResolvedProject["applications"][number],
+): { name: string; namespace: string; port: number } {
+  if ("gate" in route) return { ...route.gate };
+  // A route names a Process of this Application and a surface it provides, or
+  // E_UNKNOWN_PROCESS and E_UNKNOWN_SURFACE refused it.
+  const process = application.processes.find(
+    ({ name }) => name === route.process,
+  ) as (typeof application.processes)[number];
+  const surface = (
+    process.surfaces as NonNullable<typeof process.surfaces>
+  ).find(({ name }) => name === route.surface) as { readonly port: number };
+  return {
+    name: route.process,
+    namespace: application.namespace,
+    port: surface.port,
+  };
+}
+
 const matchOf = (host: string, { match, path }: ResolvedRoute): string =>
   `Host(\`${host}\`) && ${match === "exact" ? "Path" : "PathPrefix"}(\`${path}\`)`;
 
@@ -86,16 +112,7 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
         spec: {
           entryPoints: [ENTRY_POINTS[exposure.listener]],
           routes: exposure.routes.map((served, index) => {
-            // A route names a Process of this Application and a surface it
-            // provides, or E_UNKNOWN_PROCESS and E_UNKNOWN_SURFACE refused it.
-            const process = application.processes.find(
-              ({ name }) => name === served.process,
-            ) as (typeof application.processes)[number];
-            const surface = (
-              process.surfaces as NonNullable<typeof process.surfaces>
-            ).find(({ name }) => name === served.surface) as {
-              readonly port: number;
-            };
+            const service = serviceOf(served, application);
             return {
               kind: "Rule" as const,
               match: matchOf(exposure.host, served),
@@ -115,13 +132,7 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
                 );
                 return { name, namespace: application.namespace };
               }),
-              services: [
-                {
-                  name: served.process,
-                  namespace: application.namespace,
-                  port: surface.port,
-                },
-              ],
+              services: [service],
             };
           }),
           ...(exposure.certificates === "acme"

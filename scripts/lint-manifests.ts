@@ -3,7 +3,8 @@
 // "All parse" was the old bar, and it is what let R8 through: a PVC with
 // `storage: null` parses and cannot apply. This checks shape and required
 // fields against the schemas for the k3s version the Cluster Context records,
-// plus the CRDs the estate actually uses: Traefik, VSO, Prometheus, Flux.
+// plus the CRDs the estate actually uses: Traefik, VSO, Prometheus, Flux, and
+// the Identity Provider's Client, whose schema is this repository's own.
 //
 // It also holds every pod template to Pod Security's `restricted` profile, the
 // bar chapter 10's posture promises (scripts/lib/pod-security.ts). That check
@@ -31,6 +32,16 @@ const KUBERNETES_VERSION = "1.31.4";
 const CRD_CATALOG =
   "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/" +
   "{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json";
+// The kinds no public catalog carries, the Identity Provider's Client among
+// them (spec/v1/17-sign-in.md#the-client): this repository's own schemas, laid
+// out as the catalog is.
+const OWN_SCHEMAS = join(
+  REPOSITORY,
+  "scripts",
+  "schemas",
+  "{{.Group}}",
+  "{{.ResourceKind}}_{{.ResourceAPIVersion}}.json",
+);
 
 /** Every YAML file inside a `rendered/` directory of the worked examples, sorted. */
 export function renderedFiles(root: string): string[] {
@@ -80,6 +91,8 @@ export function lintManifests(
       "default",
       "-schema-location",
       CRD_CATALOG,
+      "-schema-location",
+      OWN_SCHEMAS,
       ...files,
     ],
     { encoding: "utf8" },

@@ -62,6 +62,8 @@ function minimal(): ResolvedProject {
       "edge/edge.project.yml",
       "observability/observability.project.yml",
       "secrets/secrets.project.yml",
+      "identity/identity.project.yml",
+      "identity/env/grafana/base.env",
     ].map((name) => ({
       name,
       text: readFileSync(join(EXAMPLES, name), "utf8"),
@@ -754,6 +756,60 @@ describe("the kubernetes adapter", () => {
     ]);
   });
 
+  // spec/v1/17-sign-in.md#the-client: one cluster-scoped Client per
+  // Application that declares one, named by the Application Id.
+  it("writes an Application's Client, cluster-scoped and named for it, every field in the chapter's order", () => {
+    const rendered = renderKubernetes(
+      edited(() => ({
+        client: {
+          signIn: "native" as const,
+          host: "notes.jorisjonkers.dev",
+          launchUrl: "https://notes.jorisjonkers.dev/",
+          iconUrl: "https://notes.jorisjonkers.dev/favicon.svg",
+          redirectUris: ["https://notes.jorisjonkers.dev/callback"],
+          credential: "secret" as const,
+          secretPath: "secret/data/notes-system/notes/client",
+          roles: ["user", "writer"],
+          label: "Notes",
+          description: "Everything written down",
+        },
+      })),
+    );
+    const [client] = objectsAt(rendered, "/notes/client.yaml");
+
+    expect(JSON.stringify(client)).toBe(
+      JSON.stringify({
+        apiVersion: "identity.jorisjonkers.dev/v1",
+        kind: "Client",
+        metadata: {
+          name: "notes",
+          labels: {
+            "app.kubernetes.io/part-of": "notes",
+            "app.kubernetes.io/managed-by": "deploy-kit",
+          },
+        },
+        spec: {
+          signIn: "native",
+          host: "notes.jorisjonkers.dev",
+          launchUrl: "https://notes.jorisjonkers.dev/",
+          iconUrl: "https://notes.jorisjonkers.dev/favicon.svg",
+          redirectUris: ["https://notes.jorisjonkers.dev/callback"],
+          credential: "secret",
+          secretPath: "secret/data/notes-system/notes/client",
+          roles: ["user", "writer"],
+          label: "Notes",
+          description: "Everything written down",
+        },
+      }),
+    );
+  });
+
+  it("writes no Client for an Application that declares none", () => {
+    expect(
+      renderKubernetes(edited()).map(({ path }) => path.split("/").at(-1)),
+    ).not.toContain("client.yaml");
+  });
+
   it("writes no readiness probe for a Process that publishes none", () => {
     const [deployment] = objectsAt(
       renderKubernetes(edited(undefined, () => ({ readiness: undefined }))),
@@ -1241,6 +1297,41 @@ describe("the traefik adapter", () => {
     expect(
       renderTraefik(edited(() => ({ exposure: undefined }))),
     ).toStrictEqual([]);
+  });
+
+  // spec/v1/17-sign-in.md#what-the-edge-derives: a gated Client's /.auth/
+  // route is the Gate's, served by the Service its forward-auth endpoint names.
+  it("serves the Gate's own route from the Service the forward-auth endpoint names, in that Service's namespace", () => {
+    const spec = routeOf(
+      exposed(({ routes }) => ({
+        routes: [
+          ...routes,
+          {
+            path: "/.auth/",
+            match: "prefix" as const,
+            gate: {
+              name: "identity",
+              namespace: "identity-system",
+              port: 8080,
+            },
+            audience: "authenticated" as const,
+            precedence: 1,
+            middleware: [{ kind: "security-headers" as const }],
+          },
+        ],
+      })),
+    );
+    const [, gate] = spec?.["routes"] as Record<string, unknown>[];
+
+    expect(gate).toStrictEqual({
+      kind: "Rule",
+      match: "Host(`notes.jorisjonkers.dev`) && PathPrefix(`/.auth/`)",
+      priority: 999,
+      middlewares: [{ name: "security-headers", namespace: "edge-system" }],
+      services: [
+        { name: "identity", namespace: "identity-system", port: 8080 },
+      ],
+    });
   });
 });
 

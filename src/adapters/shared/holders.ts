@@ -15,8 +15,11 @@ export type Grant = NonNullable<ResolvedProcess["secrets"]>[number];
 /** A kv grant. */
 export type KvGrant = Extract<Grant, { readonly path: string }>;
 
+/** The sign-in provider's write on a client credential, read by its Process itself. */
+export type ClientGrant = Extract<Grant, { readonly client: string }>;
+
 /** A grant an engine issues: a transit operation, or a database credential. */
-export type EngineGrant = Exclude<Grant, KvGrant>;
+export type EngineGrant = Exclude<Grant, KvGrant | ClientGrant>;
 
 /**
  * Whether a grant is synced to a Secret: a kv grant delivered `env` or `file`,
@@ -24,7 +27,7 @@ export type EngineGrant = Exclude<Grant, KvGrant>;
  */
 export const isSynced = (
   grant: Grant,
-): grant is Grant & { destination: string } =>
+): grant is (KvGrant | EngineGrant) & { destination: string } =>
   // An absent destination is an absent key, so asking for the key is enough.
   "destination" in grant;
 

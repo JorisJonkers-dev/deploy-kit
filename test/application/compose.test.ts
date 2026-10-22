@@ -61,6 +61,8 @@ const LEDGER = `handover:
 `;
 /** The line of the worked Platform document that names its Reporter. */
 const REPORTER = "  reporter: delivery/reporter\n";
+/** The worked Platform document's sign-in provider, which no Project here declares. */
+const SIGN_IN = /\nsignIn:\n(?: {2}.*\n)+/;
 const withLedger = (platform: string, ledger: string): string =>
   platform.replace(/\nhandover:\n(?: {2}.*\n)+/, `\n${ledger}`);
 
@@ -121,9 +123,12 @@ const PLATFORM: Fragment = {
     {
       name: "platform.intent.yml",
       // Without a Reporter, so the estate-scoped artifact holds what each
-      // test below gives it; the Reporter's own tests name one again.
+      // test below gives it; the Reporter's own tests name one again. Without
+      // a sign-in provider, since no Project composed here declares a Client.
       text: withLedger(
-        text("platform/platform.intent.yml").replace(REPORTER, ""),
+        text("platform/platform.intent.yml")
+          .replace(REPORTER, "")
+          .replace(SIGN_IN, "\n"),
         LEDGER,
       ),
     },

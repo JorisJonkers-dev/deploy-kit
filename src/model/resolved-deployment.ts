@@ -23,6 +23,7 @@ import {
   ALERT_CLASSES,
   API_VERBS,
   AUDIENCES,
+  CLIENT_CREDENTIALS,
   CONTENT_POLICIES,
   CUTOVERS,
   DATABASE_ENGINES,
@@ -33,6 +34,7 @@ import {
   LIFECYCLES,
   MATCHES,
   RUNTIMES,
+  SIGN_IN_MODES,
   TRANSIT_ENGINES,
 } from "./vocabularies.ts";
 import { stated, type ShapeRule } from "./shape-rule.ts";
@@ -246,6 +248,18 @@ const resolvedEngineGrant = z
     restartTargets: z.array(text).exactOptional(),
   })
   .meta({ id: "ResolvedEngineGrant" });
+
+// The sign-in provider's write on one Client's derived credential
+// (spec/v1/17-sign-in.md#credentials-and-placeholders): derived, never
+// authored, for each Client holding a secret, and read by the provider's
+// Process itself, which creates and rotates it.
+const resolvedClientGrant = z
+  .strictObject({
+    client: text,
+    delivery: z.literal("self"),
+    paths: z.array(policyPath).min(1),
+  })
+  .meta({ id: "ResolvedClientGrant" });
 
 // The backup a Durability Class derives: the platform's terms for the class,
 // the engine's method image, the identity it runs as, the claim its copies
@@ -547,7 +561,7 @@ const resolvedProcess = stated(
     volumes: z.array(resolvedVolume).exactOptional(),
     libraries: z.array(resolvedLibraryMount).exactOptional(),
     secrets: z
-      .array(z.union([resolvedGrant, resolvedEngineGrant]))
+      .array(z.union([resolvedGrant, resolvedEngineGrant, resolvedClientGrant]))
       .exactOptional(),
     assets: z.array(resolvedAsset).exactOptional(),
     sidecars: z.array(resolvedSidecar).exactOptional(),
@@ -584,20 +598,32 @@ const middlewareStep = z
   })
   .meta({ id: "MiddlewareStep" });
 
+const routeTerms = {
+  path: text,
+  match,
+  audience,
+  // Specificity alone, smallest evaluated first: exact before prefix, longer
+  // prefix before shorter (docs/adr/model/0023-exposure-is-declared-by-audience.md).
+  precedence: z.int().min(1),
+  // The chain follows the audience, and a route may override the audience, so
+  // it hangs off the route rather than off the host it is served on.
+  middleware: z.array(middlewareStep).exactOptional(),
+};
+
+// Where the Gate's own route is served: the Service the tier's forward-auth
+// endpoint names, in its namespace, on its port
+// (spec/v1/17-sign-in.md#what-the-edge-derives).
+const gateAddress = z
+  .strictObject({ name: text, namespace: text, port })
+  .meta({ id: "GateAddress" });
+
+// A route to a Process of the Application, as authored, or the `/.auth/`
+// route a gated Client derives, which is the Gate's and no Process's.
 const resolvedRoute = z
-  .strictObject({
-    path: text,
-    match,
-    process: text,
-    surface: text,
-    audience,
-    // Specificity alone, smallest evaluated first: exact before prefix, longer
-    // prefix before shorter (docs/adr/model/0023-exposure-is-declared-by-audience.md).
-    precedence: z.int().min(1),
-    // The chain follows the audience, and a route may override the audience, so
-    // it hangs off the route rather than off the host it is served on.
-    middleware: z.array(middlewareStep).exactOptional(),
-  })
+  .union([
+    z.strictObject({ ...routeTerms, process: text, surface: text }),
+    z.strictObject({ ...routeTerms, gate: gateAddress }),
+  ])
   .meta({ id: "ResolvedRoute" });
 
 const listener = z.enum(LISTENERS).meta({ id: "Listener" });
@@ -683,6 +709,10 @@ const releaseGate = z
     members: z.array(gateMember).min(1),
     // Present where the Application moves its schema with a changelog.
     migration: gateMigration.exactOptional(),
+    // A native Client's protectedPath, which the gate requests anonymously
+    // before it switches: a 2xx is E_CLIENT_OPEN
+    // (spec/v1/17-sign-in.md#what-is-checked).
+    protectedPath: text.exactOptional(),
   })
   .meta({ id: "ReleaseGate" });
 
@@ -727,6 +757,27 @@ const resolvedMigration = z
   })
   .meta({ id: "ResolvedMigration" });
 
+// The Client an Application's `client` block derives
+// (spec/v1/17-sign-in.md#the-client): every path on the named exposure's host,
+// the user role first, and the credential path a secret is held at.
+const resolvedClient = z
+  .strictObject({
+    signIn: z.enum(SIGN_IN_MODES).meta({ id: "SignInMode" }),
+    host: text,
+    launchUrl: text.exactOptional(),
+    iconUrl: text.exactOptional(),
+    redirectUris: z.array(text).min(1).exactOptional(),
+    credential: z
+      .enum(CLIENT_CREDENTIALS)
+      .meta({ id: "ClientCredential" })
+      .exactOptional(),
+    secretPath: text.exactOptional(),
+    roles: z.array(text).min(1),
+    label: text.exactOptional(),
+    description: text.exactOptional(),
+  })
+  .meta({ id: "ResolvedClient" });
+
 // The monitor an Application's observability derives: which surface of which
 // Process, at which path, at the platform's cadence.
 const resolvedScrape = z
@@ -759,6 +810,8 @@ const application = {
   // Present where the Application moves its schema with a changelog.
   migration: resolvedMigration.exactOptional(),
   exposure: z.array(resolvedExposure).exactOptional(),
+  // Present where the Application declares `client`.
+  client: resolvedClient.exactOptional(),
   processes: z.array(resolvedProcess).min(1),
 };
 
@@ -945,6 +998,7 @@ export type ResolvedRoute = ResolvedExposure["routes"][number];
 export type ResolvedMigration = NonNullable<
   ResolvedApplicationDocument["migration"]
 >;
+export type ResolvedClient = NonNullable<ResolvedApplicationDocument["client"]>;
 export type ReleaseGate = NonNullable<
   ResolvedApplicationDocument["releaseGate"]
 >;

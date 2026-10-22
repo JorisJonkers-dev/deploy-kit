@@ -104,8 +104,22 @@ Audience **and** the Client:
 | `authenticated` | `gated` | the tier's `forwardAuth` endpoint, on every route | `/.auth/` (prefix) to the same Stable Address the tier's `forwardAuth` names |
 | `authenticated` | `native` | none: the Application enforces sign-in | none |
 | `authenticated` | `token` | none: the Application checks the bearer token | none |
-| `authenticated` | no `client` | refused: `E_AUTHENTICATED_WITHOUT_CLIENT` | |
+| `authenticated` | no `client` | refused: `E_AUTHENTICATED_WITHOUT_CLIENT`; until it is enforced, the tier's `forwardAuth` endpoint, from the audience alone | none |
 | `internal` | `token` | none | none |
+
+**The transitional rule.** Four live Projects still serve `authenticated`
+exposures that no Client names, so `E_AUTHENTICATED_WITHOUT_CLIENT` is not yet
+enforced: until each of them declares a `client`, such an exposure keeps the
+forward-auth its audience alone derived before this chapter, and so does an
+`authenticated` exposure of an Application whose Client names another of its
+exposures.
+
+The derived `/.auth/` route is served by the Service the tier's `forwardAuth`
+endpoint names, in that Service's namespace and on its port
+([chapter 20](20-resolved-deployment.md#the-forward-auth-endpoint)), with the
+exposure's security headers and no forward-auth of its own: the Gate answers
+there itself, so nothing asks it first. Its precedence is ranked with the
+exposure's own routes, as a `prefix` route of its length.
 
 **Why a native or token host carries no forward-auth.** A forward-auth check in
 front of a native Application would intercept its own callback, and in front of
@@ -132,13 +146,20 @@ Client's sign-in, for a native and a gated Client alike.
 The model derives one Client per Application that declares `client`. It is a
 Deliverable of the `kubernetes` adapter
 ([chapter 30](30-deliverables.md#adapters)): a cluster-scoped object of kind
-`Client` in `identity.jorisjonkers.dev/v1`, named by the Application Id.
+`Client` in `identity.jorisjonkers.dev/v1`, named by the Application Id, in the
+Application's own `client.yaml`, which the Application's index lists
+([chapter 30](30-deliverables.md#path-allocation)). A cluster applies one only
+once the Client kind exists, so a Platform document whose bootstrap set does
+not list `identity.jorisjonkers.dev/v1` beside an Application declaring
+`client` is `E_CLIENT_CRD_NOT_BOOTSTRAPPED`
+([chapter 14](14-platform-intent.md#the-bootstrap-set)), rather than a render
+Flux cannot apply.
 
 | Client field | derived from |
 |---|---|
 | `signIn` | `client.signIn` |
 | `host` | the named exposure's `host` |
-| `launchUrl` | `https://` + host + `launchPath` |
+| `launchUrl` | `https://` + host + `launchPath`, for a `native` or `gated` Client; a `token` Client has no tile to launch |
 | `iconUrl` | `https://` + host + `iconPath`, when declared |
 | `redirectUris` | `https://` + host + each of `redirectPaths` |
 | `credential` | `client.credential` |
@@ -162,8 +183,15 @@ secret/data/<namespace>/<application>/client     keys: id, secret
 ```
 
 The sign-in provider's Process is granted write on that path, so the Identity
-Provider creates and rotates the secret. Every Process of the Application that
-references the credential is granted `read` on it, derived, never authored.
+Provider creates and rotates the secret: each Process of the provider
+Application holds `create`, `read` and `update` on every client credential of
+the composed union, read by the Process itself, in path order. Every Process of
+the Application that references the credential is granted `read` on it, derived,
+never authored, and delivered as a `${secret:…}` reference's grant is: synced to
+a Secret named for the Process and the path, which restarts the Process when the
+provider rotates it. A Client that holds a secret beside a Platform document
+naming no Secret Store is `E_NO_SECRET_STORE`, as any grant is
+([chapter 14](14-platform-intent.md#the-secret-store)).
 
 A Process reads the credential through a fourth placeholder source, beside the
 three of [chapter 10](10-project-intent.md#placeholder-sources):
@@ -205,14 +233,19 @@ carries a `gated` Client.
 | `E_CLIENT_AUDIENCE` | the named exposure's audience is not one the mode serves | composition |
 | `E_DUPLICATE_APP_ROLE` | a role is listed twice, or `user` is listed | composition |
 | `E_GATE_PATH_CLAIMED` | a gated Application declares a route under `/.auth/` | composition |
-| `E_AUTHENTICATED_WITHOUT_CLIENT` | an exposure is `authenticated` and its Application declares no `client` | composition |
+| `E_AUTHENTICATED_WITHOUT_CLIENT` | an exposure is `authenticated` and its Application declares no `client` | composition, once enforced ([the transitional rule](#what-the-edge-derives)) |
+| `E_CLIENT_CRD_NOT_BOOTSTRAPPED` | an Application declares `client` and the Platform document's bootstrap set does not list `identity.jorisjonkers.dev/v1` | composition |
 | `E_NO_SIGN_IN_PROVIDER` | an Application declares `client` and the Platform document names no sign-in provider | composition |
 | `E_CLIENT_PLACEHOLDER_WITHOUT_SECRET` | `${client:secret}` is referenced and the Client is not `credential: secret` | composition |
 | `E_CLIENT_OPEN` | the Release Gate's anonymous request to a native Client's `protectedPath` is answered with 2xx | release ([chapter 55](55-delivery.md#the-release-gate)) |
 
 `E_CLIENT_OPEN` is the proof a native Client owes: the model cannot see whether
 an image enforces sign-in, so the release asks it. A native Application that
-serves its protected path to anyone never receives traffic.
+serves its protected path to anyone never receives traffic. The model's half is
+the input: a native Client's Application carries its `protectedPath` in its
+release-gate inputs ([chapter 20](20-resolved-deployment.md#the-release-gate)),
+and the Release Gate requests it, anonymously, before it switches
+([chapter 55](55-delivery.md#the-release-gate)).
 
 ## Open in this chapter
 

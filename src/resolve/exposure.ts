@@ -1,8 +1,13 @@
 // An Application's exposure to its resolved routes
 // (spec/v1/10-project-intent.md#exposure): the tier its audience reaches, the
-// middleware chain the tier, the audience and the content profile derive, and
-// the precedence the model decides rather than the proxy.
-import type { EffectiveProject } from "../model/effective-intent.ts";
+// middleware chain the tier, the audience, the Client and the content profile
+// derive, the Gate's own route a gated Client adds
+// (spec/v1/17-sign-in.md#what-the-edge-derives), and the precedence the model
+// decides rather than the proxy.
+import type {
+  EffectiveApplication,
+  EffectiveProject,
+} from "../model/effective-intent.ts";
 import type { ApplicationDocument } from "../model/project-intent.ts";
 import {
   applicationOf,
@@ -13,29 +18,44 @@ import type {
   ResolvedRoute,
 } from "../model/resolved-deployment.ts";
 import { peersOf } from "./policy.ts";
+import { asksTheGate, gateAddressOf, gatedBy } from "./client.ts";
 
 type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
 type Route = Exposure["routes"][number];
 type Tier = PlatformIntentDocument["tiers"][number];
 type Middleware = NonNullable<ResolvedRoute["middleware"]>[number];
 
+/** Where the Gate takes a gated host's sign-in back, which no route of its own may claim. */
+const GATE_ROUTE = { path: "/.auth/", match: "prefix" } as const;
+
 /**
  * Where a route sorts: every `exact` before any `prefix`, a longer prefix
  * before a shorter one. Two routes that no rule orders share a rank.
  */
-const rankOf = ({ match, path }: Route): number =>
+const rankOf = ({ match, path }: Pick<Route, "match" | "path">): number =>
   match === "exact" ? -Infinity : -path.length;
 
 /** A route's precedence: one more than the number of distinct ranks before its own. */
-function precedenceAmong(routes: readonly Route[]): (route: Route) => number {
+function precedenceAmong(
+  routes: readonly Pick<Route, "match" | "path">[],
+): (route: Pick<Route, "match" | "path">) => number {
   const ranks = [...new Set(routes.map(rankOf))].sort((a, b) => a - b);
   return (route) => ranks.indexOf(rankOf(route)) + 1;
 }
+
+/** The security-headers baseline, with the content profile the exposure names. */
+const baselineOf = (exposure: Exposure): Middleware => ({
+  kind: "security-headers",
+  ...(exposure.contentPolicy === undefined
+    ? {}
+    : { contentPolicy: exposure.contentPolicy }),
+});
 
 function middlewareOf(
   exposure: Exposure,
   route: Route,
   platform: PlatformIntentDocument,
+  gate: boolean,
 ): Middleware[] {
   const audience = route.audience ?? exposure.audience;
   // The route reaches the tier carrying its own audience, which may not be
@@ -44,7 +64,7 @@ function middlewareOf(
   return [
     // A tier that carries `authenticated` names its endpoint, or
     // E_NO_FORWARD_AUTH_ENDPOINT refused the Platform document.
-    ...(audience === "authenticated"
+    ...(audience === "authenticated" && gate
       ? [
           {
             kind: "forward-auth" as const,
@@ -52,12 +72,7 @@ function middlewareOf(
           },
         ]
       : []),
-    {
-      kind: "security-headers",
-      ...(exposure.contentPolicy === undefined
-        ? {}
-        : { contentPolicy: exposure.contentPolicy }),
-    },
+    baselineOf(exposure),
     ...(route.redirectTo === undefined
       ? []
       : [{ kind: "redirect" as const, redirectTo: route.redirectTo }]),
@@ -85,14 +100,20 @@ const tierFor = (
 
 function resolveOne(
   exposure: Exposure,
+  application: EffectiveApplication,
   platform: PlatformIntentDocument,
   union: readonly EffectiveProject[],
 ): ResolvedExposure {
   const tier = tierFor(exposure.audience, platform);
   // The tier's proxy is declared, or E_UNKNOWN_TIER_PROXY refused the set.
   const [proxy] = peersOf(platform, tier.traefik, union);
-  const precedence = precedenceAmong(exposure.routes);
-  return {
+  const gated = gatedBy(application, exposure);
+  const precedence = precedenceAmong([
+    ...exposure.routes,
+    ...(gated ? [GATE_ROUTE] : []),
+  ]);
+  const gate = asksTheGate(application, exposure);
+  const resolved: ResolvedExposure = {
     name: exposure.name,
     host: exposure.host,
     tier: tier.name,
@@ -109,14 +130,34 @@ function resolveOne(
       surface: route.surface,
       audience: route.audience ?? exposure.audience,
       precedence: precedence(route),
-      middleware: middlewareOf(exposure, route, platform),
+      middleware: middlewareOf(exposure, route, platform, gate),
     })),
+  };
+  if (!gated) return resolved;
+  // A gated Client's exposure carries `authenticated`, or E_CLIENT_AUDIENCE
+  // refused it, so its tier names the Gate.
+  return {
+    ...resolved,
+    routes: [
+      ...resolved.routes,
+      {
+        ...GATE_ROUTE,
+        gate: gateAddressOf(tier.forwardAuth as string),
+        audience: exposure.audience,
+        precedence: precedence(GATE_ROUTE),
+        // The Gate answers here itself, so nothing asks it first.
+        middleware: [baselineOf(exposure)],
+      },
+    ],
   };
 }
 
 export const resolveExposure = (
-  exposures: readonly Exposure[],
+  application: EffectiveApplication,
   platform: PlatformIntentDocument,
   union: readonly EffectiveProject[],
 ): ResolvedExposure[] =>
-  exposures.map((exposure) => resolveOne(exposure, platform, union));
+  // Stryker disable next-line ArrayDeclaration: no exposure and an empty list resolve none alike.
+  (application.exposure ?? []).map((exposure) =>
+    resolveOne(exposure, application, platform, union),
+  );

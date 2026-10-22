@@ -1,6 +1,6 @@
 // The custom resources this estate renders, typed the same way: Flagger's
-// Canary, the Prometheus Operator's PodMonitor, Traefik's IngressRoute. Only
-// the fields the render sets.
+// Canary, the Identity Provider's Client, the Prometheus Operator's
+// PodMonitor, Traefik's IngressRoute. Only the fields the render sets.
 import type { Labels, ObjectMeta } from "./kubernetes.ts";
 
 export interface Webhook {
@@ -39,6 +39,29 @@ export interface Canary {
       readonly threshold: number;
       readonly webhooks: readonly Webhook[];
     };
+  };
+}
+
+/**
+ * The Identity Provider's Client (spec/v1/17-sign-in.md#the-client):
+ * cluster-scoped, named by the Application Id, every field derived from the
+ * Application's `client` block and the exposure it names.
+ */
+export interface Client {
+  readonly apiVersion: "identity.jorisjonkers.dev/v1";
+  readonly kind: "Client";
+  readonly metadata: Omit<ObjectMeta, "namespace">;
+  readonly spec: {
+    readonly signIn: "native" | "gated" | "token";
+    readonly host: string;
+    readonly launchUrl?: string;
+    readonly iconUrl?: string;
+    readonly redirectUris?: readonly string[];
+    readonly credential?: "secret" | "pkce";
+    readonly secretPath?: string;
+    readonly roles: readonly string[];
+    readonly label?: string;
+    readonly description?: string;
   };
 }
 

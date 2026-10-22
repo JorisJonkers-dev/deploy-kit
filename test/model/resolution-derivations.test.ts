@@ -50,7 +50,19 @@ const FOUNDATION = [
   "secrets/secrets.project.yml",
 ].map((name): AuthoredFile => ({ name, text: text(name) }));
 
-const PLATFORM = text("platform/platform.intent.yml");
+/** The sign-in provider's project, which a set composes only where it signs people in. */
+const IDENTITY = [
+  "identity/identity.project.yml",
+  "identity/env/grafana/base.env",
+].map((name): AuthoredFile => ({ name, text: text(name) }));
+
+/** The worked Platform document's sign-in, which names the provider IDENTITY declares. */
+const SIGN_IN = /\nsignIn:\n(?: {2}.*\n)+/;
+
+/** The worked Platform document, signing people in through the provider IDENTITY declares. */
+const SIGNING_IN = text("platform/platform.intent.yml");
+/** The worked Platform document with no sign-in, which a set without IDENTITY composes with. */
+const PLATFORM = SIGNING_IN.replace(SIGN_IN, "\n");
 /** data, for a Process whose edge reaches one of its Applications. */
 const DATA = [
   "data/data.project.yml",
@@ -94,6 +106,8 @@ ${extra}`;
 
 interface Options {
   readonly platform?: (platform: string) => string;
+  /** Whether the set signs people in: the platform names its provider, and the set composes it. */
+  readonly signIn?: boolean;
   /** Files read beside the project: its env files, and its Asset files. */
   readonly env?: readonly AuthoredFile[];
   readonly lock?: (lock: string) => string;
@@ -108,13 +122,16 @@ function resolve(applications: string, options: Options = {}) {
     [
       {
         name: "platform/platform.intent.yml",
-        text: (options.platform ?? ((same: string) => same))(PLATFORM),
+        text: (options.platform ?? ((same: string) => same))(
+          options.signIn === true ? SIGNING_IN : PLATFORM,
+        ),
       },
       ...FOUNDATION.map((file) =>
         file.name === "platform/images.lock.yml" && options.lock !== undefined
           ? { ...file, text: options.lock(file.text) }
           : file,
       ),
+      ...(options.signIn === true ? IDENTITY : []),
       { name: "minimal/notes.project.yml", text: HEADER + applications },
       ...(options.env ?? []),
     ],
@@ -209,7 +226,7 @@ ${serving("notes-api")}`;
           {
             kind: "forward-auth",
             endpoint:
-              "http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward",
+              "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
           },
           { kind: "security-headers" },
         ],
@@ -1231,11 +1248,7 @@ describe("a client placeholder", () => {
     processes:
 ${serving("notes-api")}`,
       {
-        platform: (platform) =>
-          platform.replace(
-            "hardening:",
-            "signIn:\n  issuer: https://auth.jorisjonkers.dev\n  provider: edge/traefik-public\nhardening:",
-          ),
+        signIn: true,
         env: [
           {
             name: "minimal/env/notes-api/base.env",
@@ -1253,46 +1266,298 @@ ${serving("notes-api")}`,
       { name: "CLIENT_ID", value: "notes" },
       {
         name: "ISSUER",
-        value: "https://auth.jorisjonkers.dev/.well-known/openid-configuration",
+        value: "https://id.jorisjonkers.dev/.well-known/openid-configuration",
       },
     ]);
   });
+});
 
-  it("does not render the Client's secret before its credential path is derived", () => {
-    expect(() =>
-      application(
-        `  - id: notes
+// spec/v1/17-sign-in.md: what a Client derives, beyond the placeholders it
+// answers: the edge its Sign-in Mode asks for, the Client object, its
+// credential's grants, and the path the Release Gate asks anonymously.
+describe("what a Client derives", () => {
+  /** Application `notes` on an exposure of `audience`, its Client `client`, its Process `extra`. */
+  const signingIn = (
+    client: string,
+    { audience = "authenticated", extra = "", routes = "" } = {},
+  ) => `  - id: notes
     exposure:
       - name: app
         host: notes.jorisjonkers.dev
+        audience: ${audience}
+        contentPolicy: admin
+        routes:
+          - { path: /, match: prefix, process: notes-api, surface: http }
+${routes}    client:
+${client
+  .trim()
+  .split("\n")
+  .map((line) => `      ${line}`)
+  .join("\n")}
+    processes:
+${serving("notes-api", extra)}`;
+  const NATIVE = `signIn: native
+label: Notes
+description: Everything written down
+iconPath: /favicon.svg
+redirectPaths: [/auth/callback, /auth/silent]
+protectedPath: /api/me
+credential: secret
+roles: [writer, admin]`;
+  const GATED = "signIn: gated\nlabel: Notes";
+  const FORWARD_AUTH = {
+    kind: "forward-auth",
+    endpoint:
+      "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+  };
+  const BASELINE = { kind: "security-headers", contentPolicy: "admin" };
+  const SECRET_PATH = "secret/data/notes-system/notes/client";
+  /** The worked platform with its public tier carrying `internal` as well, which a token Client may sign in on. */
+  const INTERNAL = {
+    signIn: true,
+    platform: (platform: string) =>
+      platform.replace(
+        "audiences: [anonymous, authenticated]",
+        "audiences: [anonymous, authenticated, internal]",
+      ),
+  };
+  const SIGNED_IN = { signIn: true };
+  const CLIENT_SECRET = {
+    signIn: true,
+    env: [
+      {
+        name: "minimal/env/notes-api/base.env",
+        text: "OIDC_CLIENT_SECRET=${client:secret}\n",
+      },
+    ],
+  };
+
+  describe("at the edge", () => {
+    it("asks the tier's forward-auth on every route of a gated Client, and derives the Gate's own route to its address", () => {
+      const [exposure] =
+        application(
+          signingIn(GATED, {
+            routes:
+              "          - { path: /health, match: exact, process: notes-api, surface: http, audience: anonymous }\n",
+          }),
+          SIGNED_IN,
+        ).exposure ?? [];
+
+      expect(exposure?.routes).toStrictEqual([
+        {
+          path: "/",
+          match: "prefix",
+          process: "notes-api",
+          surface: "http",
+          audience: "authenticated",
+          precedence: 3,
+          middleware: [FORWARD_AUTH, BASELINE],
+        },
+        {
+          path: "/health",
+          match: "exact",
+          process: "notes-api",
+          surface: "http",
+          audience: "anonymous",
+          precedence: 1,
+          middleware: [BASELINE],
+        },
+        {
+          path: "/.auth/",
+          match: "prefix",
+          gate: { name: "identity", namespace: "identity-system", port: 8080 },
+          audience: "authenticated",
+          precedence: 2,
+          middleware: [BASELINE],
+        },
+      ]);
+    });
+
+    it.each([
+      ["a native Client", NATIVE, "authenticated"],
+      ["a token Client", "signIn: token", "authenticated"],
+      ["a token Client on an internal exposure", "signIn: token", "internal"],
+    ])(
+      "asks no forward-auth and derives no route for %s, which signs people in itself",
+      (_, client, audience) => {
+        const [exposure] =
+          application(signingIn(client, { audience }), INTERNAL).exposure ?? [];
+
+        expect(
+          exposure?.routes.map(({ path, middleware }) => [path, middleware]),
+        ).toStrictEqual([["/", [BASELINE]]]);
+      },
+    );
+
+    it("keeps forward-auth from the audience alone on an authenticated exposure no Client names", () => {
+      const exposures =
+        application(
+          signingIn(`${NATIVE}\nexposure: app`).replace(
+            "    client:\n",
+            `      - name: admin
+        host: admin.notes.jorisjonkers.dev
         audience: authenticated
         routes:
           - { path: /, match: prefix, process: notes-api, surface: http }
     client:
-      signIn: native
-      label: Notes
-      redirectPaths: [/callback]
-      protectedPath: /api/me
-      credential: secret
-    processes:
-${serving("notes-api")}`,
+`,
+          ),
+          SIGNED_IN,
+        ).exposure ?? [];
+
+      expect(
+        exposures.map(({ name, routes }) => [name, routes[0]?.middleware]),
+      ).toStrictEqual([
+        ["app", [BASELINE]],
+        ["admin", [FORWARD_AUTH, { kind: "security-headers" }]],
+      ]);
+    });
+  });
+
+  describe("the Client", () => {
+    it("names every path on its exposure's host, the user role first, and the derived credential path of a secret", () => {
+      expect(
+        application(signingIn(NATIVE), CLIENT_SECRET).client,
+      ).toStrictEqual({
+        signIn: "native",
+        host: "notes.jorisjonkers.dev",
+        launchUrl: "https://notes.jorisjonkers.dev/",
+        iconUrl: "https://notes.jorisjonkers.dev/favicon.svg",
+        redirectUris: [
+          "https://notes.jorisjonkers.dev/auth/callback",
+          "https://notes.jorisjonkers.dev/auth/silent",
+        ],
+        credential: "secret",
+        secretPath: SECRET_PATH,
+        roles: ["user", "writer", "admin"],
+        label: "Notes",
+        description: "Everything written down",
+      });
+    });
+
+    it("launches a gated Client at the path it names, and a PKCE Client holds no secret path", () => {
+      expect(
+        application(signingIn(`${GATED}\nlaunchPath: /home`), SIGNED_IN).client,
+      ).toStrictEqual({
+        signIn: "gated",
+        host: "notes.jorisjonkers.dev",
+        launchUrl: "https://notes.jorisjonkers.dev/home",
+        roles: ["user"],
+        label: "Notes",
+      });
+      expect(
+        application(
+          signingIn(NATIVE.replace("credential: secret", "credential: pkce")),
+          SIGNED_IN,
+        ).client,
+      ).not.toHaveProperty("secretPath");
+    });
+
+    it("names a token Client's host and roles, and nothing a Launcher shows", () => {
+      expect(
+        application(
+          signingIn("signIn: token\nroles: [writer]", { audience: "internal" }),
+          INTERNAL,
+        ).client,
+      ).toStrictEqual({
+        signIn: "token",
+        host: "notes.jorisjonkers.dev",
+        roles: ["user", "writer"],
+      });
+    });
+
+    it("derives nothing for an Application that declares no client", () => {
+      expect(application(one(serving("notes-api")))).not.toHaveProperty(
+        "client",
+      );
+    });
+  });
+
+  describe("its credential", () => {
+    it("reads the client secret from the derived path, delivered as a secret reference is, under a grant of its own", () => {
+      const process = processOf(signingIn(NATIVE), CLIENT_SECRET);
+
+      expect(
+        process.environment?.find(({ name }) => name === "OIDC_CLIENT_SECRET"),
+      ).toStrictEqual({
+        name: "OIDC_CLIENT_SECRET",
+        secret: { path: SECRET_PATH, key: "secret" },
+      });
+      expect(process.secrets).toStrictEqual([
         {
-          platform: (platform) =>
-            platform.replace(
-              "hardening:",
-              "signIn:\n  issuer: https://auth.jorisjonkers.dev\n  provider: edge/traefik-public\nhardening:",
-            ),
-          env: [
+          path: SECRET_PATH,
+          keys: ["id", "secret"],
+          access: "read",
+          delivery: "env",
+          destination: "notes-api-notes-system-notes-client",
+          restartTargets: ["notes-api"],
+        },
+      ]);
+    });
+
+    it("grants no read to a Process that does not reference the secret", () => {
+      const resolved = application(signingIn(NATIVE), SIGNED_IN);
+
+      expect(resolved.processes[0]?.secrets).toBeUndefined();
+      expect(resolved.secretStore).toBeUndefined();
+    });
+
+    it("orders a reader after the Secret Store's Project, and syncs its grant through the store", () => {
+      const resolved = application(signingIn(NATIVE), CLIENT_SECRET);
+
+      expect(resolved.reconcileAfter).toContain("apps-secrets");
+      expect(resolved.secretStore).toBe(
+        "http://vault.secrets-system.svc.cluster.local:8200",
+      );
+      expect(resolved.processes[0]?.egress).toContainEqual(
+        expect.objectContaining({ rule: "secret-store" }),
+      );
+    });
+
+    it("grants the sign-in provider's Process write on every client secret, in path order, read by the Process itself", () => {
+      const identity = projectNamed(
+        projects(signingIn(NATIVE), CLIENT_SECRET),
+        "identity",
+      ).applications.find(({ id }) => id === "identity");
+      const process = identity?.processes[0];
+
+      expect(process?.secrets).toStrictEqual([
+        {
+          client: "grafana",
+          delivery: "self",
+          paths: [
             {
-              name: "minimal/env/notes-api/base.env",
-              text: "CLIENT_SECRET=${client:secret}\n",
+              path: "secret/data/identity-system/grafana/client",
+              allows: ["create", "read", "update"],
             },
           ],
         },
-      ),
-    ).toThrow(
-      "CLIENT_SECRET: ${client:secret} renders once the Client's credential path is derived (#449)",
-    );
+        {
+          client: "notes",
+          delivery: "self",
+          paths: [{ path: SECRET_PATH, allows: ["create", "read", "update"] }],
+        },
+      ]);
+      expect(process?.identityToken).toBe(true);
+      expect(process?.egress).toContainEqual(
+        expect.objectContaining({ rule: "secret-store" }),
+      );
+      expect(identity?.reconcileAfter).toContain("apps-secrets");
+    });
+  });
+
+  describe("the Release Gate's anonymous check", () => {
+    it("is handed a native Client's protected path", () => {
+      expect(
+        application(signingIn(NATIVE), SIGNED_IN).releaseGate?.protectedPath,
+      ).toBe("/api/me");
+    });
+
+    it("is handed no path for a Client that is not native", () => {
+      expect(
+        application(signingIn(GATED), SIGNED_IN).releaseGate,
+      ).not.toHaveProperty("protectedPath");
+    });
   });
 });
 
@@ -2546,7 +2811,7 @@ ${serving("notes-api")}`,
               .replace(/\n\s+forwardAuth: [^\n]*/, "")
               .replace(
                 "audiences: [lan]",
-                "audiences: [lan, authenticated]\n    forwardAuth: http://lan-auth",
+                "audiences: [lan, authenticated]\n    forwardAuth: http://lan-auth.lan-system.svc.cluster.local:9000/forward",
               ),
         },
       ).exposure ?? [];
@@ -2554,7 +2819,7 @@ ${serving("notes-api")}`,
     expect(exposure?.tier).toBe("public-frankfurt");
     expect(exposure?.routes[0]?.middleware?.[0]).toStrictEqual({
       kind: "forward-auth",
-      endpoint: "http://lan-auth",
+      endpoint: "http://lan-auth.lan-system.svc.cluster.local:9000/forward",
     });
   });
 

@@ -18,6 +18,7 @@ import type {
   SharedIntent as Level,
 } from "../model/project-intent.ts";
 import {
+  clientExposure,
   declared,
   effectiveCutover,
   NODE_DIMENSIONS,
@@ -330,17 +331,6 @@ const CLIENT_AUDIENCES: Readonly<Record<Client["signIn"], readonly string[]>> =
 /** The path the Gate takes back on a gated host, which no route of its own may claim. */
 const GATE_PATH = "/.auth";
 
-/** The exposure a Client names, or the only one its Application declares. */
-export function clientExposure(
-  application: Application,
-  client: Client,
-): NonNullable<Application["exposure"]>[number] | undefined {
-  const exposures = application.exposure ?? [];
-  const named = client.exposure;
-  if (named !== undefined) return exposures.find(({ name }) => name === named);
-  return exposures.length === 1 ? exposures[0] : undefined;
-}
-
 function clientRefusals(application: Application, at: string): Refusal[] {
   const client = application.client;
   if (client === undefined) return [];
@@ -368,7 +358,7 @@ function clientRefusals(application: Application, at: string): Refusal[] {
       message: `a ${client.signIn} Client requires ${missing.join(", ")}`,
       hint: "Declare every field the Sign-in Mode requires.",
     });
-  const exposure = clientExposure(application, client);
+  const exposure = clientExposure(application);
   if (exposure === undefined)
     refusals.push({
       code: "E_CLIENT_EXPOSURE_UNRESOLVED",
