@@ -213,9 +213,16 @@ composes as if nothing happened.
 
 - **What changed is what is isolated.** An error names the fragments involved.
   Of those, the ones whose digest differs from the previous lock's are isolated,
-  so a collision is blamed on the fragment that introduced it. Composition then
-  runs again over the remaining set, and repeats until no error names a changed
-  fragment.
+  so a collision is blamed on the fragment that introduced it. An error that
+  spans fragments names the others it rests on too: an edge that names a
+  Surface its provider no longer holds (`E_UNKNOWN_SURFACE`) names the provider's
+  fragment. Where the fragment an error is placed at did not change, the error
+  is blamed on the changed fragments its own errors rest on, so a provider that
+  drops a Surface an unchanged consumer still names is the one isolated, and the
+  consumer and every other Project compose
+  ([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+  Composition then runs again over the remaining set, and repeats until no error
+  names a changed fragment.
 - **A participant's own errors isolate it, changed or not.** A missing or stale
   participant (`E_PARTICIPANT_MISSING`, `E_PARTICIPANT_STALE`), and one whose
   `schemaVersion` the toolkit does not accept (`E_SCHEMA_VERSION_MISMATCH`), is

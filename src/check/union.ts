@@ -600,12 +600,21 @@ export const INVARIANTS: readonly Invariant[] = [
         return known || (!declared && provider === undefined)
           ? []
           : [
-              refusal(
-                "E_UNKNOWN_SURFACE",
-                placed,
-                `${edge.application} provides no surface ${edge.surface}`,
-                "Name a surface a Process of that Application provides, or one the provider lists.",
-              ),
+              {
+                ...refusal(
+                  "E_UNKNOWN_SURFACE",
+                  placed,
+                  `${edge.application} provides no surface ${edge.surface}`,
+                  "Name a surface a Process of that Application provides, or one the provider lists.",
+                ),
+                involves: union
+                  .filter(({ document }) =>
+                    document.applications.some(
+                      ({ id }) => id === edge.application,
+                    ),
+                  )
+                  .map(({ name }) => name),
+              },
             ];
       }),
   },

@@ -46,8 +46,13 @@ simply does not move until its fragment is fixed.
 **Isolation is decided by what changed.** An invariant breach names the
 fragments involved. The ones whose digest differs from the previous lock are the
 ones set aside, so a collision is blamed on the fragment that introduced it, not
-on the one that was there first. When none of them changed, the breach came
-from the Platform document or the toolkit, and there is nothing to isolate.
+on the one that was there first. A breach at a consumer's edge names the
+provider's fragment beside it, because a provider that drops what its consumers
+name is the change, and the consumer only reports it: the provider is set
+aside, and the consumer and every other Project compose
+([0116](0116-a-project-owns-every-object-it-delivers.md)). When none of the
+fragments a breach involves changed, the breach came from the Platform document
+or the toolkit, and there is nothing to isolate.
 
 ## Alternatives
 
