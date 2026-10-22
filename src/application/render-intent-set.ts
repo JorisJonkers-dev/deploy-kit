@@ -9,10 +9,6 @@ import {
   type Adapter,
 } from "../adapters/registry.ts";
 import { renderEvents } from "../adapters/kubernetes/events.ts";
-import { renderRollbackBackups } from "../adapters/kubernetes/rollback-backups.ts";
-import { renderRollbackPolicies } from "../adapters/networking/rollback.ts";
-import { rollbackDumpOf } from "../adapters/shared/rollback-dump.ts";
-import { renderRollbackCredential } from "../adapters/vso/rollback.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
   applicationDirectory,
@@ -58,11 +54,6 @@ export interface RenderOptions extends ResolveOptions {
   readonly adapters?: readonly Adapter[];
   /** The projects whose share of the tree to render. */
   readonly projects: readonly string[];
-  /**
-   * The Rollback backups asked for, by Project: each one rendered, as one-shot
-   * Jobs, where that Project's share of the tree is.
-   */
-  readonly rollbackBackups?: ReadonlyMap<string, string>;
 }
 
 /** One rendered file, attributed to the adapter that produced it. */
@@ -317,25 +308,6 @@ export function renderResolvedSet(
       adapter.render(project),
     ),
   );
-  const backups = rendering.flatMap((project) => {
-    const request = options.rollbackBackups?.get(project.project);
-    if (request === undefined) return [];
-    const dump = rollbackDumpOf(
-      project,
-      request,
-      resolved.projects,
-      resolved.catalogJobs ?? [],
-    );
-    return [
-      ...renderRollbackBackups(project, request, dump),
-      ...(dump === undefined
-        ? []
-        : [
-            ...renderRollbackCredential(project.project, dump),
-            ...renderRollbackPolicies(project.project, dump),
-          ]),
-    ];
-  });
   const held = heldCatalogs(resolved, options.projects);
   const catalogs = catalogJobsOf(resolved, held, options.hash);
   const rendered = [
@@ -352,7 +324,6 @@ export function renderResolvedSet(
     ...rendering.flatMap(({ project }) =>
       events === undefined ? [] : renderEvents(events, project),
     ),
-    ...backups,
   ];
   const deliverables = [
     ...rendered,

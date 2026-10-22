@@ -11,8 +11,5 @@ export const unitOf = (project: string): string => `apps-${project}`;
 /** The unit that applies the catalog of a datastore the old path still runs, while one does. */
 export const SECRETS_UNIT = "estate-vso-secrets";
 
-/** The unit that applies a Rollback's one-shot backup Jobs. */
-export const ROLLBACK_BACKUPS_UNIT = "estate-rollback-backups";
-
 /** The unit that applies the routes one tier's proxy serves. */
 export const edgeUnitOf = (tier: string): string => `estate-edge-${tier}`;

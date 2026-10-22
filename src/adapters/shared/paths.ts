@@ -13,9 +13,6 @@ export const ESTATE_DIRECTORY = "estate";
  */
 export const SECRETS_DIRECTORY = `${ESTATE_DIRECTORY}/vso-secrets`;
 
-/** Where a Rollback's one-shot backup Jobs land, while one is asked for. */
-export const ROLLBACK_BACKUPS_DIRECTORY = `${ESTATE_DIRECTORY}/rollback-backups`;
-
 export const projectDirectory = (project: string): string => `apps/${project}`;
 
 /** Where a Project's own Vault policy job and the documents it writes land. */

@@ -498,9 +498,9 @@ moves the pin ([chapter 55](spec/v1/55-delivery.md#what-a-pin-source-holds)).
 **Rollback**: re-composing one Project at the fragment of an earlier release,
 asked for by a human, while the database schema stays at its newest: no
 migration runs backwards, so the earlier release must be one proven against the
-current schema. It first takes a backup of the data the Project reaches, kept
-for a short window beside the class's own copies, and moves the pin only once
-that backup has succeeded. A Rollback names its target by the release version
+current schema. It takes no backup of its own, relying on the scheduled ones
+its Durability Classes derive, and moves the pin in the same commit that pauses
+the Project. A Rollback names its target by the release version
 the Project's repository tagged, never by a commit. Not a **Down**, which only
 undoes a held release's migration
 ([chapter 55](spec/v1/55-delivery.md#pause-and-rollback)).

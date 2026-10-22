@@ -87,9 +87,8 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   published, and the `_estate` artifact holds only `estate-vso-secrets` while
   a datastore the old path runs has a catalog the estate path applies, that
   catalog's Jobs and the estate-scoped policy job that writes its documents,
-  which no Project's unit depends on, and `estate-rollback-backups` while a
-  Rollback's backup is asked for; the edge units join them once no Project is
-  on the old path
+  which no Project's unit depends on; the edge units join it once no Project
+  is on the old path
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
 - **The `_estate` artifact holds only what no Project can own.** A Project
   owns every object it delivers
@@ -106,9 +105,7 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   routes into each routed Project's artifact
   ([#546](https://github.com/JorisJonkers-dev/deploy-kit/issues/546)), the
   rollout events into an `Alert` per Project
-  ([#545](https://github.com/JorisJonkers-dev/deploy-kit/issues/545)), and the
-  rollback backups away entirely
-  ([#557](https://github.com/JorisJonkers-dev/deploy-kit/issues/557)). A Project's
+  ([#545](https://github.com/JorisJonkers-dev/deploy-kit/issues/545)). A Project's
   artifact then never depends on another Project's fragment, so one Project's
   publish neither re-pins nor holds another.
 - **Signed keyless, and annotated.** The artifact is signed by the composition
@@ -216,9 +213,7 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 
 A Project's artifact holds its one unit, its own Vault policy job among what
 it applies. The estate-scoped artifact holds `estate-vso-secrets` where it
-carries the catalog of a datastore the old path still runs,
-`estate-rollback-backups` while a Rollback's backup
-is asked for ([Pause and Rollback](#pause-and-rollback)), and one
+carries the catalog of a datastore the old path still runs, and one
 `estate-edge-<tier>` per tier it carries
 routes for; while a Project is on the old path, it carries no route. A unit the artifact gains changes what it holds,
 so its pin moves and the rewritten source applies the new unit: the edge units
@@ -263,28 +258,17 @@ one the current inputs produce. In order:
    Project move a schema with a changelog, the target must be the release every
    one of their proofs names. A Project with no changelog may roll back to any
    earlier release. Anything else is refused before anything runs.
-2. **A backup first.** The Rollback runs a backup of the data the Project
-   reaches: each of its backed-up volumes, and its project database on the
-   datastore its edges reach. That backup is kept for 7 days beside the
-   Durability Class's own copies, which it never counts against. The workflow
-   cannot reach the cluster, so the backup runs through Flux: its first commit
-   pauses the Project and asks for the backup with `rollback-backup`, naming
-   the request by the workflow run. While a pin asks, composition renders the
-   Project at the release it is pinned to and adds one one-shot backup `Job`
-   per backed-up volume, and one that dumps its database, to the estate-scoped artifact, in the unit
-   `estate-rollback-backups` ([chapter 30](30-deliverables.md#a-rollbacks-backup)),
-   so neither the Project's render nor its pin moves while it runs. The
-   Collector reports how each Job ended in the cluster state's `backups`
-   ([chapter 20](20-resolved-deployment.md#cluster-state)), and the workflow
-   waits on that for 45 minutes.
-3. **The pin moves only once the backup has succeeded.** A backup that fails,
-   or that has not ended when the wait does, stops the Rollback with the pin
-   where it was: the workflow removes `rollback-backup`, leaves the Project
-   paused with a reason that says the Rollback stopped, and reports the Job's
-   outcome. Once every Job of the request has succeeded, the second commit
-   removes `rollback-backup` and records the target on the pin file, and
-   composition moves the pin to that release's render: the one move a paused
-   Project makes.
+2. **No backup of its own.** The data a Rollback could lose is what was
+   written since the last scheduled backup each volume's Durability Class
+   derives ([chapter 14](14-platform-intent.md#durability-policy)): the schema
+   stays at its newest, migrations are forward-only and proven, and a held
+   release is undone by its `down`
+   ([Failure and undo](#failure-and-undo)). So the Rollback takes none, and
+   nothing it asks for is rendered outside the Project's own share
+   ([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+3. **One commit moves the pin.** The workflow pauses the Project and records
+   the target on the pin file in the same commit, and composition moves the pin
+   to that release's render: the one move a paused Project makes.
 4. **The Project is left paused.** Its repository still publishes its newest
    release; without the Pause the next composition would deploy exactly what
    the Rollback removed. Resuming is a human's statement that the fix has
@@ -301,17 +285,16 @@ paused what, when and why:
 | `estate.jorisjonkers.dev/paused-reason` | a Pause or a Rollback | the reason given, required |
 | `estate.jorisjonkers.dev/rollback-version` | a Rollback | the release version rolled back to |
 | `estate.jorisjonkers.dev/rollback-fragment` | a Rollback | that release's fragment, by digest |
-| `estate.jorisjonkers.dev/rollback-backup` | a Rollback, until its backup has ended | the request: the workflow run's id, at most 20 letters, digits and inner hyphens |
 
 Their JSON Schema is
 [`schemas/pin-annotations.schema.json`](schemas/pin-annotations.schema.json).
 Composition reads the annotations as an input: a Project carrying
 `paused-by` moves no pin, save that one carrying `rollback-fragment` is
 composed at that fragment and its pin moves to that render wherever it holds
-another. One carrying `rollback-backup` is composed at the fragment it is
-pinned to, and its backup Jobs are rendered; it carries no `rollback-fragment`
-beside it, because the target is recorded only once the backup has succeeded.
-A rewritten pin source keeps all of them. Resuming removes all six.
+another. An earlier Rollback asked for a backup of its own with
+`estate.jorisjonkers.dev/rollback-backup`; the schema still accepts it, and
+composition reads nothing from it.
+A rewritten pin source keeps all of them. Resuming removes them all.
 
 ## Switchover
 
