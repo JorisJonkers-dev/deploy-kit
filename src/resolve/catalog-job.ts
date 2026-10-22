@@ -68,12 +68,30 @@ function readersOf(
     .sort();
 }
 
+/** Where a catalog method's objects belong: the Project and Application that run its datastore. */
+export interface CatalogHome {
+  readonly project: string;
+  readonly application: string;
+}
+
+/**
+ * The catalog methods, and the home of each whose datastore's own Project is
+ * on the estate path (spec/v1/16-dependencies.md#applying-the-catalog): that
+ * Project's unit applies it. A method with no home belongs to a datastore the
+ * old path still runs, and is estate-scoped.
+ */
+export interface ResolvedCatalogs {
+  readonly jobs: readonly ResolvedCatalogJob[];
+  readonly homes: ReadonlyMap<ResolvedCatalogJob, CatalogHome>;
+}
+
 export function resolveCatalogJobs(
   set: PinnedSet,
   job: ResolvedPolicyJob | undefined,
-): ResolvedCatalogJob[] {
-  if (job === undefined) return [];
-  return set.projects.flatMap((owner: EffectiveProject) =>
+): ResolvedCatalogs {
+  const homes = new Map<ResolvedCatalogJob, CatalogHome>();
+  if (job === undefined) return { jobs: [], homes };
+  const jobs = set.projects.flatMap((owner: EffectiveProject) =>
     owner.applications.flatMap((application) =>
       application.processes.filter(ownsDatabases).flatMap((process) => {
         // E_NO_ENGINE_POLICY refused an engine the platform has no entry for.
@@ -107,94 +125,48 @@ export function resolveCatalogJobs(
         const port = process.provides?.[surface] as number;
         const identity = catalogIdentityOf(process.name);
         const store = storeOf({ platform: set.platform, union: set.projects });
-        return [
-          {
-            identity,
-            namespace: home.namespace,
-            image: `${image.repository}@${image.digest}`,
-            ...versionOf("imageVersion", image),
-            uid: image.uid,
-            gid: image.gid,
-            role: vaultNameOf(home.namespace, identity),
-            address: job.address,
-            memory: job.memory,
-            cpu: job.cpu,
-            deadline: job.deadline,
-            eligibleNodes: job.eligibleNodes,
-            catalog: {
-              host: `${home.process}.${home.namespace}.svc.cluster.local`,
-              port,
-              connection: process.name,
-              admin,
-              databases: readers.map((project) => ({
-                name: `${project}_db`,
-                owner: ownerRole(project),
-                data: dataRole(project),
-              })),
-            },
-            egress: [
-              { rule: "datastore", ...home, port },
-              store,
-              {
-                rule: "cluster-dns",
-                namespace: set.platform.substrate.clusterDns,
-                port: DNS_PORT,
-              },
-            ],
+        const resolved: ResolvedCatalogJob = {
+          identity,
+          namespace: home.namespace,
+          image: `${image.repository}@${image.digest}`,
+          ...versionOf("imageVersion", image),
+          uid: image.uid,
+          gid: image.gid,
+          role: vaultNameOf(home.namespace, identity),
+          address: job.address,
+          memory: job.memory,
+          cpu: job.cpu,
+          deadline: job.deadline,
+          eligibleNodes: job.eligibleNodes,
+          catalog: {
+            host: `${home.process}.${home.namespace}.svc.cluster.local`,
+            port,
+            connection: process.name,
+            admin,
+            databases: readers.map((project) => ({
+              name: `${project}_db`,
+              owner: ownerRole(project),
+              data: dataRole(project),
+            })),
           },
-        ];
+          egress: [
+            { rule: "datastore", ...home, port },
+            store,
+            {
+              rule: "cluster-dns",
+              namespace: set.platform.substrate.clusterDns,
+              port: DNS_PORT,
+            },
+          ],
+        };
+        if (onEstatePath(set, owner.project))
+          homes.set(resolved, {
+            project: owner.project,
+            application: application.id,
+          });
+        return [resolved];
       }),
     ),
   );
-}
-
-/** Where a catalog method's objects belong: the Project and Application that run its datastore. */
-export interface CatalogHome {
-  readonly project: string;
-  readonly application: string;
-}
-
-/** The key a catalog method is found under: its namespace and its identity. */
-export const catalogKeyOf = ({
-  namespace,
-  identity,
-}: Pick<ResolvedCatalogJob, "namespace" | "identity">): string =>
-  `${namespace}/${identity}`;
-
-/**
- * The home of each catalog method whose datastore's own Project is on the
- * estate path (spec/v1/16-dependencies.md#applying-the-catalog): that
- * Project's unit applies it. A method absent here belongs to a datastore the
- * old path still runs, and is estate-scoped.
- */
-export function catalogHomesOf(
-  set: PinnedSet,
-  jobs: readonly ResolvedCatalogJob[],
-): ReadonlyMap<string, CatalogHome> {
-  const derived = new Set(jobs.map(catalogKeyOf));
-  return new Map(
-    set.projects
-      .filter(({ project }) => onEstatePath(set, project))
-      .flatMap((owner) =>
-        owner.applications.flatMap((application) =>
-          application.processes.filter(ownsDatabases).map((process) => {
-            const { namespace } = homeOf(
-              set.platform,
-              owner.project,
-              application.id,
-              process.name,
-            );
-            const key = catalogKeyOf({
-              namespace,
-              identity: catalogIdentityOf(process.name),
-            });
-            return [
-              key,
-              { project: owner.project, application: application.id },
-            ] as const;
-          }),
-        ),
-      )
-      .filter(([key]) => derived.has(key)),
-  );
+  return { jobs, homes };
 }

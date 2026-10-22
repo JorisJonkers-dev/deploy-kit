@@ -29,7 +29,6 @@ import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
 import type { ServiceAccount } from "../objects/kubernetes.ts";
-import { catalogKeyOf } from "../resolve/catalog-job.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
   resolveIntentSet,
@@ -189,7 +188,7 @@ function catalogJobsOf(
   hash: Hasher,
 ): Deliverable[] {
   return (resolved.catalogJobs ?? []).flatMap((job) => {
-    const home = resolved.catalogHomes?.get(catalogKeyOf(job));
+    const home = resolved.catalogHomes.get(job);
     const held =
       home === undefined
         ? job.catalog.databases.some(({ name }) =>

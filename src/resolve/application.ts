@@ -114,9 +114,15 @@ function reconcileAfter(
       (process) =>
         ownsDatabases(process) &&
         // E_NO_ENGINE_POLICY refused an engine the platform has no entry for.
-        context.platform.engines[
-          process.engine as NonNullable<typeof process.engine>
-        ]?.catalog !== undefined,
+        (
+          context.platform.engines[
+            process.engine as NonNullable<typeof process.engine>
+          ] as NonNullable<
+            (typeof context.platform.engines)[NonNullable<
+              typeof process.engine
+            >]
+          >
+        ).catalog !== undefined,
     );
   // A migration holds the owner credential, so its role is written first too.
   const held = grants || catalog || managed(application);
