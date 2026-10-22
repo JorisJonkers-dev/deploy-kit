@@ -38,7 +38,7 @@ This list holds **29** witnesses, and **1** pending.
 | REQ-038 | `ResolutionTest#theRevisionIsTheOneEveryCommittedProjectionRecordsAndMovesOnlyWithADecision` |
 | REQ-039 | `ParityTest#the resolved dependency edges equal the committed oracle` |
 | REQ-040 | `RenderedTreeTest#aProjectsShareIsItsCommittedTreeByteForByte` |
-| REQ-049 | `RenderedTreeTest#theEstateShareMinimalAndDataHoldBetweenThemIsTheCommittedEstateTree` |
+| REQ-049 | `RenderedTreeTest#aProjectsShareIsItsCommittedTreeByteForByte` |
 | REQ-052 | `RenderedTreeTest#authsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
 | REQ-053 | `RenderedTreeTest#theKnowledgePlatformsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
 | REQ-054 | `ParityTest#a negative fixture equals its committed diagnostics in either order` |

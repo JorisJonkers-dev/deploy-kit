@@ -190,7 +190,7 @@ class OutputsTest {
                             ? text.replace("surface: http }", "surface: grpc }")
                             : text);
         }
-        Files.createDirectories(examples.resolve("_estate/rendered"));
+        Files.createDirectories(examples.resolve("minimal/rendered"));
         Files.createDirectories(examples.resolve("refusals"));
 
         Outputs.write(examples, out);

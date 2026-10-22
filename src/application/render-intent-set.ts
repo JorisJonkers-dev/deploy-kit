@@ -9,6 +9,7 @@ import {
   type Adapter,
 } from "../adapters/registry.ts";
 import { renderEvents } from "../adapters/kubernetes/events.ts";
+import { ADAPTER as TRAEFIK } from "../adapters/traefik/render.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
   applicationDirectory,
@@ -54,6 +55,11 @@ export interface RenderOptions extends ResolveOptions {
   readonly adapters?: readonly Adapter[];
   /** The projects whose share of the tree to render. */
   readonly projects: readonly string[];
+  /**
+   * Whether each Project's share carries its routes: not while the old path
+   * still serves the edge (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+   */
+  readonly routes?: boolean;
 }
 
 /** One rendered file, attributed to the adapter that produced it. */
@@ -303,10 +309,11 @@ export function renderResolvedSet(
   const rendering = resolved.projects.filter(({ project }) =>
     options.projects.includes(project),
   );
+  const adapters = (options.adapters ?? ADAPTERS).filter(
+    ({ name }) => options.routes !== false || name !== TRAEFIK,
+  );
   const projects = rendering.flatMap((project) =>
-    (options.adapters ?? ADAPTERS).flatMap((adapter) =>
-      adapter.render(project),
-    ),
+    adapters.flatMap((adapter) => adapter.render(project)),
   );
   const held = heldCatalogs(resolved, options.projects);
   const catalogs = catalogJobsOf(resolved, held, options.hash);

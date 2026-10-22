@@ -98,8 +98,8 @@ public final class Outputs {
     /**
      * The union the rendered trees are written from: every project whose share the production
      * implementation renders, read and rendered together, so the estate-scoped share they hold
-     * between them is written whole. Its tree is the committed {@code minimal/rendered/}, {@code
-     * data/rendered/} and {@code _estate/rendered/} together.
+     * between them is written whole. Its tree is the committed {@code minimal/rendered/} and {@code
+     * data/rendered/} together, and holds nothing estate-scoped.
      */
     public static final Union RENDERED_UNION =
             new Union(List.of("notes", "data"), withFoundation("minimal/notes.project.yml", "data/data.project.yml"));
@@ -130,8 +130,8 @@ public final class Outputs {
     /** The projects one rendering writes together, and the set of documents they are read with. */
     public record Union(List<String> projects, List<String> documents) {}
 
-    /** The estate-scoped tree's oracle, whose presence says the examples carry rendered trees at all. */
-    private static final String ESTATE_TREE = "_estate/rendered";
+    /** minimal's rendered tree, whose presence says the examples carry rendered trees at all. */
+    private static final String RENDERED_ORACLE = "minimal/rendered";
 
     private static final String DEPENDENCIES_ORACLE = "expected/" + DependencyEdges.NAME;
 
@@ -162,7 +162,7 @@ public final class Outputs {
                 writeResolved(out.resolve(examples.relativize(directory)), examples, resolving);
             }
         }
-        if (Files.isDirectory(examples.resolve(ESTATE_TREE))) {
+        if (Files.isDirectory(examples.resolve(RENDERED_ORACLE))) {
             writeRendered(out.resolve(RENDERED_TREE), examples);
         }
         writeNegative(examples, out);

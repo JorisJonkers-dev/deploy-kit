@@ -42,8 +42,10 @@
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
 
-  <!-- notes holds no dependency and no grant, so its unit follows nothing. -->
-  <reconcileUnits name="apps-notes"/>
+  <!-- notes holds no dependency and no grant; its route waits on the edge Project, which declares
+       its tier's proxy. -->
+  <reconcileUnits name="apps-notes" after="//@reconcileUnits.1"/>
+  <reconcileUnits name="apps-edge"/>
 
   <!--
     The Vault policy job the platform names, in the Secret Store's namespace
@@ -57,7 +59,7 @@
   </policyJob>
   <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
 
-  <applications id="notes" revision="sha256:d8cb7f5ca6716414c4310c6708413739f79e7242ea97d2e98679624065536466" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:ef696808e72682803cbe3963fc043dec3601e82b0385a9ace81e86ea55052226" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
     <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="180s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
@@ -125,8 +127,8 @@
 
   <!--
     One entry per file the templates write, each with the path layer 2 assigned
-    it. The project's share is the tree under spec/v1/examples/minimal/rendered/,
-    and the route under estate/ is estate-scoped, in spec/v1/examples/_estate/rendered/.
+    it. The project's share is the tree under spec/v1/examples/minimal/rendered/, its route
+    among it.
   -->
   <deliverables xsi:type="resolveddeployment:NamespaceFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/namespace.yaml" adapter="kubernetes" namespace="notes-system"/>
@@ -141,7 +143,10 @@
       libraries="//@applications.0/@processes.0/@libraries.0"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/kustomization.yaml" adapter="kubernetes"
-      resources="canary.yaml configmap.yaml podmonitor.yaml serviceaccount.yaml workload.yaml"/>
+      resources="canary.yaml configmap.yaml podmonitor.yaml route-public.yaml serviceaccount.yaml workload.yaml"/>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/notes/route-public.yaml" adapter="traefik" exposure="//@applications.0/@exposure.0"
+      entryPoint="websecure" certificateResolver="acme"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/notes/workload.yaml" adapter="kubernetes" processes="//@applications.0/@processes.0"
       controller="Deployment" strategy="RollingUpdate"/>
@@ -166,11 +171,6 @@
       <egress rule="cluster-dns" namespace="kube-system" port="53"/>
     </policies>
   </deliverables>
-  <deliverables xsi:type="resolveddeployment:IngressRouteFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="estate/edge/public-frankfurt/notes-public.yaml" adapter="traefik" exposure="//@applications.0/@exposure.0"
-      entryPoint="websecure" certificateResolver="acme"/>
-  <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="estate/edge/public-frankfurt/kustomization.yaml" adapter="kubernetes" resources="notes-public.yaml"/>
   <!-- The route Flux's events about this project's unit take to the Reporter: its own Provider
        and Alert, in Flux's namespace (spec/v1/55-delivery.md#rollouts). -->
   <deliverables xsi:type="resolveddeployment:EventsFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

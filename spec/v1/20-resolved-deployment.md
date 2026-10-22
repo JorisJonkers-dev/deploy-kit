@@ -1161,8 +1161,10 @@ The Reconcile Unit is **derived from the dependency graph**, never declared
 ([0033](../../docs/adr/model/0033-reconcile-unit-derived.md)). An Application's unit is
 `apps-<project>`; the ordering between units is the required edges of
 [chapter 16](16-dependencies.md#dependency-edges) projected onto projects, plus an
-edge to the unit of the Platform Project that declares the Secret Store
-wherever an Application holds any grant, migrates its own schema with the
+edge to the unit of the Platform Project that declares each proxy an
+Application's exposures' tiers name, and an edge to the unit of the Platform
+Project that declares the Secret Store wherever an Application holds any
+grant, migrates its own schema with the
 owner credential, or runs a datastore whose engine applies a catalog, unless it
 is that Project. Each Project's own Vault policy
 job writes its roles into that store
@@ -1183,18 +1185,21 @@ it needs that role. Only the Stable Addresses stay estate-scoped
 ([chapter 16](16-dependencies.md#the-stable-address)), because each must
 outlive its provider's move between Projects.
 
-Two kinds of unit still belong to no Project, because what they apply is
-estate-scoped ([The path plan](#the-path-plan)). Each moves where its last
-column says, in the change that column names, and its row goes with it:
+One kind of unit still belongs to no Project, because what it applies is
+estate-scoped ([The path plan](#the-path-plan)), and it moves where its last
+column says:
 
 | unit | applies | follows | moves to |
 |---|---|---|---|
 | `estate-vso-secrets`, while a datastore the old path runs has a catalog the estate path applies | `estate/vso-secrets/`: that catalog's Jobs and its documents, and the estate-scoped policy job that writes them ([The catalog methods](#the-catalog-methods)); every Project writes its own documents from its own unit ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) | the unit of the project that declares the Secret Store, which the job writes into; no Project's unit follows it, and a reader of that database retries until it exists | the datastore's own Project's unit, once that Project leaves the old path ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)) |
-| `estate-edge-<tier>`, one per tier a route reaches | `estate/edge/<tier>/`: the routes that tier's proxy serves | the unit of the project that declares the tier's proxy, and of every project with an exposure on the tier, so no route is applied before its proxy or its own namespace exists | each routed Project's own unit, following the unit of the Project that declares the tier's proxy ([#546](https://github.com/JorisJonkers-dev/deploy-kit/issues/546)) |
 
-A tier has a unit of its own so that one tier's refused route holds only that
-tier. These are the units the estate-scoped artifact's pin applies
-([chapter 55](55-delivery.md#rendered-artifacts-and-pins)).
+It is the unit the estate-scoped artifact's pin applies
+([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). A Project's routes
+are its own, in its own unit, which follows the unit of the Project that
+declares each proxy its exposures' tiers name
+([#546](https://github.com/JorisJonkers-dev/deploy-kit/issues/546)): no route
+is applied before its proxy, and one Project's refused route holds that Project
+alone.
 
 No such unit is named `apps-`, and no such directory is under `apps/`. That
 prefix and that directory are a Project's own: `apps-<project>` and

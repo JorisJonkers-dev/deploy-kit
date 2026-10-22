@@ -130,7 +130,7 @@ class ParityTest {
          * the production implementation renders. `auth`'s and `knowledge`'s trees are hand-written
          * goal states it does not render yet.
          */
-        private val RENDERED_CASES = listOf("minimal", "data", "_estate")
+        private val RENDERED_CASES = listOf("minimal", "data")
 
         /** Every file under `root`, by its path below it, sorted; a tree's README is no rendered file. */
         private fun filesUnder(root: Path): List<String> =

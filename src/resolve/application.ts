@@ -5,12 +5,14 @@
 import type {
   EffectiveApplication,
   EffectiveProcess,
+  EffectiveProject,
 } from "../model/effective-intent.ts";
 import { inSeconds, seconds } from "../model/durations.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type {
   ReleaseGate,
   ResolvedApplicationDocument,
+  ResolvedExposure,
   ResolvedMigration,
   ResolvedProcess,
 } from "../model/resolved-deployment.ts";
@@ -21,7 +23,12 @@ import {
   reachesDatabase,
 } from "../model/project-intent-queries.ts";
 import { unitOf } from "../model/reconcile-units.ts";
-import { holds } from "../model/platform-intent.ts";
+import {
+  holds,
+  type PlatformIntentDocument,
+} from "../model/platform-intent.ts";
+
+type Tier = PlatformIntentDocument["tiers"][number];
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
 import { managed } from "./database.ts";
@@ -75,7 +82,8 @@ const synced = (processes: readonly ResolvedProcess[]): boolean =>
 
 /**
  * The units that must be Ready first: every other project a required edge
- * reaches, and the secrets-provisioning unit wherever a Process holds a grant
+ * reaches, the Secret Store's Project wherever a Process holds a grant, and
+ * the Project that declares each proxy an exposure's tier names
  * (spec/v1/20-resolved-deployment.md#the-reconcile-unit). An optional edge
  * orders nothing (spec/v1/55-delivery.md#release-order), so two projects that
  * name each other optionally never wait on each other.
@@ -83,6 +91,7 @@ const synced = (processes: readonly ResolvedProcess[]): boolean =>
 function reconcileAfter(
   application: EffectiveApplication,
   context: ApplicationContext,
+  exposure: readonly ResolvedExposure[],
 ): string[] {
   const providers = application.processes.flatMap(({ dependsOn }) =>
     // A missing list and any fallback resolve no provider alike.
@@ -146,7 +155,23 @@ function reconcileAfter(
     held && store !== undefined && store !== context.project
       ? [unitOf(store)]
       : [];
-  return [...new Set([...providers, ...secrets])].sort();
+  // A route needs its tier's proxy, which the Project that declares it brings
+  // up; the route is in this Project's own unit
+  // (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+  const proxies = exposure.flatMap(({ tier }) => {
+    // E_NO_TIER_FOR_AUDIENCE refused an exposure no tier carries.
+    const proxy = (
+      context.platform.tiers.find(({ name }) => name === tier) as Tier
+    ).traefik;
+    // E_UNKNOWN_TIER_PROXY refused a proxy no project file declares.
+    const edge = (
+      context.union.find(({ project, applications }) =>
+        applications.some(({ id }) => holds(proxy, project, id)),
+      ) as EffectiveProject
+    ).project;
+    return edge === context.project ? [] : [unitOf(edge)];
+  });
+  return [...new Set([...providers, ...secrets, ...proxies])].sort();
 }
 
 type Probe = NonNullable<
@@ -297,7 +322,11 @@ export function resolveApplication(
     };
   });
   const processes = pairs.map(({ resolved }) => resolved);
-  const after = reconcileAfter(application, context);
+  const exposure =
+    application.exposure === undefined
+      ? undefined
+      : resolveExposure(application.exposure, context.platform, context.union);
+  const after = reconcileAfter(application, context, exposure ?? []);
   const plan = managed(application)
     ? resolveMigration(application, context)
     : undefined;
@@ -329,15 +358,7 @@ export function resolveApplication(
     ...(synced(processes) || managed(application)
       ? { secretStore: storeFor(context) }
       : {}),
-    ...(application.exposure === undefined
-      ? {}
-      : {
-          exposure: resolveExposure(
-            application.exposure,
-            context.platform,
-            context.union,
-          ),
-        }),
+    ...(exposure === undefined ? {} : { exposure }),
     processes,
   };
   return { ...element, revision: applicationRevision(element, context.hash) };

@@ -356,7 +356,7 @@ Paths are assigned by the Resolved Deployment's path plan
 <gitopsRoot>/apps/<project>/networkpolicy.yaml
 <gitopsRoot>/apps/<project>/vaultconnection.yaml
 <gitopsRoot>/apps/<project>/vault-policy/policies/<namespace>-<identity>.{policy,role}.json
-<gitopsRoot>/estate/edge/<tier>/<application>-<exposure>.yaml
+<gitopsRoot>/apps/<project>/<application>/route-<exposure>.yaml
 ```
 
 The project's `libraries.yaml` holds, per library it mounts, the cluster-scoped

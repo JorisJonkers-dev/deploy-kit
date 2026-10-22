@@ -43,6 +43,8 @@ spec:
     kind: OCIRepository
     name: project-notes
   path: ./apps/notes
+  dependsOn:
+    - name: apps-edge
   patches:
     - patch: |
         apiVersion: apps/v1

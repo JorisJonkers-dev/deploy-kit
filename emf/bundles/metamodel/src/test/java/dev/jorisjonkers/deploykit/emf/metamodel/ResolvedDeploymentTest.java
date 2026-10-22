@@ -291,28 +291,18 @@ class ResolvedDeploymentTest {
                         "apps/notes/rollout-events/alert.yaml",
                         "apps/notes/rollout-events/provider.yaml",
                         "apps/notes/rollout-events/kustomization.yaml",
-                        "estate/edge/public-frankfurt/notes-public.yaml",
-                        "estate/edge/public-frankfurt/kustomization.yaml");
+                        "apps/notes/notes/route-public.yaml");
     }
 
     @Test
     void thePathsItAssignsAreThePathsTheRenderedTreeActuallyHolds() throws IOException {
-        // The project's share is minimal's own tree; an estate-scoped path is in the
-        // `_estate` tree, which other projects' routes join.
+        // The project's share is minimal's own tree, its route among it: nothing of it is
+        // estate-scoped.
         Set<String> assigned =
                 minimal().getDeliverables().stream().map(Deliverable::getPath).collect(Collectors.toSet());
 
-        assertThat(assigned.stream()
-                        .filter(path -> !path.startsWith(ESTATE_SCOPED))
-                        .collect(Collectors.toSet()))
-                .isEqualTo(yamlUnder(REPOSITORY.resolve("spec/v1/examples/minimal/rendered")));
-        assertThat(yamlUnder(REPOSITORY.resolve("spec/v1/examples/_estate/rendered")))
-                .containsAll(assigned.stream()
-                        .filter(path -> path.startsWith(ESTATE_SCOPED))
-                        .toList());
+        assertThat(assigned).isEqualTo(yamlUnder(REPOSITORY.resolve("spec/v1/examples/minimal/rendered")));
     }
-
-    private static final String ESTATE_SCOPED = "estate/";
 
     private static Set<String> yamlUnder(Path rendered) throws IOException {
         try (var files = Files.walk(rendered)) {

@@ -8,5 +8,6 @@ resources:
   - migration.yaml
   - pdb.yaml
   - podmonitor.yaml
+  - route-public.yaml
   - serviceaccount.yaml
   - workload.yaml

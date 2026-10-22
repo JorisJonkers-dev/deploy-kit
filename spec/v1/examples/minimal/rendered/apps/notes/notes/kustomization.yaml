@@ -6,5 +6,6 @@ resources:
   - canary.yaml
   - configmap.yaml
   - podmonitor.yaml
+  - route-public.yaml
   - serviceaccount.yaml
   - workload.yaml

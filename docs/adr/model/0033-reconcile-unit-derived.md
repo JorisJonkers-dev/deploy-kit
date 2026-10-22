@@ -76,11 +76,13 @@ own output, the uniform `apps-core` string is not a fallback to restore.
   owner, in one more indirection between symptom and fix.
 - A dependency cycle becomes a build failure instead of a reconcile deadlock,
   paid by whoever introduces the cycle, at build time rather than in the cluster.
-- What is estate-scoped has units of its own, derived like the rest: the one
-  that provisions secrets follows the Secret Store's project, and each tier's
-  routes are one unit, which follows the tier's proxy and every project it
-  serves. One unit per tier, so a refused route holds its own tier and no
-  other. They are named `estate-`, never `apps-`: the `apps-` names are a
+- A Project's routes are its own, in its own unit, which follows the Project
+  that declares each proxy its exposures' tiers name, so a refused route holds
+  its own Project and no other
+  ([0116](0116-a-project-owns-every-object-it-delivers.md)). What is still
+  estate-scoped has a unit of its own, derived like the rest: the one that
+  applies a legacy datastore's catalog follows the Secret Store's project. It
+  is named `estate-`, never `apps-`: the `apps-` names are a
   function of the Project's name alone, so a Project may be called `edge` or
   `vso-secrets` and still own the one unit that name gives it.
 - The fourteen-node graph stops being hand-maintained and is rendered, paid by

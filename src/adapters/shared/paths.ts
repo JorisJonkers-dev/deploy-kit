@@ -23,7 +23,3 @@ export const applicationDirectory = (
   project: string,
   application: string,
 ): string => `${projectDirectory(project)}/${application}`;
-
-/** Where the routes one tier's proxy serves land. */
-export const tierDirectory = (tier: string): string =>
-  `${ESTATE_DIRECTORY}/edge/${tier}`;

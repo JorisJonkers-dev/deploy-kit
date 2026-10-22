@@ -20,11 +20,11 @@ import {
   holds,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
-import { edgeUnitOf, SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
+import { SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
 import { rolloutAnnotations, type Rollout } from "../model/rollout.ts";
 import { readPinSource, samePinSource } from "../read/pin-source.ts";
-import { SECRETS_DIRECTORY, tierDirectory } from "../adapters/shared/paths.ts";
+import { SECRETS_DIRECTORY } from "../adapters/shared/paths.ts";
 import type { RenderedObject } from "../objects/deliverable.ts";
 import type { RenderedFile, Serializer } from "./render-intent-set.ts";
 
@@ -44,7 +44,6 @@ interface Artifact {
 }
 
 const ESTATE = ESTATE_ARTIFACT;
-const INDEX = "/kustomization.yaml";
 const SECRETS = SECRETS_DIRECTORY;
 
 // Unit names are distinct within the list they sort, so `<=` would order the
@@ -62,7 +61,7 @@ const units = (names: readonly string[]): string[] =>
  * (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
  */
 function unitsOf(
-  { name, files }: Artifact,
+  { name }: Artifact,
   projects: readonly ResolvedProject[],
   platform: PlatformIntentDocument,
 ): SourceUnit[] {
@@ -91,43 +90,15 @@ function unitsOf(
       },
     ];
   }
-  // The estate's artifact holds a unit where it holds that unit's index: a
-  // directory of Vault documents alone applies nothing, and neither does a
-  // tier no route reaches.
-  const indexed = (directory: string): boolean =>
-    files.some(({ path }) => path === `${directory}${INDEX}`);
+  // The estate's artifact exists only while it holds the catalog of a
+  // datastore the old path runs, with the job that writes its documents: one
+  // unit, which follows the Secret Store's project.
   return [
-    ...platform.tiers
-      .filter((tier) => indexed(tierDirectory(tier.name)))
-      .map((tier): SourceUnit => ({
-        name: edgeUnitOf(tier.name),
-        path: tierDirectory(tier.name),
-        // A route needs its tier's proxy and its own Project's namespace:
-        // every Project the tier serves, of which pinSources keeps those
-        // on the estate path.
-        after: units([
-          ...declaring(tier.traefik),
-          ...projects
-            .filter(({ applications }) =>
-              applications.some(({ exposure }) =>
-                // Stryker disable next-line ArrayDeclaration
-                (exposure ?? []).some((served) => served.tier === tier.name),
-              ),
-            )
-            .map(({ project }) => unitOf(project)),
-        ]),
-      })),
-    ...(indexed(SECRETS)
-      ? [
-          {
-            name: SECRETS_UNIT,
-            path: SECRETS,
-            // The Vault policy job writes into the Secret Store, which its
-            // project's unit brings up.
-            after: declaring(platform.secretStore),
-          },
-        ]
-      : []),
+    {
+      name: SECRETS_UNIT,
+      path: SECRETS,
+      after: declaring(platform.secretStore),
+    },
   ];
 }
 

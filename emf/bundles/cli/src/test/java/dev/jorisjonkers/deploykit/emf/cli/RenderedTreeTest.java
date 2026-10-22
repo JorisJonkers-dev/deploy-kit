@@ -84,21 +84,15 @@ class RenderedTreeTest {
     }
 
     @Test
-    void theEstateShareMinimalAndDataHoldBetweenThemIsTheCommittedEstateTree(@TempDir Path out) throws IOException {
+    void minimalAndDataRenderedTogetherHoldNothingEstateScoped(@TempDir Path out) throws IOException {
         assertThat(Pipeline.render(union(), Outputs.RENDERED_UNION.projects(), Outputs.INTEGRITY, out))
                 .isEmpty();
 
-        // Everything under estate/ is the estate's, and no project's.
-        Path estate = Examples.of("_estate/rendered");
-        for (Path file : filesUnder(estate)) {
-            assertThat(Files.readString(out.resolve(file)))
-                    .as(file.toString())
-                    .isEqualTo(Files.readString(estate.resolve(file)));
-        }
+        // Every object each delivers is its own, its routes among them (issue #546).
         assertThat(filesUnder(out).stream()
                         .filter(file -> file.startsWith("estate"))
                         .toList())
-                .isEqualTo(filesUnder(estate));
+                .isEmpty();
     }
 
     /**

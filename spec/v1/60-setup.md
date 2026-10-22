@@ -544,8 +544,8 @@ handover:
   where a `legacy` datastore has a catalog an `estate` Project reads, the
   catalog's Jobs and the job that writes its documents, which no Project's
   unit depends on, and nothing else. Each `estate` Project writes its own Vault policies
-  and roles from its own unit. The old path keeps serving the edge, and the
-  edge units join the artifact once no Project is `legacy`
+  and roles from its own unit. The old path keeps serving the edge, so no
+  Project's artifact carries a route until no Project is `legacy`
   ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). Where the
   artifact would hold nothing, there is no estate-scoped artifact yet.
 - **The estate path reaches a `legacy` Application where the old path runs

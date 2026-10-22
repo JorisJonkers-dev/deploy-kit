@@ -17,10 +17,7 @@ import {
   versionPatches,
 } from "../adapters/flux/source.ts";
 import type { Adapter } from "../adapters/registry.ts";
-import {
-  ESTATE_DIRECTORY,
-  projectDirectory,
-} from "../adapters/shared/paths.ts";
+import { projectDirectory } from "../adapters/shared/paths.ts";
 import type { CompositionLockDocument } from "../model/composition-lock.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { FragmentManifest } from "../model/fragment.ts";
@@ -52,7 +49,6 @@ import { parseProjectIntent } from "./parse-project-intent.ts";
 import { pinSources, type PinSource } from "./pin-sources.ts";
 import {
   renderResolvedSet,
-  type RenderedArtifact,
   type RenderedFile,
   type Serializer,
 } from "./render-intent-set.ts";
@@ -178,7 +174,6 @@ export interface Composition {
 
 /** Where a fragment's files sit in the union: a Project's under its name, the platform's apart. */
 const PLATFORM = "_platform";
-const ESTATE = "_estate";
 const CLUSTER_STATE = "cluster-state.yml";
 const PLATFORM_DOCUMENT = "platform.intent.yml";
 const PROJECT_FILE = ".project.yml";
@@ -521,10 +516,8 @@ interface Delivered {
  * A resolved union rendered for the Projects the ledger hands to the estate
  * path; a legacy one is composed and checked, never published
  * (spec/v1/60-setup.md#handing-over-one-project-at-a-time). While a Project is
- * legacy, the estate-scoped artifact holds the secrets unit, the Vault policy
- * job for the estate-path Projects, which their units depend on, beside the
- * route Flux's events take and any Rollback's backup. The edge units wait
- * until no Project is legacy.
+ * legacy the old path still serves the edge, so no Project's share carries a
+ * route: one would be a second source for it.
  */
 function deliver(
   input: Composing,
@@ -536,6 +529,7 @@ function deliver(
   const ledger = platform.handover;
   const rendered = renderResolvedSet(resolved, {
     ...options,
+    routes: ledger?.legacy === undefined,
     projects: resolved.projects
       .map(({ project }) => project)
       .filter(
@@ -547,30 +541,12 @@ function deliver(
     ? {
         ok: true,
         value: {
-          artifacts:
-            ledger?.legacy === undefined
-              ? rendered.value
-              : rendered.value.flatMap(handingOver),
+          artifacts: rendered.value,
           projects: resolved.projects,
           cluster: platform.metadata.cluster,
         },
       }
     : rendered;
-}
-
-/**
- * One artifact as the handover delivers it: a Project's whole, and the
- * estate-scoped one cut to everything but its edge units, or nothing where it
- * holds nothing else.
- * The old path still serves the edge, so an estate-scoped route would be a
- * second source for it.
- */
-function handingOver(artifact: RenderedArtifact): RenderedArtifact[] {
-  if (artifact.name !== ESTATE) return [artifact];
-  const files = artifact.files.filter(
-    ({ path }) => !path.startsWith(`${ESTATE_DIRECTORY}/edge/`),
-  );
-  return files.length === 0 ? [] : [{ name: ESTATE, files }];
 }
 
 /**
