@@ -279,7 +279,7 @@ namespace or a Process that the unit applying it does not bring up:
 |---|---|
 | the catalog | one JSON document: the datastore's `host` and `port`, the Secret Store's database `connection` its roles issue through, named after the datastore's Process, so two datastores of one engine never share one, the `admin` login's `path`, `user` and `password` keys, and the `databases`, each a `name`, an `owner` and a `data` role, in name order |
 | the identity's Vault policy and auth role | `read` on the admin login's document and its metadata, and `create`, `read` and `update` on `database/roles/<role>` for each role the catalog names, written by the Vault policy job like every identity's |
-| a `ConfigMap`, a `Job` and an hourly `CronJob` | the method image, as the user the lock records, handed the catalog; the policy job's requests, deadline and eligible nodes, and its retries, spelled as its Job and CronJob are ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)); named `<process>-catalog-<12 hex>`, the digest of the catalog with what the pod runs with, so a changed catalog or method is a new Job, and marked for the applier to recreate it where only the render changed its template |
+| a `ConfigMap`, a `Job` and an hourly `CronJob` | the method image, as the user the lock records, handed the catalog; the policy job's requests, deadline and eligible nodes, and its retries, spelled as its Job and CronJob are ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)); named `<process>-catalog-<12 hex>`, the digest of the catalog with what the pod runs with, so a changed catalog or method is a new Job, and marked for the applier to recreate it where only the render changed its template. Its pods carry the [consumer label](#the-consumer-label) of the datastore's surface, which the datastore's policy admits |
 
 The method runs as the platform's operator would, once per run and in this
 order, for each database the catalog names:
@@ -548,7 +548,9 @@ A migration's runner reaches its datastore the same way: its pods carry the
 label of the surface its Application's edge names
 ([The migration identity's policy](#the-migration-identitys-policy)), so the
 datastore admits it as it admits every consumer, and names no migration
-identity. An edge to a Registered Unmanaged Surface derives no label: it reaches
+identity. So does a catalog method: the pods of its Job and its CronJob carry
+the label of the surface its engine connects on
+([Applying the catalog](#applying-the-catalog)). An edge to a Registered Unmanaged Surface derives no label: it reaches
 an address, and the model renders no policy for what answers there.
 
 The label is rendered only from an edge the union resolved, on pods only this

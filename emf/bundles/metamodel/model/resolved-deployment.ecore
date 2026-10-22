@@ -81,6 +81,9 @@
     <!-- Every node the job may land on, by name: none that holds an sdcard medium. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="eligibleNodes" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="catalog" lowerBound="1" eType="#//ResolvedCatalog" containment="true"/>
+    <!-- The datastore's surface, as the consumer label the method's pods carry names it
+         (spec/v1/16-dependencies.md#the-consumer-label). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumes" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedCatalog">

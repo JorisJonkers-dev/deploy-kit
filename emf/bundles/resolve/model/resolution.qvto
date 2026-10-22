@@ -533,6 +533,8 @@ query catalogJobOf(prj : String, application : String, p : PI::Process) : Resolv
 				data := r + '-data';
 			});
 		};
+		-- The method reaches the datastore as every consumer does, by its surface's label.
+		consumes := Sequence{application + '.' + estate.engines.postgres.surface};
 		egress := Sequence{object PolicyPeer {
 				rule := 'datastore'; namespace := ns; process := proc; port := surfacePort; }}
 			->union(storePeers())->append(object PolicyPeer {

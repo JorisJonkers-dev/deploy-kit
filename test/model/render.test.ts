@@ -1004,6 +1004,37 @@ describe("the database catalog", () => {
     });
   });
 
+  // deploy-kit#572: the method reaches the datastore as every consumer does,
+  // so the datastore's consumer rule admits it.
+  it("labels the method's Job and CronJob pods with the datastore surface's consumer label", () => {
+    const labels = parseAllDocuments(estate()[CATALOG] ?? "")
+      .map((document) => document.toJS() as Record<string, unknown>)
+      .flatMap((object) => {
+        const spec = object["spec"] as
+          | {
+              template?: { metadata: { labels: Record<string, string> } };
+              jobTemplate?: {
+                spec: {
+                  template: { metadata: { labels: Record<string, string> } };
+                };
+              };
+            }
+          | undefined;
+        const template =
+          spec?.template ?? spec?.jobTemplate?.spec.template ?? undefined;
+        return template === undefined
+          ? []
+          : [[object["kind"], template.metadata.labels]];
+      });
+
+    expect(labels.map(([kind]) => kind)).toStrictEqual(["Job", "CronJob"]);
+    for (const [, carried] of labels)
+      expect(carried).toMatchObject({
+        "consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres":
+          "true",
+      });
+  });
+
   it("leaves out a project still on the old path, and renders nothing for no reader", () => {
     const legacy = estate({
       [PLATFORM]: (document) =>

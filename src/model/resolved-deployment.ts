@@ -884,6 +884,9 @@ const resolvedCatalogJob = z
           .min(1),
       })
       .meta({ id: "ResolvedCatalog" }),
+    // The datastore's surface, as the consumer label the method's pods carry
+    // names it (spec/v1/16-dependencies.md#the-consumer-label).
+    consumes: z.array(text),
     egress: z.array(egressPeer),
   })
   .meta({ id: "ResolvedCatalogJob" });

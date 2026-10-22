@@ -2259,6 +2259,13 @@
         "catalog": {
           "$ref": "#/$defs/ResolvedCatalog"
         },
+        "consumes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "egress": {
           "type": "array",
           "items": {
@@ -2279,6 +2286,7 @@
         "deadline",
         "eligibleNodes",
         "catalog",
+        "consumes",
         "egress"
       ],
       "additionalProperties": false

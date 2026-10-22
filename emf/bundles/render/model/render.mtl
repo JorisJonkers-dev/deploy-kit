@@ -1583,6 +1583,9 @@
   metadata:
     labels:
       [d.job.identity.labelSet('none', d.job.identity)/]
+  [for (c : String | d.job.consumes)]
+        [c.consumerLabel()/]
+  [/for]
   [if (d.job.imageVersion <> null)]
       annotations:
         image.jorisjonkers.dev/[d.job.identity/]: [d.job.imageVersion.scalar()/]
