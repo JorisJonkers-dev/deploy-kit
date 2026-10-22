@@ -22,20 +22,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: knowledge-platform-system
+              app.kubernetes.io/managed-by: deploy-kit
           podSelector:
             matchLabels:
-              app.kubernetes.io/instance: hindsight-api
-      ports:
-        - protocol: TCP
-          port: 8091
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: knowledge-platform-system
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/instance: hindsight-worker
+              consumes.deploy-kit.jorisjonkers.dev/hindsight-embedding.embeddings: "true"
       ports:
         - protocol: TCP
           port: 8091

@@ -520,6 +520,14 @@ cannot read the Resolved Deployment
 [0039](../../docs/adr/model/0039-the-label-set-is-fixed.md)). No other object
 carries it, and it is never a workload's selector.
 
+A consumer's pods carry one more label for each surface their Process's edges
+reach: `consumes.deploy-kit.jorisjonkers.dev/<application>.<surface>: "true"`,
+which the provider's policy admits
+([chapter 16](16-dependencies.md#the-consumer-label)). It is on pod templates
+only, derived from the edges and never authored, and it is never a workload's
+selector, so an edge added or removed changes the pod template and nothing
+immutable.
+
 An estate-scoped Deliverable carries `managed-by` and nothing else: it belongs
 to no Process and to no Application, and `part-of` on such an object would name a
 Application that does not own it.

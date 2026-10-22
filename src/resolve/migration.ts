@@ -19,7 +19,7 @@ import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { ownerRole } from "../model/project-intent-queries.ts";
 import type { ResolvedMigration } from "../model/resolved-deployment.ts";
 import { migrationIdentityOf } from "../model/runtime-profiles.ts";
-import { datastoreOf } from "./database.ts";
+import { databaseEdgeOf } from "./database.ts";
 import { DNS_PORT, storeOf } from "./policy.ts";
 
 export interface MigrationContext {
@@ -51,11 +51,11 @@ export function resolveMigration(
   );
   // A changelog reaches a database surface, or E_MIGRATION_WITHOUT_DATABASE
   // refused it, and the edge resolves, or the union's references refused it.
-  const datastore = datastoreOf(
+  const { peer: datastore, consumes } = databaseEdgeOf(
     application,
     context.union,
     context.platform,
-  ) as NonNullable<ReturnType<typeof datastoreOf>>;
+  ) as NonNullable<ReturnType<typeof databaseEdgeOf>>;
   return {
     runner: `${image.repository}@${image.digest}`,
     ...versionOf("runnerVersion", image),
@@ -75,6 +75,7 @@ export function resolveMigration(
       port: datastore.port,
       name: databaseOf(context.project),
     },
+    consumes: [consumes],
     // The owner role changes the schema, and only the migration holds it.
     credential: {
       engine: "database",

@@ -29,6 +29,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8000
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/basic-memory.mcp: "true"
+      ports:
+        - protocol: TCP
+          port: 8000
   egress:
     - to:
         - namespaceSelector:

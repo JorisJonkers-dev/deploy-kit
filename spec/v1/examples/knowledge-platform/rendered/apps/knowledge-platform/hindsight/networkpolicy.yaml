@@ -32,10 +32,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: knowledge-platform-system
+              app.kubernetes.io/managed-by: deploy-kit
           podSelector:
             matchLabels:
-              app.kubernetes.io/instance: hindsight-control-plane
+              consumes.deploy-kit.jorisjonkers.dev/hindsight.api: "true"
       ports:
         - protocol: TCP
           port: 8888
@@ -100,6 +100,17 @@ spec:
   policyTypes:
     - Ingress
     - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/hindsight.worker: "true"
+      ports:
+        - protocol: TCP
+          port: 8889
   egress:
     - to:
         - namespaceSelector:
@@ -169,6 +180,16 @@ spec:
           podSelector:
             matchLabels:
               app.kubernetes.io/instance: traefik-public
+      ports:
+        - protocol: TCP
+          port: 3000
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/hindsight.console: "true"
       ports:
         - protocol: TCP
           port: 3000

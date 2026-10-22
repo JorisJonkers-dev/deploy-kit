@@ -369,6 +369,9 @@ mapping EffectiveApplication::migrationOf(in prj : EffectiveProject) : ResolvedM
 		port := store.port;
 		name := owned + '_db';
 	};
+	-- The runner reaches its datastore as every consumer does, by the label of the surface
+	-- the Application's edge names (spec/v1/16-dependencies.md#the-consumer-label).
+	consumes := Sequence{datastoreSurfacesOf(self)->first()};
 	-- The owner role changes the schema, and only the migration holds it.
 	credential := object ResolvedGrant {
 		engine := 'database';
@@ -399,6 +402,14 @@ query datastoreOf(app : EffectiveApplication) : Sequence(PolicyPeer) =
 				process := homeProcess(e.application, p.name);
 				port := p.provides->select(s | s.key = e.surface)->any(true).value;
 			})))->flatten()->asSequence();
+
+-- The same edges' surfaces, as a consumer label names each, in the same order: the first
+-- is the datastore's.
+query datastoreSurfacesOf(app : EffectiveApplication) : Sequence(String) =
+	app.processes.dependsOn->collect(e |
+		projects->collect(prj | prj.applications->select(a | a.id = e.application).processes
+			->select(p | ownsDatabases(p) and p.provides->exists(s | s.key = e.surface))
+			->collect(p | e.application + '.' + e.surface)))->flatten()->asSequence();
 
 -- Whether a Process's inbound edges derive a database.
 query ownsDatabases(p : PI::Process) : Boolean =
@@ -713,6 +724,10 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		cpu := c.cpu;
 	});
 	dependencies := self.dependsOn->collect(e | edgeOf(e, owner(self)));
+	-- An edge to an Application's surface reaches a pod, which admits the label; one to a
+	-- Registered Unmanaged Surface reaches an address.
+	consumes := result.dependencies->select(d | d.peers->notEmpty())
+		->collect(d | d.application + '.' + d.surface);
 	writablePaths := self.writablePaths->collect(w | object WritablePath {
 		path := w;
 		size := estate.ephemeral.size;
@@ -1661,21 +1676,24 @@ query strategyOf(p : PI::Process) : String =
 
 -- Who may reach a Process (spec/v1/16-dependencies.md#the-derived-allow-set):
 -- the proxy of the tier each route's audience reaches, the metrics stack where
--- the Process is scraped, and every consumer whose edge names one of its
--- surfaces, each at that surface's port. One peer per namespace, Process and
--- port, the first time it is reached.
+-- the Process is scraped, every pod carrying the consumer label of one of its
+-- surfaces, its own backup identity and Flux's notifier, each at that surface's
+-- port. One named peer per namespace, Process and port, the first time it is
+-- reached.
 query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPeer) =
-	(app.exposure->collect(e | e.routes->select(r | r.process = p)->collect(r |
+	named(app.exposure->collect(e | e.routes->select(r | r.process = p)->collect(r |
 		peersOf(tierFor(r.audienceOf(e)).traefik.id, r.surface.value, 'tier-proxy')))->flatten()
 	->union(if app.observability <> null and app.observability.scrape <> null
 			and app.observability.scrape.process = p and estate.telemetry <> null
 		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value, 'metrics-stack')
-		else Sequence{} endif)
+		else Sequence{} endif))
 	->union(consumersOf(p, app))
-	->union(backupsOf(p))
-	->union(migrationsOf(p))
-	->union(eventsOf(p, app)))
-	->asOrderedSet()->asSequence()
+	->union(named(backupsOf(p)->union(eventsOf(p, app))));
+
+-- Each peer a policy names, once, in the order first reached.
+query named(peers : Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)))
+		: Sequence(PolicyPeer) =
+	peers->asOrderedSet()->asSequence()
 	->collect(peer | object PolicyPeer {
 		rule := peer.rule;
 		namespace := peer.namespace;
@@ -1705,26 +1723,16 @@ query backupsOf(p : PI::Process)
 		namespace = namespaceOf(owner(p)), process = p.name + '-backup',
 		port = p.provides->select(s | s.key = dumpedSurface(p))->any(true).value}} endif;
 
--- The migration identity of every Application whose database this Process
--- holds, on the surface that Application's own edge names
--- (spec/v1/16-dependencies.md#the-migration-identitys-policy).
-query migrationsOf(p : PI::Process)
-		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
-	projects->collect(prj | prj.applications->select(a | managed(a))->collect(a |
-		(if datastoreOf(a)->isEmpty() then Sequence{} else Sequence{datastoreOf(a)->first()} endif)
-			->select(d | d.namespace = homeNamespace(owner(p), applicationOf(p))
-				and d.process = homeProcess(applicationOf(p), p.name))
-			->collect(d | Tuple{rule = 'migration', namespace = namespaceOf(prj.project),
-				process = a.id + '-migration', port = d.port})))->flatten();
-
--- Every Process of the union whose edge names this Application and a surface this Process provides.
-query consumersOf(p : PI::Process, app : EffectiveApplication)
-		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
-	projects->collect(prj | prj.applications->collect(a | a.processes->collect(consumer |
-		consumer.dependsOn->select(e | e.application = app.id and p.provides->exists(s | s.key = e.surface))
-			->collect(e | Tuple{rule = 'consumer', namespace = homeNamespace(prj.project, a.id),
-				process = homeProcess(a.id, consumer.name),
-				port = p.provides->select(s | s.key = e.surface)->any(true).value}))))->flatten();
+-- Every pod carrying the consumer label of a surface this Process provides, whoever
+-- declares it (spec/v1/16-dependencies.md#the-consumer-label): read off the Process's
+-- own surfaces, never off the union's edges, so a consumer added or removed leaves the
+-- policy as it is.
+query consumersOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPeer) =
+	p.provides->collect(s | object PolicyPeer {
+		rule := 'consumer';
+		consumes := app.id + '.' + s.key;
+		port := s.value;
+	})->asSequence();
 
 -- What a Process may reach beyond its edges: the cluster's DNS, and the Secret
 -- Store where it holds a grant.
@@ -1990,6 +1998,7 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 				Tuple{k = 'host', v = str(self.migration.database.host)},
 				Tuple{k = 'port', v = num(self.migration.database.port)},
 				Tuple{k = 'name', v = str(self.migration.database.name)}})},
+			Tuple{k = 'consumes', v = arr(self.migration.consumes->collect(c | str(c)))},
 			Tuple{k = 'credential', v = self.migration.credential.json()},
 			Tuple{k = 'egress', v = arr(self.migration.egress->collect(x | x.json()))}}) endif},
 		Tuple{k = 'secretStore', v = opt(self.secretStore)},
@@ -2151,6 +2160,7 @@ query ResolvedProcess::json() : String =
 			Tuple{k = 'address', v = str(x.address)},
 			Tuple{k = 'target', v = opt(x.target)},
 			Tuple{k = 'peers', v = if x.peers->isEmpty() then null else arr(x.peers->collect(q | q.json())) endif}}))) endif},
+		Tuple{k = 'consumes', v = if self.consumes->isEmpty() then null else arr(self.consumes->collect(c | str(c))) endif},
 		Tuple{k = 'writablePaths', v = if self.writablePaths->isEmpty() then null else arr(self.writablePaths->collect(x | obj(Sequence{
 			Tuple{k = 'path', v = str(x.path)},
 			Tuple{k = 'size', v = str(x.size)}}))) endif},
@@ -2187,8 +2197,9 @@ query StartupProbe::json() : String = obj(self.target.fields()->union(Sequence{
 
 query PolicyPeer::json() : String = obj(Sequence{
 	Tuple{k = 'rule', v = opt(self.rule)},
-	Tuple{k = 'namespace', v = str(self.namespace)},
+	Tuple{k = 'namespace', v = opt(self.namespace)},
 	Tuple{k = 'process', v = opt(self.process)},
+	Tuple{k = 'consumes', v = opt(self.consumes)},
 	Tuple{k = 'port', v = num(self.port)}});
 
 query ResolvedVolume::json() : String = obj(Sequence{

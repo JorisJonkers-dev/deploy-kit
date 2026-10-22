@@ -163,10 +163,8 @@ model-driven implementation. The two terms cost nothing to drop.
 - A Project's routes are planned under `apps/<project>/` and applied from its
   own unit, which follows the edge Project's unit
   ([#546](https://github.com/JorisJonkers-dev/deploy-kit/issues/546)).
-- Each Project carries its own rollout `Alert`, and the `Provider` it sends
-  through goes with it or into the Reporter's Platform Project
-  ([#545](https://github.com/JorisJonkers-dev/deploy-kit/issues/545) decides
-  which).
+- Each Project carries its own rollout `Alert` and the `Provider` it sends
+  through ([#545](https://github.com/JorisJonkers-dev/deploy-kit/issues/545)).
 - A provider's network policy admits its consumers by a label they carry, so a
   new consumer re-renders only itself
   ([#552](https://github.com/JorisJonkers-dev/deploy-kit/issues/552)).

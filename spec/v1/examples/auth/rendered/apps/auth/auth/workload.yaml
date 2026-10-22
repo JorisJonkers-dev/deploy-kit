@@ -30,6 +30,9 @@ spec:
         app.kubernetes.io/part-of: auth
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: jvm
+        consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
+        consumes.deploy-kit.jorisjonkers.dev/platform-valkey.redis: "true"
+        consumes.deploy-kit.jorisjonkers.dev/platform-rabbitmq.amqp: "true"
       annotations:
         image.jorisjonkers.dev/auth-api: 2.3.0
     spec:

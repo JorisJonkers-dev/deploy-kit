@@ -1680,6 +1680,7 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
       port: 5432,
       name: "notes_db",
     },
+    consumes: ["platform-postgres.postgres"],
     credential: {
       engine: "database",
       delivery: "self",
@@ -1900,42 +1901,31 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     expect(Object.keys(unmanaged ?? {})).not.toContain("migration");
   });
 
-  it("is admitted by no Process but the datastore's own: neither another of its namespace nor one of its name elsewhere", () => {
+  // deploy-kit#552: the runner reaches the datastore as every consumer does,
+  // by the label of the surface its edge names, so no datastore's policy
+  // names a migration identity.
+  it("carries the consumer label of the surface its edge names, which the datastore admits as it admits every consumer", () => {
     const named = `${managed}${serving("postgres")}`;
     const all = projects(named, { lock: LOCKED, env: DATA });
-    const admitting = all.flatMap(({ applications }) =>
-      applications.flatMap(({ namespace, processes }) =>
-        processes
-          .filter(({ ingress }) =>
-            (ingress ?? []).some(({ rule }) => rule === "migration"),
-          )
-          .map(({ name }) => `${namespace}/${name}`),
-      ),
-    );
+    const ingress = projectNamed(all, "data")
+      .applications.find(({ id }) => id === "platform-postgres")
+      ?.processes.flatMap((process) => process.ingress ?? []);
 
-    expect(admitting).toStrictEqual(["data-system/postgres"]);
-  });
-
-  it("is admitted by the datastore that holds its database, on the surface its edge names, and no unmanaged Application is", () => {
-    const admitted = (applications: string, options: Options) =>
-      projectNamed(projects(applications, options), "data")
-        .applications.find(({ id }) => id === "platform-postgres")
-        ?.processes.flatMap(({ ingress }) => ingress ?? [])
-        .filter(({ rule }) => rule === "migration");
-
-    expect(admitted(managed, { lock: LOCKED, env: DATA })).toStrictEqual([
-      {
-        rule: "migration",
-        namespace: "notes-system",
-        process: "notes-migration",
-        port: 5432,
-      },
-    ]);
+    expect(migration()?.consumes).toStrictEqual(["platform-postgres.postgres"]);
+    expect(ingress).toContainEqual({
+      rule: "consumer",
+      consumes: "platform-postgres.postgres",
+      port: 5432,
+    });
     expect(
-      admitted(managed.replace("{ changelog: db/changelog.yml }", "self"), {
-        env: DATA,
-      }),
-    ).toStrictEqual([]);
+      all.flatMap(({ applications }) =>
+        applications.flatMap(({ processes }) =>
+          processes.flatMap((process) => process.ingress ?? []),
+        ),
+      ),
+    ).not.toContainEqual(
+      expect.objectContaining({ process: "notes-migration" }),
+    );
   });
 
   it("carries what the proof beside the project records, and covers it with the fragment's digest", () => {
@@ -2477,8 +2467,18 @@ ${serving("notes-api")}`,
 describe("the peers a policy admits", () => {
   const ingressOf = (all: ResolvedProject[], project: string, index = 0) =>
     projectNamed(all, project).applications[0]?.processes[index]?.ingress;
+  /** The peers a policy names by namespace and Process: every one but a consumer's. */
+  const named = (all: ResolvedProject[], project: string, index = 0) =>
+    ingressOf(all, project, index)?.filter(({ rule }) => rule !== "consumer");
+  const consumer = (consumes: string, port: number) => ({
+    rule: "consumer",
+    consumes,
+    port,
+  });
 
-  it("admits each consumer of a surface once, on that surface, and no consumer of another Application", () => {
+  // deploy-kit#552: a surface admits the label of its consumers, whoever
+  // they are, so the policy reads no consumer's edges.
+  it("admits the consumer label of each of its surfaces, whether or not anything consumes it, and labels a consumer by the surfaces its edges reach", () => {
     const all = projects(`  - id: notes
     exposure:
       - name: app
@@ -2504,6 +2504,7 @@ ${serving("notes-other").replace("provides: { http: 8080 }", "provides: { store:
         process: "traefik-public",
         port: 8080,
       },
+      consumer("notes.http", 8080),
     ]);
     expect(ingressOf(all, "notes", 1)).toStrictEqual([
       {
@@ -2512,20 +2513,19 @@ ${serving("notes-other").replace("provides: { http: 8080 }", "provides: { store:
         process: "traefik-public",
         port: 8080,
       },
+      consumer("notes.http", 8080),
     ]);
-    const store = projectNamed(all, "notes").applications[1]?.processes[0]
-      ?.ingress;
-    const other = projectNamed(all, "notes").applications[2]?.processes[0]
-      ?.ingress;
-    expect(store).toStrictEqual([
-      {
-        rule: "consumer",
-        namespace: "notes-system",
-        process: "notes-api",
-        port: 7000,
-      },
+    const [api, web] =
+      projectNamed(all, "notes").applications[0]?.processes ?? [];
+    const store = projectNamed(all, "notes").applications[1]?.processes[0];
+    const other = projectNamed(all, "notes").applications[2]?.processes[0];
+    expect(store?.ingress).toStrictEqual([
+      consumer("notes-store.store", 7000),
+      consumer("notes-store.http", 8080),
     ]);
-    expect(other).toBeUndefined();
+    expect(other?.ingress).toStrictEqual([consumer("notes-other.store", 7000)]);
+    expect(api?.consumes).toStrictEqual(["notes-store.store"]);
+    expect(web?.consumes).toBeUndefined();
   });
 
   it("admits the metrics stack only on the scraped Process, and every Process of the stack", () => {
@@ -2536,8 +2536,8 @@ ${serving("notes-other").replace("provides: { http: 8080 }", "provides: { store:
     processes:
 ${serving("notes-api")}${serving("notes-web")}`);
 
-    expect(ingressOf(all, "notes")).toBeUndefined();
-    expect(ingressOf(all, "notes", 1)).toStrictEqual([
+    expect(named(all, "notes")).toStrictEqual([]);
+    expect(named(all, "notes", 1)).toStrictEqual([
       {
         rule: "metrics-stack",
         namespace: "observability-system",
@@ -2549,7 +2549,7 @@ ${serving("notes-api")}${serving("notes-web")}`);
 
   it("admits no metrics stack where the platform names none", () => {
     expect(
-      ingressOf(
+      named(
         projects(
           `  - id: notes
     observability:
@@ -2564,7 +2564,7 @@ ${serving("notes-api")}`,
         ),
         "notes",
       ),
-    ).toBeUndefined();
+    ).toStrictEqual([]);
   });
 
   it("records no surfaces on a Process that provides none", () => {
@@ -2602,12 +2602,16 @@ ${serving("notes-api")}${serving("notes-web")}`);
     const [api, web] =
       projectNamed(all, "notes").applications[0]?.processes ?? [];
 
-    expect(api?.ingress?.map(({ process }) => process)).toStrictEqual([
-      "traefik-public",
-    ]);
-    expect(web?.ingress?.map(({ process }) => process)).toStrictEqual([
-      "traefik-lan",
-    ]);
+    expect(
+      api?.ingress?.flatMap((peer) =>
+        peer.rule === "consumer" ? [] : [peer.process],
+      ),
+    ).toStrictEqual(["traefik-public"]);
+    expect(
+      web?.ingress?.flatMap((peer) =>
+        peer.rule === "consumer" ? [] : [peer.process],
+      ),
+    ).toStrictEqual(["traefik-lan"]);
   });
 });
 
@@ -2845,8 +2849,7 @@ describe("a volume and what its class derives", () => {
         port: 15672,
       },
     ]);
-    // No peer at all, so the Process carries no ingress.
-    expect(admitted("files")).toBeUndefined();
+    expect(admitted("files")).toStrictEqual([]);
   });
 
   it("names a dumped surface only for a Process that is backed up, of an engine whose method dumps one", () => {

@@ -22,10 +22,10 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: delivery-system
+              app.kubernetes.io/managed-by: deploy-kit
           podSelector:
             matchLabels:
-              app.kubernetes.io/instance: flagger
+              consumes.deploy-kit.jorisjonkers.dev/release-gate.http: "true"
       ports:
         - protocol: TCP
           port: 8080

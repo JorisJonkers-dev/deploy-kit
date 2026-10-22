@@ -47,6 +47,7 @@ import { wholeSeconds } from "../shared/durations.ts";
 import { isSynced, type Grant, type KvGrant } from "../shared/holders.ts";
 import {
   applicationLabels,
+  consumerLabelsOf,
   instanceOf,
   labelsOf,
   managedOnly,
@@ -495,16 +496,24 @@ function deploymentOf(
         },
       },
       template: {
-        metadata: podMetadataOf(labels, [
-          [process.name, process.imageVersion],
-          // Stryker disable next-line ArrayDeclaration
-          ...(process.sidecars ?? []).map(
-            ({ name, imageVersion }) => [name, imageVersion] as const,
-          ),
-          ...(process.vpn === undefined
-            ? []
-            : [[VPN_CONTAINER, process.vpn.imageVersion] as const]),
-        ]),
+        metadata: podMetadataOf(
+          {
+            ...labels,
+            // A missing list and an empty one carry no label alike.
+            // Stryker disable next-line ArrayDeclaration
+            ...consumerLabelsOf(process.consumes ?? []),
+          },
+          [
+            [process.name, process.imageVersion],
+            // Stryker disable next-line ArrayDeclaration
+            ...(process.sidecars ?? []).map(
+              ({ name, imageVersion }) => [name, imageVersion] as const,
+            ),
+            ...(process.vpn === undefined
+              ? []
+              : [[VPN_CONTAINER, process.vpn.imageVersion] as const]),
+          ],
+        ),
         spec: {
           serviceAccountName: process.identity,
           automountServiceAccountToken: process.identityToken,

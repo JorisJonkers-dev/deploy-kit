@@ -26,6 +26,15 @@ export const labelsOf = (
   "app.kubernetes.io/component": process.runtime,
 });
 
+/** The label a pod carries for each surface it consumes, which the provider's policy admits. */
+export const consumerLabelsOf = (consumes: readonly string[]): Labels =>
+  Object.fromEntries(
+    consumes.map((consumed) => [`${CONSUMER_LABEL}${consumed}`, "true"]),
+  );
+
+/** The prefix of every consumer label (spec/v1/16-dependencies.md#the-consumer-label). */
+export const CONSUMER_LABEL = "consumes.deploy-kit.jorisjonkers.dev/";
+
 /** The selector every rendered object but a disruption budget uses. */
 export const instanceOf = (process: string): Labels => ({
   "app.kubernetes.io/instance": process,

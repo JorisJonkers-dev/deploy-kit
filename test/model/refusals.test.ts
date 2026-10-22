@@ -576,6 +576,7 @@ describe("the refusal fixtures", () => {
       "shared-declaration-duplicated",
       "shared-intent-merged",
       "shared-quantity",
+      "surface-label-invalid",
       "unauthorised-secret-reference",
       "unbound-secret-grant",
       "unknown-api-holder",
@@ -586,7 +587,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(56);
+    expect(refused).toHaveLength(57);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",
@@ -597,6 +598,32 @@ describe("the refusal fixtures", () => {
     expect(checkIntentSet(filesOf("generated-key-adopts-granted")).ok).toBe(
       true,
     );
+  });
+
+  it("refuses a Process once, naming every surface no consumer label can name", () => {
+    const [file] = filesOf("surface-label-invalid");
+    const result = checkIntentSet([
+      {
+        name: file?.name as string,
+        text: (file?.text as string).replace(
+          "          http: 8080\n",
+          "          http: 8080\n          grpc: 9090\n",
+        ),
+      },
+    ]);
+    const id =
+      "surface-label-invalid-an-application-whose-id-runs-past-the-limit";
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, message }) => [code, message]),
+    ).toStrictEqual([
+      [
+        "E_SURFACE_LABEL_INVALID",
+        `${id}.http, ${id}.grpc cannot name a label: at most 63 characters of letters, digits, '-', '_' and '.', starting and ending with a letter or digit`,
+      ],
+    ]);
   });
 
   it("accepts a Postgres on a volume whose durability derives no backup, because its catalog derives", () => {

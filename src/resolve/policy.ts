@@ -1,7 +1,7 @@
 // The peers a Process's policy admits beyond its own edges
 // (spec/v1/16-dependencies.md#the-derived-allow-set, #the-baseline): the proxy
 // of every tier a route reaches it through, the metrics stack at its scrape
-// surface, every consumer the union's edges bring to one of its surfaces, and
+// surface, every pod carrying the consumer label of one of its surfaces, and
 // the cluster's DNS. Each peer names the rule that admits it.
 import type {
   EffectiveApplication,
@@ -16,14 +16,13 @@ import {
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
+import { consumedOf } from "../model/consumer-label.ts";
 import {
   backupIdentityOf,
   homeOf,
-  migrationIdentityOf,
   namespaceOf,
 } from "../model/runtime-profiles.ts";
 import { dumpedSurfaceOf } from "../model/backup.ts";
-import { datastoreOf, managed } from "./database.ts";
 
 type Ingress = NonNullable<ResolvedProcess["ingress"]>[number];
 type Egress = NonNullable<ResolvedProcess["egress"]>[number];
@@ -56,12 +55,7 @@ export const peersOf = (
 function distinct(peers: readonly Ingress[]): Ingress[] {
   const held = new Set<string>();
   return peers.filter((peer) => {
-    const key = JSON.stringify([
-      peer.rule,
-      peer.namespace,
-      peer.process,
-      peer.port,
-    ]);
+    const key = JSON.stringify(peer);
     if (held.has(key)) return false;
     held.add(key);
     return true;
@@ -108,24 +102,15 @@ export function ingressOf(
           port: port(scrape.surface),
         }))
       : [];
-  const consumers = context.union.flatMap(({ project, applications }) =>
-    applications.flatMap(({ id, processes }) =>
-      processes.flatMap((consumer) =>
-        // A missing list and an empty one admit the same nothing.
-        // Stryker disable next-line ArrayDeclaration
-        (consumer.dependsOn ?? [])
-          .filter(
-            (edge) =>
-              edge.application === application.id &&
-              process.provides?.[edge.surface] !== undefined,
-          )
-          .map((edge): Ingress => ({
-            rule: "consumer",
-            ...homeOf(context.platform, project, id, consumer.name),
-            port: port(edge.surface),
-          })),
-      ),
-    ),
+  // Every surface admits the pods that carry its consumer label, whoever
+  // declares them: the policy reads the Process's own surfaces, never the
+  // union's edges, so a consumer added or removed leaves it as it is.
+  const consumers = Object.entries(process.provides ?? {}).map(
+    ([surface, number]): Ingress => ({
+      rule: "consumer",
+      consumes: consumedOf(application.id, surface),
+      port: number,
+    }),
   );
   // Its own backups, where it has any and the engine's method dumps over the
   // network: the backup identity reaches the surface the platform names for
@@ -142,36 +127,6 @@ export function ingressOf(
             port: port(dumped),
           },
         ];
-  // The migration of every Application whose database this Process holds:
-  // its identity reaches the surface that Application's own edge names.
-  const here = homeOf(
-    context.platform,
-    context.project,
-    application.id,
-    process.name,
-  );
-  const migrations = context.union.flatMap(({ project, applications }) =>
-    applications.filter(managed).flatMap((consumer): Ingress[] => {
-      // A managed Application derives a database, or E_MIGRATION_WITHOUT_DATABASE
-      // refused it, and its edge resolves, or the union's references refused it.
-      const datastore = datastoreOf(
-        consumer,
-        context.union,
-        context.platform,
-      ) as Egress;
-      return datastore.namespace === here.namespace &&
-        datastore.process === here.process
-        ? [
-            {
-              rule: "migration",
-              namespace: namespaceOf(project),
-              process: migrationIdentityOf(consumer.id),
-              port: datastore.port,
-            },
-          ]
-        : [];
-    }),
-  );
   // Flux's events about every Project's unit
   // (spec/v1/55-delivery.md#rollouts): its notification controller reaches
   // the Reporter where the Provider sends them, the first Process of the
@@ -199,14 +154,7 @@ export function ingressOf(
           },
         ]
       : [];
-  return distinct([
-    ...routes,
-    ...metrics,
-    ...consumers,
-    ...backups,
-    ...migrations,
-    ...events,
-  ]);
+  return distinct([...routes, ...metrics, ...consumers, ...backups, ...events]);
 }
 
 /** The surface the Secret Store answers every grant on. */

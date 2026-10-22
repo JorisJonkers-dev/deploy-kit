@@ -59,7 +59,7 @@
   </policyJob>
   <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
 
-  <applications id="notes" revision="sha256:ef696808e72682803cbe3963fc043dec3601e82b0385a9ace81e86ea55052226" project="notes" namespace="notes-system"
+  <applications id="notes" revision="sha256:0a8b69a6274d430cb7b3d73355003f5b8bfb4e115e9f38500ecc2d0482045c46" project="notes" namespace="notes-system"
       alertClass="business-hours" reconcileUnit="//@reconcileUnits.0">
     <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="180s">
       <!-- The Platform document's cadence, carried for the Release Gate. -->
@@ -167,6 +167,7 @@
       <!-- The edge and the metrics stack reach it; nothing else does. -->
       <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="8080"/>
       <ingress rule="metrics-stack" namespace="observability-system" process="prometheus" port="8080"/>
+      <ingress rule="consumer" consumes="notes.http" port="8080"/>
       <!-- The cluster's DNS: a namespace, not a Process the union declares. -->
       <egress rule="cluster-dns" namespace="kube-system" port="53"/>
     </policies>

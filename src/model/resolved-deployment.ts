@@ -56,13 +56,15 @@ export const PINNED_INPUTS = [
  * `rolling` on the delivery machinery, and `interrupted` derives `stop-start`. */
 export const SWITCHOVERS = ["blue-green", "rolling", "stop-start"] as const;
 
-/** Which allow-set rule admits an inbound peer (spec/v1/16-dependencies.md#the-derived-allow-set). */
+/**
+ * Which allow-set rule admits an inbound peer it names by namespace and
+ * Process (spec/v1/16-dependencies.md#the-derived-allow-set). A consumer is
+ * admitted by the label it carries instead, and names none.
+ */
 export const INGRESS_RULES = [
   "tier-proxy",
   "metrics-stack",
-  "consumer",
   "backup",
-  "migration",
   "flux-events",
 ] as const;
 
@@ -428,9 +430,19 @@ const resolvedSurface = z
 
 const ingressRule = z.enum(INGRESS_RULES).meta({ id: "IngressRule" });
 
-// An inbound peer the Process's policy admits, on one of its own ports.
+// An inbound peer the Process's policy admits, on one of its own ports: a
+// named Process, or, for a consumer, every pod carrying the consumer label of
+// the surface (spec/v1/16-dependencies.md#the-consumer-label).
 const ingressPeer = z
-  .strictObject({ rule: ingressRule, namespace: text, process: text, port })
+  .union([
+    z.strictObject({
+      rule: ingressRule,
+      namespace: text,
+      process: text,
+      port,
+    }),
+    z.strictObject({ rule: z.literal("consumer"), consumes: text, port }),
+  ])
   .meta({ id: "IngressPeer" });
 
 const writablePath = z
@@ -540,6 +552,9 @@ const resolvedProcess = stated(
     assets: z.array(resolvedAsset).exactOptional(),
     sidecars: z.array(resolvedSidecar).exactOptional(),
     dependencies: z.array(resolvedEdge).exactOptional(),
+    // The surface of every Application its edges reach, as the consumer
+    // label its pods carry names it.
+    consumes: z.array(text).exactOptional(),
     writablePaths: z.array(writablePath).exactOptional(),
     environment: z.array(envEntry).exactOptional(),
     surfaces: z.array(resolvedSurface).exactOptional(),
@@ -702,6 +717,9 @@ const resolvedMigration = z
     // The runner's one writable path, at the platform's ephemeral size.
     scratch: text,
     database: migratedDatabase,
+    // The datastore's surface, as the consumer label the runner's pods carry
+    // names it.
+    consumes: z.array(text),
     credential: resolvedEngineGrant,
     // The datastore on the surface the Application's edge reaches, the Secret
     // Store the identity reads its credential from itself, and the cluster's DNS.

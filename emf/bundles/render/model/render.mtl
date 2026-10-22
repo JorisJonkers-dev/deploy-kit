@@ -280,15 +280,31 @@
   [/if]
 [/template]
 
+[comment A consumer is every pod carrying the consumer label of the surface, in any namespace
+  this model manages (spec/v1/16-dependencies.md#the-consumer-label); every other peer is named. /]
 [template private peer(peer : resolveddeployment::PolicyPeer)]
-  - namespaceSelector:
-      matchLabels:
-        kubernetes.io/metadata.name: [peer.namespace/]
-  [if (peer.process <> null)]
+  [if (peer.consumes <> null)]
+    - namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/managed-by: deploy-kit
       podSelector:
         matchLabels:
-          [if (peer.rule = 'flux-events')]app[else]app.kubernetes.io/instance[/if]: [peer.process/]
+          [peer.consumes.consumerLabel()/]
+  [else]
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: [peer.namespace/]
+    [if (peer.process <> null)]
+        podSelector:
+          matchLabels:
+            [if (peer.rule = 'flux-events')]app[else]app.kubernetes.io/instance[/if]: [peer.process/]
+    [/if]
   [/if]
+[/template]
+
+[comment The label a pod carries for one surface it consumes, which the provider's policy admits. /]
+[template private consumerLabel(consumed : String)]
+  consumes.deploy-kit.jorisjonkers.dev/[consumed/]: "true"
 [/template]
 
 [comment =================================================== application files /]
@@ -467,6 +483,9 @@
       metadata:
         labels:
           [d.application.migration.identity.labelSet('none', d.application.id)/]
+  [for (c : String | d.application.migration.consumes)]
+            [c.consumerLabel()/]
+  [/for]
   [if (d.application.migration.runnerVersion <> null)]
           annotations:
             image.jorisjonkers.dev/migration: [d.application.migration.runnerVersion.scalar()/]
@@ -587,6 +606,9 @@
       metadata:
         labels:
           [p.labels()/]
+  [for (c : String | p.consumes)]
+            [c.consumerLabel()/]
+  [/for]
   [if (p.versioned()->notEmpty())]
           annotations:
     [for (n : String | p.versioned())]

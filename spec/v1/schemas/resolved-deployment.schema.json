@@ -556,6 +556,13 @@
         "database": {
           "$ref": "#/$defs/MigratedDatabase"
         },
+        "consumes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "credential": {
           "$ref": "#/$defs/ResolvedEngineGrant"
         },
@@ -577,6 +584,7 @@
         "cpu",
         "scratch",
         "database",
+        "consumes",
         "credential",
         "egress"
       ],
@@ -1042,6 +1050,13 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/ResolvedEdge"
+          }
+        },
+        "consumes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
           }
         },
         "writablePaths": {
@@ -2040,41 +2055,67 @@
       "additionalProperties": false
     },
     "IngressPeer": {
-      "type": "object",
-      "properties": {
-        "rule": {
-          "$ref": "#/$defs/IngressRule"
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "rule": {
+              "$ref": "#/$defs/IngressRule"
+            },
+            "namespace": {
+              "type": "string",
+              "minLength": 1
+            },
+            "process": {
+              "type": "string",
+              "minLength": 1
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "rule",
+            "namespace",
+            "process",
+            "port"
+          ],
+          "additionalProperties": false
         },
-        "namespace": {
-          "type": "string",
-          "minLength": 1
-        },
-        "process": {
-          "type": "string",
-          "minLength": 1
-        },
-        "port": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 65535
+        {
+          "type": "object",
+          "properties": {
+            "rule": {
+              "type": "string",
+              "const": "consumer"
+            },
+            "consumes": {
+              "type": "string",
+              "minLength": 1
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": [
+            "rule",
+            "consumes",
+            "port"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "rule",
-        "namespace",
-        "process",
-        "port"
-      ],
-      "additionalProperties": false
+      ]
     },
     "IngressRule": {
       "type": "string",
       "enum": [
         "tier-proxy",
         "metrics-stack",
-        "consumer",
         "backup",
-        "migration",
         "flux-events"
       ]
     },
