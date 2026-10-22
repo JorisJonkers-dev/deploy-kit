@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.31.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.30.0...v0.31.0) (2026-10-22)
+
+
+### Features
+
+* **composition:** isolate the provider, not the run, when it drops a Surface a consumer still names ([#568](https://github.com/JorisJonkers-dev/deploy-kit/issues/568)) ([c968e86](https://github.com/JorisJonkers-dev/deploy-kit/commit/c968e868cc755a7107e13cccbbe0b2a2e9c623b2))
+* **delivery:** a Rollback relies on the scheduled backups, so no estate-scoped backup unit remains ([#566](https://github.com/JorisJonkers-dev/deploy-kit/issues/566)) ([7863779](https://github.com/JorisJonkers-dev/deploy-kit/commit/78637796e47084c53da036d50bc8edb8dcbd6431))
+* **delivery:** apply a Project's routes from its own unit, after the edge Project ([#567](https://github.com/JorisJonkers-dev/deploy-kit/issues/567)) ([9a86895](https://github.com/JorisJonkers-dev/deploy-kit/commit/9a86895a570492e295dc710708b68108f59c30a0))
+* **model:** a provider admits its consumers by a label each carries, so a new consumer re-renders only itself ([#569](https://github.com/JorisJonkers-dev/deploy-kit/issues/569)) ([9945074](https://github.com/JorisJonkers-dev/deploy-kit/commit/9945074ed855aa59832315e406249900a05542f8))
+* **model:** a Vault policy job per Project, in its own unit ([#564](https://github.com/JorisJonkers-dev/deploy-kit/issues/564)) ([b8d7ce0](https://github.com/JorisJonkers-dev/deploy-kit/commit/b8d7ce073aa26b0ea1042b0f06938abdf3300dea))
+* **model:** render the rollout events per Project, in its own unit ([#565](https://github.com/JorisJonkers-dev/deploy-kit/issues/565)) ([f769454](https://github.com/JorisJonkers-dev/deploy-kit/commit/f7694540412c37a093d4103bd451fcb8f126566e))
+
+
+### Bug Fixes
+
+* **model:** a datastore's catalog method carries its surface's consumer label, so the datastore admits it ([#575](https://github.com/JorisJonkers-dev/deploy-kit/issues/575)) ([176dd54](https://github.com/JorisJonkers-dev/deploy-kit/commit/176dd5442c914e13457ca567c105ca56dd215ffd))
+* **model:** apply a datastore's catalog from its own Project's unit ([#561](https://github.com/JorisJonkers-dev/deploy-kit/issues/561)) ([a7ccd2c](https://github.com/JorisJonkers-dev/deploy-kit/commit/a7ccd2cdd9e316f0cfae0a2a55e0420f7f36f042))
+
 ## [0.30.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.29.0...v0.30.0) (2026-10-21)
 
 
