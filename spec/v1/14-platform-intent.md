@@ -256,10 +256,36 @@ Two consequences are normative:
   emitted the route.
 
 The estate-scoped Deliverables that used to have adapters of their own, the
-Gatus endpoints, the edge catalogs, are **inbound derivations** of the platform
-Application that consumes them ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)),
-rendered as that Application's own Assets, exactly as the database catalog is for
-`postgres` ([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md)).
+Gatus endpoints and the edge catalogs, are never rendered into a platform
+Application's share, because a list there would change with every Project's
+routes ([0117](../../docs/adr/model/0117-an-external-check-is-rendered-by-its-own-project.md)):
+
+- **The external checks are each Project's own.** Every Application with an
+  exposure renders one ConfigMap in its own namespace, in its own share,
+  named `<application>-external-checks`, carrying the labels an
+  Application's own object carries (`part-of` and `managed-by`) and one more,
+  `estate.jorisjonkers.dev/external-checks: "true"`
+  ([chapter 10](10-project-intent.md#the-label-set)), holding the checks its
+  exposure derives
+  ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)) under
+  `endpoints` and nothing else. Gatus refuses a scalar setting two of its files
+  define, so a Project's file may only add endpoints.
+- **Gatus gathers them.** Its Application declares a checks sidecar that
+  watches every ConfigMap carrying that label, in every namespace that carries
+  `app.kubernetes.io/managed-by: deploy-kit`, and writes each as one file into
+  the directory Gatus reads its configuration from. Gatus merges the files and
+  reloads them in-process, so a Project's new or changed checks reach it
+  without a restart. The `gatus` Process declares API access to `list` and
+  `watch` ConfigMaps, and the Platform document admits the Application as a
+  holder ([Kubernetes API access](#kubernetes-api-access)). Only Flux and the
+  admitted holders write ConfigMaps in a Project's namespace, so a check comes
+  from a render composition checked, or from a holder the platform named.
+- **No edge catalog is rendered.** The Traefik Applications read every
+  `IngressRoute` through their Kubernetes provider, and each Project's routes
+  are already in its own namespace.
+
+A route or exposure change therefore re-renders only its own Project's share.
+No platform Application's Assets, pod template or pin move with it.
 
 ## Tiers
 
@@ -761,7 +787,7 @@ every Application is `interrupted` needs neither the gate nor the block.
 
 ```yaml
 apiAccess:
-  holders: [delivery/flagger, delivery/release-gate, delivery/collector]
+  holders: [delivery/flagger, delivery/release-gate, delivery/collector, observability/gatus]
   server:
     - { cidr: 10.43.0.1/32, port: 443 }
 ```

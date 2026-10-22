@@ -74,10 +74,11 @@ map's digest padded `renderHash` for no reason but to pair them. An Application 
 who wants to see their own render runs the same core locally over the same pinned
 inputs: a use-case, not a second adapter set.
 
-Three former adapters are not deleted so much as reclassified. The Gatus
-endpoints and the two edge catalogs are **inbound derivations** of the platform
-Application that consumes them ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)),
-rendered as that Application's own Assets by `kubernetes`. Image metadata is a
+Three former adapters are gone. The Gatus endpoints are reclassified as each
+Application's own external checks, rendered by `kubernetes` into its Project's
+share and gathered by the `gatus` Application, and the two edge catalogs are
+deleted outright, since the proxy reads each Project's routes itself
+([chapter 14](14-platform-intent.md#the-foundation-is-declared)). Image metadata is a
 **projection of the images lock** and joins the Resolved Deployment artifact set
 ([chapter 20](20-resolved-deployment.md#publish-back)). `flux-root` (one Flux
 `Kustomization` per layer, with `dependsOn` and health checks) is one delivery

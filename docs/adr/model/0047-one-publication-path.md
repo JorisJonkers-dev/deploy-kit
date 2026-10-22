@@ -13,8 +13,10 @@ A project repository validates its project file and pushes it as an Intent
 Fragment by digest. It renders nothing. Every derivation runs once, in one
 central run over the composed union, through the six registered adapters
 ([0037](0037-six-registered-adapters-satisfy-one-port.md)). What used to be
-estate-scoped catalogs (Gatus endpoints, edge catalogs) are inbound derivations
-of the Application that consumes them. Image metadata is a projection of the
+estate-scoped catalogs are no longer separate outputs: the Gatus endpoints are
+each Application's own external checks, rendered in its Project's share, and
+the edge catalogs are not rendered
+([0117](0117-an-external-check-is-rendered-by-its-own-project.md)). Image metadata is a projection of the
 images lock in the Resolved Deployment. The render emits no Flux object:
 delivery writes the Kustomizations ([0050](0050-delivery-is-part-of-the-model.md)).
 One `traefik` adapter renders one route set and one middleware set per tier.
@@ -43,9 +45,11 @@ They predated composition. An owner who wants to see their render runs the same
 core locally with the same pinned inputs: a use-case, not a second adapter set.
 
 **Three shallow modules fell to the same test.** Estate-scoped catalog adapters
-rendered three ConfigMaps whose content is an inbound derivation the model
-already has a word for, like the database catalog
-([0026](0026-migration-is-declared-on-the-application.md)). Image metadata is a
+rendered three ConfigMaps whose content the model already derives elsewhere.
+The Gatus endpoints are each exposure's own checks, rendered with the
+Application they check, and the two edge catalogs repeat the routes the proxy
+already reads
+([0117](0117-an-external-check-is-rendered-by-its-own-project.md)). Image metadata is a
 layer-2 fact already published back
 ([0032](0032-the-resolved-deployment-is-a-versioned-artifact.md)). A Flux
 Kustomization per layer is delivery's reading of the Reconcile Unit DAG, not a

@@ -73,8 +73,16 @@ input and changes only with the digest beside it, so it never moves a pin or
 restarts a pod that the image change would not.
 
 An estate-scoped Deliverable carries `managed-by` only. It belongs to no
-Process and no Application, and `part-of` on the Gatus endpoints ConfigMap would
-name an Application that does not own it.
+Process and no Application, and `part-of` on such an object would name an
+Application that does not own it.
+
+**One selection label is the case for a sixth.** An Application's
+external-checks ConfigMap also carries `estate.jorisjonkers.dev/external-checks`.
+Gatus's checks sidecar gathers those objects from every namespace, and a
+Kubernetes watch selects by label, not by reading the Resolved Deployment
+([0117](0117-an-external-check-is-rendered-by-its-own-project.md)). It is on
+that one object kind only, and never in a selector the render writes, so it
+moves nothing the five labels decide.
 
 ## Alternatives
 | option | cost if taken | why rejected |

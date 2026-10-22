@@ -53,11 +53,12 @@ were decided on 2026-09-07 and their status lives in
 Two files this tree used to carry, `edge/middlewares.yaml` and
 `observability/gatus-endpoints.yaml`, render in the **platform projects** now:
 the Middleware set is emitted per tier by the `traefik` adapter into the edge
-project, and the Gatus endpoint list is an inbound derivation rendered as the
-declared `gatus` Application's own Asset in the observability project
+project, and the Gatus endpoint list is replaced by each Application's own
+external checks, which this project renders for its own exposures once that
+object is built and the declared `gatus` Application gathers
 ([0046](../../../../../docs/adr/model/0046-the-foundation-is-declared.md),
-[0047](../../../../../docs/adr/model/0047-one-publication-path.md)). This project
-contributes routes and exposures to both; it owns neither object.
+[0117](../../../../../docs/adr/model/0117-an-external-check-is-rendered-by-its-own-project.md)).
+This project's routes use the Middleware set; it does not own that object.
 
 ## Emitted
 
@@ -100,10 +101,10 @@ contributes routes and exposures to both; it owns neither object.
 | `Role` / `RoleBinding` per Process | per-Process identity | **none.** No `rbac` adapter. It is also what keeps the two Secret boundaries apart in a shared namespace (**G-24**). |
 | `resolved.yml` (the `ResolvedApplication` projection) | publish-back | central composition; not part of a Deliverable Set. |
 
-Estate-scoped objects this project contributes rows to but does not render: the
-edge catalogs, now Assets of the declared Traefik Applications in the platform edge
-project; the Gatus endpoint list, an Asset of the declared `gatus` Application; and
-`vso`'s `VaultConnection` in `vso-system`. The per-Process image digests that
+Estate-scoped objects this project contributes rows to but does not render:
+`vso`'s `VaultConnection` in `vso-system`. The edge catalogs are not rendered at
+all, and the Gatus endpoint list becomes this project's own external checks
+([0117](../../../../../docs/adr/model/0117-an-external-check-is-rendered-by-its-own-project.md)). The per-Process image digests that
 were once an `image-metadata` document are in this Application's `resolved.yml`
 projection, and the Flux `Kustomization` for `apps-knowledge` is delivery's
 ([0047](../../../../../docs/adr/model/0047-one-publication-path.md)).

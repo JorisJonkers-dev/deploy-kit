@@ -93,6 +93,7 @@ and linted by the same script with `emf` as its root.
 | [0110](model/0110-a-route-may-bound-its-request-rate.md) | A route may bound how many requests one client sends it, and the tier decides who the client is | open |
 | [0112](model/0112-east-west-traffic-is-mutually-authenticated-by-an-ambient-mesh.md) | East-west traffic is mutually authenticated by an ambient mesh, Istio's ztunnel on every node, and Kiali shows who reaches whom | open |
 | [0027](model/0027-prepare-processes-are-forward-only-setup.md) | A prepare Process is forward-only setup that runs after the migration and before the new version, and serves nothing | open |
+| [0117](model/0117-an-external-check-is-rendered-by-its-own-project.md) | An Application's external checks are rendered by its own Project and collected by the checker, and no edge catalog is rendered | open |
 
 ## Secrets
 

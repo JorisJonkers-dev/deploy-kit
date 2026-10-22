@@ -587,7 +587,8 @@ policy rule to every IPv4 address except a fixed non-public set; no author or
 Platform fact names a range ([chapter 16](spec/v1/16-dependencies.md#internet-egress)).
 
 **API Holder**: an Application the Platform document admits to hold API
-access. Flagger, the Release Gate and the Collector
+access. Flagger, the Release Gate, the Collector and Gatus, which gathers each
+Project's external checks
 ([chapter 14](spec/v1/14-platform-intent.md#kubernetes-api-access)).
 
 **Held**: the state of an Application whose release failed: its old version
