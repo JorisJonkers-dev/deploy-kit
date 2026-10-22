@@ -54,14 +54,13 @@ describe("what a consumer dials", () => {
     },
   );
 
-  it("is the alias for a host name that only starts with digits, which is no IP", () => {
-    expect(
-      reachOf(SMTP, { host: "1password.example.com", port: 25 }, "auth", [
-        SMTP,
-      ]),
-    ).toStrictEqual({
-      address: "stalwart:25",
-      target: "1password.example.com",
-    });
-  });
+  it.each(["1password.example.com", "relay-2"])(
+    "is the alias for a host name that only starts or ends with digits, which is no IP: %s",
+    (host) => {
+      expect(reachOf(SMTP, { host, port: 25 }, "auth", [SMTP])).toStrictEqual({
+        address: "stalwart:25",
+        target: host,
+      });
+    },
+  );
 });

@@ -21,6 +21,7 @@ import {
   homeOf,
   vaultNameOf,
 } from "../model/runtime-profiles.ts";
+import { consumedOf } from "../model/consumer-label.ts";
 import { datastoreOf } from "./database.ts";
 import { DNS_PORT, storeOf } from "./policy.ts";
 
@@ -149,6 +150,7 @@ export function resolveCatalogJobs(
               data: dataRole(project),
             })),
           },
+          consumes: [consumedOf(application.id, surface)],
           egress: [
             { rule: "datastore", ...home, port },
             store,

@@ -1314,6 +1314,7 @@ own Vault role:
 | `catalog.connection` | derived | the engine's name, the Secret Store's database connection |
 | `catalog.admin` | platform-assigned | the `serving` location's `admin` while the datastore's Project is `legacy`; else `secret/data/<project>/<process>/catalog`, keys `user` and `password` |
 | `catalog.databases` | derived | for each project on the estate path an edge of which reaches the datastore, in name order: `<project>_db`, `<project>-owner`, `<project>-data` |
+| `consumes` | derived | the datastore's engine `surface`, as the [consumer label](16-dependencies.md#the-consumer-label) the method's pods carry names it, which the datastore's policy admits |
 | `egress` | derived | the datastore on its surface, the Secret Store on its `http` surface, and the cluster's DNS |
 
 ## Publish back
