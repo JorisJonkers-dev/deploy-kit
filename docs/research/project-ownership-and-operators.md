@@ -506,13 +506,13 @@ under [#544](https://github.com/JorisJonkers-dev/deploy-kit/issues/544).
 
 ## Open verification
 
-| claim | settle by |
-|---|---|
-| A provider's pin moves and a Rollout is recorded when a consumer adds an edge (C7) | test: compose two fragments, add a consumer edge in one, assert the provider artifact's `moves` and `rollout` |
-| vault-config-operator v1.0.4 writes `Policy` and `KubernetesAuthEngineRole` against the estate's Vault release | drill: install, apply one of each, `vault policy read`, `vault read auth/kubernetes/role/<name>` |
-| Deleting a vault-config-operator `Policy` CR deletes the Vault policy | drill, or read its finalizer in the controller source |
-| A writer role confined to `sys/policies/acl/<ns>-*` by a templated path refuses another prefix | drill against the estate's Vault |
-| Traefik resolves an `extensionRef` Middleware only in the HTTPRoute's namespace | drill, or Traefik's Gateway provider source |
-| k3s's embedded network policy controller implements no admin or cluster network policy | read the k3s release notes for the pinned version |
-| Gatus can discover endpoints from the cluster rather than from a rendered list | Gatus documentation |
-| The kustomize-controller's own account is cluster-admin on this estate | `kubectl get clusterrolebinding -o wide` for its ServiceAccount |
+| claim | settle by | settled |
+|---|---|---|
+| A provider's pin moves and a Rollout is recorded when a consumer adds an edge (C7) | test: compose two fragments, add a consumer edge in one, assert the provider artifact's `moves` and `rollout` | yes: the test showed the provider moving, and [#552](https://github.com/JorisJonkers-dev/deploy-kit/issues/552) made it pass by admitting consumers by a label they carry |
+| vault-config-operator v1.0.4 writes `Policy` and `KubernetesAuthEngineRole` against the estate's Vault release | drill: install, apply one of each, `vault policy read`, `vault read auth/kubernetes/role/<name>` | no: [#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548) chose a per-Project policy job, so no operator was installed |
+| Deleting a vault-config-operator `Policy` CR deletes the Vault policy | drill, or read its finalizer in the controller source | no: not needed after [#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548) |
+| A writer role confined to `sys/policies/acl/<ns>-*` by a templated path refuses another prefix | drill against the estate's Vault | yes, on a local Vault 2.1.1 ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)): a templated path confines the names a writer may write, not what they grant, recorded in [0087](../adr/model/0087-in-cluster-consumers-read-the-render.md) |
+| Traefik resolves an `extensionRef` Middleware only in the HTTPRoute's namespace | drill, or Traefik's Gateway provider source | no |
+| k3s's embedded network policy controller implements no admin or cluster network policy | read the k3s release notes for the pinned version | no |
+| Gatus can discover endpoints from the cluster rather than from a rendered list | Gatus documentation | moot: [0117](../adr/model/0117-an-external-check-is-rendered-by-its-own-project.md) has a checks sidecar gather each Project's labelled ConfigMap, so Gatus need not discover anything |
+| The kustomize-controller's own account is cluster-admin on this estate | `kubectl get clusterrolebinding -o wide` for its ServiceAccount | no |
