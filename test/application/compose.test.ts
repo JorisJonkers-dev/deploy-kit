@@ -1088,6 +1088,61 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     ).toStrictEqual([["notes", false]]);
   });
 
+  it("gives the catalog of a datastore the old path runs a unit of its own, which follows the Secret Store's Project", () => {
+    const estateArtifact = {
+      name: "_estate",
+      files: [
+        "estate/vso-secrets/kustomization.yaml",
+        "estate/vso-secrets/postgres-catalog.yaml",
+      ].map((path) => ({ path, adapter: "kubernetes", text: "" })),
+    };
+    const [estate] = pinSources(
+      [estateArtifact],
+      [estateArtifact, { name: "secrets", files: [] }],
+      [{ project: "secrets", applications: [{ id: "vault" }] }] as never,
+      {
+        tiers: [],
+        secretStore: "secrets/vault",
+        bootstrap: {
+          flux: {
+            sourceRef: "flux-system/platform",
+            artifacts: {
+              repository: "ghcr.io/x/render",
+              signer: { issuer: "i", subject: "s" },
+            },
+          },
+        },
+      } as never,
+      serialize,
+    );
+    const units = (
+      parseAllDocuments(estate?.text ?? "") as { toJS(): unknown }[]
+    )
+      .map(
+        (document) =>
+          document.toJS() as {
+            kind: string;
+            metadata: { name: string };
+            spec: { path?: string; dependsOn?: unknown };
+          },
+      )
+      .filter(({ kind }) => kind === "Kustomization");
+
+    expect(
+      units.map(({ metadata, spec }) => [
+        metadata.name,
+        spec.path,
+        spec.dependsOn,
+      ]),
+    ).toStrictEqual([
+      [
+        "estate-vso-secrets",
+        "./estate/vso-secrets",
+        [{ name: "apps-secrets" }],
+      ],
+    ]);
+  });
+
   it("gives each tier's routes a unit that follows that tier's proxy and the Projects it serves, and no unit where the artifact holds no index", () => {
     // Two tiers, a Project on each, and their proxies in a third: enough of a
     // resolved union to tell one tier's Projects from the other's.
