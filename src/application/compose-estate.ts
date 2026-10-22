@@ -298,6 +298,11 @@ const placed = (directory: string, files: readonly AuthoredFile[]) =>
 const directoryOf = ({ document }: Diagnostic): string | undefined =>
   document?.split("/")[0];
 
+/** The documents a refusal rests on beside its own. */
+// A missing list and an empty one involve nothing alike.
+// Stryker disable next-line ArrayDeclaration
+const involvedIn = ({ involves }: Diagnostic) => involves ?? [];
+
 /** The Platform document a resolved set read: parsed already, so parsed again without refusal. */
 function platformOf(fragment: Fragment): PlatformIntentDocument {
   const file = fragment.files.find(
@@ -479,15 +484,38 @@ function composed(
     // What changed is what is isolated: an error that names no changed
     // fragment, or names the platform or nothing at all, fails the run.
     const blamed = new Map<string, Diagnostic[]>();
+    const changed = (project: string | undefined): boolean => {
+      // A map holds no candidate under no key.
+      const candidate = candidates.get(project as string);
+      return (
+        candidate !== undefined &&
+        candidate.ref !== previous[project as string]?.ref
+      );
+    };
+    // A refusal at an unchanged fragment is blamed on the changed fragments
+    // its own refusals rest on: a provider that dropped what it named is the
+    // change, and the consumer only reports it
+    // (spec/v1/40-composition.md#a-refused-project-is-isolated).
+    const causes = (project: string | undefined): string[] => {
+      const involved = refusals
+        .filter((diagnostic) => directoryOf(diagnostic) === project)
+        .flatMap(involvedIn)
+        .map((document) => document.split("/")[0] as string);
+      // Only a change can refuse an unchanged fragment, so every fragment
+      // such a refusal involves has changed and the filter removes nothing a
+      // reachable set holds; it stays so an unchanged fragment is never blamed.
+      // Stryker disable next-line MethodExpression
+      return [...new Set(involved.filter(changed))];
+    };
     for (const diagnostic of refusals) {
       // The platform's directory, and no directory at all, hold no candidate.
       // A map holds no candidate under no key, so a diagnostic naming no
       // document finds none.
-      const project = directoryOf(diagnostic) as string;
-      const candidate = candidates.get(project);
-      if (candidate === undefined || candidate.ref === previous[project]?.ref)
-        return { ok: false, diagnostics: refusals };
-      blamed.set(project, [...(blamed.get(project) ?? []), diagnostic]);
+      const project = directoryOf(diagnostic);
+      const culprits = changed(project) ? [project as string] : causes(project);
+      if (culprits.length === 0) return { ok: false, diagnostics: refusals };
+      for (const culprit of culprits)
+        blamed.set(culprit, [...(blamed.get(culprit) ?? []), diagnostic]);
     }
     for (const [project, diagnostics] of blamed) {
       isolated.set(project, {

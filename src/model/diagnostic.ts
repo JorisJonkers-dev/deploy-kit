@@ -147,6 +147,12 @@ export interface Diagnostic {
   readonly path: string;
   readonly message: string;
   readonly hint: string;
+  /**
+   * Every other authored file the refusal rests on, where it spans fragments:
+   * the file that declares the provider an edge names. Composition blames a
+   * changed one of them for a refusal at an unchanged fragment.
+   */
+  readonly involves?: readonly string[];
 }
 
 export type Result<T> =

@@ -491,6 +491,92 @@ describe("composeEstate", () => {
     ]);
   });
 
+  // deploy-kit#559: a Project released on its own never fails the run for
+  // every other Project.
+  it("isolates a provider that drops a Surface an unchanged consumer still names, and composes the consumer", () => {
+    const first = withLegacyCatalog();
+    const dropped = release("data", "1.1.0", (body) =>
+      body.replace("          postgres: 5432\n", "          pg: 5432\n"),
+    );
+    const composed = withLegacyCatalog({
+      fragments: RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "notes"
+          ? release("notes", "1.0.0", readsTheLegacyPostgres)
+          : fragment.manifest.spec.project === "data"
+            ? dropped
+            : fragment,
+      ),
+      held: [...RELEASES, release("notes", "1.0.0", readsTheLegacyPostgres)],
+      pins: pinned(first),
+      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(composed.conditions.map(({ project }) => project)).toStrictEqual([
+      "data",
+    ]);
+    expect(composed.conditions[0]?.discord).toContain("E_UNKNOWN_SURFACE");
+    expect(composed.lock.spec.fragments.data?.ref).toBe(
+      first.lock.spec.fragments.data?.ref,
+    );
+  });
+
+  it("blames an unchanged consumer's refusal only on the changed fragments it names, not on those another fragment's refusal names", () => {
+    const first = withLegacyCatalog();
+    // data drops what notes names, and itself names a Surface secrets does
+    // not hold; secrets changes too, but nothing of its own is refused.
+    const dropped = release("data", "1.1.0", (body) =>
+      body
+        .replace("          postgres: 5432\n", "          pg: 5432\n")
+        .replace(
+          "        runtime: none\n",
+          "        runtime: none\n        dependsOn:\n          - { application: vault, surface: nope }\n",
+        ),
+    );
+    const composed = withLegacyCatalog({
+      fragments: RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "notes"
+          ? release("notes", "1.0.0", readsTheLegacyPostgres)
+          : fragment.manifest.spec.project === "data"
+            ? dropped
+            : fragment.manifest.spec.project === "secrets"
+              ? release("secrets", "1.1.0")
+              : fragment,
+      ),
+      held: [...RELEASES, release("notes", "1.0.0", readsTheLegacyPostgres)],
+      pins: pinned(first),
+      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(composed.conditions.map(({ project }) => project)).toStrictEqual([
+      "data",
+    ]);
+    expect(composed.lock.spec.fragments.secrets?.ref).toBe(
+      release("secrets", "1.1.0").ref,
+    );
+  });
+
+  it("isolates a consumer that newly names a Surface its provider does not hold", () => {
+    const consumer = release("notes", "1.1.0", (body) =>
+      readsTheLegacyPostgres(body).replace(
+        "surface: postgres }",
+        "surface: pg }",
+      ),
+    );
+    const first = withLegacyCatalog();
+    const composed = withLegacyCatalog({
+      fragments: RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "notes" ? consumer : fragment,
+      ),
+      held: [...RELEASES, release("notes", "1.0.0", readsTheLegacyPostgres)],
+      pins: pinned(first),
+      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(composed.conditions.map(({ project }) => project)).toStrictEqual([
+      "notes",
+    ]);
+  });
+
   it("leaves out a refused Project that has never composed, and composes the rest", () => {
     const refused = release("notes", "1.0.0", broken);
     const composed = compose({
