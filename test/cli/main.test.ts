@@ -564,14 +564,15 @@ describe("deploy-kit compose", () => {
         "utf8",
       ),
     ).toBe(
-      // The committed file's release is another commit; the rest is the same.
-      readFileSync(
-        example("pins/rendered/projects/notes/source.yaml"),
-        "utf8",
-      ).replace(
-        /(event\.toolkit\.fluxcd\.io\/sha: ).*/,
-        `$1${hex("notes", 40)}`,
-      ),
+      // The committed file's release is another commit, and edge is still on
+      // the old path here, so the unit follows no edge unit; the rest is the
+      // same.
+      readFileSync(example("pins/rendered/projects/notes/source.yaml"), "utf8")
+        .replace(
+          /(event\.toolkit\.fluxcd\.io\/sha: ).*/,
+          `$1${hex("notes", 40)}`,
+        )
+        .replace("  dependsOn:\n    - name: apps-edge\n", ""),
     );
 
     const pins = join(root, "pins.json");

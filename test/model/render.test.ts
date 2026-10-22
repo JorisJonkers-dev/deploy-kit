@@ -133,10 +133,10 @@ describe("renderIntentSet", () => {
     );
   });
 
-  it("renders the estate-scoped share of both to its committed tree, byte for byte", () => {
+  it("renders nothing estate-scoped for both, each holding its own routes", () => {
     expect(
-      asTree(artifact(render(undefined, ["notes", "data"]), "_estate")),
-    ).toStrictEqual(committed("_estate/rendered"));
+      artifact(render(undefined, ["notes", "data"]), "_estate"),
+    ).toBeUndefined();
   });
 
   // REQ-052 (docs/requirements.md): auth's render carries its migration Jobs,
@@ -699,6 +699,7 @@ describe("renderIntentSet", () => {
       "apps/notes/notes/kustomization.yaml": "kubernetes",
       "apps/notes/notes/networkpolicy.yaml": "networking",
       "apps/notes/notes/podmonitor.yaml": "prometheus",
+      "apps/notes/notes/route-public.yaml": "traefik",
       "apps/notes/notes/serviceaccount.yaml": "kubernetes",
       "apps/notes/notes/workload.yaml": "kubernetes",
       "apps/notes/rollout-events/alert.yaml": "kubernetes",
@@ -816,10 +817,7 @@ describe("renderIntentSet", () => {
     const paths = (name: string) =>
       artifact(artifacts, name)?.files.map(({ path }) => path) ?? [];
 
-    expect(artifacts.map(({ name }) => name)).toStrictEqual([
-      "_estate",
-      "notes",
-    ]);
+    expect(artifacts.map(({ name }) => name)).toStrictEqual(["notes"]);
     expect(paths("notes")).toStrictEqual([
       "apps/notes/kustomization.yaml",
       "apps/notes/libraries.yaml",
@@ -830,15 +828,12 @@ describe("renderIntentSet", () => {
       "apps/notes/notes/kustomization.yaml",
       "apps/notes/notes/networkpolicy.yaml",
       "apps/notes/notes/podmonitor.yaml",
+      "apps/notes/notes/route-public.yaml",
       "apps/notes/notes/serviceaccount.yaml",
       "apps/notes/notes/workload.yaml",
       "apps/notes/rollout-events/alert.yaml",
       "apps/notes/rollout-events/kustomization.yaml",
       "apps/notes/rollout-events/provider.yaml",
-    ]);
-    expect(paths("_estate")).toStrictEqual([
-      "estate/edge/public-frankfurt/kustomization.yaml",
-      "estate/edge/public-frankfurt/notes-public.yaml",
     ]);
   });
 

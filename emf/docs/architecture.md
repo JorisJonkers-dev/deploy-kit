@@ -439,8 +439,8 @@ two extents it was resolved from, `resolution.intent.xmi` and
 `resolution.pinned.xmi`, which the launch configuration in Eclipse runs the
 transformation on. `bundles/cli/target/parity/rendered/` holds the tree the
 composed union of `minimal` and `data` renders to, which is the committed
-`minimal/rendered/`, `data/rendered/` and `_estate/rendered/` together, file for
-file, or the diagnostics that refused the union in its place.
+`minimal/rendered/` and `data/rendered/` together, file for file, or the
+diagnostics that refused the union in its place.
 `bundles/metamodel/target/parity/` holds `descriptor.json`.
 Every case also leaves each document it reads as an XMI instance of the source
 metamodel, named after its authored file (`notes.project.yml` leaves

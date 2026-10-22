@@ -5,9 +5,9 @@ model as it then stood, to find what a renderer could not yet derive. The
 compiler now renders it: [`rendered/`](rendered/) is its committed golden tree,
 produced from [`data.project.yml`](data.project.yml), the env file under
 [`env/`](env/postgres/base.env) and the Asset under [`config/`](config/postgresql.conf),
-and compared byte for byte by `test/model/render.test.ts`. Its estate-scoped
-share, the Vault policies and roles and the `rabbitmq` route, is in
-[`../_estate/rendered/`](../_estate/rendered/).
+and compared byte for byte by `test/model/render.test.ts`. Its Vault policies
+and roles, the job that writes them and the `rabbitmq` route are in that tree
+too: nothing of it is estate-scoped.
 
 The hand tree is gone. What it found stays below, because each row is the
 evidence for a decision taken since or still owed. A row that names a file

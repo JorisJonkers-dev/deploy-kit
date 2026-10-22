@@ -37,8 +37,9 @@ adapter-computed path both outcomes are accidents; under a plan both are
 assignments with an owner.
 
 The plan keeps two roots that never meet. A Project's share is everything
-under `apps/<project>/`, and what is estate-scoped (a tier's routes, the Vault
-documents and the job that writes them) is under `estate/`. While the
+under `apps/<project>/`, its routes and its Vault documents among it, and what
+is estate-scoped (the catalog of a datastore the old path still runs) is under
+`estate/`. While the
 estate-scoped directories sat under `apps/` beside the Projects', the
 directory `apps/edge/` was both the routes' and the directory of a Project
 named `edge`, and the estate has one: its whole render was attributed to the

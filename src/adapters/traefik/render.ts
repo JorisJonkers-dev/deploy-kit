@@ -1,6 +1,6 @@
-// The `traefik` adapter (spec/v1/30-deliverables.md#adapters): per tier the
-// IngressRoutes that serve every exposure the tier carries, in the tier's
-// estate-scoped directory, each in its Application's own namespace. The one
+// The `traefik` adapter (spec/v1/30-deliverables.md#adapters): per exposure
+// the IngressRoute that serves it, in its Application's own directory and
+// namespace, so a Project's routes are its own and its unit applies them. The one
 // place Traefik's vocabulary is spelled: a listener is an entry point, an
 // `acme` certificate source a resolver, a precedence a priority, a rate limit a
 // RateLimit Middleware of the route's own.
@@ -12,7 +12,7 @@ import type {
 } from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import { managedOnly } from "../shared/labels.ts";
-import { tierDirectory } from "../shared/paths.ts";
+import { applicationDirectory } from "../shared/paths.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "traefik";
@@ -130,7 +130,7 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
         },
       };
       return {
-        path: `${tierDirectory(exposure.tier)}/${application.id}-${exposure.name}.yaml`,
+        path: `${applicationDirectory(project.project, application.id)}/route-${exposure.name}.yaml`,
         adapter: ADAPTER,
         objects: [route, ...limits],
       };

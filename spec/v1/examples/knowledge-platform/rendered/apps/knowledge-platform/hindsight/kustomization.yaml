@@ -5,6 +5,8 @@ kind: Kustomization
 resources:
   - canary.yaml
   - configmap.yaml
+  - route-api.yaml
+  - route-console.yaml
   - serviceaccount.yaml
   - vso.yaml
   - workload.yaml

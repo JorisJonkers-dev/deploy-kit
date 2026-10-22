@@ -1149,6 +1149,35 @@ ${serving("notes-worker").replace("provides: { http: 8080 }", "provides: { jobs:
     );
   });
 
+  // deploy-kit#546: an exposed Application follows the unit of the Project
+  // that declares its tier's proxy, unless that Project is its own.
+  it("follows no unit of its own when its own Project declares its tier's proxy", () => {
+    const routed = projects(
+      `  - id: notes
+    exposure:
+      - name: app
+        host: notes.jorisjonkers.dev
+        audience: anonymous
+        routes:
+          - { path: /, match: prefix, process: notes-api, surface: http }
+    processes:
+${serving("notes-api")}  - id: notes-proxy
+    processes:
+${serving("notes-proxy")}`,
+      {
+        platform: (platform) =>
+          platform.replace(
+            "traefik: edge/traefik-public",
+            "traefik: notes/notes-proxy",
+          ),
+      },
+    );
+
+    expect(
+      projectNamed(routed, "notes").applications[0]?.reconcileAfter ?? [],
+    ).toStrictEqual([]);
+  });
+
   it("refuses an edge to a surface neither the Application nor the register provides, rather than writing no address", () => {
     expect(
       codesOf(

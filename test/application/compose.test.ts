@@ -189,6 +189,40 @@ function compose(input: Partial<ComposeInput> = {}): Composition {
 }
 
 /**
+ * A handover under which data is still legacy and notes, on the estate path,
+ * reads its Postgres: the estate-scoped artifact then holds that datastore's
+ * catalog, the one thing it holds once every Project owns its own objects.
+ */
+const LEGACY_CATALOG =
+  "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, edge, knowledge, observability]\n  estate: [delivery, notes, secrets]\n  serving:\n    - application: platform-postgres\n      namespace: data-system\n      admin: { path: secret/data/platform/postgres, user: postgres.user, password: postgres.password }\n";
+const readsTheLegacyPostgres = (body: string): string =>
+  body
+    .replace("  - id: notes\n", "  - id: notes\n    migration: none\n")
+    .replace(
+      "        runtime: node\n",
+      "        runtime: node\n        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n",
+    );
+/** A composition whose estate-scoped artifact holds a legacy datastore's catalog. */
+function withLegacyCatalog(input: Partial<ComposeInput> = {}): Composition {
+  return compose({
+    platform: {
+      ...PLATFORM,
+      files: PLATFORM.files.map((file) =>
+        file.name === "platform.intent.yml"
+          ? { ...file, text: withLedger(file.text, LEGACY_CATALOG) }
+          : file,
+      ),
+    },
+    fragments: RELEASES.map((fragment) =>
+      fragment.manifest.spec.project === "notes"
+        ? release("notes", "1.0.0", readsTheLegacyPostgres)
+        : fragment,
+    ),
+    ...input,
+  });
+}
+
+/**
  * The first composition: every Project new, nothing pinned. Composed before
  * each test rather than once at import, so a mutation run sees which test
  * reaches which code.
@@ -251,7 +285,7 @@ describe("composeEstate", () => {
     ]);
     expect(FIRST.lock.spec.fragments.notes?.revisions).toEqual({
       notes:
-        "sha256:d8cb7f5ca6716414c4310c6708413739f79e7242ea97d2e98679624065536466",
+        "sha256:ef696808e72682803cbe3963fc043dec3601e82b0385a9ace81e86ea55052226",
     });
     expect(FIRST.lock.spec.fragments["jorisjonkers.dev"]?.revisions).toEqual(
       {},
@@ -388,18 +422,8 @@ describe("composeEstate", () => {
   });
 
   it("moves no pin of the estate-scoped artifact, which labels no release", () => {
-    // With no Project left on the old path, the estate-scoped artifact exists.
-    const platform = {
-      ...PLATFORM,
-      files: PLATFORM.files.map((file) =>
-        file.name === "platform.intent.yml"
-          ? { ...file, text: withLedger(file.text, "") }
-          : file,
-      ),
-    };
-    const pins = pinned(compose({ platform }));
-    const again = compose({
-      platform,
+    const pins = pinned(withLegacyCatalog());
+    const again = withLegacyCatalog({
       pins: {
         ...pins,
         _estate: { ...(pins["_estate"] as Pin), labelled: null },
@@ -793,9 +817,9 @@ describe("composeEstate", () => {
     ).toEqual([["E_HANDOVER_BOTH_PATHS", "_platform/platform.intent.yml"]]);
   });
 
-  // deploy-kit#286: an estate-path Project's unit depends on the secrets unit,
-  // so it is delivered while the old path still serves the edge.
-  it("delivers the secrets unit alone of the estate-scoped artifact while a Project is legacy", () => {
+  // deploy-kit#286: a Project is delivered while the old path still serves
+  // the edge, so its routes wait until no Project is legacy.
+  it("delivers no route while a Project is legacy, and each Project's own routes once none is", () => {
     const under = (ledger: string): Composition =>
       compose({
         platform: {
@@ -807,48 +831,31 @@ describe("composeEstate", () => {
           ),
         },
       });
-    const estateOf = (composition: Composition) =>
-      composition.artifacts.find(({ name }) => name === "_estate");
+    const routes = (composition: Composition) =>
+      (composition.artifacts.find(({ name }) => name === "data")?.files ?? [])
+        .map(({ path }) => path)
+        .filter((path) => path.includes("/route-"));
     const handingOver = under(
       "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n",
     );
-    const whole = estateOf(under(""))?.files.map(({ path }) => path) ?? [];
-    const cut = estateOf(handingOver)?.files.map(({ path }) => path) ?? [];
 
-    // Each Project writes its own Vault documents, and no datastore the old
-    // path runs has a catalog here, so the cut holds no secrets unit at all.
-    expect(cut.some((path) => path.startsWith("estate/vso-secrets/"))).toBe(
-      false,
-    );
-    expect(cut.some((path) => path.startsWith("estate/edge/"))).toBe(false);
-    expect(whole.some((path) => path.startsWith("estate/edge/"))).toBe(true);
+    expect(routes(handingOver)).toStrictEqual([]);
+    expect(routes(under(""))).toStrictEqual([
+      "apps/data/platform-rabbitmq/route-management.yaml",
+    ]);
     // data's own unit applies its own policy job, and waits on no
-    // estate-scoped unit, nor on the Secret Store's while secrets is legacy.
+    // estate-scoped unit, nor on a Platform Project still on the old path.
     const data = handingOver.sources.find(({ name }) => name === "data")?.text;
-    expect(data).not.toContain("estate-vso-secrets");
+    expect(data).not.toContain("estate-");
     expect(data).not.toContain("apps-secrets");
-    // When the last Project leaves the old path, the artifact gains the edge
-    // units, its pin moves, and its source is rewritten to apply them.
-    const handedOver = compose({
-      platform: {
-        ...PLATFORM,
-        files: PLATFORM.files.map((file) =>
-          file.name === "platform.intent.yml"
-            ? { ...file, text: withLedger(file.text, "") }
-            : file,
-        ),
-      },
-      pins: pinned(handingOver),
-    }).sources.find(({ name }) => name === "_estate");
-    expect(handedOver?.text).not.toContain("estate-vso-secrets");
-    expect(handedOver?.text).toContain("name: estate-edge-");
-    // Where no estate-path Project's render holds a secrets document, there
-    // is no estate-scoped artifact at all.
-    expect(estateOf(FIRST)).toBeUndefined();
+    expect(data).not.toContain("apps-edge");
+    // Where no Project's render holds anything estate-scoped, there is no
+    // estate-scoped artifact at all.
+    expect(
+      handingOver.artifacts.find(({ name }) => name === "_estate"),
+    ).toBeUndefined();
   });
 
-  // deploy-kit#316, #310: while the Secret Store and the edge are legacy, the
-  // estate path reaches them where the ledger states the old path runs them.
   it("reaches a legacy Application where the handover ledger states it serves", () => {
     const composed = compose({
       platform: {
@@ -906,7 +913,7 @@ describe("composeEstate", () => {
       }),
     ).toThrow("a held fragment the caller did not supply");
     // With no ledger, every Project is delivered, the delivery machinery too,
-    // and the estate-scoped artifact with them: no Project is still legacy.
+    // and no estate-scoped artifact: every Project owns what it delivers.
     expect(
       compose({
         platform: {
@@ -919,7 +926,6 @@ describe("composeEstate", () => {
         },
       }).artifacts.map(({ name }) => name),
     ).toEqual([
-      "_estate",
       "data",
       "delivery",
       "edge",
@@ -954,7 +960,6 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     const { sources } = delivered();
 
     expect(sources.map(({ name, path }) => [name, path])).toStrictEqual([
-      ["_estate", "projects/_estate/source.yaml"],
       ["data", "projects/data/source.yaml"],
       ["delivery", "projects/delivery/source.yaml"],
       ["edge", "projects/edge/source.yaml"],
@@ -967,13 +972,44 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     // Each is published where its source points: the estate's beside the
     // Projects' repository, since an OCI name cannot start with an underscore.
     expect(
-      delivered()
+      withLegacyCatalog()
         .artifacts.filter(({ name }) => ["_estate", "notes"].includes(name))
         .map(({ name, repository }) => [name, repository]),
     ).toStrictEqual([
       ["_estate", "ghcr.io/jorisjonkers-dev/render-estate"],
       ["notes", "ghcr.io/jorisjonkers-dev/render/notes"],
     ]);
+  });
+
+  // deploy-kit#546: a Project's routes are its own, and a routed Project
+  // reaches the edge by name, so neither moves the other.
+  it("moves only the Project whose route changed, and no routed Project when the edge changes and keeps its tiers and proxies", () => {
+    const first = delivered();
+    const next = (project: string, edit: (body: string) => string) =>
+      delivered({
+        fragments: RELEASES.map((fragment) =>
+          fragment.manifest.spec.project === project
+            ? release(project, "1.1.0", edit)
+            : fragment,
+        ),
+        held: RELEASES,
+        pins: pinned(first),
+        previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+      })
+        .artifacts.filter(({ moves }) => moves)
+        .map(({ name }) => name);
+
+    expect(
+      next("notes", (body) =>
+        body.replace(
+          "- { path: /, match: prefix, process: notes-api, surface: http }",
+          "- { path: /app, match: prefix, process: notes-api, surface: http }",
+        ),
+      ),
+    ).toStrictEqual(["notes"]);
+    expect(
+      next("edge", (body) => body.replace("memory: 128Mi", "memory: 160Mi")),
+    ).toStrictEqual(["edge"]);
   });
 
   it("pulls every pinned artifact with the Secret the Platform document names for a private repository", () => {
@@ -1063,8 +1099,8 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     const first = delivered();
 
     // No pin yet: every Project's source is a first delivery, the handover's.
+    expect(recreating(withLegacyCatalog())).toContainEqual(["_estate", false]);
     expect(recreating(first)).toStrictEqual([
-      ["_estate", false],
       ["data", true],
       ["delivery", true],
       ["edge", true],
@@ -1088,7 +1124,7 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     ).toStrictEqual([["notes", false]]);
   });
 
-  it("gives the catalog of a datastore the old path runs a unit of its own, which follows the Secret Store's Project", () => {
+  it("gives the catalog of a datastore the old path runs a unit of its own, which follows the Secret Store's Project, and orders each unit's followers by name", () => {
     const estateArtifact = {
       name: "_estate",
       files: [
@@ -1096,10 +1132,32 @@ describe("composeEstate, for an artifact whose pin moves", () => {
         "estate/vso-secrets/postgres-catalog.yaml",
       ].map((path) => ({ path, adapter: "kubernetes", text: "" })),
     };
-    const [estate] = pinSources(
-      [estateArtifact],
-      [estateArtifact, { name: "secrets", files: [] }],
-      [{ project: "secrets", applications: [{ id: "vault" }] }] as never,
+    const sources = pinSources(
+      [estateArtifact, { name: "notes", files: [] }],
+      [
+        estateArtifact,
+        ...["data", "edge", "notes", "secrets"].map((name) => ({
+          name,
+          files: [],
+        })),
+      ],
+      [
+        { project: "data", applications: [{ id: "postgres" }] },
+        { project: "edge", applications: [{ id: "traefik" }] },
+        {
+          project: "notes",
+          applications: [
+            {
+              id: "web",
+              reconcileAfter: ["apps-secrets", "apps-data", "apps-edge"],
+            },
+          ],
+        },
+        {
+          project: "secrets",
+          applications: [{ id: "unseal" }, { id: "vault" }],
+        },
+      ] as never,
       {
         tiers: [],
         secretStore: "secrets/vault",
@@ -1115,127 +1173,50 @@ describe("composeEstate, for an artifact whose pin moves", () => {
       } as never,
       serialize,
     );
-    const units = (
-      parseAllDocuments(estate?.text ?? "") as { toJS(): unknown }[]
-    )
-      .map(
+    const objectsOf = (name: string) =>
+      (
+        parseAllDocuments(
+          sources.find((source) => source.name === name)?.text ?? "",
+        ) as { toJS(): unknown }[]
+      ).map(
         (document) =>
           document.toJS() as {
             kind: string;
             metadata: { name: string };
             spec: { path?: string; dependsOn?: unknown };
           },
-      )
-      .filter(({ kind }) => kind === "Kustomization");
+      );
+    const units = (name: string) =>
+      objectsOf(name)
+        .filter(({ kind }) => kind === "Kustomization")
+        .map(({ metadata, spec }) => [
+          metadata.name,
+          spec.path,
+          spec.dependsOn,
+        ]);
 
-    expect(
-      units.map(({ metadata, spec }) => [
-        metadata.name,
-        spec.path,
-        spec.dependsOn,
-      ]),
-    ).toStrictEqual([
+    expect(units("_estate")).toStrictEqual([
       [
         "estate-vso-secrets",
         "./estate/vso-secrets",
         [{ name: "apps-secrets" }],
       ],
     ]);
-  });
-
-  it("gives each tier's routes a unit that follows that tier's proxy and the Projects it serves, and no unit where the artifact holds no index", () => {
-    // Two tiers, a Project on each, and their proxies in a third: enough of a
-    // resolved union to tell one tier's Projects from the other's.
-    const project = (
-      name: string,
-      applications: readonly Record<string, unknown>[],
-    ) => ({ project: name, applications });
-    const estateArtifact = {
-      name: "_estate",
-      files: [
-        "estate/edge/public/kustomization.yaml",
-        "estate/edge/public/shop-public.yaml",
-        "estate/edge/lan/kustomization.yaml",
-        // Vault documents with no job beside them: no index, so no unit.
-        "estate/vso-secrets/policies/shop-system-api.policy.json",
-      ].map((path) => ({ path, adapter: "traefik", text: "" })),
-    };
-    const artifact = (name: string) => ({ name, files: [] });
-    /** The estate source's units, with every Project in `delivered` on the estate path. */
-    const applied = (delivered: readonly string[]) => {
-      const [estate] = pinSources(
-        [estateArtifact],
-        [estateArtifact, ...delivered.map(artifact)],
+    expect(
+      objectsOf("_estate")
+        .filter(({ kind }) => kind === "OCIRepository")
+        .map(({ metadata }) => metadata.name),
+    ).toStrictEqual(["estate"]);
+    expect(units("notes")).toStrictEqual([
+      [
+        "apps-notes",
+        "./apps/notes",
         [
-          project("shop", [{ id: "shop", exposure: [{ tier: "public" }] }]),
-          project("wiki", [{ id: "wiki", exposure: [{ tier: "lan" }] }]),
-          project("edge", [{ id: "proxy-public" }, { id: "proxy-lan" }]),
-        ] as never,
-        {
-          tiers: [
-            { name: "public", traefik: "edge/proxy-public" },
-            { name: "lan", traefik: "edge/proxy-lan" },
-            // A tier no route reaches: the artifact holds no index for it.
-            { name: "idle", traefik: "edge/proxy-lan" },
-          ],
-          bootstrap: {
-            flux: {
-              sourceRef: "flux-system/platform",
-              artifacts: {
-                repository: "ghcr.io/x/render",
-                signer: { issuer: "i", subject: "s" },
-              },
-            },
-          },
-        } as never,
-        serialize,
-      );
-      return (parseAllDocuments(estate?.text ?? "") as { toJS(): unknown }[])
-        .map(
-          (document) =>
-            document.toJS() as {
-              kind: string;
-              metadata: { name: string; namespace: string };
-              spec: { path?: string; dependsOn?: { name: string }[] };
-            },
-        )
-        .filter(({ kind }) => kind === "Kustomization")
-        .map(({ metadata, spec }) => [
-          metadata.name,
-          metadata.namespace,
-          spec.path,
-          spec.dependsOn?.map(({ name }) => name),
-        ]);
-    };
-
-    expect(applied(["edge", "shop", "wiki"])).toStrictEqual([
-      [
-        "estate-edge-public",
-        "flux-system",
-        "./estate/edge/public",
-        ["apps-edge", "apps-shop"],
+          { name: "apps-data" },
+          { name: "apps-edge" },
+          { name: "apps-secrets" },
+        ],
       ],
-      [
-        "estate-edge-lan",
-        "flux-system",
-        "./estate/edge/lan",
-        ["apps-edge", "apps-wiki"],
-      ],
-    ]);
-    // A Project still on the old path has no unit here, which would never
-    // become Ready; it is running where the old path put it.
-    expect(applied(["edge", "shop"])).toStrictEqual([
-      [
-        "estate-edge-public",
-        "flux-system",
-        "./estate/edge/public",
-        ["apps-edge", "apps-shop"],
-      ],
-      ["estate-edge-lan", "flux-system", "./estate/edge/lan", ["apps-edge"]],
-    ]);
-    expect(applied([])).toStrictEqual([
-      ["estate-edge-public", "flux-system", "./estate/edge/public", undefined],
-      ["estate-edge-lan", "flux-system", "./estate/edge/lan", undefined],
     ]);
   });
 
@@ -2347,18 +2328,6 @@ describe("composeEstate, for a Rollout", () => {
     version,
     ...(project in URLS ? { url: URLS[project] } : {}),
   });
-  /** A composition with no Project left on the old path, so the estate-scoped artifact is delivered. */
-  const handedOver = (): Composition =>
-    compose({
-      platform: {
-        ...PLATFORM,
-        files: PLATFORM.files.map((file) =>
-          file.name === "platform.intent.yml"
-            ? { ...file, text: withLedger(file.text, "") }
-            : file,
-        ),
-      },
-    });
   /** The annotations each Kustomization of a source carries, by the unit's name. */
   const annotated = (body: string): Record<string, unknown> =>
     Object.fromEntries(
@@ -2392,7 +2361,7 @@ describe("composeEstate, for a Rollout", () => {
     body.replace("memory: 256Mi", "memory: 320Mi");
 
   it("records one for every Project whose pin moves, and none for the estate-scoped artifact", () => {
-    const first = handedOver();
+    const first = withLegacyCatalog();
     const projects = first.artifacts
       .map(({ name }) => name)
       .filter((name) => name !== "_estate");
@@ -2446,7 +2415,7 @@ describe("composeEstate, for a Rollout", () => {
         "event.toolkit.fluxcd.io/url": "https://notes.jorisjonkers.dev",
       },
     });
-    const estate = annotated(sourceOf(handedOver(), "_estate"));
+    const estate = annotated(sourceOf(withLegacyCatalog(), "_estate"));
     expect(Object.keys(estate)).not.toStrictEqual([]);
     expect(Object.values(estate)).toStrictEqual(
       Object.keys(estate).map(() => undefined),
@@ -2621,32 +2590,8 @@ describe("composeEstate, for the route Flux's events take", () => {
 // reads, the estate-scoped artifact holds that catalog alone during the
 // handover, applied by its own unit after the Secret Store's Project.
 describe("composeEstate, for the catalog of a datastore the old path runs", () => {
-  const HANDING_OVER =
-    "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, edge, knowledge, observability]\n  estate: [delivery, notes, secrets]\n  serving:\n    - application: platform-postgres\n      namespace: data-system\n      admin: { path: secret/data/platform/postgres, user: postgres.user, password: postgres.password }\n";
-  const reading = (body: string) =>
-    body
-      .replace("  - id: notes\n", "  - id: notes\n    migration: none\n")
-      .replace(
-        "        runtime: node\n",
-        "        runtime: node\n        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n",
-      );
-
   it("delivers the catalog's Jobs and documents alone, by a unit that follows the Secret Store's Project", () => {
-    const composed = compose({
-      platform: {
-        ...PLATFORM,
-        files: PLATFORM.files.map((file) =>
-          file.name === "platform.intent.yml"
-            ? { ...file, text: withLedger(file.text, HANDING_OVER) }
-            : file,
-        ),
-      },
-      fragments: RELEASES.map((fragment) =>
-        fragment.manifest.spec.project === "notes"
-          ? release("notes", "1.0.0", reading)
-          : fragment,
-      ),
-    });
+    const composed = withLegacyCatalog();
     const estate = composed.artifacts.find(({ name }) => name === "_estate");
 
     expect(estate?.files.map(({ path }) => path)).toContain(

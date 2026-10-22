@@ -71,8 +71,8 @@ for a Project it never delivered
 ([0087](0087-in-cluster-consumers-read-the-render.md)). From the first handover
 the estate-scoped artifact holds only what no `estate` Project owns: the
 catalog of a datastore the old path still runs, which an `estate` Project
-reads, and the route Flux's events take. Its edge units would be a second source
-for the routes the old path still serves, so they wait until no Project is
+reads. A Project's routes would be a second source for the routes the old path
+still serves, so no Project's artifact carries them until no Project is
 `legacy`.
 
 **A `legacy` provider is reached where it runs, stated in the ledger.** The

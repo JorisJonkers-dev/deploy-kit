@@ -71,6 +71,13 @@ property LIBRARY_SIZE : String = '1Gi';
 -- documents, land: estate-scoped, beside the model of each Project that reads it.
 property ESTATE_SECRETS : String = 'estate/vso-secrets/';
 
+-- The units an Application's routes wait on: the unit of each Project that declares a proxy one
+-- of its exposures' tiers names, unless it is the Application's own
+-- (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+query proxiesAfter(app : EffectiveApplication, prj : String) : Sequence(String) =
+	app.exposure->collect(e | projectOf(tierFor(e.audience).traefik.id))
+		->select(p | p <> null and p <> prj)->collect(p | unitOf(p))->asSequence();
+
 -- Whether a catalog method's datastore is run by a Project on the estate path, whose own
 -- resolution plans it.
 query ownedOnEstatePath(c : ResolvedCatalogJob) : Boolean =
@@ -116,7 +123,6 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	events := eventsRouteOf();
 	deliverables := self.projectFiles()
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
-		->union(self.edgeFiles())
 		->union(self.vaultFiles())
 		->union(self.generatedKeysFiles());
 	end {
@@ -248,7 +254,8 @@ query afterOf(prj : EffectiveProject) : Sequence(String) =
 	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
 				or p.dependsOn->exists(e | reachesDatabase(e)))
 			or prj.applications->exists(a | managed(a) or appliesCatalog(a))
-		then secretsAfter(prj.project) else Sequence{} endif))
+		then secretsAfter(prj.project) else Sequence{} endif)
+	->union(prj.applications->collect(a | proxiesAfter(a, prj.project))->flatten()))
 	->asSet()->sortedBy(n | n)->asSequence();
 
 -- The project of the union that declares `application`, where one does.
@@ -1503,7 +1510,7 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 	let scaled : Sequence(ResolvedProcess) = served->select(p | p.replicas > 1) in
 	let moved : ResolvedApplication = self.resolveone(ResolvedApplication) in
 	let monitor : Sequence(Deliverable) = monitorOf(self, root) in
-	let files : Sequence(Deliverable) =
+	let files : Sequence(Deliverable) = self.routeFiles(root)->union(
 		Sequence{object WorkloadFile {
 			path := root + 'workload.yaml';
 			adapter := AdapterName::kubernetes;
@@ -1568,7 +1575,7 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				adapter := AdapterName::vso;
 				application := self.resolveone(ResolvedApplication);
 				holders := synced;
-			}.oclAsType(Deliverable)} else Sequence{} endif) in
+			}.oclAsType(Deliverable)} else Sequence{} endif)) in
 	Sequence{object IndexFile {
 			path := root + 'kustomization.yaml';
 			adapter := AdapterName::kubernetes;
@@ -1758,26 +1765,18 @@ query String::portOf(application : String) : Integer =
 -- the estate-scoped edge, and one index per tier over every route in it. The
 -- index lists the resolved project's routes: composing the whole estate's edge
 -- is the composed estate's (JorisJonkers-dev/deploy-kit#203).
-query EffectiveProject::edgeFiles() : Sequence(Deliverable) =
-	let routed : Sequence(Tuple(app : EffectiveApplication, exposure : Exposure)) =
-		self.applications->collect(a | a.exposure->collect(e | Tuple{app = a, exposure = e}))->flatten() in
-	let tiers : Sequence(Tier) =
-		routed->collect(r | tierFor(r.exposure.audience))->asOrderedSet()->sortedBy(t | t.name)->asSequence() in
-	routed->collect(r |
-		let tier : Tier = tierFor(r.exposure.audience) in
+-- Each exposure's IngressRoute, in its Application's own directory and namespace, so a
+-- Project's routes are its own and its unit applies them (spec/v1/30-deliverables.md#adapters).
+query EffectiveApplication::routeFiles(root : String) : Sequence(Deliverable) =
+	self.exposure->collect(e |
+		let tier : Tier = tierFor(e.audience) in
 		object IngressRouteFile {
-			path := 'estate/edge/' + tier.name + '/' + routeFile(r.app, r.exposure);
+			path := root + 'route-' + e.name + '.yaml';
 			adapter := AdapterName::traefik;
-			exposure := r.exposure.resolveone(ResolvedExposure);
+			exposure := e.resolveone(ResolvedExposure);
 			entryPoint := if tier.listener = Listener::tls then 'websecure' else 'web' endif;
 			if tier.certificates = CertificateSource::acme then certificateResolver := 'acme' endif;
-		}.oclAsType(Deliverable))
-	->union(tiers->collect(t | object IndexFile {
-		path := 'estate/edge/' + t.name + '/kustomization.yaml';
-		adapter := AdapterName::kubernetes;
-		resources := routed->select(r | tierFor(r.exposure.audience) = t)
-			->collect(r | routeFile(r.app, r.exposure))->sortedBy(f | f);
-	}.oclAsType(Deliverable)));
+		}.oclAsType(Deliverable))->asSequence();
 
 -- Per identity that holds a grant, one Vault policy over every grant it holds
 -- and one Kubernetes auth role bound to it, estate-scoped by namespace: the
@@ -2012,7 +2011,8 @@ query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(
 	->union(if app.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
 			or p.dependsOn->exists(e | reachesDatabase(e)))
 			or managed(app) or appliesCatalog(app)
-		then secretsAfter(prj.project) else Sequence{} endif))
+		then secretsAfter(prj.project) else Sequence{} endif)
+	->union(proxiesAfter(app, prj.project)))
 	->asSet()->sortedBy(n | n)->asSequence();
 
 query ReleaseGate::json() : String = obj(Sequence{
