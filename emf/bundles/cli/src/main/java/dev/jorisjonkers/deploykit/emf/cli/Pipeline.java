@@ -11,7 +11,6 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPacka
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.SharedIntent;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.render.Rendering;
-import dev.jorisjonkers.deploykit.emf.resolve.Estate;
 import dev.jorisjonkers.deploykit.emf.resolve.Lowering;
 import dev.jorisjonkers.deploykit.emf.resolve.Resolution;
 import dev.jorisjonkers.deploykit.emf.syntax.ClusterStateStandaloneSetup;
@@ -164,8 +163,9 @@ public final class Pipeline {
     /**
      * The Deliverable Sets of {@code projects}, from {@code files} read together, written under
      * {@code root} in one pass: every document parsed and checked, each project lowered and resolved,
-     * and the templates run over the Resolved Deployments (spec/v1/30-deliverables.md). Rendered
-     * together, the projects write the estate-scoped share they hold between them. A set the checks
+     * and the templates run over the Resolved Deployments (spec/v1/30-deliverables.md): lower, then
+     * resolve, then render. Rendered together, the projects write the estate-scoped share they hold
+     * between them, which each resolution plans beside its own model. A set the checks
      * refuse writes nothing, and its diagnostics are returned.
      */
     public static List<Diagnostic> render(
@@ -178,8 +178,6 @@ public final class Pipeline {
             }
             deployments.add(resolved.deployment());
         }
-        // What no one project's resolution can derive is planned over all of them.
-        Estate.plan(deployments);
         Rendering.render(deployments, root);
         return List.of();
     }

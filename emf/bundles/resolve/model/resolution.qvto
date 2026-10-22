@@ -67,6 +67,17 @@ property TAG_DIGITS : Integer = 12;
 -- What a library's volume and claim both state: a local volume holds a directory, never a size.
 property LIBRARY_SIZE : String = '1Gi';
 
+-- Where the catalog of a datastore the old path still runs, and the job that writes its
+-- documents, land: estate-scoped, beside the model of each Project that reads it.
+property ESTATE_SECRETS : String = 'estate/vso-secrets/';
+
+-- Whether a catalog method's datastore is run by a Project on the estate path, whose own
+-- resolution plans it.
+query ownedOnEstatePath(c : ResolvedCatalogJob) : Boolean =
+	projects->exists(prj | not legacy(prj.project) and prj.applications->exists(app |
+		app.processes->exists(p | ownsDatabases(p) and c.identity = p.name + '-catalog'
+			and c.namespace = homeNamespace(prj.project, app.id))));
+
 -- Where a Project's own Vault policy job lands, and the documents it writes beside it.
 query policyJobRoot(prj : String) : String = 'apps/' + prj + '/vault-policy/';
 query policiesOf(prj : String) : String = policyJobRoot(prj) + 'policies/';
@@ -159,6 +170,39 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 			var top : IndexFile := result.deliverables[IndexFile]
 				->select(i | i.path = 'apps/' + self.project + '/kustomization.yaml')->any(true);
 			top.resources := top.resources->append('vault-policy')->sortedBy(r | r);
+		};
+		-- While a datastore the old path still runs has a catalog that names this Project's
+		-- database, this Project's resolution plans that catalog, and the estate-scoped job that
+		-- writes its documents in the datastore's namespace, as estate-scoped output beside its own
+		-- model (spec/v1/16-dependencies.md#applying-the-catalog). Every Project that reads it
+		-- plans the same files, so a render of several writes each once.
+		var legacyCatalogs : Sequence(ResolvedCatalogJob) := result.catalogJobs->select(c |
+			not ownedOnEstatePath(c) and c.catalog.databases->exists(db | db.name = self.project + '_db'))->asSequence();
+		if (legacyCatalogs->notEmpty()) {
+			-- One estate-scoped job writes one namespace's names: its writer is confined to them.
+			assert fatal (legacyCatalogs.namespace->asSet()->size() = 1)
+				with log('catalogs the old path runs in more than one namespace');
+			legacyCatalogs->forEach(c) {
+				result.deliverables += c.catalogFilesUnder(ESTATE_SECRETS);
+				result.deliverables += object CatalogJobFile {
+					path := ESTATE_SECRETS + 'policies/' + c.role + '.policy.json';
+					adapter := AdapterName::vaultPolicy;
+					part := 'policy'; job := c; };
+				result.deliverables += object VaultRoleFile {
+					path := ESTATE_SECRETS + 'policies/' + c.role + '.role.json';
+					adapter := AdapterName::vaultPolicy;
+					namespace := c.namespace;
+					identity := c.identity; };
+			};
+			result.deliverables += policyJobFiles(result.policyJob, result.deliverables->select(d |
+				d.path.startsWith(ESTATE_SECRETS + 'policies/'))->asSequence(), ESTATE_SECRETS,
+				legacyCatalogs->first().namespace);
+			var estateIndex : IndexFile := result.deliverables[IndexFile]
+				->select(i | i.path = ESTATE_SECRETS + 'kustomization.yaml')->any(true);
+			if (estateIndex <> null) {
+				estateIndex.resources := estateIndex.resources->asSequence()
+					->union(legacyCatalogs->collect(c | c.identity + '.yaml')->asSequence())->sortedBy(r | r);
+			};
 		};
 		-- The route Flux's events about this Project's unit take to the Reporter, where the
 		-- platform names one: its own Provider and Alert, in Flux's namespace, applied by this

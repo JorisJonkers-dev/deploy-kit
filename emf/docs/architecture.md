@@ -96,7 +96,7 @@ and cost every path in the tree.
 |---|---|---|
 | `bundles/metamodel` | the source, target and pinned-inputs `.ecore` and `.genmodel`, Complete OCL `.ocl` for the source metamodel, the descriptor exporter, and the canonical JSON writer both it and `cli` write through | Task 1 |
 | `bundles/syntax` | the Xtext grammars for the authored YAML subset and the pinned inputs written in it, and the generated editor bundles that run the OCL validators | Task 1 |
-| `bundles/resolve` | the QVTo transformations: the lowering onto the Process, Project Intent with Platform Intent and the pinned inputs to the Resolved Deployment, and the estate-wide pass over the Resolved Deployments rendered together; and the one Java black box, hashing | Task 2 |
+| `bundles/resolve` | the QVTo transformations: the two transformations, the lowering onto the Process, then Project Intent with Platform Intent and the pinned inputs to one Project's Resolved Deployment; and the one Java black box, hashing | Task 2 |
 | `bundles/render` | the Acceleo 4 templates from a Resolved Deployment model to the Deliverable Set's files | Task 3 |
 | `bundles/cli` | the pipeline entry point: files in, the parsed intent, diagnostics and rendered files out | Task 1 onward |
 | `tests/parity` | JUnit suites asserting each stage against the committed oracles, and the witness ledger check | no task grades it |
@@ -315,18 +315,21 @@ exposes, through the dependency edges or the generated files. The resolved
 dependency edges are exported from the target model as canonical JSON and
 compared with `expected/dependencies.json`.
 
-**The estate-wide pass** runs last, in place, over the Resolved Deployments of
-every project rendered together. Each project's own Vault policy job is its
-resolution's: the resolution writes that project's Vault files' content as
-canonical JSON, digests it through the black box, and plans the job's files
-beside them in that project's Deliverables
-([chapter 30](../../spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
-What the pass still plans belongs to no project the render delivers, while the
-estate is handed over: the catalog of a datastore the old path runs, the
-estate-scoped job that writes that catalog's documents, and the route Flux's
-events take, all added to the first document's Deliverables. Its source and
-target are the one metamodel. A pass that finds two projects carrying
-different jobs stops, since one render has one platform. #547 removes it.
+**Two transformations, then the templates.** The pipeline is lower, then
+resolve, then render, and nothing runs over the Resolved Deployments of several
+projects together. Every object a project delivers is planned by that
+project's own resolution, in its own Resolved Deployment
+([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)):
+its Vault policy job, whose documents' content the resolution writes as
+canonical JSON and digests through the black box
+([chapter 30](../../spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)),
+its catalog where it runs the datastore, and the route Flux's events about its
+unit take. While the estate is handed over, the catalog of a datastore the old
+path still runs, and the estate-scoped job that writes its documents, are
+planned by the resolution of each project that reads that catalog, as
+estate-scoped output beside its own model. Every reader plans the same files,
+and the templates write each file once, so a render of several readers writes
+the same bytes as a render of one.
 
 It reads two extents and writes one. The **intent** extent holds every project
 of the union, authored and lowered, and the Platform document: the authored
