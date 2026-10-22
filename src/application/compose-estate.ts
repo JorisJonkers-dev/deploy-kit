@@ -18,10 +18,8 @@ import {
 } from "../adapters/flux/source.ts";
 import type { Adapter } from "../adapters/registry.ts";
 import {
-  EVENTS_DIRECTORY,
+  ESTATE_DIRECTORY,
   projectDirectory,
-  ROLLBACK_BACKUPS_DIRECTORY,
-  SECRETS_DIRECTORY,
 } from "../adapters/shared/paths.ts";
 import type { CompositionLockDocument } from "../model/composition-lock.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
@@ -581,18 +579,15 @@ function deliver(
 
 /**
  * One artifact as the handover delivers it: a Project's whole, and the
- * estate-scoped one cut to its secrets, events and backup units, or nothing
- * where it holds none.
+ * estate-scoped one cut to everything but its edge units, or nothing where it
+ * holds nothing else.
  * The old path still serves the edge, so an estate-scoped route would be a
  * second source for it.
  */
 function handingOver(artifact: RenderedArtifact): RenderedArtifact[] {
   if (artifact.name !== ESTATE) return [artifact];
   const files = artifact.files.filter(
-    ({ path }) =>
-      path.startsWith(`${SECRETS_DIRECTORY}/`) ||
-      path.startsWith(`${EVENTS_DIRECTORY}/`) ||
-      path.startsWith(`${ROLLBACK_BACKUPS_DIRECTORY}/`),
+    ({ path }) => !path.startsWith(`${ESTATE_DIRECTORY}/edge/`),
   );
   return files.length === 0 ? [] : [{ name: ESTATE, files }];
 }

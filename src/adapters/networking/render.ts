@@ -21,11 +21,7 @@ import {
   managedOnly,
   namespaceSelector,
 } from "../shared/labels.ts";
-import {
-  applicationDirectory,
-  projectDirectory,
-  SECRETS_DIRECTORY,
-} from "../shared/paths.ts";
+import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
 
 export const ADAPTER = "networking";
 
@@ -206,8 +202,8 @@ function backupPoliciesOf(
  */
 export function renderPolicyJobPolicy(
   job: ResolvedPolicyJob | ResolvedCatalogJob,
-  file = "networkpolicy.yaml",
-  directory: string = SECRETS_DIRECTORY,
+  file: string,
+  directory: string,
 ): Deliverable {
   const policy: NetworkPolicy = {
     apiVersion: "networking.k8s.io/v1",

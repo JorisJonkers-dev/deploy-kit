@@ -1470,7 +1470,7 @@
     kind: ServiceAccount
     metadata:
       name: [d.job.identity/]
-      namespace: [d.job.namespace/]
+      namespace: [d.namespace/]
       labels:
         [d.job.identity.labelSet('none', d.job.identity)/]
   [elseif (d.part = 'configmap')]
@@ -1479,7 +1479,7 @@
     kind: ConfigMap
     metadata:
       name: [d.name/]
-      namespace: [d.job.namespace/]
+      namespace: [d.namespace/]
       labels:
         [d.job.identity.labelSet('none', d.job.identity)/]
     immutable: true
@@ -1494,7 +1494,7 @@
     kind: Job
     metadata:
       name: [d.name/]
-      namespace: [d.job.namespace/]
+      namespace: [d.namespace/]
       labels:
         [d.job.identity.labelSet('none', d.job.identity)/]
       annotations:
@@ -1509,7 +1509,7 @@
     kind: CronJob
     metadata:
       name: [d.job.identity/]
-      namespace: [d.job.namespace/]
+      namespace: [d.namespace/]
       labels:
         [d.job.identity.labelSet('none', d.job.identity)/]
     spec:
@@ -1529,7 +1529,7 @@
     kind: NetworkPolicy
     metadata:
       name: [d.job.identity/]
-      namespace: [d.job.namespace/]
+      namespace: [d.namespace/]
       labels:
         [d.job.identity.labelSet('none', d.job.identity)/]
     spec:

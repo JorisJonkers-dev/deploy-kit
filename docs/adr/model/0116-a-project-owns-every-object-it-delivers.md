@@ -153,11 +153,9 @@ model-driven implementation. The two terms cost nothing to drop.
   writes the Project's generated keys
   ([#556](https://github.com/JorisJonkers-dev/deploy-kit/issues/556)). No
   Project's unit depends on `estate-vso-secrets`; a Project's unit follows the
-  unit of the Platform Project that declares the Secret Store instead. #548
-  rewrites chapter 14's policy job block and chapter 30's Vault configuration
-  section to match, and #556 rewrites
-  [0101](0101-a-generated-key-is-written-by-the-vault-policy-job.md), whose
-  shared writer this record removes.
+  unit of the Platform Project that declares the Secret Store instead, and
+  [0101](0101-a-generated-key-is-written-by-the-vault-policy-job.md)'s keys
+  are each Project's own job's to write.
 - A datastore's catalog is applied by its own Project's unit, with the
   datastore, and stays estate-scoped only while that Project is on the old path
   ([0102](0102-the-database-catalog-is-applied-by-its-engines-method.md),

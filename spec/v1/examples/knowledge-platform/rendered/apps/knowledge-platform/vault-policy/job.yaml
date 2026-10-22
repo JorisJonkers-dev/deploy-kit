@@ -3,8 +3,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vault-policy-374c15991395
-  namespace: secrets-system
+  name: vault-policy-577e8d8c57b0
+  namespace: knowledge-platform-system
   labels:
     app.kubernetes.io/name: vault-policy
     app.kubernetes.io/instance: vault-policy
@@ -77,17 +77,25 @@ spec:
       volumes:
         - name: policies
           configMap:
-            name: vault-policy-374c15991395
+            name: vault-policy-577e8d8c57b0
             items:
-              - key: data-system-postgres-backup.policy.json
-                path: data-system-postgres-backup.policy.json
-              - key: data-system-postgres-backup.role.json
-                path: data-system-postgres-backup.role.json
-              - key: data-system-postgres.policy.json
-                path: data-system-postgres.policy.json
-              - key: data-system-postgres.role.json
-                path: data-system-postgres.role.json
-              - key: data-system-rabbitmq-backup.policy.json
-                path: data-system-rabbitmq-backup.policy.json
-              - key: data-system-rabbitmq-backup.role.json
-                path: data-system-rabbitmq-backup.role.json
+              - key: knowledge-platform-system-basic-memory.policy.json
+                path: knowledge-platform-system-basic-memory.policy.json
+              - key: knowledge-platform-system-basic-memory.role.json
+                path: knowledge-platform-system-basic-memory.role.json
+              - key: knowledge-platform-system-docling-serve-backup.policy.json
+                path: knowledge-platform-system-docling-serve-backup.policy.json
+              - key: knowledge-platform-system-docling-serve-backup.role.json
+                path: knowledge-platform-system-docling-serve-backup.role.json
+              - key: knowledge-platform-system-hindsight-api.policy.json
+                path: knowledge-platform-system-hindsight-api.policy.json
+              - key: knowledge-platform-system-hindsight-api.role.json
+                path: knowledge-platform-system-hindsight-api.role.json
+              - key: knowledge-platform-system-hindsight-worker.policy.json
+                path: knowledge-platform-system-hindsight-worker.policy.json
+              - key: knowledge-platform-system-hindsight-worker.role.json
+                path: knowledge-platform-system-hindsight-worker.role.json
+              - key: knowledge-platform-system-karakeep.policy.json
+                path: knowledge-platform-system-karakeep.policy.json
+              - key: knowledge-platform-system-karakeep.role.json
+                path: knowledge-platform-system-karakeep.role.json

@@ -540,15 +540,16 @@ handover:
   against every estate-wide invariant, and its render is diffed against the
   live objects ([Adopting a live Application](#adopting-a-live-application)),
   but composition publishes no artifact and moves no pin for it. While any
-  Project is `legacy`, the estate-scoped artifact holds `estate-vso-secrets`,
-  writing the Vault policies and roles of the `estate` Projects, whose
-  units depend on it, `estate-rollout-events` where the platform names a
+  Project is `legacy`, the estate-scoped artifact holds `estate-vso-secrets`
+  where a `legacy` datastore has a catalog an `estate` Project reads, the
+  catalog's Jobs and the job that writes its documents, which no Project's
+  unit depends on, `estate-rollout-events` where the platform names a
   Reporter, and `estate-rollback-backups` while a Rollback's backup is asked
-  for, and nothing else; the old path keeps serving the edge, and the edge units
-  join the artifact once no Project is `legacy`
-  ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). Where no `estate`
-  Project's render holds a Vault document, there is no estate-scoped artifact
-  yet.
+  for, and nothing else. Each `estate` Project writes its own Vault policies
+  and roles from its own unit. The old path keeps serving the edge, and the
+  edge units join the artifact once no Project is `legacy`
+  ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). Where the
+  artifact would hold nothing, there is no estate-scoped artifact yet.
 - **The estate path reaches a `legacy` Application where the old path runs
   it.** The foundation is handed over last, so until then the Secret Store a
   grant reads and the Traefik a route is admitted from are the old path's, and

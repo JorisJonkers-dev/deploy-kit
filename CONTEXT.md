@@ -416,10 +416,12 @@ snapshot inside the cluster, on its own interval, and commits it to the estate
 repository when it changes. It reads; it never applies
 ([chapter 20](spec/v1/20-resolved-deployment.md#the-collector)).
 
-**Vault policy job**: the in-cluster Job that writes the rendered Vault policies
-and auth roles into the Secret Store, before any Application holding a grant
-starts. Derived from the Platform document's `policyJob`, never declared as a
-Process, and named by the digest of the documents it is handed ([chapter 30](spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+**Vault policy job**: the in-cluster Job, one per Project, that writes that
+Project's rendered Vault policies, auth roles and generated keys into the
+Secret Store from the Project's own unit, as a writer Vault confines to the
+Project's own names. Derived from the Platform document's `policyJob`, never
+declared as a Process, and named by the digest of the documents it is handed
+([chapter 30](spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 
 **Images lock**: every image alias a document names, resolved to one digest,
 the user the image runs as and the version of the software in it; a pinned

@@ -13,8 +13,8 @@ rests-on: ["0006"]
 The Vault policies and auth roles the `vault-policy` adapter renders are written
 into Vault by the **Vault policy job**, one per Project that holds a Vault
 document. Each is a Job in that Project's own Reconcile Unit and runs before any
-of its Applications that hold a grant. It authenticates as a writer role
-confined to that Project's own policy and role names. The job is derived from
+of its Applications that hold a grant. It authenticates as the platform's
+writer role, which Vault confines to that Project's own policy and role names. The job is derived from
 what the Platform document states about it, runs in the Project's own
 namespace, and is named by the digest of that Project's documents alone. The Release Gate reads each Application's
 `releaseGate` element from a ConfigMap the `kubernetes` adapter renders in that
@@ -36,8 +36,11 @@ authenticate as its writer, or the Release Gate answers from anything
 but the ConfigMap of the Application its webhook names. **Settled by:** render a
 changed grant, let the job run, and diff `vault policy read` against the
 document; have one Project's writer role try another Project's policy name and
-observe Vault refuse it; check that no other pod in the namespace runs as the
-job's ServiceAccount, and that no Process there may create pods; then delete an Application's gate ConfigMap and observe
+observe Vault refuse it (a local Vault 2.1.1 refused another prefix for both
+policies and roles on 2026-10-22, and wrote a role of the writer's own name
+bound to another Project's policy, which is why the render is the boundary);
+check that no other pod in the namespace runs as the job's ServiceAccount, and
+that no Process there may create pods; then delete an Application's gate ConfigMap and observe
 the gate answer no.
 
 ## Why
@@ -86,11 +89,20 @@ namespace, and only the job's pod runs as its ServiceAccount. A Process that
 could create pods in that namespace would hold the writer, which is why the
 settling test checks it.
 
-**The name is the documents' digest, computed from the documents alone.** Both
-implementations render the same documents and must give the Job the same name,
-so the name is defined over what both hold: the canonical JSON of one object,
-each of the Project's documents under its file name. Neither hashes a file it
-wrote, and no other Project's document enters it.
+**A datastore the old path runs keeps one estate-scoped job, while it does.**
+Its catalog's role is named for the datastore's namespace, and no Project the
+estate path delivers owns that namespace, so no Project's job may write it.
+One job in that namespace, in the estate-scoped artifact, writes that
+catalog's documents alone, as the same writer role. No Project's unit waits on
+it, and it goes when the datastore's Project leaves the old path
+([0102](0102-the-database-catalog-is-applied-by-its-engines-method.md)).
+
+**The name is a digest of what both implementations hold.** Both render the
+same documents and must give the Job the same name, so the name is defined over
+what both hold: the canonical JSON of one object, each of the Project's
+documents under its file name, beside what the pod runs with
+([chapter 30](../../../spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+Neither hashes a file it wrote, and no other Project's document enters it.
 
 ## Alternatives
 
@@ -111,14 +123,17 @@ reader, a day.
 
 ## Consequences
 
-- A writer Vault role exists, created as a platform fixture with the auth
-  method and keyed on the ServiceAccount's namespace, since the job cannot
-  grant itself its own privilege, paid once for every Project.
+- The Platform document's `policyJob.role` is that writer: a fixture created
+  with the auth method, bound to the ServiceAccount `vault-policy` in every
+  namespace, its policy templated on the ServiceAccount's namespace for policy
+  and role names and for the KV prefix generated keys are written under, since
+  a job cannot grant itself its own privilege. Rebinding the live role from
+  the one estate-wide writer to this one is the maintainer's delivery, paid
+  once for every Project.
 - A changed grant reaches Vault on the next apply of its Project's own unit,
   before the Application that needs it starts, through a new Job named by
   that Project's documents' digest, paid in one Job run per change to that
   Project.
 - Each Project that holds a Vault document carries one more Job and ConfigMap,
-  paid in render size; the move is delivered in both implementations by
-  [#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548).
+  paid in render size.
 - Every gated Application carries one more ConfigMap, paid in render size.

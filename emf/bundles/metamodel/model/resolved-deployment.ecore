@@ -741,10 +741,13 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//ResolvedGrant"/>
   </eClassifiers>
 
-  <!-- One file of the Vault policy job (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
+  <!-- One file of a Vault policy job (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
        its ServiceAccount, the ConfigMap of the documents it is handed, the Job, or its policy.
-       `name` is the name the ConfigMap and the Job share, from the documents' digest. -->
+       `name` is the name the ConfigMap and the Job share, from the documents' digest, and
+       `namespace` the one its objects land in: its own Project's, or, for the estate-scoped
+       job, that of the catalog it writes. `job` is what every policy job runs with. -->
   <eClassifiers xsi:type="ecore:EClass" name="PolicyJobFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="part" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="job" lowerBound="1" eType="#//ResolvedPolicyJob"/>

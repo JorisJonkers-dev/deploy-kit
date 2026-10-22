@@ -1161,9 +1161,13 @@ The Reconcile Unit is **derived from the dependency graph**, never declared
 ([0033](../../docs/adr/model/0033-reconcile-unit-derived.md)). An Application's unit is
 `apps-<project>`; the ordering between units is the required edges of
 [chapter 16](16-dependencies.md#dependency-edges) projected onto projects, plus an
-edge to the secrets-provisioning unit wherever an Application holds any grant
-or runs a datastore whose engine applies a catalog, whose method's role that
-unit writes ([chapter 16](16-dependencies.md#applying-the-catalog)).
+edge to the unit of the Platform Project that declares the Secret Store
+wherever an Application holds any grant, migrates its own schema with the
+owner credential, or runs a datastore whose engine applies a catalog, unless it
+is that Project. Each Project's own Vault policy
+job writes its roles into that store
+([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)),
+so what a Project waits on is the store itself, never an estate-scoped unit.
 A `required: false` edge orders nothing ([chapter 55](55-delivery.md#release-order)),
 so two projects that name each other optionally do not wait on each other.
 
@@ -1185,7 +1189,7 @@ column says, in the change that column names, and its row goes with it:
 
 | unit | applies | follows | moves to |
 |---|---|---|---|
-| `estate-vso-secrets` | `estate/vso-secrets/`: the Vault policy job, the documents it is handed ([The Vault policy job](#the-vault-policy-job)), and the catalog Jobs of a datastore whose Project is still `legacy` ([The catalog methods](#the-catalog-methods)); a datastore on the estate path applies its own from its Project's unit ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)) | the unit of the project that declares the Secret Store, which the job writes into | each Project's own unit: its policy job ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) and generated keys ([#556](https://github.com/JorisJonkers-dev/deploy-kit/issues/556)), and a `legacy` datastore's catalog into its Project's unit once that Project leaves the old path; the edge a grant adds then follows the unit of the Platform Project that declares the Secret Store |
+| `estate-vso-secrets`, while a datastore the old path runs has a catalog the estate path applies | `estate/vso-secrets/`: that catalog's Jobs and its documents, and the estate-scoped policy job that writes them ([The catalog methods](#the-catalog-methods)); every Project writes its own documents from its own unit ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) | the unit of the project that declares the Secret Store, which the job writes into; no Project's unit follows it, and a reader of that database retries until it exists | the datastore's own Project's unit, once that Project leaves the old path ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)) |
 | `estate-edge-<tier>`, one per tier a route reaches | `estate/edge/<tier>/`: the routes that tier's proxy serves | the unit of the project that declares the tier's proxy, and of every project with an exposure on the tier, so no route is applied before its proxy or its own namespace exists | each routed Project's own unit, following the unit of the Project that declares the tier's proxy ([#546](https://github.com/JorisJonkers-dev/deploy-kit/issues/546)) |
 | `estate-rollout-events`, where the platform names a Reporter | `estate/rollout-events/`: the `Provider` and the `Alert` that send Flux's events about every unit to the Reporter ([chapter 55](55-delivery.md#rollouts)) | nothing: both apply whether or not the Reporter is up, and an event sent before it is ready is one it reads again | an `Alert` in each Project's own unit, naming that Project's units, and the `Provider` with it or in the Reporter's Platform Project, as [#545](https://github.com/JorisJonkers-dev/deploy-kit/issues/545) decides |
 | `estate-rollback-backups`, while a Rollback's backup is asked for | `estate/rollback-backups/<project>.yaml`: one one-shot backup `Job` per backed-up volume of each Project whose pin asks for one ([chapter 55](55-delivery.md#pause-and-rollback)) | nothing: each Job runs in a Project already on the estate path, as the backup identity that Project's unit brought up | nowhere: a Rollback relies on the scheduled backups of each volume's Durability Class, and takes none of its own ([#557](https://github.com/JorisJonkers-dev/deploy-kit/issues/557)) |
@@ -1207,8 +1211,9 @@ other, and nothing estate-scoped can be mistaken for its share.
 An arrow means *must be Ready first*. `apps-knowledge` follows `apps-data`
 because `knowledge` depends on `platform-postgres` and `platform-rabbitmq`;
 `apps-agents` follows `apps-knowledge` because the agent applications consume
-`knowledge`, and follows `estate-vso-secrets` because they hold grants: a
-Process cannot start before the credential it holds is materialised. That is
+`knowledge`, and follows `apps-secrets`, the Platform Project that declares the
+Secret Store, because they hold grants: a Process cannot start before the store
+its credential is read from answers. That is
 the fourteen-node graph `fleet-infra` maintains by hand today, rendered instead.
 
 `platform.layer` is **deleted from Project Intent**. It was a free-form string
@@ -1255,8 +1260,11 @@ derivation does not change with its consumers; only their number does.
 ## The Vault policy job
 
 One element of the estate-wide document belongs to no Application: `policyJob`,
-the job that writes the rendered Vault policies and auth roles into the Secret
-Store ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
+what every Vault policy job runs with: each Project's own job, which writes that
+Project's rendered Vault policies, auth roles and generated keys into the
+Secret Store, and the estate-scoped one that writes the catalog of a datastore
+the old path still runs
+([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 It is derived where the Platform document names the job
 ([chapter 14](14-platform-intent.md#the-vault-policy-job)) and a Secret Store
 answers, and nowhere else:
@@ -1264,7 +1272,7 @@ answers, and nowhere else:
 | field | authority | derived from |
 |---|---|---|
 | `identity` | derived | `vault-policy`: the ServiceAccount the platform's Vault role is bound to |
-| `namespace` | derived | the Secret Store's, the `<project>-system` of the project that declares it |
+| `namespace` | derived | the Secret Store's, the `<project>-system` of the project that declares it; a job's own objects are in its Project's namespace, or the catalog's for the estate-scoped job |
 | `image`, `uid`, `gid` | pinned | the images lock's entry for the alias the platform names |
 | `role`, `memory`, `cpu` | platform-assigned | the Platform document's `policyJob`, unchanged |
 | `deadline` | platform-assigned | the same, in whole seconds: what one attempt may take |
@@ -1272,10 +1280,11 @@ answers, and nowhere else:
 | `address` | derived | the Secret Store's endpoint, the one every grant is read from |
 | `egress` | derived | the Secret Store on its `http` surface, and the cluster's DNS ([chapter 16](16-dependencies.md#the-baseline)) |
 
-It is in no Application's projection, because no project owns it: it is handed
-the documents of every project a render holds. The name its objects carry is
-not here either. It is the digest of those documents, which exist only once
-the render does.
+It is in no Application's projection, because no one Application owns a job:
+each Project's job is handed that Project's documents alone
+([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+The name a job's objects carry is not here either. It is the digest of its
+documents, which exist only once the render does.
 
 ### The catalog methods
 
@@ -1376,7 +1385,7 @@ provenance:
 
 namespace: knowledge-system          # <project>-system, derived, not arbitrated
 reconcileUnit: apps-knowledge
-reconcileAfter: [apps-core, apps-data, estate-vso-secrets]
+reconcileAfter: [apps-core, apps-data, apps-secrets]
 
 migration:                           # it declares a changelog (chapter 10)
   runner: ghcr.io/jorisjonkers-dev/knowledge/knowledge-migration@sha256:…
@@ -2137,7 +2146,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    core["apps-core"] --> vso["estate-vso-secrets"]
+    core["apps-core"] --> vso["apps-secrets"]
     core --> data["apps-data"]
     core --> sl["apps-stateless"]
     data --> know["apps-knowledge"]

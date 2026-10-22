@@ -17,6 +17,10 @@ import {
 } from "../../src/index.ts";
 import { ADAPTERS } from "../../src/adapters/registry.ts";
 import { renderKubernetes } from "../../src/adapters/kubernetes/render.ts";
+import {
+  collisions,
+  renderResolvedSet,
+} from "../../src/application/render-intent-set.ts";
 import type { ResolvedProject } from "../../src/model/resolution.ts";
 import type { Canary } from "../../src/objects/custom.ts";
 
@@ -157,34 +161,74 @@ describe("renderIntentSet", () => {
 
   // documents of the render it belongs to, and is named by their digest.
   describe("the Vault policy job", () => {
-    const estate = (
+    /** The paths of one Project's share of a render of `projects`. */
+    const share = (
       projects: readonly string[],
+      name: string,
       edits?: Readonly<Record<string, (text: string) => string>>,
-    ) => Object.keys(asTree(artifact(render(edits, projects), "_estate")));
+    ) => Object.keys(asTree(artifact(render(edits, projects), name)));
     const jobFiles = (paths: readonly string[]) =>
       paths.filter(
         (path) =>
-          path.startsWith("estate/vso-secrets/") &&
-          !path.includes("/policies/"),
+          path.includes("/vault-policy/") && !path.includes("/policies/"),
       );
 
     it("is rendered beside the documents it writes, with its own policy and an index that applies it", () => {
-      expect(jobFiles(estate(["notes", "data"]))).toStrictEqual([
-        "estate/vso-secrets/configmap.yaml",
-        "estate/vso-secrets/cronjob.yaml",
-        "estate/vso-secrets/job.yaml",
-        "estate/vso-secrets/kustomization.yaml",
-        "estate/vso-secrets/networkpolicy.yaml",
-        "estate/vso-secrets/serviceaccount.yaml",
+      expect(jobFiles(share(["notes", "data"], "data"))).toStrictEqual([
+        "apps/data/vault-policy/configmap.yaml",
+        "apps/data/vault-policy/cronjob.yaml",
+        "apps/data/vault-policy/job.yaml",
+        "apps/data/vault-policy/kustomization.yaml",
+        "apps/data/vault-policy/networkpolicy.yaml",
+        "apps/data/vault-policy/serviceaccount.yaml",
       ]);
     });
 
+    it("moves only its own Project when that Project's grant changes, and nothing estate-scoped", () => {
+      const both = (
+        edits?: Readonly<Record<string, (text: string) => string>>,
+      ) =>
+        renderIntentSet(
+          [
+            ...SET.filter((name) => !name.startsWith("minimal/")),
+            "auth/auth.project.yml",
+            "auth/env/auth-api/base.env",
+            "auth/migration-proof.yml",
+          ].map((name) => ({
+            name,
+            text: (edits?.[name] ?? ((same: string) => same))(text(name)),
+          })),
+          { ...OPTIONS, projects: ["auth", "data"] },
+        );
+      const before = both();
+      const after = both({
+        "data/data.project.yml": (document) =>
+          document.replace(
+            "          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]",
+            "          - path: secret/data/data-system/exporter\n            keys: [{ name: token, generate: {} }]\n            access: read\n            delivery: self\n            rotation: {tolerates: restart}\n          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]",
+          ),
+      });
+      if (!before.ok || !after.ok) throw new Error("the set does not render");
+
+      expect(asTree(artifact(after.value, "auth"))).toStrictEqual(
+        asTree(artifact(before.value, "auth")),
+      );
+      expect(asTree(artifact(after.value, "data"))).not.toStrictEqual(
+        asTree(artifact(before.value, "data")),
+      );
+      expect(
+        Object.keys(asTree(artifact(after.value, "_estate"))).filter((path) =>
+          path.startsWith("estate/vso-secrets/"),
+        ),
+      ).toStrictEqual([]);
+    });
+
     it("is not rendered where the render holds no document for it to write", () => {
-      expect(jobFiles(estate(["notes"]))).toStrictEqual([]);
+      expect(jobFiles(share(["notes"], "notes"))).toStrictEqual([]);
     });
 
     it("is not rendered where the platform names no job, though the documents are", () => {
-      const paths = estate(["data"], {
+      const paths = share(["data"], "data", {
         "platform/platform.intent.yml": (document) =>
           document.replace(/\npolicyJob:\n( {2}.*\n)+/, "\n"),
       });
@@ -204,13 +248,13 @@ describe("renderIntentSet", () => {
       const tree = asTree(
         artifact(
           render({ "data/data.project.yml": adopting }, ["data"]),
-          "_estate",
+          "data",
         ),
       );
 
       expect(
         JSON.parse(
-          tree["estate/vso-secrets/policies/data-system.generated.json"] ??
+          tree["apps/data/vault-policy/policies/data-system.generated.json"] ??
             "null",
         ),
       ).toStrictEqual({
@@ -238,13 +282,13 @@ describe("renderIntentSet", () => {
       const tree = asTree(
         artifact(
           render({ "data/data.project.yml": generating }, ["data"]),
-          "_estate",
+          "data",
         ),
       );
 
       expect(
         JSON.parse(
-          tree["estate/vso-secrets/policies/data-system.generated.json"] ??
+          tree["apps/data/vault-policy/policies/data-system.generated.json"] ??
             "null",
         ),
       ).toStrictEqual({
@@ -287,15 +331,15 @@ describe("renderIntentSet", () => {
           },
         ],
       });
-      expect(tree["estate/vso-secrets/configmap.yaml"]).toContain(
+      expect(tree["apps/data/vault-policy/configmap.yaml"]).toContain(
         "data-system.generated.json",
       );
     });
 
     it("runs again every hour, from the same documents", () => {
-      const tree = asTree(artifact(render(undefined, ["data"]), "_estate"));
-      const job = tree["estate/vso-secrets/job.yaml"] ?? "";
-      const cron = tree["estate/vso-secrets/cronjob.yaml"] ?? "";
+      const tree = asTree(artifact(render(undefined, ["data"]), "data"));
+      const job = tree["apps/data/vault-policy/job.yaml"] ?? "";
+      const cron = tree["apps/data/vault-policy/cronjob.yaml"] ?? "";
       const named = /name: (vault-policy-[0-9a-f]{12})\n/.exec(job)?.[1];
 
       expect(cron).toContain("kind: CronJob\n");
@@ -305,9 +349,9 @@ describe("renderIntentSet", () => {
     });
 
     it("is recreated when the compiler alone changes its pod template, which a Job never lets an update change", () => {
-      const tree = asTree(artifact(render(undefined, ["data"]), "_estate"));
-      const job = tree["estate/vso-secrets/job.yaml"] ?? "";
-      const cron = tree["estate/vso-secrets/cronjob.yaml"] ?? "";
+      const tree = asTree(artifact(render(undefined, ["data"]), "data"));
+      const job = tree["apps/data/vault-policy/job.yaml"] ?? "";
+      const cron = tree["apps/data/vault-policy/cronjob.yaml"] ?? "";
 
       expect(job).toContain(
         "  annotations:\n    kustomize.toolkit.fluxcd.io/force: Enabled\n",
@@ -326,8 +370,8 @@ describe("renderIntentSet", () => {
         },
       });
       if (!result.ok) throw new Error("data does not render");
-      const job = asTree(artifact(result.value, "_estate"))[
-        "estate/vso-secrets/job.yaml"
+      const job = asTree(artifact(result.value, "data"))[
+        "apps/data/vault-policy/job.yaml"
       ];
       // The last value hashed is the one the job is named for.
       const named = digested.at(-1) as {
@@ -368,9 +412,9 @@ describe("renderIntentSet", () => {
           asTree(
             artifact(
               render({ "platform/images.lock.yml": lock }, ["data"]),
-              "_estate",
+              "data",
             ),
-          )["estate/vso-secrets/job.yaml"] ?? "",
+          )["apps/data/vault-policy/job.yaml"] ?? "",
         )?.[1];
       const bumped = (text: string) =>
         text.replace(
@@ -706,6 +750,26 @@ describe("renderIntentSet", () => {
     expect(serialized).toBe(0);
   });
 
+  it("refuses two Projects whose documents claim one Vault name, though each lands in its own share", () => {
+    // `a-system` + `system-c` and `a-system-system` + `c` are one name in
+    // Vault, and each Project's writer may write it.
+    const document = (project: string) => ({
+      path: `apps/${project}/vault-policy/policies/a-system-system-c.policy.json`,
+      adapter: "vault-policy",
+      objects: [],
+    });
+
+    expect(collisions([document("a"), document("a-system")])).toStrictEqual([
+      {
+        code: "E_PATH_COLLISION",
+        path: "",
+        message:
+          "the Vault name a-system-system-c.policy.json is claimed by apps/a/vault-policy/policies/a-system-system-c.policy.json and apps/a-system/vault-policy/policies/a-system-system-c.policy.json",
+        hint: "Rename an Application or a Process: a Vault name is its namespace and its identity, and a hyphen does not keep two of them apart.",
+      },
+    ]);
+  });
+
   // REQ-048 (docs/requirements.md): the delivery machinery renders, rolling
   // and ungated, with the API access each of its Processes declares.
   it("renders the delivery machinery's share of the tree to its committed tree, byte for byte", () => {
@@ -1037,6 +1101,8 @@ describe("the database catalog", () => {
     ).toStrictEqual([
       "apps/data/platform-postgres/postgres-catalog-networkpolicy.yaml",
       OWNED,
+      "apps/data/vault-policy/policies/data-system-postgres-catalog.policy.json",
+      "apps/data/vault-policy/policies/data-system-postgres-catalog.role.json",
     ]);
     expect(owner["apps/data/platform-postgres/kustomization.yaml"]).toContain(
       "  - postgres-catalog.yaml\n",
@@ -1044,32 +1110,80 @@ describe("the database catalog", () => {
     // The name the model-driven implementation derives from the same catalog and method.
     expect(owner[OWNED]).toContain("  name: postgres-catalog-565e7844099d\n");
     expect(
-      Object.keys(estateScoped).filter(
-        (path) => path.includes("catalog") && !path.includes("/policies/"),
+      Object.keys(estateScoped).filter((path) =>
+        path.startsWith("estate/vso-secrets/"),
       ),
     ).toStrictEqual([]);
-    expect(estateScoped["estate/vso-secrets/kustomization.yaml"]).not.toContain(
-      "postgres-catalog",
-    );
   });
 
-  it("still hands the datastore's own catalog identity to the Vault policy job", () => {
-    const estateScoped = share(
-      MOVED,
-      ["data", "knowledge-platform"],
-      "_estate",
-    );
+  it("hands the datastore's own catalog identity to its own Project's Vault policy job", () => {
+    const owner = share(MOVED, ["data", "knowledge-platform"], "data");
 
-    expect(estateScoped["estate/vso-secrets/configmap.yaml"]).toContain(
+    expect(owner["apps/data/vault-policy/configmap.yaml"]).toContain(
       "data-system-postgres-catalog.policy.json",
     );
   });
 
-  it("is not rendered by a render that holds only a reader, once the datastore's own Project is on the estate path", () => {
-    const reader = share(MOVED, ["knowledge-platform"], "_estate");
+  it("stops a render whose catalogs the old path runs sit in two namespaces, since one estate-scoped job writes one namespace's names", () => {
+    const result = resolveIntentSet(set({}, []), OPTIONS);
+    if (!result.ok) throw new Error("the set does not resolve");
+    const [legacy] = result.value.catalogJobs ?? [];
+    if (legacy === undefined) throw new Error("no catalog method");
+    const second = {
+      ...legacy,
+      identity: "other-catalog",
+      namespace: "other-system",
+      role: "other-system-other-catalog",
+    };
+
+    expect(() =>
+      renderResolvedSet(
+        {
+          ...result.value,
+          catalogJobs: [legacy, second],
+        },
+        { ...OPTIONS, projects: ["knowledge-platform"] },
+      ),
+    ).toThrow(
+      "catalogs the old path runs in data-system and other-system: one estate-scoped policy job writes one namespace's names",
+    );
+  });
+
+  it("writes an old-path catalog from the estate in its own namespace, beside a catalog its datastore's Project applies itself", () => {
+    const result = resolveIntentSet(set(MOVED, []), OPTIONS);
+    if (!result.ok) throw new Error("the set does not resolve");
+    const [owned] = result.value.catalogJobs ?? [];
+    if (owned === undefined) throw new Error("no catalog method");
+    const legacy = {
+      ...owned,
+      identity: "other-catalog",
+      namespace: "other-system",
+      role: "other-system-other-catalog",
+    };
+    const rendered = renderResolvedSet(
+      { ...result.value, catalogJobs: [owned, legacy] },
+      { ...OPTIONS, projects: ["data", "knowledge-platform"] },
+    );
+    if (!rendered.ok) throw new Error("the set does not render");
 
     expect(
-      Object.keys(reader).filter((path) => path.includes("catalog")),
+      asTree(artifact(rendered.value, "_estate"))[
+        "estate/vso-secrets/serviceaccount.yaml"
+      ],
+    ).toContain("  namespace: other-system\n");
+  });
+
+  it("is not rendered by a render that holds only a reader, once the datastore's own Project is on the estate path", () => {
+    const result = renderIntentSet(set(MOVED, []), {
+      ...OPTIONS,
+      projects: ["knowledge-platform"],
+    });
+    if (!result.ok) throw new Error("the set does not render");
+
+    expect(
+      result.value
+        .flatMap(({ files }) => files.map(({ path }) => path))
+        .filter((path) => path.includes("catalog")),
     ).toStrictEqual([]);
   });
 
@@ -1143,8 +1257,10 @@ describe("the database catalog", () => {
     const files = (tree: Record<string, string>) =>
       Object.keys(tree).filter((path) => path.includes("catalog"));
 
-    expect(files(estate({}, ["data"]))).toStrictEqual([]);
-    expect(files(estate({}, ["data", "knowledge-platform"]))).toContain(
+    expect(files(estate({}, ["delivery"]))).toStrictEqual([]);
+    // Composition never renders a Project the old path still delivers, so no
+    // render holds the datastore's own Project beside it.
+    expect(files(estate({}, ["delivery", "knowledge-platform"]))).toContain(
       CATALOG,
     );
   });
@@ -1942,14 +2058,14 @@ describe("each container's software version", () => {
           "notes",
           "data",
         ]),
-        "_estate",
+        "data",
       ),
     );
 
     expect(
       [
-        ...jobTemplates(tree, "estate/vso-secrets/job.yaml"),
-        cronJobTemplate(tree, "estate/vso-secrets/cronjob.yaml"),
+        ...jobTemplates(tree, "apps/data/vault-policy/job.yaml"),
+        cronJobTemplate(tree, "apps/data/vault-policy/cronjob.yaml"),
       ].map(({ metadata }) => metadata.annotations),
     ).toStrictEqual([
       { "image.jorisjonkers.dev/vault-policy": "0.9.0" },

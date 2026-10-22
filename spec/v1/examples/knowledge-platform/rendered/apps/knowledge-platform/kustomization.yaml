@@ -10,4 +10,5 @@ resources:
   - hindsight-embedding
   - karakeep
   - namespace.yaml
+  - vault-policy
   - vaultconnection.yaml

@@ -316,15 +316,17 @@ dependency edges are exported from the target model as canonical JSON and
 compared with `expected/dependencies.json`.
 
 **The estate-wide pass** runs last, in place, over the Resolved Deployments of
-every project rendered together. The resolution resolves one project per run,
-and one Deliverable belongs to none of them: the Vault policy job, which is
-handed every project's Vault documents and named by their digest
+every project rendered together. Each project's own Vault policy job is its
+resolution's: the resolution writes that project's Vault files' content as
+canonical JSON, digests it through the black box, and plans the job's files
+beside them in that project's Deliverables
 ([chapter 30](../../spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied)).
-So it is planned where all of them are in one extent: the pass reads each
-document's Vault files, writes their content as canonical JSON, digests it
-through the same black box, and adds the job's files to the first document's
-Deliverables. Its source and target are the one metamodel. A pass that finds two
-projects carrying different jobs stops, since one render has one platform.
+What the pass still plans belongs to no project the render delivers, while the
+estate is handed over: the catalog of a datastore the old path runs, the
+estate-scoped job that writes that catalog's documents, and the route Flux's
+events take, all added to the first document's Deliverables. Its source and
+target are the one metamodel. A pass that finds two projects carrying
+different jobs stops, since one render has one platform. #547 removes it.
 
 It reads two extents and writes one. The **intent** extent holds every project
 of the union, authored and lowered, and the Platform document: the authored

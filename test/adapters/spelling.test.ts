@@ -1613,8 +1613,8 @@ describe("the vault-policy adapter", () => {
     const rendered = policy(GRANT);
 
     expect(rendered.map(({ path }) => path)).toStrictEqual([
-      "estate/vso-secrets/policies/notes-system-notes-api.policy.json",
-      "estate/vso-secrets/policies/notes-system-notes-api.role.json",
+      "apps/notes/vault-policy/policies/notes-system-notes-api.policy.json",
+      "apps/notes/vault-policy/policies/notes-system-notes-api.role.json",
     ]);
     expect(objectsAt(rendered, "role.json")).toStrictEqual([
       {
@@ -1645,11 +1645,11 @@ describe("the vault-policy adapter", () => {
     ).toStrictEqual([
       [
         "E_PATH_COLLISION",
-        "estate/vso-secrets/policies/a-system-system-c.policy.json is claimed by vault-policy and vault-policy",
+        "apps/notes/vault-policy/policies/a-system-system-c.policy.json is claimed by vault-policy and vault-policy",
       ],
       [
         "E_PATH_COLLISION",
-        "estate/vso-secrets/policies/a-system-system-c.role.json is claimed by vault-policy and vault-policy",
+        "apps/notes/vault-policy/policies/a-system-system-c.role.json is claimed by vault-policy and vault-policy",
       ],
     ]);
   });
@@ -1891,8 +1891,8 @@ describe("what a migration plan and a count above one render", () => {
     const rendered = renderVaultPolicy(migrating());
 
     expect(rendered.map(({ path }) => path)).toStrictEqual([
-      "estate/vso-secrets/policies/notes-system-notes-migration.policy.json",
-      "estate/vso-secrets/policies/notes-system-notes-migration.role.json",
+      "apps/notes/vault-policy/policies/notes-system-notes-migration.policy.json",
+      "apps/notes/vault-policy/policies/notes-system-notes-migration.role.json",
     ]);
     expect(rendered.flatMap(({ objects }) => objects)).toStrictEqual([
       { path: { "database/creds/notes-owner": { capabilities: ["read"] } } },

@@ -835,28 +835,33 @@ policyJob:
   deadline: 120s
 ```
 
-The job that writes the rendered Vault policies and auth roles into the Secret
-Store ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied),
-[0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)). It is
+What every Vault policy job runs with: the job each Project's own unit carries
+to write that Project's rendered Vault policies, auth roles and generated keys
+into the Secret Store, and, while a datastore the old path runs has a catalog,
+the one estate-scoped job that writes that catalog's
+([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied),
+[0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)). Each is
 derived, like a backup and a migration, from facts the platform states and no
 project can:
 
 - **`image`** is an alias the images lock holds, `E_UNLOCKED_IMAGE` otherwise:
   the binary the `delivery` project builds.
-- **`role`** is the Vault role the job logs in as. The role itself, and its
-  binding to the job's ServiceAccount, `vault-policy` in the Secret Store's
-  namespace, are a fixture created with the auth method
+- **`role`** is the Vault role every job logs in as. The role itself, its
+  binding to the ServiceAccount `vault-policy` in every namespace, and its
+  policy, templated on that ServiceAccount's namespace so a job may write only
+  policies, roles and keys of its own namespace, are a fixture created with the
+  auth method
   ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)):
-  the job cannot grant itself the privilege to write policies.
+  a job cannot grant itself the privilege to write policies.
 - **`memory`** and **`cpu`** are what its one container requests, and
   **`deadline`** how long **one attempt** may take, its start included, before
-  that attempt is failed and another begins. The job never fails as a whole: it
-  retries until an attempt succeeds, because every Reconcile Unit that holds a
-  grant waits on it and writing the documents again is harmless
+  that attempt is failed and another begins. A job never fails as a whole: it
+  retries until an attempt succeeds, because its Project's unit is Ready only
+  once it has, and writing the documents again is harmless
   ([0103](../../docs/adr/model/0103-a-derived-estate-job-retries-and-avoids-the-sd-cards.md)).
 
-The job runs on no node that holds an `sdcard` medium. Every unit that holds a
-grant waits on it, so it must not wait on the slowest disks the estate has: its
+A job runs on no node that holds an `sdcard` medium. Its Project's unit waits on
+it, so it must not wait on the slowest disks the estate has: its
 eligible nodes are those whose allocatable fits `memory` and `cpu` and that hold
 no such medium, and a node contract with none is `E_PLACEMENT_UNSATISFIABLE`.
 No Process may ask for `sdcard`
@@ -864,7 +869,7 @@ No Process may ask for `sdcard`
 model asks for its absence, and it asks for the derived job, not for anything a
 project declares.
 
-The block is optional, and it derives a job only beside a `secretStore`: with no
+The block is optional, and it derives jobs only beside a `secretStore`: with no
 Secret Store there is nothing to write into, and with no block the render
 carries the documents alone and nothing applies them.
 

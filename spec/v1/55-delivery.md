@@ -84,10 +84,11 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   with a letter or a digit, and nothing below `<repository>/` is the estate's,
   so no Project can ever name it. While the estate is handed
   over, a Project still on the old path is rendered and checked but not
-  published, and the `_estate` artifact holds only `estate-vso-secrets`, the
-  Vault policy job for the Projects already on the estate path, whose units
-  depend on it, `estate-rollout-events` where the platform names a
-  Reporter, and `estate-rollback-backups` while a Rollback's backup is asked
+  published, and the `_estate` artifact holds only `estate-vso-secrets` while
+  a datastore the old path runs has a catalog the estate path applies, that
+  catalog's Jobs and the estate-scoped policy job that writes its documents,
+  which no Project's unit depends on, `estate-rollout-events` where the
+  platform names a Reporter, and `estate-rollback-backups` while a Rollback's backup is asked
   for; the edge units join them once no Project is on the old path
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
 - **The `_estate` artifact holds only what no Project can own.** A Project
@@ -213,8 +214,9 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `healthCheckExprs` | one entry, for `v1` `PersistentVolumeClaim`: `current` when the claim is `Bound`, or `Pending` with no `volume.kubernetes.io/selected-node` annotation. `local-path` binds a claim on its first consumer's node, and a backup claim's only consumer is its nightly `CronJob`, so without this a fresh Project would stay not Ready until its first backup. The scheduler writes that annotation as soon as it places a consumer, so a claim still `Pending` after that holds the unit, as Flux's default reading of a claim would. A claim waiting for a Process's pod adds nothing to the check: the pod's controller is not Ready until the claim binds |
 | | `patches` | on a Project's first delivery alone, the one that hands it over ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)), first one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector the old path set differently rather than refuse it. A rewrite that leaves the pin where it is keeps it, since the first delivery may not have been applied yet; the first rewrite that moves the pin drops it, and it is absent from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied. No patch labels a pod with its release: that label travels in the artifact ([Rendered artifacts and pins](#rendered-artifacts-and-pins)) |
 
-A Project's artifact holds its one unit. The estate-scoped artifact holds
-`estate-vso-secrets` where it carries the Vault policy job,
+A Project's artifact holds its one unit, its own Vault policy job among what
+it applies. The estate-scoped artifact holds `estate-vso-secrets` where it
+carries the catalog of a datastore the old path still runs,
 `estate-rollout-events` where the platform names a Reporter
 ([Rollouts](#rollouts)), `estate-rollback-backups` while a Rollback's backup
 is asked for ([Pause and Rollback](#pause-and-rollback)), and one
@@ -842,9 +844,9 @@ Every unit a pin source applies carries that label
 each Project's unit and the estate's own without naming one, and a Project
 that joins the estate path is reported from its first apply. An event about a
 unit that carries no Rollout, the estate's own among them, reaches the
-Reporter too, which has nothing to write for it. The two objects join the
-estate-scoped artifact beside the secrets unit while any Project is `legacy`,
-since reporting a release does not wait on the edge.
+Reporter too, which has nothing to write for it. The two objects are in the
+estate-scoped artifact while any Project is `legacy` too, since reporting a
+release does not wait on the edge.
 
 **An event is a prompt to look, never evidence.** The Provider posts over the
 cluster's own network, unsigned: nothing in the request proves Flux sent it,

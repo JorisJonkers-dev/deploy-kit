@@ -4,7 +4,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: vault-policy
-  namespace: secrets-system
+  namespace: data-system
   labels:
     app.kubernetes.io/name: vault-policy
     app.kubernetes.io/instance: vault-policy

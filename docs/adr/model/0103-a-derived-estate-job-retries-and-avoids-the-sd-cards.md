@@ -10,8 +10,9 @@ rests-on: ["0001", "0005"]
 
 # A derived estate Job bounds each attempt, retries until one succeeds, and runs on no node that boots from an SD card
 
-The Vault policy job and every catalog method are Jobs that every Reconcile
-Unit holding a grant waits on. Their deadline bounds one attempt, the start
+Each Vault policy job and every catalog method are Jobs that the Reconcile Unit
+applying them waits on: a Project's own unit, or, for a datastore the old path
+still runs, the estate-scoped one. Their deadline bounds one attempt, the start
 included, rather than the whole Job. The Job retries until an attempt succeeds.
 It is placed on the nodes that fit what it asks for and that hold no `sdcard`
 medium.

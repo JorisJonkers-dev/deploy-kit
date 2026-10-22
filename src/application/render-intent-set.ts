@@ -17,10 +17,14 @@ import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
   applicationDirectory,
   ESTATE_DIRECTORY,
+  policyJobDirectory,
   SECRETS_DIRECTORY,
 } from "../adapters/shared/paths.ts";
 import { documentsOf, renderPolicyJob } from "../adapters/vault-policy/job.ts";
-import { renderCatalogVault } from "../adapters/vault-policy/render.ts";
+import {
+  policiesOf,
+  renderCatalogVault,
+} from "../adapters/vault-policy/render.ts";
 import {
   catalogDigestOf,
   renderCatalogJob,
@@ -29,6 +33,12 @@ import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
 import type { ServiceAccount } from "../objects/kubernetes.ts";
+import type {
+  ResolvedCatalogJob,
+  ResolvedPolicyJob,
+} from "../model/resolved-deployment.ts";
+import { namespaceOf } from "../model/runtime-profiles.ts";
+import { notSupported } from "../model/internal-failure.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
   resolveIntentSet,
@@ -72,6 +82,11 @@ export interface RenderedArtifact {
 const ESTATE_SCOPED = `${ESTATE_DIRECTORY}/`;
 const ESTATE = "_estate";
 
+/** Where a Vault document lands: a policies directory, under the name Vault holds it by. */
+// No rendered path runs on past its `.json`, so the anchor decides nothing.
+// Stryker disable next-line Regex
+const VAULT_DOCUMENT = /\/policies\/[^/]+\.(policy|role)\.json$/;
+
 export function collisions(deliverables: readonly Deliverable[]): Diagnostic[] {
   const owners = new Map<string, string[]>();
   for (const { path, adapter } of deliverables)
@@ -85,7 +100,23 @@ export function collisions(deliverables: readonly Deliverable[]): Diagnostic[] {
         const name = `${String(object.metadata.namespace)}/${object.metadata.name}`;
         accounts.set(name, [...(accounts.get(name) ?? []), path]);
       }
+  // Every Project writes its own documents, but Vault holds every name in one
+  // place, so two documents of one name are one policy or one role.
+  const names = new Map<string, string[]>();
+  for (const { path } of deliverables)
+    if (VAULT_DOCUMENT.test(path)) {
+      const name = path.slice(path.lastIndexOf("/") + 1);
+      names.set(name, [...(names.get(name) ?? []), path]);
+    }
   return [
+    ...[...names.entries()]
+      .filter(([, paths]) => new Set(paths).size > 1)
+      .map(([name, paths]) => ({
+        code: "E_PATH_COLLISION" as const,
+        path: "",
+        message: `the Vault name ${name} is claimed by ${[...new Set(paths)].join(" and ")}`,
+        hint: "Rename an Application or a Process: a Vault name is its namespace and its identity, and a hyphen does not keep two of them apart.",
+      })),
     ...[...owners.entries()]
       .filter(([, adapters]) => adapters.length > 1)
       .map(([path, adapters]) => ({
@@ -143,36 +174,98 @@ const policyJobDigestOf = (
   eligibleNodes: job.eligibleNodes,
 });
 
-/** Where every Vault document lands: what the Vault policy job is handed. */
-const VAULT_DOCUMENTS = `${SECRETS_DIRECTORY}/policies/`;
-
 /**
- * The Vault policy job of one render
+ * One Vault policy job in `directory`
  * (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
- * its objects and its policy, where the platform names the job and the render
- * holds a document for it to write. It is handed exactly the documents of this
- * render and is named by their digest, so it spans the projects rendered and
- * belongs to no one of them.
+ * its objects and its policy, handed the documents under that directory and
+ * named by their digest, where it holds any.
  */
-function policyJobOf(
-  resolved: ResolvedSet,
+function policyJobIn(
+  job: ResolvedPolicyJob,
   rendered: readonly Deliverable[],
+  directory: string,
   hash: Hasher,
 ): Deliverable[] {
   const documents = rendered.filter(({ path }) =>
-    path.startsWith(VAULT_DOCUMENTS),
+    path.startsWith(`${policiesOf(directory)}/`),
   );
-  return resolved.policyJob === undefined || documents.length === 0
+  return documents.length === 0
     ? []
     : [
         ...renderPolicyJob(
-          resolved.policyJob,
+          job,
           documents,
-          hash(policyJobDigestOf(resolved.policyJob, documents)),
+          hash(policyJobDigestOf(job, documents)),
+          directory,
         ),
-        renderPolicyJobPolicy(resolved.policyJob),
+        renderPolicyJobPolicy(job, "networkpolicy.yaml", directory),
       ];
 }
+
+/**
+ * The Vault policy jobs of one render, where the platform names the job
+ * (spec/v1/20-resolved-deployment.md#the-vault-policy-job): one in each
+ * Project's own share, in that Project's namespace, writing only that
+ * Project's documents; and, while a datastore the old path runs has a catalog
+ * the estate path applies, one estate-scoped job in that datastore's
+ * namespace, writing that catalog's documents. Every one logs in as the
+ * platform's role, which confines a writer to its own namespace's names.
+ */
+function policyJobsOf(
+  resolved: ResolvedSet,
+  rendered: readonly Deliverable[],
+  projects: readonly string[],
+  held: readonly ResolvedCatalogJob[],
+  hash: Hasher,
+): Deliverable[] {
+  const job = resolved.policyJob;
+  if (job === undefined) return [];
+  const legacy = [
+    ...new Set(
+      held
+        .filter((catalog) => !resolved.catalogHomes.has(catalog))
+        .map(({ namespace }) => namespace),
+    ),
+  ];
+  if (legacy.length > 1)
+    throw notSupported(
+      `catalogs the old path runs in ${legacy.join(" and ")}: one estate-scoped policy job writes one namespace's names`,
+    );
+  return [
+    ...projects.flatMap((project) =>
+      policyJobIn(
+        { ...job, namespace: namespaceOf(project) },
+        rendered,
+        policyJobDirectory(project),
+        hash,
+      ),
+    ),
+    ...policyJobIn(
+      { ...job, namespace: legacy[0] ?? job.namespace },
+      rendered,
+      SECRETS_DIRECTORY,
+      hash,
+    ),
+  ];
+}
+
+/**
+ * The catalog methods this render holds: one whose datastore's own Project
+ * renders, and one the old path still runs whose catalog names a project of
+ * this render.
+ */
+const heldCatalogs = (
+  resolved: ResolvedSet,
+  projects: readonly string[],
+): ResolvedCatalogJob[] =>
+  (resolved.catalogJobs ?? []).filter((job) => {
+    const home = resolved.catalogHomes.get(job);
+    return home === undefined
+      ? job.catalog.databases.some(({ name }) =>
+          projects.some((project) => name === `${project}_db`),
+        )
+      : projects.includes(home.project);
+  });
 
 /**
  * Each datastore's catalog method this render holds
@@ -184,18 +277,11 @@ function policyJobOf(
  */
 function catalogJobsOf(
   resolved: ResolvedSet,
-  projects: readonly string[],
+  held: readonly ResolvedCatalogJob[],
   hash: Hasher,
 ): Deliverable[] {
-  return (resolved.catalogJobs ?? []).flatMap((job) => {
+  return held.flatMap((job) => {
     const home = resolved.catalogHomes.get(job);
-    const held =
-      home === undefined
-        ? job.catalog.databases.some(({ name }) =>
-            projects.some((project) => name === `${project}_db`),
-          )
-        : projects.includes(home.project);
-    if (!held) return [];
     const directory =
       home === undefined
         ? SECRETS_DIRECTORY
@@ -207,7 +293,12 @@ function catalogJobsOf(
         `${job.identity}-networkpolicy.yaml`,
         directory,
       ),
-      ...renderCatalogVault(job),
+      ...renderCatalogVault(
+        job,
+        home === undefined
+          ? SECRETS_DIRECTORY
+          : policyJobDirectory(home.project),
+      ),
     ];
   });
 }
@@ -244,11 +335,18 @@ export function renderResolvedSet(
           ]),
     ];
   });
-  const catalogs = catalogJobsOf(resolved, options.projects, options.hash);
+  const held = heldCatalogs(resolved, options.projects);
+  const catalogs = catalogJobsOf(resolved, held, options.hash);
   const rendered = [
     ...projects,
     ...catalogs,
-    ...policyJobOf(resolved, [...projects, ...catalogs], options.hash),
+    ...policyJobsOf(
+      resolved,
+      [...projects, ...catalogs],
+      options.projects,
+      held,
+      options.hash,
+    ),
     // The route Flux's events take is the estate's, whichever Projects
     // render; a render of no Project puts no unit on the estate path to
     // report on.
