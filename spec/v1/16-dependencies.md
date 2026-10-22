@@ -88,7 +88,7 @@ chapter's hard dependency on [chapter 40](40-composition.md).
 | inbound derivation | evidence it is needed |
 |---|---|
 | a database and owning user per consumer | `init-databases.sh` creates `auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Application claiming a Postgres credential. 98 lines the graph already knows. |
-| NetworkPolicy **ingress** | a provider must admit its consumers, and only the inbound set says who they are |
+| NetworkPolicy **ingress** | a provider must admit its consumers, and only the inbound set says who they are. The provider's policy admits them by the [consumer label](#the-consumer-label) each carries, so the derivation lands in each consumer's own share rather than the provider's |
 | browser origin allow-lists | `auth-api` hand-maintains `AUTH_CORS_ALLOWED_ORIGINS` with nine hostnames |
 | rotation blast radius | "who breaks if I rotate this?" is the reader set of a Secret Subtree **path**, computed over readers of the path and never over declared key sets |
 
@@ -508,12 +508,11 @@ producer.
 | rule | derived from | direction |
 |---|---|---|
 | to a provider's surface port | each `dependsOn` edge of the Process; for an edge to a Registered Unmanaged Surface, to the address and port the register carries ([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)) | egress |
-| from each consumer of a surface | the inbound edge set, over the composed union | ingress |
+| from every pod carrying the consumer label of a surface | each surface the Process provides, read off the Process alone; the label is on every consumer's pods ([The consumer label](#the-consumer-label)) | ingress |
 | to the Secret Store | any grant in the Process's effective set | egress |
 | from the route tier carrying the audience | a route on the Application's `exposure` naming this Process | ingress |
 | from the metrics stack, to the scrape port | the Process's `scrape` surface | ingress |
 | from the Process's own backup identity, to the surface its backups dump | the surface the Platform document's `engines` names for the Process's `engine` | ingress |
-| from the migration identity of each Application whose database the Process holds, to the surface that Application's edge names | every Application of the union that moves its schema with a changelog and reaches this Process's database ([The database catalog](#the-database-catalog)) | ingress |
 | from Flux's notification controller, to the Reporter's `http` surface | the Platform document's `delivery.reporter` naming the Application ([chapter 14](14-platform-intent.md#delivery-policy)): the first of its Processes that provides the surface, and no other. The peer is in the namespace `bootstrap.flux.sourceRef` names and is selected by the `app` label Flux's own install gives the controller, because Flux is in the bootstrap set and no Process, so nothing renders a label for it | ingress |
 | to where the Kubernetes API answers, by address | the Process's `api`, and the Platform document's `apiAccess.server` ([Kubernetes API access is declared and admitted](#kubernetes-api-access-is-declared-and-admitted)) | egress |
 | between a provider's Instances, on the surface its engine's move method syncs over | an open Move of the provider ([chapter 55](55-delivery.md#moves)): from the target Instance to the source while the sync runs, and back while reverse replication runs | egress and ingress |
@@ -531,6 +530,38 @@ While that project is still `legacy`, the old path may run it elsewhere, so the
 peer is where the handover ledger's `serving` states it runs, and so is the
 address a Process is handed for it
 ([chapter 14](14-platform-intent.md#handover-ledger)).
+
+### The consumer label
+
+A provider admits its consumers without naming them. Every Process whose edge
+reaches a surface of an Application carries, on its pods, the label
+`consumes.deploy-kit.jorisjonkers.dev/<application>.<surface>: "true"`, named
+by the provider's Application id and the surface. The provider's policy admits,
+on each surface it provides, every pod carrying that surface's label in any
+namespace labelled `app.kubernetes.io/managed-by: deploy-kit`. The rule is read
+off the Process's own surfaces and never off the union's edges, so it is in the
+policy whether or not anything consumes the surface, and a consumer added,
+changed or removed changes its own share alone
+([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+
+A migration's runner reaches its datastore the same way: its pods carry the
+label of the surface its Application's edge names
+([The migration identity's policy](#the-migration-identitys-policy)), so the
+datastore admits it as it admits every consumer, and names no migration
+identity. An edge to a Registered Unmanaged Surface derives no label: it reaches
+an address, and the model renders no policy for what answers there.
+
+The label is rendered only from an edge the union resolved, on pods only this
+model renders, in namespaces only it manages, so a pod carries it only where a
+declaration someone owns put it there. A consumer the old path still runs
+carries no label, so a provider's policy admits it once its Project is handed
+over; until then the policy set is render-only
+([Audit before enforce](#audit-before-enforce)).
+
+A label's name is at most 63 characters of letters, digits, `-`, `_` and `.`,
+starting and ending with a letter or digit. An Application whose id, joined by a
+dot to a surface one of its Processes provides, is no label name is refused at
+that Process as soon as the fragment is read: `E_SURFACE_LABEL_INVALID`.
 
 ### The baseline
 
@@ -594,11 +625,11 @@ Nothing reaches a migration pod, so its policy admits no ingress. Here the
 Secret Store **is** a peer, where for a backup it is not: the credential is
 delivered `self`, so the pod mounts its token and calls the store.
 
-The other half is on the datastore: its own policy admits the migration
-identity on that surface, a row of the allow set above. The admission is
-derived for an Application that declares a changelog and for no other, so an
-Application that migrates itself is admitted as the consumer it already is,
-and never as an identity it does not have.
+The other half is on the datastore, and it is the consumer rule: the runner's
+pods carry the [consumer label](#the-consumer-label) of the surface the
+Application's edge names, and the datastore admits every pod that carries it.
+No datastore's policy names a migration identity, so an Application that gains
+or drops a changelog changes its own share alone.
 
 ### The token is mounted only where the pod authenticates
 

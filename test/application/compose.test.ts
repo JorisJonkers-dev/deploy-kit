@@ -285,7 +285,7 @@ describe("composeEstate", () => {
     ]);
     expect(FIRST.lock.spec.fragments.notes?.revisions).toEqual({
       notes:
-        "sha256:ef696808e72682803cbe3963fc043dec3601e82b0385a9ace81e86ea55052226",
+        "sha256:0a8b69a6274d430cb7b3d73355003f5b8bfb4e115e9f38500ecc2d0482045c46",
     });
     expect(FIRST.lock.spec.fragments["jorisjonkers.dev"]?.revisions).toEqual(
       {},
@@ -1096,6 +1096,75 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     expect(
       next("edge", (body) => body.replace("memory: 128Mi", "memory: 160Mi")),
     ).toStrictEqual(["edge"]);
+  });
+
+  // deploy-kit#552: a provider admits its consumers by a label each consumer
+  // carries in its own share, so neither side's change moves the other.
+  it("moves only the consumer when its edges change, and no consumer when its provider changes and keeps its Surfaces", () => {
+    const consuming =
+      (surface: string) =>
+      (body: string): string =>
+        body.replace(
+          "        runtime: node\n",
+          `        runtime: node\n        dependsOn:\n          - { application: platform-rabbitmq, surface: ${surface} }\n`,
+        );
+    const at = (notes: Fragment | undefined, data?: Fragment) =>
+      RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "notes" && notes !== undefined
+          ? notes
+          : fragment.manifest.spec.project === "data" && data !== undefined
+            ? data
+            : fragment,
+      );
+    const moving = (from: readonly Fragment[], to: readonly Fragment[]) => {
+      const first = delivered({ fragments: from });
+      const after = (fragments: readonly Fragment[]) =>
+        delivered({
+          fragments,
+          held: [...RELEASES, ...from],
+          pins: pinned(first),
+          previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+        });
+      const data = (composition: Composition) =>
+        composition.artifacts.find(({ name }) => name === "data")?.files;
+      const next = after(to);
+      expect(data(next)).toStrictEqual(data(after(from)));
+      return next.artifacts
+        .filter(({ moves }) => moves)
+        .map(({ name }) => name);
+    };
+    const without = at(undefined);
+    const amqp = at(release("notes", "1.1.0", consuming("amqp")));
+    const management = at(release("notes", "1.2.0", consuming("management")));
+
+    // A consumer added, changed and removed moves itself alone, and leaves
+    // the provider's share byte for byte.
+    expect(moving(without, amqp)).toStrictEqual(["notes"]);
+    expect(moving(amqp, management)).toStrictEqual(["notes"]);
+    expect(moving(amqp, at(release("notes", "1.3.0")))).toStrictEqual([
+      "notes",
+    ]);
+    // A provider change that keeps its Surfaces moves no consumer.
+    const provider = release("data", "1.1.0", (body) =>
+      body.replace(
+        "          memory: 2Gi       # the broker",
+        "          memory: 3Gi       # the broker",
+      ),
+    );
+    const first = delivered({ fragments: amqp });
+    expect(
+      delivered({
+        fragments: at(
+          amqp.find(({ manifest }) => manifest.spec.project === "notes"),
+          provider,
+        ),
+        held: [...RELEASES, ...amqp],
+        pins: pinned(first),
+        previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+      })
+        .artifacts.filter(({ moves }) => moves)
+        .map(({ name }) => name),
+    ).toStrictEqual(["data"]);
   });
 
   it("pulls every pinned artifact with the Secret the Platform document names for a private repository", () => {

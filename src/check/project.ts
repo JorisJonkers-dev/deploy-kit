@@ -26,6 +26,7 @@ import {
   sameDeclaration,
 } from "../model/project-intent-queries.ts";
 import { namespaceOf } from "../model/runtime-profiles.ts";
+import { consumedOf, isLabelName } from "../model/consumer-label.ts";
 
 interface Refusal {
   readonly code: RefusalCode;
@@ -331,8 +332,38 @@ function applicationRefusals(
         [application, project],
         `${at}/processes/${index}`,
       ),
+      ...surfaceLabelRefusals(
+        application.id,
+        process,
+        `${at}/processes/${index}`,
+      ),
     );
   return refusals;
+}
+
+/**
+ * A surface a consumer label cannot name: a consumer's pods carry the
+ * Application's id and the surface as a label's name
+ * (spec/v1/16-dependencies.md#the-consumer-label).
+ */
+function surfaceLabelRefusals(
+  application: string,
+  process: Process,
+  at: string,
+): Refusal[] {
+  const unnamed = Object.keys(process.provides ?? {})
+    .map((surface) => consumedOf(application, surface))
+    .filter((consumed) => !isLabelName(consumed));
+  return unnamed.length === 0
+    ? []
+    : [
+        {
+          code: "E_SURFACE_LABEL_INVALID",
+          path: at,
+          message: `${unnamed.join(", ")} cannot name a label: at most 63 characters of letters, digits, '-', '_' and '.', starting and ending with a letter or digit`,
+          hint: "Shorten the Application's id or the surface's name.",
+        },
+      ];
 }
 
 // -- Migration (spec/v1/10-project-intent.md#migration).

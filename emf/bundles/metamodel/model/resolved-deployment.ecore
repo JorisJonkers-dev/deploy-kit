@@ -171,6 +171,9 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="scratch" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="database" lowerBound="1" eType="#//MigratedDatabase" containment="true"/>
+    <!-- The datastore's surface, as the consumer label the runner's pods carry names it
+         (spec/v1/16-dependencies.md#the-consumer-label). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumes" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="credential" lowerBound="1" eType="#//ResolvedGrant" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
   </eClassifiers>
@@ -275,6 +278,9 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//ResolvedAsset" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="sidecars" upperBound="-1" eType="#//ResolvedSidecar" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="dependencies" upperBound="-1" eType="#//ResolvedEdge" containment="true"/>
+    <!-- The surface of every Application its edges reach, as the consumer label its pods carry
+         names it (spec/v1/16-dependencies.md#the-consumer-label). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumes" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="writablePaths" upperBound="-1" eType="#//WritablePath" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="environment" upperBound="-1" eType="#//EnvEntry" containment="true"/>
   </eClassifiers>
@@ -490,9 +496,12 @@
   <eClassifiers xsi:type="ecore:EClass" name="PolicyPeer">
     <!-- What admits the peer: a tier proxy, the metrics stack, a consumer, the Process's own
          backup, the DNS, the Secret Store, the datastore a backup dumps.
-         Absent on an edge's own peer. -->
+         Absent on an edge's own peer. A consumer names no namespace and no Process: it is
+         every pod carrying the consumer label of the surface `consumes` names
+         (spec/v1/16-dependencies.md#the-consumer-label). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="rule" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumes" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="process" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>

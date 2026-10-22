@@ -12,7 +12,7 @@ import { vaultNameOf } from "../../model/runtime-profiles.ts";
 import type { RenderedObject } from "../../objects/deliverable.ts";
 import type { Job, Labels, ServiceAccount } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
-import { labelsOf, podMetadataOf } from "../shared/labels.ts";
+import { consumerLabelsOf, labelsOf, podMetadataOf } from "../shared/labels.ts";
 
 /**
  * The mark that makes the applier create a Job and never update it
@@ -48,7 +48,10 @@ function jobOf(
       backoffLimit: 0,
       activeDeadlineSeconds: wholeSeconds(plan.deadline),
       template: {
-        metadata: podMetadataOf(labels, [["migration", plan.runnerVersion]]),
+        metadata: podMetadataOf(
+          { ...labels, ...consumerLabelsOf(plan.consumes) },
+          [["migration", plan.runnerVersion]],
+        ),
         spec: {
           serviceAccountName: plan.identity,
           // The runner logs in to the Secret Store with its own token.

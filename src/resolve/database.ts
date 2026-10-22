@@ -1,8 +1,7 @@
 // The database an Application's edges derive
 // (spec/v1/16-dependencies.md#the-database-catalog): whether its schema is
 // moved by a changelog, and where the datastore holding it answers. Both the
-// migration plan and the datastore's own policy read it, so neither derives it
-// twice.
+// migration plan and the catalog read it, so neither derives it twice.
 import type {
   EffectiveApplication,
   EffectiveProcess,
@@ -12,6 +11,7 @@ import { ownsDatabases } from "../model/project-intent-queries.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { homeOf } from "../model/runtime-profiles.ts";
+import { consumedOf } from "../model/consumer-label.ts";
 
 type Egress = NonNullable<ResolvedProcess["egress"]>[number];
 
@@ -27,14 +27,14 @@ const edgesOf = ({ dependsOn }: EffectiveProcess) => dependsOn ?? [];
  * Where the project's database answers
  * (spec/v1/16-dependencies.md#the-database-catalog): the first edge of the
  * Application that reaches a Process whose engine owns databases, on the
- * surface that edge names. None where no edge names a surface such a Process
- * provides.
+ * surface that edge names, and that surface as a consumer label names it.
+ * None where no edge names a surface such a Process provides.
  */
-export function datastoreOf(
+export function databaseEdgeOf(
   application: EffectiveApplication,
   union: readonly EffectiveProject[],
   platform: Pick<PlatformIntentDocument, "handover">,
-): Egress | undefined {
+): { readonly peer: Egress; readonly consumes: string } | undefined {
   return application.processes
     .flatMap(edgesOf)
     .flatMap((edge) =>
@@ -47,9 +47,12 @@ export function datastoreOf(
                 ? []
                 : [
                     {
-                      rule: "datastore" as const,
-                      ...homeOf(platform, project, id, name),
-                      port: provides[edge.surface] as number,
+                      peer: {
+                        rule: "datastore" as const,
+                        ...homeOf(platform, project, id, name),
+                        port: provides[edge.surface] as number,
+                      },
+                      consumes: consumedOf(id, edge.surface),
                     },
                   ],
             ),
@@ -58,3 +61,10 @@ export function datastoreOf(
     )
     .at(0);
 }
+
+/** Where the project's database answers, as the peer a policy names. */
+export const datastoreOf = (
+  application: EffectiveApplication,
+  union: readonly EffectiveProject[],
+  platform: Pick<PlatformIntentDocument, "handover">,
+): Egress | undefined => databaseEdgeOf(application, union, platform)?.peer;

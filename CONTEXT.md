@@ -390,6 +390,12 @@ Application Id, held in the consumer's own namespace and pointing at the Stable
 Address ([chapter 16](spec/v1/16-dependencies.md#the-alias),
 [0109](docs/adr/model/0109-a-consumer-reaches-its-provider-by-its-application-id.md)).
 
+**Consumer label**: the label every pod that reaches a Surface carries,
+named by the provider's Application Id and the Surface. The provider's policy
+admits it and names no consumer, so a consumer's edges change its own share
+alone ([chapter 16](spec/v1/16-dependencies.md#the-consumer-label),
+[0035](docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)).
+
 **Tier**: where the edge terminates: five facts, `audiences`, `listener`,
 `certificates`, `forwardAuth`, `proxiedBy`, plus the Traefik Application that is its proxy. A
 route's audience is the only way it reaches a tier

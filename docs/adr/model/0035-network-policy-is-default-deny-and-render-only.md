@@ -67,6 +67,22 @@ render does not wait on the CNI; the promotion does. For the length of the
 render-only stage the estate is segmented on paper and open east-west in fact,
 stated rather than hidden.
 
+**A provider admits its consumers by a label, not by name.** Each consumer's
+pods carry the [consumer label](../../../spec/v1/16-dependencies.md#the-consumer-label)
+of every Surface its edges reach, and a provider's policy admits that label on
+each Surface it provides, from any namespace this model manages. Naming each
+consumer in the provider's policy put the inbound edge set into the provider's
+render, so a consumer's new edge re-rendered the provider, moved its pin and
+recorded a Rollout of it at a version it never released, which a Project owning
+what it delivers rules out
+([0116](0116-a-project-owns-every-object-it-delivers.md)). The label is rendered
+only from an edge the union resolved, so every flow admitted in fact is still a
+declared edge, though a policy now admits each Surface a Process provides
+whether or not anything consumes it: what moves is which share holds the half
+that says who may. The migration
+runner carries the label of its datastore's Surface too, so no datastore's
+policy names a migration identity.
+
 **Whether a delivered render applies the policy set is open.** Flux applies each
 Project's share of the render ([0050](0050-delivery-is-part-of-the-model.md)),
 and a policy file listed in an applied kustomization is enforced on first sync.
@@ -82,6 +98,8 @@ proposal awaiting the maintainer's decision.
 | Emit policies with a selector matching nothing | a tree that looks complete | a policy that lies about what is in force |
 | Policy emitted by the route or workload adapter | fewer adapters | the default-deny is per project, and the DNS rule would span adapters |
 | Wait for the CNI before rendering | nothing unenforced in the tree | puts a lab evaluation on the model's critical path |
+| Name each consumer in the provider's policy | a policy that lists exactly who reaches it | a consumer's edge re-renders, re-pins and re-releases the provider, so one Project's change moves another |
+| Admit a consumer by a label on its Namespace | one label per Project, not per pod | every pod in the namespace reaches the Surface, not only the Process that declared the edge |
 
 ## Reversibility
 
@@ -93,6 +111,13 @@ allow set being complete, because relaxing it then reopens flows nobody declared
 
 - Every new flow needs a declared edge, or it is dropped once enforcement lands,
   paid by the Application author.
+- A pod that carries a consumer label reaches the Surface it names from any
+  Project's namespace, wherever the label came from, with no identity behind
+  it. Only this model renders the label, in namespaces only it manages, so the
+  trust is the signed render's, paid by whoever reviews a render.
+- A consumer the old path still runs carries no label, so once enforcement
+  lands a provider admits it only after its Project is handed over, paid by
+  the handover order.
 - The estate stays open east-west until the CNI evaluation and the audit window
   complete, paid in risk, stated in the tree.
 - A CNI change replaces flannel and the bundled controller on every node, paid

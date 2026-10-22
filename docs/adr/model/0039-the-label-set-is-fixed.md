@@ -10,12 +10,13 @@ rests-on: ["0005"]
 # The object label set is fixed, and two of its labels are immutable
 
 ## Rests on
-Five labels are enough for everything the estate selects on, and no authored
-field needs to reach the label set. False if: something must select objects by a
-dimension no label carries (a tier, an audience, a release channel), and cannot
-read it from the Resolved Deployment instead. Settled by: rendering the estate
-with this set and finding no selector, no ServiceMonitor and no NetworkPolicy
-that needs a label it does not have.
+Five labels on every object are enough for everything the estate selects on,
+and no authored field reaches the label set as written. False if: something must
+select objects by a dimension no label carries (a tier, an audience, a release
+channel), and cannot read it from the Resolved Deployment instead. Settled by:
+rendering the estate with this set and finding no selector, no ServiceMonitor
+and no NetworkPolicy that needs a label it does not have, beyond the two derived
+selection labels below, each on the one kind of object its selector reads.
 
 ## Why
 The label set was never written down. It is emitted by a renderer, so it exists
@@ -83,6 +84,16 @@ Kubernetes watch selects by label, not by reading the Resolved Deployment
 ([0117](0117-an-external-check-is-rendered-by-its-own-project.md)). It is on
 that one object kind only, and never in a selector the render writes, so it
 moves nothing the five labels decide.
+
+**A consumer label is the case for a seventh.** Every pod that reaches a
+Surface carries `consumes.deploy-kit.jorisjonkers.dev/<application>.<surface>`,
+which the provider's NetworkPolicy admits
+([0035](0035-network-policy-is-default-deny-and-render-only.md)). A
+NetworkPolicy selects pods by label and reads no Resolved Deployment, and
+naming each consumer instead would put every consumer's edge into the
+provider's render. It is on pod templates only, derived from an edge and
+never authored, and never a workload's selector, so an edge added or removed
+changes a template and nothing immutable.
 
 ## Alternatives
 | option | cost if taken | why rejected |

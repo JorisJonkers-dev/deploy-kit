@@ -16,6 +16,7 @@ import type {
   PolicyPort,
 } from "../../objects/kubernetes.ts";
 import {
+  consumerLabelsOf,
   instanceOf,
   labelsOf,
   managedOnly,
@@ -54,6 +55,16 @@ export const peerOf = (
 });
 
 /**
+ * Every pod that carries the consumer label of a surface, in any namespace
+ * deploy-kit manages: the label is rendered only from an edge the union
+ * resolved (spec/v1/16-dependencies.md#the-consumer-label).
+ */
+const consumerPeerOf = (consumes: string): PolicyPeer => ({
+  namespaceSelector: { matchLabels: managedOnly() },
+  podSelector: { matchLabels: consumerLabelsOf([consumes]) },
+});
+
+/**
  * Flux's notification controller is no Process: nothing renders it, and its
  * pods carry the labels Flux's own install gives them, of which `app` names
  * the controller.
@@ -69,9 +80,11 @@ function policyOf(
 ): NetworkPolicy {
   const ingress = (process.ingress ?? []).map((peer) => ({
     from: [
-      peer.rule === "flux-events"
-        ? fluxPeerOf(peer.namespace, peer.process)
-        : peerOf(peer.namespace, peer.process),
+      peer.rule === "consumer"
+        ? consumerPeerOf(peer.consumes)
+        : peer.rule === "flux-events"
+          ? fluxPeerOf(peer.namespace, peer.process)
+          : peerOf(peer.namespace, peer.process),
     ],
     ports: [tcp(peer.port)],
   }));

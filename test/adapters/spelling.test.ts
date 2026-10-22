@@ -1681,6 +1681,7 @@ describe("what a migration plan and a count above one render", () => {
       port: 5432,
       name: "notes_db",
     },
+    consumes: ["platform-postgres.postgres"],
     credential: {
       engine: "database" as const,
       delivery: "self" as const,
@@ -1730,7 +1731,15 @@ describe("what a migration plan and a count above one render", () => {
       backoffLimit: 0,
       activeDeadlineSeconds: 600,
       template: {
-        metadata: { labels: LABELS },
+        // The runner reaches the datastore as every consumer does, by the
+        // label of the surface the Application's edge names.
+        metadata: {
+          labels: {
+            ...LABELS,
+            "consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres":
+              "true",
+          },
+        },
         spec: {
           serviceAccountName: "notes-migration",
           automountServiceAccountToken: true,

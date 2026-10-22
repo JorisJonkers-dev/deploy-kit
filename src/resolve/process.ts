@@ -43,6 +43,7 @@ import {
   credentialRoleOf,
   resolveCredentials,
 } from "./credentials.ts";
+import { consumedOf } from "../model/consumer-label.ts";
 import { resolveEdge } from "./dependencies.ts";
 import { resolveLibraries } from "./libraries.ts";
 import {
@@ -428,6 +429,11 @@ export function resolveProcess(
   const surfaces = Object.entries(process.provides ?? {}).map(
     ([name, port]) => ({ name, port }),
   );
+  // An edge to an Application's surface reaches a pod, which admits the
+  // label; one to a Registered Unmanaged Surface reaches an address.
+  const consumes = dependencies
+    .filter(({ peers }) => peers !== undefined)
+    .map(({ application, surface }) => consumedOf(application, surface));
   return {
     name: process.name,
     lifecycle: process.lifecycle,
@@ -478,6 +484,7 @@ export function resolveProcess(
     ...(assets.length === 0 ? {} : { assets }),
     ...(sidecars.length === 0 ? {} : { sidecars }),
     ...(dependencies.length === 0 ? {} : { dependencies }),
+    ...(consumes.length === 0 ? {} : { consumes }),
     ...(process.writablePaths === undefined
       ? {}
       : {

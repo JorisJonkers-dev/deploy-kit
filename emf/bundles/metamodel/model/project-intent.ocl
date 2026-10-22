@@ -155,6 +155,14 @@ context Process
 			(named <> null and named.surface <> null)
 				implies provides->includes(named.surface))
 
+context Process
+	-- A consumer's pods carry the Application's id and a surface, joined by a dot,
+	-- as the name of a label the provider's policy admits, so the pair is a label's
+	-- name: at most 63 characters, starting and ending with a letter or digit.
+	inv E_SURFACE_LABEL_INVALID:
+		let app : String = oclContainer().oclAsType(Application).id in
+		provides->keys()->forAll(surface | (app + '.' + surface).matches('[A-Za-z0-9]([-_.A-Za-z0-9]{0,61}[A-Za-z0-9])?'))
+
 context ApiAccess
 	-- Kubernetes API access is the platform's to admit: a Process that declares
 	-- it in an Application the Platform document does not name would hold a

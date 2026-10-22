@@ -32,6 +32,26 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
+      ports:
+        - protocol: TCP
+          port: 5432
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/platform-postgres.metrics: "true"
+      ports:
+        - protocol: TCP
+          port: 9187
+    - from:
+        - namespaceSelector:
+            matchLabels:
               kubernetes.io/metadata.name: data-system
           podSelector:
             matchLabels:

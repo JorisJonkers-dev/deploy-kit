@@ -90,7 +90,11 @@ adapter reads the Resolved Deployment and nothing else
 are spelled; its `surfaces`, each a name and a port, which a route, a scrape and
 a policy name it by; and the peers its policy admits beyond its own edges: its
 `ingress`, each peer tagged with the allow-set rule that admits it (`tier-proxy`,
-`metrics-stack`, `consumer`, `backup`, `migration` or `flux-events`), and its `egress`, the `cluster-dns` baseline and,
+`metrics-stack`, `backup` or `flux-events`, each naming a namespace and a
+Process, or `consumer`, naming instead the surface whose
+[consumer label](16-dependencies.md#the-consumer-label) it admits); the
+surfaces it `consumes`, one per edge to an Application, as that label names
+them; and its `egress`, the `cluster-dns` baseline and,
 for a Process that holds a grant, the `secret-store`: the Process of the Secret
 Store's Application that answers on its `http` surface
 ([chapter 16](16-dependencies.md#the-derived-allow-set)), and, for a Process that
@@ -979,6 +983,7 @@ needs and the plan does not hold is a value the adapter would have to derive.
 | `deadline`, `memory`, `cpu` | the Platform document's migration policy ([chapter 14](14-platform-intent.md#migration-policy)) |
 | `scratch` | the size of the runner's one writable path, the Platform document's ephemeral size |
 | `database` | where the project's database answers: the `host` and `port` of the datastore surface the Application's edge to it reaches, and its `name`, `<project>_db` ([chapter 16](16-dependencies.md#the-database-catalog)) |
+| `consumes` | that datastore surface, as the [consumer label](16-dependencies.md#the-consumer-label) the runner's pods carry names it, which the datastore's policy admits |
 | `credential` | the owner credential, `read` on `database/creds/<project>-owner`, delivered `self`: the identity reads it from the Secret Store itself, and no Process holds it |
 | `egress` | what the identity's own policy admits: that datastore surface, the Secret Store and the cluster's DNS ([chapter 16](16-dependencies.md#the-migration-identitys-policy)) |
 
@@ -1405,6 +1410,7 @@ migration:                           # it declares a changelog (chapter 10)
     host: postgres.data-system.svc.cluster.local
     port: 5432
     name: knowledge_db
+  consumes: [platform-postgres.postgres]   # the consumer label its pods carry, which the datastore admits
   credential:                        # the owner role, held by this identity alone
     engine: database
     delivery: self
@@ -1486,6 +1492,7 @@ processes:
     dependencies:
       - {application: platform-postgres, surface: postgres, address: 'platform-postgres.data-system.svc.cluster.local:5432'}
       - {application: platform-rabbitmq, surface: amqp,     address: 'platform-rabbitmq.data-system.svc.cluster.local:5672'}
+    consumes: [platform-postgres.postgres, platform-rabbitmq.amqp]   # a consumer label per edge to an Application
 ```
 
 The ingest worker is an Application of its own, `knowledge-ingest`, because its
@@ -1830,6 +1837,7 @@ classDiagram
         +Quantity memory
         +Quantity cpu
         +Quantity scratch
+        +string[] consumes
         +ResolvedEngineGrant credential
         +EgressPeer egress
     }
@@ -1869,6 +1877,7 @@ classDiagram
         +Quantity cpu
         +HardeningClass hardening
         +bool identityToken
+        +string[] consumes
     }
     class ResolvedGpu {
         +string resource
@@ -1906,6 +1915,7 @@ classDiagram
         +IngressRule rule
         +Namespace namespace
         +string process
+        +string consumes
         +int port
     }
     class EgressPeer {
