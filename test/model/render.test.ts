@@ -979,26 +979,98 @@ describe("the database catalog", () => {
       ).toStrictEqual([]);
   });
 
-  it("signs in with the derived login once the datastore is on the estate path", () => {
-    const moved = estate({
-      [PLATFORM]: (document) =>
-        document
-          .replace(
-            "legacy: [auth, data, knowledge, notes]",
-            "legacy: [auth, knowledge, notes]",
-          )
-          .replace(
-            "estate: [delivery, edge, knowledge-platform, observability, secrets]",
-            "estate: [data, delivery, edge, knowledge-platform, observability, secrets]",
-          )
-          .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
-    });
+  /** The platform with the datastore's own Project on the estate path, and no old-path location. */
+  const MOVED = {
+    [PLATFORM]: (document: string) =>
+      document
+        .replace(
+          "legacy: [auth, data, knowledge, notes]",
+          "legacy: [auth, knowledge, notes]",
+        )
+        .replace(
+          "estate: [delivery, edge, knowledge-platform, observability, secrets]",
+          "estate: [data, delivery, edge, knowledge-platform, observability, secrets]",
+        )
+        .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
+  };
+  /** One artifact of a render of the given projects. */
+  const share = (
+    edits: Readonly<Record<string, (text: string) => string>>,
+    projects: readonly string[],
+    name: string,
+  ): Record<string, string> => {
+    const result = renderIntentSet(set(edits, []), { ...OPTIONS, projects });
+    if (!result.ok)
+      throw new Error(
+        JSON.stringify(result.diagnostics.map(({ code }) => code)),
+      );
+    return asTree(artifact(result.value, name));
+  };
+  const OWNED = "apps/data/platform-postgres/postgres-catalog.yaml";
 
-    expect(catalogOf(moved)?.admin).toStrictEqual({
-      path: "secret/data/data/postgres/catalog",
-      user: "user",
-      password: "password",
+  it("signs in with the derived login once the datastore is on the estate path", () => {
+    const moved = share(MOVED, ["data", "knowledge-platform"], "data");
+
+    expect(
+      JSON.parse(
+        /catalog\.json: \|\n {4}(.*)\n/.exec(moved[OWNED] ?? "")?.[1] ?? "null",
+      ),
+    ).toMatchObject({
+      admin: {
+        path: "secret/data/data/postgres/catalog",
+        user: "user",
+        password: "password",
+      },
     });
+  });
+
+  it("is applied from the datastore's own Project once that Project is on the estate path, and from no estate-scoped unit", () => {
+    const owner = share(MOVED, ["data", "knowledge-platform"], "data");
+    const estateScoped = share(
+      MOVED,
+      ["data", "knowledge-platform"],
+      "_estate",
+    );
+
+    expect(
+      Object.keys(owner).filter((path) => path.includes("catalog")),
+    ).toStrictEqual([
+      "apps/data/platform-postgres/postgres-catalog-networkpolicy.yaml",
+      OWNED,
+    ]);
+    expect(owner["apps/data/platform-postgres/kustomization.yaml"]).toContain(
+      "  - postgres-catalog.yaml\n",
+    );
+    // The name the model-driven implementation derives from the same catalog and method.
+    expect(owner[OWNED]).toContain("  name: postgres-catalog-565e7844099d\n");
+    expect(
+      Object.keys(estateScoped).filter(
+        (path) => path.includes("catalog") && !path.includes("/policies/"),
+      ),
+    ).toStrictEqual([]);
+    expect(estateScoped["estate/vso-secrets/kustomization.yaml"]).not.toContain(
+      "postgres-catalog",
+    );
+  });
+
+  it("still hands the datastore's own catalog identity to the Vault policy job", () => {
+    const estateScoped = share(
+      MOVED,
+      ["data", "knowledge-platform"],
+      "_estate",
+    );
+
+    expect(estateScoped["estate/vso-secrets/configmap.yaml"]).toContain(
+      "data-system-postgres-catalog.policy.json",
+    );
+  });
+
+  it("is not rendered by a render that holds only a reader, once the datastore's own Project is on the estate path", () => {
+    const reader = share(MOVED, ["knowledge-platform"], "_estate");
+
+    expect(
+      Object.keys(reader).filter((path) => path.includes("catalog")),
+    ).toStrictEqual([]);
   });
 
   it("is handed to the Vault policy job, and is never listed by an index for its policy", () => {

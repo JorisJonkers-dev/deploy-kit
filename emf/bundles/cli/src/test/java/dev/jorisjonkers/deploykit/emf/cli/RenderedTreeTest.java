@@ -101,6 +101,48 @@ class RenderedTreeTest {
                 .isEqualTo(filesUnder(estate));
     }
 
+    /**
+     * The knowledge platform's set with the datastore's own project on the estate path: its catalog is
+     * applied from that project's unit, under the Job name the production implementation derives from
+     * the same catalog and method, and no estate-scoped unit applies it (issue #482).
+     */
+    @Test
+    void aDatastoreOnTheEstatePathAppliesItsCatalogFromItsOwnProject(@TempDir Path directory, @TempDir Path out)
+            throws IOException {
+        Path platform = Examples.write(
+                directory,
+                "platform.intent.yml",
+                Examples.read("platform/platform.intent.yml")
+                        .replace("legacy: [auth, data, knowledge, notes]", "legacy: [auth, knowledge, notes]")
+                        .replace(
+                                "estate: [delivery, edge, knowledge-platform, observability, secrets]",
+                                "estate: [data, delivery, edge, knowledge-platform, observability, secrets]")
+                        .replaceAll("\n {2}serving:\n( {4}.*\n| {6}.*\n)+", "\n"));
+        List<Path> files = Outputs.KNOWLEDGE_PLATFORM_UNION.documents().stream()
+                .map(file -> file.equals("platform/platform.intent.yml") ? platform : Examples.of(file))
+                .toList();
+
+        assertThat(Pipeline.render(files, List.of("data", "knowledge-platform"), Outputs.INTEGRITY, out))
+                .isEmpty();
+
+        Path owned = Path.of("apps/data/platform-postgres");
+        assertThat(Files.readString(out.resolve(owned.resolve("postgres-catalog.yaml"))))
+                .contains("  name: postgres-catalog-565e7844099d\n")
+                .contains("{\"admin\":{\"password\":\"password\",\"path\":\"secret/data/data/postgres/catalog\","
+                        + "\"user\":\"user\"},\"connection\":\"postgres\",\"databases\":[{\"data\":\"knowledge-platform-data\","
+                        + "\"name\":\"knowledge-platform_db\",\"owner\":\"knowledge-platform-owner\"}],"
+                        + "\"host\":\"postgres.data-system.svc.cluster.local\",\"port\":5432}");
+        assertThat(out.resolve(owned.resolve("postgres-catalog-networkpolicy.yaml")))
+                .isRegularFile();
+        assertThat(Files.readString(out.resolve(owned.resolve("kustomization.yaml"))))
+                .contains("  - postgres-catalog.yaml\n");
+        assertThat(out.resolve("estate/vso-secrets/postgres-catalog.yaml")).doesNotExist();
+        assertThat(Files.readString(out.resolve("estate/vso-secrets/kustomization.yaml")))
+                .doesNotContain("postgres-catalog");
+        assertThat(out.resolve("estate/vso-secrets/policies/data-system-postgres-catalog.policy.json"))
+                .isRegularFile();
+    }
+
     @Test
     void renderingTwiceFromTheSameInputsWritesTheSameBytes(@TempDir Path first, @TempDir Path second)
             throws IOException {

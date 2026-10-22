@@ -1338,6 +1338,29 @@ describe("what a grant derives", () => {
     ).toBeUndefined();
   });
 
+  it("orders a datastore whose engine applies a catalog after the unit that writes its method's role, though it holds no grant", () => {
+    const store = `      - name: store
+        lifecycle: application
+        image: notes-api
+        runtime: none
+        engine: postgres
+        provides: { postgres: 5432 }
+        placement: { memory: 64Mi, cpu: 10m }
+        cutover: interrupted
+        volumes: [{ claim: data, mountAt: /data, size: 1Gi, durability: recoverable }]
+`;
+
+    expect(application(one(store)).reconcileAfter).toStrictEqual([
+      "estate-vso-secrets",
+    ]);
+    expect(
+      application(one(store), {
+        platform: (document) =>
+          document.replace(", catalog: postgres-catalog }", " }"),
+      }).reconcileAfter,
+    ).toBeUndefined();
+  });
+
   it("refuses a grant under a platform that names no Secret Store", () => {
     expect(
       codesOf(
@@ -3033,8 +3056,9 @@ describe("the Vault policy job", () => {
         set((platform) => platform.replace("secretStore: secrets/vault\n", "")),
       ),
       // What the set does derive is where Flux's events go: the worked
-      // platform names a Reporter.
-    ).toStrictEqual(["projects", "events"]);
+      // platform names a Reporter. The catalogs' homes are always there,
+      // and hold none.
+    ).toStrictEqual(["projects", "catalogHomes", "events"]);
   });
 
   it("lands on no node that holds an sdcard medium, and on none too small for what it asks for", () => {

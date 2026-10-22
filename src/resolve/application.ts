@@ -16,7 +16,10 @@ import type {
 } from "../model/resolved-deployment.ts";
 import type { MigrationProofDocument } from "../model/migration-proof.ts";
 import { applicationRevision } from "../model/revision.ts";
-import { reachesDatabase } from "../model/project-intent-queries.ts";
+import {
+  ownsDatabases,
+  reachesDatabase,
+} from "../model/project-intent-queries.ts";
 import { SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
@@ -103,8 +106,26 @@ function reconcileAfter(
       // Stryker disable next-line ArrayDeclaration
       (dependsOn ?? []).some((edge) => reachesDatabase(edge, context.union)),
   );
+  // A datastore that applies its own catalog runs a method whose role is
+  // written first (spec/v1/16-dependencies.md#applying-the-catalog).
+  const catalog =
+    context.platform.policyJob !== undefined &&
+    application.processes.some(
+      (process) =>
+        ownsDatabases(process) &&
+        // E_NO_ENGINE_POLICY refused an engine the platform has no entry for.
+        (
+          context.platform.engines[
+            process.engine as NonNullable<typeof process.engine>
+          ] as NonNullable<
+            (typeof context.platform.engines)[NonNullable<
+              typeof process.engine
+            >]
+          >
+        ).catalog !== undefined,
+    );
   // A migration holds the owner credential, so its role is written first too.
-  const held = grants || managed(application);
+  const held = grants || catalog || managed(application);
   return [...new Set([...providers, ...(held ? [SECRETS_UNIT] : [])])].sort();
 }
 

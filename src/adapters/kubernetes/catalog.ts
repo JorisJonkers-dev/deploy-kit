@@ -42,6 +42,7 @@ export const catalogDigestOf = (job: ResolvedCatalogJob): unknown => ({
 export function renderCatalogJob(
   job: ResolvedCatalogJob,
   digest: string,
+  directory: string = SECRETS_DIRECTORY,
 ): Deliverable {
   const name = `${job.identity}-${(digest.split(":")[1] as string).slice(0, NAME_DIGITS)}`;
   const labels = labelsOf(
@@ -115,8 +116,9 @@ export function renderCatalogJob(
       labels,
       annotations: RECREATED,
     },
-    // Every Reconcile Unit that holds a grant waits on this run, so it retries
-    // until it succeeds rather than failing for good on one slow start.
+    // The unit that applies it waits on this run, and the datastore it signs
+    // in to may still be starting, so it retries until it succeeds rather than
+    // failing for good on one slow start.
     spec: { backoffLimit: UNTIL_SUCCEEDED, template: pod },
   };
   // The same run every hour, so what an adopted role created since is reassigned.
@@ -134,7 +136,7 @@ export function renderCatalogJob(
     },
   };
   return {
-    path: `${SECRETS_DIRECTORY}/${job.identity}.yaml`,
+    path: `${directory}/${job.identity}.yaml`,
     adapter: ADAPTER,
     objects: [account, handed, run, hourly],
   };

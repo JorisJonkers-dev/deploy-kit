@@ -158,11 +158,10 @@ model-driven implementation. The two terms cost nothing to drop.
   section to match, and #556 rewrites
   [0101](0101-a-generated-key-is-written-by-the-vault-policy-job.md), whose
   shared writer this record removes.
-- A datastore's catalog is applied by its own Project's unit, after the
-  datastore ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)),
-  which rewrites
-  [0102](0102-the-database-catalog-is-applied-by-its-engines-method.md)'s
-  estate-scoped placement.
+- A datastore's catalog is applied by its own Project's unit, with the
+  datastore, and stays estate-scoped only while that Project is on the old path
+  ([0102](0102-the-database-catalog-is-applied-by-its-engines-method.md),
+  [#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)).
 - A Project's routes are planned under `apps/<project>/` and applied from its
   own unit, which follows the edge Project's unit
   ([#546](https://github.com/JorisJonkers-dev/deploy-kit/issues/546)).

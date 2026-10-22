@@ -19,7 +19,10 @@ import {
 import { readYaml } from "../read/yaml.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
 import { resolveEvents } from "../resolve/events.ts";
-import { resolveCatalogJobs } from "../resolve/catalog-job.ts";
+import {
+  resolveCatalogJobs,
+  type CatalogHome,
+} from "../resolve/catalog-job.ts";
 import { resolvePolicyJob } from "../resolve/policy-job.ts";
 import { resolveUnion } from "../resolve/union.ts";
 import type {
@@ -46,6 +49,11 @@ export interface ResolvedSet {
   readonly policyJob?: ResolvedPolicyJob;
   /** The methods that apply each datastore's database catalog. */
   readonly catalogJobs?: readonly ResolvedCatalogJob[];
+  /**
+   * Where each method whose datastore's own Project is on the estate path
+   * belongs: that Project's share of the tree.
+   */
+  readonly catalogHomes: ReadonlyMap<ResolvedCatalogJob, CatalogHome>;
   /** Where Flux's events go, where the platform names a Reporter. */
   readonly events?: ResolvedEvents;
 }
@@ -259,7 +267,7 @@ export function resolveIntentSet(
   );
   if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   const job = resolvePolicyJob(set);
-  const catalogs = resolveCatalogJobs(set, job);
+  const { jobs: catalogs, homes } = resolveCatalogJobs(set, job);
   const events = resolveEvents(set);
   return {
     ok: true,
@@ -267,6 +275,7 @@ export function resolveIntentSet(
       projects: resolveUnion(set, digests, schemaPackageIntegrity, hash),
       ...(job === undefined ? {} : { policyJob: job }),
       ...(catalogs.length === 0 ? {} : { catalogJobs: catalogs }),
+      catalogHomes: homes,
       ...(events === undefined ? {} : { events }),
     },
   };
