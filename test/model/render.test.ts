@@ -701,6 +701,9 @@ describe("renderIntentSet", () => {
       "apps/notes/notes/podmonitor.yaml": "prometheus",
       "apps/notes/notes/serviceaccount.yaml": "kubernetes",
       "apps/notes/notes/workload.yaml": "kubernetes",
+      "apps/notes/rollout-events/alert.yaml": "kubernetes",
+      "apps/notes/rollout-events/kustomization.yaml": "kubernetes",
+      "apps/notes/rollout-events/provider.yaml": "kubernetes",
     });
   });
 
@@ -829,13 +832,13 @@ describe("renderIntentSet", () => {
       "apps/notes/notes/podmonitor.yaml",
       "apps/notes/notes/serviceaccount.yaml",
       "apps/notes/notes/workload.yaml",
+      "apps/notes/rollout-events/alert.yaml",
+      "apps/notes/rollout-events/kustomization.yaml",
+      "apps/notes/rollout-events/provider.yaml",
     ]);
     expect(paths("_estate")).toStrictEqual([
       "estate/edge/public-frankfurt/kustomization.yaml",
       "estate/edge/public-frankfurt/notes-public.yaml",
-      "estate/rollout-events/alert.yaml",
-      "estate/rollout-events/kustomization.yaml",
-      "estate/rollout-events/provider.yaml",
     ]);
   });
 
@@ -869,13 +872,7 @@ describe("renderIntentSet", () => {
     ).toStrictEqual([
       [
         "_estate",
-        [
-          "estate/edge/lan/kustomization.yaml",
-          "estate/edge/lan/x.yaml",
-          "estate/rollout-events/alert.yaml",
-          "estate/rollout-events/kustomization.yaml",
-          "estate/rollout-events/provider.yaml",
-        ],
+        ["estate/edge/lan/kustomization.yaml", "estate/edge/lan/x.yaml"],
       ],
       [
         "edge",
@@ -890,6 +887,10 @@ describe("renderIntentSet", () => {
         [
           "apps/notes/estate/edge/kustomization.yaml",
           "apps/notes/estate/edge/x.yaml",
+          "apps/notes/kustomization.yaml",
+          "apps/notes/rollout-events/alert.yaml",
+          "apps/notes/rollout-events/kustomization.yaml",
+          "apps/notes/rollout-events/provider.yaml",
         ],
       ],
     ]);

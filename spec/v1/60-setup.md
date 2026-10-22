@@ -543,9 +543,8 @@ handover:
   Project is `legacy`, the estate-scoped artifact holds `estate-vso-secrets`
   where a `legacy` datastore has a catalog an `estate` Project reads, the
   catalog's Jobs and the job that writes its documents, which no Project's
-  unit depends on, `estate-rollout-events` where the platform names a
-  Reporter, and `estate-rollback-backups` while a Rollback's backup is asked
-  for, and nothing else. Each `estate` Project writes its own Vault policies
+  unit depends on, and `estate-rollback-backups` while a Rollback's backup is
+  asked for, and nothing else. Each `estate` Project writes its own Vault policies
   and roles from its own unit. The old path keeps serving the edge, and the
   edge units join the artifact once no Project is `legacy`
   ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). Where the

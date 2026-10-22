@@ -308,6 +308,7 @@ export function renderResolvedSet(
   resolved: ResolvedSet,
   options: Omit<RenderOptions, Exclude<keyof ResolveOptions, "hash">>,
 ): Result<readonly RenderedArtifact[]> {
+  const events = resolved.events;
   const rendering = resolved.projects.filter(({ project }) =>
     options.projects.includes(project),
   );
@@ -347,12 +348,10 @@ export function renderResolvedSet(
       held,
       options.hash,
     ),
-    // The route Flux's events take is the estate's, whichever Projects
-    // render; a render of no Project puts no unit on the estate path to
-    // report on.
-    ...(resolved.events === undefined || projects.length === 0
-      ? []
-      : renderEvents(resolved.events)),
+    // Each Project's route for Flux's events is its own.
+    ...rendering.flatMap(({ project }) =>
+      events === undefined ? [] : renderEvents(events, project),
+    ),
     ...backups,
   ];
   const deliverables = [

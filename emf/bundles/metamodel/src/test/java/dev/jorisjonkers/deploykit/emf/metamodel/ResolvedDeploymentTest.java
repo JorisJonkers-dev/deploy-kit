@@ -288,6 +288,9 @@ class ResolvedDeploymentTest {
                         "apps/notes/notes/configmap.yaml",
                         "apps/notes/notes/podmonitor.yaml",
                         "apps/notes/notes/networkpolicy.yaml",
+                        "apps/notes/rollout-events/alert.yaml",
+                        "apps/notes/rollout-events/provider.yaml",
+                        "apps/notes/rollout-events/kustomization.yaml",
                         "estate/edge/public-frankfurt/notes-public.yaml",
                         "estate/edge/public-frankfurt/kustomization.yaml");
     }

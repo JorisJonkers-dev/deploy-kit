@@ -293,15 +293,16 @@ per-Application render owns what varies per Process and nothing else.
 ## The rollout events
 
 Where the Platform document names a Reporter
-([chapter 14](14-platform-intent.md#delivery-policy)), every render that holds
-a Project also holds the route Flux's events take to it: a `Provider` and an
-`Alert`, both `notification.toolkit.fluxcd.io/v1beta3`, at
-`estate/rollout-events/provider.yaml` and `estate/rollout-events/alert.yaml`,
-with the index that applies them. What each says is
-[chapter 55](55-delivery.md#rollouts)'s. They are derived once per render, as
-the Vault policy job is, from two facts the model already holds: the namespace
-Flux's own objects live in, and the address of the Reporter's `http` surface.
-A render of no Project holds neither.
+([chapter 14](14-platform-intent.md#delivery-policy)), each Project's share
+holds the route Flux's events about its own unit take to it: a `Provider` and
+an `Alert`, both `notification.toolkit.fluxcd.io/v1beta3`, at
+`apps/<project>/rollout-events/provider.yaml` and
+`apps/<project>/rollout-events/alert.yaml`, with the index that applies them,
+which the Project's index lists. What each says is
+[chapter 55](55-delivery.md#rollouts)'s. They are derived per Project from two
+facts the model already holds, the namespace Flux's own objects live in and
+the address of the Reporter's `http` surface, and from the Project's own name
+([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
 
 Both are attributed to the `kubernetes` adapter, which owns the indexes and
 every object no other subsystem does. They are Flux's kinds and not a

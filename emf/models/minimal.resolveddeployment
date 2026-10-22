@@ -131,7 +131,7 @@
   <deliverables xsi:type="resolveddeployment:NamespaceFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/namespace.yaml" adapter="kubernetes" namespace="notes-system"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      path="apps/notes/kustomization.yaml" adapter="kubernetes" resources="libraries.yaml namespace.yaml notes"/>
+      path="apps/notes/kustomization.yaml" adapter="kubernetes" resources="libraries.yaml namespace.yaml notes rollout-events"/>
   <!-- The project's default-deny: it selects every pod, and belongs to no Process. -->
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="apps/notes/networkpolicy.yaml" adapter="networking"/>
@@ -171,4 +171,12 @@
       entryPoint="websecure" certificateResolver="acme"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       path="estate/edge/public-frankfurt/kustomization.yaml" adapter="kubernetes" resources="notes-public.yaml"/>
+  <!-- The route Flux's events about this project's unit take to the Reporter: its own Provider
+       and Alert, in Flux's namespace (spec/v1/55-delivery.md#rollouts). -->
+  <deliverables xsi:type="resolveddeployment:EventsFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/rollout-events/alert.yaml" adapter="kubernetes" part="alert" project="notes" events="//@events"/>
+  <deliverables xsi:type="resolveddeployment:EventsFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/rollout-events/provider.yaml" adapter="kubernetes" part="provider" project="notes" events="//@events"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      path="apps/notes/rollout-events/kustomization.yaml" adapter="kubernetes" resources="alert.yaml provider.yaml"/>
 </resolveddeployment:ResolvedDeployment>

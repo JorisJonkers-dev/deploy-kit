@@ -1183,7 +1183,7 @@ it needs that role. Only the Stable Addresses stay estate-scoped
 ([chapter 16](16-dependencies.md#the-stable-address)), because each must
 outlive its provider's move between Projects.
 
-Four kinds of unit still belong to no Project, because what they apply is
+Three kinds of unit still belong to no Project, because what they apply is
 estate-scoped ([The path plan](#the-path-plan)). Each moves where its last
 column says, in the change that column names, and its row goes with it:
 
@@ -1191,7 +1191,6 @@ column says, in the change that column names, and its row goes with it:
 |---|---|---|---|
 | `estate-vso-secrets`, while a datastore the old path runs has a catalog the estate path applies | `estate/vso-secrets/`: that catalog's Jobs and its documents, and the estate-scoped policy job that writes them ([The catalog methods](#the-catalog-methods)); every Project writes its own documents from its own unit ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) | the unit of the project that declares the Secret Store, which the job writes into; no Project's unit follows it, and a reader of that database retries until it exists | the datastore's own Project's unit, once that Project leaves the old path ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)) |
 | `estate-edge-<tier>`, one per tier a route reaches | `estate/edge/<tier>/`: the routes that tier's proxy serves | the unit of the project that declares the tier's proxy, and of every project with an exposure on the tier, so no route is applied before its proxy or its own namespace exists | each routed Project's own unit, following the unit of the Project that declares the tier's proxy ([#546](https://github.com/JorisJonkers-dev/deploy-kit/issues/546)) |
-| `estate-rollout-events`, where the platform names a Reporter | `estate/rollout-events/`: the `Provider` and the `Alert` that send Flux's events about every unit to the Reporter ([chapter 55](55-delivery.md#rollouts)) | nothing: both apply whether or not the Reporter is up, and an event sent before it is ready is one it reads again | an `Alert` in each Project's own unit, naming that Project's units, and the `Provider` with it or in the Reporter's Platform Project, as [#545](https://github.com/JorisJonkers-dev/deploy-kit/issues/545) decides |
 | `estate-rollback-backups`, while a Rollback's backup is asked for | `estate/rollback-backups/<project>.yaml`: one one-shot backup `Job` per backed-up volume of each Project whose pin asks for one ([chapter 55](55-delivery.md#pause-and-rollback)) | nothing: each Job runs in a Project already on the estate path, as the backup identity that Project's unit brought up | nowhere: a Rollback relies on the scheduled backups of each volume's Durability Class, and takes none of its own ([#557](https://github.com/JorisJonkers-dev/deploy-kit/issues/557)) |
 
 A tier has a unit of its own so that one tier's refused route holds only that

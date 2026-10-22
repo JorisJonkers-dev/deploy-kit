@@ -87,9 +87,9 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   published, and the `_estate` artifact holds only `estate-vso-secrets` while
   a datastore the old path runs has a catalog the estate path applies, that
   catalog's Jobs and the estate-scoped policy job that writes its documents,
-  which no Project's unit depends on, `estate-rollout-events` where the
-  platform names a Reporter, and `estate-rollback-backups` while a Rollback's backup is asked
-  for; the edge units join them once no Project is on the old path
+  which no Project's unit depends on, and `estate-rollback-backups` while a
+  Rollback's backup is asked for; the edge units join them once no Project is
+  on the old path
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
 - **The `_estate` artifact holds only what no Project can own.** A Project
   owns every object it delivers
@@ -217,8 +217,7 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 A Project's artifact holds its one unit, its own Vault policy job among what
 it applies. The estate-scoped artifact holds `estate-vso-secrets` where it
 carries the catalog of a datastore the old path still runs,
-`estate-rollout-events` where the platform names a Reporter
-([Rollouts](#rollouts)), `estate-rollback-backups` while a Rollback's backup
+`estate-rollback-backups` while a Rollback's backup
 is asked for ([Pause and Rollback](#pause-and-rollback)), and one
 `estate-edge-<tier>` per tier it carries
 routes for; while a Project is on the old path, it carries no route. A unit the artifact gains changes what it holds,
@@ -829,24 +828,23 @@ controller ([chapter 16](16-dependencies.md#the-derived-allow-set)), which is
 the one peer of the bootstrap set a policy names. A platform that names no
 Reporter delivers the same, and reports nothing past `pinned`.
 
-**The estate path sends the Reporter every event about a unit.** Where the
-platform names a Reporter, the estate-scoped artifact holds two of Flux's own
-objects, in Flux's namespace, applied by the unit `estate-rollout-events`
+**Each Project sends the Reporter every event about its own unit.** Where the
+platform names a Reporter, each Project's artifact holds two of Flux's own
+objects, in Flux's namespace, applied by that Project's own unit
 ([chapter 30](30-deliverables.md#the-rollout-events)):
 
 | object | what it says |
 |---|---|
-| a `Provider` named `reporter` | type `generic`, and the address events are posted to: the Reporter's `http` surface, at `/flux` |
-| an `Alert` named `rollouts` | every event, of severity `info` and up, about any `Kustomization` in the namespace that carries `app.kubernetes.io/managed-by: deploy-kit`, sent through that Provider |
+| a `Provider` named `reporter-<project>` | type `generic`, and the address events are posted to: the Reporter's `http` surface, at `/flux` |
+| an `Alert` named `rollouts-<project>` | every event, of severity `info` and up, about the `Kustomization` `apps-<project>` in the namespace, that carries `app.kubernetes.io/managed-by: deploy-kit`, sent through that Provider |
 
-Every unit a pin source applies carries that label
-([What a pin source holds](#what-a-pin-source-holds)), so the Alert follows
-each Project's unit and the estate's own without naming one, and a Project
-that joins the estate path is reported from its first apply. An event about a
-unit that carries no Rollout, the estate's own among them, reaches the
-Reporter too, which has nothing to write for it. The two objects are in the
-estate-scoped artifact while any Project is `legacy` too, since reporting a
-release does not wait on the edge.
+Both are the Project's own
+([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)): a
+Project's reporting depends on nothing another Project applies, and a Project
+that joins the estate path is reported from its first apply, by objects its
+own first apply brings. Each Provider names the same address, which only a
+platform fact moves. The estate-scoped artifact's own units are reported on by
+nothing, since they carry no Rollout.
 
 **An event is a prompt to look, never evidence.** The Provider posts over the
 cluster's own network, unsigned: nothing in the request proves Flux sent it,

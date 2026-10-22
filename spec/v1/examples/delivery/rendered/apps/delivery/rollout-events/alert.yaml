@@ -3,16 +3,16 @@
 apiVersion: notification.toolkit.fluxcd.io/v1beta3
 kind: Alert
 metadata:
-  name: rollouts
+  name: rollouts-delivery
   namespace: flux-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit
 spec:
   providerRef:
-    name: reporter
+    name: reporter-delivery
   eventSeverity: info
   eventSources:
     - kind: Kustomization
-      name: "*"
+      name: apps-delivery
       matchLabels:
         app.kubernetes.io/managed-by: deploy-kit

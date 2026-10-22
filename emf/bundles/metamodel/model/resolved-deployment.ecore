@@ -762,10 +762,11 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="catalogJson" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="job" lowerBound="1" eType="#//ResolvedCatalogJob"/>
   </eClassifiers>
-  <!-- One file of the route Flux's events take (spec/v1/30-deliverables.md#the-rollout-events):
+  <!-- One file of the route Flux's events about one Project's unit take (spec/v1/30-deliverables.md#the-rollout-events), in that Project's share:
        the Provider that names where they are posted, or the Alert that sends them. -->
   <eClassifiers xsi:type="ecore:EClass" name="EventsFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="part" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="events" lowerBound="1" eType="#//ResolvedEvents"/>
   </eClassifiers>
   <!-- One Vault document as the job is handed it: its file name and its canonical JSON. -->

@@ -6,5 +6,6 @@ resources:
   - aliases.yaml
   - auth
   - namespace.yaml
+  - rollout-events
   - vault-policy
   - vaultconnection.yaml
