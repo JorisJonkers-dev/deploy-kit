@@ -1066,9 +1066,10 @@ Two live cases show that the alternative does not work. A per-project object (
 `namespace.yaml`, and the namespace-wide default-deny) is one object per
 project, while an Adapter keyed off the Application emits one directory per Application:
 `auth` has one Application and nothing collides, `data` has three and produces three
-identical Namespace objects at three paths. And an estate-scoped Deliverable,
-the Gatus endpoints ConfigMap, lands in `utility-system` rather than in the
-namespace of the Application that motivated it. Under an adapter-computed path both
+identical Namespace objects at three paths. And in the tree this replaces, an
+estate-scoped Deliverable, the Gatus endpoints ConfigMap, landed in
+`utility-system` rather than in the namespace of the Application that motivated
+it. Under an adapter-computed path both
 are accidents of who ran last; under a path plan both are assignments, with one
 owner and a recorded reason.
 

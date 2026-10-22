@@ -88,11 +88,17 @@ chapter's hard dependency on [chapter 40](40-composition.md).
 | inbound derivation | evidence it is needed |
 |---|---|
 | a database and owning user per consumer | `init-databases.sh` creates `auth_db`, `agents_db`, `knowledge_db` and `n8n_db`, one per Application claiming a Postgres credential. 98 lines the graph already knows. |
-| the Gatus endpoint list | one check per route on every exposure in the union, for the declared `gatus` Application, 41 derived references in 288 hand-maintained lines today ([0047](../../docs/adr/model/0047-one-publication-path.md)) |
-| the edge catalogs | every host and route the estate serves, for the declared Traefik Applications, 30 and 28 derived references in two hand-maintained ConfigMaps |
 | NetworkPolicy **ingress** | a provider must admit its consumers, and only the inbound set says who they are |
 | browser origin allow-lists | `auth-api` hand-maintains `AUTH_CORS_ALLOWED_ORIGINS` with nine hostnames |
 | rotation blast radius | "who breaks if I rotate this?" is the reader set of a Secret Subtree **path**, computed over readers of the path and never over declared key sets |
+
+Two lists the old path also kept by hand are not inbound derivations, though
+this table once counted them. The Gatus endpoint list (41 derived references in
+288 lines) is one check per route of each exposure, which is the Application's
+own: each Application renders its external checks in its own Project's share.
+The two edge catalogs (30 and 28 derived references) are not rendered at all,
+because the proxy reads each Project's routes itself
+([chapter 14](14-platform-intent.md#the-foundation-is-declared)).
 
 Which test suites exercise a provider together with its consumers is the same
 inbound question. Whether that membership gates anything is not settled in this
@@ -1137,9 +1143,7 @@ flowchart LR
     H --> A1["IngressRoute (host)"]
     H --> A2["IngressRoute (mcp routes)"]
     H --> A3["reachability channel entry"]
-    H --> A4["edge catalog, an Asset of the Traefik Application"]
-    H --> A5["edge-route-catalog ConfigMap"]
-    H --> A6["Gatus external endpoint"]
+    H --> A6["external checks ConfigMap, in the Project's own share"]
     T --> A1
     T --> A2
 ```

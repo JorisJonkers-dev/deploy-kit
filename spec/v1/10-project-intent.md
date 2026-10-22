@@ -512,6 +512,14 @@ derives: in the render, a release whose objects are otherwise the ones already
 pinned would still publish a new artifact, move its pin and restart every pod
 for nothing.
 
+One object carries a sixth label: an Application's external-checks ConfigMap
+carries `estate.jorisjonkers.dev/external-checks: "true"`, the one selector a
+consumer outside the model needs. Gatus's checks sidecar selects by it and
+cannot read the Resolved Deployment
+([chapter 14](14-platform-intent.md#the-foundation-is-declared),
+[0039](../../docs/adr/model/0039-the-label-set-is-fixed.md)). No other object
+carries it, and it is never a workload's selector.
+
 An estate-scoped Deliverable carries `managed-by` and nothing else: it belongs
 to no Process and to no Application, and `part-of` on such an object would name a
 Application that does not own it.
@@ -981,10 +989,15 @@ a hostname belonging to another Application). Those thirteen are Assets. The oth
 **five are derived catalogs** (`gatus-endpoints` (41 derived references in 288
 lines), `platform-edge-route-catalog` (30/163), `platform-edge-catalog` (28/146),
 `grafana-datasources` (6/104), `postgres-init-script` (18/98)) and they leave
-*authored* configuration entirely: each is an **inbound derivation** for the
-platform Application that consumes it, rendered as that Application's own Asset
+*authored* configuration entirely. The init script is the datastore's database
+catalog, and the datasources an **inbound derivation** for the platform
+Application that consumes them, rendered as its own Asset
 ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound),
-[0047](../../docs/adr/model/0047-one-publication-path.md)).
+[0047](../../docs/adr/model/0047-one-publication-path.md)). The Gatus endpoints
+become each Application's own external checks, in its own Project's share, and
+the two edge catalogs are not rendered, since the proxy reads each Project's
+routes itself
+([0117](../../docs/adr/model/0117-an-external-check-is-rendered-by-its-own-project.md)).
 
 An Asset may not be executable. `hermes-bootstrap` is 221 lines of shell and
 `n8n-hooks` 499 lines of JavaScript, both run by `alpine:3.21` from a ConfigMap:

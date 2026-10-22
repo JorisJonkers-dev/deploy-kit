@@ -46,8 +46,10 @@ the part carrying the CVEs and the CRD upgrades.
 
 **The alternative to a pack is a declaration.** Vault is a Process with an
 `irreplaceable` volume and an `engine`. Traefik is two Applications, each the
-proxy for one tier. Prometheus and Gatus take their configuration as an inbound
-derivation of every scrape surface and exposure in the union.
+proxy for one tier. Prometheus and Gatus take their configuration from objects
+each Project renders for itself, a monitor per scrape surface and a ConfigMap of
+external checks per exposure, which they collect by label
+([0117](0117-an-external-check-is-rendered-by-its-own-project.md)).
 
 **Helm dissolves into two parts.** A chart's defaults are what a declaration
 replaces. A chart's CRDs are cluster-scoped schema that must exist first, so they
