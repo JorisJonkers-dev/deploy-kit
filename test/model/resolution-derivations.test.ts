@@ -904,9 +904,9 @@ describe("a Process that attaches to the VPN", () => {
     expect(attachedApp.secretStore).toBe(
       "http://vault.secrets-system.svc.cluster.local:8200",
     );
-    expect(attachedApp.reconcileAfter).toContain("estate-vso-secrets");
+    expect(attachedApp.reconcileAfter).toContain("apps-secrets");
     expect(bare).not.toHaveProperty("secretStore");
-    expect(bare.reconcileAfter ?? []).not.toContain("estate-vso-secrets");
+    expect(bare.reconcileAfter ?? []).not.toContain("apps-secrets");
   });
 
   it("keeps the reason an author gave for internet egress", () => {
@@ -1327,14 +1327,26 @@ describe("what a grant derives", () => {
 
   it("orders an Application holding a grant after the unit that materialises its credentials", () => {
     expect(application(granted(SELF)).reconcileAfter).toStrictEqual([
-      "estate-vso-secrets",
+      "apps-secrets",
     ]);
     // One Process holding a grant is enough.
     expect(
       application(`${granted(SELF)}${serving("notes-worker")}`).reconcileAfter,
-    ).toStrictEqual(["estate-vso-secrets"]);
+    ).toStrictEqual(["apps-secrets"]);
     expect(
       application(one(serving("notes-api"))).reconcileAfter,
+    ).toBeUndefined();
+  });
+
+  it("orders no Application of the Project that runs the Secret Store after its own unit", () => {
+    expect(
+      application(granted(SELF), {
+        platform: (document) =>
+          document.replace(
+            "secretStore: secrets/vault",
+            "secretStore: notes/notes",
+          ),
+      }).reconcileAfter,
     ).toBeUndefined();
   });
 
@@ -1350,9 +1362,24 @@ describe("what a grant derives", () => {
         volumes: [{ claim: data, mountAt: /data, size: 1Gi, durability: recoverable }]
 `;
 
-    expect(application(one(store)).reconcileAfter).toStrictEqual([
-      "estate-vso-secrets",
-    ]);
+    // One datastore Process among others is enough.
+    expect(
+      application(
+        one(`${store}      - name: worker
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        placement: { memory: 64Mi, cpu: 10m }
+        cutover: interrupted
+`),
+      ).reconcileAfter,
+    ).toStrictEqual(["apps-secrets"]);
+    expect(
+      application(one(store), {
+        platform: (document) =>
+          document.replace(/\npolicyJob:\n( {2}.*\n)+/, "\n"),
+      }).reconcileAfter,
+    ).toBeUndefined();
     expect(
       application(one(store), {
         platform: (document) =>
@@ -1717,7 +1744,7 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     for (const resolved of [held, self])
       expect([resolved.secretStore, resolved.reconcileAfter]).toStrictEqual([
         "http://vault.secrets-system.svc.cluster.local:8200",
-        ["apps-data", "estate-vso-secrets"],
+        ["apps-data", "apps-secrets"],
       ]);
   });
 

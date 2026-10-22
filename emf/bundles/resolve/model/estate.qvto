@@ -1,8 +1,8 @@
 -- The estate-wide pass (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):
--- the Resolved Deployments of every project rendered together, to the one thing
--- no single project's resolution can derive, the Vault policy job. The job is
--- handed the documents of every project of the render and is named by their
--- digest, so it is planned here, over all of them, and added to the first
+-- the Resolved Deployments of every project rendered together, to what no single project's
+-- resolution owns while the estate is handed over: the catalog of a datastore the old path
+-- still runs, the job that writes that catalog's documents, and the route Flux's events take.
+-- Each Project's own policy job is its resolution's. What is planned here is added to the first
 -- document's Deliverables.
 --
 -- Hashing is the one operation done outside the language, as in the resolution.
@@ -29,29 +29,16 @@ property NAME_DIGITS : Integer = 12;
 
 main() {
 	var deployments : Sequence(ResolvedDeployment) := rendered.rootObjects()[ResolvedDeployment]->asSequence();
-	-- Each catalog method whose catalog names a project of the render, before the policy job's
-	-- documents are gathered: its own policy and role are among them. A method its datastore's
-	-- own project already planned, on the estate path, is that project's; only its Vault
-	-- documents are the job's.
+	-- Each catalog method of a datastore the old path still runs, whose catalog names a project
+	-- of the render: one its datastore's own project planned, on the estate path, is that
+	-- project's, and so is the job that writes its documents.
 	var catalogs : Sequence(String) := Sequence{};
+	var namespaces : Set(String) := Set{};
 	if (deployments->notEmpty()) {
 		var projectsRendered : Set(String) := deployments.applications.project->asSet();
 		var owned : Set(String) := deployments.deliverables
 			->select(d | d.oclIsKindOf(CatalogJobFile))->collect(d | d.oclAsType(CatalogJobFile))
 			->select(f | f.part = 'objects')->collect(f | f.job.namespace + '/' + f.job.identity)->asSet();
-		deployments->first().catalogJobs
-			->select(c | owned->includes(c.namespace + '/' + c.identity))
-			->forEach(c) {
-				deployments->first().deliverables += object CatalogJobFile {
-					path := POLICIES + c.role + '.policy.json';
-					adapter := AdapterName::vaultPolicy;
-					part := 'policy'; job := c; };
-				deployments->first().deliverables += object VaultRoleFile {
-					path := POLICIES + c.role + '.role.json';
-					adapter := AdapterName::vaultPolicy;
-					namespace := c.namespace;
-					identity := c.identity; };
-			};
 		deployments->first().catalogJobs
 			->select(c | not owned->includes(c.namespace + '/' + c.identity))
 			->select(c | c.catalog.databases->exists(db | projectsRendered->exists(p | db.name = p + '_db')))
@@ -86,16 +73,22 @@ main() {
 					namespace := c.namespace;
 					identity := c.identity; };
 				catalogs := catalogs->append(c.identity + '.yaml');
+				namespaces := namespaces->including(c.namespace);
 			};
+	};
+	-- One estate-scoped job writes one namespace's names: its writer is confined to them.
+	if (namespaces->size() > 1) {
+		assert fatal (false) with log('catalogs the old path runs in more than one namespace');
 	};
 	var jobs : Sequence(ResolvedPolicyJob) := deployments.policyJob->select(j | j <> null)->asSequence();
 	var held : Sequence(Tuple(file : String, json : String)) := deployments.deliverables
+		->select(d | d.path.startsWith(POLICIES))
 		->collect(d | d.documentOf())->select(d | d <> null)->asSequence()->sortedBy(d | d.file);
 	-- One render has one platform, so every project's document carries the same job.
 	if (jobs->exists(j | j.namespace <> jobs->first().namespace or j.image <> jobs->first().image)) {
 		assert fatal (false) with log('the projects of one render carry different Vault policy jobs');
 	};
-	-- No job where the platform names none, or the render holds no document.
+	-- No estate-scoped job where the platform names none, or no old-path catalog is applied.
 	if (jobs->notEmpty() and held->notEmpty()) {
 		var planned : ResolvedPolicyJob := jobs->first();
 		-- The documents and everything the pod template runs with: a Job's template never
@@ -111,12 +104,14 @@ main() {
 			Tuple{k = 'eligibleNodes', v = arr(planned.eligibleNodes->collect(n | str(n)))}}).rawDigestOf();
 		var named : String := planned.identity + '-'
 			+ digest.substring(ALGORITHM.size() + 1, ALGORITHM.size() + NAME_DIGITS);
+		var ns : String := namespaces->any(true);
 		deployments->first().deliverables += Sequence{'configmap', 'job', 'cronjob', 'serviceaccount', 'networkpolicy'}
 			->collect(piece | object PolicyJobFile {
 				path := DIRECTORY + piece + '.yaml';
 				adapter := if piece = 'networkpolicy' then AdapterName::networking else AdapterName::vaultPolicy endif;
 				part := piece;
 				name := named;
+				namespace := ns;
 				job := planned;
 				documents := held->collect(d | object PolicyDocument { file := d.file; json := d.json; });
 			});

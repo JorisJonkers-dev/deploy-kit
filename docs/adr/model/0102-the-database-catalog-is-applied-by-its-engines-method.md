@@ -12,8 +12,11 @@ rests-on: ["0004", "0005"]
 
 A Job in the unit of the Project that runs the datastore runs the engine's
 catalog method beside the datastore, before any Application of another Project
-that reads a database starts, and every hour. While that Project is still on the
-old path it has no unit, and the estate-scoped artifact applies the Job instead.
+that reads a database starts, and every hour. That Project's own Vault policy
+job writes the method's role. While that Project is still on the old path it
+has no unit, and the estate-scoped artifact applies the Job instead, beside an
+estate-scoped policy job in the datastore's namespace that writes the method's
+role and nothing else.
 It creates each estate-path project's database and its owner and data roles,
 adopts a database that already exists, and writes the database roles the Secret
 Store issues credentials from. While the datastore is on the old path, it signs

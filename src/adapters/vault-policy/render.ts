@@ -14,17 +14,17 @@ import type { Deliverable } from "../../objects/deliverable.ts";
 import { namespaceOf, vaultNameOf } from "../../model/runtime-profiles.ts";
 import { holdersOf, type Grant } from "../shared/holders.ts";
 import { notSupported } from "../../model/internal-failure.ts";
-import { SECRETS_DIRECTORY } from "../shared/paths.ts";
+import { policyJobDirectory } from "../shared/paths.ts";
 
 export const ADAPTER = "vault-policy";
 
 /**
- * The estate-wide directory every identity's documents land in, each under the
- * name Vault holds it by. Two identities that derive one name claim one path,
- * and a path has one owner (`E_PATH_COLLISION`): no render overwrites one
- * project's role with another's.
+ * Where a Project's identities' documents land, each under the name Vault
+ * holds it by, beside the job that writes them. Two identities that derive one
+ * name claim one path, and a path has one owner (`E_PATH_COLLISION`).
  */
-const POLICIES = `${SECRETS_DIRECTORY}/policies`;
+export const policiesOf = (directory: string): string =>
+  `${directory}/policies`;
 const KV_DATA = /^secret\/data\//;
 const KV_METADATA = "secret/metadata/";
 
@@ -77,25 +77,29 @@ function generatedOf(project: ResolvedProject): GeneratedKey[] {
 }
 
 export function renderVaultPolicy(project: ResolvedProject): Deliverable[] {
+  const policies = policiesOf(policyJobDirectory(project.project));
   const generated = generatedOf(project);
   const keys: Deliverable[] =
     generated.length === 0
       ? []
       : [
           {
-            path: `${POLICIES}/${namespaceOf(project.project)}.generated.json`,
+            path: `${policies}/${namespaceOf(project.project)}.generated.json`,
             adapter: ADAPTER,
             objects: [{ keys: generated }],
           },
         ];
-  return [...renderIdentities(project), ...keys];
+  return [...renderIdentities(project, policies), ...keys];
 }
 
-function renderIdentities(project: ResolvedProject): Deliverable[] {
+function renderIdentities(
+  project: ResolvedProject,
+  policies: string,
+): Deliverable[] {
   return project.applications.flatMap((application) =>
     holdersOf(application).flatMap(({ identity, grants }): Deliverable[] => {
       const name = vaultNameOf(application.namespace, identity);
-      const stem = `${POLICIES}/${name}`;
+      const stem = `${policies}/${name}`;
       const policy: VaultPolicy = {
         path: Object.fromEntries(grants.flatMap(pathsOf)),
       };
@@ -116,8 +120,12 @@ function renderIdentities(project: ResolvedProject): Deliverable[] {
  * A catalog method's own policy and auth role
  * (spec/v1/16-dependencies.md#applying-the-catalog): it reads the login it
  * applies the catalog with, and writes the database roles the catalog names.
+ * They land beside the job that writes them, in `directory`.
  */
-export function renderCatalogVault(job: ResolvedCatalogJob): Deliverable[] {
+export function renderCatalogVault(
+  job: ResolvedCatalogJob,
+  directory: string,
+): Deliverable[] {
   const { admin, databases } = job.catalog;
   const roles = databases.flatMap(({ owner, data }) => [owner, data]);
   const policy: VaultPolicy = {
@@ -135,7 +143,7 @@ export function renderCatalogVault(job: ResolvedCatalogJob): Deliverable[] {
     bound_service_account_namespaces: [job.namespace],
     token_policies: [job.role],
   };
-  const stem = `${POLICIES}/${job.role}`;
+  const stem = `${policiesOf(directory)}/${job.role}`;
   return [
     { path: `${stem}.policy.json`, adapter: ADAPTER, objects: [policy] },
     { path: `${stem}.role.json`, adapter: ADAPTER, objects: [role] },

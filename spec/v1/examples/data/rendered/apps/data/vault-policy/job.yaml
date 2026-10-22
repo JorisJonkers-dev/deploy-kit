@@ -3,8 +3,8 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vault-policy-78f234d9d429
-  namespace: secrets-system
+  name: vault-policy-374c15991395
+  namespace: data-system
   labels:
     app.kubernetes.io/name: vault-policy
     app.kubernetes.io/instance: vault-policy
@@ -77,13 +77,17 @@ spec:
       volumes:
         - name: policies
           configMap:
-            name: vault-policy-78f234d9d429
+            name: vault-policy-374c15991395
             items:
-              - key: auth-system-auth-api.policy.json
-                path: auth-system-auth-api.policy.json
-              - key: auth-system-auth-api.role.json
-                path: auth-system-auth-api.role.json
-              - key: auth-system-auth-migration.policy.json
-                path: auth-system-auth-migration.policy.json
-              - key: auth-system-auth-migration.role.json
-                path: auth-system-auth-migration.role.json
+              - key: data-system-postgres-backup.policy.json
+                path: data-system-postgres-backup.policy.json
+              - key: data-system-postgres-backup.role.json
+                path: data-system-postgres-backup.role.json
+              - key: data-system-postgres.policy.json
+                path: data-system-postgres.policy.json
+              - key: data-system-postgres.role.json
+                path: data-system-postgres.role.json
+              - key: data-system-rabbitmq-backup.policy.json
+                path: data-system-rabbitmq-backup.policy.json
+              - key: data-system-rabbitmq-backup.role.json
+                path: data-system-rabbitmq-backup.role.json

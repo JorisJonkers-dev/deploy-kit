@@ -7,7 +7,10 @@
 /** The root of everything estate-scoped: the `_estate` artifact's tree. */
 export const ESTATE_DIRECTORY = "estate";
 
-/** Where the Vault documents and the job that writes them land. */
+/**
+ * Where the estate-scoped policy job and its documents land, while a
+ * datastore the old path runs has a catalog the estate path applies.
+ */
 export const SECRETS_DIRECTORY = `${ESTATE_DIRECTORY}/vso-secrets`;
 
 /** Where the route Flux's events take to the Reporter lands. */
@@ -17,6 +20,10 @@ export const EVENTS_DIRECTORY = `${ESTATE_DIRECTORY}/rollout-events`;
 export const ROLLBACK_BACKUPS_DIRECTORY = `${ESTATE_DIRECTORY}/rollback-backups`;
 
 export const projectDirectory = (project: string): string => `apps/${project}`;
+
+/** Where a Project's own Vault policy job and the documents it writes land. */
+export const policyJobDirectory = (project: string): string =>
+  `${projectDirectory(project)}/vault-policy`;
 
 export const applicationDirectory = (
   project: string,

@@ -50,7 +50,9 @@ Undo cost today: nothing exists. Becomes irreversible once: never; deleted with
   the one allowed. Paid once.
 - A derivation the transformation lacks shows up as a dependency-edge or
   rendered parity failure, not a silent default. Paid by the author of the derivation.
-- The resolution resolves one project per run, so what spans the projects of
-  one render, the Vault policy job, is derived by a second pass over their
+- The resolution resolves one project per run, and each project's own Vault
+  policy job is planned in that run. What belongs to no project the render
+  delivers while the estate is handed over, a legacy datastore's catalog and
+  the route Flux's events take, is derived by a second pass over their
   Resolved Deployments, in the same language and through the same black box.
   Paid in one more transformation and one more run.

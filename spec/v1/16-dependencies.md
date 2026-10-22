@@ -264,14 +264,16 @@ in the artifact of the Project that runs the datastore, applied by that
 Project's unit with the datastore itself, so the method signs in once the
 datastore answers and retries until it does
 ([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
-That unit follows the secrets-provisioning unit, which writes the method's own
-role ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)), and an
-Application of another Project that reads the database follows that unit
-through its required edge. While the datastore's Project is `legacy` it has no
-unit on the estate path, so its catalog's objects are in the estate-scoped
-artifact instead, in the `estate-vso-secrets` Reconcile Unit, which the
-Applications that read a database follow. Either way the catalog never waits
-on a namespace or a Process that the unit applying it does not bring up:
+The same unit's own Vault policy job writes the method's role, and the unit
+follows the Secret Store's Platform Project
+([chapter 20](20-resolved-deployment.md#the-reconcile-unit)); an Application of
+another Project that reads the database follows that unit through its required
+edge. While the datastore's Project is `legacy` it has no unit on the estate
+path, so its catalog's objects and documents are in the estate-scoped artifact
+instead, in the `estate-vso-secrets` Reconcile Unit, beside the estate-scoped
+policy job that writes them. No Project's unit follows that one: a reader
+retries until its database exists. Either way the catalog never waits on a
+namespace or a Process that the unit applying it does not bring up:
 
 | object | holds |
 |---|---|

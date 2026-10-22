@@ -35,9 +35,9 @@ the same reconcile, a claim is deleted or recreated during its handover, or an
 `estate` Project cannot reach a `legacy` provider the ledger states.
 **Settled by:** hand over `app` and observe `app-ui` recreated once and
 serving, and the `fleet-infra` Kustomization no longer listing it; hand over
-`data` and observe every claim's UID unchanged across the step; observe
-`estate-vso-secrets` Ready against the old path's Vault while `secrets` is
-`legacy`.
+`data` and observe every claim's UID unchanged across the step; observe an
+`estate` Project's own Vault policy job succeed against the old path's Vault
+while `secrets` is `legacy`.
 
 ## Why
 
@@ -64,11 +64,14 @@ the first apply, and the pods restart once. The mark targets Deployments and
 nothing else, because a claim recreated is a claim emptied, and it is gone from
 the source the next time the pin moves, so it never outlives the handover.
 
-**The estate's secrets unit first, its edge last.** An `estate` Project's unit
-depends on `estate-vso-secrets`, whose Vault policy job writes the roles its
-grants read; the old path writes none for a Project it never delivered. So the
-estate-scoped artifact is published from the first handover, holding that unit
-alone, for the `estate` Projects only. Its edge units would be a second source
+**Each Project's roles first, the edge last.** An `estate` Project's own unit
+writes the Vault roles its grants read, through its own Vault policy job,
+into the Vault the ledger states the old path runs; the old path writes none
+for a Project it never delivered
+([0087](0087-in-cluster-consumers-read-the-render.md)). From the first handover
+the estate-scoped artifact holds only what no `estate` Project owns: the
+catalog of a datastore the old path still runs, which an `estate` Project
+reads, and the route Flux's events take. Its edge units would be a second source
 for the routes the old path still serves, so they wait until no Project is
 `legacy`.
 
@@ -99,8 +102,8 @@ paths forever.
 | Recreate every object of the Project at handover, `force` on the whole Kustomization | one field | a claim whose spec differs is deleted and recreated empty |
 | Create the render's Deployment beside the live one, then retire the old one | no gap in serving | the derived name changes, and the Service selects both during the overlap |
 | Keep the live selector for a Process taken over, recorded in a Bidirectional Ledger | no restart | the fixed label set gains an exception per handed-over Project, each to be undone by the recreate it postponed |
-| Hold the whole estate-scoped artifact until no Project is `legacy` | one rule | no `estate` Project's unit ever becomes Ready, since the unit it depends on is never applied, so the handover cannot start |
-| Have the old path declare a unit named `estate-vso-secrets` | no change here | ties the old path to the new path's names, and still writes no Vault role for an `estate` Project |
+| Hold the whole estate-scoped artifact until no Project is `legacy` | one rule | the catalog of a datastore the old path runs waits until the handover ends, so no `estate` Project that reads it has a database |
+| Have the old path write the `estate` Projects' Vault roles | no job per Project | ties the old path to the new path's names and documents, and couples every `estate` Project to the old path's writer |
 | Hand the foundation over first, Vault and Traefik before any tenant | no location to state | Vault's data moves namespaces and the edge cuts over at the very first step, the riskiest order, not the one with nothing to lose |
 | Special-case each provider: the policy job in its own namespace by address, a policy admitting both Traefiks | no schema change | two exceptions where one rule serves, and the next `legacy` provider an `estate` Project reaches needs a third |
 

@@ -37,8 +37,6 @@ property proofs : Sequence(ProvenApplication) =
 	pinned.rootObjects()[MigrationProof].applications->asSequence();
 property assetFiles : Sequence(AssetFile) = pinned.rootObjects()[AssetFile]->asSequence();
 
--- The unit that materialises every grant's credentials before a Process may hold one.
-property SECRETS_UNIT : String = 'estate-vso-secrets';
 -- Where an attached Process reads the port its provider forwards to it.
 property FORWARDED_PORT_FILE : String = '/run/vpn/forwarded-port';
 -- Why an attached Process reaches public addresses it declared no egress to.
@@ -69,8 +67,17 @@ property TAG_DIGITS : Integer = 12;
 -- What a library's volume and claim both state: a local volume holds a directory, never a size.
 property LIBRARY_SIZE : String = '1Gi';
 
--- The estate-wide directory every identity's Vault documents land in, by namespace.
-property POLICIES : String = 'estate/vso-secrets/policies/';
+-- Where a Project's own Vault policy job lands, and the documents it writes beside it.
+query policyJobRoot(prj : String) : String = 'apps/' + prj + '/vault-policy/';
+query policiesOf(prj : String) : String = policyJobRoot(prj) + 'policies/';
+
+-- The unit a Project waits on before a Process of it may hold a credential: the unit of the
+-- Platform Project that declares the Secret Store each Project writes its own roles into, unless
+-- it is that Project (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+query secretsAfter(prj : String) : Sequence(String) =
+	if estate.secretStore = null then Sequence{} else
+	let store : String = projectOf(estate.secretStore.id) in
+	if store = null or store = prj then Sequence{} else Sequence{unitOf(store)} endif endif;
 
 main() {
 	assert fatal (unversioned()->isEmpty())
@@ -130,9 +137,28 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 						-- Every Application's directory has its index: applicationFiles plans one.
 						assert fatal (index <> null) with log('no index under ' + root);
 						index.resources := index.resources->append(c.identity + '.yaml')->sortedBy(r | r);
+						-- Its own policy and role, which this Project's own job writes.
+						result.deliverables += object CatalogJobFile {
+							path := policiesOf(self.project) + c.role + '.policy.json';
+							adapter := AdapterName::vaultPolicy;
+							part := 'policy'; job := c; };
+						result.deliverables += object VaultRoleFile {
+							path := policiesOf(self.project) + c.role + '.role.json';
+							adapter := AdapterName::vaultPolicy;
+							namespace := c.namespace;
+							identity := c.identity; };
 					};
 				};
 			};
+		};
+		-- The Project's own Vault policy job, where the platform names one and the Project holds
+		-- a document for it to write (spec/v1/20-resolved-deployment.md#the-vault-policy-job).
+		result.deliverables += policyJobFiles(result.policyJob, result.deliverables->select(d |
+			d.path.startsWith(policiesOf(self.project)))->asSequence(), policyJobRoot(self.project), namespaceOf(self.project));
+		if (result.deliverables->exists(d | d.path = policyJobRoot(self.project) + 'kustomization.yaml')) {
+			var top : IndexFile := result.deliverables[IndexFile]
+				->select(i | i.path = 'apps/' + self.project + '/kustomization.yaml')->any(true);
+			top.resources := top.resources->append('vault-policy')->sortedBy(r | r);
 		};
 	}
 }
@@ -157,7 +183,7 @@ query afterOf(prj : EffectiveProject) : Sequence(String) =
 	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
 				or p.dependsOn->exists(e | reachesDatabase(e)))
 			or prj.applications->exists(a | managed(a) or appliesCatalog(a))
-		then Sequence{SECRETS_UNIT} else Sequence{} endif))
+		then secretsAfter(prj.project) else Sequence{} endif))
 	->asSet()->sortedBy(n | n)->asSequence();
 
 -- The project of the union that declares `application`, where one does.
@@ -1695,13 +1721,13 @@ query EffectiveProject::vaultFiles() : Sequence(Deliverable) =
 	self.applications->collect(a | a.resolveone(ResolvedApplication))->collect(app |
 		app.processes->collect(p |
 			(if processGrants(p)->isEmpty() then Sequence{} else
-				vaultFilesOf(app.namespace, p.identity, processGrants(p)) endif)
+				vaultFilesOf(policiesOf(self.project), app.namespace, p.identity, processGrants(p)) endif)
 			->union(if backupGrants(p)->isEmpty() then Sequence{} else
-				vaultFilesOf(app.namespace,
+				vaultFilesOf(policiesOf(self.project), app.namespace,
 					p.volumes->select(v | v.backup <> null)->first().backup.identity,
 					backupGrants(p)) endif))
 		->union(if app.migration = null then Sequence{} else
-			vaultFilesOf(app.namespace, app.migration.identity, Sequence{app.migration.credential}) endif))
+			vaultFilesOf(policiesOf(self.project), app.namespace, app.migration.identity, Sequence{app.migration.credential}) endif))
 		->flatten();
 
 -- A generated key with its defaults filled in: 32 bytes, as hex.
@@ -1732,7 +1758,7 @@ query EffectiveProject::generatedKeysFiles() : Sequence(Deliverable) =
 			->asSequence() in
 	if sorted->isEmpty() then Sequence{} else Sequence{
 		object GeneratedKeysFile {
-			path := POLICIES + apps->first().namespace + '.generated.json';
+			path := policiesOf(self.project) + apps->first().namespace + '.generated.json';
 			adapter := AdapterName::vaultPolicy;
 			keys := sorted->collect(t | object ResolvedGeneratedKey {
 				path := t.path;
@@ -1744,10 +1770,10 @@ query EffectiveProject::generatedKeysFiles() : Sequence(Deliverable) =
 			});
 		}.oclAsType(Deliverable)} endif;
 
-query vaultFilesOf(ns : String, holder : String, held : Sequence(ResolvedGrant)) : Sequence(Deliverable) =
+query vaultFilesOf(policies : String, ns : String, holder : String, held : Sequence(ResolvedGrant)) : Sequence(Deliverable) =
 	-- Each document is written under the name Vault holds it by, so two identities that derive
 	-- one name claim one path.
-	let stem : String = POLICIES + ns + '-' + holder in
+	let stem : String = policies + ns + '-' + holder in
 	Sequence{
 		object VaultPolicyFile {
 			path := stem + '.policy.json';
@@ -1921,7 +1947,7 @@ query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(
 	->union(if app.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
 			or p.dependsOn->exists(e | reachesDatabase(e)))
 			or managed(app) or appliesCatalog(app)
-		then Sequence{SECRETS_UNIT} else Sequence{} endif))
+		then secretsAfter(prj.project) else Sequence{} endif))
 	->asSet()->sortedBy(n | n)->asSequence();
 
 query ReleaseGate::json() : String = obj(Sequence{
@@ -2148,6 +2174,105 @@ query ResolvedGrant::json() : String = obj(Sequence{
 			Tuple{k = 'adopt', v = if x.adoptPath = null then null else obj(Sequence{
 				Tuple{k = 'path', v = str(x.adoptPath)},
 				Tuple{k = 'key', v = str(x.adoptKey)}}) endif}}))) endif}});
+
+-- ================================================ a Vault policy job's files
+
+-- One Vault policy job's files under `root`, its objects in `ns`, handed the documents among
+-- `held` and named by their digest and everything its pod runs with: a Job's template never
+-- changes once created, so any change to either is a new name. None where it holds no document.
+query policyJobFiles(planned : ResolvedPolicyJob, held : Sequence(Deliverable), root : String, ns : String) : Sequence(Deliverable) =
+	let docs : Sequence(Tuple(file : String, json : String)) = held
+		->collect(d | d.documentOf())->select(d | d <> null)->asSequence()->sortedBy(d | d.file) in
+	if planned = null or docs->isEmpty() then Sequence{} else
+	let digest : String = obj(Sequence{
+		Tuple{k = 'documents', v = '{' + joined(docs->collect(d | str(d.file) + ':' + d.json)) + '}'},
+		Tuple{k = 'image', v = str(planned.image)},
+		Tuple{k = 'uid', v = planned.uid.toString()},
+		Tuple{k = 'gid', v = planned.gid.toString()},
+		Tuple{k = 'memory', v = str(planned.memory)},
+		Tuple{k = 'cpu', v = str(planned.cpu)},
+		Tuple{k = 'deadline', v = str(planned.deadline)},
+		Tuple{k = 'eligibleNodes', v = arr(planned.eligibleNodes->collect(n | str(n)))}}).rawDigestOf() in
+	let named : String = planned.identity + '-'
+		+ digest.substring(ALGORITHM.size() + 1, ALGORITHM.size() + NAME_DIGITS) in
+	Sequence{'configmap', 'job', 'cronjob', 'serviceaccount', 'networkpolicy'}
+		->collect(piece | object PolicyJobFile {
+			path := root + piece + '.yaml';
+			adapter := if piece = 'networkpolicy' then AdapterName::networking else AdapterName::vaultPolicy endif;
+			part := piece;
+			name := named;
+			namespace := ns;
+			job := planned;
+			documents := docs->collect(d | object PolicyDocument { file := d.file; json := d.json; });
+		}.oclAsType(Deliverable))
+	-- A policy file is listed nowhere while the policy stage is render-only.
+	->append(object IndexFile {
+		path := root + 'kustomization.yaml';
+		adapter := AdapterName::kubernetes;
+		resources := Sequence{'configmap.yaml', 'cronjob.yaml', 'job.yaml', 'serviceaccount.yaml'};
+	}.oclAsType(Deliverable)) endif;
+
+-- A Vault document as a job is handed it: its file name, and its content as canonical JSON.
+-- Any other Deliverable is none.
+query Deliverable::documentOf() : Tuple(file : String, json : String) =
+	if self.oclIsKindOf(VaultPolicyFile) then
+		Tuple{file = fileOf(self.path), json = self.oclAsType(VaultPolicyFile).policyJson()}
+	else if self.oclIsKindOf(VaultRoleFile) then
+		Tuple{file = fileOf(self.path), json = self.oclAsType(VaultRoleFile).roleJson()}
+	else if self.oclIsKindOf(GeneratedKeysFile) then
+		Tuple{file = fileOf(self.path), json = self.oclAsType(GeneratedKeysFile).keysJson()}
+	else if self.oclIsKindOf(CatalogJobFile) and self.oclAsType(CatalogJobFile).part = 'policy' then
+		Tuple{file = fileOf(self.path), json = self.oclAsType(CatalogJobFile).job.catalogPolicyJson()}
+	else null endif endif endif endif;
+
+-- A catalog method's own policy: it reads its login, and writes each database role it names.
+query ResolvedCatalogJob::catalogPolicyJson() : String =
+	obj(Sequence{Tuple{k = 'path', v = obj(Sequence{
+		Tuple{k = self.catalog.admin.path, v = capabilities(Sequence{'read'})},
+		Tuple{k = 'secret/metadata/' + self.catalog.admin.path.substring(KV_DATA.size() + 1, self.catalog.admin.path.size()), v = capabilities(Sequence{'read'})}}
+		->union(self.catalog.databases->collect(d | Sequence{d.owner, d.data})->flatten()
+			->collect(r | Tuple{k = 'database/roles/' + r, v = capabilities(Sequence{'create', 'read', 'update'})})
+			->asSequence()))}});
+
+-- What each grant may do: the paths a transit or database grant's engine derives, or `read` on
+-- a kv grant's path and on the same document's metadata.
+query VaultPolicyFile::policyJson() : String =
+	obj(Sequence{Tuple{k = 'path', v = obj(self.grants->collect(g | g.allowed())->flatten())}});
+
+query ResolvedGrant::allowed() : Sequence(Tuple(k : String, v : String)) =
+	if self.engine <> null then self.paths->collect(p |
+		Tuple{k = p.path, v = capabilities(p.allows->asSequence())})
+	else Sequence{
+		Tuple{k = self.path, v = capabilities(Sequence{'read'})},
+		Tuple{k = 'secret/metadata/' + self.path.substring(KV_DATA.size() + 1, self.path.size()),
+			v = capabilities(Sequence{'read'})}} endif;
+
+property KV_DATA : String = 'secret/data/';
+
+query capabilities(allows : Sequence(String)) : String =
+	obj(Sequence{Tuple{k = 'capabilities', v = arr(allows->collect(a | str(a)))}});
+
+-- Each key a job generates, where, and how.
+query GeneratedKeysFile::keysJson() : String =
+	obj(Sequence{Tuple{k = 'keys', v = arr(self.keys->collect(x | obj(Sequence{
+		Tuple{k = 'path', v = str(x.path)},
+		Tuple{k = 'key', v = str(x.key)},
+		Tuple{k = 'bytes', v = x.bytes.toString()},
+		Tuple{k = 'encoding', v = str(x.encoding)}}
+		->union(if x.adoptPath = null then Sequence{} else Sequence{
+			Tuple{k = 'adopt', v = obj(Sequence{
+				Tuple{k = 'path', v = str(x.adoptPath)},
+				Tuple{k = 'key', v = str(x.adoptKey)}})}} endif))))}});
+
+-- The role that binds the identity's ServiceAccount, in its namespace, to the one policy of its name.
+query VaultRoleFile::roleJson() : String =
+	obj(Sequence{
+		Tuple{k = 'bound_service_account_names', v = arr(Sequence{str(self.identity)})},
+		Tuple{k = 'bound_service_account_namespaces', v = arr(Sequence{str(self.namespace)})},
+		Tuple{k = 'token_policies', v = arr(Sequence{str(self.namespace + '-' + self.identity)})}});
+
+-- The last segment of a path: the name a document is mounted and written under.
+query fileOf(path : String) : String = path.substring(path.lastIndexOf('/') + 1, path.size());
 
 -- ===================================================== a catalog method's files
 

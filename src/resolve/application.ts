@@ -20,7 +20,8 @@ import {
   ownsDatabases,
   reachesDatabase,
 } from "../model/project-intent-queries.ts";
-import { SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
+import { unitOf } from "../model/reconcile-units.ts";
+import { holds } from "../model/platform-intent.ts";
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
 import { managed } from "./database.ts";
@@ -126,7 +127,26 @@ function reconcileAfter(
     );
   // A migration holds the owner credential, so its role is written first too.
   const held = grants || catalog || managed(application);
-  return [...new Set([...providers, ...(held ? [SECRETS_UNIT] : [])])].sort();
+  // Each Project writes its own roles; what it waits on is the Secret Store
+  // they are written into, which its Platform Project's unit brings up.
+  // E_NO_SECRET_STORE refuses a holder under a platform that names no store,
+  // and a catalog is derived only beside one, so a held Application always
+  // finds it.
+  // The worked Secret Store's Project holds that one Application, so `every`
+  // finds the same Project.
+  // Stryker disable MethodExpression
+  const store = context.union.find(({ project, applications }) =>
+    applications.some(({ id }) =>
+      holds(context.platform.secretStore, project, id),
+    ),
+  )?.project;
+  // Stryker restore MethodExpression
+  const secrets =
+    // Stryker disable next-line ConditionalExpression: as above.
+    held && store !== undefined && store !== context.project
+      ? [unitOf(store)]
+      : [];
+  return [...new Set([...providers, ...secrets])].sort();
 }
 
 type Probe = NonNullable<

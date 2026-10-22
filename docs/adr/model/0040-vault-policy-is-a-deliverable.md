@@ -50,8 +50,8 @@ give.
 
 **Rendered, not applied.** Writing a policy into Vault is an act against a live
 system performed by a privileged identity. This decision produces attributed
-documents and stops there; writing them into Vault is delivery's, done by an
-in-cluster job ([0087](0087-in-cluster-consumers-read-the-render.md)). The
+documents and stops there; writing them into Vault is delivery's, done by each
+Project's own in-cluster job ([0087](0087-in-cluster-consumers-read-the-render.md)). The
 alternative (CRs for a Vault-configuration operator) would make the policy a
 Kubernetes object at the price of an operator the substrate does not run, and
 would put a v1 dependency on CRDs nobody has installed.
@@ -68,7 +68,7 @@ itself.
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|
-| Emit CRs for a Vault-configuration operator | Everything becomes a Kubernetes object and one applier covers it | Adds an operator and CRDs the substrate does not run, making them a v1 dependency for a document that only needs to be written once per identity |
+| Emit CRs for a Vault-configuration operator | Everything becomes a Kubernetes object and one applier covers it | Adds an operator and CRDs the substrate does not run, making them a v1 dependency for a document that only needs to be written once per identity, and confines a Project no more narrowly than its own job does, since nothing confines what a policy grants |
 | Register Vault policy as an unmanaged surface | Cheapest, and honest about who writes Vault config today | Leaves 0029 deriving a value nothing emits, so either it or 0005 has to be reopened; and an unmanaged surface is for what the model cannot see, not for output it declines to produce |
 | Extend `vso` to emit policies | no registry change | One adapter would own two artifact kinds with different appliers, and a path collision inside one adapter is invisible to the per-adapter rule |
 | Aggregate one document per Application | Fewer files; an Application's whole posture in one place | Buries the identity boundary 0031 draws, and a two-Process Application's diff stops saying which principal changed |

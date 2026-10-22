@@ -14,7 +14,6 @@ import type {
 } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
 import { labelsOf, podMetadataOf } from "../shared/labels.ts";
-import { SECRETS_DIRECTORY } from "../shared/paths.ts";
 import {
   nodeAffinityOf,
   RECREATED,
@@ -22,8 +21,6 @@ import {
 } from "../shared/placement.ts";
 import { ADAPTER } from "./render.ts";
 
-/** The estate-wide directory the job's own objects land in, beside the documents. */
-const DIRECTORY = SECRETS_DIRECTORY;
 /** How many hex digits of the documents' digest the job's name carries. */
 const NAME_DIGITS = 12;
 /** Where the job reads the documents, each under its own file name. */
@@ -53,14 +50,15 @@ export const documentsOf = (
   );
 
 /**
- * The job's three files, for the documents of one render and their digest.
- * The digest is the caller's: an adapter spells what it is handed and hashes
- * nothing.
+ * The job's four files, in `directory`, for the documents it writes and their
+ * digest. The digest is the caller's: an adapter spells what it is handed and
+ * hashes nothing.
  */
 export function renderPolicyJob(
   job: ResolvedPolicyJob,
   documents: readonly Deliverable[],
   digest: string,
+  directory: string,
 ): Deliverable[] {
   const name = `${job.identity}-${(digest.split(":")[1] as string).slice(0, NAME_DIGITS)}`;
   const labels = labelsOf(
@@ -143,8 +141,8 @@ export function renderPolicyJob(
       labels,
       annotations: RECREATED,
     },
-    // Every Reconcile Unit that holds a grant waits on this run, so it retries
-    // until it succeeds rather than failing for good on one slow start.
+    // Its unit is Ready only once this run succeeds, so it retries until one
+    // does rather than failing for good on one slow start.
     spec: { backoffLimit: UNTIL_SUCCEEDED, template: pod },
   };
   // The same run every hour, so a Vault restored without a generated key gets it back.
@@ -163,14 +161,14 @@ export function renderPolicyJob(
   };
   return [
     {
-      path: `${DIRECTORY}/configmap.yaml`,
+      path: `${directory}/configmap.yaml`,
       adapter: ADAPTER,
       objects: [handed],
     },
-    { path: `${DIRECTORY}/job.yaml`, adapter: ADAPTER, objects: [run] },
-    { path: `${DIRECTORY}/cronjob.yaml`, adapter: ADAPTER, objects: [hourly] },
+    { path: `${directory}/job.yaml`, adapter: ADAPTER, objects: [run] },
+    { path: `${directory}/cronjob.yaml`, adapter: ADAPTER, objects: [hourly] },
     {
-      path: `${DIRECTORY}/serviceaccount.yaml`,
+      path: `${directory}/serviceaccount.yaml`,
       adapter: ADAPTER,
       objects: [account],
     },

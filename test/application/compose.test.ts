@@ -815,20 +815,18 @@ describe("composeEstate", () => {
     const whole = estateOf(under(""))?.files.map(({ path }) => path) ?? [];
     const cut = estateOf(handingOver)?.files.map(({ path }) => path) ?? [];
 
-    expect(cut).not.toEqual([]);
-    expect(cut.every((path) => path.startsWith("estate/vso-secrets/"))).toBe(
-      true,
+    // Each Project writes its own Vault documents, and no datastore the old
+    // path runs has a catalog here, so the cut holds no secrets unit at all.
+    expect(cut.some((path) => path.startsWith("estate/vso-secrets/"))).toBe(
+      false,
     );
+    expect(cut.some((path) => path.startsWith("estate/edge/"))).toBe(false);
     expect(whole.some((path) => path.startsWith("estate/edge/"))).toBe(true);
-    // Its pin source applies the secrets unit and no edge unit, and does not
-    // follow the Secret Store's unit while secrets is still on the old path.
-    const source = handingOver.sources.find(({ name }) => name === "_estate");
-    expect(source?.text).toContain("name: estate-vso-secrets");
-    expect(source?.text).not.toContain("estate-edge-");
-    expect(source?.text).not.toContain("apps-secrets");
-    expect(
-      handingOver.sources.find(({ name }) => name === "data")?.text,
-    ).toContain("- name: estate-vso-secrets");
+    // data's own unit applies its own policy job, and waits on no
+    // estate-scoped unit, nor on the Secret Store's while secrets is legacy.
+    const data = handingOver.sources.find(({ name }) => name === "data")?.text;
+    expect(data).not.toContain("estate-vso-secrets");
+    expect(data).not.toContain("apps-secrets");
     // When the last Project leaves the old path, the artifact gains the edge
     // units, its pin moves, and its source is rewritten to apply them.
     const handedOver = compose({
@@ -842,7 +840,7 @@ describe("composeEstate", () => {
       },
       pins: pinned(handingOver),
     }).sources.find(({ name }) => name === "_estate");
-    expect(handedOver?.text).toContain("name: estate-vso-secrets");
+    expect(handedOver?.text).not.toContain("estate-vso-secrets");
     expect(handedOver?.text).toContain("name: estate-edge-");
     // Where no estate-path Project's render holds a secrets document, there
     // is no estate-scoped artifact at all.
@@ -877,9 +875,8 @@ describe("composeEstate", () => {
         .join("\n");
 
     expect(composed.conditions).toEqual([]);
-    // The Vault policy job runs beside the Vault the old path runs.
-    expect(text("_estate")).toContain("namespace: data-system");
-    expect(text("_estate")).not.toContain("secrets-system");
+    // data's own Vault policy job writes into the Vault the old path runs.
+    expect(text("data")).toContain("name: vault-policy\n");
     // A grant reads the Secret Store at its stated address, and a routed
     // Process admits the Traefik that serves it.
     expect(text("data")).toContain(
@@ -2229,7 +2226,7 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     );
     expect(
       followedBySecrets(
-        before.sources.find(({ name }) => name === "_estate")?.text,
+        before.sources.find(({ name }) => name === "data")?.text,
       ),
     ).toBeUndefined();
     const handedOver = {
@@ -2249,16 +2246,14 @@ describe("composeEstate, for an artifact whose pin stays", () => {
       after.artifacts.filter(({ moves }) => moves).map(({ name }) => name),
     ).toStrictEqual(["secrets"]);
     expect(after.sources.map(({ name }) => name)).toStrictEqual([
-      "_estate",
+      "data",
       "secrets",
     ]);
-    const [estate, secrets] = after.sources;
-    expect(followedBySecrets(estate?.text)).toStrictEqual([
+    const [data, secrets] = after.sources;
+    expect(followedBySecrets(data?.text)).toStrictEqual([
       { name: "apps-secrets" },
     ]);
-    expect(repositoryOf(estate?.text ?? "")?.ref?.digest).toBe(
-      digestOf("_estate"),
-    );
+    expect(repositoryOf(data?.text ?? "")?.ref?.digest).toBe(digestOf("data"));
     // The Project that hands over is a first delivery, at no digest yet.
     expect(repositoryOf(secrets?.text ?? "")?.ref?.digest).toBe(UNPUBLISHED);
     expect(recreates(secrets?.text ?? "")).toBe(true);
@@ -2573,23 +2568,19 @@ describe("composeEstate, for the route Flux's events take", () => {
     );
   });
 
-  it("keeps the route beside the secrets unit while a Project is legacy, and still no edge", () => {
+  it("keeps the route while a Project is legacy, and still no edge", () => {
     const handingOver = composed(LEGACY, true);
 
     expect(
       [...new Set(paths(handingOver).map((path) => path.split("/")[1]))].sort(),
-    ).toStrictEqual(["rollout-events", "vso-secrets"]);
+    ).toStrictEqual(["rollout-events"]);
     expect(
       units(handingOver)
         .map(({ metadata }) => metadata["name"])
         .sort(),
-    ).toStrictEqual(["estate-rollout-events", "estate-vso-secrets"]);
-    // Without a Reporter the same handover leaves the secrets unit alone.
-    expect([
-      ...new Set(
-        paths(composed(LEGACY, false)).map((path) => path.split("/")[1]),
-      ),
-    ]).toStrictEqual(["vso-secrets"]);
+    ).toStrictEqual(["estate-rollout-events"]);
+    // Without a Reporter the same handover leaves nothing estate-scoped.
+    expect(paths(composed(LEGACY, false))).toStrictEqual([]);
   });
 });
 

@@ -136,10 +136,8 @@ class RenderedTreeTest {
                 .isRegularFile();
         assertThat(Files.readString(out.resolve(owned.resolve("kustomization.yaml"))))
                 .contains("  - postgres-catalog.yaml\n");
-        assertThat(out.resolve("estate/vso-secrets/postgres-catalog.yaml")).doesNotExist();
-        assertThat(Files.readString(out.resolve("estate/vso-secrets/kustomization.yaml")))
-                .doesNotContain("postgres-catalog");
-        assertThat(out.resolve("estate/vso-secrets/policies/data-system-postgres-catalog.policy.json"))
+        assertThat(out.resolve("estate/vso-secrets")).doesNotExist();
+        assertThat(out.resolve("apps/data/vault-policy/policies/data-system-postgres-catalog.policy.json"))
                 .isRegularFile();
     }
 

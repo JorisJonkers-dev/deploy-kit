@@ -151,10 +151,9 @@ namespace, to the Secret Store's endpoint the projection carries; one
 Process or a backup identity, in its Application's directory; and one
 `VaultStaticSecret` per such grant, beside it, or a `VaultDynamicSecret`. A
 grant delivered `self` is read by the Process itself and syncs nothing. The
-objects are applied with the Application they serve, not by
-`estate-vso-secrets`: the namespace and the ServiceAccount a `VaultAuth` names
-exist only once the Application's own unit applies, and its pod waits on the
-Secret. Every destination Secret it asks for is excluded from
+objects are applied with the Application they serve, by its Project's own
+unit: the namespace and the ServiceAccount a `VaultAuth` names exist only once
+that unit applies, and its pod waits on the Secret. Every destination Secret it asks for is excluded from
 Flagger's configuration tracking, and a restart target names a `blue-green`
 Process's `<name>-primary`, so rotating a value never starts a release
 ([chapter 55](55-delivery.md#secret-rotation)). None of those is a policy or an auth role, so until
@@ -166,8 +165,8 @@ no output at all, and a derivation with no output is not total
 The `vault-policy` adapter emits, **per identity that holds a grant** (each
 Process, each backup identity that holds its destination's or its peer's credential, and
 each migration identity, which holds its database's owner credential), two
-documents, at `estate/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json`,
-the name Vault holds both by:
+documents, at `apps/<project>/vault-policy/policies/<namespace>-<identity>.{policy,role}.json`
+in its own Project's share, under the name Vault holds both by:
 
 | document | derived from |
 |---|---|
@@ -180,7 +179,7 @@ privilege changed. Both are JSON, which Vault accepts and which lets the one
 serializer own key order.
 
 A Project whose grants generate keys ([chapter 10](10-project-intent.md#generated-keys))
-adds one more document beside them, `estate/vso-secrets/policies/<namespace>.generated.json`:
+adds one more document beside them, `apps/<project>/vault-policy/policies/<namespace>.generated.json`:
 `keys`, each a `path`, a `key`, its `bytes` and its `encoding`, the defaults
 filled in, and, for a key that adopts a value, `adopt`, the `path` and the
 `key` of the location, once each, in path then key order.
@@ -188,19 +187,26 @@ filled in, and, for a key that adopts a value, `adopt`, the `path` and the
 **Rendered here, applied in the cluster.** Writing a policy into Vault is an act
 against a live system by an identity with privilege, which is delivery
 ([0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)). The
-**Vault policy job** writes them: a Job in the `estate-vso-secrets` Reconcile Unit,
-so it runs before any Application that holds a grant, whose image is the
-`delivery` project's. It is derived and never declared as a Process: its input
-is the render itself, which no project file can name. The Platform document
-says which image it is, which Vault role it logs in as and what it requests
+**Vault policy job** writes them, **one per Project** that holds a document:
+a Job in that Project's own share and unit, in that Project's namespace, whose
+image is the `delivery` project's
+([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+A grant's Secret syncs once its role exists, and the unit is Ready once the job
+has succeeded, so no Application of the Project serves before Vault holds what
+it reads. The job is derived and never declared as a Process: its input is the
+render itself. The Platform document says which image it is, which Vault role
+it logs in as and what it requests
 ([chapter 14](14-platform-intent.md#the-vault-policy-job)); where the platform
-names no job, or the render holds no document, none is rendered.
+names no job, or a Project holds no document, none is rendered for it.
 
 The render hands the documents to the job in a `ConfigMap`, so the job writes
-exactly the documents of the render that applied it, and nothing else. The
+exactly its own Project's documents of the render that applied it, and nothing
+else. Vault holds every name in one place, so two documents of one name, in
+one Project or in two, are `E_PATH_COLLISION`: a hyphen does not keep
+`a-system` + `system-c` apart from `a-system-system` + `c`. The
 ConfigMap and the Job share one name, `vault-policy-<12 hex>`, the first twelve
 hex digits of the SHA-256 of the canonical JSON (RFC 8785) of one object:
-`documents`, each document under its file name, and what the pod runs with,
+`documents`, each of the Project's documents under its file name, and what the pod runs with,
 the job's `image`, `uid`, `gid`, `memory`, `cpu`, `deadline` and
 `eligibleNodes`. A Job's template cannot
 change once created, so a changed policy set or a new image is a new Job, and
@@ -216,25 +222,29 @@ where an update would be refused, and it runs once more from the same
 documents. Every catalog method's Job carries the same mark, and neither
 `CronJob` does, since a CronJob's template can be updated in place.
 
-Five files sit beside `policies/`, in `estate/vso-secrets/`, and the directory's
-index applies the first four:
+Five files sit beside `policies/`, in `apps/<project>/vault-policy/`, and the
+directory's index applies the first four. The Project's index lists the
+directory, so a Project with an Application named `vault-policy` claims the
+same paths and is refused (`E_PATH_COLLISION`):
 
 | file | adapter | holds |
 |---|---|---|
 | `configmap.yaml` | `vault-policy` | the immutable `ConfigMap`, each document under its file name as canonical JSON on one line, in name order |
 | `job.yaml` | `vault-policy` | the `Job`, marked `kustomize.toolkit.fluxcd.io/force: Enabled`: the locked image, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` the platform's role, `POLICIES_DIR` where the ConfigMap is mounted read-only, `restartPolicy: OnFailure`, the token mounted because the job logs in with it; the pod's `activeDeadlineSeconds` the platform's deadline, so it bounds one attempt, and a required node affinity on `kubernetes.io/hostname` `In` the job's `eligibleNodes`; the Job's `backoffLimit` `2147483647`, the most the API holds, and no deadline of its own, so it retries until an attempt succeeds |
 | `cronjob.yaml` | `vault-policy` | the `CronJob` `vault-policy`: the same pod and the same `backoffLimit` as the Job, `@hourly`, `concurrencyPolicy: Forbid`, so a Vault restored without what the render holds gets it back within the hour |
-| `serviceaccount.yaml` | `vault-policy` | the `ServiceAccount` `vault-policy`, the one identity the platform's role is bound to |
+| `serviceaccount.yaml` | `vault-policy` | the `ServiceAccount` `vault-policy`, the identity the platform's role is bound to in every namespace |
 | `networkpolicy.yaml` | `networking` | the job's own policy: egress to the Secret Store and the cluster's DNS, no ingress; listed by no index, like every policy |
 
 Each datastore whose catalog the render applies
 ([chapter 16](16-dependencies.md#applying-the-catalog)) adds two files named for
 its identity, `<process>-catalog`, and its identity's policy and auth role to
-`policies/`, beside every other identity's. The two files are its own
-Project's: they land in `apps/<project>/<application>/`, the directory of the
-Application that runs the datastore, and that directory's index lists the
-first. Only while the datastore's Project is `legacy` do they land in this
-directory instead, listed by its index:
+its Project's `policies/`, beside every other identity's. The two files are its
+own Project's: they land in `apps/<project>/<application>/`, the directory of
+the Application that runs the datastore, and that directory's index lists the
+first. Only while the datastore's Project is `legacy` does it have no share on
+the estate path: then the two files land in `estate/vso-secrets/`, listed by
+its index, its documents in `estate/vso-secrets/policies/`, and the
+**estate-scoped policy job** beside them writes those documents alone:
 
 | file | adapter | holds |
 |---|---|---|
@@ -242,21 +252,22 @@ directory instead, listed by its index:
 | `<process>-catalog-networkpolicy.yaml` | `networking` | the method's own policy: egress to the datastore's surface, the Secret Store and the cluster's DNS, no ingress; listed by no index |
 
 All of them are in the datastore's namespace: the method runs beside the
-datastore it writes into, as the policy job runs beside the store. Its Vault
-documents stay with the policy job's, wherever its two files land, until each
-Project writes its own
-([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)).
+datastore it writes into.
 
-All four are in the **Secret Store's namespace**, the `<project>-system` of the
-project that declares it, or, while that project is `legacy`, the namespace the
-handover ledger states the old path runs the store in
-([chapter 14](14-platform-intent.md#handover-ledger)): the job runs beside the
-store it writes into, and the platform's fixture binds a pair in the namespace
-the platform already owns for it.
+A Project's own job is in that **Project's namespace**, `<project>-system`. The
+estate-scoped job is in the namespace of the catalog it writes, the one the
+handover ledger states the old path runs that datastore in, so each writes
+names of its own namespace alone; catalogs the old path runs in two namespaces
+would need two such jobs, and the render stops rather than write one.
 
-- It authenticates as a dedicated **policy-admin** role, a platform fixture
-  created with the auth method, because it cannot grant itself the privilege to
-  write policies.
+- It authenticates as the platform's role, a platform fixture created with the
+  auth method and bound to the ServiceAccount `vault-policy` in every
+  namespace, because a job cannot grant itself the privilege to write
+  policies. The role's policy is templated on the ServiceAccount's namespace:
+  it may write policies and auth roles named `<namespace>-*`, and keys under
+  `secret/data/<namespace>/`, and nothing else. Vault templates names, not
+  what a policy grants, so the writer is trusted as far as the render is
+  ([0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)).
 - It writes each policy and each auth role under its rendered name,
   `<namespace>-<identity>`, and leaves an unchanged one as it is.
 - It then writes each generated key Vault does not hold, under its own
@@ -266,8 +277,9 @@ the platform already owns for it.
   none.
 - It never deletes. A role and policy Vault holds that the render no longer
   names are reported, and a human removes them.
-- A job that fails stops the Reconcile Unit, so no Application that holds a
-  grant starts against policies Vault does not hold yet.
+- A job that fails holds its own Project's unit, and no other: no Application
+  of that Project serves against policies Vault does not hold yet, and every
+  other Project reconciles as it would.
 
 **The auth method itself is a platform fixture.** Mounting `kubernetes` auth,
 configuring its JWT issuer and CA, and creating the KV mounts are estate-unique
@@ -400,7 +412,7 @@ Paths are assigned by the Resolved Deployment's path plan
 <gitopsRoot>/apps/<project>/aliases.yaml
 <gitopsRoot>/apps/<project>/networkpolicy.yaml
 <gitopsRoot>/apps/<project>/vaultconnection.yaml
-<gitopsRoot>/estate/vso-secrets/policies/<namespace>-<identity>.{policy,role}.json
+<gitopsRoot>/apps/<project>/vault-policy/policies/<namespace>-<identity>.{policy,role}.json
 <gitopsRoot>/estate/edge/<tier>/<application>-<exposure>.yaml
 ```
 

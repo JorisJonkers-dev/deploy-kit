@@ -7,4 +7,5 @@ resources:
   - platform-postgres
   - platform-rabbitmq
   - platform-valkey
+  - vault-policy
   - vaultconnection.yaml
