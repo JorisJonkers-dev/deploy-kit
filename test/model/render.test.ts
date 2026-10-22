@@ -726,6 +726,8 @@ describe("renderIntentSet", () => {
     ).toStrictEqual(["E_UNLOCKED_IMAGE"]);
   });
 
+  // REQ-075 (docs/requirements.md): a plan that gives a path, a ServiceAccount
+  // or a Vault name two owners is refused before anything is written.
   it("refuses a render in which two adapters claim one path, before anything is serialized", () => {
     let serialized = 0;
     const claims = (name: string) => ({

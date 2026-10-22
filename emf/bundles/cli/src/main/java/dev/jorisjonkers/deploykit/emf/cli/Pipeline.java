@@ -166,7 +166,8 @@ public final class Pipeline {
      * and the templates run over the Resolved Deployments (spec/v1/30-deliverables.md): lower, then
      * resolve, then render. Rendered together, the projects write the estate-scoped share they hold
      * between them, which each resolution plans beside its own model. A set the checks
-     * refuse writes nothing, and its diagnostics are returned.
+     * refuse, or whose plan gives a path, a ServiceAccount or a Vault name two owners, writes
+     * nothing, and its diagnostics are returned.
      */
     public static List<Diagnostic> render(
             List<Path> files, List<String> projects, String schemaPackageIntegrity, Path root) throws IOException {
@@ -177,6 +178,10 @@ public final class Pipeline {
                 return resolved.diagnostics();
             }
             deployments.add(resolved.deployment());
+        }
+        List<Diagnostic> collisions = Collisions.of(deployments);
+        if (!collisions.isEmpty()) {
+            return collisions;
         }
         Rendering.render(deployments, root);
         return List.of();

@@ -83,6 +83,18 @@ class RenderedTreeTest {
         assertSameTree(out, Examples.of("knowledge-platform/rendered"));
     }
 
+    // deploy-kit#573: a plan that gives one path two owners writes nothing. One Project rendered
+    // twice plans each of its files twice.
+    @Test
+    void aPlanThatGivesAPathTwoOwnersWritesNothing(@TempDir Path out) throws IOException {
+        assertThat(Pipeline.render(union(), List.of("notes", "notes"), Outputs.INTEGRITY, out))
+                .isNotEmpty()
+                .allSatisfy(diagnostic -> assertThat(diagnostic.code()).isEqualTo("E_PATH_COLLISION"));
+        try (var written = Files.list(out)) {
+            assertThat(written).isEmpty();
+        }
+    }
+
     @Test
     void minimalAndDataRenderedTogetherHoldNothingEstateScoped(@TempDir Path out) throws IOException {
         assertThat(Pipeline.render(union(), Outputs.RENDERED_UNION.projects(), Outputs.INTEGRITY, out))
