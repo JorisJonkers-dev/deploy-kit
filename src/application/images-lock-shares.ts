@@ -8,6 +8,10 @@ import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import {
   aliasesOf,
+  ownUserAliasesOf,
+  ROOT_IMAGE_HINT,
+  rootImageMessage,
+  runsAsRoot,
   sameImage,
   type ImagesLockDocument,
   type LockedImage,
@@ -40,7 +44,9 @@ export function readLock(
 /**
  * A project's share of the lock it is handed: every alias the project file
  * names, and no other. An alias the lock does not hold is refused, so a
- * fragment never names an image nothing can pull.
+ * fragment never names an image nothing can pull; and an image a pod runs as
+ * its own user is refused where that user is root, so the image's own
+ * repository sees it before any composition does.
  */
 export function shareOf(
   lock: AuthoredFile,
@@ -61,6 +67,23 @@ export function shareOf(
         path: "/images",
         message: `the images lock holds no entry for ${alias}`,
         hint: "Lock every alias the project file names before its fragment is published.",
+      })),
+    };
+  const root = ownUserAliasesOf(project).filter((alias) =>
+    runsAsRoot(read.value.images[alias] as LockedImage),
+  );
+  if (root.length > 0)
+    return {
+      ok: false,
+      diagnostics: root.map((alias) => ({
+        code: "E_IMAGE_RUNS_AS_ROOT",
+        document: lock.name,
+        path: `/images/${alias}`,
+        message: rootImageMessage(
+          alias,
+          read.value.images[alias] as LockedImage,
+        ),
+        hint: ROOT_IMAGE_HINT,
       })),
     };
   return {

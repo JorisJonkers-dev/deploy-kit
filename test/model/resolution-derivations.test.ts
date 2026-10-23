@@ -1974,6 +1974,37 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     ]);
   });
 
+  // deploy-kit#586: the runner runs as the user the lock records, beside
+  // runAsNonRoot, so a root migration image would never start.
+  it("refuses a managed migration whose image runs as root, at the migration, naming the image", () => {
+    const result = resolve(managed, {
+      lock: (lock) =>
+        LOCKED(lock).replace(
+          /uid: 1000\n {4}gid: 1000\n {4}version: "1\.0\.0"\n$/,
+          'uid: 0\n    gid: 0\n    version: "1.0.0"\n',
+        ),
+      env: DATA,
+    });
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, document, path, message }) => ({
+            code,
+            document,
+            path,
+            message,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_IMAGE_RUNS_AS_ROOT",
+        document: "minimal/notes.project.yml",
+        path: "/applications/0/migration",
+        message: `notes-migration is locked to ghcr.io/jorisjonkers-dev/notes/notes-migration@sha256:${"7".repeat(64)}, which runs as uid 0, and the posture runs it with runAsNonRoot, so the kubelet refuses the pod`,
+      },
+    ]);
+  });
+
   it.each([
     [
       "a revision that is not a digest",

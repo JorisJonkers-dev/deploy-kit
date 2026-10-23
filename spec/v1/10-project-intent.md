@@ -1393,6 +1393,19 @@ is built: `E_IMAGE_USER_NOT_NUMERIC`. The kubelet cannot verify non-root from a
 name and fails the pod with `CreateContainerConfigError`, so the choice is a
 lock-time error with a name or a runtime error without one.
 
+An image whose user is **0** is refused too: `E_IMAGE_RUNS_AS_ROOT`, naming
+the image. The posture writes the locked `uid` beside `runAsNonRoot: true`, and
+the kubelet refuses a pod whose user is root under it
+(`container has runAsNonRoot and image will run as root`), so the render would
+pass and the pod never start. `publish` refuses it at `/images/<alias>` in the
+share it packs, so the image's own repository sees it on the release that built
+it, and composition refuses it again at the Process's `image`, or at the
+Application's `migration` for a migration image, wherever a lock it reads still
+records one. The answer is a numeric non-root `USER` in the image. The rule
+reads only an image a pod runs as its own user: a sidecar runs as its Process,
+so a sidecar image's locked user is never read, and the platform's VPN image
+runs as root by design ([chapter 14](14-platform-intent.md#vpn)).
+
 **A volume gets `fsGroup`.** A freshly provisioned `local-path` directory is
 root-owned, so without a group a non-root pod cannot write its own PV:
 `platform-postgres` cannot `initdb`. Any Process holding a volume therefore
