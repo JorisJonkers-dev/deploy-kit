@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vault-policy-78f234d9d429
+  name: vault-policy-e56b08fd2da1
   namespace: auth-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -77,7 +77,7 @@ spec:
       volumes:
         - name: policies
           configMap:
-            name: vault-policy-78f234d9d429
+            name: vault-policy-e56b08fd2da1
             items:
               - key: auth-system-auth-api.policy.json
                 path: auth-system-auth-api.policy.json

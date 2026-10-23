@@ -2036,7 +2036,7 @@ defaults to `kv`, so every grant written before this rule stays valid.
 | `access` | `kv` | yes | `read` \| `self-renew` \| `self-roll` \| `custody`. A KV intent, and only a KV intent. |
 | `role` | `database` | yes | The database role that issues the credential. The read path derives as `database/creds/<role>`. |
 | `key` | `transit` | yes | The transit key name. |
-| `operations` | `transit` | yes | A closed set: `sign`, `verify`, `encrypt`, `decrypt`, `rotate`. Each maps to exactly one Vault path. |
+| `operations` | `transit` | yes | A closed set: `sign`, `verify`, `encrypt`, `decrypt`, `rotate`, `read`. Each maps to exactly one Vault path. |
 | `delivery` | all | yes | `env` \| `file` \| `self`; a `transit` or `database` grant is `self` only (`E_NON_KV_DELIVERY`). |
 | `mountAt`, `fileMode` | `file` only | Where the projected file lands, and its mode. |
 | `rotation` | all | yes | `tolerates: restart` \| `reload`, plus an optional `maxAge`. |
@@ -2050,7 +2050,7 @@ one) is what a placeholder byte-matches
 |---|---|
 | `kv` | `secret/data/<path>`, and `secret/metadata/<path>` for the same document ([0029](../../docs/adr/model/0029-a-grant-is-a-union-on-engine.md)) |
 | `database` | `database/creds/<role>`, which it may `read` |
-| `transit` | one path per declared operation, each of which it may `update`: `transit/<operation>/<key>` for `sign`, `verify`, `encrypt` and `decrypt`, and `transit/keys/<key>/rotate` for `rotate` |
+| `transit` | one path per declared operation: `update` on `transit/<operation>/<key>` for `sign`, `verify`, `encrypt` and `decrypt`, `update` on `transit/keys/<key>/rotate` for `rotate`, and `read` on `transit/keys/<key>` for `read`, the key's public part and versions (a JWKS endpoint serves these) |
 
 For a `kv` grant the derived path is the string the author already wrote, so
 nothing about today's placeholders changes. For the other two it is the path the
@@ -2823,7 +2823,7 @@ already told them, and the lines reaching them made the model harder to read.
 | `Match` | `Route.match` | `prefix`, `exact` |
 | `SecretEngine` | `Grant.engine` | `kv`, `database`, `transit` |
 | `AccessTier` | `Grant.access` | `read`, `self-renew`, `self-roll`, `custody` |
-| `TransitOp` | `Grant.operations` | `sign`, `verify`, `encrypt`, `decrypt`, `rotate` |
+| `TransitOp` | `Grant.operations` | `sign`, `verify`, `encrypt`, `decrypt`, `rotate`, `read` |
 | `Delivery` | `Grant.delivery` | `env`, `file`, `self` |
 | `KeyEncoding` | `Generate.encoding` | `hex`, `base64`, `base64url` |
 | `Tolerance` | `Rotation.tolerates` | `restart`, `reload` |
