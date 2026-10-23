@@ -164,12 +164,9 @@ applications:
         # names are unique within an Application, and a consumer names the Application,
         # never a Process.
         provides:
-          http: 8080            # not 80: a port below 1024 cannot be bound by a
-                                # non-root process without CAP_NET_BIND_SERVICE,
-                                # which `restricted` drops
-                                # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
-                                # A route names a surface, not a number, so the
-                                # edge is unchanged.81
+          http: 8080            # the port the JVM listens on. A route names a
+                                # surface, not a number, so the edge never
+                                # sees it
 
         # Placement is a set of HARD dimensions, every one of which must match
         # (docs/adr/model/0017-placement-is-hard-dimensions.md). A list is a SET of
@@ -367,12 +364,10 @@ applications:
                                 # PYROSCOPE_* wiring to inject, and saying
                                 # `static` is a decision rather than an omission
         provides:
-          http: 8080         # above 1024. A port below it cannot be bound
-                             # under runAsNonRoot with capabilities dropped, and
-                             # there is no exception to relax
-                             # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
-                             # The Service object still listens on 80: a route
-                             # names a surface, never a number
+          http: 80           # nginx's own port. A pod off the host network
+                             # binds any port without a capability (chapter 14,
+                             # substrate facts), so a non-root nginx with every
+                             # capability dropped listens on 80 as built
 
         placement:
           # The two required dimensions, and nothing else. Every further
@@ -413,10 +408,10 @@ applications:
         probes:
           readiness:
             path: /
-            port: 8080
+            port: 80
           liveness:
             path: /
-            port: 8080
+            port: 80
 
         startupBudget: 30s      # nginx serves within a second of starting; the
                                 # budget is the gate auth-api's 600s dominates

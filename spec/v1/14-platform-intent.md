@@ -187,6 +187,14 @@ substrate:
 | `imagePull` | every derived deadline ([chapter 20](20-resolved-deployment.md#derived-mechanics)): a Process's progress deadline, a `prepare` Process's run deadline and so the Release Gate's, each with this on top, rounded up to a whole second, because each runs from before the image is on the node. It is the longest an image pull takes on the slowest node a pod may land on, measured, not a margin; optional, and a substrate that states none allows nothing for a pull ([0105](../../docs/adr/model/0105-every-derived-deadline-allows-the-substrates-image-pull.md)) |
 | `clusterDns` | the DNS baseline every egress policy carries ([chapter 16](16-dependencies.md#the-baseline)): the substrate runs the cluster's DNS, so where it runs is a fact about the substrate rather than a declared Application |
 
+One fact holds on this substrate without a field, because nothing varies it:
+**a pod off the host network binds any port without a capability.** k3s sets
+`net.ipv4.ip_unprivileged_port_start` to 0 in every such pod, so a non-root
+container with every capability dropped listens on port 80; a drill on the
+estate's cluster bound it. No authored Process runs on the host network, so a
+low port is never refused and never earns a capability
+([chapter 10](10-project-intent.md#a-low-port-needs-no-capability)).
+
 ## The bootstrap set
 
 A render cannot apply itself. The things that must exist before the first

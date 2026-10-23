@@ -115,7 +115,7 @@ Each claim has an id so the notes below the tables can refer to it.
 
 | id | claim | decision | verdict | condition or correction | primary source |
 |---|---|---|---|---|---|
-| C33 | A non-root process cannot bind a port below 1024 without `NET_BIND_SERVICE`, so `E_PRIVILEGED_PORT_UNDER_NONROOT` guards a real hazard | [Decide how the model meets the live needs no chapter covers](https://github.com/JorisJonkers-dev/deploy-kit/issues/351) | fails | Not on k3s. k3s configures containerd with `enable_unprivileged_ports` on any kernel from 4.11, which sets `net.ipv4.ip_unprivileged_port_start=0` in every pod that is not on the host network. Read from source; **Settle by drill**, because no live pod binds a low port as non-root. See [note](#c33-low-ports-under-a-non-root-user) | [k3s v1.35.2 `config_linux.go`](https://github.com/k3s-io/k3s/blob/v1.35.2%2Bk3s1/pkg/agent/containerd/config_linux.go); [k3s v1.35.2 `templates.go`](https://github.com/k3s-io/k3s/blob/v1.35.2%2Bk3s1/pkg/agent/templates/templates.go); [containerd v2.1.5, CRI plugin config](https://github.com/containerd/containerd/blob/v2.1.5/docs/cri/config.md) |
+| C33 | A non-root process cannot bind a port below 1024 without `NET_BIND_SERVICE`, so the low-port refusal guards a real hazard | [Decide how the model meets the live needs no chapter covers](https://github.com/JorisJonkers-dev/deploy-kit/issues/351) | fails | Not on k3s. k3s configures containerd with `enable_unprivileged_ports` on any kernel from 4.11, which sets `net.ipv4.ip_unprivileged_port_start=0` in every pod that is not on the host network. Read from source; **Settle by drill**, because no live pod binds a low port as non-root. See [note](#c33-low-ports-under-a-non-root-user) | [k3s v1.35.2 `config_linux.go`](https://github.com/k3s-io/k3s/blob/v1.35.2%2Bk3s1/pkg/agent/containerd/config_linux.go); [k3s v1.35.2 `templates.go`](https://github.com/k3s-io/k3s/blob/v1.35.2%2Bk3s1/pkg/agent/templates/templates.go); [containerd v2.1.5, CRI plugin config](https://github.com/containerd/containerd/blob/v2.1.5/docs/cri/config.md) |
 | C34 | jellyfin's root init container can be replaced by the volume group the spec derives | same | holds with a condition | Only if the directory becomes a claim. jellyfin already sets `fsGroup: 1000`, and the init container exists because the directory is a `hostPath`, on which the kubelet manages no ownership. A `local` volume, which is what the estate's claims are, is managed | [Kubernetes v1.35.2 `host_path.go`](https://github.com/kubernetes/kubernetes/blob/v1.35.2/pkg/volume/hostpath/host_path.go) (`Managed: false`); [`local.go`](https://github.com/kubernetes/kubernetes/blob/v1.35.2/pkg/volume/local/local.go); [Kubernetes, Configure a Security Context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/); fleet-infra `cluster/flux/apps/media/jellyfin/deployment.yaml` |
 | C35 | Two routes with one host on one proxy have no defined winner | same | holds | Traefik orders routers by rule length and documents a tie-break only between different providers. Two equal rules from one provider have none | [Traefik v3.7, Rules and priority](https://doc.traefik.io/traefik/reference/routing-configuration/http/routing/rules-and-priority/) |
 | C36 | `egress: internet` renders as an allow to `0.0.0.0/0` minus the cluster and LAN ranges | same | holds with a condition | The excluded ranges must include the tailnet. Every node's address is a Tailscale address (`100.64.0.0/10`), which is neither a cluster range nor the LAN, so without it the rule also allows each node's host services and every other tailnet device. `0.0.0.0/0` covers IPv4 only, and traffic to a pod's own node is always allowed. k3s enforces the policy with its embedded controller | [Kubernetes, Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/); [K3s, Network Policy Controller](https://docs.k3s.io/networking/networking-services); `kubectl get nodes -o wide`; nix-config `nix/profiles/worker.nix` |
@@ -433,11 +433,11 @@ and the metrics agent's own request would leave none.
 
 ### C33: low ports under a non-root user
 
-[Chapter 10](../../spec/v1/10-project-intent.md#a-privileged-port-needs-the-capability-that-binds-it)
-states the hazard as: a port below 1024 "cannot be bound by a non-root process
-without `CAP_NET_BIND_SERVICE`". The resolution keeps
-`E_PRIVILEGED_PORT_UNDER_NONROOT` on that basis and has four Applications
-change their images.
+Chapter 10 stated the hazard as: a port below 1024 "cannot be bound by a
+non-root process without `CAP_NET_BIND_SERVICE`". The resolution kept a refusal
+of such a port on that basis and had four Applications change their images.
+The refusal is cut since
+([chapter 14](../../spec/v1/14-platform-intent.md#substrate-facts)).
 
 That is true of a Linux host with default settings and not of a pod on this
 cluster. containerd's CRI plugin has an option, `enable_unprivileged_ports`,

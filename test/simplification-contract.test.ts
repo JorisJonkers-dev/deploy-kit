@@ -227,13 +227,3 @@ test("no Process or sidecar authors hardening", () => {
   // The posture itself is the platform's, and stays exactly one value.
   expect(read(platform)).toMatch(/^hardening: restricted$/m);
 });
-
-test("no provides port below 1024, because there is no capability to declare", () => {
-  for (const file of projectFiles)
-    for (const process of processesOf(file))
-      for (const [surface, port] of Object.entries(process.provides ?? {}))
-        expect(
-          port,
-          `${process.name}: ${surface} on ${port} is E_PRIVILEGED_PORT_UNDER_NONROOT`,
-        ).toBeGreaterThanOrEqual(1024);
-});

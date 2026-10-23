@@ -73,7 +73,7 @@ and linted by the same script with `emf` as its root.
 | [0017](model/0017-placement-is-hard-dimensions.md) | Placement and volume size are hard dimensions the Application states and the platform matches against node allocatable | open |
 | [0018](model/0018-durability-class-derives-a-backup.md) | Every volume declares a Durability Class, a class derives its backup, and a claim whose class derives a backup is never pruned | open |
 | [0019](model/0019-engine-is-process-vocabulary.md) | `engine` is layer-1 vocabulary: what the process is, not how it is instrumented | settled |
-| [0020](model/0020-hardening-is-one-platform-posture.md) | Hardening is one platform posture with no exception surface: writable paths are declared, the user comes from the images lock, and a privileged port is refused | open |
+| [0020](model/0020-hardening-is-one-platform-posture.md) | Hardening is one platform posture with no exception surface: writable paths are declared and the user comes from the images lock | open |
 | [0021](model/0021-runtime-mechanics-derive-from-cutover.md) | Runtime mechanics derive from declared intent, and `cutover` names the promise: `continuous` derives a blue/green switchover, `interrupted` a stop-start one | open |
 | [0022](model/0022-a-derived-value-has-one-declaring-site.md) | A derived value has one declaring site, and `replicas: {count, reason}` is the sole local exception | settled |
 | [0096](model/0096-availability-is-declared-on-an-engine.md) | Availability is declared on an engine Process as the owner's promise, and `replicated` is refused until an engine offers a mechanism for it | open |

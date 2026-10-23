@@ -206,7 +206,7 @@ spec:
           image: ghcr.io/jorisjonkers-dev/auth/auth-ui@sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 80
           resources:
             requests:
               memory: 64Mi
@@ -227,7 +227,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /
-              port: 8080
+              port: 80
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
@@ -235,7 +235,7 @@ spec:
           livenessProbe:
             httpGet:
               path: /
-              port: 8080
+              port: 80
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 3
@@ -243,7 +243,7 @@ spec:
           startupProbe:
             httpGet:
               path: /
-              port: 8080
+              port: 80
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 6

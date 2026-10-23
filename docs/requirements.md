@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **74** rows. The compiler's behaviours join it as they land.
+This ledger holds **75** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -97,3 +97,4 @@ This ledger holds **74** rows. The compiler's behaviours join it as they land.
 | REQ-072 | A consumer dials its provider by the provider's Application Id: an edge to a provider outside the consumer's namespace derives an `ExternalName` alias there, one to a provider in it dials that provider's own Service, and one to an IP dials the IP; `${dependency:<application>.host}` resolves to that name, and an alias that takes a name the Project already serves under, or that two Applications' aliases share, is `E_ALIAS_COLLISION` | [test/model/aliases.test.ts](../test/model/aliases.test.ts) |
 | REQ-073 | A Route that declares `rateLimit: {requests, per}` is limited to that many requests per client over `per` at the edge, with a burst of the whole allowance, through a `RateLimit` Middleware of its own in its Application's namespace; a client is the address Cloudflare forwards on a Tier that states `proxiedBy: cloudflare`, and the connection's address otherwise; a limit with no period, no requests or a period in milliseconds is refused | [test/adapters/spelling.test.ts](../test/adapters/spelling.test.ts) |
 | REQ-074 | Every container the worked examples render meets Pod Security's `restricted` profile, save the platform's VPN container, which is outside the posture and may add only `NET_ADMIN` and `NET_RAW` | [test/pod-security.test.ts](../test/pod-security.test.ts) |
+| REQ-075 | A Process that listens on a port below 1024 composes under the one hardening posture: its container listens on the port it declares, drops every capability and adds none, and its pod sets no sysctl, because a pod off the host network binds any port without one | [test/model/render.test.ts](../test/model/render.test.ts) |

@@ -43,7 +43,7 @@ spec:
       services:
         - name: auth-ui
           namespace: auth-system
-          port: 8080
+          port: 80
   tls:
     certResolver: acme
 ---

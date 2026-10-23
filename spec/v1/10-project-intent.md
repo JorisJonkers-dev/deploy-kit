@@ -1367,20 +1367,14 @@ cost where the defect is. The worked estate proves the point: after
 exception at all**, and the two that used to are `auth-ui`, which lists the paths
 nginx writes, and `platform-postgres`, whose UID comes from the lock.
 
-### A privileged port needs the capability that binds it
+### A low port needs no capability
 
-A `provides` port below 1024 cannot be bound by a non-root process without
-`CAP_NET_BIND_SERVICE`, and the `restricted` class drops all capabilities. A
-Process declaring one is `E_PRIVILEGED_PORT_UNDER_NONROOT`
-([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)),
-and the answer is a port above 1024. Deriving the capability silently would
-re-add what the class dropped for every Process that happens to declare a low
-port.
-
-`auth-ui` is the live case and its answer is to listen on 8080. A route names a
-**surface**, not a number, so the container's port is invisible to every consumer
-and to the rendered IngressRoute; the Service object keeps whatever port the edge
-expects.
+A `provides` port below 1024 composes like any other port. A pod off the host
+network binds any port without a capability
+([chapter 14](14-platform-intent.md#substrate-facts)), and no authored Process
+runs on the host network, so the `restricted` class costs a low port nothing:
+the render adds no capability and no sysctl for one. A Process keeps the port
+its image listens on, as `auth-ui` keeps nginx's 80.
 
 ### The UID is a pinned input, and the volume needs a group
 
