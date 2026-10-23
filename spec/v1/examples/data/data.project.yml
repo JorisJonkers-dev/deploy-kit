@@ -2,21 +2,21 @@
 #
 #   collections/data/platform/data.project.yml
 #
-# THREE Applications in one file. They are neighbours, not a unit: co-location in a
-# project file couples nothing, and each of the three releases on its own
+# FOUR Applications in one file. They are neighbours, not a unit: co-location in a
+# project file couples nothing, and each of the four releases on its own
 # (docs/adr/model/0052-an-application-is-the-release-unit.md,
 # docs/adr/model/0009-intent-is-authored-one-file-per-project.md). "Every Application in a project file
 # releases as one" was considered and rejected exactly because it would let
 # someone couple nine rollouts by editing an unrelated line. Atomicity stops at
 # the Application boundary; the file is an authoring and publication unit.
 #
-# None of the three has a repository of its own. The data project ships from
+# None of the four has a repository of its own. The data project ships from
 # homelab-collections, and publication is repository-scoped, so the project may
 # stay there or split out later -- composition behaves identically
 # (docs/adr/model/0042-declarations-compose-from-intent-fragments.md). What may not happen is a project
 # spanning two repositories: this file is the whole project.
 #
-# Exercises: three independently released Applications, a third-party image behind
+# Exercises: four independently released Applications, a scheduled Process, a third-party image behind
 # an alias with `runtime: none`, declared writable paths, structured
 # `disk` placement, TCP probes, a static Asset, a sidecar, all three
 # Durability Classes, `provides` consumed by eight Applications, and one authored
@@ -403,3 +403,40 @@ applications:
             # a render -- and this is the one class that gate does not cover,
             # which is a further reason to write it down rather than infer it.
 
+
+  # ============================================================== asset-sync
+  # Publishes the latest release assets of the agent toolkit to the public
+  # assets bucket, as fleet-infra's `garage-asset-sync` CronJob does today. It
+  # runs to completion at each slot and serves nothing, so it is a scheduled
+  # Process (spec/v1/10-project-intent.md#scheduled-processes): it authors its
+  # own `schedule`, and never a cutover, probes, a port or a copy count. Never
+  # two runs at once, and a run more than 300 seconds late is skipped; neither
+  # is written here. Everything else it declares as any Process does.
+  - id: asset-sync
+    processes:
+      - name: asset-sync
+        lifecycle: scheduled
+        schedule: "*/15 * * * *" # every run is idempotent, so a tight slot costs nothing
+        image: asset-sync
+        runtime: none
+        placement:
+          memory: 64Mi
+          cpu: 25m
+          # Beside the bucket's store, which runs only in Frankfurt, so the
+          # uploads never cross the overlay network between sites.
+          site: frankfurt
+        # The bucket key, as one file: a scheduled Process holds a grant like
+        # any other, and its identity is its own.
+        secrets:
+          - path: secret/data/platform/garage/web-key
+            keys: [credentials]
+            access: read
+            delivery: file
+            mountAt: /run/secrets/garage/credentials
+            fileMode: "0400"
+            rotation: { tolerates: restart }
+        # It reads the release from GitHub and writes the bucket at its public
+        # address: no edge names either.
+        egress:
+          to: internet
+          reason: reads the latest release from GitHub and uploads it to the public assets bucket

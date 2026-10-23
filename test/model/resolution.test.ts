@@ -314,6 +314,7 @@ describe("resolveIntentSet", () => {
       ["platform-postgres", "resolved.json"],
       ["platform-rabbitmq", "resolved.platform-rabbitmq.json"],
       ["platform-valkey", "resolved.platform-valkey.json"],
+      ["asset-sync", "resolved.asset-sync.json"],
     ])(
       "resolves %s to its committed projection, byte for byte",
       (id, oracle) => {
@@ -324,6 +325,26 @@ describe("resolveIntentSet", () => {
         ).toBe(text(`data/expected/${oracle}`));
       },
     );
+
+    // REQ-078 (docs/requirements.md): the start deadline is derived, on a
+    // scheduled Process alone, and its grant restarts nothing.
+    it("derives a scheduled Process's start deadline, and no restart target for its grant", () => {
+      const processes = data().applications.flatMap(
+        (application) => application.processes,
+      );
+      const sync = processes.find(({ name }) => name === "asset-sync");
+
+      expect([sync?.schedule, sync?.startDeadline]).toStrictEqual([
+        "*/15 * * * *",
+        "300s",
+      ]);
+      expect(sync?.secrets?.[0]).not.toHaveProperty("restartTargets");
+      expect(
+        processes
+          .filter(({ lifecycle }) => lifecycle !== "scheduled")
+          .map(({ schedule, startDeadline }) => [schedule, startDeadline]),
+      ).toStrictEqual(processes.slice(0, -1).map(() => [undefined, undefined]));
+    });
 
     it("resolves data's dependency edges to its committed oracle, byte for byte", () => {
       expect(canonicalJson(data().dependencies)).toBe(

@@ -77,7 +77,10 @@ export const BACKUP_TARGET = "/backup";
 
 /** A family this adapter does not spell yet stops the render rather than leaving it out. */
 function notYet(process: ResolvedProcess): void {
-  if (process.lifecycle !== "application" || process.switchover === undefined)
+  if (
+    process.lifecycle !== "scheduled" &&
+    (process.lifecycle !== "application" || process.switchover === undefined)
+  )
     throw notSupported(
       `${process.name}: a ${process.lifecycle} Process that switches ${process.switchover ?? "nothing"} is not rendered yet`,
     );
@@ -476,16 +479,91 @@ const affinityOf = ({ placement }: ResolvedProcess): NodeAffinity =>
       : [placement.boundTo],
   );
 
+type PodTemplate = Deployment["spec"]["template"];
+
+/**
+ * The pod a Process runs in, whatever controller starts it: a run to
+ * completion restarts in place on a failure.
+ */
+function podTemplateOf(
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+  restartPolicy?: PodSpec["restartPolicy"],
+): PodTemplate {
+  const labels = labelsOf(process, application.id);
+  const volumes = volumesOf(process);
+  return {
+    metadata: podMetadataOf(
+      {
+        ...labels,
+        // A missing list and an empty one carry no label alike.
+        // Stryker disable next-line ArrayDeclaration
+        ...consumerLabelsOf(process.consumes ?? []),
+      },
+      [
+        [process.name, process.imageVersion],
+        // Stryker disable next-line ArrayDeclaration
+        ...(process.sidecars ?? []).map(
+          ({ name, imageVersion }) => [name, imageVersion] as const,
+        ),
+        ...(process.vpn === undefined
+          ? []
+          : [[VPN_CONTAINER, process.vpn.imageVersion] as const]),
+      ],
+    ),
+    spec: {
+      serviceAccountName: process.identity,
+      automountServiceAccountToken: process.identityToken,
+      ...(restartPolicy === undefined ? {} : { restartPolicy }),
+      ...(process.gpu === undefined
+        ? {}
+        : { runtimeClassName: process.gpu.runtimeClass }),
+      securityContext: {
+        runAsNonRoot: true,
+        runAsUser: process.uid,
+        runAsGroup: process.gid,
+        // A volume is written as the image's group, and only a volume is.
+        // A library's group is its own, and an `fsGroup` would re-own the
+        // whole library (spec/v1/10-project-intent.md#libraries).
+        ...(process.volumes === undefined || process.libraries !== undefined
+          ? {}
+          : { fsGroup: process.gid }),
+        ...(process.libraries === undefined
+          ? {}
+          : { supplementalGroups: groupsOf(process) }),
+        seccompProfile: { type: "RuntimeDefault" },
+      },
+      affinity: affinityOf(process),
+      ...(process.vpn === undefined
+        ? {}
+        : { initContainers: [vpnContainerOf(process.vpn)] }),
+      containers: [
+        containerOf(process),
+        // Stryker disable next-line ArrayDeclaration
+        ...(process.sidecars ?? []).map((sidecar) =>
+          sidecarOf(sidecar, envOf(process), [
+            ...writableMountsOf(process),
+            ...fileMountsOf(process),
+          ]),
+        ),
+      ],
+      ...(volumes.length === 0 ? {} : { volumes }),
+    },
+  };
+}
+
 function deploymentOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
 ): Deployment {
-  const labels = labelsOf(process, application.id);
-  const volumes = volumesOf(process);
   return {
     apiVersion: "apps/v1",
     kind: "Deployment",
-    metadata: { name: process.name, namespace: application.namespace, labels },
+    metadata: {
+      name: process.name,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+    },
     spec: {
       ...strategyOf(process),
       progressDeadlineSeconds: wholeSeconds(process.deadline),
@@ -495,66 +573,48 @@ function deploymentOf(
           ...instanceOf(process.name),
         },
       },
-      template: {
-        metadata: podMetadataOf(
-          {
-            ...labels,
-            // A missing list and an empty one carry no label alike.
-            // Stryker disable next-line ArrayDeclaration
-            ...consumerLabelsOf(process.consumes ?? []),
-          },
-          [
-            [process.name, process.imageVersion],
-            // Stryker disable next-line ArrayDeclaration
-            ...(process.sidecars ?? []).map(
-              ({ name, imageVersion }) => [name, imageVersion] as const,
-            ),
-            ...(process.vpn === undefined
-              ? []
-              : [[VPN_CONTAINER, process.vpn.imageVersion] as const]),
-          ],
-        ),
-        spec: {
-          serviceAccountName: process.identity,
-          automountServiceAccountToken: process.identityToken,
-          ...(process.gpu === undefined
-            ? {}
-            : { runtimeClassName: process.gpu.runtimeClass }),
-          securityContext: {
-            runAsNonRoot: true,
-            runAsUser: process.uid,
-            runAsGroup: process.gid,
-            // A volume is written as the image's group, and only a volume is.
-            // A library's group is its own, and an `fsGroup` would re-own the
-            // whole library (spec/v1/10-project-intent.md#libraries).
-            ...(process.volumes === undefined || process.libraries !== undefined
-              ? {}
-              : { fsGroup: process.gid }),
-            ...(process.libraries === undefined
-              ? {}
-              : { supplementalGroups: groupsOf(process) }),
-            seccompProfile: { type: "RuntimeDefault" },
-          },
-          affinity: affinityOf(process),
-          ...(process.vpn === undefined
-            ? {}
-            : { initContainers: [vpnContainerOf(process.vpn)] }),
-          containers: [
-            containerOf(process),
-            // Stryker disable next-line ArrayDeclaration
-            ...(process.sidecars ?? []).map((sidecar) =>
-              sidecarOf(sidecar, envOf(process), [
-                ...writableMountsOf(process),
-                ...fileMountsOf(process),
-              ]),
-            ),
-          ],
-          ...(volumes.length === 0 ? {} : { volumes }),
-        },
+      template: podTemplateOf(process, application),
+    },
+  };
+}
+
+/**
+ * A scheduled Process's CronJob
+ * (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection): at its
+ * own schedule, never two runs at once, and a run that cannot start within its
+ * start deadline is skipped. A failed run is retried in its pod.
+ */
+function cronJobOf(
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): CronJob {
+  return {
+    apiVersion: "batch/v1",
+    kind: "CronJob",
+    metadata: {
+      name: process.name,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+    },
+    spec: {
+      schedule: process.schedule as string,
+      concurrencyPolicy: "Forbid",
+      startingDeadlineSeconds: wholeSeconds(process.startDeadline as string),
+      jobTemplate: {
+        spec: { template: podTemplateOf(process, application, "OnFailure") },
       },
     },
   };
 }
+
+/** The controller that runs a Process, by its lifecycle. */
+const workloadOf = (
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): Deployment | CronJob =>
+  process.lifecycle === "scheduled"
+    ? cronJobOf(process, application)
+    : deploymentOf(process, application);
 
 /** The Service a Process Flagger does not switch is reached by; Flagger generates a blue-green one's. */
 const serviceOf = (
@@ -1077,7 +1137,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
       application.processes.forEach(notYet);
       const { processes } = application;
       const files: [string, RenderedObject[]][] = [
-        ["workload.yaml", processes.map((p) => deploymentOf(p, application))],
+        ["workload.yaml", processes.map((p) => workloadOf(p, application))],
         [
           "serviceaccount.yaml",
           processes.flatMap((p) => serviceAccountsOf(p, application)),

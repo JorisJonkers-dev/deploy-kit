@@ -206,6 +206,13 @@ forward-only setup that runs to completion after the migration and before an
 Application's new version starts. It serves nothing, has no down, and is not a
 migration ([chapter 10](spec/v1/10-project-intent.md#prepare-processes)).
 
+**Scheduled Process**: a Process with `lifecycle: scheduled` and its own
+cron `schedule`, which runs to completion at each slot. It holds grants, edges
+and placement like any other Process, serves nothing, never runs twice at
+once, and skips a run that cannot start within its **Start Deadline**, 300
+seconds of its slot, derived and never authored
+([chapter 10](spec/v1/10-project-intent.md#scheduled-processes)).
+
 **Probe**: a declared readiness or liveness check.
 
 **Asset**: a file mounted into a Process. Declarative, never executable

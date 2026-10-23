@@ -250,6 +250,8 @@ export interface CronJob {
   readonly spec: {
     readonly schedule: string;
     readonly concurrencyPolicy: "Forbid";
+    /** How late a run may start before it is skipped. */
+    readonly startingDeadlineSeconds?: number;
     readonly jobTemplate: {
       readonly metadata?: { readonly labels: Labels };
       readonly spec: {

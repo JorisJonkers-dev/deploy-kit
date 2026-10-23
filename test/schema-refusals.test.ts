@@ -66,6 +66,7 @@ describe("the schema refusal fixtures", () => {
       "rate-limit-of-no-requests",
       "rate-limit-period-in-milliseconds",
       "rate-limit-without-period",
+      "schedule-malformed",
       "two-documents",
       "unknown-field",
       "wrong-type",

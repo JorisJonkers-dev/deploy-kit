@@ -1,0 +1,22 @@
+# REFUSED: E_SCHEDULE_UNSCHEDULED
+#
+# Only a scheduled Process runs on a schedule. An application Process runs
+# until it is replaced, so a schedule on it is a declaration nothing reads
+# (spec/v1/10-project-intent.md#scheduled-processes).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        # The refusal: a schedule on a Process that is not scheduled.
+        schedule: "0 3 * * *"
+        image: api
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        cutover: continuous

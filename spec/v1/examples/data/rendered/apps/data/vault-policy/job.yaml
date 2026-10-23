@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vault-policy-374c15991395
+  name: vault-policy-991baefbdc24
   namespace: data-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -77,8 +77,12 @@ spec:
       volumes:
         - name: policies
           configMap:
-            name: vault-policy-374c15991395
+            name: vault-policy-991baefbdc24
             items:
+              - key: data-system-asset-sync.policy.json
+                path: data-system-asset-sync.policy.json
+              - key: data-system-asset-sync.role.json
+                path: data-system-asset-sync.role.json
               - key: data-system-postgres-backup.policy.json
                 path: data-system-postgres-backup.policy.json
               - key: data-system-postgres-backup.role.json

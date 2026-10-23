@@ -296,6 +296,11 @@ const vpnAttachment = z
   .strictObject({ forwardedPort: z.boolean() })
   .meta({ id: "VpnAttachment" });
 
+// When a scheduled Process runs (spec/v1/10-project-intent.md#scheduled-processes):
+// five cron fields, minute to weekday, one space apart. A macro or a time zone
+// is not a field, so neither is read.
+const schedule = z.string().regex(/^[0-9A-Za-z*/,?-]+( [0-9A-Za-z*/,?-]+){4}$/);
+
 // Spread into each of the three levels rather than nested under a key: the level
 // a family is written at is not itself a field an author writes.
 const sharedIntent = {
@@ -312,6 +317,7 @@ const process = z
   .strictObject({
     name: text,
     lifecycle: lifecycle,
+    schedule: schedule.exactOptional(),
     image: text,
     runtime: runtime,
     engine: engine.exactOptional(),
