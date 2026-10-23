@@ -26,6 +26,16 @@ const KV_MOUNT = /^secret\/data\//;
 const CONTENT_DIGITS = 10;
 
 /** The Secret a grant's value is synced to: the Process, then the path below the mount. */
+/**
+ * What a changed value restarts: the Process that holds it. A scheduled
+ * Process has nothing running to restart, and each run reads the value it
+ * starts with (spec/v1/10-project-intent.md#scheduled-processes).
+ */
+export const restartOf = (
+  process: EffectiveProcess,
+): { restartTargets?: string[] } =>
+  process.lifecycle === "scheduled" ? {} : { restartTargets: [process.name] };
+
 export const destinationOf = (process: string, path: string): string =>
   `${process}-${path.replace(KV_MOUNT, "").replaceAll("/", "-")}`;
 
@@ -65,9 +75,7 @@ export function resolveGrants(process: EffectiveProcess): ResolvedGrant[] {
   // Stryker disable next-line ArrayDeclaration
   return (process.secrets ?? []).map((grant): ResolvedGrant => {
     const restart =
-      grant.rotation.tolerates === "restart"
-        ? { restartTargets: [process.name] }
-        : {};
+      grant.rotation.tolerates === "restart" ? restartOf(process) : {};
     // A non-kv grant is delivered `self`, or E_NON_KV_DELIVERY refused it.
     if (!("path" in grant))
       return {
@@ -104,9 +112,7 @@ export function resolveGrants(process: EffectiveProcess): ResolvedGrant[] {
       // A synced value restarts the Process in place once the operator syncs
       // it, whatever the rotation tolerates; read by the Process itself, a
       // rotation restarts it, and a reload restarts nothing.
-      ...(grant.delivery === "self"
-        ? restart
-        : { restartTargets: [process.name] }),
+      ...(grant.delivery === "self" ? restart : restartOf(process)),
     };
   });
 }

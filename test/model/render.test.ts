@@ -237,7 +237,7 @@ describe("renderIntentSet", () => {
 
       expect(jobFiles(paths)).toStrictEqual([]);
       expect(paths.filter((path) => path.includes("/policies/"))).toHaveLength(
-        8,
+        10,
       );
     });
 
@@ -391,6 +391,8 @@ describe("renderIntentSet", () => {
         "uid",
       ]);
       expect(Object.keys(named.documents)).toStrictEqual([
+        "data-system-asset-sync.policy.json",
+        "data-system-asset-sync.role.json",
         "data-system-mongo-backup.policy.json",
         "data-system-mongo-backup.role.json",
         "data-system-postgres-backup.policy.json",
@@ -1657,6 +1659,90 @@ describe("the Vault Agent injector", () => {
     );
     expect(trees.length).toBeGreaterThan(0);
     expect(annotated).toStrictEqual([]);
+  });
+});
+
+// REQ-078 (docs/requirements.md): a scheduled Process renders a CronJob at its
+// own schedule that never runs twice at once and skips a run more than 300
+// seconds late, around the pod any other Process gets, with its grants, edges
+// and placement; a rotated value restarts nothing, since the next run reads it.
+describe("a scheduled Process", () => {
+  const SYNC = "apps/data/asset-sync";
+  const tree = (
+    edits?: Readonly<Record<string, (text: string) => string>>,
+  ): Record<string, string> =>
+    asTree(artifact(render(edits, ["data"]), "data"));
+  const objects = (body: string | undefined) =>
+    parseAllDocuments(body ?? "").map(
+      (doc) => doc.toJS() as Record<string, unknown>,
+    );
+  const withEdge = (document: string) =>
+    document.replace(
+      "        image: asset-sync\n",
+      "        image: asset-sync\n        dependsOn:\n          - { application: platform-valkey, surface: redis }\n",
+    );
+
+  it("renders a CronJob that forbids a second run and skips a late one, and nothing that serves", () => {
+    const rendered = tree();
+    const [cronJob] = objects(rendered[`${SYNC}/workload.yaml`]);
+    const spec = cronJob?.["spec"] as {
+      jobTemplate: { spec: { template: { spec: Record<string, unknown> } } };
+    } & Record<string, unknown>;
+
+    expect(cronJob?.["kind"]).toBe("CronJob");
+    expect(spec["schedule"]).toBe("*/15 * * * *");
+    expect(spec["concurrencyPolicy"]).toBe("Forbid");
+    expect(spec["startingDeadlineSeconds"]).toBe(300);
+    expect(spec.jobTemplate.spec.template.spec["restartPolicy"]).toBe(
+      "OnFailure",
+    );
+    expect(
+      Object.keys(rendered)
+        .filter((path) => path.startsWith(`${SYNC}/`))
+        .sort(),
+    ).toStrictEqual([
+      `${SYNC}/kustomization.yaml`,
+      `${SYNC}/networkpolicy.yaml`,
+      `${SYNC}/serviceaccount.yaml`,
+      `${SYNC}/vso.yaml`,
+      `${SYNC}/workload.yaml`,
+    ]);
+  });
+
+  it("runs the pod any Process gets: its identity, its placement, its posture and its grant's file", () => {
+    const [cronJob] = objects(tree()[`${SYNC}/workload.yaml`]);
+    const pod = (
+      cronJob?.["spec"] as {
+        jobTemplate: { spec: { template: { spec: Record<string, unknown> } } };
+      }
+    ).jobTemplate.spec.template.spec;
+
+    expect(pod["serviceAccountName"]).toBe("asset-sync");
+    expect(JSON.stringify(pod["affinity"])).toContain("frankfurt-contabo-1");
+    expect(pod["securityContext"]).toMatchObject({ runAsNonRoot: true });
+    expect(JSON.stringify(pod["volumes"])).toContain(
+      "asset-sync-platform-garage-web-key",
+    );
+  });
+
+  it("restarts nothing when its grant's value changes", () => {
+    const synced = objects(tree()[`${SYNC}/vso.yaml`]).find(
+      ({ kind }) => kind === "VaultStaticSecret",
+    );
+
+    expect(synced?.["spec"]).not.toHaveProperty("rolloutRestartTargets");
+  });
+
+  it("reaches the provider of an edge it declares, as any Process does", () => {
+    const egressOf = (rendered: Record<string, string>) =>
+      JSON.stringify(
+        objects(rendered[`${SYNC}/networkpolicy.yaml`])[0]?.["spec"],
+      );
+
+    expect(egressOf(tree())).not.toContain("valkey");
+    expect(egressOf(tree({ "data/data.project.yml": withEdge }))).toContain(
+      "valkey",
+    );
   });
 });
 

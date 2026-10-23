@@ -256,6 +256,24 @@
           "value": {}
         }
       ]
+    },
+    {
+      "name": "a scheduled Process with its start deadline",
+      "verdict": "accept",
+      "file": "examples/data/expected/resolved.asset-sync.json"
+    },
+    {
+      "name": "a start deadline written as a number",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/data/expected/resolved.asset-sync.json",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/processes/0/startDeadline",
+          "value": 300
+        }
+      ]
     }
   ]
 }

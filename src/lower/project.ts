@@ -27,6 +27,7 @@ import {
   NODE_DIMENSIONS,
   withoutShared,
 } from "../model/project-intent-queries.ts";
+import { serves } from "../model/vocabularies.ts";
 
 /** One level of the project file, with the env files its scope directory holds. */
 interface Level extends SharedIntent {
@@ -135,7 +136,8 @@ function lowerShared(
   );
   const env = envFor(levels);
   const startupBudget = lowest(levels.map((level) => level.startupBudget));
-  // A prepare Process cuts over nothing, so a shared answer does not reach it.
+  // A Process that runs to completion cuts over nothing, so a shared answer
+  // does not reach it.
   const cutover = serves
     ? lowest(levels.map((level) => level.cutover))
     : undefined;
@@ -180,7 +182,7 @@ function lowerProcess(
   );
   return {
     ...withoutShared(process),
-    ...lowerShared([level, ...above], process.lifecycle !== "prepare"),
+    ...lowerShared([level, ...above], serves(process.lifecycle)),
   };
 }
 

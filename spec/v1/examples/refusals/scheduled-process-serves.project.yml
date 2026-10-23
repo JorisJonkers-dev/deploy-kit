@@ -1,0 +1,31 @@
+# REFUSED: E_SCHEDULED_PROCESS_SERVES
+#
+# A scheduled Process runs to completion at each slot of its schedule. It
+# listens on nothing, has no readiness to gate, runs one copy and cuts over
+# nothing, so a port, probes, replicas and a cutover of its own are
+# declarations nothing reads (spec/v1/10-project-intent.md#scheduled-processes).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: sweep
+    processes:
+      - name: sweep
+        lifecycle: scheduled
+        schedule: "0 3 * * *"
+        image: sweep
+        runtime: none
+        placement: { memory: 64Mi, cpu: 10m }
+        # The refusal: what only a serving Process has.
+        provides:
+          http: 8080
+        probes:
+          readiness: { path: /ready, port: 8080 }
+        replicas:
+          count: 2
+          reason: >-
+            A run to completion has no second copy to spread.
+        cutover: interrupted

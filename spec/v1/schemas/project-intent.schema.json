@@ -857,6 +857,10 @@
         "lifecycle": {
           "$ref": "#/$defs/Lifecycle"
         },
+        "schedule": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z*/,?-]+( [0-9A-Za-z*/,?-]+){4}$"
+        },
         "image": {
           "type": "string",
           "minLength": 1
@@ -986,7 +990,8 @@
       "enum": [
         "application",
         "job",
-        "prepare"
+        "prepare",
+        "scheduled"
       ]
     },
     "Runtime": {

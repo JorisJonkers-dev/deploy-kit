@@ -1144,6 +1144,14 @@
         "switchover": {
           "$ref": "#/$defs/Switchover"
         },
+        "schedule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "startDeadline": {
+          "type": "string",
+          "pattern": "^\\d+(ms|s|m|h)$"
+        },
         "deadline": {
           "type": "string",
           "pattern": "^\\d+(ms|s|m|h)$"
@@ -1348,7 +1356,8 @@
       "enum": [
         "application",
         "job",
-        "prepare"
+        "prepare",
+        "scheduled"
       ]
     },
     "Runtime": {

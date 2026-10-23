@@ -77,6 +77,11 @@ describe("checkIntentSet", () => {
         document: "data/data.project.yml",
         path: "/applications/0/processes/0/secrets/0",
       },
+      {
+        code: "E_SECRETS_AT_REST_REQUIRED",
+        document: "data/data.project.yml",
+        path: "/applications/4/processes/0/secrets/0",
+      },
       // The two grants both Applications share sit at the project header,
       // and a header grant is refused where it is written.
       {

@@ -101,6 +101,22 @@ function switchoverOf(
 }
 
 /**
+ * How late a scheduled run may start before it is skipped
+ * (spec/v1/10-project-intent.md#scheduled-processes): long enough to ride out
+ * a control-plane restart, short enough that a run never starts long after
+ * the slot it was for. Nothing authors it.
+ */
+export const START_DEADLINE = 300;
+
+/** A scheduled Process's cron, and the start deadline it derives. */
+const scheduleOf = (
+  process: EffectiveProcess,
+): Pick<ResolvedProcess, "schedule" | "startDeadline"> =>
+  process.schedule === undefined
+    ? {}
+    : { schedule: process.schedule, startDeadline: inSeconds(START_DEADLINE) };
+
+/**
  * `progressDeadlineSeconds`: three budgets, floored to a whole second, or for
  * a prepare Process the budget itself, rounded up so it is never cut short;
  * either way with the substrate's image pull on top, since the deadline runs
@@ -479,6 +495,7 @@ export function resolveProcess(
     gid: image.gid,
     ...(process.cutover === undefined ? {} : { cutover: process.cutover }),
     ...(switchover === undefined ? {} : { switchover }),
+    ...scheduleOf(process),
     deadline: inSeconds(deadlineOf(process, context.platform)),
     replicas: process.replicas?.count ?? 1,
     memory: process.placement.memory,
