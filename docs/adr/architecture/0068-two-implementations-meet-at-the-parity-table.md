@@ -25,8 +25,8 @@ it, the TypeScript check named by it, the refusal fixture whose diagnostics name
 it) and fails on any gap. A behaviour row that proves a production-only oracle is
 marked production-only and needs no model-driven witness. The model-driven
 implementation is frozen at the tag `mde-task-3`, the MDE Task 3 hand-in, until
-#99 deletes it: from that tag nothing holds it to the oracles, and a model change
-lands in TypeScript only.
+one catch-up pull request after 1.0.0 brings it up to date: until then nothing
+holds it to the oracles, and a model change lands in TypeScript only.
 
 ## Rests on
 

@@ -5,8 +5,9 @@
 // holds the Maven side to the same rule 0064 states for npm: the job CI runs is
 // the build the tree contains. It also holds CodeQL to scanning that build.
 //
-// Deleted with emf/ by #99 (emf/docs/adr/emf/0107). Until then emf/ is frozen
-// at the tag mde-task-3: the build runs by hand only, and gates nothing.
+// Deleted with emf/ at its sunset (emf/docs/adr/emf/0107). emf/ is frozen at
+// the tag mde-task-3 until a catch-up PR after 1.0.0: until then the build
+// runs by hand only and gates nothing.
 //
 // REQ-015 (docs/requirements.md): the model-driven build CI runs is the build
 // in the tree.

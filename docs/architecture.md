@@ -312,10 +312,11 @@ lives inside `emf/`. What lives here is the contract both implementations
 answer to, because the contract outlives the model-driven implementation.
 
 **The contract is suspended.** `emf/` is frozen at the tag `mde-task-3`, the
-commit handed in for MDE Task 3, and deleted by #99. From then on a model
+commit handed in for MDE Task 3, until 1.0.0 is released. Until then a model
 change lands in TypeScript only: nothing requires `emf/` to agree with the
-compiler or the oracle files, and its build runs by hand only. What follows
-records the contract as it held up to that tag.
+compiler or the oracle files, and its build runs by hand only. After 1.0.0 one
+catch-up pull request brings `emf/` up to date and puts its build back in
+`Pipeline Complete`, and the contract below holds again.
 
 Neither implementation is generated from the other, and neither is the oracle
 for the other. Each is tested on its own against committed oracle files, and
