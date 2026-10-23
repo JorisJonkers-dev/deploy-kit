@@ -3,7 +3,13 @@
 
 export const LIFECYCLES = ["application", "job", "prepare"] as const;
 export const RUNTIMES = ["jvm", "python", "node", "static", "none"] as const;
-export const ENGINES = ["postgres", "rabbitmq", "valkey", "files"] as const;
+export const ENGINES = [
+  "postgres",
+  "rabbitmq",
+  "valkey",
+  "mongo",
+  "files",
+] as const;
 export const CUTOVERS = ["continuous", "interrupted"] as const;
 export const DURABILITY_CLASSES = [
   "reconstructible",

@@ -55,7 +55,7 @@ refusing it there would leave its consumers' databases with nobody to derive
 them from. An engine that derives neither a backup nor a catalog, a `valkey` on
 a `reconstructible` volume, is still refused, because it would be decoration.
 
-The vocabulary is closed and small (`postgres`, `rabbitmq`, `valkey`, `files`)
+The vocabulary is closed and small (`postgres`, `rabbitmq`, `valkey`, `mongo`, `files`)
 because a value with no platform behaviour behind it is a label, and the estate
 already carries one of those in the Durability Class this pairs with. Adding a
 value is a platform change: a method in the catalog, and whatever else keys off

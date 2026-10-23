@@ -927,6 +927,7 @@
         "postgres",
         "rabbitmq",
         "valkey",
+        "mongo",
         "files"
       ]
     },

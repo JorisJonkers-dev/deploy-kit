@@ -616,7 +616,7 @@ Application's new version starts ([Prepare Processes](#prepare-processes)).
 `none` is correct for a third-party image and injects no profile values at all.
 
 `engine` names **what the process is**, where that is something the platform
-has to treat specially: `postgres`, `rabbitmq`, `valkey`, `files`, or absent.
+has to treat specially: `postgres`, `rabbitmq`, `valkey`, `mongo`, `files`, or absent.
 It is a fact about the Process rather than a mechanism, which is why it belongs
 here ([0019](../../docs/adr/model/0019-engine-is-process-vocabulary.md)), and
 it is what the platform keys its backup method off
@@ -627,8 +627,8 @@ Process holding a volume of a class that derives a backup,
 `E_DURABILITY_WITHOUT_ENGINE`, and refused only where it derives nothing: on a
 Process holding no such volume whose engine owns no databases,
 `E_ENGINE_WITHOUT_DURABILITY`. A `postgres` on a `reconstructible` volume declares
-its engine, because its consumers' databases derive from it; a `valkey` there
-does not.
+its engine, because its consumers' databases derive from it; a `valkey` or a
+`mongo` there does not, because neither owns databases.
 
 `engine` is not `runtime`. `runtime` says how the process is instrumented (
 `jvm`, `python`, `node`) and `engine` says what its data is. `platform-postgres`
@@ -2811,7 +2811,7 @@ already told them, and the lines reaching them made the model harder to read.
 |---|---|---|
 | `Lifecycle` | `Process.lifecycle` | `application`, `job`, `prepare` |
 | `Runtime` | `Process.runtime` | `jvm`, `python`, `node`, `static`, `none` |
-| `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `files` |
+| `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `mongo`, `files` |
 | `Cutover` | `Process.cutover` | `continuous`, `interrupted` |
 | `DurabilityClass` | `Volume.durability` | `reconstructible`, `recoverable`, `irreplaceable` |
 | `LibraryAccess` | `LibraryMount.access`, `LibraryDeclaration.grants` | `read`, `write` |

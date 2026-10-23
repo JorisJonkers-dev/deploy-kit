@@ -242,8 +242,10 @@ DNS and the off-cluster destination's address ranges, and no ingress
 ([0091](docs/adr/model/0091-a-backup-identity-has-a-policy-of-its-own.md)).
 
 **Engine**: what a Process *is*, where the platform must treat it
-specially: `postgres`, `rabbitmq`, `valkey`, `files`. Not `runtime`, which says
-how a process is instrumented
+specially: `postgres`, `rabbitmq`, `valkey`, `mongo`, `files`. Not `runtime`,
+which says how a process is instrumented. Only `postgres` owns databases, so
+only an edge into it derives a database catalog; `mongo` is a document store
+backed up over its wire protocol, with no catalog until a consumer needs one
 ([0019](docs/adr/model/0019-engine-is-process-vocabulary.md)).
 
 **Move method**: an engine's image that performs each step of a Move, and the

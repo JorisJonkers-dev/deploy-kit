@@ -490,12 +490,14 @@ whose `engine` has no entry here is `E_NO_ENGINE_POLICY`.
 engines:
   postgres: {backup: postgres-backup, surface: postgres}
   rabbitmq: {backup: rabbitmq-backup, surface: management}
+  mongo:    {backup: mongo-backup, surface: mongo}
   files:    {backup: file-backup}
 ```
 
 `surface` is the surface of the Process the method connects to, where it dumps
 over the network: `postgres` is dumped over its own protocol, `rabbitmq` through
-its management API. A method that reads the volume alone, as `files` does, names
+its management API, `mongo` over its wire protocol, because a copy of the files
+of a running `mongod` is not a consistent backup. A method that reads the volume alone, as `files` does, names
 none. The platform says it, because the platform chose the image and only the
 image knows what it connects to; a project file has no word for it. It is the
 one peer inside the cluster a backup pod is let through to, and the peer the
@@ -1079,6 +1081,7 @@ classDiagram
         +EnginePolicy postgres
         +EnginePolicy rabbitmq
         +EnginePolicy valkey
+        +EnginePolicy mongo
         +EnginePolicy files
     }
     class EnginePolicy {
@@ -1190,5 +1193,5 @@ classDiagram
     DurabilityPolicies "1" *-- "0..3" DurabilityPolicy : per class
     DurabilityPolicy "1" *-- "0..1" OffClusterCopy : offCluster
     OffClusterCopy "1" *-- "1..*" DestinationRange : egress
-    EnginePolicies "1" *-- "0..4" EnginePolicy : per engine
+    EnginePolicies "1" *-- "0..5" EnginePolicy : per engine
 ```
