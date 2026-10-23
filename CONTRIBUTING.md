@@ -34,8 +34,9 @@ document or one gate. A change is bigger than that shape when it:
 - adds a gate (its npm script and its CI job, in the same pull request;
   [0064](docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md)), or
 - changes what `spec/v1` says the model means, in which case it lands with
-  the ADR that decides it, in both implementations while `emf/` exists, and
-  with every oracle file the change touches.
+  the ADR that decides it, in TypeScript only (`emf/` is frozen at the tag
+  `mde-task-3` and deleted by #99), and with every oracle file the change
+  touches.
 
 `AGENTS.md`'s Boundaries section states which of these an agent may do on its
 own and which need to be asked about first.

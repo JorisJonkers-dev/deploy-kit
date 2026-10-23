@@ -37,12 +37,10 @@ next.
   it, canonical JSON (RFC 8785), byte for byte.
 - **The diagrams**, under `spec/v1/diagrams/`: one drawn SVG per chapter, the
   editable draw.io source embedded, one palette, colour carrying the layer.
-- **Both implementations' declarations.** While `emf/` exists, a model
-  change lands in the TypeScript production implementation and the
-  model-driven implementation under `emf/` in the same pull request
-  ([`AGENTS.md`](../../../AGENTS.md#boundaries)), each tested against the
-  oracle files above separately; neither is generated from the other, and
-  neither regenerates an oracle.
+- **The TypeScript declarations.** A model change lands in the TypeScript
+  production implementation only: `emf/` is frozen at the tag `mde-task-3`
+  ([`AGENTS.md`](../../../AGENTS.md#boundaries)). Nothing regenerates an
+  oracle.
 
 ## Steps
 
@@ -52,11 +50,9 @@ next.
    needs, or updating the pointer in the same commit if a heading moves.
 3. Update or add the worked example(s) the change bears on, and hand-write
    the oracle files it touches.
-4. Update both implementations' declarations (while `emf/` exists), against
-   the same oracle files.
-5. Run `npm run lint:adrs` and `npm run lint:links`; while `emf/` exists,
-   also `node scripts/lint-adrs.ts emf` and `./mvnw -B -ntp verify` inside
-   `emf/`.
+4. Update the TypeScript declarations against the same oracle files; leave
+   `emf/` as it is.
+5. Run `npm run lint:adrs` and `npm run lint:links`.
 
 ## Claiming a ticket
 
