@@ -40,7 +40,9 @@ export function lintLinks(root: string): LinkLintResult {
     },
   )
     .split("\0")
-    .filter((file) => file !== "");
+    // emf/ is frozen at the tag mde-task-3 (#373) and deleted by #99: its
+    // links into the TypeScript side are not kept current. Links into it are.
+    .filter((file) => file !== "" && !file.startsWith("emf/"));
 
   const anchorCache = new Map<string, Set<string>>();
   const anchorsOf = (path: string, text: string): Set<string> => {

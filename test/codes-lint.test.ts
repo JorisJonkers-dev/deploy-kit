@@ -67,22 +67,40 @@ describe("codeErrors", () => {
     ]);
   });
 
-  it("counts a Java test and a committed diagnostics oracle as exercising", () => {
+  it("counts a committed diagnostics oracle as exercising", () => {
     const result = codeErrors(
       {
-        "spec/v1/10-intent.md": chapter(ALPHA, BETA, GAMMA),
-        "emf/tests/parity/src/test/java/X.java": ALPHA,
+        "spec/v1/10-intent.md": chapter(ALPHA, BETA),
         "spec/v1/examples/refusals/x.diagnostics.json": `[{"code":"${BETA}"}]`,
-        "emf/tests/parity/src/main/java/Y.java": GAMMA,
       },
-      [pending("#1", GAMMA)],
+      [pending("#1", ALPHA)],
     );
 
     expect(result).toStrictEqual({
-      defined: 3,
-      exercised: 2,
+      defined: 2,
+      exercised: 1,
       pending: 1,
       errors: [],
+    });
+  });
+
+  it("neither counts nor checks the frozen emf/ tree", () => {
+    const result = codeErrors(
+      {
+        "spec/v1/10-intent.md": chapter(ALPHA),
+        "emf/tests/parity/src/test/java/X.java": ALPHA,
+        "emf/bundles/metamodel/model/x.ocl": BETA,
+      },
+      [],
+    );
+
+    expect(result).toStrictEqual({
+      defined: 1,
+      exercised: 0,
+      pending: 0,
+      errors: [
+        `${ALPHA}: defined by the specification, exercised by no test, and not pending`,
+      ],
     });
   });
 

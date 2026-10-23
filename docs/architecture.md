@@ -180,9 +180,8 @@ Every code a chapter defines is exercised by a test, or pending on the ticket
 that will exercise it, and no code a chapter does not define is used in the
 tree; `npm run lint:codes` holds both
 ([0067](adr/architecture/0067-every-spec-error-code-is-proved-by-a-test.md)). A
-test exercises a code by naming it, whether in a TypeScript test, a Java test
-of the model-driven implementation, or a refused case's committed
-`diagnostics.json`.
+test exercises a code by naming it, in a TypeScript test or a refused case's
+committed `diagnostics.json`; the frozen `emf/` is out of its scope.
 
 The CLI renders diagnostics for a human by default, emits the array verbatim
 under `--json`, and maps failure classes to distinct exit statuses.
@@ -312,6 +311,12 @@ Everything about that implementation, its build, its checks and its decisions,
 lives inside `emf/`. What lives here is the contract both implementations
 answer to, because the contract outlives the model-driven implementation.
 
+**The contract is suspended.** `emf/` is frozen at the tag `mde-task-3`, the
+commit handed in for MDE Task 3, and deleted by #99. From then on a model
+change lands in TypeScript only: nothing requires `emf/` to agree with the
+compiler or the oracle files, and its build runs by hand only. What follows
+records the contract as it held up to that tag.
+
 Neither implementation is generated from the other, and neither is the oracle
 for the other. Each is tested on its own against committed oracle files, and
 agreement between the two follows from both agreeing with the oracle.
@@ -437,7 +442,7 @@ value. The chapter is the readable half and the oracle is the complete one;
 neither may say something the other contradicts.
 
 An oracle file changes in the pull request that changes the behaviour it
-records, and both implementations go red together until both are fixed. CI
+records, and the TypeScript implementation goes red until it is fixed. CI
 never regenerates an oracle file from either implementation: a tool may write a
 candidate, and the committed file is the reviewed copy of it. A
 case without every oracle file is not yet a parity case, and the ledger that
@@ -482,8 +487,9 @@ meaning share one CI job, `contracts`: all nine check a document against a
 rule rather than code against a graph.
 Boundaries runs alone as `architecture`, because it is the one gate that
 speaks for `docs/architecture.md` itself rather than for a document beside it.
-The model-driven build runs alone as `emf`, on its own JDK and Maven, and is
-deleted with `emf/`.
+The model-driven build runs alone as `emf`, on its own JDK and Maven, by hand
+only (`workflow_dispatch`): frozen with `emf/`, it gates nothing and is
+deleted with it.
 
 Every rule these gates enforce is written down once, with a greppable id, in
 the [rule ledger](architecture-rules.md)

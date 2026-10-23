@@ -5,7 +5,8 @@
 // holds the Maven side to the same rule 0064 states for npm: the job CI runs is
 // the build the tree contains. It also holds CodeQL to scanning that build.
 //
-// Deleted with emf/ at its sunset (emf/docs/adr/emf/0107).
+// Deleted with emf/ by #99 (emf/docs/adr/emf/0107). Until then emf/ is frozen
+// at the tag mde-task-3: the build runs by hand only, and gates nothing.
 //
 // REQ-015 (docs/requirements.md): the model-driven build CI runs is the build
 // in the tree.
@@ -126,6 +127,27 @@ describe("the model-driven build CI runs is the build in the tree", () => {
     expect(mavenWiringErrors([], root)).toEqual([
       "emf/pom.xml names module gone, which is not on disk",
     ]);
+  });
+});
+
+describe("the frozen model-driven build gates nothing", () => {
+  const ci = readFileSync(
+    join(REPOSITORY, ".github", "workflows", "ci.yml"),
+    "utf8",
+  );
+  const job = /\n {2}'emf':\n([\s\S]*?)\n {4}'steps':/.exec(ci)?.[1] ?? "";
+  const needs =
+    /'pipeline-complete':[\s\S]*?'needs':\n((?:\s+- '[\w-]+'\n)+)/.exec(
+      ci,
+    )?.[1] ?? "";
+
+  it("runs only when dispatched by hand", () => {
+    expect(job).toContain(`'if': "github.event_name == 'workflow_dispatch'"`);
+  });
+
+  it("is not a job Pipeline Complete needs", () => {
+    expect(needs).toContain("- 'tests'\n");
+    expect(needs).not.toContain("- 'emf'");
   });
 });
 

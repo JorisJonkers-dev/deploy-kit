@@ -27,12 +27,11 @@ const CHAPTER = /^spec\/v1\/\d\d-[^/]+\.md$/;
 // The closed type a refusal's code is checked against when the compiler is
 // typechecked: it holds every code a chapter defines, and no other.
 export const CLOSED = "src/model/diagnostic.ts";
-const EXERCISING = [
-  /^test\//,
-  /^emf\/[^/]+\/[^/]+\/src\/test\//,
-  /\.diagnostics\.json$/,
-];
+const EXERCISING = [/^test\//, /\.diagnostics\.json$/];
+// emf/ is frozen at the tag mde-task-3 (#373): model changes land in
+// TypeScript only, so its codes neither exercise nor are checked.
 const OUT_OF_SCOPE = [
+  /^emf\//,
   /^docs\/mde\//,
   /^docs\/adr\/deferred\//,
   /^review\//,

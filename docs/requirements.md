@@ -24,7 +24,7 @@ This ledger holds **74** rows. The compiler's behaviours join it as they land.
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
 | REQ-001 | Every decision record under `docs/adr/` and `emf/docs/adr/` satisfies its frontmatter, register and citation contract, and no number is used in both | [test/adr-contract.test.ts](../test/adr-contract.test.ts) |
-| REQ-002 | Every relative link and heading anchor in Markdown git does not ignore resolves to a real target | [test/link-contract.test.ts](../test/link-contract.test.ts) |
+| REQ-002 | Every relative link and heading anchor in Markdown git does not ignore, outside the frozen `emf/`, resolves to a real target | [test/link-contract.test.ts](../test/link-contract.test.ts) |
 | REQ-003 | Every rendered Kubernetes manifest in the worked examples validates against its pinned schema | [test/manifest-contract.test.ts](../test/manifest-contract.test.ts) |
 | REQ-004 | The compiler's layer boundaries and module reachability are enforced on the dependency graph, not on review alone | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) |
 | REQ-005 | A pull request title and its commits use a conventional-commit type release-please reads | [test/pr-title-contract.test.ts](../test/pr-title-contract.test.ts) |
