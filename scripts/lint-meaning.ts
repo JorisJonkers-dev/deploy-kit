@@ -34,8 +34,8 @@ const REPOSITORY = join(import.meta.dirname, "..");
 
 // Never scanned, the same exclusions the em-dash ban uses: docs/mde holds
 // third-party coursework kept verbatim, and CHANGELOG.md is release-please's.
-// emf/ is frozen at the tag mde-task-3 (#373) and deleted by #99: model
-// changes land in TypeScript only, so its prose is not kept current.
+// emf/ is frozen at the tag mde-task-3 (#373) until the catch-up after
+// 1.0.0: model changes land in TypeScript only, so its prose is not kept current.
 const EXCLUDE = new Set(["CHANGELOG.md"]);
 const EXCLUDE_PREFIXES = ["docs/mde/", "emf/"];
 

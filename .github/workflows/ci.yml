@@ -442,13 +442,13 @@
     'uses': './.github/workflows/codeql.yml'
 
   # The model-driven implementation under emf/ (docs/adr/emf/0107): its own
-  # Maven build, JDK and gates, deleted with the directory by #99. Every gate
+  # Maven build, JDK and gates, deleted with the directory at its sunset. Every gate
   # it runs is listed in emf/docs/rules.md; the thresholds are in emf/pom.xml.
   # test/emf-wiring.test.ts proves this step names a real build.
   #
-  # Frozen at the tag mde-task-3 (#373): model changes land in TypeScript
-  # only, so this build runs by hand (workflow_dispatch) and is no longer a
-  # gate Pipeline Complete needs.
+  # Frozen at the tag mde-task-3 (#373) until a catch-up PR after 1.0.0:
+  # model changes land in TypeScript only, so this build runs by hand
+  # (workflow_dispatch) and rejoins Pipeline Complete's needs with that PR.
   'emf':
     'name': 'Model-driven build'
     'if': "github.event_name == 'workflow_dispatch'"

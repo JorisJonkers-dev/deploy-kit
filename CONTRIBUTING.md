@@ -35,7 +35,7 @@ document or one gate. A change is bigger than that shape when it:
   [0064](docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md)), or
 - changes what `spec/v1` says the model means, in which case it lands with
   the ADR that decides it, in TypeScript only (`emf/` is frozen at the tag
-  `mde-task-3` and deleted by #99), and with every oracle file the change
+  `mde-task-3` until the catch-up after 1.0.0), and with every oracle file the change
   touches.
 
 `AGENTS.md`'s Boundaries section states which of these an agent may do on its

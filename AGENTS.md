@@ -140,8 +140,8 @@ tool runs it.
   touches release, publishing or rulesets.
 - **Always:** land a model change in TypeScript and in the oracle files it
   affects, in one pull request. `emf/` is frozen at the tag `mde-task-3` for
-  the MDE Task 3 hand-in: do not edit it, and do not keep it in agreement; #99
-  deletes it. Check both ADR registers before taking a number.
+  the MDE Task 3 hand-in until one catch-up pull request after 1.0.0 brings
+  it up to date: do not edit it, and do not keep it in agreement. Check both ADR registers before taking a number.
 - **Never:** generate one implementation from the other, regenerate an oracle
   file in CI, or add a root dependency on anything under `emf/`. Push to
   `main` or force-push a shared branch. Edit a version or `CHANGELOG.md` by
@@ -263,7 +263,10 @@ QVT-Operational and Acceleo, so `emf/` holds the model-driven implementation:
 a second, hand-written Java implementation beside the TypeScript production
 implementation (Maven and Tycho, JDK 21, no Eclipse IDE to build, but
 loadable in Eclipse for the course's examiners). It is frozen at the tag
-`mde-task-3`, the commit handed in for MDE Task 3, and deleted by #99:
+`mde-task-3`, the commit handed in for MDE Task 3, while the concepts for
+1.0.0 land in TypeScript only. After 1.0.0 one catch-up pull request brings it
+up to date with every shape at once, and only then does the `emf` job rejoin
+`Pipeline Complete`:
 
 - **The root stays TypeScript.** Every pom, module, check, ledger and
   decision of the Java side lives under `emf/`. The root references it only
