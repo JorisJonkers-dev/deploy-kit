@@ -1,0 +1,20 @@
+# REFUSED: schema
+#
+# A schedule is five cron fields, minute to weekday, one space apart. A macro
+# such as `@daily` is not a field, so the schema refuses it
+# (spec/v1/10-project-intent.md#scheduled-processes).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: sweep
+    processes:
+      - name: sweep
+        lifecycle: scheduled
+        schedule: "@daily"
+        image: sweep
+        runtime: none
+        placement: { memory: 64Mi, cpu: 10m }

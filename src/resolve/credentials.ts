@@ -12,7 +12,7 @@ import {
   reachesDatabase,
 } from "../model/project-intent-queries.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
-import { destinationOf } from "./secrets.ts";
+import { destinationOf, restartOf } from "./secrets.ts";
 
 type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
 
@@ -62,7 +62,7 @@ export function resolveCredentials(
           }
         : {}),
       ...(edge.credentials?.rotation.tolerates === "restart"
-        ? { restartTargets: [process.name] }
+        ? restartOf(process)
         : {}),
     },
   ];

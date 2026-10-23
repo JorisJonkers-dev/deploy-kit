@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/platform/garage/web-key": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/garage/web-key": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

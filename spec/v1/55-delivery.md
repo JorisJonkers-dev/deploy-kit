@@ -325,10 +325,12 @@ Four rules hold the table true:
   follows from a member with no Surface. Its new version consumes
   real work while it is analysed, so a worker that switches continuously must be
   idempotent and must tolerate one version of skew with its siblings.
-- **A job and a prepare step have none.** A `lifecycle: job` or
-  `lifecycle: prepare` Process switches nothing, so it carries no switchover and
-  never waits on a gate; a prepare Process runs before the switch instead
-  ([Release order](#release-order)).
+- **A job, a prepare step and a scheduled Process have none.** A
+  `lifecycle: job`, `lifecycle: prepare` or `lifecycle: scheduled` Process
+  switches nothing, so it carries no switchover and never waits on a gate; a
+  prepare Process runs before the switch instead
+  ([Release order](#release-order)), and a scheduled one's next run is the new
+  version's.
 
 **The barrier, then the promotion.** A `blue-green` Application's members start
 their new versions independently and are analysed independently. None is

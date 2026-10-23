@@ -26,6 +26,7 @@ import {
   sameDeclaration,
 } from "../model/project-intent-queries.ts";
 import { namespaceOf } from "../model/runtime-profiles.ts";
+import { RUNS_TO_COMPLETION, serves } from "../model/vocabularies.ts";
 import { consumedOf, isLabelName } from "../model/consumer-label.ts";
 
 interface Refusal {
@@ -164,7 +165,7 @@ function completenessRefusals(
   const refusals: Refusal[] = [];
   const levels = [process, ...above];
   if (
-    process.lifecycle !== "prepare" &&
+    serves(process.lifecycle) &&
     !levels.some((level) => level.cutover !== undefined)
   )
     refusals.push({
@@ -188,9 +189,16 @@ function completenessRefusals(
   return refusals;
 }
 
-/** What only a Process that serves declares, which a prepare Process does not. */
-function prepareRefusals(process: Process, at: string): Refusal[] {
-  if (process.lifecycle !== "prepare") return [];
+/** What a Process that runs to completion phrases its refusal as. */
+const COMPLETES = {
+  prepare: "a prepare Process runs to completion before the new version starts",
+  scheduled: "a scheduled Process runs to completion at each slot",
+} as const satisfies Record<keyof typeof RUNS_TO_COMPLETION, string>;
+
+/** What only a Process that serves declares, which one that runs to completion does not. */
+function completionRefusals(process: Process, at: string): Refusal[] {
+  if (serves(process.lifecycle)) return [];
+  const lifecycle = process.lifecycle as keyof typeof RUNS_TO_COMPLETION;
   const serving = (
     [
       ["provides", process.provides],
@@ -204,12 +212,36 @@ function prepareRefusals(process: Process, at: string): Refusal[] {
   if (serving.length === 0) return [];
   return [
     {
-      code: "E_PREPARE_PROCESS_SERVES",
+      code: RUNS_TO_COMPLETION[lifecycle],
       path: at,
-      message: `a prepare Process runs to completion before the new version starts, and declares ${serving.join(", ")}, which only a serving Process has`,
-      hint: "Delete them: a prepare Process listens on nothing, has no readiness, runs once and cuts over nothing.",
+      message: `${COMPLETES[lifecycle]}, and declares ${serving.join(", ")}, which only a serving Process has`,
+      hint: `Delete them: a ${lifecycle} Process listens on nothing, has no readiness, runs one copy and cuts over nothing.`,
     },
   ];
+}
+
+/** A schedule is a scheduled Process's, and a scheduled Process has one. */
+function scheduleRefusals(process: Process, at: string): Refusal[] {
+  const scheduled = process.lifecycle === "scheduled";
+  if (scheduled && process.schedule === undefined)
+    return [
+      {
+        code: "E_SCHEDULE_MISSING",
+        path: at,
+        message: "a scheduled Process names no schedule to run at",
+        hint: "Declare `schedule`, five cron fields from minute to weekday.",
+      },
+    ];
+  if (!scheduled && process.schedule !== undefined)
+    return [
+      {
+        code: "E_SCHEDULE_UNSCHEDULED",
+        path: `${at}/schedule`,
+        message: `a ${process.lifecycle} Process is not run on a schedule, so nothing reads this one`,
+        hint: "Declare `lifecycle: scheduled`, or delete the schedule.",
+      },
+    ];
+  return [];
 }
 
 function processRefusals(
@@ -220,15 +252,15 @@ function processRefusals(
   const refusals: Refusal[] = [
     ...duplicateRefusals(process, above, at),
     ...completenessRefusals(process, above, at),
-    ...prepareRefusals(process, at),
+    ...completionRefusals(process, at),
+    ...scheduleRefusals(process, at),
   ];
   const volumes = process.volumes ?? [];
-  // The effective answer: it may come from a level above. A prepare Process
-  // cuts over nothing, so no answer applies to it.
-  const cutover =
-    process.lifecycle === "prepare"
-      ? undefined
-      : effectiveCutover([process, ...above]);
+  // The effective answer: it may come from a level above. A Process that runs
+  // to completion cuts over nothing, so no answer applies to it.
+  const cutover = serves(process.lifecycle)
+    ? effectiveCutover([process, ...above])
+    : undefined;
   if (cutover === "continuous" && volumes.length > 0)
     refusals.push({
       code: "E_CUTOVER_UNHONOURABLE",

@@ -1,0 +1,20 @@
+# REFUSED: E_SCHEDULE_MISSING
+#
+# A scheduled Process runs at each slot of its own schedule, and this one names
+# none, so nothing says when it runs
+# (spec/v1/10-project-intent.md#scheduled-processes).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: sweep
+    processes:
+      - name: sweep
+        lifecycle: scheduled
+        # The refusal: no `schedule`.
+        image: sweep
+        runtime: none
+        placement: { memory: 64Mi, cpu: 10m }

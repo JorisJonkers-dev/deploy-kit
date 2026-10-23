@@ -607,10 +607,12 @@ Vault role are called (chapter 16).
 `image` is an alias resolved to a digest through the images lock, never a tag,
 never a digest here.
 
-`lifecycle` is `application`, `job` or `prepare`. Not `deployment` /
+`lifecycle` is `application`, `job`, `prepare` or `scheduled`. Not `deployment` /
 `statefulset` / `job`, because those are mechanisms; the object kind derives from
 `lifecycle` and `volumes`. `prepare` is forward-only setup that runs before the
-Application's new version starts ([Prepare Processes](#prepare-processes)).
+Application's new version starts ([Prepare Processes](#prepare-processes)), and
+`scheduled` runs to completion at each slot of its own `schedule`
+([Scheduled Processes](#scheduled-processes)).
 
 `runtime` selects the Runtime Profile: `jvm`, `python`, `node`, `static`, `none`.
 `none` is correct for a third-party image and injects no profile values at all.
@@ -2749,6 +2751,41 @@ them, and nothing undoes it.
   own are `E_PREPARE_PROCESS_SERVES`. A `cutover` shared from above does not
   reach it, and it is not required to have one.
 
+## Scheduled Processes
+
+```yaml
+processes:
+  - name: asset-sync
+    lifecycle: scheduled
+    schedule: "*/15 * * * *"   # minute, hour, day of month, month, weekday
+    image: asset-sync
+    runtime: none
+    placement: {memory: 64Mi, cpu: 25m, site: frankfurt}
+```
+
+A `scheduled` Process **runs to completion at each slot of its own
+`schedule`**: a sync, a sweep, a report. It is a Process like any other: it has
+its own identity, holds grants, declares edges and egress, takes placement and
+runs under the one hardening posture. Only how it runs differs.
+
+- **The schedule** is five cron fields, minute to weekday, one space apart. It
+  is required on a scheduled Process, `E_SCHEDULE_MISSING`, and refused on any
+  other, `E_SCHEDULE_UNSCHEDULED`: nothing else runs on one. No macro and no
+  time zone is read, and the schema refuses a schedule of another shape.
+- **Never twice at once.** A slot that falls while a run is still going is
+  skipped, so a run that overruns its interval never races itself.
+- **A run starts within 300 seconds of its slot or is skipped**, whatever
+  delayed it. 300 seconds rides out a control-plane restart; a shorter deadline
+  would skip runs over one, and a longer one would start a run long after the
+  slot it was for. Neither rule is authored: both are derived
+  ([chapter 20](20-resolved-deployment.md#derived-mechanics)).
+- **What it cannot declare.** It listens on nothing, has no readiness, runs one
+  copy and cuts over nothing, so `provides`, `probes`, `replicas` and a
+  `cutover` of its own are `E_SCHEDULED_PROCESS_SERVES`. A `cutover` shared
+  from above does not reach it, and it is not required to have one.
+- **A rotated value** reaches the next run: each run reads the values it starts
+  with, so a grant derives no restart target for it.
+
 ## Capacity
 
 ```yaml
@@ -2809,7 +2846,7 @@ already told them, and the lines reaching them made the model harder to read.
 
 | vocabulary | named by | values |
 |---|---|---|
-| `Lifecycle` | `Process.lifecycle` | `application`, `job`, `prepare` |
+| `Lifecycle` | `Process.lifecycle` | `application`, `job`, `prepare`, `scheduled` |
 | `Runtime` | `Process.runtime` | `jvm`, `python`, `node`, `static`, `none` |
 | `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `files` |
 | `Cutover` | `Process.cutover` | `continuous`, `interrupted` |
@@ -2954,7 +2991,7 @@ way: contention decides who arbitrates, not who authors
 | [`minimal/notes.project.yml`](examples/minimal/notes.project.yml) + [`env`](examples/minimal/env/notes-api/base.env) | **read this first.** One project, one Application, one Process, and no field that is not required: 26 authored lines reaching 10 objects, with no grant, no volume and no gap row. It is also the only set that renders on today's pinned inputs, because it holds nothing the secrets-at-rest gate can refuse: see [`minimal/README.md`](examples/minimal/README.md) |
 | [`knowledge/knowledge.project.yml`](examples/knowledge/knowledge.project.yml) + [`env`](examples/knowledge/env/knowledge-api/base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker/base.env) | two Applications because their cutovers differ (`continuous` and `interrupted`), two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants and env shared at the project header and granted on a Process, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
 | [`auth/auth.project.yml`](examples/auth/auth.project.yml) + [`env`](examples/auth/env/auth-api/base.env) | one Application, two Processes switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the writable paths that retired its hardening exception |
-| [`data/data.project.yml`](examples/data/data.project.yml) + [`env`](examples/data/env/postgres/base.env) | three Applications releasing independently in one project, third-party images, a `disk` dimension, TCP probes, and a surface eight Applications consume |
+| [`data/data.project.yml`](examples/data/data.project.yml) + [`env`](examples/data/env/postgres/base.env) | four Applications releasing independently in one project, a scheduled Process, third-party images, a `disk` dimension, TCP probes, and a surface eight Applications consume |
 
 The env-file-to-`secrets` cross-check runs over the three larger sets; the
 minimal one has no grant and no placeholder, which is the base case. `knowledge-api` has

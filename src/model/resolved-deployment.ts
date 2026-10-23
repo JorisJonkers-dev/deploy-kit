@@ -530,6 +530,10 @@ const resolvedProcess = stated(
     cutover: cutover.exactOptional(),
     // Present on a `lifecycle: application` Process; a job has no switchover.
     switchover: switchover.exactOptional(),
+    // Present on a `lifecycle: scheduled` Process alone: the cron it runs at,
+    // and how late a run may start before it is skipped.
+    schedule: text.exactOptional(),
+    startDeadline: duration.exactOptional(),
     deadline: duration,
     replicas: z.int().min(1),
     memory: text,

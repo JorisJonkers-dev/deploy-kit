@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **75** rows. The compiler's behaviours join it as they land.
+This ledger holds **76** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -98,3 +98,4 @@ This ledger holds **75** rows. The compiler's behaviours join it as they land.
 | REQ-073 | A Route that declares `rateLimit: {requests, per}` is limited to that many requests per client over `per` at the edge, with a burst of the whole allowance, through a `RateLimit` Middleware of its own in its Application's namespace; a client is the address Cloudflare forwards on a Tier that states `proxiedBy: cloudflare`, and the connection's address otherwise; a limit with no period, no requests or a period in milliseconds is refused | [test/adapters/spelling.test.ts](../test/adapters/spelling.test.ts) |
 | REQ-074 | Every container the worked examples render meets Pod Security's `restricted` profile, save the platform's VPN container, which is outside the posture and may add only `NET_ADMIN` and `NET_RAW` | [test/pod-security.test.ts](../test/pod-security.test.ts) |
 | REQ-075 | A Process that listens on a port below 1024 composes under the one hardening posture: its container listens on the port it declares, drops every capability and adds none, and its pod sets no sysctl, because a pod off the host network binds any port without one | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-078 | A Process with `lifecycle: scheduled` runs at its own authored `schedule` as a `CronJob` that never runs twice at once and skips a run that cannot start within 300 seconds of its slot, neither authored; its pod is the one any Process gets, with its identity, grants, edges, egress and placement, and a rotated value restarts nothing. A scheduled Process with no schedule is `E_SCHEDULE_MISSING`, a schedule on any other is `E_SCHEDULE_UNSCHEDULED`, a port, probes, replicas or a cutover of its own is `E_SCHEDULED_PROCESS_SERVES`, and a schedule that is not five cron fields is refused by the schema | [test/model/render.test.ts](../test/model/render.test.ts) |
