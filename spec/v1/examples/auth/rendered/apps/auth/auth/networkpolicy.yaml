@@ -130,7 +130,7 @@ spec:
               app.kubernetes.io/instance: traefik-public
       ports:
         - protocol: TCP
-          port: 8080
+          port: 80
     - from:
         - namespaceSelector:
             matchLabels:
@@ -140,7 +140,7 @@ spec:
               consumes.deploy-kit.jorisjonkers.dev/auth.http: "true"
       ports:
         - protocol: TCP
-          port: 8080
+          port: 80
   egress:
     - to:
         - namespaceSelector:

@@ -15,7 +15,7 @@ metadata:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: auth-migration-00ff9aae2bf2
+  name: auth-migration-bc851b4eb176
   namespace: auth-system
   labels:
     app.kubernetes.io/name: auth-migration
@@ -55,7 +55,7 @@ spec:
           image: ghcr.io/jorisjonkers-dev/auth/auth-migration@sha256:5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e
           args:
             - up
-            - 00ff9aae2bf2
+            - bc851b4eb176
           env:
             - name: DATABASE_HOST
               value: postgres.data-system.svc.cluster.local
@@ -92,7 +92,7 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: auth-migration-down-00ff9aae2bf2
+  name: auth-migration-down-bc851b4eb176
   namespace: auth-system
   labels:
     app.kubernetes.io/name: auth-migration

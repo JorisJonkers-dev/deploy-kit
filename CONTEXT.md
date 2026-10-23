@@ -278,6 +278,8 @@ forwarded port reaches the Process as a file
 once by the platform and authored by none of them. It has no exception surface:
 a Process states the paths it must write, and an image that cannot meet the
 class is refused ([0020](docs/adr/model/0020-hardening-is-one-platform-posture.md)).
+A port below 1024 is not an exception: off the host network it binds with no
+capability ([chapter 14](spec/v1/14-platform-intent.md#substrate-facts)).
 
 **Runtime Profile**: the profile selected by `runtime`, from which observability
 and runtime environment variables are derived: the Cluster Target, the

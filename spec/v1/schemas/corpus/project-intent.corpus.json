@@ -311,6 +311,31 @@
           "value": 20
         }
       ]
+    },
+    {
+      "name": "a Process that provides a port below 1024",
+      "verdict": "accept",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/0/processes/0/provides/http",
+          "value": 80
+        }
+      ]
+    },
+    {
+      "name": "a provided port written as a string",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/0/processes/0/provides/http",
+          "value": "80"
+        }
+      ]
     }
   ]
 }

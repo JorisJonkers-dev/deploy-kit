@@ -1873,3 +1873,56 @@ describe("each container's software version", () => {
     expect(result.ok).toBe(true);
   });
 });
+
+// REQ-075 (docs/requirements.md) and deploy-kit#383: a pod off the host
+// network binds any port without a capability, so a Process that listens
+// below 1024 composes under the one posture, adding nothing to it.
+describe("a Process that listens below 1024", () => {
+  type Container = {
+    name: string;
+    ports: { containerPort: number }[];
+    securityContext: { capabilities: Record<string, unknown> };
+  };
+  type Pod = {
+    securityContext: Record<string, unknown>;
+    containers: Container[];
+  };
+
+  const lowPort = {
+    "minimal/notes.project.yml": (document: string) =>
+      document
+        .replace(/http: 8080 #.*\n/, "http: 80\n")
+        .replaceAll("port: 8080 }", "port: 80 }"),
+  };
+  const pod = (): Pod => {
+    const body = asTree(artifact(render(lowPort), "notes"))[
+      "apps/notes/notes/workload.yaml"
+    ] as string;
+    const deployment = parseAllDocuments(body)
+      .map(
+        (document) =>
+          document.toJSON() as {
+            kind: string;
+            spec: { template: { spec: Pod } };
+          },
+      )
+      .find(({ kind }) => kind === "Deployment");
+    return (deployment as { spec: { template: { spec: Pod } } }).spec.template
+      .spec;
+  };
+
+  it("composes, its container listening on the port it declares", () => {
+    const [container] = pod().containers;
+    expect(container?.ports).toStrictEqual([
+      { name: "http", containerPort: 80 },
+    ]);
+  });
+
+  it("drops every capability and adds none, and sets no sysctl", () => {
+    const { securityContext, containers } = pod();
+    expect(containers[0]?.securityContext.capabilities).toStrictEqual({
+      drop: ["ALL"],
+    });
+    expect(securityContext).not.toHaveProperty("sysctls");
+  });
+});
