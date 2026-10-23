@@ -1,0 +1,76 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongo-data-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: mongo-backup
+    app.kubernetes.io/instance: mongo-backup
+    app.kubernetes.io/part-of: platform-mongo
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  schedule: 45 2 * * *
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: mongo-backup
+            app.kubernetes.io/instance: mongo-backup
+            app.kubernetes.io/part-of: platform-mongo
+            app.kubernetes.io/managed-by: deploy-kit
+            app.kubernetes.io/component: none
+          annotations:
+            image.jorisjonkers.dev/backup: 1.0.0
+        spec:
+          serviceAccountName: mongo-backup
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: ghcr.io/jorisjonkers-dev/platform/mongo-backup@sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d
+              env:
+                - name: BACKUP_RETAIN
+                  value: "90"
+                - name: BACKUP_OFF_CLUSTER
+                  value: s3://backup-storage/jorisjonkers-dev
+                - name: BACKUP_HOST
+                  value: mongo.data-system.svc.cluster.local
+                - name: BACKUP_PORT
+                  value: "27017"
+              envFrom:
+                - secretRef:
+                    name: mongo-backup-platform-backup-off-cluster
+                - secretRef:
+                    name: mongo-backup-data-mongo-backup
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: mongo-data
+                readOnly: true
+            - name: backup
+              persistentVolumeClaim:
+                claimName: mongo-data-backup

@@ -73,6 +73,12 @@ images:
     uid: 65534
     gid: 65534
     version: "v3.2.1"
+  mongo-backup:
+    repository: ghcr.io/jorisjonkers-dev/platform/mongo-backup
+    digest: "sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d"
+    uid: 999
+    gid: 999
+    version: "1.0.0"
   rabbitmq-backup:
     repository: ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup
     digest: "sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2"
@@ -115,6 +121,12 @@ images:
     uid: 999
     gid: 999
     version: "4.0.7"
+  mongo:
+    repository: docker.io/library/mongo
+    digest: "sha256:5f7b9d1a3c5e7f9b1d3a5c7e9f1b3d5a7c9e1f3b5d7a9c1e3f5b7d9a1c3e5f7b"
+    uid: 999
+    gid: 999
+    version: "8.0.15"
   valkey:
     repository: docker.io/valkey/valkey
     digest: "sha256:6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c"

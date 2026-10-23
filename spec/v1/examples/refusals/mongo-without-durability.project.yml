@@ -1,0 +1,38 @@
+# REFUSED: E_ENGINE_WITHOUT_DURABILITY
+#
+# A `mongo` owns no databases, so its engine derives no catalog
+# (spec/v1/16-dependencies.md#the-database-catalog), and over a volume whose
+# durability derives no backup it derives nothing at all: the engine names a
+# method nothing asks for (spec/v1/10-project-intent.md#process).
+#
+# A `postgres` over the same volume is accepted, because its consumers' catalog
+# derives from it: engine-owns-databases.project.yml.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: mongo-without-durability
+    processes:
+      - name: mongo-without-durability-store
+        lifecycle: application
+        image: mongo
+        runtime: none
+        provides:
+          mongo: 27017
+        placement:
+          memory: 256Mi
+          cpu: 50m
+        probes:
+          readiness: { tcp: 27017 }
+          liveness: { tcp: 27017 }
+        startupBudget: 60s
+        cutover: interrupted
+        engine: mongo
+        volumes:
+          - claim: mongo-without-durability-data
+            mountAt: /data/db
+            size: 1Gi
+            durability: reconstructible

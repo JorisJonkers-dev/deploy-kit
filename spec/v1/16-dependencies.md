@@ -215,6 +215,17 @@ derived for the Application that moves the schema, and only for it
 owner role is `<project>-owner`, and its data role `<project>-data`. No author
 writes any of the three.
 
+**`postgres` is the one engine that owns databases.** A `mongo` does not: its
+one consumer today, Overleaf, creates the collections it needs in the database
+its connection string names, and no second consumer shares the instance, so a
+catalog would derive nothing anyone reads. An edge into a `mongo` derives the
+network policy every edge derives, and no database, role or credential;
+`credentials` on such an edge is refused, as on an edge to any provider that
+owns no database (`E_CREDENTIALS_WITHOUT_DATABASE`). It gains a catalog, and a `catalog` method
+in its Platform entry, the day a consumer needs a database of its own. A
+`catalog` the Platform document names for an engine that owns no databases is
+never applied.
+
 The catalog is **data, not a procedure**. It renders as a `ConfigMap` and the
 platform's engine catalog supplies the image and command that applies it, the
 same split [0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md) makes
