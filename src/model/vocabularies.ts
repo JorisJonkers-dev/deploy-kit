@@ -35,6 +35,7 @@ export const TRANSIT_OPERATIONS = [
   "encrypt",
   "decrypt",
   "rotate",
+  "read",
 ] as const;
 /** What a Process that holds Kubernetes API access may ask of a resource. */
 export const API_VERBS = [

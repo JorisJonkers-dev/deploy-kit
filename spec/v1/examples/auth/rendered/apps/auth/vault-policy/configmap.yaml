@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vault-policy-78f234d9d429
+  name: vault-policy-e56b08fd2da1
   namespace: auth-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -14,7 +14,7 @@ metadata:
 immutable: true
 data:
   auth-system-auth-api.policy.json: |
-    {"path":{"database/creds/auth-data":{"capabilities":["read"]},"secret/data/auth-api":{"capabilities":["read"]},"secret/data/platform/postgres/auth":{"capabilities":["read"]},"secret/metadata/auth-api":{"capabilities":["read"]},"secret/metadata/platform/postgres/auth":{"capabilities":["read"]},"transit/keys/auth-api-jwt/rotate":{"capabilities":["update"]},"transit/sign/auth-api-jwt":{"capabilities":["update"]}}}
+    {"path":{"database/creds/auth-data":{"capabilities":["read"]},"secret/data/auth-api":{"capabilities":["read"]},"secret/data/platform/postgres/auth":{"capabilities":["read"]},"secret/metadata/auth-api":{"capabilities":["read"]},"secret/metadata/platform/postgres/auth":{"capabilities":["read"]},"transit/keys/auth-api-jwt":{"capabilities":["read"]},"transit/keys/auth-api-jwt/rotate":{"capabilities":["update"]},"transit/sign/auth-api-jwt":{"capabilities":["update"]}}}
   auth-system-auth-api.role.json: |
     {"bound_service_account_names":["auth-api"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-api"]}
   auth-system-auth-migration.policy.json: |
