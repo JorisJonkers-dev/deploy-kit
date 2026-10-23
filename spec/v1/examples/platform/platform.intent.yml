@@ -98,12 +98,15 @@ durability:
 # the images lock. Nothing executable is authored.
 engines:
   # `surface` is the surface of the Process the method connects to: postgres
-  # is dumped over its own protocol, rabbitmq through its management API. A
-  # method that reads the volume alone names none.
+  # is dumped over its own protocol, rabbitmq through its management API, mongo
+  # over its wire protocol. A method that reads the volume alone names none.
   # `catalog` applies the database catalog its consumers' edges derive
   # (spec/v1/14-platform-intent.md#catalog-methods).
   postgres: { backup: postgres-backup, surface: postgres, catalog: postgres-catalog }
   rabbitmq: { backup: rabbitmq-backup, surface: management }
+  # No `catalog`: no mongo consumer needs a database of its own yet
+  # (spec/v1/16-dependencies.md#the-database-catalog).
+  mongo: { backup: mongo-backup, surface: mongo }
   files: { backup: file-backup }
 
 # One cadence for every rendered monitor, for the same reason the probe cadence

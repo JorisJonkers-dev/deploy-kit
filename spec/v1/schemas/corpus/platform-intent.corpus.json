@@ -205,6 +205,31 @@
           "value": "fastly"
         }
       ]
+    },
+    {
+      "name": "a mongo engine with no backup method",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/engines/mongo/backup"
+        }
+      ]
+    },
+    {
+      "name": "a mongo engine naming a field an engine entry does not have",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/engines/mongo/replicaSet",
+          "value": "overleaf"
+        }
+      ]
     }
   ]
 }
