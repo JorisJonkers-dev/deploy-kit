@@ -29,11 +29,22 @@ const CONTENT_DIGITS = 10;
 export const destinationOf = (process: string, path: string): string =>
   `${process}-${path.replace(KV_MOUNT, "").replaceAll("/", "-")}`;
 
-/** What a transit operation may do, on the one path it maps to. */
-const transitPath = (key: string, operation: string): string =>
-  operation === "rotate"
-    ? `transit/keys/${key}/rotate`
-    : `transit/${operation}/${key}`;
+/** The one path a transit operation maps to, and what it may do there. */
+function transitPath(
+  key: string,
+  operation: string,
+): ResolvedEngine["paths"][number] {
+  // `read` is the key's public part and versions, which the key itself serves.
+  if (operation === "read")
+    return { path: `transit/keys/${key}`, allows: ["read"] };
+  return {
+    path:
+      operation === "rotate"
+        ? `transit/keys/${key}/rotate`
+        : `transit/${operation}/${key}`,
+    allows: ["update"],
+  };
+}
 
 type Grant = NonNullable<EffectiveProcess["secrets"]>[number];
 type EngineGrant = Exclude<Grant, { readonly path: string }>;
@@ -41,10 +52,9 @@ type EngineGrant = Exclude<Grant, { readonly path: string }>;
 /** The paths a non-kv grant's policy covers: one per transit operation, or the role's credential. */
 function enginePaths(grant: EngineGrant): ResolvedEngine["paths"] {
   if ("key" in grant)
-    return grant.operations.map((operation) => ({
-      path: transitPath(grant.key, operation),
-      allows: ["update"],
-    }));
+    return grant.operations.map((operation) =>
+      transitPath(grant.key, operation),
+    );
   return [{ path: `database/creds/${grant.role}`, allows: ["read"] }];
 }
 

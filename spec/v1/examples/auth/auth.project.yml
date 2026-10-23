@@ -348,7 +348,7 @@ applications:
           # names the mount object.
           - engine: transit
             key: auth-api-jwt
-            operations: [sign, rotate]
+            operations: [sign, rotate, read]
             delivery: self
             rotation: {tolerates: reload}
 
