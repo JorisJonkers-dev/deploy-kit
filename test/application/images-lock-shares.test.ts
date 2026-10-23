@@ -173,6 +173,86 @@ describe("a project's share of the images lock", () => {
     });
   });
 
+  // deploy-kit#586: the publish step that writes the lock refuses a root
+  // image, so the image's own repository sees it before any composition.
+  it("refuses every Process and migration image locked as root, at its alias, naming the image", () => {
+    const root = {
+      name: "ci/images.lock.yml",
+      text: ESTATE.text.replace(
+        /( {2}(auth-ui|auth-migration):\n(?: {4}.*\n)*? {4})uid: \d+/g,
+        (_, head: string) => `${head}uid: 0`,
+      ),
+    };
+    const result = shareOf(root, AUTH);
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, document, path, hint }) => ({
+            code,
+            document,
+            path,
+            hint,
+          })),
+    ).toEqual(
+      ["auth-migration", "auth-ui"].map((alias) => ({
+        code: "E_IMAGE_RUNS_AS_ROOT",
+        document: "ci/images.lock.yml",
+        path: `/images/${alias}`,
+        hint: "Build the image with a numeric non-root USER (USER 1000:1000, say) and lock the release that builds it.",
+      })),
+    );
+    expect(!result.ok && result.diagnostics[1]?.message).toBe(
+      "auth-ui is locked to ghcr.io/jorisjonkers-dev/auth/auth-ui@sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d, which runs as uid 0, and the posture runs it with runAsNonRoot, so the kubelet refuses the pod",
+    );
+  });
+
+  it("refuses a root image once, however many Processes run it", () => {
+    const twice: EffectiveProject = {
+      ...NOTES,
+      applications: NOTES.applications.map((application) => ({
+        ...application,
+        processes: application.processes.flatMap((process) => [
+          process,
+          { ...process, name: `${process.name}-again` },
+        ]),
+      })),
+    };
+    const result = shareOf(
+      {
+        ...ESTATE,
+        text: ESTATE.text.replace(
+          /( {2}notes-api:\n(?: {4}.*\n)*? {4})uid: 1000/,
+          (_, head: string) => `${head}uid: 0`,
+        ),
+      },
+      twice,
+    );
+
+    expect(result.ok ? [] : result.diagnostics.map(({ path }) => path)).toEqual(
+      ["/images/notes-api"],
+    );
+  });
+
+  it("packs a sidecar image locked as root: a sidecar runs as its Process", () => {
+    const sidecar = {
+      ...NOTES,
+      applications: NOTES.applications.map((application) => ({
+        ...application,
+        processes: application.processes.map((process) => ({
+          ...process,
+          sidecars: [{ ...process, image: "gluetun" }],
+        })),
+      })),
+    } as unknown as EffectiveProject;
+    const packed = shareOf(ESTATE, sidecar);
+
+    expect(packed.ok && Object.keys(packed.value.images)).toEqual([
+      "gluetun",
+      "notes-api",
+    ]);
+  });
+
   it("refuses a lock that is not one, at the file it was read from", () => {
     const notYaml = readLock("images: [", "notes/images.lock.yml");
     const notALock = shareOf(

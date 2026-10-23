@@ -1,7 +1,8 @@
 // The rules the pinned inputs answer before resolution reads them
 // (spec/v1/20-resolved-deployment.md#pinned-inputs): the node contract read is
-// the one the Platform document pins, every image alias is locked, and every
-// Process has somewhere to land. After these, resolution is total.
+// the one the Platform document pins, every image alias is locked, no image a
+// pod runs as its own user runs as root, and every Process has somewhere to
+// land. After these, resolution is total.
 import type { Diagnostic } from "../model/diagnostic.ts";
 import {
   eligibleNodes,
@@ -12,6 +13,11 @@ import type {
   EffectiveProcess,
   EffectiveProject,
 } from "../model/effective-intent.ts";
+import {
+  ROOT_IMAGE_HINT,
+  rootImageMessage,
+  runsAsRoot,
+} from "../model/images-lock.ts";
 import { migrationImage } from "../model/migration-proof.ts";
 import type { PinnedSet } from "../model/resolution.ts";
 
@@ -75,6 +81,31 @@ function gpuRefusals(
       ];
 }
 
+/**
+ * The image at `path` runs as root where the lock holds it with uid 0: the
+ * posture renders that uid beside `runAsNonRoot`, and the kubelet refuses the
+ * pod (spec/v1/10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group).
+ */
+function rootRefusals(
+  set: PinnedSet,
+  image: string,
+  path: string,
+  document: string,
+): Diagnostic[] {
+  const locked = set.imagesLock.images[image];
+  return locked === undefined || !runsAsRoot(locked)
+    ? []
+    : [
+        {
+          code: "E_IMAGE_RUNS_AS_ROOT",
+          document,
+          path,
+          message: rootImageMessage(image, locked),
+          hint: ROOT_IMAGE_HINT,
+        },
+      ];
+}
+
 function processRefusals(
   set: PinnedSet,
   { document, effective }: Located,
@@ -99,6 +130,7 @@ function processRefusals(
             message: `the images lock holds no entry for ${image}`,
             hint: "Lock the alias, or name one the images lock holds.",
           })),
+        ...rootRefusals(set, process.image, `${at}/image`, document),
         ...(eligibleNodes(process, set.nodeContract, set.platform).length === 0
           ? [
               {
@@ -188,18 +220,19 @@ const policyJobRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
 const migrationRefusals = (set: PinnedSet, { document, effective }: Located) =>
   effective.applications.flatMap((application, a): Diagnostic[] => {
     const image = migrationImage(application.id);
-    return typeof application.migration === "object" &&
-      !Object.hasOwn(set.imagesLock.images, image)
+    if (typeof application.migration !== "object") return [];
+    const path = `/applications/${String(a)}/migration`;
+    return !Object.hasOwn(set.imagesLock.images, image)
       ? [
           {
             code: "E_UNLOCKED_IMAGE",
             document,
-            path: `/applications/${String(a)}/migration`,
+            path,
             message: `the images lock holds no entry for ${image}`,
             hint: "Lock the migration image the Application's CI builds from the platform's runner.",
           },
         ]
-      : [];
+      : rootRefusals(set, image, path, document);
   });
 
 /** Every rule the pinned inputs break, before resolution reads them. */

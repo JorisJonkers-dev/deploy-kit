@@ -1,0 +1,15 @@
+# The images lock the publish step wrote for the release: the image's
+# config names no USER, so it runs as root.
+
+apiVersion: lock.jorisjonkers.dev/v1
+kind: ImagesLock
+schemaVersion: 1.0.0
+name: refusals
+
+images:
+  api:
+    repository: ghcr.io/jorisjonkers-dev/refusals/api
+    digest: "sha256:0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9"
+    uid: 0
+    gid: 0
+    version: "1.0.0"

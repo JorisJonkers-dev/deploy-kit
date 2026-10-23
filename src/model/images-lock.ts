@@ -50,6 +50,42 @@ export const aliasesOf = (project: EffectiveProject): string[] =>
   ].sort();
 
 /**
+ * Every alias a project file names whose image a pod runs as the user the lock
+ * records, once each, sorted: each Process's image and the migration image of
+ * an Application that moves its schema with a changelog. A sidecar runs as its
+ * Process, so its own user is never read.
+ */
+export const ownUserAliasesOf = (project: EffectiveProject): string[] =>
+  [
+    ...new Set(
+      project.applications.flatMap((application) => [
+        ...application.processes.map(({ image }) => image),
+        ...(typeof application.migration === "object"
+          ? [migrationImage(application.id)]
+          : []),
+      ]),
+    ),
+  ].sort();
+
+/**
+ * Whether the image runs as root. The posture runs every pod as non-root, and
+ * the kubelet refuses a pod whose user is 0 under `runAsNonRoot`
+ * (spec/v1/10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group).
+ */
+export const runsAsRoot = ({ uid }: LockedImage): boolean => uid === 0;
+
+/** An image as the lock records it, by the digest a pod pulls. */
+export const pulledAs = ({ repository, digest }: LockedImage): string =>
+  `${repository}@${digest}`;
+
+/** What `E_IMAGE_RUNS_AS_ROOT` says of an alias locked to a root image. */
+export const rootImageMessage = (alias: string, image: LockedImage): string =>
+  `${alias} is locked to ${pulledAs(image)}, which runs as uid 0, and the posture runs it with runAsNonRoot, so the kubelet refuses the pod`;
+
+export const ROOT_IMAGE_HINT =
+  "Build the image with a numeric non-root USER (USER 1000:1000, say) and lock the release that builds it.";
+
+/**
  * Whether two locks of one alias resolve it to the same image of the same
  * version, run as the same user.
  */

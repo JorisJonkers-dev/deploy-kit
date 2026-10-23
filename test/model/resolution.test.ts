@@ -587,6 +587,56 @@ describe("the pinned inputs a render cannot trust", () => {
     ]);
   });
 
+  // deploy-kit#586: auth-api and auth-ui locked uid 0 and rendered it beside
+  // runAsNonRoot, and the kubelet refused both pods at start.
+  it("refuses a Process whose image the lock records as root, naming the image, and says how to fix it", () => {
+    const result = resolveIntentSet(
+      files({
+        "platform/images.lock.yml": (lock) =>
+          lock.replace(
+            /( {2}notes-api:\n(?: {4}.*\n)*? {4})uid: 1000\n {4}gid: 1000/,
+            (_, head: string) => `${head}uid: 0\n    gid: 0`,
+          ),
+      }),
+      options,
+    );
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      {
+        code: "E_IMAGE_RUNS_AS_ROOT",
+        document: "minimal/notes.project.yml",
+        path: "/applications/0/processes/0/image",
+        message:
+          "notes-api is locked to ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a, which runs as uid 0, and the posture runs it with runAsNonRoot, so the kubelet refuses the pod",
+        hint: "Build the image with a numeric non-root USER (USER 1000:1000, say) and lock the release that builds it.",
+      },
+    ]);
+  });
+
+  it("refuses no sidecar for the user its image records: a sidecar runs as its Process", () => {
+    expect(
+      refusals({
+        "minimal/notes.project.yml": (document) =>
+          document.replace(
+            "    placement:",
+            "    sidecars:\n          - {name: shipper, image: gluetun, memory: 16Mi, cpu: 5m}\n        placement:",
+          ),
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("accepts a Process whose image runs as any user but root", () => {
+    expect(
+      refusals({
+        "platform/images.lock.yml": (lock) =>
+          lock.replace(
+            /( {2}notes-api:\n(?: {4}.*\n)*? {4})uid: 1000/,
+            (_, head: string) => `${head}uid: 1`,
+          ),
+      }),
+    ).toStrictEqual([]);
+  });
+
   it("refuses a Process no node can hold", () => {
     expect(
       refusals({

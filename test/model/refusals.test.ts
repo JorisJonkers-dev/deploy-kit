@@ -10,6 +10,10 @@ import {
   parseProjectIntent,
   type AuthoredFile,
 } from "../../src/index.ts";
+import {
+  IMAGES_LOCK,
+  shareOf,
+} from "../../src/application/images-lock-shares.ts";
 
 const REFUSALS = join(
   import.meta.dirname,
@@ -59,6 +63,23 @@ const oracle = (stem: string): string | undefined => {
 };
 
 const refused = fixtures.filter((stem) => oracle(stem) !== undefined);
+
+/**
+ * A fixture's set read together and, where it holds an images lock, each
+ * project file's share then packed from that lock, as the publish step packs
+ * it (spec/v1/40-composition.md#fragments).
+ */
+function outcome(stem: string): ReturnType<typeof checkIntentSet> {
+  const files = filesOf(stem);
+  const checked = checkIntentSet(files);
+  const lock = files.find(({ name }) => name === IMAGES_LOCK);
+  if (!checked.ok || lock === undefined) return checked;
+  const diagnostics = checked.value.projects.flatMap((project) => {
+    const share = shareOf(lock, project);
+    return share.ok ? [] : share.diagnostics;
+  });
+  return diagnostics.length > 0 ? { ok: false, diagnostics } : checked;
+}
 
 const DOCUMENT = `apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -549,6 +570,7 @@ describe("the refusal fixtures", () => {
       "handover-serving",
       "handover-unlisted",
       "illegal-delivery-for-access",
+      "image-runs-as-root",
       "library-not-granted",
       "migration-owner-duplicated",
       "migration-undeclared",
@@ -587,7 +609,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(57);
+    expect(refused).toHaveLength(58);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",
@@ -633,7 +655,7 @@ describe("the refusal fixtures", () => {
   it.each(refused)(
     "%s is refused with the codes, documents and paths its oracle names",
     (stem) => {
-      const result = checkIntentSet(filesOf(stem));
+      const result = outcome(stem);
       const entries = result.ok
         ? []
         : result.diagnostics
@@ -676,7 +698,7 @@ describe("the refusal fixtures", () => {
   });
 
   it.each(refused)("%s says what it refused and how to fix it", (stem) => {
-    const result = checkIntentSet(filesOf(stem));
+    const result = outcome(stem);
     const diagnostics = result.ok ? [] : result.diagnostics;
 
     expect(diagnostics).not.toHaveLength(0);

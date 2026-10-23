@@ -475,6 +475,7 @@ project ([chapter 40](40-composition.md#fragments)).
 | the node contract's digest is not the Platform document's `metadata.nodeContract` | `E_NODE_CONTRACT_MISMATCH` |
 | an images lock entry records no `version` | `E_IMAGE_VERSION_MISSING` |
 | a Process's or a sidecar's `image` names an alias the images lock does not hold | `E_UNLOCKED_IMAGE` |
+| a Process's `image`, or an Application's migration image, is locked with `uid` 0 ([chapter 10](10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group)) | `E_IMAGE_RUNS_AS_ROOT` |
 | no node in the node contract is eligible for a Process ([Layer 2 does not assign a node](#layer-2-does-not-assign-a-node)), or for the Vault policy job ([The Vault policy job](#the-vault-policy-job)) | `E_PLACEMENT_UNSATISFIABLE` |
 
 Two fields the previous generation carried are gone.

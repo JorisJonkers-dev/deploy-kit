@@ -1,0 +1,28 @@
+# REFUSED: E_IMAGE_RUNS_AS_ROOT
+#
+# The project file a release publishes, beside the images lock its publish
+# step wrote. The lock records the image's own user as 0, and the posture runs
+# every Process as that user with runAsNonRoot, so the kubelet would refuse the
+# pod at start. The publish step refuses it at the alias, in the image's own
+# repository, before any composition reads it
+# (spec/v1/10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: interrupted
