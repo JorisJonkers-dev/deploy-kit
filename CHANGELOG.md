@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.32.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.31.0...v0.32.0) (2026-10-24)
+
+
+### Features
+
+* **model:** a Process may listen below 1024, because the substrate binds any port without a capability ([#591](https://github.com/JorisJonkers-dev/deploy-kit/issues/591)) ([607836b](https://github.com/JorisJonkers-dev/deploy-kit/commit/607836ba5be458c6c9f6437ae5bbe1e21e0760e9)), closes [#383](https://github.com/JorisJonkers-dev/deploy-kit/issues/383)
+* **model:** an Application's client block, and what composition refuses in it ([#577](https://github.com/JorisJonkers-dev/deploy-kit/issues/577)) ([b825adf](https://github.com/JorisJonkers-dev/deploy-kit/commit/b825adfd064c09cb774a4c88811f296aa08506b6))
+* **model:** what a Client derives: the Client object, the Gate's route, the credential and its grants ([#597](https://github.com/JorisJonkers-dev/deploy-kit/issues/597)) ([c286544](https://github.com/JorisJonkers-dev/deploy-kit/commit/c286544086d8b1fb4e2394634cd2a184ca92e72c))
+
+
+### Bug Fixes
+
+* **model:** refuse an image whose locked uid is 0 ([#596](https://github.com/JorisJonkers-dev/deploy-kit/issues/596)) ([c109d51](https://github.com/JorisJonkers-dev/deploy-kit/commit/c109d51b0333d6d881682d05c6f2eaafb2ca426c)), closes [#586](https://github.com/JorisJonkers-dev/deploy-kit/issues/586)
+
 ## [0.31.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.30.0...v0.31.0) (2026-10-22)
 
 
