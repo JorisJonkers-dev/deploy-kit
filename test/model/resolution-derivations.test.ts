@@ -1333,6 +1333,12 @@ roles: [writer, admin]`;
   };
 
   describe("at the edge", () => {
+    /** The address the Gate's own route on an exposure is served by. */
+    const gateOf = (exposure: { routes: readonly object[] } | undefined) =>
+      exposure?.routes.flatMap((route) =>
+        "gate" in route ? [route.gate] : [],
+      )[0];
+
     it("asks the tier's forward-auth on every route of a gated Client, and derives the Gate's own route to its address", () => {
       const [exposure] =
         application(
@@ -1388,6 +1394,97 @@ roles: [writer, admin]`;
         ).toStrictEqual([["/", [BASELINE]]]);
       },
     );
+
+    it("serves the Gate's own route on the scheme's port where the forward-auth endpoint names none", () => {
+      const [exposure] =
+        application(signingIn(GATED), {
+          signIn: true,
+          platform: (platform) =>
+            platform.replace(
+              "identity.identity-system.svc.cluster.local:8080/gate/forward",
+              "identity.identity-system.svc.cluster.local/gate/forward",
+            ),
+        }).exposure ?? [];
+
+      expect(gateOf(exposure)).toStrictEqual({
+        name: "identity",
+        namespace: "identity-system",
+        port: 80,
+      });
+    });
+
+    it("reads the Gate's address off an endpoint that names no path", () => {
+      const [exposure] =
+        application(signingIn(GATED), {
+          signIn: true,
+          platform: (platform) =>
+            platform.replace(
+              "identity.identity-system.svc.cluster.local:8080/gate/forward",
+              "identity.identity-system.svc.cluster.local:8080",
+            ),
+        }).exposure ?? [];
+
+      expect(gateOf(exposure)).toStrictEqual({
+        name: "identity",
+        namespace: "identity-system",
+        port: 8080,
+      });
+    });
+
+    it("stops at an endpoint outside the cluster that only carries an in-cluster address further on", () => {
+      expect(() =>
+        application(signingIn(GATED), {
+          signIn: true,
+          platform: (platform) =>
+            platform.replace(
+              "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+              "https://gate.jorisjonkers.dev/to/http://identity.identity-system.svc.cluster.local:8080/gate",
+            ),
+        }),
+      ).toThrow("a forward-auth endpoint outside the cluster");
+    });
+
+    it("stops at a gated Client beside a forward-auth endpoint outside the cluster, which names no Service", () => {
+      expect(() =>
+        application(signingIn(GATED), {
+          signIn: true,
+          platform: (platform) =>
+            platform.replace(
+              "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+              "https://gate.jorisjonkers.dev/forward",
+            ),
+        }),
+      ).toThrow(
+        "https://gate.jorisjonkers.dev/forward: a forward-auth endpoint outside the cluster has no route to serve the Gate's own",
+      );
+    });
+
+    it("derives the Gate's own route only on the exposure a gated Client names", () => {
+      const exposures =
+        application(
+          signingIn(`${GATED}\nexposure: app`).replace(
+            "    client:\n",
+            `      - name: admin
+        host: admin.notes.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: notes-api, surface: http }
+    client:
+`,
+          ),
+          SIGNED_IN,
+        ).exposure ?? [];
+
+      expect(
+        exposures.map(({ name, routes }) => [
+          name,
+          routes.map(({ path }) => path),
+        ]),
+      ).toStrictEqual([
+        ["app", ["/", "/.auth/"]],
+        ["admin", ["/"]],
+      ]);
+    });
 
     it("keeps forward-auth from the audience alone on an authenticated exposure no Client names", () => {
       const exposures =
@@ -1502,6 +1599,20 @@ roles: [writer, admin]`;
       expect(resolved.secretStore).toBeUndefined();
     });
 
+    it("grants no read to a Process that references only the Client's id", () => {
+      expect(
+        processOf(signingIn(NATIVE), {
+          signIn: true,
+          env: [
+            {
+              name: "minimal/env/notes-api/base.env",
+              text: "OIDC_CLIENT_ID=${client:id}\n",
+            },
+          ],
+        }).secrets,
+      ).toBeUndefined();
+    });
+
     it("orders a reader after the Secret Store's Project, and syncs its grant through the store", () => {
       const resolved = application(signingIn(NATIVE), CLIENT_SECRET);
 
@@ -1544,6 +1655,34 @@ roles: [writer, admin]`;
       );
       expect(identity?.reconcileAfter).toContain("apps-secrets");
     });
+  });
+
+  it("grants the provider the client secrets in path order, whatever order the Applications are declared in", () => {
+    const alpha = `  - id: alpha
+    exposure:
+      - name: app
+        host: alpha.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: alpha-api, surface: http }
+    client:
+      signIn: native
+      label: Alpha
+      redirectPaths: [/callback]
+      protectedPath: /api/me
+      credential: secret
+    processes:
+${serving("alpha-api")}`;
+    const identity = projectNamed(
+      projects(signingIn(NATIVE) + alpha, CLIENT_SECRET),
+      "identity",
+    ).applications.find(({ id }) => id === "identity");
+
+    expect(
+      identity?.processes[0]?.secrets?.map((grant) =>
+        "client" in grant ? grant.client : undefined,
+      ),
+    ).toStrictEqual(["grafana", "alpha", "notes"]);
   });
 
   describe("the Release Gate's anonymous check", () => {

@@ -196,7 +196,7 @@ export function storeOf(
 export const egressOf = (
   process: EffectiveProcess,
   context: PolicyContext,
-  derived = false,
+  derived: boolean,
 ): Egress[] => [
   {
     rule: "cluster-dns",

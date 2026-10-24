@@ -34,10 +34,11 @@ type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
  * (spec/v1/17-sign-in.md#the-client-block): authored or lowered alike.
  */
 export function clientExposure(
-  application: Pick<ApplicationDocument, "exposure" | "client">,
+  application: Pick<ApplicationDocument, "exposure">,
+  client: Pick<NonNullable<ApplicationDocument["client"]>, "exposure">,
 ): Exposure | undefined {
   const exposures = application.exposure ?? [];
-  const named = application.client?.exposure;
+  const named = client.exposure;
   if (named !== undefined) return exposures.find(({ name }) => name === named);
   return exposures.length === 1 ? exposures[0] : undefined;
 }

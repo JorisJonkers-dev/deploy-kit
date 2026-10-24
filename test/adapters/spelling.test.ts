@@ -804,6 +804,27 @@ describe("the kubernetes adapter", () => {
     );
   });
 
+  it("writes only the fields a Client holds, so a token Client carries no tile", () => {
+    const [client] = objectsAt(
+      renderKubernetes(
+        edited(() => ({
+          client: {
+            signIn: "token" as const,
+            host: "notes.jorisjonkers.dev",
+            roles: ["user"],
+          },
+        })),
+      ),
+      "/notes/client.yaml",
+    ) as { spec: Record<string, unknown> }[];
+
+    expect(Object.keys(client?.spec ?? {})).toStrictEqual([
+      "signIn",
+      "host",
+      "roles",
+    ]);
+  });
+
   it("writes no Client for an Application that declares none", () => {
     expect(
       renderKubernetes(edited()).map(({ path }) => path.split("/").at(-1)),

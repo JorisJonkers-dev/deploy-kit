@@ -358,7 +358,7 @@ function clientRefusals(application: Application, at: string): Refusal[] {
       message: `a ${client.signIn} Client requires ${missing.join(", ")}`,
       hint: "Declare every field the Sign-in Mode requires.",
     });
-  const exposure = clientExposure(application);
+  const exposure = clientExposure(application, client);
   if (exposure === undefined)
     refusals.push({
       code: "E_CLIENT_EXPOSURE_UNRESOLVED",

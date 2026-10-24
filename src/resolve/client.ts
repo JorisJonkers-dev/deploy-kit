@@ -51,7 +51,7 @@ export function resolveClient(
   if (client === undefined) return undefined;
   // The Client names an exposure its Application declares, or
   // E_CLIENT_EXPOSURE_UNRESOLVED refused it.
-  const { host } = clientExposure(application) as Exposure;
+  const { host } = clientExposure(application, client) as Exposure;
   const url = (path: string): string => `https://${host}${path}`;
   return {
     signIn: client.signIn,
@@ -90,7 +90,10 @@ export function asksTheGate(
 ): boolean {
   const { client } = application;
   if (client === undefined) return true;
-  if (clientExposure(application)?.name !== exposure.name) return true;
+  // A Client names an exposure its Application declares, or
+  // E_CLIENT_EXPOSURE_UNRESOLVED refused it.
+  if ((clientExposure(application, client) as Exposure).name !== exposure.name)
+    return true;
   return client.signIn === "gated";
 }
 
@@ -98,9 +101,13 @@ export function asksTheGate(
 export const gatedBy = (
   application: Pick<EffectiveApplication, "exposure" | "client">,
   exposure: Exposure,
-): boolean =>
-  application.client?.signIn === "gated" &&
-  clientExposure(application)?.name === exposure.name;
+): boolean => {
+  const { client } = application;
+  return (
+    client?.signIn === "gated" &&
+    (clientExposure(application, client) as Exposure).name === exposure.name
+  );
+};
 
 /** An in-cluster address: a Service, its namespace, and the port it may name. */
 const CLUSTER_ADDRESS =
