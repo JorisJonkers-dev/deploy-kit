@@ -375,6 +375,19 @@ describe("a client placeholder", () => {
     ]);
   });
 
+  it("refuses ${client:secret} where the Client holds none, with no Platform document read", () => {
+    const result = checkIntentSet([
+      {
+        name: "signin.project.yml",
+        text: project(grafana(NATIVE.replace("secret", "pkce"))),
+      },
+      { name: "env/grafana/base.env", text: "X=${client:secret}\n" },
+    ]);
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ code }) => code),
+    ).toStrictEqual(["E_CLIENT_PLACEHOLDER_WITHOUT_SECRET"]);
+  });
+
   it("refuses a field a Client hands out none of", () => {
     expect(
       explained(grafana(NATIVE), { env: "X=${client:label}\n" }),
