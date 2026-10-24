@@ -1257,6 +1257,43 @@ ${serving("notes-api")}`,
       },
     ]);
   });
+
+  it("does not render the Client's secret before its credential path is derived", () => {
+    expect(() =>
+      application(
+        `  - id: notes
+    exposure:
+      - name: app
+        host: notes.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: notes-api, surface: http }
+    client:
+      signIn: native
+      label: Notes
+      redirectPaths: [/callback]
+      protectedPath: /api/me
+      credential: secret
+    processes:
+${serving("notes-api")}`,
+        {
+          platform: (platform) =>
+            platform.replace(
+              "hardening:",
+              "signIn:\n  issuer: https://auth.jorisjonkers.dev\n  provider: edge/traefik-public\nhardening:",
+            ),
+          env: [
+            {
+              name: "minimal/env/notes-api/base.env",
+              text: "CLIENT_SECRET=${client:secret}\n",
+            },
+          ],
+        },
+      ),
+    ).toThrow(
+      "CLIENT_SECRET: ${client:secret} renders once the Client's credential path is derived (#449)",
+    );
+  });
 });
 
 describe("what a grant derives", () => {

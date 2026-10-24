@@ -333,9 +333,10 @@ const GATE_PATH = "/.auth";
 /** The exposure a Client names, or the only one its Application declares. */
 export function clientExposure(
   application: Application,
+  client: Client,
 ): NonNullable<Application["exposure"]>[number] | undefined {
   const exposures = application.exposure ?? [];
-  const named = application.client?.exposure;
+  const named = client.exposure;
   if (named !== undefined) return exposures.find(({ name }) => name === named);
   return exposures.length === 1 ? exposures[0] : undefined;
 }
@@ -367,7 +368,7 @@ function clientRefusals(application: Application, at: string): Refusal[] {
       message: `a ${client.signIn} Client requires ${missing.join(", ")}`,
       hint: "Declare every field the Sign-in Mode requires.",
     });
-  const exposure = clientExposure(application);
+  const exposure = clientExposure(application, client);
   if (exposure === undefined)
     refusals.push({
       code: "E_CLIENT_EXPOSURE_UNRESOLVED",
@@ -386,19 +387,20 @@ function clientRefusals(application: Application, at: string): Refusal[] {
       hint: "A native or gated Client's exposure is authenticated; a token Client's is authenticated or internal.",
     });
   const seen = new Set(["user"]);
-  for (const [index, role] of (client.roles ?? []).entries()) {
-    if (seen.has(role))
-      refusals.push({
-        code: "E_DUPLICATE_APP_ROLE",
-        path: `${where}/roles/${String(index)}`,
-        message:
-          role === "user"
-            ? "every Client has the user role already"
-            : `the role ${role} is listed twice`,
-        hint: "List each App Role once, and never `user`.",
-      });
-    seen.add(role);
-  }
+  if (client.roles !== undefined)
+    for (const [index, role] of client.roles.entries()) {
+      if (seen.has(role))
+        refusals.push({
+          code: "E_DUPLICATE_APP_ROLE",
+          path: `${where}/roles/${String(index)}`,
+          message:
+            role === "user"
+              ? "every Client has the user role already"
+              : `the role ${role} is listed twice`,
+          hint: "List each App Role once, and never `user`.",
+        });
+      seen.add(role);
+    }
   if (client.signIn === "gated")
     for (const [e, { routes }] of (application.exposure ?? []).entries())
       for (const [r, { path }] of routes.entries())

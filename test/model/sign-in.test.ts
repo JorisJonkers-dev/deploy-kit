@@ -100,11 +100,13 @@ protectedPath: /api/user
 credential: secret`;
 
 type Found = { code: string; path: string };
+type Explained = Found & { message: string; hint: string | undefined };
+type Inputs = { platform?: string; env?: string };
 
-function refusals(
+function explained(
   applications: string,
-  { platform = platformOf(), env }: { platform?: string; env?: string } = {},
-): Found[] {
+  { platform = platformOf(), env }: Inputs = {},
+): Explained[] {
   const result = checkIntentSet([
     { name: "platform.intent.yml", text: platform },
     { name: "signin.project.yml", text: project(applications) },
@@ -112,8 +114,22 @@ function refusals(
   ]);
   return result.ok
     ? []
-    : result.diagnostics.map(({ code, path }) => ({ code, path }));
+    : result.diagnostics.map(({ code, path, message, hint }) => ({
+        code,
+        path,
+        message,
+        hint,
+      }));
 }
+
+const refusals = (applications: string, inputs?: Inputs): Found[] =>
+  explained(applications, inputs).map(({ code, path }) => ({ code, path }));
+
+const EXPOSURE_HINT =
+  "Name one exposure of the Application in `exposure`, or declare the one exposure the Client signs people in on.";
+const FIELD_HINT =
+  "Remove the field, or choose the Sign-in Mode that takes it.";
+const ROLE_HINT = "List each App Role once, and never `user`.";
 
 const AT = "/applications/0/client";
 
@@ -129,20 +145,33 @@ describe("a client block", () => {
   });
 
   it("names an exposure its Application declares", () => {
-    expect(refusals(grafana(`${NATIVE}\nexposure: elsewhere`))).toStrictEqual([
-      { code: "E_CLIENT_EXPOSURE_UNRESOLVED", path: `${AT}/exposure` },
+    expect(explained(grafana(`${NATIVE}\nexposure: elsewhere`))).toStrictEqual([
+      {
+        code: "E_CLIENT_EXPOSURE_UNRESOLVED",
+        path: `${AT}/exposure`,
+        message: "grafana declares no exposure elsewhere",
+        hint: EXPOSURE_HINT,
+      },
     ]);
   });
 
   it("names its exposure when its Application declares more than one", () => {
     expect(
-      refusals(
+      explained(
         grafana(
           NATIVE,
           exposureOf("public", "authenticated") + exposureOf("api", "internal"),
         ),
       ),
-    ).toStrictEqual([{ code: "E_CLIENT_EXPOSURE_UNRESOLVED", path: AT }]);
+    ).toStrictEqual([
+      {
+        code: "E_CLIENT_EXPOSURE_UNRESOLVED",
+        path: AT,
+        message:
+          "grafana declares 2 exposures, and the Client names none of them",
+        hint: EXPOSURE_HINT,
+      },
+    ]);
   });
 
   it("resolves the exposure it names among several", () => {
@@ -158,54 +187,107 @@ describe("a client block", () => {
 
   it("is refused on an Application that declares no exposure", () => {
     expect(
-      refusals(`  - id: grafana
+      explained(`  - id: grafana
     client:
       signIn: token
+${PROCESSES("grafana")}`),
+    ).toStrictEqual([
+      {
+        code: "E_CLIENT_EXPOSURE_UNRESOLVED",
+        path: AT,
+        message:
+          "grafana declares 0 exposures, and the Client names none of them",
+        hint: EXPOSURE_HINT,
+      },
+    ]);
+  });
+
+  it("is refused once, on a gated Application that declares no exposure", () => {
+    expect(
+      refusals(`  - id: grafana
+    client:
+      signIn: gated
+      label: Sonarr
 ${PROCESSES("grafana")}`),
     ).toStrictEqual([{ code: "E_CLIENT_EXPOSURE_UNRESOLVED", path: AT }]);
   });
 
   it("refuses a field its mode does not take", () => {
     expect(
-      refusals(grafana("signIn: gated\nlabel: Sonarr\ncredential: pkce")),
+      explained(grafana("signIn: gated\nlabel: Sonarr\ncredential: pkce")),
     ).toStrictEqual([
-      { code: "E_CLIENT_FIELD_FOR_MODE", path: `${AT}/credential` },
+      {
+        code: "E_CLIENT_FIELD_FOR_MODE",
+        path: `${AT}/credential`,
+        message: "a gated Client takes no credential",
+        hint: FIELD_HINT,
+      },
     ]);
   });
 
   it("refuses a field its mode requires and it leaves out", () => {
     expect(
-      refusals(
-        grafana(
-          "signIn: native\nlabel: Grafana\nprotectedPath: /api/user\ncredential: pkce",
-        ),
-      ),
-    ).toStrictEqual([{ code: "E_CLIENT_FIELD_FOR_MODE", path: AT }]);
+      explained(grafana("signIn: native\nlabel: Grafana\ncredential: pkce")),
+    ).toStrictEqual([
+      {
+        code: "E_CLIENT_FIELD_FOR_MODE",
+        path: AT,
+        message: "a native Client requires redirectPaths, protectedPath",
+        hint: "Declare every field the Sign-in Mode requires.",
+      },
+    ]);
   });
 
   it("refuses a label on a token Client, which has no tile to show", () => {
     expect(
-      refusals(
+      explained(
         grafana("signIn: token\nlabel: API", exposureOf("api", "internal")),
       ),
-    ).toStrictEqual([{ code: "E_CLIENT_FIELD_FOR_MODE", path: `${AT}/label` }]);
+    ).toStrictEqual([
+      {
+        code: "E_CLIENT_FIELD_FOR_MODE",
+        path: `${AT}/label`,
+        message: "a token Client takes no label",
+        hint: FIELD_HINT,
+      },
+    ]);
   });
 
   it("refuses an audience its mode cannot serve", () => {
     expect(
-      refusals(grafana(NATIVE, exposureOf("public", "internal"))),
-    ).toStrictEqual([{ code: "E_CLIENT_AUDIENCE", path: AT }]);
+      explained(grafana(NATIVE, exposureOf("public", "internal"))),
+    ).toStrictEqual([
+      {
+        code: "E_CLIENT_AUDIENCE",
+        path: AT,
+        message:
+          "a native Client cannot sign people in on the internal exposure public",
+        hint: "A native or gated Client's exposure is authenticated; a token Client's is authenticated or internal.",
+      },
+    ]);
   });
 
   it("refuses a role listed twice", () => {
     expect(
-      refusals(grafana(`${NATIVE}\nroles: [viewer, admin, viewer]`)),
-    ).toStrictEqual([{ code: "E_DUPLICATE_APP_ROLE", path: `${AT}/roles/2` }]);
+      explained(grafana(`${NATIVE}\nroles: [viewer, admin, viewer]`)),
+    ).toStrictEqual([
+      {
+        code: "E_DUPLICATE_APP_ROLE",
+        path: `${AT}/roles/2`,
+        message: "the role viewer is listed twice",
+        hint: ROLE_HINT,
+      },
+    ]);
   });
 
   it("refuses the user role, which every Client already has", () => {
-    expect(refusals(grafana(`${NATIVE}\nroles: [user]`))).toStrictEqual([
-      { code: "E_DUPLICATE_APP_ROLE", path: `${AT}/roles/0` },
+    expect(explained(grafana(`${NATIVE}\nroles: [user]`))).toStrictEqual([
+      {
+        code: "E_DUPLICATE_APP_ROLE",
+        path: `${AT}/roles/0`,
+        message: "every Client has the user role already",
+        hint: ROLE_HINT,
+      },
     ]);
   });
 
@@ -213,7 +295,7 @@ ${PROCESSES("grafana")}`),
     "refuses a gated Application's own route at %s",
     (path) => {
       expect(
-        refusals(
+        explained(
           grafana(
             "signIn: gated\nlabel: Sonarr",
             exposureOf("public", "authenticated", path),
@@ -223,6 +305,8 @@ ${PROCESSES("grafana")}`),
         {
           code: "E_GATE_PATH_CLAIMED",
           path: "/applications/0/exposure/0/routes/0",
+          message: `${path} is the Gate's own on a gated host`,
+          hint: "Move the route out from under /.auth/: the Gate receives its sign-in there.",
         },
       ]);
     },
@@ -246,11 +330,26 @@ ${PROCESSES("grafana")}`),
 describe("the sign-in provider", () => {
   it("is an Application its Project declares", () => {
     expect(
-      refusals(grafana(NATIVE), {
+      explained(grafana(NATIVE), {
         platform: platformOf(SIGN_IN.replace("signin/identity", "signin/gone")),
       }),
-    ).toStrictEqual([{ code: "E_UNKNOWN_SIGN_IN_PROVIDER", path: "/signIn" }]);
+    ).toStrictEqual([
+      {
+        code: "E_UNKNOWN_SIGN_IN_PROVIDER",
+        path: "/signIn",
+        message: "no project file declares the sign-in provider signin/gone",
+        hint: "Name the Identity Provider as `<project>/<application>`, an Application its Project declares.",
+      },
+    ]);
   });
+});
+
+/** E_UNRESOLVED_PLACEHOLDER on grafana's Process, for the reason it gives. */
+const unresolvedBecause = (why: string) => ({
+  code: "E_UNRESOLVED_PLACEHOLDER",
+  path: "/applications/0/processes/0",
+  message: expect.stringContaining(why) as string,
+  hint: expect.any(String) as string,
 });
 
 describe("a client placeholder", () => {
@@ -278,29 +377,25 @@ describe("a client placeholder", () => {
 
   it("refuses a field a Client hands out none of", () => {
     expect(
-      refusals(grafana(NATIVE), { env: "X=${client:label}\n" }),
-    ).toStrictEqual([
-      { code: "E_UNRESOLVED_PLACEHOLDER", path: "/applications/0/processes/0" },
-    ]);
+      explained(grafana(NATIVE), { env: "X=${client:label}\n" }),
+    ).toStrictEqual([unresolvedBecause("a Client hands out no label")]);
   });
 
   it("refuses the secret as part of a value", () => {
     expect(
-      refusals(grafana(NATIVE), { env: "X=${client:secret}-suffix\n" }),
+      explained(grafana(NATIVE), { env: "X=${client:secret}-suffix\n" }),
     ).toStrictEqual([
-      { code: "E_UNRESOLVED_PLACEHOLDER", path: "/applications/0/processes/0" },
+      unresolvedBecause("a secret is a whole value, never part of one"),
     ]);
   });
 
   it("is unresolved in an Application that declares no Client", () => {
     expect(
-      refusals(
+      explained(
         `  - id: grafana
 ${PROCESSES("grafana")}`,
         { env: "X=${client:id}\n" },
       ),
-    ).toStrictEqual([
-      { code: "E_UNRESOLVED_PLACEHOLDER", path: "/applications/0/processes/0" },
-    ]);
+    ).toStrictEqual([unresolvedBecause("grafana declares no Client")]);
   });
 });
