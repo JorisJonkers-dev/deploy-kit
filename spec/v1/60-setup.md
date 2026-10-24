@@ -332,8 +332,8 @@ is an **ambient mesh**, Istio in ambient mode, with Kiali as its traffic view
 | **Status** | open decision, direction fixed, fit unproven ([0112](../../docs/adr/model/0112-east-west-traffic-is-mutually-authenticated-by-an-ambient-mesh.md)) |
 | **Owner** | joris |
 | **Settled by** | the five drills in [`docs/research/service-mesh.md`](../../docs/research/service-mesh.md#drills): install on one amd64 node and one Pi; ztunnel's memory on a Pi over 24 h; a consumer reaching an enrolled provider through its [alias](16-dependencies.md#the-alias) with the hop shown as mutual TLS; the ingress hop from Traefik; then every eligible namespace permissive until **zero plaintext inbound connections over 14 days**, and strict for 14 more |
-| **Blocks** | enrolling any namespace. No namespace is enrolled while a NetworkPolicy that selects its Processes admits ingress on application ports alone, since an enrolled peer arrives on the mesh's tunnel port instead |
-| **Does not block** | v1 rendering. Nothing mesh-specific enters a rendered artefact until the claim settles |
+| **Blocks** | enrolling any namespace on the estate: the estate's Platform document names no Project in `mesh.enrolled` until the drills pass |
+| **Does not block** | the model. A Platform document that enrols a Project renders its namespace's `istio.io/dataplane-mode: ambient` label and admits the mesh's tunnel port and the kubelet's rewritten probes in every policy of it ([chapter 16](16-dependencies.md#the-mesh-tunnel)), so a namespace is never enrolled under a policy that admits application ports alone |
 
 The per-node pair is a placement fact like the CNI agent's: its sampled memory
 comes out of the same reserve the [node contract](#node-facts) publishes.

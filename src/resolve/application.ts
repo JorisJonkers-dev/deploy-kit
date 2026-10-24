@@ -32,6 +32,7 @@ type Tier = PlatformIntentDocument["tiers"][number];
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
 import { clientGrantsOf, resolveClient } from "./client.ts";
+import { resolveMesh } from "./mesh.ts";
 import { managed } from "./database.ts";
 import { resolveMigration } from "./migration.ts";
 import { egressOf, ingressOf } from "./policy.ts";
@@ -343,6 +344,7 @@ export function resolveApplication(
       ? undefined
       : resolveExposure(application, context.platform, context.union);
   const client = resolveClient(application, context.project);
+  const mesh = resolveMesh(context.platform, context.project);
   const after = reconcileAfter(application, context, exposure ?? []);
   const plan = managed(application)
     ? resolveMigration(application, context)
@@ -377,6 +379,7 @@ export function resolveApplication(
       : {}),
     ...(exposure === undefined ? {} : { exposure }),
     ...(client === undefined ? {} : { client }),
+    ...(mesh === undefined ? {} : { mesh }),
     processes,
   };
   return { ...element, revision: applicationRevision(element, context.hash) };

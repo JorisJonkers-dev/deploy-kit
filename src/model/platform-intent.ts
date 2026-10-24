@@ -429,6 +429,12 @@ const signIn = z
   })
   .meta({ id: "SignIn" });
 
+// The Projects the ambient mesh enrols (spec/v1/14-platform-intent.md#the-mesh):
+// each one's namespace and every Process in it, by name.
+const mesh = z
+  .strictObject({ enrolled: z.array(text).min(1) })
+  .meta({ id: "Mesh" });
+
 const provider = z
   .strictObject({
     name: text,
@@ -456,6 +462,7 @@ export const platformIntent = z
     // (spec/v1/14-platform-intent.md#the-secret-store).
     secretStore: holder.exactOptional(),
     signIn: signIn.exactOptional(),
+    mesh: mesh.exactOptional(),
     hardening: hardeningClass,
     probes: probeCadence,
     ephemeral: ephemeralPolicy,

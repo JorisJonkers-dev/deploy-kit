@@ -584,6 +584,29 @@ A baseline rule is not authorable and not exceptable from an Application documen
 exception to one is a change to the derivation, reviewed once, applied to every
 Process at once.
 
+### The mesh tunnel
+
+In a namespace the Platform document enrols in the ambient mesh
+([chapter 14](14-platform-intent.md#the-mesh)), every policy the `networking`
+adapter renders there admits what the mesh moves traffic onto:
+
+| rule | derived from | direction |
+|---|---|---|
+| the tunnel port beside the application port | every ingress rule above | ingress |
+| the tunnel port beside the provider's port | every egress rule to a pod, the cluster's DNS excepted | egress |
+| from the address the mesh rewrites the kubelet's probes to, on each probe port | a Process the kubelet probes | ingress |
+
+An enrolled peer arrives on, and connects to, ztunnel's tunnel port rather than
+the application port, and the kubelet's probes arrive from the one link-local
+address ambient rewrites them to; a default-deny policy that admits neither
+starves every enrolled Process the day policy is enforced. The cluster's DNS is
+never enrolled ([chapter 60](60-setup.md#service-mesh)), so its rule stays as
+the baseline states it. The rules are the enrolled side's alone: whether the
+peer is enrolled changes nothing in this Project's render, so one Project's
+enrolment re-renders that Project only. The port and the address are facts of
+the mesh, not of any document
+([chapter 20](20-resolved-deployment.md#the-mesh)).
+
 ### The backup identity's policy
 
 A backup runs as its own identity, in its own pods
