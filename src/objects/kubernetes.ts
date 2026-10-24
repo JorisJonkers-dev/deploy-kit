@@ -354,7 +354,7 @@ export interface NetworkPolicy {
     readonly podSelector: { readonly matchLabels: Labels };
     readonly policyTypes: readonly ("Ingress" | "Egress")[];
     readonly ingress?: readonly {
-      readonly from: readonly PolicyPeer[];
+      readonly from: readonly (PolicyPeer | PolicyRange)[];
       readonly ports: readonly PolicyPort[];
     }[];
     readonly egress?: readonly {

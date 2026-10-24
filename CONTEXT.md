@@ -392,6 +392,12 @@ Application Id, held in the consumer's own namespace and pointing at the Stable
 Address ([chapter 16](spec/v1/16-dependencies.md#the-alias),
 [0109](docs/adr/model/0109-a-consumer-reaches-its-provider-by-its-application-id.md)).
 
+**Enrolment**: a Project's joining the ambient mesh, named in the Platform
+document's `mesh.enrolled`. Its namespace carries the ambient data-plane label
+and its policies admit the mesh's tunnel port, from the enrolled side alone
+([chapter 14](spec/v1/14-platform-intent.md#the-mesh),
+[0112](docs/adr/model/0112-east-west-traffic-is-mutually-authenticated-by-an-ambient-mesh.md)).
+
 **Consumer label**: the label every pod that reaches a Surface carries,
 named by the provider's Application Id and the Surface. The provider's policy
 admits it and names no consumer, so a consumer's edges change its own share

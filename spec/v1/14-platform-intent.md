@@ -92,6 +92,7 @@ other resolves and every policy one asks for the other offers:
 | `delivery.gate` names no Application its Project declares with an `http` surface on one of its Processes | `E_UNKNOWN_RELEASE_GATE` |
 | `delivery.reporter` names no Application its Project declares with an `http` surface on one of its Processes, or a Project other than the Release Gate's | `E_UNKNOWN_REPORTER` |
 | `secretStore` names no Application its Project declares with an `http` surface on one of its Processes | `E_UNKNOWN_SECRET_STORE` |
+| a name in `mesh.enrolled` names no Project a project file declares | `E_UNKNOWN_ENROLLED_PROJECT` |
 | an Application holds a grant, a backup that copies off-cluster, a backup that dumps over the network, or a changelog, and the platform names no `secretStore` | `E_NO_SECRET_STORE` |
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application moves its schema with a changelog and no Process of it switches `blue-green`: none is `continuous`, or the Application is `delivery.machinery` | `E_MIGRATION_UNGATED` |
@@ -357,6 +358,27 @@ An Application declaring `client` while the Platform document has no `signIn`
 is `E_NO_SIGN_IN_PROVIDER`, and a `provider` no project file declares is
 `E_UNKNOWN_SIGN_IN_PROVIDER`, as an unknown Secret Store is. A tier carrying a `gated` Client names the
 provider's Gate as its `forwardAuth` endpoint ([Tiers](#tiers)).
+
+## The mesh
+
+The Platform document names the Projects the ambient mesh enrols
+([chapter 60](60-setup.md#service-mesh),
+[0112](../../docs/adr/model/0112-east-west-traffic-is-mutually-authenticated-by-an-ambient-mesh.md)):
+
+```yaml
+mesh:
+  enrolled: [home-portal, outline]
+```
+
+| fact | meaning |
+|---|---|
+| `enrolled` | each Project whose namespace, and so every Process in it, joins the mesh ([chapter 20](20-resolved-deployment.md#the-mesh)) |
+
+A namespace is the unit of enrolment, and a Project's namespace holds every one
+of its Applications, so a Project is enrolled whole or not at all. A name no
+project file declares is `E_UNKNOWN_ENROLLED_PROJECT`. A Platform document with
+no `mesh` enrols nothing, and so does the estate's until the drills chapter 60
+names have passed.
 
 ## Durability policy
 

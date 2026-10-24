@@ -30,6 +30,7 @@ import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
 import type { ServiceAccount } from "../objects/kubernetes.ts";
+import type { ResolvedProject } from "../model/resolution.ts";
 import type {
   ResolvedCatalogJob,
   ResolvedPolicyJob,
@@ -231,7 +232,11 @@ function policyJobsOf(
   return [
     ...projects.flatMap((project) =>
       policyJobIn(
-        { ...job, namespace: namespaceOf(project) },
+        {
+          ...job,
+          namespace: namespaceOf(project),
+          ...meshIn(resolved, project),
+        },
         rendered,
         policyJobDirectory(project),
         hash,
@@ -245,6 +250,23 @@ function policyJobsOf(
     ),
   ];
 }
+
+/** What the mesh derives in a Project's namespace, read off its resolved Applications. */
+const meshIn = (
+  resolved: ResolvedSet,
+  project: string,
+): { mesh?: NonNullable<ResolvedPolicyJob["mesh"]> } => {
+  // A Project this render holds resolved, with at least one Application.
+  const [first] = (
+    resolved.projects.find(
+      (held) => held.project === project,
+    ) as ResolvedProject
+  ).applications as [ResolvedProject["applications"][number]];
+  const { mesh } = first;
+  // `{}` and `{ mesh: undefined }` render the same job, so no test tells them apart.
+  // Stryker disable next-line ConditionalExpression
+  return mesh === undefined ? {} : { mesh };
+};
 
 /**
  * The catalog methods this render holds: one whose datastore's own Project
@@ -286,7 +308,9 @@ function catalogJobsOf(
     return [
       renderCatalogJob(job, hash(catalogDigestOf(job)), directory),
       renderPolicyJobPolicy(
-        job,
+        home === undefined
+          ? job
+          : { ...job, ...meshIn(resolved, home.project) },
         `${job.identity}-networkpolicy.yaml`,
         directory,
       ),

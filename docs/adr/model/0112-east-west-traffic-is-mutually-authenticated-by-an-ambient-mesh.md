@@ -100,10 +100,12 @@ removing the mesh would then open what it closed.
 
 ## Consequences
 
-- Before any namespace is enrolled, the `networking` adapter's allow set
-  admits the mesh's tunnel port beside each application port, a change to
-  [chapter 16](../../../spec/v1/16-dependencies.md#network-policy) that lands
-  with the first enrolment.
+- Enrolment is a Platform fact, a list of Projects
+  ([chapter 14](../../../spec/v1/14-platform-intent.md#the-mesh)), and an
+  enrolled Project's policies admit the mesh's tunnel port beside each
+  application port and the kubelet's rewritten probes
+  ([chapter 16](../../../spec/v1/16-dependencies.md#the-mesh-tunnel)), so the
+  allow set is ready before the estate lists its first Project.
 - Chapter 16's statement that in-cluster HTTP surfaces carry no TLS between
   Processes stays true until then, and is rewritten in the same pull request
   that enrols the first namespace.
