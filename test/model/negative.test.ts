@@ -39,6 +39,8 @@ const FOUNDATION: AuthoredFile[] = [
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "secrets/secrets.project.yml",
+  "identity/identity.project.yml",
+  "identity/env/grafana/base.env",
 ].map((name) => ({ name, text: readFileSync(join(EXAMPLES, name), "utf8") }));
 
 const fixtures = readdirSync(NEGATIVE)

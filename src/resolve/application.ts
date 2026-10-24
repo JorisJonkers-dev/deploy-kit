@@ -31,6 +31,7 @@ import {
 type Tier = PlatformIntentDocument["tiers"][number];
 import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
+import { clientGrantsOf, resolveClient } from "./client.ts";
 import { managed } from "./database.ts";
 import { resolveMigration } from "./migration.ts";
 import { egressOf, ingressOf } from "./policy.ts";
@@ -44,7 +45,7 @@ export type ResolvedElement = Omit<
 
 export interface ApplicationContext extends Omit<
   ProcessContext,
-  "machinery" | "migratesItself" | "application"
+  "machinery" | "migratesItself" | "application" | "clientGrants"
 > {
   /** The project that declares each Application of the union, by its id. */
   readonly projectOf: ReadonlyMap<string, string>;
@@ -108,13 +109,18 @@ function reconcileAfter(
   const grants = application.processes.some(
     // A missing list and an empty one hold no grant alike.
     // Stryker disable next-line ArrayDeclaration
-    ({ secrets, vpn, dependsOn }) =>
-      (secrets ?? []).length > 0 ||
+    (process) =>
+      (process.secrets ?? []).length > 0 ||
+      // A Client's credential is read, or written by the provider, through a
+      // role of the Process's own.
+      clientGrantsOf(process, application, context).length > 0 ||
       // The VPN's credential is held by the Process's own role.
-      vpn !== undefined ||
+      process.vpn !== undefined ||
       // An edge to a database derives a credential, whose role is written first.
       // Stryker disable next-line ArrayDeclaration
-      (dependsOn ?? []).some((edge) => reachesDatabase(edge, context.union)),
+      (process.dependsOn ?? []).some((edge) =>
+        reachesDatabase(edge, context.union),
+      ),
   );
   // A datastore that applies its own catalog runs a method whose role is
   // written first (spec/v1/16-dependencies.md#applying-the-catalog).
@@ -249,6 +255,7 @@ function releaseGateOf(
   pairs: readonly Resolved[],
   context: ApplicationContext,
   plan: ResolvedMigration | undefined,
+  client: EffectiveApplication["client"],
 ): ReleaseGate | undefined {
   const { platform, gate } = context;
   const gated = pairs.filter(
@@ -295,6 +302,12 @@ function releaseGateOf(
             nonTransactional: plan.nonTransactional,
           },
         }),
+    // What the gate asks anonymously before it switches a native Client, which
+    // signs people in itself (spec/v1/17-sign-in.md#what-is-checked). A native
+    // Client names the path, or E_CLIENT_FIELD_FOR_MODE refused it.
+    ...(client?.signIn === "native"
+      ? { protectedPath: client.protectedPath as string }
+      : {}),
   };
 }
 
@@ -308,6 +321,7 @@ export function resolveApplication(
     ) === true;
   const pairs = application.processes.map((process) => {
     const ingress = ingressOf(process, application, context);
+    const clientGrants = clientGrantsOf(process, application, context);
     return {
       process,
       resolved: {
@@ -316,9 +330,10 @@ export function resolveApplication(
           machinery,
           migratesItself: application.migration === "self",
           application: application.id,
+          clientGrants,
         }),
         ...(ingress.length === 0 ? {} : { ingress }),
-        egress: egressOf(process, context),
+        egress: egressOf(process, context, clientGrants.length > 0),
       },
     };
   });
@@ -326,12 +341,13 @@ export function resolveApplication(
   const exposure =
     application.exposure === undefined
       ? undefined
-      : resolveExposure(application.exposure, context.platform, context.union);
+      : resolveExposure(application, context.platform, context.union);
+  const client = resolveClient(application, context.project);
   const after = reconcileAfter(application, context, exposure ?? []);
   const plan = managed(application)
     ? resolveMigration(application, context)
     : undefined;
-  const gate = releaseGateOf(pairs, context, plan);
+  const gate = releaseGateOf(pairs, context, plan, application.client);
   const scrape = application.observability?.scrape;
   const element = {
     id: application.id,
@@ -360,6 +376,7 @@ export function resolveApplication(
       ? { secretStore: storeFor(context) }
       : {}),
     ...(exposure === undefined ? {} : { exposure }),
+    ...(client === undefined ? {} : { client }),
     processes,
   };
   return { ...element, revision: applicationRevision(element, context.hash) };

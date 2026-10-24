@@ -1,0 +1,25 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: identity.jorisjonkers.dev/v1
+kind: Client
+metadata:
+  name: grafana
+  labels:
+    app.kubernetes.io/part-of: grafana
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  signIn: native
+  host: grafana.jorisjonkers.dev
+  launchUrl: https://grafana.jorisjonkers.dev/
+  iconUrl: https://grafana.jorisjonkers.dev/public/img/grafana_icon.svg
+  redirectUris:
+    - https://grafana.jorisjonkers.dev/login/generic_oauth
+  credential: secret
+  secretPath: secret/data/identity-system/grafana/client
+  roles:
+    - user
+    - viewer
+    - editor
+    - admin
+  label: Grafana
+  description: Metrics and dashboards

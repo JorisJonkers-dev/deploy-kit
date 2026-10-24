@@ -1,0 +1,65 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: portal
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/name: portal
+    app.kubernetes.io/instance: portal
+    app.kubernetes.io/part-of: portal
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: portal
+  progressDeadlineSeconds: 720
+  service:
+    port: 8080
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: portal
+          process: portal
+          revision: sha256:86bcd4b890a455119e66e576b32661c625cd9de4c9f4cabbbe9e306793d0e8b6
+          paths: /
+          readiness: /
+          hostnames: home.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: portal
+          process: portal
+          revision: sha256:86bcd4b890a455119e66e576b32661c625cd9de4c9f4cabbbe9e306793d0e8b6
+          paths: /
+          readiness: /
+          hostnames: home.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: portal
+          process: portal
+          revision: sha256:86bcd4b890a455119e66e576b32661c625cd9de4c9f4cabbbe9e306793d0e8b6
+          paths: /
+          readiness: /
+          hostnames: home.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms

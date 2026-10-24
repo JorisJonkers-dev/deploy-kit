@@ -1,0 +1,55 @@
+{
+  "description": "The Identity Provider's Client (spec/v1/17-sign-in.md#the-client), as the render writes it: cluster-scoped, named by the Application Id. No public catalog carries the kind, so the manifest lint reads this schema until the Identity Provider publishes its CRD.",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec"],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "enum": ["identity.jorisjonkers.dev/v1"]
+    },
+    "kind": { "type": "string", "enum": ["Client"] },
+    "metadata": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["signIn", "host", "roles"],
+      "additionalProperties": false,
+      "properties": {
+        "signIn": { "type": "string", "enum": ["native", "gated", "token"] },
+        "host": { "type": "string", "minLength": 1 },
+        "launchUrl": { "type": "string", "pattern": "^https://" },
+        "iconUrl": { "type": "string", "pattern": "^https://" },
+        "redirectUris": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "type": "string", "pattern": "^https://" }
+        },
+        "credential": { "type": "string", "enum": ["secret", "pkce"] },
+        "secretPath": { "type": "string", "pattern": "^secret/data/" },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,62}$" }
+        },
+        "label": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    }
+  }
+}

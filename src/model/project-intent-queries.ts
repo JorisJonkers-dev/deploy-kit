@@ -7,6 +7,7 @@
 import {
   SHARED_INTENT_KEYS,
   type Asset,
+  type ApplicationDocument,
   type DependencyEdge,
   type Grant,
   type KvKey,
@@ -24,6 +25,22 @@ export function derivedReadPath(grant: Grant): string {
   if ("path" in grant) return `secret/data/${grant.path}`;
   if (grant.engine === "database") return `database/creds/${grant.role}`;
   return `transit/${grant.key}`;
+}
+
+type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
+
+/**
+ * The exposure an Application's Client names, or the only one it declares
+ * (spec/v1/17-sign-in.md#the-client-block): authored or lowered alike.
+ */
+export function clientExposure(
+  application: Pick<ApplicationDocument, "exposure">,
+  client: Pick<NonNullable<ApplicationDocument["client"]>, "exposure">,
+): Exposure | undefined {
+  const exposures = application.exposure ?? [];
+  const named = client.exposure;
+  if (named !== undefined) return exposures.find(({ name }) => name === named);
+  return exposures.length === 1 ? exposures[0] : undefined;
 }
 
 /** A key's name, whether or not it is generated. */

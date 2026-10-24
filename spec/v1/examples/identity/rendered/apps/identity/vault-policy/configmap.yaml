@@ -1,0 +1,23 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-policy-c77852ca3222
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/name: vault-policy
+    app.kubernetes.io/instance: vault-policy
+    app.kubernetes.io/part-of: vault-policy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  identity-system-grafana.policy.json: |
+    {"path":{"secret/data/identity-system/grafana/client":{"capabilities":["read"]},"secret/metadata/identity-system/grafana/client":{"capabilities":["read"]}}}
+  identity-system-grafana.role.json: |
+    {"bound_service_account_names":["grafana"],"bound_service_account_namespaces":["identity-system"],"token_policies":["identity-system-grafana"]}
+  identity-system-identity.policy.json: |
+    {"path":{"secret/data/identity-system/grafana/client":{"capabilities":["create","read","update"]}}}
+  identity-system-identity.role.json: |
+    {"bound_service_account_names":["identity"],"bound_service_account_namespaces":["identity-system"],"token_policies":["identity-system-identity"]}

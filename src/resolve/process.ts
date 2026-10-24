@@ -44,7 +44,7 @@ import {
   resolveCredentials,
 } from "./credentials.ts";
 import { consumedOf } from "../model/consumer-label.ts";
-import { notSupported } from "../model/internal-failure.ts";
+import { clientSecretPath } from "./client.ts";
 import { resolveEdge } from "./dependencies.ts";
 import { resolveLibraries } from "./libraries.ts";
 import {
@@ -75,7 +75,11 @@ export interface ProcessContext {
   readonly migratesItself: boolean;
   /** The Id of the Process's Application, which is its Client's id. */
   readonly application: string;
+  /** The grants its Application's Client, or the provider's role, derives on the Process. */
+  readonly clientGrants: readonly ResolvedGrant[];
 }
+
+type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
 
 /** A startup probe polls this often; its threshold covers the budget. */
 const STARTUP_PERIOD = 5;
@@ -254,10 +258,16 @@ function entryOf(
     // A Client is declared beside a sign-in provider, or E_NO_SIGN_IN_PROVIDER
     // refused it, and the field is one it hands out, or
     // E_UNRESOLVED_PLACEHOLDER did (spec/v1/17-sign-in.md#credentials-and-placeholders).
+    // The secret is a whole value, read from the Client's derived credential
+    // as a `${secret:…}` reference is, under the grant its reference derives.
     if (value.source === "secret")
-      throw notSupported(
-        `${name}: \${client:secret} renders once the Client's credential path is derived (#449)`,
-      );
+      return {
+        name,
+        secret: {
+          path: clientSecretPath(context.project, context.application),
+          key: "secret",
+        },
+      };
     return {
       name,
       value:
@@ -441,6 +451,7 @@ export function resolveProcess(
   const secrets = [
     ...resolveGrants(process),
     ...resolveCredentials(process, context),
+    ...context.clientGrants,
   ];
   const libraries = resolveLibraries(
     process,

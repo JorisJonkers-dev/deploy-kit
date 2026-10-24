@@ -65,6 +65,9 @@
             "$ref": "#/$defs/ResolvedExposure"
           }
         },
+        "client": {
+          "$ref": "#/$defs/ResolvedClient"
+        },
         "processes": {
           "minItems": 1,
           "type": "array",
@@ -239,6 +242,10 @@
         },
         "migration": {
           "$ref": "#/$defs/GateMigration"
+        },
+        "protectedPath": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
@@ -694,47 +701,88 @@
       "additionalProperties": false
     },
     "ResolvedRoute": {
-      "type": "object",
-      "properties": {
-        "path": {
-          "type": "string",
-          "minLength": 1
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "match": {
+              "$ref": "#/$defs/Match"
+            },
+            "audience": {
+              "$ref": "#/$defs/Audience"
+            },
+            "precedence": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "middleware": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/MiddlewareStep"
+              }
+            },
+            "process": {
+              "type": "string",
+              "minLength": 1
+            },
+            "surface": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "path",
+            "match",
+            "audience",
+            "precedence",
+            "process",
+            "surface"
+          ],
+          "additionalProperties": false
         },
-        "match": {
-          "$ref": "#/$defs/Match"
-        },
-        "process": {
-          "type": "string",
-          "minLength": 1
-        },
-        "surface": {
-          "type": "string",
-          "minLength": 1
-        },
-        "audience": {
-          "$ref": "#/$defs/Audience"
-        },
-        "precedence": {
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 9007199254740991
-        },
-        "middleware": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/MiddlewareStep"
-          }
+        {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1
+            },
+            "match": {
+              "$ref": "#/$defs/Match"
+            },
+            "audience": {
+              "$ref": "#/$defs/Audience"
+            },
+            "precedence": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "middleware": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/MiddlewareStep"
+              }
+            },
+            "gate": {
+              "$ref": "#/$defs/GateAddress"
+            }
+          },
+          "required": [
+            "path",
+            "match",
+            "audience",
+            "precedence",
+            "gate"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "path",
-        "match",
-        "process",
-        "surface",
-        "audience",
-        "precedence"
-      ],
-      "additionalProperties": false
+      ]
     },
     "Match": {
       "type": "string",
@@ -814,6 +862,102 @@
       "enum": [
         "connection",
         "cloudflare"
+      ]
+    },
+    "GateAddress": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "name",
+        "namespace",
+        "port"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedClient": {
+      "type": "object",
+      "properties": {
+        "signIn": {
+          "$ref": "#/$defs/SignInMode"
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "launchUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "iconUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "redirectUris": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "credential": {
+          "$ref": "#/$defs/ClientCredential"
+        },
+        "secretPath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "roles": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "signIn",
+        "host",
+        "roles"
+      ],
+      "additionalProperties": false
+    },
+    "SignInMode": {
+      "type": "string",
+      "enum": [
+        "native",
+        "gated",
+        "token"
+      ]
+    },
+    "ClientCredential": {
+      "type": "string",
+      "enum": [
+        "secret",
+        "pkce"
       ]
     },
     "ResolvedProcess": {
@@ -925,6 +1069,9 @@
               },
               {
                 "$ref": "#/$defs/ResolvedEngineGrant"
+              },
+              {
+                "$ref": "#/$defs/ResolvedClientGrant"
               }
             ]
           }
@@ -1739,6 +1886,32 @@
         "read",
         "write"
       ]
+    },
+    "ResolvedClientGrant": {
+      "type": "object",
+      "properties": {
+        "client": {
+          "type": "string",
+          "minLength": 1
+        },
+        "delivery": {
+          "type": "string",
+          "const": "self"
+        },
+        "paths": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PolicyPath"
+          }
+        }
+      },
+      "required": [
+        "client",
+        "delivery",
+        "paths"
+      ],
+      "additionalProperties": false
     },
     "ResolvedAsset": {
       "type": "object",

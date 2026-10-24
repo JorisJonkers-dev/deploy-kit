@@ -1,0 +1,21 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: identity.jorisjonkers.dev/v1
+kind: Client
+metadata:
+  name: portal
+  labels:
+    app.kubernetes.io/part-of: portal
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  signIn: native
+  host: home.jorisjonkers.dev
+  launchUrl: https://home.jorisjonkers.dev/apps
+  redirectUris:
+    - https://home.jorisjonkers.dev/callback
+    - https://home.jorisjonkers.dev/silent-renew
+  credential: pkce
+  roles:
+    - user
+  label: Home
+  description: Every application you can open

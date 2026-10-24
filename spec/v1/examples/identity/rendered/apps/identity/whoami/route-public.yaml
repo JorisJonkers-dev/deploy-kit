@@ -1,0 +1,48 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: whoami-public
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/part-of: whoami
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`whoami.jorisjonkers.dev`) && PathPrefix(`/`)
+      priority: 997
+      middlewares:
+        - name: forward-auth
+          namespace: edge-system
+        - name: security-headers
+          namespace: edge-system
+      services:
+        - name: whoami
+          namespace: identity-system
+          port: 8080
+    - kind: Rule
+      match: Host(`whoami.jorisjonkers.dev`) && Path(`/health`)
+      priority: 999
+      middlewares:
+        - name: security-headers
+          namespace: edge-system
+      services:
+        - name: whoami
+          namespace: identity-system
+          port: 8080
+    - kind: Rule
+      match: Host(`whoami.jorisjonkers.dev`) && PathPrefix(`/.auth/`)
+      priority: 998
+      middlewares:
+        - name: security-headers
+          namespace: edge-system
+      services:
+        - name: identity
+          namespace: identity-system
+          port: 8080
+  tls:
+    certResolver: acme

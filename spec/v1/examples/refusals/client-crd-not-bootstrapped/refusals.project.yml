@@ -1,0 +1,54 @@
+# REFUSED: E_CLIENT_CRD_NOT_BOOTSTRAPPED
+#
+# An Application declares a Client, and the Platform document's bootstrap set
+# lists no identity.jorisjonkers.dev/v1: no cluster holds the Client kind, so
+# Flux could not apply the object the render would write
+# (spec/v1/17-sign-in.md#what-is-checked).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: grafana
+    exposure:
+      - name: public
+        host: grafana.refusals.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: grafana, surface: http }
+    client:
+      signIn: native
+      label: Grafana
+      redirectPaths: [/login/generic_oauth]
+      protectedPath: /api/user
+      credential: pkce
+    processes:
+      - name: grafana
+        lifecycle: application
+        image: grafana
+        runtime: none
+        provides: { http: 8080 }
+        placement: { memory: 128Mi, cpu: 25m }
+        probes: { readiness: { tcp: 8080 } }
+        cutover: continuous
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: edge-proxy
+        runtime: none
+        provides: { http: 8080 }
+        placement: { memory: 128Mi, cpu: 25m }
+        probes: { readiness: { tcp: 8080 } }
+        cutover: continuous
+  - id: identity
+    processes:
+      - name: identity
+        lifecycle: application
+        image: identity
+        runtime: none
+        provides: { http: 8080 }
+        placement: { memory: 128Mi, cpu: 25m }
+        probes: { readiness: { tcp: 8080 } }
+        cutover: continuous

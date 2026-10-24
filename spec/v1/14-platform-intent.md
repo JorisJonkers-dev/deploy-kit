@@ -219,6 +219,7 @@ bootstrap:
     - secrets.hashicorp.com/v1beta1
     - monitoring.coreos.com/v1
     - flagger.app/v1beta1
+    - identity.jorisjonkers.dev/v1             # the Client, once the Identity Provider serves it
 ```
 
 | in the set | why it cannot be declared |
@@ -232,6 +233,11 @@ Everything not in this table is a declared Application. The set is a
 [Bidirectional Ledger](30-deliverables.md#ledgers) in shape: an entry nothing
 needs fails the build, and a component that should be declared and is not is
 `E_UNATTRIBUTED_OBJECT`.
+
+One entry is checked against what renders today: a `Client`
+([chapter 17](17-sign-in.md#the-client)) applies only on a cluster that holds its
+kind, so an Application declaring `client` beside a set that does not list
+`identity.jorisjonkers.dev/v1` is `E_CLIENT_CRD_NOT_BOOTSTRAPPED` at composition.
 
 ## The foundation is declared
 
@@ -345,7 +351,7 @@ signIn:
 | fact | meaning |
 |---|---|
 | `issuer` | the Issuer URL every Client trusts, and what `${client:issuer}` resolves to |
-| `provider` | the Application that is the Identity Provider; its Process is granted write on every derived client credential path |
+| `provider` | the Application that is the Identity Provider; each of its Processes is granted write on every derived client credential path ([chapter 17](17-sign-in.md#credentials-and-placeholders)) |
 
 An Application declaring `client` while the Platform document has no `signIn`
 is `E_NO_SIGN_IN_PROVIDER`, and a `provider` no project file declares is

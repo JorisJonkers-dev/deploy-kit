@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/identity-system/grafana/client": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/identity-system/grafana/client": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

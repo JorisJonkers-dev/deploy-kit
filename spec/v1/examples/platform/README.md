@@ -24,6 +24,7 @@ nothing in it names a Kubernetes field, a Traefik key, a k3s flag or a command
 | `monitors` | one scrape cadence for the estate, because ingest is shared and no Application knows better. It is the whole observability surface of this document: no receiver map, no severity mapping, no rule catalog ([chapter 14](../../14-platform-intent.md#monitor-cadence)) | [0025](../../../../docs/adr/model/0025-observability-is-one-optional-block.md) |
 | `hardening` | one posture for every container the estate renders: thirty declarations of the only legal value are thirty copies of one decision. A Process authors no hardening at all, and there is no per-control exception surface to author, because a relaxation carried with a reason is an override under another name ([chapter 14](../../14-platform-intent.md#hardening-policy)) | [0020](../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md) |
 | `probes`, `ephemeral` | one cadence and one size for the estate | [0016](../../../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md), [0020](../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md) |
+| `signIn` | who issues sign-ins: the Issuer every Client trusts, and the Identity Provider that writes each client credential ([chapter 14](../../14-platform-intent.md#sign-in)) | [0100](../../../../docs/adr/model/0100-a-client-is-declared-on-the-application.md) |
 | `providers` | something the estate reaches and does not deploy: a fact, not a hole | [0024](../../../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md), [0045](../../../../docs/adr/model/0045-platform-intent-is-the-second-authored-document.md) |
 
 Two values are **deliberately unflattering**, because they are what the estate
@@ -39,7 +40,11 @@ platform owns ([0046](../../../../docs/adr/model/0046-the-foundation-is-declared
 Two of them are worked: [`edge`](../edge/edge.project.yml) declares both Traefik
 instances the tiers name, and [`observability`](../observability/observability.project.yml)
 declares the collector `telemetry` names, so the worked Platform document composes
-with them and the delivery project and refuses nothing it names. The secrets
+with them and the delivery project and refuses nothing it names. Beside them,
+[`identity`](../identity/identity.project.yml) declares the Identity Provider
+`signIn` names, whose Gate the public tier's `forwardAuth` endpoint is, and three
+Applications that sign people in through it, one per way
+[chapter 17](../../17-sign-in.md) works through. The secrets
 project is the next to write. Hostnames nobody deploys and nobody depends on are
 a ledger, not a Platform fact.
 

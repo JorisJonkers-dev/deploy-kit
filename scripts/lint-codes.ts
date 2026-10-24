@@ -50,8 +50,14 @@ export const PENDING: readonly Pending[] = [
   {
     ticket: "#429",
     reason:
-      "specified ahead of the implementation: what the edge derives from a Client, which an authenticated exposure without one waits on, and the Release Gate's anonymous check",
-    codes: ["E_AUTHENTICATED_WITHOUT_CLIENT", "E_CLIENT_OPEN"],
+      "held by chapter 17's transitional rule: four live Projects serve authenticated exposures that no Client names yet, and keep forward-auth from the audience alone until each declares one",
+    codes: ["E_AUTHENTICATED_WITHOUT_CLIENT"],
+  },
+  {
+    ticket: "#429",
+    reason:
+      "refused by the Release Gate in JorisJonkers-dev/delivery, which requests the protectedPath this repository hands it in the release-gate inputs; the request is the gate's to implement and test",
+    codes: ["E_CLIENT_OPEN"],
   },
   {
     ticket: "#324",

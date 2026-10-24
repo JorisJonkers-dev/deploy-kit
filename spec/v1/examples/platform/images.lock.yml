@@ -204,3 +204,29 @@ images:
     uid: 1000
     gid: 1000
     version: "124.0.6367.78"
+  # The worked sign-in (spec/v1/examples/identity): the Identity Provider and
+  # the three Applications that sign people in through it.
+  identity:
+    repository: ghcr.io/jorisjonkers-dev/identity/identity
+    digest: "sha256:1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c"
+    uid: 65532
+    gid: 65532
+    version: "1.0.0"
+  grafana:
+    repository: docker.io/grafana/grafana
+    digest: "sha256:2c4e6a8b0d2f4c6e8a0b2d4f6c8e0a2b4d6f8c0e2a4b6d8f0c2e4a6b8d0f2c4e"
+    uid: 472
+    gid: 472
+    version: "12.2.0"
+  portal:
+    repository: ghcr.io/jorisjonkers-dev/identity/portal
+    digest: "sha256:3d5f7b9c1e3a5d7f9b1c3e5a7d9f1b3c5e7a9d1f3b5c7e9a1d3f5b7c9e1a3d5f"
+    uid: 101
+    gid: 101
+    version: "1.0.0"
+  whoami:
+    repository: docker.io/traefik/whoami
+    digest: "sha256:4e6a8c0d2f4b6e8a0c2d4f6b8e0a2c4d6f8b0e2a4c6d8f0b2e4a6c8d0f2b4e6a"
+    uid: 65532
+    gid: 65532
+    version: "v1.11.0"

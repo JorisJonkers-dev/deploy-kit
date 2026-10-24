@@ -1,0 +1,13 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-release-gate
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/part-of: grafana
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"210s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"grafana","readiness":{"path":"/api/health","port":3000}}],"protectedPath":"/api/user"}

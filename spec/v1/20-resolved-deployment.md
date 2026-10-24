@@ -72,7 +72,9 @@ Two relations the drawing does not carry are stated here instead, because a line
 that long is what makes the drawing unreadable
 ([the diagram conventions](diagrams/README.md)). A `ResolvedRoute` names the
 Process and the surface it serves, resolved against that Application's own
-Processes. A `PathAssignment` names the Adapter that owns the path and, where
+Processes, except the `/.auth/` route a `gated` Client derives, which names the
+`gate` instead: the Service, namespace and port of the address the tier's
+forward-auth endpoint names ([The forward-auth endpoint](#the-forward-auth-endpoint)). A `PathAssignment` names the Adapter that owns the path and, where
 the path is an Application's or a project's rather than the estate's, the
 element it belongs to.
 
@@ -103,7 +105,17 @@ declares it, its `internetEgress`, the reason it reaches the public internet
 its `scrape`, the monitored surface at the Platform document's cadence; an
 exposure its tier's `listener`, `certificates` and `proxy`, the Application that
 serves the tier and the namespace it runs in; and the release gate the `endpoint`
-every Canary asks. The startup probe carries the probe policy's `timeout`. A value
+every Canary asks. An Application that declares `client` records the `client`
+its Client object is spelled from: the Sign-in Mode, the `host` of the exposure
+it names, its `launchUrl`, `iconUrl` and `redirectUris` on that host, its
+`credential` and, holding a secret, the `secretPath` it is kept at, the `roles`
+with `user` first, and the `label` and `description` a person sees
+([chapter 17](17-sign-in.md#the-client)). A Process's `secrets` hold, beside
+its own grants, the ones its Application's Client derives: `read` on the client
+credential where it references `${client:secret}`, and on each Process of the
+sign-in provider one `client` grant per Client holding a secret, the paths it
+may `create`, `read` and `update`
+([chapter 17](17-sign-in.md#credentials-and-placeholders)). The startup probe carries the probe policy's `timeout`. A value
 a render writes that none of these holds is a decision taken in layer 3, which
 [The rule](30-deliverables.md#the-rule) forbids.
 
@@ -843,7 +855,14 @@ needs none.
 The endpoint is the sign-in provider's Gate
 ([chapter 17](17-sign-in.md#what-the-edge-derives)). A route reaches it only
 when its exposure is `authenticated` and its Application's Client is `gated`;
-a native or token Client's routes carry no forward-auth Middleware at all.
+a native or token Client's routes carry no forward-auth Middleware at all. An
+`authenticated` exposure no Client names keeps forward-auth from its audience
+alone while `E_AUTHENTICATED_WITHOUT_CLIENT` waits
+([chapter 17](17-sign-in.md#what-the-edge-derives)). A gated Client's exposure
+also gains the `/.auth/` route, whose `gate` is read off this address: the
+Service and namespace of a `<service>.<namespace>.svc.cluster.local` host and its
+port, or the scheme's where it names none. An endpoint outside the cluster
+names no Service, so no gated Client renders beside one.
 
 It is not derived from the authenticating Application's own surface. `auth-api`'s
 estate-wide role *is* this middleware
@@ -884,6 +903,7 @@ Layer 2 therefore carries, per Application a Process of which switches
 | the analysis cadence, and the two thresholds a check must stay under | the Platform document's `delivery.analysis` ([chapter 14](14-platform-intent.md#delivery-policy)) |
 | the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` and the substrate's `imagePull` |
 | the migration | where the Application moves its schema with a changelog: the migration identity, `testedAgainst` where the proof records one, and `nonTransactional`, each copied from the migration plan ([The migration](#the-migration)) |
+| `protectedPath` | where the Application's Client is `native`: its `protectedPath`, which the gate requests anonymously before it switches, holding the release on a 2xx (`E_CLIENT_OPEN`, [chapter 17](17-sign-in.md#what-is-checked)); absent for any other Client and for an Application with none |
 
 `max` is the reading "held, not partial" requires: the unit waits for its
 slowest legitimate starter. `auth` declares a 600-second budget on `auth-api`
@@ -1815,6 +1835,19 @@ classDiagram
     class ReleaseGate {
         +Url endpoint
         +Duration deadline
+        +Path protectedPath
+    }
+    class ResolvedClient {
+        +SignInMode signIn
+        +Host host
+        +Url launchUrl
+        +Url iconUrl
+        +Url[] redirectUris
+        +ClientCredential credential
+        +VaultPath secretPath
+        +string[] roles
+        +string label
+        +string description
     }
     class GateMigration {
         +Identity identity
@@ -1996,6 +2029,10 @@ classDiagram
         +Delivery delivery
         +string[] restartTargets
     }
+    class ResolvedClientGrant {
+        +ApplicationId client
+        +Delivery delivery
+    }
     class PolicyPath {
         +VaultPath path
         +string[] allows
@@ -2064,6 +2101,11 @@ classDiagram
         +Audience audience
         +int precedence
     }
+    class GateAddress {
+        +string name
+        +Namespace namespace
+        +Port port
+    }
 
     ResolvedDeployment "1" *-- "1" Provenance : provenance
     ResolvedDeployment "1" *-- "1..*" PathAssignment : pathPlan
@@ -2083,6 +2125,7 @@ classDiagram
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
     ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape
+    ResolvedApplication "1" *-- "0..1" ResolvedClient : client
     ReleaseGate "1" *-- "1" GateAnalysis : analysis
     ReleaseGate "1" *-- "1..*" GateMember : members
     GateMember "1" *-- "0..*" GateProvider : waitsFor
@@ -2098,6 +2141,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..1" ResolvedVpn : vpn
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedEngineGrant : secrets
+    ResolvedProcess "1" *-- "0..*" ResolvedClientGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedAsset : assets
     ResolvedProcess "1" *-- "0..*" ResolvedSidecar : sidecars
     ResolvedProcess "1" *-- "0..*" ResolvedEdge : dependencies
@@ -2114,11 +2158,13 @@ classDiagram
     BackupPlan "1" *-- "0..*" DestinationRange : destinations
     EnvEntry "1" *-- "0..1" SecretReference : secret
     ResolvedEngineGrant "1" *-- "1..*" PolicyPath : paths
+    ResolvedClientGrant "1" *-- "1..*" PolicyPath : paths
     ResolvedEdge "1" *-- "0..*" PolicyPeer : peers
 
     ResolvedExposure "1" *-- "1..*" ResolvedRoute : routes
     ResolvedExposure "1" *-- "1" TierProxy : proxy
     ResolvedRoute "1" *-- "0..*" MiddlewareStep : middleware
+    ResolvedRoute "1" *-- "0..1" GateAddress : gate
 
     GateMember ..> ResolvedProbe : reads readiness
 

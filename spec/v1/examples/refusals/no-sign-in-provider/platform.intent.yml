@@ -29,6 +29,7 @@ bootstrap:
     unsealed: true
   crds:
     - traefik.io/v1alpha1
+    - identity.jorisjonkers.dev/v1
 tiers:
   - name: public
     audiences: [anonymous, authenticated, internal]

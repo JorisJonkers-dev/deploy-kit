@@ -581,6 +581,7 @@ describe("the metamodel names every class the chapter draws", () => {
       "Audience",
       "CertificateSource",
       "ClientAddress",
+      "ClientCredential",
       "ContentPolicy",
       "Cutover",
       "Delivery",
@@ -598,6 +599,7 @@ describe("the metamodel names every class the chapter draws", () => {
       "ResolvedHttpProbe",
       "ResolvedTcpProbe",
       "Runtime",
+      "SignInMode",
       "Switchover",
     ]);
   });

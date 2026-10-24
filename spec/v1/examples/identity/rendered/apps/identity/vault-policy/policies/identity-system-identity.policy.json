@@ -1,0 +1,11 @@
+{
+  "path": {
+    "secret/data/identity-system/grafana/client": {
+      "capabilities": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  }
+}
