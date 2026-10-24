@@ -44,6 +44,7 @@ import {
   resolveCredentials,
 } from "./credentials.ts";
 import { consumedOf } from "../model/consumer-label.ts";
+import { notSupported } from "../model/internal-failure.ts";
 import { resolveEdge } from "./dependencies.ts";
 import { resolveLibraries } from "./libraries.ts";
 import {
@@ -72,6 +73,8 @@ export interface ProcessContext {
   readonly hash: Hasher;
   /** Whether the Process's Application migrates its own schema. */
   readonly migratesItself: boolean;
+  /** The Id of the Process's Application, which is its Client's id. */
+  readonly application: string;
 }
 
 /** A startup probe polls this often; its threshold covers the budget. */
@@ -247,6 +250,26 @@ function entryOf(
       name,
       value: exposureOf(value.source, context) + suffix,
     };
+  if (value.kind === "client") {
+    // A Client is declared beside a sign-in provider, or E_NO_SIGN_IN_PROVIDER
+    // refused it, and the field is one it hands out, or
+    // E_UNRESOLVED_PLACEHOLDER did (spec/v1/17-sign-in.md#credentials-and-placeholders).
+    if (value.source === "secret")
+      throw notSupported(
+        `${name}: \${client:secret} renders once the Client's credential path is derived (#449)`,
+      );
+    return {
+      name,
+      value:
+        (value.source === "issuer"
+          ? (
+              context.platform.signIn as NonNullable<
+                PlatformIntentDocument["signIn"]
+              >
+            ).issuer
+          : context.application) + suffix,
+    };
+  }
   // What the platform derived about this Process
   // (spec/v1/10-project-intent.md#configuration): its namespace, its
   // ServiceAccount, which is its own name, and its Vault role, which is both.

@@ -522,6 +522,9 @@
             }
           ]
         },
+        "client": {
+          "$ref": "#/$defs/Client"
+        },
         "secrets": {
           "minItems": 1,
           "type": "array",
@@ -768,6 +771,80 @@
         "changelog"
       ],
       "additionalProperties": false
+    },
+    "Client": {
+      "type": "object",
+      "properties": {
+        "signIn": {
+          "$ref": "#/$defs/SignInMode"
+        },
+        "exposure": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "iconPath": {
+          "type": "string",
+          "pattern": "^\\/$|^(\\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\\/?$"
+        },
+        "launchPath": {
+          "type": "string",
+          "pattern": "^\\/$|^(\\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\\/?$"
+        },
+        "redirectPaths": {
+          "minItems": 1,
+          "maxItems": 16,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^\\/$|^(\\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\\/?$"
+          }
+        },
+        "protectedPath": {
+          "type": "string",
+          "pattern": "^\\/$|^(\\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\\/?$"
+        },
+        "credential": {
+          "$ref": "#/$defs/ClientCredential"
+        },
+        "roles": {
+          "minItems": 1,
+          "maxItems": 63,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]{0,62}$"
+          }
+        }
+      },
+      "required": [
+        "signIn"
+      ],
+      "additionalProperties": false
+    },
+    "SignInMode": {
+      "type": "string",
+      "enum": [
+        "native",
+        "gated",
+        "token"
+      ]
+    },
+    "ClientCredential": {
+      "type": "string",
+      "enum": [
+        "secret",
+        "pkce"
+      ]
     },
     "Process": {
       "type": "object",

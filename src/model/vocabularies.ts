@@ -59,13 +59,19 @@ export const PLACEHOLDER_KINDS = [
   "dependency",
   "exposure",
   "identity",
+  "client",
 ] as const;
+/** How an Application signs people in (spec/v1/17-sign-in.md#sign-in-mode). */
+export const SIGN_IN_MODES = ["native", "gated", "token"] as const;
+/** Whether a native Client holds a secret or is a public client. */
+export const CLIENT_CREDENTIALS = ["secret", "pkce"] as const;
 
 export type Lifecycle = (typeof LIFECYCLES)[number];
 export type Runtime = (typeof RUNTIMES)[number];
 export type Engine = (typeof ENGINES)[number];
 export type Cutover = (typeof CUTOVERS)[number];
 export type PlaceholderKind = (typeof PLACEHOLDER_KINDS)[number];
+export type SignInMode = (typeof SIGN_IN_MODES)[number];
 export type DurabilityClass = (typeof DURABILITY_CLASSES)[number];
 export type Arch = (typeof ARCHITECTURES)[number];
 export type Medium = (typeof MEDIA)[number];

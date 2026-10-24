@@ -2813,10 +2813,10 @@ genuinely special states it accurately, and the derivation reads it.
 
 ## The closed vocabularies
 
-Eighteen attributes take a value from a fixed list rather than a free string.
+Twenty-two attributes take a value from a fixed list rather than a free string.
 Values are **exhaustive**: one absent from a list here fails schema validation,
 and adding one is a change to this chapter. The type in the class diagram names
-the list; the list itself is here rather than in the drawing, because eighteen
+the list; the list itself is here rather than in the drawing, because twenty-two
 boxes of two or three words each told a reader nothing the type name had not
 already told them, and the lines reaching them made the model harder to read.
 
@@ -2840,7 +2840,9 @@ already told them, and the lines reaching them made the model harder to read.
 | `Delivery` | `Grant.delivery` | `env`, `file`, `self` |
 | `KeyEncoding` | `Generate.encoding` | `hex`, `base64`, `base64url` |
 | `Tolerance` | `Rotation.tolerates` | `restart`, `reload` |
-| `PlaceholderKind` | `Placeholder.kind` | `secret`, `dependency`, `exposure`, `identity` |
+| `PlaceholderKind` | `Placeholder.kind` | `secret`, `dependency`, `exposure`, `identity`, `client` |
+| `SignInMode` | `Client.signIn` | `native`, `gated`, `token` |
+| `ClientCredential` | `Client.credential` | `secret`, `pkce` |
 | `ApiVerb` | `ApiRule.verbs` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` |
 
 ### Absent or `none`

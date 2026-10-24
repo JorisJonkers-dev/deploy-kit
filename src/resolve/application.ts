@@ -44,7 +44,7 @@ export type ResolvedElement = Omit<
 
 export interface ApplicationContext extends Omit<
   ProcessContext,
-  "machinery" | "migratesItself"
+  "machinery" | "migratesItself" | "application"
 > {
   /** The project that declares each Application of the union, by its id. */
   readonly projectOf: ReadonlyMap<string, string>;
@@ -315,6 +315,7 @@ export function resolveApplication(
           ...context,
           machinery,
           migratesItself: application.migration === "self",
+          application: application.id,
         }),
         ...(ingress.length === 0 ? {} : { ingress }),
         egress: egressOf(process, context),

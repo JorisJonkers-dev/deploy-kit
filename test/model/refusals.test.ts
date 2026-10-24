@@ -548,6 +548,7 @@ describe("the refusal fixtures", () => {
       "alert-class-without-signal",
       "asset-not-found",
       "backup-surface-not-provided",
+      "client-placeholder-without-secret",
       "credentials-without-database",
       "cutover-continuous-over-rwo",
       "cutover-interrupted-over-rwo",
@@ -582,6 +583,7 @@ describe("the refusal fixtures", () => {
       "no-forward-auth-endpoint",
       "no-migration-policy",
       "no-secret-store",
+      "no-sign-in-provider",
       "no-tier-for-audience",
       "no-vpn-policy",
       "non-kv-delivery",
@@ -609,7 +611,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(58);
+    expect(refused).toHaveLength(60);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",
