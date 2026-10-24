@@ -603,6 +603,26 @@ export function setDiagnostics(
             hint: "Name the Identity Provider as `<project>/<application>`, an Application its Project declares.",
           },
         ];
+  // Every Project the mesh enrols is one a project file declares
+  // (spec/v1/14-platform-intent.md#the-mesh).
+  const declaredProjects = new Set(
+    projects.map(({ document }) => document.project),
+  );
+  const enrolled: Diagnostic[] = (
+    platform.document.mesh?.enrolled ?? []
+  ).flatMap((project, index) =>
+    declaredProjects.has(project)
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_ENROLLED_PROJECT" as const,
+            document: platform.name,
+            path: `/mesh/enrolled/${String(index)}`,
+            message: `no project file declares the Project ${project} the mesh enrols`,
+            hint: "Name a Project a project file declares in `mesh.enrolled`, or remove it from the list.",
+          },
+        ],
+  );
   // A stated location stands for an Application the old path still runs, and
   // an instance for its one Process.
   const legacy = new Set(platform.document.handover?.legacy);
@@ -646,6 +666,7 @@ export function setDiagnostics(
     ...reporting,
     ...secrets,
     ...issuing,
+    ...enrolled,
     ...serving,
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({

@@ -234,6 +234,9 @@
         "client": {
           "$ref": "#/$defs/ResolvedClient"
         },
+        "mesh": {
+          "$ref": "#/$defs/ResolvedMesh"
+        },
         "processes": {
           "minItems": 1,
           "type": "array",
@@ -1064,6 +1067,30 @@
         "secret",
         "pkce"
       ]
+    },
+    "ResolvedMesh": {
+      "type": "object",
+      "properties": {
+        "dataplane": {
+          "type": "string",
+          "const": "ambient"
+        },
+        "tunnelPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "probeSource": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "dataplane",
+        "tunnelPort",
+        "probeSource"
+      ],
+      "additionalProperties": false
     },
     "ResolvedProcess": {
       "type": "object",
@@ -2354,6 +2381,9 @@
           "items": {
             "$ref": "#/$defs/EgressPeer"
           }
+        },
+        "mesh": {
+          "$ref": "#/$defs/ResolvedMesh"
         }
       },
       "required": [
@@ -2444,6 +2474,9 @@
           "items": {
             "$ref": "#/$defs/EgressPeer"
           }
+        },
+        "mesh": {
+          "$ref": "#/$defs/ResolvedMesh"
         }
       },
       "required": [

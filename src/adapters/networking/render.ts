@@ -14,6 +14,7 @@ import type {
   NetworkPolicy,
   PolicyPeer,
   PolicyPort,
+  PolicyRange,
 } from "../../objects/kubernetes.ts";
 import {
   consumerLabelsOf,
@@ -74,11 +75,55 @@ const fluxPeerOf = (namespace: string, controller: string): PolicyPeer => ({
   podSelector: { matchLabels: { app: controller } },
 });
 
+type Mesh = ResolvedApplicationDocument["mesh"];
+
+/**
+ * The ports a rule admits: the application port and, in an enrolled
+ * namespace, the tunnel port an enrolled peer arrives or leaves on instead
+ * (spec/v1/16-dependencies.md#the-mesh-tunnel).
+ */
+const portsOf = (port: number, mesh: Mesh): PolicyPort[] =>
+  mesh === undefined ? [tcp(port)] : [tcp(port), tcp(mesh.tunnelPort)];
+
+/** An egress peer's ports: the cluster's DNS on UDP and TCP, outside the mesh; any other through it. */
+const egressPortsOf = (
+  peer: { readonly rule: string; readonly port: number },
+  mesh: Mesh,
+): PolicyPort[] =>
+  peer.rule === DNS
+    ? [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)]
+    : portsOf(peer.port, mesh);
+
+/** Each port the kubelet probes the Process on, once, in probe order. */
+const probePortsOf = ({
+  readiness,
+  liveness,
+  startup,
+}: ResolvedProcess): number[] => [
+  ...new Set(
+    [readiness, liveness, startup].flatMap((probe) =>
+      probe === undefined ? [] : ["tcp" in probe ? probe.tcp : probe.port],
+    ),
+  ),
+];
+
+/** The rule that admits the kubelet's probes from the address the mesh rewrites them to. */
+function probeRulesOf(
+  process: ResolvedProcess,
+  { probeSource }: NonNullable<Mesh>,
+): { from: PolicyRange[]; ports: PolicyPort[] }[] {
+  const ports = probePortsOf(process);
+  return ports.length === 0
+    ? []
+    : [{ from: [{ ipBlock: { cidr: probeSource } }], ports: ports.map(tcp) }];
+}
+
 function policyOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
 ): NetworkPolicy {
-  const ingress = (process.ingress ?? []).map((peer) => ({
+  const { mesh } = application;
+  const admitted = (process.ingress ?? []).map((peer) => ({
     from: [
       peer.rule === "consumer"
         ? consumerPeerOf(peer.consumes)
@@ -86,20 +131,31 @@ function policyOf(
           ? fluxPeerOf(peer.namespace, peer.process)
           : peerOf(peer.namespace, peer.process),
     ],
-    ports: [tcp(peer.port)],
+    ports: portsOf(peer.port, mesh),
   }));
+  // In an enrolled namespace the kubelet's probes arrive from the address the
+  // mesh rewrites them to.
+  const probes = mesh === undefined ? [] : probeRulesOf(process, mesh);
+  const ingress = [...admitted, ...probes];
   // A missing list and an empty one admit the same nothing.
   // Stryker disable next-line ArrayDeclaration
   const edges = (process.dependencies ?? []).flatMap((edge) =>
     (edge.peers ?? []).map((peer) => ({
       to: [peerOf(peer.namespace, peer.process)],
-      ports: [tcp(peer.port)],
+      ports: portsOf(peer.port, mesh),
     })),
   );
-  // The cluster's DNS answers on UDP, and on TCP for a truncated response.
+  // The baseline admits UDP and TCP alike, since the cluster's DNS answers on
+  // both; only its peers other than DNS are reached through the mesh.
   const baseline = (process.egress ?? []).map((peer) => ({
     to: [peerOf(peer.namespace, peer.process)],
-    ports: [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)],
+    ports: [
+      { protocol: "UDP" as const, port: peer.port },
+      tcp(peer.port),
+      ...(mesh === undefined || peer.rule === DNS
+        ? []
+        : [tcp(mesh.tunnelPort)]),
+    ],
   }));
   // Where the Kubernetes API answers, for a Process that holds access to it:
   // an address, because the API server is no pod a selector reaches.
@@ -163,10 +219,7 @@ function backupPolicyOf(
   const peers = distinct(backups.flatMap(({ egress }) => egress)).map(
     (peer) => ({
       to: [peerOf(peer.namespace, peer.process)],
-      ports:
-        peer.rule === DNS
-          ? [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)]
-          : [tcp(peer.port)],
+      ports: egressPortsOf(peer, application.mesh),
     }),
   );
   const ranges = distinct(
@@ -231,10 +284,7 @@ export function renderPolicyJobPolicy(
       policyTypes: ["Ingress", "Egress"],
       egress: job.egress.map((peer) => ({
         to: [peerOf(peer.namespace, peer.process)],
-        ports:
-          peer.rule === DNS
-            ? [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)]
-            : [tcp(peer.port)],
+        ports: egressPortsOf(peer, job.mesh),
       })),
     },
   };
@@ -272,10 +322,7 @@ function migrationPoliciesOf(
         policyTypes: ["Ingress", "Egress"],
         egress: plan.egress.map((peer) => ({
           to: [peerOf(peer.namespace, peer.process)],
-          ports:
-            peer.rule === DNS
-              ? [{ protocol: "UDP" as const, port: peer.port }, tcp(peer.port)]
-              : [tcp(peer.port)],
+          ports: egressPortsOf(peer, application.mesh),
         })),
       },
     },

@@ -10,6 +10,7 @@ import {
   renderKubernetes,
 } from "../../src/adapters/kubernetes/render.ts";
 import { renderNetworking } from "../../src/adapters/networking/render.ts";
+import type { NetworkPolicy } from "../../src/objects/kubernetes.ts";
 import { renderPrometheus } from "../../src/adapters/prometheus/render.ts";
 import { wholeSeconds } from "../../src/adapters/shared/durations.ts";
 import { renderTraefik } from "../../src/adapters/traefik/render.ts";
@@ -884,6 +885,46 @@ describe("the kubernetes adapter", () => {
 });
 
 describe("the networking adapter", () => {
+  // spec/v1/16-dependencies.md#the-mesh-tunnel: the kubelet's probes reach
+  // an enrolled Process from one rewritten address, on each port it probes.
+  describe("in an enrolled namespace", () => {
+    const MESH = {
+      dataplane: "ambient" as const,
+      tunnelPort: 15008,
+      probeSource: "169.254.7.127/32",
+    };
+    const probeRules = (process: Edit<Process>) => {
+      const [policy] = objectsAt(
+        renderNetworking(edited(() => ({ mesh: MESH }), process)),
+        "notes/notes/networkpolicy.yaml",
+      ) as NetworkPolicy[];
+      return (policy?.spec.ingress ?? []).filter(({ from }) =>
+        from.some((peer) => "ipBlock" in peer),
+      );
+    };
+
+    it("admits the probes on the one port a Process probes for readiness alone", () => {
+      expect(
+        probeRules(() => ({ liveness: undefined, startup: undefined })),
+      ).toStrictEqual([
+        {
+          from: [{ ipBlock: { cidr: "169.254.7.127/32" } }],
+          ports: [{ protocol: "TCP", port: 8080 }],
+        },
+      ]);
+    });
+
+    it("admits no probe address to a Process the kubelet does not probe", () => {
+      expect(
+        probeRules(() => ({
+          readiness: undefined,
+          liveness: undefined,
+          startup: undefined,
+        })),
+      ).toStrictEqual([]);
+    });
+  });
+
   it("admits every edge's peers, and writes no ingress where nothing reaches the Process", () => {
     const [policy] = objectsAt(
       renderNetworking(

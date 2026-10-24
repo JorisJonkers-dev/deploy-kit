@@ -1126,6 +1126,50 @@ describe("the database catalog", () => {
     });
   });
 
+  // spec/v1/16-dependencies.md#the-mesh-tunnel: the method's pods are in its
+  // datastore's namespace, so they reach the datastore and the Secret Store
+  // through the mesh where the Platform document enrols that Project.
+  it("admits the tunnel port beside every peer but DNS in an enrolled datastore Project's method", () => {
+    const policyOf = (enrolled: boolean) =>
+      parseAllDocuments(
+        share(
+          {
+            [PLATFORM]: (document: string) => {
+              const moved = MOVED[PLATFORM](document);
+              return enrolled
+                ? moved.replace(
+                    "\nhardening:",
+                    "\nmesh:\n  enrolled: [data]\nhardening:",
+                  )
+                : moved;
+            },
+          },
+          ["data", "knowledge-platform"],
+          "data",
+        )["apps/data/platform-postgres/postgres-catalog-networkpolicy.yaml"] ??
+          "",
+      )
+        .map((document) => document.toJS() as unknown)
+        .filter((document) => document !== null) as {
+        spec: { egress: { ports: { protocol: string; port: number }[] }[] };
+      }[];
+
+    expect(
+      policyOf(true)[0]?.spec.egress.map(({ ports }) =>
+        ports.map(({ port }) => port),
+      ),
+    ).toStrictEqual([
+      [5432, 15008],
+      [8200, 15008],
+      [53, 53],
+    ]);
+    expect(
+      policyOf(false)[0]?.spec.egress.map(({ ports }) =>
+        ports.map(({ port }) => port),
+      ),
+    ).toStrictEqual([[5432], [8200], [53, 53]]);
+  });
+
   it("is applied from the datastore's own Project once that Project is on the estate path, and from no estate-scoped unit", () => {
     const owner = share(MOVED, ["data", "knowledge-platform"], "data");
     const estateScoped = share(

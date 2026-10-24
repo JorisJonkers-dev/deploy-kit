@@ -57,6 +57,9 @@
         "signIn": {
           "$ref": "#/$defs/SignIn"
         },
+        "mesh": {
+          "$ref": "#/$defs/Mesh"
+        },
         "hardening": {
           "$ref": "#/$defs/HardeningClass"
         },
@@ -550,6 +553,23 @@
       "required": [
         "issuer",
         "provider"
+      ],
+      "additionalProperties": false
+    },
+    "Mesh": {
+      "type": "object",
+      "properties": {
+        "enrolled": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "enrolled"
       ],
       "additionalProperties": false
     },

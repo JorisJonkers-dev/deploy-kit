@@ -881,6 +881,22 @@ A route declaring `audience: authenticated` on a tier whose declaration carries
 no endpoint is `E_NO_FORWARD_AUTH_ENDPOINT`, checked when the chain is derived
 rather than discovered as a 500 at the edge.
 
+### The mesh
+
+An Application whose Project the Platform document enrols in the ambient mesh
+([chapter 14](14-platform-intent.md#the-mesh)) records the `mesh` its namespace
+and its policies are spelled from: the data-plane mode, `ambient`, which the
+`kubernetes` adapter writes as the namespace's `istio.io/dataplane-mode` label;
+the `tunnelPort`, ztunnel's HBONE port `15008`; and the `probeSource`,
+`169.254.7.127/32`, the address ambient rewrites the kubelet's probes to. The
+`networking` adapter admits both
+([chapter 16](16-dependencies.md#the-mesh-tunnel)). The Vault policy job and a
+catalog method rendered in an enrolled Project's namespace record the same
+`mesh`, since their pods are in it too. The values are Istio's, fixed by the
+data plane rather than chosen by the estate, so no document authors them; an
+Application of a Project not enrolled records no `mesh`, and its projection is
+what it was before the mesh existed.
+
 ## The release gate
 
 An Application is the Release Unit, and no member's new version receives traffic
@@ -1837,6 +1853,11 @@ classDiagram
         +Duration deadline
         +Path protectedPath
     }
+    class ResolvedMesh {
+        +string dataplane
+        +Port tunnelPort
+        +Cidr probeSource
+    }
     class ResolvedClient {
         +SignInMode signIn
         +Host host
@@ -2126,6 +2147,9 @@ classDiagram
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
     ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape
     ResolvedApplication "1" *-- "0..1" ResolvedClient : client
+    ResolvedApplication "1" *-- "0..1" ResolvedMesh : mesh
+    ResolvedPolicyJob "1" *-- "0..1" ResolvedMesh : mesh
+    ResolvedCatalogJob "1" *-- "0..1" ResolvedMesh : mesh
     ReleaseGate "1" *-- "1" GateAnalysis : analysis
     ReleaseGate "1" *-- "1..*" GateMember : members
     GateMember "1" *-- "0..*" GateProvider : waitsFor

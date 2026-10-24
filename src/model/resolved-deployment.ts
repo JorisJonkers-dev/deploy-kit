@@ -778,6 +778,18 @@ const resolvedClient = z
   })
   .meta({ id: "ResolvedClient" });
 
+// What enrolment in the ambient mesh derives for an Application of an enrolled
+// Project (spec/v1/20-resolved-deployment.md#the-mesh): its namespace's data-plane
+// mode, the port an enrolled peer arrives and leaves on, and the address the
+// kubelet's probes arrive from.
+const resolvedMesh = z
+  .strictObject({
+    dataplane: z.literal("ambient"),
+    tunnelPort: port,
+    probeSource: text,
+  })
+  .meta({ id: "ResolvedMesh" });
+
 // The monitor an Application's observability derives: which surface of which
 // Process, at which path, at the platform's cadence.
 const resolvedScrape = z
@@ -812,6 +824,8 @@ const application = {
   exposure: z.array(resolvedExposure).exactOptional(),
   // Present where the Application declares `client`.
   client: resolvedClient.exactOptional(),
+  // Present where the Platform document enrols the Application's Project.
+  mesh: resolvedMesh.exactOptional(),
   processes: z.array(resolvedProcess).min(1),
 };
 
@@ -896,6 +910,8 @@ const resolvedPolicyJob = z
     // Every node it may land on, by name: none that holds an `sdcard` medium.
     eligibleNodes: z.array(text).min(1),
     egress: z.array(egressPeer),
+    // Present where its namespace is an enrolled Project's.
+    mesh: resolvedMesh.exactOptional(),
   })
   .meta({ id: "ResolvedPolicyJob" });
 
@@ -941,6 +957,8 @@ const resolvedCatalogJob = z
     // names it (spec/v1/16-dependencies.md#the-consumer-label).
     consumes: z.array(text),
     egress: z.array(egressPeer),
+    // Present where its namespace is an enrolled Project's.
+    mesh: resolvedMesh.exactOptional(),
   })
   .meta({ id: "ResolvedCatalogJob" });
 

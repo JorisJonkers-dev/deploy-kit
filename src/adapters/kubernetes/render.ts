@@ -1081,6 +1081,12 @@ function aliasesOf(
   }));
 }
 
+/** The label that enrols a namespace in the ambient mesh, where its Project is enrolled. */
+const meshLabelOf = ({
+  mesh,
+}: ResolvedApplicationDocument): Record<string, string> =>
+  mesh === undefined ? {} : { "istio.io/dataplane-mode": mesh.dataplane };
+
 /** Every Deliverable of one project this adapter owns, kustomizations aside. */
 export function renderKubernetes(project: ResolvedProject): Deliverable[] {
   const [first] = project.applications;
@@ -1095,7 +1101,13 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
         {
           apiVersion: "v1",
           kind: "Namespace",
-          metadata: { name: namespace, labels: managedOnly() },
+          metadata: {
+            name: namespace,
+            labels: {
+              ...managedOnly(),
+              ...meshLabelOf(first as ResolvedApplicationDocument),
+            },
+          },
         },
       ],
     },
