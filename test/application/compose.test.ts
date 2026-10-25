@@ -942,6 +942,29 @@ describe("composeEstate", () => {
       "apps/data/platform-rabbitmq/route-lan.yaml",
       "apps/data/platform-rabbitmq/route-management.yaml",
     ]);
+    // One legacy proxy holds every route back, though another tier's proxy
+    // is on the estate path.
+    const split = compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? {
+                ...file,
+                text: withLedger(
+                  file.text.replace(
+                    "traefik: edge/traefik-lan",
+                    "traefik: data/platform-rabbitmq",
+                  ),
+                  "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n",
+                ),
+              }
+            : file,
+        ),
+      },
+    });
+    expect(split.artifacts.map(({ name }) => name)).toContain("data");
+    expect(routes(split)).toStrictEqual([]);
     expect(routes(under(""))).toStrictEqual([
       "apps/data/platform-rabbitmq/route-lan.yaml",
       "apps/data/platform-rabbitmq/route-management.yaml",
