@@ -82,6 +82,16 @@ spec:
     - from:
         - namespaceSelector:
             matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/platform-rabbitmq.mqtt: "true"
+      ports:
+        - protocol: TCP
+          port: 1883
+    - from:
+        - namespaceSelector:
+            matchLabels:
               kubernetes.io/metadata.name: data-system
           podSelector:
             matchLabels:
@@ -89,6 +99,12 @@ spec:
       ports:
         - protocol: TCP
           port: 15672
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 1883
   egress:
     - to:
         - namespaceSelector:

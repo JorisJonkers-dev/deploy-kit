@@ -82,6 +82,8 @@ other resolves and every policy one asks for the other offers:
 | a Process's `engine` names a `surface` in `engines` that the Process does not provide | `E_BACKUP_SURFACE_NOT_PROVIDED` |
 | a volume's Durability Class has no entry in `durability` | `E_NO_DURABILITY_POLICY` |
 | a Process mounts a library `libraries` does not declare | `E_UNKNOWN_LIBRARY` |
+| an Application's `l4Exposure` names an address `l4Addresses` does not declare | `E_UNKNOWN_L4_ADDRESS` |
+| more Processes are exposed on a pool than its `range` holds addresses | `E_L4_ADDRESS_EXHAUSTED` |
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
@@ -465,6 +467,34 @@ A Process mounts a library by name
 the volume objects and the group are derived from this declaration and the
 mount. A library has no Durability Class: what it holds is no render's, and
 backing it up is the platform's, outside the render.
+
+## L4 Addresses
+
+An **L4 Address** is an address a client off the cluster reaches a raw TCP or
+UDP surface on ([chapter 10](10-project-intent.md#l4-exposure)). Which addresses
+the estate announces, on which network, are the platform's, so the Platform
+document declares each one, keyed by the name an Application's `l4Exposure`
+writes:
+
+```yaml
+l4Addresses:
+  lan-mqtt:
+    kind: pool
+    site: enschede
+    range: 192.168.0.97/32
+```
+
+| field | required | notes |
+|---|---|---|
+| `kind` | yes | How the address is reached. `pool` is the one kind: a range of IPv4 addresses announced on one site's network segment. |
+| `site` | yes | The site whose segment announces the pool. Every Process exposed on it is held to this site. |
+| `range` | yes | The IPv4 range, in CIDR form, the address is taken from. A `/32` is one address. It sits outside the router's DHCP scope. |
+
+Each Service exposed on a pool takes one address of its range, as a load
+balancer requesting the pool by its name, so the pool's name is also the name
+of the address pool the cluster's load balancer announces from. The render
+installs no load balancer and declares no pool on it: an entry asserts that the
+substrate announces the range on the site's segment.
 
 ## GPUs
 

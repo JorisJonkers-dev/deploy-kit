@@ -18,6 +18,7 @@ import {
   rootImageMessage,
   runsAsRoot,
 } from "../model/images-lock.ts";
+import { l4ExposuresOf, l4SitesOf } from "../model/l4-addresses.ts";
 import { migrationImage } from "../model/migration-proof.ts";
 import type { PinnedSet } from "../model/resolution.ts";
 
@@ -52,11 +53,12 @@ function contractRefusals(
 function gpuRefusals(
   set: PinnedSet,
   process: EffectiveProcess,
+  sites: readonly string[],
   path: string,
   document: string,
 ): Diagnostic[] {
   if (process.placement.gpu === undefined) return [];
-  const vendors = gpuVendors(process, set.nodeContract, set.platform);
+  const vendors = gpuVendors(process, set.nodeContract, set.platform, sites);
   if (vendors.length > 1)
     return [
       {
@@ -113,6 +115,11 @@ function processRefusals(
   return effective.applications.flatMap((application, a) =>
     application.processes.flatMap((process, p): Diagnostic[] => {
       const at = `/applications/${String(a)}/processes/${String(p)}`;
+      // The pools the Process is exposed on hold it to their sites.
+      const sites = l4SitesOf(
+        l4ExposuresOf(application, process.name),
+        set.platform,
+      );
       const images = [
         { image: process.image, path: `${at}/image` },
         ...(process.sidecars ?? []).map(({ image }, s) => ({
@@ -131,18 +138,25 @@ function processRefusals(
             hint: "Lock the alias, or name one the images lock holds.",
           })),
         ...rootRefusals(set, process.image, `${at}/image`, document),
-        ...(eligibleNodes(process, set.nodeContract, set.platform).length === 0
+        ...(eligibleNodes(process, set.nodeContract, set.platform, sites)
+          .length === 0
           ? [
               {
                 code: "E_PLACEMENT_UNSATISFIABLE" as const,
                 document,
                 path: `${at}/placement`,
-                message: `no node in the node contract can hold ${process.name}`,
-                hint: "Relax a placement dimension, or lower what the Process asks for.",
+                message:
+                  sites.length === 0
+                    ? `no node in the node contract can hold ${process.name}`
+                    : `no node in the node contract on ${String(sites)}, the site of each pool ${process.name} is exposed on, can hold it`,
+                hint:
+                  sites.length === 0
+                    ? "Relax a placement dimension, or lower what the Process asks for."
+                    : "Relax a placement dimension, or expose the Process on a pool of the site it is placed on.",
               },
             ]
-          : gpuRefusals(set, process, `${at}/placement/gpu`, document)),
-        ...spreadRefusals(set, process, `${at}/replicas`, document),
+          : gpuRefusals(set, process, sites, `${at}/placement/gpu`, document)),
+        ...spreadRefusals(set, process, sites, `${at}/replicas`, document),
       ];
     }),
   );
@@ -157,12 +171,18 @@ function processRefusals(
 function spreadRefusals(
   set: PinnedSet,
   process: EffectiveProcess,
+  sites: readonly string[],
   path: string,
   document: string,
 ): Diagnostic[] {
   const { replicas } = process;
   if (replicas?.across === undefined) return [];
-  const nodes = eligibleNodes(process, set.nodeContract, set.platform).length;
+  const nodes = eligibleNodes(
+    process,
+    set.nodeContract,
+    set.platform,
+    sites,
+  ).length;
   return nodes === 0 || nodes >= replicas.count
     ? []
     : [

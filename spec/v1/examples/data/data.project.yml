@@ -301,6 +301,16 @@ applications:
         routes:
           - {path: /, match: prefix, process: rabbitmq, surface: management}
 
+    # The sensors on the LAN publish over MQTT from off the cluster, so the
+    # broker's `mqtt` surface is a raw TCP surface on an L4 Address the
+    # Platform document declares (spec/v1/10-project-intent.md#l4-exposure).
+    # The entry names the address, never an IP or a node; `port` is the one a
+    # sensor dials, and the port the broker listens on stays the surface's.
+    # The address is a pool on the Enschede LAN, so the broker is held to that
+    # site, and a sensor's own address reaches it unchanged.
+    l4Exposure:
+      - {address: lan-mqtt, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}
+
     processes:
       - name: rabbitmq
         lifecycle: application
@@ -313,6 +323,7 @@ applications:
           amqp: 5672        # named by auth and knowledge in `dependsOn`
           management: 15672
           metrics: 15692    # the prometheus plugin's own listener
+          mqtt: 1883        # the MQTT plugin's listener, reached off the cluster
 
         placement:
           memory: 2Gi       # the broker the estate's async work queues behind
@@ -324,8 +335,9 @@ applications:
         # No `exposure` here: it sits on the Application above, and its one route
         # names the `management` surface declared in `provides`. `amqp` and
         # `metrics` are provided and not routed -- providing a port is not
-        # exposing it, and only the route decides which of the three the edge
-        # can reach.
+        # exposing it, and only the route decides which of the four the edge
+        # can reach. `mqtt` is reached through no edge at all, but on the L4
+        # Address the Application's `l4Exposure` names.
 
         probes:
           readiness: {tcp: 5672}

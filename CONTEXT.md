@@ -133,6 +133,15 @@ proxy's namespace by the Project that declares the proxy.
 a datastore, `critical` for the foundation and the Applications the platform
 names, none otherwise.
 
+**L4 exposure**: a raw TCP or UDP port a client off the cluster dials on an L4
+Address, naming the Process and Surface that answer it. The port a client
+dials is its own; the port the container listens on stays the Surface's.
+
+**L4 Address**: an address off-cluster clients reach a raw surface on, declared
+by name in the Platform document. A `pool` is an IPv4 range announced on one
+site's network segment: every Process exposed on it is held to that site, and
+its replicas are failover, not load sharing.
+
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the
 allowance, and the Tier decides which address counts as one client

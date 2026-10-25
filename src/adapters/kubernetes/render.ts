@@ -1,6 +1,7 @@
 // The `kubernetes` adapter (spec/v1/30-deliverables.md#adapters): per project
 // its Namespace and the volume and claim of each library it mounts, per Process
-// its controller, ServiceAccount, claims and Asset ConfigMaps, the backup each backed-up volume derives, the Canary of each
+// its controller, ServiceAccount, claims and Asset ConfigMaps, the Service of
+// each L4 Address it is exposed on, the backup each backed-up volume derives, the Canary of each
 // blue-green Process (#flagger-ready-objects), the ClusterRole and binding of
 // each Process that holds Kubernetes API access, and the kustomize
 // Kustomization of every directory the render writes. It spells what layer 2
@@ -25,6 +26,7 @@ import type {
   EnvVar,
   Kustomization,
   Labels,
+  LoadBalancerService,
   NodeAffinity,
   PodAntiAffinity,
   PersistentVolumeClaim,
@@ -672,6 +674,46 @@ const serviceOf = (
 });
 
 /**
+ * The pool an L4 Address's Service asks its address from. MetalLB holds one
+ * pool per pool-kind L4 Address, under the address's name.
+ */
+export const ADDRESS_POOL = "metallb.io/address-pool";
+
+/**
+ * The Service of each L4 Address a Process is exposed on
+ * (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection): a load
+ * balancer whose `Local` traffic policy keeps the client's address, and so
+ * sends a connection only to a pod on the node that announces it.
+ */
+const l4ServicesOf = (
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): LoadBalancerService[] =>
+  // A missing list and an empty one expose nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  (process.l4Exposure ?? []).map(({ address, service, ports }) => ({
+    apiVersion: "v1",
+    kind: "Service",
+    metadata: {
+      name: service,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+      annotations: { [ADDRESS_POOL]: address },
+    },
+    spec: {
+      type: "LoadBalancer",
+      externalTrafficPolicy: "Local",
+      selector: instanceOf(process.name),
+      ports: ports.map(({ name, port, protocol, targetPort }) => ({
+        name,
+        port,
+        protocol: protocol === "udp" ? "UDP" : "TCP",
+        targetPort,
+      })),
+    },
+  }));
+
+/**
  * A claim for each volume, `ReadWriteOnce` as `local-path` provides, and for
  * each backed-up one the claim its copies land on, at the same size. A claim
  * whose class derives a backup is never pruned, and neither is its copies'.
@@ -1245,9 +1287,12 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
         ["migration.yaml", migrationOf(application)],
         [
           "service.yaml",
-          processes
-            .filter((p) => !blueGreen(p) && p.surfaces !== undefined)
-            .map((p) => serviceOf(p, application)),
+          [
+            ...processes
+              .filter((p) => !blueGreen(p) && p.surfaces !== undefined)
+              .map((p) => serviceOf(p, application)),
+            ...processes.flatMap((p) => l4ServicesOf(p, application)),
+          ],
         ],
         ["pvc.yaml", processes.flatMap((p) => claimsOf(p, application))],
         [

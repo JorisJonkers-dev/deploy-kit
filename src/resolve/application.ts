@@ -33,6 +33,8 @@ import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
 import { clientGrantsOf, resolveClient } from "./client.ts";
 import { resolveMesh } from "./mesh.ts";
+import { resolveL4Exposure } from "./l4-exposure.ts";
+import { l4ExposuresOf, l4SitesOf } from "../model/l4-addresses.ts";
 import { managed } from "./database.ts";
 import { resolveMigration } from "./migration.ts";
 import { egressOf, ingressOf } from "./policy.ts";
@@ -46,7 +48,7 @@ export type ResolvedElement = Omit<
 
 export interface ApplicationContext extends Omit<
   ProcessContext,
-  "machinery" | "migratesItself" | "application" | "clientGrants"
+  "machinery" | "migratesItself" | "application" | "clientGrants" | "sites"
 > {
   /** The project that declares each Application of the union, by its id. */
   readonly projectOf: ReadonlyMap<string, string>;
@@ -323,6 +325,8 @@ export function resolveApplication(
   const pairs = application.processes.map((process) => {
     const ingress = ingressOf(process, application, context);
     const clientGrants = clientGrantsOf(process, application, context);
+    const exposures = l4ExposuresOf(application, process.name);
+    const l4Exposure = resolveL4Exposure(exposures, process, context.platform);
     return {
       process,
       resolved: {
@@ -332,7 +336,9 @@ export function resolveApplication(
           migratesItself: application.migration === "self",
           application: application.id,
           clientGrants,
+          sites: l4SitesOf(exposures, context.platform),
         }),
+        ...(l4Exposure.length === 0 ? {} : { l4Exposure }),
         ...(ingress.length === 0 ? {} : { ingress }),
         egress: egressOf(process, context, clientGrants.length > 0),
       },

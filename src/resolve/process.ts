@@ -100,6 +100,8 @@ export interface ProcessContext {
   readonly application: string;
   /** The grants its Application's Client, or the provider's role, derives on the Process. */
   readonly clientGrants: readonly ResolvedGrant[];
+  /** The sites the pools the Process is exposed on hold it to. */
+  readonly sites: readonly string[];
 }
 
 type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
@@ -389,7 +391,12 @@ function placementOf(
     claims.has(claim),
   );
   return {
-    eligibleNodes: eligibleNodes(process, context.contract, context.platform),
+    eligibleNodes: eligibleNodes(
+      process,
+      context.contract,
+      context.platform,
+      context.sites,
+    ),
     ...(binding === undefined
       ? {}
       : { boundTo: binding.node, from: "cluster-state" as const }),
@@ -406,7 +413,12 @@ function gpuOf(
   context: ProcessContext,
 ): { readonly gpu?: { resource: string; runtimeClass: string } } {
   if (process.placement.gpu === undefined) return {};
-  const [vendor] = gpuVendors(process, context.contract, context.platform);
+  const [vendor] = gpuVendors(
+    process,
+    context.contract,
+    context.platform,
+    context.sites,
+  );
   const policy = context.platform.gpus?.[vendor as string] as NonNullable<
     PlatformIntentDocument["gpus"]
   >[string];

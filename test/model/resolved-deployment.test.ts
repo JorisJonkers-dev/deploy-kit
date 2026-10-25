@@ -589,6 +589,7 @@ describe("the metamodel names every class the chapter draws", () => {
       "EgressRule",
       "HardeningClass",
       "IngressRule",
+      "L4Protocol",
       "LibraryAccess",
       "Lifecycle",
       "Listener",

@@ -275,6 +275,21 @@ gpus:
     resource: nvidia.com/gpu
     runtimeClass: nvidia-cdi
 
+# The addresses a client off the cluster reaches a raw surface on
+# (spec/v1/14-platform-intent.md#l4-addresses), by name. A pool is a range on
+# one site's network segment: a Process exposed on it is held to that site, and
+# each Service exposed on it takes one address of the range, so a range of one
+# address is that address. Both sit outside the router's DHCP scope.
+l4Addresses:
+  lan-dns:
+    kind: pool
+    site: enschede
+    range: 192.168.0.98/32
+  lan-mqtt:
+    kind: pool
+    site: enschede
+    range: 192.168.0.97/32
+
 # The VPN an attached Process's traffic leaves through
 # (spec/v1/14-platform-intent.md#vpn): one privileged container the render adds
 # beside each attached Process, running this image with these settings. Each

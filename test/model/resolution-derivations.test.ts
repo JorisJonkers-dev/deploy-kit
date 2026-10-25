@@ -28,6 +28,7 @@ import {
 import { resolveApplication } from "../../src/resolve/application.ts";
 import { resolveLibraries } from "../../src/resolve/libraries.ts";
 import { mebibytes, millicores } from "../../src/model/quantities.ts";
+import { l4ExposuresOf, l4SitesOf } from "../../src/model/l4-addresses.ts";
 
 const EXAMPLES = join(
   import.meta.dirname,
@@ -4062,5 +4063,51 @@ describe("a Process nothing reaches", () => {
         cutover: interrupted
 `;
     expect(processOf(one(worker))).not.toHaveProperty("ingress");
+  });
+});
+// REQ-081 (docs/requirements.md): a Process is exposed by the entries that
+// name it, and held to the site of each pool among them, once.
+describe("a Process's L4 exposures", () => {
+  const entry = (process: string, address: string) => ({
+    address,
+    port: 1883,
+    protocol: "tcp" as const,
+    process,
+    surface: "mqtt",
+  });
+  const application = {
+    l4Exposure: [
+      entry("broker", "lan-mqtt"),
+      entry("management", "lan-mqtt"),
+      entry("broker", "lan-dns"),
+    ],
+  };
+  const platform = {
+    l4Addresses: {
+      "lan-mqtt": {
+        kind: "pool" as const,
+        site: "enschede",
+        range: "192.168.0.97/32",
+      },
+      "lan-dns": {
+        kind: "pool" as const,
+        site: "enschede",
+        range: "192.168.0.98/32",
+      },
+    },
+  };
+
+  it("are the entries that name it, and no other Process's", () => {
+    expect(l4ExposuresOf(application, "broker")).toStrictEqual([
+      entry("broker", "lan-mqtt"),
+      entry("broker", "lan-dns"),
+    ]);
+    expect(l4ExposuresOf({}, "broker")).toStrictEqual([]);
+  });
+
+  it("hold it to each pool's site once", () => {
+    expect(
+      l4SitesOf(l4ExposuresOf(application, "broker"), platform),
+    ).toStrictEqual(["enschede"]);
   });
 });

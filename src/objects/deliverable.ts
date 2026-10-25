@@ -21,6 +21,7 @@ import type {
 } from "./custom.ts";
 import type {
   AliasService,
+  LoadBalancerService,
   ClusterRole,
   ClusterRoleBinding,
   PriorityClass,
@@ -47,6 +48,7 @@ export type RenderedObject =
   | NetworkPolicy
   | Service
   | AliasService
+  | LoadBalancerService
   | PersistentVolumeClaim
   | PersistentVolume
   | Canary

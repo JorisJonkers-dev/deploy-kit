@@ -416,6 +416,27 @@ export interface Service {
   };
 }
 
+/**
+ * A Service a client off the cluster reaches on an address a pool announces:
+ * `Local` keeps the client's address and the connection on the announcing node.
+ */
+export interface LoadBalancerService {
+  readonly apiVersion: "v1";
+  readonly kind: "Service";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly type: "LoadBalancer";
+    readonly externalTrafficPolicy: "Local";
+    readonly selector: Labels;
+    readonly ports: readonly {
+      readonly name: string;
+      readonly port: number;
+      readonly protocol: "TCP" | "UDP";
+      readonly targetPort: number;
+    }[];
+  };
+}
+
 /** A name in one namespace for a host elsewhere: DNS alone, no selector and no port. */
 export interface AliasService {
   readonly apiVersion: "v1";

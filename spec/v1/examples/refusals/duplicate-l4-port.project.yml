@@ -1,0 +1,34 @@
+# REFUSED: E_DUPLICATE_L4_PORT
+#
+# The broker is exposed twice on lan-mqtt at TCP port 1883. One Process's
+# entries on one address are one Service's ports, and a Service carries a port
+# and a protocol once, so a client dialling 1883 would reach one of the two
+# surfaces and nothing says which (spec/v1/10-project-intent.md #l4-exposure).
+#
+# The same port over UDP, or on another address, would be accepted.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: duplicate-l4-port
+    l4Exposure:
+      - {address: lan-mqtt, port: 1883, protocol: tcp, process: duplicate-l4-port, surface: mqtt}
+      - {address: lan-mqtt, port: 1883, protocol: tcp, process: duplicate-l4-port, surface: mqtts}
+    processes:
+      - name: duplicate-l4-port
+        lifecycle: application
+        image: duplicate-l4-port
+        runtime: none
+        provides:
+          mqtt: 1883
+          mqtts: 8883
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { tcp: 1883 }
+        startupBudget: 20s
+        cutover: interrupted

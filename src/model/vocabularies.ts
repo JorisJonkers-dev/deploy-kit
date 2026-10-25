@@ -69,6 +69,8 @@ export const LIBRARY_ACCESS = ["read", "write"] as const;
 
 /** What a Process's replicas are kept apart across (spec/v1/10-project-intent.md#replicas-and-the-disruption-budget). */
 export const SPREADS = ["node"] as const;
+/** The transport an L4 exposure carries: a raw surface, never HTTP's routing. */
+export const L4_PROTOCOLS = ["tcp", "udp"] as const;
 export const PLACEHOLDER_KINDS = [
   "secret",
   "dependency",
@@ -117,3 +119,4 @@ export type ApiVerb = (typeof API_VERBS)[number];
 export type Delivery = (typeof DELIVERIES)[number];
 export type Tolerance = (typeof TOLERANCES)[number];
 export type LibraryAccess = (typeof LIBRARY_ACCESS)[number];
+export type L4Protocol = (typeof L4_PROTOCOLS)[number];

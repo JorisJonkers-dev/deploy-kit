@@ -558,6 +558,7 @@ describe("the refusal fixtures", () => {
       "duplicate-backup-claim",
       "duplicate-claim",
       "duplicate-human-grant",
+      "duplicate-l4-port",
       "duplicate-route-match",
       "durability-policy-incomplete",
       "durability-without-engine",
@@ -574,6 +575,7 @@ describe("the refusal fixtures", () => {
       "handover-unlisted",
       "illegal-delivery-for-access",
       "image-runs-as-root",
+      "l4-address-exhausted",
       "library-not-granted",
       "migration-owner-duplicated",
       "migration-undeclared",
@@ -614,6 +616,7 @@ describe("the refusal fixtures", () => {
       "unknown-api-holder",
       "unknown-critical-application",
       "unknown-enrolled-project",
+      "unknown-l4-address",
       "unknown-library",
       "unknown-machinery",
       "unknown-surface",
@@ -621,7 +624,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(70);
+    expect(refused).toHaveLength(73);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

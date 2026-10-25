@@ -39,6 +39,14 @@ export const ERROR_RATE = /^(100|\d{1,2}(\.\d{1,2})?)%$/;
 /** A latency bound: whole milliseconds or seconds. */
 export const LATENCY = /^[1-9]\d*(ms|s)$/;
 const port = z.int().min(1).max(65535);
+/** An IPv4 range in CIDR notation, `192.168.0.98/32` for one address. */
+export const IPV4_CIDR =
+  /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\/(3[0-2]|[12]?\d)$/;
+/**
+ * An L4 Address's name: a DNS label, since it names the Service an exposure on
+ * it renders and the pool the Service asks its address from.
+ */
+export const L4_ADDRESS_NAME = /^[a-z]([a-z0-9-]{0,30}[a-z0-9])?$/;
 
 /**
  * A privileged role's holder: the Project that may hold it and the Application
@@ -517,6 +525,19 @@ const humanGrant = z
   .meta({ id: "HumanGrant" });
 
 export type HumanGrant = z.output<typeof humanGrant>;
+// An address a client off the cluster reaches a raw surface on
+// (spec/v1/14-platform-intent.md#l4-addresses). A pool is a range of IPv4
+// addresses announced on one site's network segment: it is the pool's site
+// that holds every Process exposed on it, and its range that the address is
+// taken from. `kind` names how the address is reached, so another kind adds a
+// class beside this one rather than a field on it.
+const poolAddress = z
+  .strictObject({
+    kind: z.literal("pool"),
+    site: text,
+    range: z.string().regex(IPV4_CIDR),
+  })
+  .meta({ id: "PoolAddress" });
 
 const provider = z
   .strictObject({
@@ -566,6 +587,10 @@ export const platformIntent = z
     vpn: vpnPolicy.exactOptional(),
     humanGrants: z.array(humanGrant).min(1).exactOptional(),
     priority: priorityPolicy.exactOptional(),
+    l4Addresses: z
+      .record(z.string().regex(L4_ADDRESS_NAME), poolAddress)
+      .meta({ entry: "L4Address" })
+      .exactOptional(),
   })
   .meta({ id: "Platform" });
 

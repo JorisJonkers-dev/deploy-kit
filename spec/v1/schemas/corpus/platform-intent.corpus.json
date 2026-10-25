@@ -429,6 +429,44 @@
           "path": "/priority/criticalApplications"
         }
       ]
+    },
+    {
+      "name": "an L4 Address whose range is no IPv4 range",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/l4Addresses/lan-mqtt/range",
+          "value": "192.168.0.97"
+        }
+      ]
+    },
+    {
+      "name": "an L4 Address of a kind the platform offers none of",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/l4Addresses/lan-mqtt/kind",
+          "value": "bgp"
+        }
+      ]
+    },
+    {
+      "name": "an L4 Address with no site",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/l4Addresses/lan-mqtt/site"
+        }
+      ]
     }
   ]
 }
