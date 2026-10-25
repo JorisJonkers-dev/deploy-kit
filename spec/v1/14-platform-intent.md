@@ -87,6 +87,7 @@ other resolves and every policy one asks for the other offers:
 | two exposures dial the same port and protocol on one node through its node addresses | `E_NODE_PORT_TAKEN` |
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
+| a Node Agent the node contract or the pools derive has no entry in `nodeAgents` | `E_NO_NODE_AGENT_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names no Application its Project declares | `E_UNKNOWN_MACHINERY` |
 | a name in `apiAccess.holders` names no Application its Project declares | `E_UNKNOWN_API_HOLDER` |
@@ -306,6 +307,54 @@ routes ([0117](../../docs/adr/model/0117-an-external-check-is-rendered-by-its-ow
 A route or exposure change therefore re-renders only its own Project's share.
 No platform Application's Assets, pod template or pin move with it.
 
+## Node Agents
+
+Some of the foundation runs on the hosts themselves: an agent per node that
+needs the host's devices, network or filesystems. A **Node Agent** is one of
+these, and it is never declared. The Platform document holds a closed **Node
+Agent catalog**, in the shape of the engine catalog: each entry pins the image
+alias and what each copy requests, and the catalog fixes the privileges, which
+no author declares. So `E_HARDENING_UNMET` does not apply to an agent, and no
+Process can ask for the host network: no field of a project file names it.
+
+```yaml
+nodeAgents:
+  gpu-device: { image: nvidia-device-plugin, memory: 64Mi, cpu: 10m }
+  gpu-metrics: { image: dcgm-exporter, memory: 256Mi, cpu: 50m }
+  node-metrics: { image: node-exporter, memory: 64Mi, cpu: 20m }
+  l4-speaker:
+    image: metallb-speaker
+    memory: 64Mi
+    cpu: 20m
+    controller: { image: metallb-controller, memory: 64Mi, cpu: 10m }
+```
+
+| agent | runs on | what the catalog fixes |
+|---|---|---|
+| `gpu-device` | every node with an `nvidia` card in the node contract | the device plugin: privileged, the host's PIDs, the kubelet's device-plugin socket and the CDI directory, and time-slicing of **four shares per GPU** |
+| `gpu-metrics` | the same nodes | the card counters: `SYS_ADMIN`, the kubelet's pod-resources socket read-only, and **one share** of the card it reads |
+| `node-metrics` | every node | the host's metrics: the host network and PIDs, and `/proc`, `/sys` and `/` read-only, as a non-root user |
+| `l4-speaker` | the nodes of every site with a pool-kind [L4 Address](#l4-addresses) | the announcer: the host network and `NET_RAW` alone; beside it a **controller**, which runs once with no privilege, and per pool an address pool and an advertisement |
+
+Each agent is a DaemonSet held to exactly the nodes its row names, by name,
+so a node the contract does not list runs none. A pool's address pool hands
+its range out only to a Service that names the pool (`autoAssign: false`),
+and its advertisement selects the nodes of the pool's site, so the address is
+announced on that segment alone. A `gpu` requirement is granted one share of
+a card, with no memory or fault isolation between the shares.
+
+An agent the facts derive needs its entry: a node with an `nvidia` card and no
+`gpu-device` entry, say, is `E_NO_NODE_AGENT_POLICY`. The GPU agents run under the
+runtime class [`gpus`](#gpus) names for `nvidia`, so where it names none they are
+`E_NO_GPU_POLICY`. An agent no node needs is
+derived nowhere, and its entry renders nothing.
+
+The agents are the **`node` Project**, which no project file declares: every
+object it holds is derived from the catalog, the node contract and the pools,
+in `node-system`, under one Reconcile Unit and one pin, and the handover ledger
+hands it to the estate path like any other Project. It follows nothing, since
+an agent needs only its node.
+
 ## Tiers
 
 A tier is where the edge terminates. It declares its **edge facts**, in the
@@ -503,9 +552,10 @@ l4Addresses:
 
 Each Service exposed on a pool takes one address of its range, as a load
 balancer requesting the pool by its name, so the pool's name is also the name
-of the address pool the cluster's load balancer announces from. The render
-installs no load balancer and declares no pool on it: an entry asserts that the
-substrate announces the range on the site's segment.
+of the address pool the cluster's load balancer announces from. The load
+balancer is the `l4-speaker` [Node Agent](#node-agents), which declares each
+pool and announces it from the nodes of the pool's site: an entry asserts that
+the range is free on the site's segment.
 
 A node address takes no address of a range, so it is never exhausted. What it
 has to share is the node's ports: a node listens on a port and a protocol once,
@@ -539,7 +589,9 @@ A vendor the platform names nothing for cannot be requested: a Process whose
 eligible cards are that vendor's is `E_NO_GPU_POLICY`
 ([chapter 40](40-composition.md#placement)). An entry asserts that every node
 carrying the vendor's cards has the driver, the container toolkit and the
-device plugin installed; the render installs none of them.
+device plugin can run; the render installs neither the driver nor the toolkit.
+The device plugin is the `gpu-device` [Node Agent](#node-agents), whose share
+count is the catalog's.
 
 ## VPN
 

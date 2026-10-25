@@ -2,6 +2,8 @@
 // (spec/v1/20-resolved-deployment.md): the set composed as checkIntentSet
 // composes it, the pinned inputs read and checked, and every project's
 // projections written. The hash arrives as a port; nothing here performs IO.
+import type { ResolvedNodeAgent } from "../model/node-agents.ts";
+import { resolveNodeAgents } from "../resolve/node-agents.ts";
 import { pinnedDiagnostics } from "../check/pinned-inputs.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { ScopedEnv } from "../model/env.ts";
@@ -66,6 +68,8 @@ export interface ResolvedSet {
   readonly humanGrants?: readonly HumanGrant[];
   /** The priority classes the platform declares. */
   readonly priority?: PlatformIntentDocument["priority"];
+  /** The Node Agents the node contract and the pools derive. */
+  readonly nodeAgents: readonly ResolvedNodeAgent[];
 }
 
 const NODE_CONTRACT = "node-contract.yml";
@@ -288,6 +292,11 @@ export function resolveIntentSet(
       catalogHomes: homes,
       ...(events === undefined ? {} : { events }),
       tierProxies: set.platform.tiers.map(({ traefik }) => traefik),
+      nodeAgents: resolveNodeAgents(
+        set.platform,
+        set.nodeContract,
+        set.imagesLock,
+      ),
       // An absent list and an undefined one render no binding alike.
       // Stryker disable next-line ConditionalExpression
       ...(set.platform.humanGrants === undefined

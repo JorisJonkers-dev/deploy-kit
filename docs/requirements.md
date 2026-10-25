@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **93** rows. The compiler's behaviours join it as they land.
+This ledger holds **94** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -116,3 +116,4 @@ This ledger holds **93** rows. The compiler's behaviours join it as they land.
 | REQ-094 | Every IngressRoute rendered for a tier that declares `dns` carries `external-dns.alpha.kubernetes.io/target` and `…/cloudflare-proxied` from it, and one on a tier without it carries neither, because the DNS controller writes a route's record from those annotations | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-096 | A Process with an `engine` runs at the Platform's `data` priority class, one of the foundation or a critical Application at its `critical` class, and any other at none; both classes render once, estate-scoped, and an unknown critical Application is refused, because no author claims a priority and the data layer must schedule before what reads it | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-097 | An exposure on a node-kind L4 Address renders each port a client dials as a host port on the Process's container, on the surface's own port entry where it dials that port over TCP and on an entry of its own otherwise, holds the Process to that node, and renders no Service; two exposures dialling one port and protocol on one node are `E_NODE_PORT_TAKEN`, replicas there are `E_NODE_ADDRESS_REPLICATED`, and a `continuous` cutover there is `E_CUTOVER_UNHONOURABLE` unless the Application is delivery machinery, whose rolling switchover never runs two pods | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-098 | The Node Agents are derived, never authored: every node runs `node-metrics`, a node with an `nvidia` card runs `gpu-device` and `gpu-metrics`, and the nodes of a site with a pool run `l4-speaker`, each a DaemonSet in `node-system` held to exactly those nodes with the privileges its catalog entry fixes; `gpu-device` time-slices each GPU into four shares and `gpu-metrics` holds one; each pool renders an address pool assigned only on request and an advertisement selecting its site's nodes; a derived agent with no catalog entry is `E_NO_NODE_AGENT_POLICY`, and its image must be locked | [test/model/node-agents.test.ts](../test/model/node-agents.test.ts) |

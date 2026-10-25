@@ -116,6 +116,7 @@ interface Options {
   /** Files read beside the project: its env files, and its Asset files. */
   readonly env?: readonly AuthoredFile[];
   readonly lock?: (lock: string) => string;
+  readonly contract?: (contract: string) => string;
 }
 
 /** The codes a resolution refused with, in the order it reported them. */
@@ -134,7 +135,10 @@ function resolve(applications: string, options: Options = {}) {
       ...FOUNDATION.map((file) =>
         file.name === "platform/images.lock.yml" && options.lock !== undefined
           ? { ...file, text: options.lock(file.text) }
-          : file,
+          : file.name === "platform/node-contract.yml" &&
+              options.contract !== undefined
+            ? { ...file, text: options.contract(file.text) }
+            : file,
       ),
       ...(options.signIn === true ? IDENTITY : []),
       { name: "minimal/notes.project.yml", text: HEADER + applications },
@@ -3639,12 +3643,14 @@ describe("the Vault policy job", () => {
       ),
       // What the set does derive is where Flux's events go, since the worked
       // platform names a Reporter, the tiers' proxies, and the groups it grants
-      // a cluster role. The catalogs' homes are always there, and hold none.
+      // a cluster role. The catalogs' homes and the Node Agents are always
+      // there, and the homes hold none.
     ).toStrictEqual([
       "projects",
       "catalogHomes",
       "events",
       "tierProxies",
+      "nodeAgents",
       "humanGrants",
       "priority",
     ]);
@@ -4137,5 +4143,121 @@ describe("a Process's L4 exposures", () => {
     expect(l4SitesOf([entry("broker", "mail-smtp")], onNodes)).toStrictEqual(
       [],
     );
+  });
+});
+
+// REQ-098 (docs/requirements.md): an agent the facts derive needs its catalog
+// entry, and its images are ones the lock holds.
+describe("the Node Agent catalog", () => {
+  const notes = (options: Options) =>
+    codesAndPaths(resolve(one(serving("notes-api")), options));
+  const codesAndPaths = (result: ReturnType<typeof resolve>) =>
+    result.ok
+      ? []
+      : result.diagnostics.map(({ code, path }) => ({ code, path }));
+
+  it("refuses an agent the facts derive that the catalog holds no entry for", () => {
+    expect(
+      notes({
+        platform: (platform) =>
+          platform.replace(/\n {2}gpu-device: .*\n/, "\n"),
+      }),
+    ).toStrictEqual([
+      { code: "E_NO_NODE_AGENT_POLICY", path: "/nodeAgents/gpu-device" },
+    ]);
+    expect(
+      notes({
+        platform: (platform) =>
+          platform.replace(/\nnodeAgents:\n( {2}.*\n)+/, "\n"),
+      }).map(({ path }) => path),
+    ).toStrictEqual([
+      "/nodeAgents/gpu-device",
+      "/nodeAgents/gpu-metrics",
+      "/nodeAgents/node-metrics",
+      "/nodeAgents/l4-speaker",
+    ]);
+  });
+
+  it("says which agent runs where, and what is missing", () => {
+    const refused = resolve(one(serving("notes-api")), {
+      platform: (platform) =>
+        platform.replace(/\n {2}node-metrics: .*\n/, "\n"),
+      lock: (lock) => lock.replace(/\n {2}dcgm-exporter:\n( {4}.*\n)+/, "\n"),
+    });
+    expect(
+      refused.ok
+        ? []
+        : refused.diagnostics.map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message:
+          "node-metrics runs on enschede-t1000-1,enschede-rx7900xtx-1,enschede-gtx-960m-1,enschede-pi-1,enschede-pi-2,enschede-pi-3,frankfurt-contabo-1, and the catalog names no image for it",
+        hint: "Declare `nodeAgents.node-metrics` in the Platform document: its image, memory and cpu.",
+      },
+      {
+        message: "the images lock holds no entry for dcgm-exporter",
+        hint: "Lock the alias, or name one the images lock holds.",
+      },
+    ]);
+  });
+
+  it("refuses the GPU agents where the platform names no runtime class for their cards", () => {
+    const ungpued = (platform: string) =>
+      platform.replace(/\ngpus:\n( {2}.*\n)+/, "\n");
+    const refused = resolve(one(serving("notes-api")), { platform: ungpued });
+    expect(
+      refused.ok
+        ? []
+        : refused.diagnostics.map(({ code, path, message, hint }) => ({
+            code,
+            path,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_NO_GPU_POLICY",
+        path: "/gpus",
+        message:
+          "the GPU agents run on nvidia cards, and the platform names no runtime class for them",
+        hint: "Add the vendor to the Platform document's `gpus`.",
+      },
+    ]);
+    // With no nvidia card in the contract, no GPU agent runs, and none needs
+    // it; the Platform document pins the contract it is read with.
+    const amd = (contract: string) =>
+      contract.replaceAll("vendor: nvidia", "vendor: amd");
+    const contract = readNodeContract(
+      parseYaml(amd(text("platform/node-contract.yml"))),
+    );
+    if (!contract.ok) throw new Error("the edited contract did not read");
+    const pinned = sha256Hasher(contract.value);
+    expect(
+      notes({
+        platform: (platform) =>
+          ungpued(platform).replace(
+            /nodeContract: "[^"]*"/,
+            `nodeContract: "${pinned}"`,
+          ),
+        contract: amd,
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses an agent's image, or its controller's, that the lock does not hold", () => {
+    expect(
+      notes({
+        lock: (lock) =>
+          lock
+            .replace(/\n {2}node-exporter:\n( {4}.*\n)+/, "\n")
+            .replace(/\n {2}metallb-controller:\n( {4}.*\n)+/, "\n"),
+      }),
+    ).toStrictEqual([
+      { code: "E_UNLOCKED_IMAGE", path: "/nodeAgents/node-metrics/image" },
+      {
+        code: "E_UNLOCKED_IMAGE",
+        path: "/nodeAgents/l4-speaker/controller/image",
+      },
+    ]);
   });
 });

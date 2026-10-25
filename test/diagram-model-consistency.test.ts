@@ -338,6 +338,9 @@ test("every rendered kind is a column of the deliverables matrix", () => {
   // The priority classes are the cluster's, rendered once into the
   // estate-scoped tree, so the per-Application map carries no column for them.
   const perRender = new Set(["Alert", "Provider", "PriorityClass"]);
+  // The Node Agents are derived from node facts and pools, never from an
+  // Application, so the per-Application map carries no column for their kinds.
+  const perNode = new Set(["DaemonSet", "IPAddressPool", "L2Advertisement"]);
   const alias: Readonly<Record<string, string>> = {
     Kustomization: "kustomization",
     VaultDynamicSecret: "VaultDynami",
@@ -350,7 +353,12 @@ test("every rendered kind is a column of the deliverables matrix", () => {
       kinds.add(m[1] ?? "");
   expect(kinds.size, "no rendered fixtures found").toBeGreaterThan(5);
   for (const kind of kinds) {
-    if (perNamespace.has(kind) || pinned.has(kind) || perRender.has(kind))
+    if (
+      perNamespace.has(kind) ||
+      pinned.has(kind) ||
+      perRender.has(kind) ||
+      perNode.has(kind)
+    )
       continue;
     expect(
       xml.includes(alias[kind] ?? kind),

@@ -133,6 +133,12 @@ proxy's namespace by the Project that declares the proxy.
 a datastore, `critical` for the foundation and the Applications the platform
 names, none otherwise.
 
+**Node Agent**: a host-privileged agent a node runs (`gpu-device`,
+`gpu-metrics`, `node-metrics`, `l4-speaker`), derived from node facts and pools
+and never authored. Its privileges are fixed by the closed **Node Agent
+catalog** in the Platform document, which pins only its image and request.
+The agents are the `node` Project, which no project file declares.
+
 **L4 exposure**: a raw TCP or UDP port a client off the cluster dials on an L4
 Address, naming the Process and Surface that answer it. The port a client
 dials is its own; the port the container listens on stays the Surface's.

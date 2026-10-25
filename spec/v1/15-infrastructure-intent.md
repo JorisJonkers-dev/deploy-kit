@@ -98,6 +98,13 @@ the prefix. Placement never names a label
 ([chapter 10](10-project-intent.md#labels-are-not-the-applications-to-name)),
 so the spelling is the generator's to choose and the compiler's to read back.
 
+The same facts decide where the [Node Agents](14-platform-intent.md#node-agents)
+run: every node runs `node-metrics`, a node whose `gpus` list an `nvidia` card
+runs `gpu-device` and `gpu-metrics`, and a node whose `site` holds a pool runs
+`l4-speaker`. A `gpus` entry asserts that its host is prepared for the card:
+the driver, the container toolkit and the CDI specification are installed. The
+host's configuration owns that state; the compiler installs only the agents.
+
 ## One cluster, written down
 
 `Cluster` is a class with exactly one instance, and that is deliberate. The

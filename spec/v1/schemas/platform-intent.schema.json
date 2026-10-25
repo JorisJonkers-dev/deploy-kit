@@ -116,6 +116,9 @@
         "vpn": {
           "$ref": "#/$defs/VpnPolicy"
         },
+        "nodeAgents": {
+          "$ref": "#/$defs/NodeAgents"
+        },
         "humanGrants": {
           "minItems": 1,
           "type": "array",
@@ -1080,6 +1083,74 @@
           }
         }
       ]
+    },
+    "NodeAgents": {
+      "type": "object",
+      "properties": {
+        "gpu-device": {
+          "$ref": "#/$defs/NodeAgentPolicy"
+        },
+        "gpu-metrics": {
+          "$ref": "#/$defs/NodeAgentPolicy"
+        },
+        "node-metrics": {
+          "$ref": "#/$defs/NodeAgentPolicy"
+        },
+        "l4-speaker": {
+          "$ref": "#/$defs/SpeakerPolicy"
+        }
+      },
+      "additionalProperties": false
+    },
+    "NodeAgentPolicy": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "image",
+        "memory",
+        "cpu"
+      ],
+      "additionalProperties": false
+    },
+    "SpeakerPolicy": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        },
+        "controller": {
+          "$ref": "#/$defs/NodeAgentPolicy"
+        }
+      },
+      "required": [
+        "image",
+        "memory",
+        "cpu",
+        "controller"
+      ],
+      "additionalProperties": false
     },
     "HumanGrant": {
       "type": "object",

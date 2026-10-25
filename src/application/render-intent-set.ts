@@ -3,6 +3,8 @@
 // kustomizations list what each directory applies, and the one serializer the
 // caller hands in writes the bytes. A path two Deliverables claim is refused
 // before anything is serialized. Nothing here performs IO.
+import { NODE_PROJECT } from "../model/node-agents.ts";
+import { renderNodeAgents } from "../adapters/kubernetes/node-agents.ts";
 import { renderSharedMiddlewares } from "../adapters/traefik/shared-middlewares.ts";
 import {
   ADAPTERS,
@@ -351,7 +353,8 @@ export function renderResolvedSet(
     ...policyJobsOf(
       resolved,
       [...projects, ...catalogs],
-      options.projects,
+      // The Node Agents read no secret, so their Project writes no policy.
+      options.projects.filter((project) => project !== NODE_PROJECT),
       held,
       options.hash,
     ),
@@ -367,6 +370,10 @@ export function renderResolvedSet(
     ...renderHumanGrants(resolved.humanGrants ?? []),
     // The priority classes are the cluster's, so every render holds them.
     ...renderPriorityClasses(resolved.priority),
+    // The Node Agents are the `node` Project's, rendered where it is asked for.
+    ...(options.projects.includes(NODE_PROJECT)
+      ? renderNodeAgents(resolved.nodeAgents)
+      : []),
   ];
   const deliverables = [
     ...rendered,

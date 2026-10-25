@@ -202,6 +202,35 @@ describe("podSecurityFindings", () => {
     ]);
   });
 
+  // A Node Agent holds the host privileges its catalog entry fixes
+  // (spec/v1/14-platform-intent.md#node-agents), and only the catalog renders
+  // a DaemonSet, into node-system.
+  const daemonSet = (namespace: string): string =>
+    stringify({
+      apiVersion: "apps/v1",
+      kind: "DaemonSet",
+      metadata: { name: "agent", namespace },
+      spec: {
+        template: {
+          spec: pod({
+            hostNetwork: true,
+            containers: [container("agent", { privileged: true })],
+          }),
+        },
+      },
+    });
+
+  it("leaves a Node Agent to the privileges its catalog entry fixes", () => {
+    expect(podSecurityFindings(daemonSet("node-system"))).toStrictEqual([]);
+  });
+
+  it("holds a DaemonSet anywhere else to the profile", () => {
+    expect(podSecurityFindings(daemonSet("notes-system"))).toStrictEqual([
+      "DaemonSet/agent: hostNetwork",
+      'DaemonSet/agent container "agent": privileged',
+    ]);
+  });
+
   it("checks init and ephemeral containers too", () => {
     const spec = pod({
       initContainers: [container("init", { privileged: true })],

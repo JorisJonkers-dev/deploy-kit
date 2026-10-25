@@ -2854,3 +2854,108 @@ describe("the edge proxy's static configuration", () => {
     ]);
   });
 });
+
+// REQ-098 (docs/requirements.md): the Node Agents render to the node artifact,
+// each a DaemonSet held to the nodes its facts name, with the privileges the
+// catalog fixes; the speaker announces each pool from the nodes of its site.
+describe("the Node Agents", () => {
+  const tree = () => asTree(artifact(render(undefined, ["node"]), "node"));
+  const objectsOf = (path: string) =>
+    parseAllDocuments(tree()[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+
+  it("render the node artifact to its committed tree, byte for byte", () => {
+    expect(tree()).toStrictEqual(committed("node/rendered"));
+  });
+
+  it("time-slice each GPU into four shares, of which gpu-metrics holds one", () => {
+    const [config] = objectsOf("apps/node/gpu-device/configmap.yaml") as {
+      data: { "config.yaml": string };
+    }[];
+    expect(
+      parseAllDocuments(config?.data["config.yaml"] ?? "")[0]?.toJS(),
+    ).toStrictEqual({
+      version: "v1",
+      sharing: {
+        timeSlicing: {
+          resources: [{ name: "nvidia.com/gpu", replicas: 4 }],
+        },
+      },
+    });
+    const [metrics] = objectsOf("apps/node/gpu-metrics/workload.yaml") as {
+      spec: { template: { spec: { containers: { resources: unknown }[] } } };
+    }[];
+    expect(metrics?.spec.template.spec.containers[0]?.resources).toStrictEqual({
+      requests: { memory: "256Mi", cpu: "50m" },
+      limits: { memory: "256Mi", "nvidia.com/gpu": "1" },
+    });
+  });
+
+  it("announce each pool from the nodes of its site, and assign none unasked", () => {
+    const pools = objectsOf("apps/node/l4-speaker/pools.yaml");
+    expect(
+      pools.map(({ kind, metadata, spec }) => ({
+        kind,
+        name: (metadata as { name: string }).name,
+        spec,
+      })),
+    ).toStrictEqual([
+      {
+        kind: "IPAddressPool",
+        name: "lan-dns",
+        spec: { addresses: ["192.168.0.98/32"], autoAssign: false },
+      },
+      {
+        kind: "L2Advertisement",
+        name: "lan-dns",
+        spec: {
+          ipAddressPools: ["lan-dns"],
+          nodeSelectors: [
+            {
+              matchExpressions: [
+                {
+                  key: "kubernetes.io/hostname",
+                  operator: "In",
+                  values: [
+                    "enschede-t1000-1",
+                    "enschede-rx7900xtx-1",
+                    "enschede-gtx-960m-1",
+                    "enschede-pi-1",
+                    "enschede-pi-2",
+                    "enschede-pi-3",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+      expect.objectContaining({ kind: "IPAddressPool", name: "lan-mqtt" }),
+      expect.objectContaining({ kind: "L2Advertisement", name: "lan-mqtt" }),
+    ]);
+  });
+
+  it("run the speaker on the host network with NET_RAW alone", () => {
+    const [speaker] = objectsOf("apps/node/l4-speaker/workload.yaml") as {
+      kind: string;
+      spec: {
+        template: {
+          spec: {
+            hostNetwork?: boolean;
+            containers: { securityContext: unknown }[];
+          };
+        };
+      };
+    }[];
+    expect(speaker?.kind).toBe("DaemonSet");
+    expect(speaker?.spec.template.spec.hostNetwork).toBe(true);
+    expect(
+      speaker?.spec.template.spec.containers[0]?.securityContext,
+    ).toStrictEqual({
+      allowPrivilegeEscalation: false,
+      readOnlyRootFilesystem: true,
+      capabilities: { add: ["NET_RAW"], drop: ["ALL"] },
+    });
+  });
+});
