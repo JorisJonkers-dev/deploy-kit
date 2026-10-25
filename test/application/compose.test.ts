@@ -2235,6 +2235,40 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     NAMES = first.artifacts.map(({ name }) => name);
   });
 
+  // REQ-083 (docs/requirements.md): a committed estate-scoped pin source is
+  // removed once the estate-scoped artifact holds nothing, and kept while it
+  // holds something.
+  it("removes the estate-scoped source once the estate-scoped artifact holds nothing", () => {
+    const estate = withLegacyCatalog().sources.find(
+      ({ name }) => name === "_estate",
+    );
+    expect(estate).toBeDefined();
+    expect(NAMES).not.toContain("_estate");
+
+    const emptied = withPlatform((same) => same, {
+      ...settled,
+      sources: { ...settled.sources, _estate: estate?.text ?? "" },
+    });
+
+    expect(emptied.removedSources).toStrictEqual([
+      "projects/_estate/source.yaml",
+    ]);
+    expect(emptied.sources).toStrictEqual([]);
+  });
+
+  it("removes no source while every committed one names an artifact that holds something", () => {
+    expect(withPlatform((same) => same, settled).removedSources).toStrictEqual(
+      [],
+    );
+    const estate = withLegacyCatalog().sources.find(
+      ({ name }) => name === "_estate",
+    );
+    expect(
+      withLegacyCatalog({ sources: { _estate: estate?.text ?? "" } })
+        .removedSources,
+    ).toStrictEqual([]);
+  });
+
   it("writes no source when the committed one already says what composition derives", () => {
     expect(withPlatform((same) => same, settled).sources).toStrictEqual([]);
   });

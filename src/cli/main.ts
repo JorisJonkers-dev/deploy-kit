@@ -482,6 +482,7 @@ function compose(values: Options, json: boolean, world: World): Outcome {
   const {
     artifacts,
     sources,
+    removedSources,
     rollouts,
     lock: written,
     statuses,
@@ -504,6 +505,8 @@ function compose(values: Options, json: boolean, world: World): Outcome {
         repository,
         moves,
       })),
+      // The committed pin sources the Estate repository deletes.
+      removedSources,
       rollouts,
       statuses,
       conditions,

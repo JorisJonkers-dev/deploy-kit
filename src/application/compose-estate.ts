@@ -13,6 +13,7 @@
 // per Project and the estate, which pins move, the lock, and what the workflow
 // reports (spec/v1/55-delivery.md#notifications). Nothing here performs IO.
 import {
+  ESTATE_ARTIFACT,
   artifactRepositoryOf,
   versionPatches,
 } from "../adapters/flux/source.ts";
@@ -161,6 +162,13 @@ export interface Composition {
    * pin stays already names the digest it was committed at.
    */
   readonly sources: readonly PinSource[];
+  /**
+   * The committed pin sources the Estate repository removes, by path: the
+   * estate-scoped artifact's, once that artifact holds nothing
+   * (spec/v1/55-delivery.md#what-a-pin-source-holds), since a source that
+   * stays would pin an artifact no composition publishes again.
+   */
+  readonly removedSources: readonly string[];
   /**
    * One Rollout per Project whose pin moves
    * (spec/v1/55-delivery.md#rollouts): what the composition workflow creates
@@ -762,6 +770,11 @@ function composition(
       new Set(Object.keys(input.pins)),
       input.sources,
     ),
+    removedSources:
+      input.sources?.[ESTATE_ARTIFACT] !== undefined &&
+      !rendered.some(({ name }) => name === ESTATE_ARTIFACT)
+        ? [`projects/${ESTATE_ARTIFACT}/source.yaml`]
+        : [],
     rollouts: artifacts.flatMap(({ rollout }) => rollout ?? []),
     lock,
     statuses: statusesOf(input, isolated),
