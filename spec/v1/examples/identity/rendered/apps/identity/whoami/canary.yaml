@@ -33,7 +33,7 @@ spec:
         metadata:
           application: whoami
           process: whoami
-          revision: sha256:a70708253ea6e3042f5bd24a23a25352808eeb837740ed17218c9a838f662aa6
+          revision: sha256:0cc8c3c12f9f6f623505c3eb07a16f4d6a17786619fe8c4e7ff44de69d2c8ee5
           paths: / /health
           readiness: /health
           hostnames: whoami.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: whoami
           process: whoami
-          revision: sha256:a70708253ea6e3042f5bd24a23a25352808eeb837740ed17218c9a838f662aa6
+          revision: sha256:0cc8c3c12f9f6f623505c3eb07a16f4d6a17786619fe8c4e7ff44de69d2c8ee5
           paths: / /health
           readiness: /health
           hostnames: whoami.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: whoami
           process: whoami
-          revision: sha256:a70708253ea6e3042f5bd24a23a25352808eeb837740ed17218c9a838f662aa6
+          revision: sha256:0cc8c3c12f9f6f623505c3eb07a16f4d6a17786619fe8c4e7ff44de69d2c8ee5
           paths: / /health
           readiness: /health
           hostnames: whoami.jorisjonkers.dev

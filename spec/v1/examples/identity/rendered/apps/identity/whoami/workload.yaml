@@ -30,6 +30,7 @@ spec:
         app.kubernetes.io/part-of: whoami
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
       annotations:
         image.jorisjonkers.dev/whoami: v1.11.0
     spec:

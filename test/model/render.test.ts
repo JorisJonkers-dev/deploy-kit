@@ -848,6 +848,58 @@ describe("renderIntentSet", () => {
     ]);
   });
 
+  // deploy-kit#602: only a member's pods carry the label the gate's policy
+  // reaches; a blue-green Process that publishes no readiness is no member.
+  it("labels a gate member's pods for the Release Gate, and no other Process's", () => {
+    const worker = `    processes:
+      - name: notes-worker
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        provides: { http: 8081 }
+        placement: { memory: 64Mi, cpu: 10m }
+        probes: none
+        startupBudget: 20s
+        cutover: continuous
+`;
+    const tree = asTree(
+      artifact(
+        render({
+          "minimal/notes.project.yml": (document) =>
+            document.replace("    processes:\n", worker),
+        }),
+        "notes",
+      ),
+    );
+    const podLabels = Object.fromEntries(
+      parseAllDocuments(tree["apps/notes/notes/workload.yaml"] ?? "")
+        .map((document) => document.toJS() as unknown)
+        .filter(
+          (
+            object,
+          ): object is {
+            kind: string;
+            metadata: { name: string };
+            spec: {
+              template: { metadata: { labels: Record<string, string> } };
+            };
+          } => (object as { kind?: string } | null)?.kind === "Deployment",
+        )
+        .map(({ metadata, spec }) => [
+          metadata.name,
+          spec.template.metadata.labels,
+        ]),
+    );
+    const member = "gated.deploy-kit.jorisjonkers.dev/release-gate";
+
+    expect(Object.keys(podLabels).sort()).toStrictEqual([
+      "notes-api",
+      "notes-worker",
+    ]);
+    expect(podLabels["notes-api"]?.[member]).toBe("true");
+    expect(podLabels["notes-worker"]?.[member]).toBeUndefined();
+  });
+
   it("puts a path under estate/ in the _estate artifact, and a Project named for an estate directory in its own", () => {
     const result = renderIntentSet(files(), {
       ...OPTIONS,

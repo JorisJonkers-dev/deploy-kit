@@ -290,7 +290,7 @@ describe("composeEstate", () => {
     ]);
     expect(FIRST.lock.spec.fragments.notes?.revisions).toEqual({
       notes:
-        "sha256:0a8b69a6274d430cb7b3d73355003f5b8bfb4e115e9f38500ecc2d0482045c46",
+        "sha256:03fb3597d42b9c43b69f27717f4ec23d690a67ba7bfa1b07a6442579461f4e3f",
     });
     expect(FIRST.lock.spec.fragments["jorisjonkers.dev"]?.revisions).toEqual(
       {},
@@ -1101,6 +1101,40 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     expect(
       next("edge", (body) => body.replace("memory: 128Mi", "memory: 160Mi")),
     ).toStrictEqual(["edge"]);
+  });
+
+  // deploy-kit#602: a member admits the gate, and the gate reaches every
+  // member by a label in the member's own share, so neither moves the other.
+  it("moves only the Project whose Process stops being a gate member or becomes one again, never the gate's", () => {
+    const first = delivered();
+    const stopStart = release("notes", "1.1.0", (body) =>
+      body.replace("cutover: continuous", "cutover: interrupted"),
+    );
+    const left = delivered({
+      fragments: RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "notes" ? stopStart : fragment,
+      ),
+      held: RELEASES,
+      pins: pinned(first),
+      previous: { lock: first.lock, commit: hex("estate-commit", 40) },
+    });
+    const back = delivered({
+      fragments: RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "notes"
+          ? release("notes", "1.2.0")
+          : fragment,
+      ),
+      held: [...RELEASES, stopStart],
+      pins: pinned(left),
+      previous: { lock: left.lock, commit: hex("estate-commit-2", 40) },
+    });
+    const moved = (composition: Composition) =>
+      composition.artifacts
+        .filter(({ moves }) => moves)
+        .map(({ name }) => name);
+
+    expect(moved(left)).toStrictEqual(["notes"]);
+    expect(moved(back)).toStrictEqual(["notes"]);
   });
 
   // deploy-kit#552: a provider admits its consumers by a label each consumer

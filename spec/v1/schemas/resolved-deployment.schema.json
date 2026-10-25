@@ -1260,7 +1260,14 @@
         "egress": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/EgressPeer"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EgressPeer"
+              },
+              {
+                "$ref": "#/$defs/GateMembersPeer"
+              }
+            ]
           }
         }
       },
@@ -2316,8 +2323,22 @@
         "tier-proxy",
         "metrics-stack",
         "backup",
-        "flux-events"
+        "flux-events",
+        "release-gate"
       ]
+    },
+    "GateMembersPeer": {
+      "type": "object",
+      "properties": {
+        "rule": {
+          "type": "string",
+          "const": "gate-members"
+        }
+      },
+      "required": [
+        "rule"
+      ],
+      "additionalProperties": false
     },
     "ResolvedPolicyJob": {
       "type": "object",

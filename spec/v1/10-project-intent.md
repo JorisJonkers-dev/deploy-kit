@@ -528,6 +528,12 @@ only, derived from the edges and never authored, and it is never a workload's
 selector, so an edge added or removed changes the pod template and nothing
 immutable.
 
+A gate member's pods carry `gated.deploy-kit.jorisjonkers.dev/release-gate: "true"`,
+which the Release Gate's policy admits
+([chapter 16](16-dependencies.md#the-member-label)), on the same terms: on pod
+templates only, derived from the release-gate inputs, never authored and never
+a selector.
+
 An estate-scoped Deliverable carries `managed-by` and nothing else: it belongs
 to no Process and to no Application, and `part-of` on such an object would name a
 Application that does not own it.

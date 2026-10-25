@@ -15,7 +15,10 @@ import {
   holds,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
-import type { ResolvedProcess } from "../model/resolved-deployment.ts";
+import type {
+  EgressPeer,
+  ResolvedProcess,
+} from "../model/resolved-deployment.ts";
 import { consumedOf } from "../model/consumer-label.ts";
 import {
   backupIdentityOf,
@@ -25,7 +28,11 @@ import {
 import { dumpedSurfaceOf } from "../model/backup.ts";
 
 type Ingress = NonNullable<ResolvedProcess["ingress"]>[number];
-type Egress = NonNullable<ResolvedProcess["egress"]>[number];
+type Egress = EgressPeer;
+type GateMembers = Extract<
+  NonNullable<ResolvedProcess["egress"]>[number],
+  { rule: "gate-members" }
+>;
 
 /** The DNS port every egress policy admits (spec/v1/16-dependencies.md#the-baseline). */
 export const DNS_PORT = 53;
@@ -156,6 +163,44 @@ export function ingressOf(
       : [];
   return distinct([...routes, ...metrics, ...consumers, ...backups, ...events]);
 }
+
+/**
+ * The Release Gate's own requests to a gate member's new copy
+ * (spec/v1/16-dependencies.md#the-member-label): every Process of the gate the
+ * platform names, on the port of the member's first surface, which its Canary
+ * service targets.
+ */
+export function gateIngressOf(
+  resolved: Pick<ResolvedProcess, "surfaces">,
+  member: boolean,
+  context: PolicyContext,
+): Ingress[] {
+  if (!member) return [];
+  // A member serves on its first surface, or E_RELEASE_UNIT_NO_READINESS and
+  // the surface checks refused it.
+  const [served] = resolved.surfaces as [
+    NonNullable<ResolvedProcess["surfaces"]>[number],
+  ];
+  // A member switches under a delivery policy, or E_NO_DELIVERY_POLICY
+  // refused it.
+  const { gate } = context.platform.delivery as NonNullable<
+    PlatformIntentDocument["delivery"]
+  >;
+  return peersOf(context.platform, gate, context.union).map((peer) => ({
+    rule: "release-gate",
+    ...peer,
+    port: served.port,
+  }));
+}
+
+/** Every gate member's pods, for each Process of the Release Gate the platform names. */
+export const gateEgressOf = (
+  application: Pick<EffectiveApplication, "id">,
+  context: PolicyContext,
+): GateMembers[] =>
+  holds(context.platform.delivery?.gate, context.project, application.id)
+    ? [{ rule: "gate-members" }]
+    : [];
 
 /** The surface the Secret Store answers every grant on. */
 const STORE_SURFACE = "http";

@@ -35,7 +35,7 @@ import { clientGrantsOf, resolveClient } from "./client.ts";
 import { resolveMesh } from "./mesh.ts";
 import { managed } from "./database.ts";
 import { resolveMigration } from "./migration.ts";
-import { egressOf, ingressOf } from "./policy.ts";
+import { egressOf, gateEgressOf, gateIngressOf, ingressOf } from "./policy.ts";
 import { resolveProcess, type ProcessContext } from "./process.ts";
 
 /** An Application's element: the projection without its document header and provenance. */
@@ -321,20 +321,32 @@ export function resolveApplication(
       `${context.projectOf.get(application.id) as string}/${application.id}`,
     ) === true;
   const pairs = application.processes.map((process) => {
-    const ingress = ingressOf(process, application, context);
     const clientGrants = clientGrantsOf(process, application, context);
+    const resolved = resolveProcess(process, {
+      ...context,
+      machinery,
+      migratesItself: application.migration === "self",
+      application: application.id,
+      clientGrants,
+    });
+    // A blue-green Process that publishes readiness is a gate member, and
+    // admits the gate's own requests.
+    const member =
+      resolved.switchover === "blue-green" &&
+      readinessOf(process) !== undefined;
+    const ingress = [
+      ...ingressOf(process, application, context),
+      ...gateIngressOf(resolved, member, context),
+    ];
     return {
       process,
       resolved: {
-        ...resolveProcess(process, {
-          ...context,
-          machinery,
-          migratesItself: application.migration === "self",
-          application: application.id,
-          clientGrants,
-        }),
+        ...resolved,
         ...(ingress.length === 0 ? {} : { ingress }),
-        egress: egressOf(process, context, clientGrants.length > 0),
+        egress: [
+          ...egressOf(process, context, clientGrants.length > 0),
+          ...gateEgressOf(application, context),
+        ],
       },
     };
   });

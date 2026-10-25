@@ -404,6 +404,11 @@ admits it and names no consumer, so a consumer's edges change its own share
 alone ([chapter 16](spec/v1/16-dependencies.md#the-consumer-label),
 [0035](docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)).
 
+**Member label**: the label every gate member's pods carry, which the
+Release Gate's policy reaches on any port while the member's own policy admits
+the gate on one. Neither names the other's Processes, so a member added changes
+its own share alone ([chapter 16](spec/v1/16-dependencies.md#the-member-label)).
+
 **Tier**: where the edge terminates: five facts, `audiences`, `listener`,
 `certificates`, `forwardAuth`, `proxiedBy`, plus the Traefik Application that is its proxy. A
 route's audience is the only way it reaches a tier

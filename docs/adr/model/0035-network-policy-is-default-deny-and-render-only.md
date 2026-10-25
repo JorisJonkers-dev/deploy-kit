@@ -83,6 +83,15 @@ that says who may. The migration
 runner carries the label of its datastore's Surface too, so no datastore's
 policy names a migration identity.
 
+**The Release Gate reaches its members by a label too.** The gate requests each
+member's new copy itself during analysis, so each member admits the gate, and
+the gate reaches every pod carrying the
+[member label](../../../spec/v1/16-dependencies.md#the-member-label), on any port,
+the member's own ingress naming the one port it admits. Naming every member in
+the gate's policy would make each new gated Application re-render the delivery
+Project; admitting every pod the model manages would let the gate reach
+datastores it never asks.
+
 **Whether a delivered render applies the policy set is open.** Flux applies each
 Project's share of the render ([0050](0050-delivery-is-part-of-the-model.md)),
 and a policy file listed in an applied kustomization is enforced on first sync.
@@ -100,6 +109,7 @@ proposal awaiting the maintainer's decision.
 | Wait for the CNI before rendering | nothing unenforced in the tree | puts a lab evaluation on the model's critical path |
 | Name each consumer in the provider's policy | a policy that lists exactly who reaches it | a consumer's edge re-renders, re-pins and re-releases the provider, so one Project's change moves another |
 | Admit a consumer by a label on its Namespace | one label per Project, not per pod | every pod in the namespace reaches the Surface, not only the Process that declared the edge |
+| Let the gate reach every pod the model manages | no member label | the gate's egress admits every datastore and job in the estate, bounded only by each one's ingress |
 
 ## Reversibility
 

@@ -49,6 +49,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: delivery-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: release-gate
+      ports:
+        - protocol: TCP
+          port: 8080
   egress:
     - to:
         - namespaceSelector:
@@ -138,6 +148,16 @@ spec:
           podSelector:
             matchLabels:
               consumes.deploy-kit.jorisjonkers.dev/auth.http: "true"
+      ports:
+        - protocol: TCP
+          port: 80
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: delivery-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: release-gate
       ports:
         - protocol: TCP
           port: 80
