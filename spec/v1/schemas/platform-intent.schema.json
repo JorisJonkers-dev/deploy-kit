@@ -374,6 +374,9 @@
         "ingressClass": {
           "type": "string",
           "pattern": "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$"
+        },
+        "dns": {
+          "$ref": "#/$defs/TierDns"
         }
       },
       "required": [
@@ -413,6 +416,23 @@
       "enum": [
         "cloudflare"
       ]
+    },
+    "TierDns": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proxied": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target",
+        "proxied"
+      ],
+      "additionalProperties": false
     },
     "DurabilityPolicies": {
       "type": "object",

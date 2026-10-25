@@ -33,7 +33,7 @@ spec:
         metadata:
           application: notes
           process: notes-api
-          revision: sha256:65454d4007cbe26855a9cb2df0a399ebc182dd57a3bfe8f47c52fb1dc8149e24
+          revision: sha256:72cf80f9e8a4e1c12dd833e424aa7c9d5396d184a7c1460666728061b82dc555
           paths: /
           readiness: /healthz/ready
           hostnames: notes.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: notes
           process: notes-api
-          revision: sha256:65454d4007cbe26855a9cb2df0a399ebc182dd57a3bfe8f47c52fb1dc8149e24
+          revision: sha256:72cf80f9e8a4e1c12dd833e424aa7c9d5396d184a7c1460666728061b82dc555
           paths: /
           readiness: /healthz/ready
           hostnames: notes.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: notes
           process: notes-api
-          revision: sha256:65454d4007cbe26855a9cb2df0a399ebc182dd57a3bfe8f47c52fb1dc8149e24
+          revision: sha256:72cf80f9e8a4e1c12dd833e424aa7c9d5396d184a7c1460666728061b82dc555
           paths: /
           readiness: /healthz/ready
           hostnames: notes.jorisjonkers.dev

@@ -73,6 +73,7 @@ tiers:
     traefik: edge/traefik-public # the declared Application in the platform edge project,
     # placed on the public-ingress node
     ingressClass: traefik-public # the class this Traefik admits routes of
+    dns: {target: ingress.jorisjonkers.dev, proxied: true} # where every public name points, behind Cloudflare
   - name: lan
     audiences: [lan]
     listener: plain

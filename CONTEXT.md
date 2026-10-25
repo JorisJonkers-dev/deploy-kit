@@ -156,6 +156,9 @@ address has no replicas and cuts over `interrupted`.
 `web`, whose static configuration (entry points, the class it admits) is
 derived from its surfaces and its tier.
 
+**Tier DNS**: where a tier's public names point and whether the DNS provider
+proxies them; every route on the tier carries it for the DNS controller.
+
 **Ingress class**: the name a tier's proxy admits routes by, declared on the
 tier. Every route rendered for the tier carries it, so a route reaches the one
 proxy its audience selects.

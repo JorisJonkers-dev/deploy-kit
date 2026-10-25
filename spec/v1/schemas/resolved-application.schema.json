@@ -658,6 +658,9 @@
           "type": "string",
           "minLength": 1
         },
+        "dns": {
+          "$ref": "#/$defs/ResolvedTierDns"
+        },
         "listener": {
           "$ref": "#/$defs/Listener"
         },
@@ -684,6 +687,23 @@
         "certificates",
         "proxy",
         "routes"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedTierDns": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proxied": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target",
+        "proxied"
       ],
       "additionalProperties": false
     },
