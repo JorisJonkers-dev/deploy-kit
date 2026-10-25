@@ -92,6 +92,7 @@ describe("parseProjectIntent", () => {
       "identity",
       "knowledge",
       "knowledge-platform",
+      "mail",
       "minimal",
       "observability",
       "secrets",
@@ -587,5 +588,43 @@ describe("parseProjectIntent", () => {
 
     expect(diagnostics).toHaveLength(2);
     expect(diagnostics.every(({ hint }) => hint.length > 0)).toBe(true);
+  });
+});
+
+// REQ-086 (docs/requirements.md): a redirect to a path its own route matches
+// again is refused; one its route does not match is accepted.
+describe("a route's redirect", () => {
+  const MAIL = readFileSync(join(EXAMPLES, "mail", "mail.project.yml"), "utf8");
+  const ROOT =
+    "{ path: /, match: exact, process: stalwart, surface: http, redirectTo: /admin/ }";
+  const routed = (route: string): string => MAIL.replace(ROOT, route);
+
+  it("is accepted where its route does not match the path it lands on", () => {
+    expect(parseProjectIntent(MAIL).ok).toBe(true);
+    expect(
+      parseProjectIntent(
+        routed(
+          "{ path: /old, match: prefix, process: stalwart, surface: http, redirectTo: /new }",
+        ),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      "an exact route to its own path",
+      "{ path: /, match: exact, process: stalwart, surface: http, redirectTo: / }",
+    ],
+    [
+      "a prefix route to a path below it",
+      "{ path: /a, match: prefix, process: stalwart, surface: http, redirectTo: /a/b }",
+    ],
+  ])("is refused for %s", (_, route) => {
+    expect(refused(routed(route))).toStrictEqual([
+      expect.objectContaining({
+        code: "E_REDIRECT_LOOP",
+        path: "/applications/0/exposure/0/routes/0",
+      }),
+    ]);
   });
 });

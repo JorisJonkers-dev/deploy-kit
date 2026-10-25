@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **84** rows. The compiler's behaviours join it as they land.
+This ledger holds **85** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -104,6 +104,7 @@ This ledger holds **84** rows. The compiler's behaviours join it as they land.
 | REQ-079 | A Process or migration image the images lock holds with uid 0 (a sidecar runs as its Process, so its own uid is not read) is refused as `E_IMAGE_RUNS_AS_ROOT`, naming the image, both when a project's share of the lock is packed for publishing and when composition reads the pinned inputs, because the posture would render that uid beside `runAsNonRoot` and the kubelet refuses the pod | [test/model/refusals.test.ts](../test/model/refusals.test.ts) |
 | REQ-082 | Every ServiceMonitor and PodMonitor the render writes carries the label set the Platform document's `monitors.labels` names, beside its own labels, which win where a key is both, and a platform that names none adds none, because the monitoring stack selects the monitors it reads by those labels and a monitor without them is never scraped | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-084 | Two exposures of one host on one tier are refused as `E_DUPLICATE_HOST`, and on two tiers they compose and render one route on each tier's proxy, the tier being the one that carries each exposure's audience, because inside one proxy the two rules have no defined winner while two tiers are two proxies | [test/model/negative.test.ts](../test/model/negative.test.ts) |
+| REQ-086 | A route's `redirectTo` renders as a `RedirectRegex` Middleware of the route's own, which the route names and which keeps the request's scheme and host, and a redirect to a path the route itself matches is `E_REDIRECT_LOOP`, because the client would be sent back to the same redirect | [test/adapters/spelling.test.ts](../test/adapters/spelling.test.ts) |
 | REQ-087 | The Project that declares a tier's proxy renders the shared Middlewares every route names, `security-headers` and one `security-headers-<policy>` per content policy, once per proxy namespace, because a route naming a Middleware no one renders is served by no proxy | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-088 | An estate Project's share carries its routes once every Project that declares a tier's proxy is on the estate path, whatever else is still legacy, and none while one of them is legacy, because routes flip with the edge's handover and the old path's Traefik serves the edge until then | [test/application/compose.test.ts](../test/application/compose.test.ts) |
 | REQ-089 | A Process whose replicas declare `across: node` renders required pod anti-affinity on the hostname, matching its own pods of one revision by `pod-template-hash`, and fewer eligible nodes than its count is `E_PLACEMENT_UNSATISFIABLE`, because no two replicas may share a node while a rollout's old and new pod may | [test/model/render.test.ts](../test/model/render.test.ts) |

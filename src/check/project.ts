@@ -460,7 +460,21 @@ function applicationRefusals(
     });
   for (const [index, exposure] of (application.exposure ?? []).entries()) {
     const seen = new Set<string>();
-    for (const [route, { path, match }] of exposure.routes.entries()) {
+    for (const [
+      route,
+      { path, match, redirectTo },
+    ] of exposure.routes.entries()) {
+      // A redirect its own route matches again sends the client back to it.
+      if (
+        redirectTo !== undefined &&
+        (match === "exact" ? redirectTo === path : redirectTo.startsWith(path))
+      )
+        refusals.push({
+          code: "E_REDIRECT_LOOP",
+          path: `${at}/exposure/${index}/routes/${route}`,
+          message: `the route's ${match} match of ${path} matches ${redirectTo}, the path it redirects to`,
+          hint: "Redirect to a path the route does not match: narrow the route to `match: exact`, or redirect elsewhere.",
+        });
       const pair = `${match} ${path}`;
       if (seen.has(pair))
         refusals.push({

@@ -106,7 +106,7 @@ export interface IngressRoute {
   };
 }
 
-/** Traefik's Middleware, as a route's own `rateLimit` or a shared `headers` one. */
+/** Traefik's Middleware, as a route's own `rateLimit` or `redirectRegex`, or a shared `headers` one. */
 export interface Middleware {
   readonly apiVersion: "traefik.io/v1alpha1";
   readonly kind: "Middleware";
@@ -129,6 +129,13 @@ export interface Middleware {
           readonly stsSeconds: number;
           readonly stsIncludeSubdomains: boolean;
           readonly contentSecurityPolicy?: string;
+        };
+      }
+    | {
+        readonly redirectRegex: {
+          readonly regex: string;
+          readonly replacement: string;
+          readonly permanent: boolean;
         };
       };
 }

@@ -37,6 +37,12 @@ images:
     uid: 1000
     gid: 1000
     version: "1.2.0"
+  stalwart:
+    repository: docker.io/stalwartlabs/stalwart
+    digest: "sha256:5a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f"
+    uid: 2000
+    gid: 2000
+    version: "v0.16.0"
   gluetun:
     repository: docker.io/qmcgaw/gluetun
     digest: "sha256:7e1f3c5a9b2d4f6e8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f"

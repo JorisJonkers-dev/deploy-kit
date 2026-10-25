@@ -1688,7 +1688,7 @@ applications:
 | `process` | route | yes | A Process of **this** Application. |
 | `surface` | route | yes | A surface that Process declares in `provides`: a name, never a port integer. |
 | `audience` | route | no | Overrides the exposure's audience, for this path alone. |
-| `redirectTo` | route | no | A path this route redirects to. A path, never a regex. |
+| `redirectTo` | route | no | A path this route redirects to, on the same scheme and host. A path, never a regex. Not permanent, so a client caches no landing path. |
 | `rateLimit` | route | no | `{requests, per}`: how many requests one client may send this route over `per`, a duration in whole seconds, minutes or hours (`30s`, `10m`, `1h`). `requests` is a whole number of at least 1. Who counts as one client is the tier's fact ([chapter 14](14-platform-intent.md#tiers)). |
 
 A route carries three optional fields and no others. It may state its own
@@ -1904,6 +1904,7 @@ gap, not an argument for a field.
 | two exposures declare the same `host` on one tier, the tier that carries each one's `audience` | `E_DUPLICATE_HOST` |
 | two exposures of one Application share a `name` | `E_DUPLICATE_EXPOSURE_NAME` |
 | two routes of one exposure share the same `path` + `match` pair | `E_DUPLICATE_ROUTE_MATCH` |
+| a route's `redirectTo` is a path the route itself matches | `E_REDIRECT_LOOP` |
 | a route names a Process its Application does not have | `E_UNKNOWN_PROCESS` |
 | a route's `{process, surface}` pair names no surface that Process provides | `E_UNKNOWN_SURFACE` |
 
@@ -1932,6 +1933,12 @@ than it has had a definition: nothing said what a name was, or whether an
 exposure had one. It is unique **within the Application**. `jellyfin` may declare
 `public` and `lan`, and no other Application is thereby prevented from having a
 `public` of its own, because a placeholder that reads one names the Application too.
+
+`E_REDIRECT_LOOP` catches a redirect that lands where it started: an `exact`
+route whose target is its own path, or a `prefix` route whose target starts
+with its prefix. The root-to-admin redirect of a web admin is written on
+`match: exact` of `/`, with a second, `prefix` route serving the rest, as the
+[mail](examples/mail/mail.project.yml) example does.
 
 `E_DUPLICATE_ROUTE_MATCH` catches the pair that cannot be ordered rather than
 merely duplicated: two routes with the same path and the same match on one

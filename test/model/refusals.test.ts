@@ -596,6 +596,7 @@ describe("the refusal fixtures", () => {
       "prepare-process-serves",
       "process-rbac-grant",
       "profile-key-authored",
+      "redirect-loop",
       "release-unit-no-readiness",
       "schedule-missing",
       "schedule-unscheduled",
@@ -618,7 +619,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(67);
+    expect(refused).toHaveLength(68);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

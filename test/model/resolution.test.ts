@@ -42,6 +42,7 @@ const MINIMAL_SET = [
   "observability/observability.project.yml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
+  "mail/mail.project.yml",
   "identity/env/grafana/base.env",
 ];
 
@@ -496,6 +497,7 @@ describe("resolveIntentSet", () => {
       "observability",
       "secrets",
       "identity",
+      "mail",
     ]);
   });
 
@@ -508,6 +510,7 @@ describe("resolveIntentSet", () => {
       "intent-fragment delivery",
       "intent-fragment edge",
       "intent-fragment identity",
+      "intent-fragment mail",
       "intent-fragment notes",
       "intent-fragment observability",
       "intent-fragment secrets",
