@@ -59,7 +59,8 @@ export interface RenderOptions extends ResolveOptions {
   readonly projects: readonly string[];
   /**
    * Whether each Project's share carries its routes: not while the old path
-   * still serves the edge (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+   * still serves the edge, until the edge itself is handed over
+   * (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
    */
   readonly routes?: boolean;
 }
