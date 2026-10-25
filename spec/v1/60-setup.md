@@ -544,9 +544,13 @@ handover:
   where a `legacy` datastore has a catalog an `estate` Project reads, the
   catalog's Jobs and the job that writes its documents, which no Project's
   unit depends on, and nothing else. Each `estate` Project writes its own Vault policies
-  and roles from its own unit. The old path keeps serving the edge, so no
-  Project's artifact carries a route until no Project is `legacy`
-  ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). Where the
+  and roles from its own unit. The old path keeps serving the edge until the edge is handed over, so no
+  Project's artifact carries a route while a Project that declares a tier's
+  proxy is `legacy`
+  ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). Routes flip with
+  the edge's handover, in the window that moves Traefik, and a later handover,
+  the Secret Store's among them, touches no route; a Project still `legacy`
+  keeps its routes on the old path until it leaves. Where the
   artifact would hold nothing, there is no estate-scoped artifact yet.
 - **The estate path reaches a `legacy` Application where the old path runs
   it.** The foundation is handed over last, so until then the Secret Store a

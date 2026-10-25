@@ -908,9 +908,10 @@ describe("composeEstate", () => {
     ).toEqual([["E_HANDOVER_BOTH_PATHS", "_platform/platform.intent.yml"]]);
   });
 
-  // deploy-kit#286: a Project is delivered while the old path still serves
-  // the edge, so its routes wait until no Project is legacy.
-  it("delivers no route while a Project is legacy, and each Project's own routes once none is", () => {
+  // deploy-kit#286 and REQ-088 (docs/requirements.md): a Project is
+  // delivered while the old path still serves the edge, so its routes wait
+  // until the edge itself is on the estate path, whatever else is legacy.
+  it("delivers no route while the edge is legacy, and each Project's own routes once it is not", () => {
     const under = (ledger: string): Composition =>
       compose({
         platform: {
@@ -931,6 +932,16 @@ describe("composeEstate", () => {
     );
 
     expect(routes(handingOver)).toStrictEqual([]);
+    expect(
+      routes(
+        under(
+          "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, knowledge, notes, observability, secrets]\n  estate: [data, delivery, edge]\n",
+        ),
+      ),
+    ).toStrictEqual([
+      "apps/data/platform-rabbitmq/route-lan.yaml",
+      "apps/data/platform-rabbitmq/route-management.yaml",
+    ]);
     expect(routes(under(""))).toStrictEqual([
       "apps/data/platform-rabbitmq/route-lan.yaml",
       "apps/data/platform-rabbitmq/route-management.yaml",
