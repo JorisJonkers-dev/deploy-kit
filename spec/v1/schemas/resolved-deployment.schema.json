@@ -1161,6 +1161,9 @@
           "minimum": 1,
           "maximum": 9007199254740991
         },
+        "spreadAcross": {
+          "$ref": "#/$defs/Spread"
+        },
         "memory": {
           "type": "string",
           "minLength": 1
@@ -1383,6 +1386,12 @@
         "blue-green",
         "rolling",
         "stop-start"
+      ]
+    },
+    "Spread": {
+      "type": "string",
+      "enum": [
+        "node"
       ]
     },
     "ResolvedGpu": {

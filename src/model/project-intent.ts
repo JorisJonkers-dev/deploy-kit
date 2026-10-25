@@ -19,6 +19,7 @@ import {
   ENGINES,
   KEY_ENCODINGS,
   LIBRARY_ACCESS,
+  SPREADS,
   LIFECYCLES,
   MATCHES,
   MEDIA,
@@ -262,7 +263,13 @@ const libraryMount = z
   .meta({ id: "LibraryMount" });
 
 const capacity = z
-  .strictObject({ count: z.int().min(2), reason: text })
+  .strictObject({
+    count: z.int().min(2),
+    reason: text,
+    // Where no two replicas may share a node: required anti-affinity on the
+    // hostname. Without it two replicas on one node stay legal.
+    across: z.enum(SPREADS).meta({ id: "Spread" }).exactOptional(),
+  })
   .meta({ id: "Capacity" });
 
 // The Kubernetes API access a Process needs (spec/v1/10-project-intent.md#kubernetes-api-access):

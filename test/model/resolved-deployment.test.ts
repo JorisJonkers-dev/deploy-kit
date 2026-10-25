@@ -600,6 +600,7 @@ describe("the metamodel names every class the chapter draws", () => {
       "ResolvedTcpProbe",
       "Runtime",
       "SignInMode",
+      "Spread",
       "Switchover",
     ]);
   });

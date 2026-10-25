@@ -31,6 +31,7 @@ import {
   DURABILITY_CLASSES,
   KEY_ENCODINGS,
   LIBRARY_ACCESS,
+  SPREADS,
   LIFECYCLES,
   MATCHES,
   RUNTIMES,
@@ -550,6 +551,8 @@ const resolvedProcess = stated(
     startDeadline: duration.exactOptional(),
     deadline: duration,
     replicas: z.int().min(1),
+    // No two replicas of one revision share a node.
+    spreadAcross: z.enum(SPREADS).meta({ id: "Spread" }).exactOptional(),
     memory: text,
     cpu: text,
     gpu: resolvedGpu.exactOptional(),
