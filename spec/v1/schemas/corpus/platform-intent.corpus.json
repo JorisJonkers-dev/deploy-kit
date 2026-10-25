@@ -393,6 +393,42 @@
           "value": []
         }
       ]
+    },
+    {
+      "name": "a priority class whose name is no Kubernetes name",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/priority/data/name",
+          "value": "Platform Data"
+        }
+      ]
+    },
+    {
+      "name": "a priority policy with no critical class",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/priority/critical"
+        }
+      ]
+    },
+    {
+      "name": "a priority policy that names no critical Application",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/priority/criticalApplications"
+        }
+      ]
     }
   ]
 }

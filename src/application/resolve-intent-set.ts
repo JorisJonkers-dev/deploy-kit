@@ -10,7 +10,10 @@ import type { Hasher } from "../model/hasher.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { InputDigest, PinnedSet } from "../model/resolution.ts";
 import type { MigrationProofDocument } from "../model/migration-proof.ts";
-import type { HumanGrant } from "../model/platform-intent.ts";
+import type {
+  HumanGrant,
+  PlatformIntentDocument,
+} from "../model/platform-intent.ts";
 import {
   readClusterState,
   readImagesLock,
@@ -61,6 +64,8 @@ export interface ResolvedSet {
   readonly tierProxies: readonly string[];
   /** The groups the platform grants a built-in cluster role. */
   readonly humanGrants?: readonly HumanGrant[];
+  /** The priority classes the platform declares. */
+  readonly priority?: PlatformIntentDocument["priority"];
 }
 
 const NODE_CONTRACT = "node-contract.yml";
@@ -288,6 +293,11 @@ export function resolveIntentSet(
       ...(set.platform.humanGrants === undefined
         ? {}
         : { humanGrants: set.platform.humanGrants }),
+      // No policy and an undefined one render no class alike.
+      // Stryker disable next-line ConditionalExpression
+      ...(set.platform.priority === undefined
+        ? {}
+        : { priority: set.platform.priority }),
     },
   };
 }

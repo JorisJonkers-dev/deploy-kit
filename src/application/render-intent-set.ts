@@ -11,6 +11,7 @@ import {
 } from "../adapters/registry.ts";
 import { renderEvents } from "../adapters/kubernetes/events.ts";
 import { renderHumanGrants } from "../adapters/kubernetes/human-grants.ts";
+import { renderPriorityClasses } from "../adapters/kubernetes/priority-classes.ts";
 import { ADAPTER as TRAEFIK } from "../adapters/traefik/render.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
@@ -364,6 +365,8 @@ export function renderResolvedSet(
       : []),
     // A Human Grant is the platform's, so every render holds it.
     ...renderHumanGrants(resolved.humanGrants ?? []),
+    // The priority classes are the cluster's, so every render holds them.
+    ...renderPriorityClasses(resolved.priority),
   ];
   const deliverables = [
     ...rendered,

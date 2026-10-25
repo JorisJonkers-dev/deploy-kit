@@ -32,6 +32,7 @@ spec:
         image.jorisjonkers.dev/collector: 1.0.0
     spec:
       serviceAccountName: collector
+      priorityClassName: platform-critical-app
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true

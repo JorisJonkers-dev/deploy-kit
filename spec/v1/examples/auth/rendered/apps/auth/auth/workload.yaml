@@ -37,6 +37,7 @@ spec:
         image.jorisjonkers.dev/auth-api: 2.3.0
     spec:
       serviceAccountName: auth-api
+      priorityClassName: platform-critical-app
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
@@ -179,6 +180,7 @@ spec:
         image.jorisjonkers.dev/auth-ui: 2.3.0
     spec:
       serviceAccountName: auth-ui
+      priorityClassName: platform-critical-app
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

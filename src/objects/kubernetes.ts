@@ -55,6 +55,20 @@ export type BindingSubject =
       readonly name: string;
     };
 
+/** A class a pod's priority names, cluster-wide. */
+export interface PriorityClass {
+  readonly apiVersion: "scheduling.k8s.io/v1";
+  readonly kind: "PriorityClass";
+  readonly metadata: {
+    readonly name: string;
+    readonly labels: Readonly<Record<string, string>>;
+  };
+  readonly value: number;
+  readonly globalDefault: false;
+  readonly preemptionPolicy: "PreemptLowerPriority";
+  readonly description: string;
+}
+
 /** A ClusterRole bound, cluster-wide, to its subjects. */
 export interface ClusterRoleBinding {
   readonly apiVersion: "rbac.authorization.k8s.io/v1";
@@ -145,6 +159,7 @@ export interface PodSpec {
     readonly supplementalGroups?: readonly number[];
     readonly seccompProfile: { readonly type: "RuntimeDefault" };
   };
+  readonly priorityClassName?: string;
   readonly affinity?: NodeAffinity & Partial<PodAntiAffinity>;
   /** The VPN beside an attached Process, started before it and kept running. */
   readonly initContainers?: readonly VpnContainer[];

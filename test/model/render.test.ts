@@ -220,7 +220,9 @@ describe("renderIntentSet", () => {
           render(
             {
               "platform/platform.intent.yml": (document) =>
-                document.replace(/\nhumanGrants:\n( {2}.*\n)+/, "\n"),
+                document
+                  .replace(/\nhumanGrants:\n( {2}.*\n)+/, "\n")
+                  .replace(/\npriority:\n( {2}.*\n)+/, "\n"),
             },
             ["notes"],
           ),
@@ -1003,6 +1005,8 @@ describe("renderIntentSet", () => {
           "estate/edge/lan/x.yaml",
           "estate/human-grants/clusterrolebindings.yaml",
           "estate/human-grants/kustomization.yaml",
+          "estate/priority-classes/kustomization.yaml",
+          "estate/priority-classes/priorityclasses.yaml",
         ],
       ],
       [
@@ -2377,5 +2381,36 @@ describe("replicas spread across too few nodes", () => {
     expect(placed.map(({ path }) => path.split("/").pop())).toStrictEqual([
       "placement",
     ]);
+  });
+});
+
+// REQ-096 (docs/requirements.md): a Process's priority class follows from
+// what it is: a datastore's the data class, the foundation's and a critical
+// Application's the critical class, any other none.
+describe("a Process's priority class", () => {
+  const priorityOf = (project: string, path: string) => {
+    const tree = asTree(artifact(render(undefined, [project]), project));
+    const [workload] = parseAllDocuments(tree[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+    return JSON.stringify(workload).match(/"priorityClassName":"([^"]+)"/)?.[1];
+  };
+
+  it("is the data class for a datastore", () => {
+    expect(
+      priorityOf("data", "apps/data/platform-postgres/workload.yaml"),
+    ).toBe("platform-data");
+  });
+
+  it("is the critical class for the foundation", () => {
+    expect(priorityOf("edge", "apps/edge/traefik-public/workload.yaml")).toBe(
+      "platform-critical-app",
+    );
+  });
+
+  it("is none for any other Process", () => {
+    expect(
+      priorityOf("notes", "apps/notes/notes/workload.yaml"),
+    ).toBeUndefined();
   });
 });

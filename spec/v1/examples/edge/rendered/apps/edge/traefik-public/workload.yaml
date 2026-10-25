@@ -35,6 +35,7 @@ spec:
         image.jorisjonkers.dev/traefik-public: v3.3.4
     spec:
       serviceAccountName: traefik-public
+      priorityClassName: platform-critical-app
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

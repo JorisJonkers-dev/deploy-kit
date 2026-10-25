@@ -46,6 +46,7 @@ one defect so the refusal has a single cause.
 | [`asset-not-found/`](asset-not-found/) | `E_ASSET_NOT_FOUND` | an Asset naming a file the set does not hold beside the project file ([chapter 10](../../10-project-intent.md#assets)) |
 | [`image-runs-as-root/`](image-runs-as-root/) | `E_IMAGE_RUNS_AS_ROOT` | a Process whose image the images lock holds with uid 0, which the posture would render beside `runAsNonRoot` and the kubelet would refuse ([chapter 10](../../10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group)) |
 | [`unknown-library/`](unknown-library/) | `E_UNKNOWN_LIBRARY` | a Process mounting a library the Platform document does not declare ([chapter 14](../../14-platform-intent.md#libraries)) |
+| [`unknown-critical-application/`](unknown-critical-application/) | `E_UNKNOWN_CRITICAL_APPLICATION` | a critical Application the platform names and no project file declares ([chapter 14](../../14-platform-intent.md#priority)) |
 | [`library-not-granted/`](library-not-granted/) | `E_LIBRARY_NOT_GRANTED` | a Process mounting `write` a library that grants its project `read` ([chapter 14](../../14-platform-intent.md#libraries)) |
 | [`no-vpn-policy/`](no-vpn-policy/) | `E_NO_VPN_POLICY` | a Process attaching to a VPN the Platform document does not run ([chapter 14](../../14-platform-intent.md#vpn)) |
 | [`duplicate-human-grant/`](duplicate-human-grant/) | `E_DUPLICATE_HUMAN_GRANT` | a Platform document granting one group one role twice ([chapter 14](../../14-platform-intent.md#human-grants)) |

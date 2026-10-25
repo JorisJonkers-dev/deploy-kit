@@ -65,6 +65,8 @@ const REPORTER = "  reporter: delivery/reporter\n";
 const SIGN_IN = /\nsignIn:\n(?: {2}.*\n)+/;
 /** The worked Platform document's Human Grants, which every render holds. */
 const HUMAN_GRANTS = /\nhumanGrants:\n(?: {2}.*\n)+/;
+/** The worked Platform document's priority classes, which every render holds. */
+const PRIORITY = /\npriority:\n(?: {2}.*\n)+/;
 const withLedger = (platform: string, ledger: string): string =>
   platform.replace(/\nhandover:\n(?: {2}.*\n)+/, `\n${ledger}`);
 
@@ -132,7 +134,8 @@ const PLATFORM: Fragment = {
         text("platform/platform.intent.yml")
           .replace(REPORTER, "")
           .replace(SIGN_IN, "\n")
-          .replace(HUMAN_GRANTS, "\n"),
+          .replace(HUMAN_GRANTS, "\n")
+          .replace(PRIORITY, "\n"),
         LEDGER,
       ),
     },
@@ -2872,6 +2875,38 @@ describe("composeEstate, for the Human Grants", () => {
     expect(composed.sources.find(({ name }) => name === "_estate")?.text).toBe(
       text("pins/rendered/projects/_estate/source.yaml"),
     );
+  });
+
+  // REQ-096 (docs/requirements.md): the priority classes are delivered
+  // estate-scoped too, by their own unit, which follows nothing.
+  it("delivers the priority classes estate-scoped, by a unit of their own that follows nothing", () => {
+    const composed = compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? {
+                ...file,
+                text: file.text.replace(
+                  "\npolicyJob:\n",
+                  `${PRIORITY.exec(text("platform/platform.intent.yml"))?.[0] ?? ""}policyJob:\n`,
+                ),
+              }
+            : file,
+        ),
+      },
+    });
+    const estate = composed.artifacts.find(({ name }) => name === "_estate");
+    const source =
+      composed.sources.find(({ name }) => name === "_estate")?.text ?? "";
+
+    expect(estate?.files.map(({ path }) => path)).toStrictEqual([
+      "estate/priority-classes/kustomization.yaml",
+      "estate/priority-classes/priorityclasses.yaml",
+    ]);
+    expect(source).toContain("name: estate-priority-classes");
+    expect(source).toContain("path: ./estate/priority-classes");
+    expect(source).not.toContain("dependsOn");
   });
 
   it("holds both estate-scoped units beside each other where the catalog is held too", () => {

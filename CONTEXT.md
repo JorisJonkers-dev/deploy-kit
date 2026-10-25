@@ -129,6 +129,10 @@ is unique on a tier, not across the estate.
 security-headers baseline or one per content policy, rendered once in each tier
 proxy's namespace by the Project that declares the proxy.
 
+**Priority class**: the class a Process's pods schedule at, derived: `data` for
+a datastore, `critical` for the foundation and the Applications the platform
+names, none otherwise.
+
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the
 allowance, and the Tier decides which address counts as one client

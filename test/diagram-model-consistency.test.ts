@@ -335,7 +335,9 @@ test("every rendered kind is a column of the deliverables matrix", () => {
   const pinned = new Set(["OCIRepository"]);
   // The route Flux's events take is rendered once per render, into the
   // estate-scoped tree, so the per-Application map carries no column for it.
-  const perRender = new Set(["Alert", "Provider"]);
+  // The priority classes are the cluster's, rendered once into the
+  // estate-scoped tree, so the per-Application map carries no column for them.
+  const perRender = new Set(["Alert", "Provider", "PriorityClass"]);
   const alias: Readonly<Record<string, string>> = {
     Kustomization: "kustomization",
     VaultDynamicSecret: "VaultDynami",

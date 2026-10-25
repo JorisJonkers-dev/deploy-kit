@@ -33,6 +33,7 @@ spec:
         image.jorisjonkers.dev/postgres-exporter: v0.17.1
     spec:
       serviceAccountName: postgres
+      priorityClassName: platform-data
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

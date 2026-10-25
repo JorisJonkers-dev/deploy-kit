@@ -3641,6 +3641,7 @@ describe("the Vault policy job", () => {
       "events",
       "tierProxies",
       "humanGrants",
+      "priority",
     ]);
   });
 

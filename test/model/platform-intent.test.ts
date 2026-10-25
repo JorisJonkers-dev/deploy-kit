@@ -10,6 +10,10 @@ import {
   parsePlatformIntent,
   platformIntentJsonSchema,
 } from "../../src/index.ts";
+import {
+  foundationOf,
+  type PlatformIntentDocument,
+} from "../../src/model/platform-intent.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..", "..");
 const PLATFORM = join(REPOSITORY, "spec", "v1", "examples", "platform");
@@ -354,5 +358,73 @@ describe("parsePlatformIntent", () => {
     expect(platformIntentJsonSchema()).toBe(
       readFileSync(join(REPOSITORY, PLATFORM_JSON_SCHEMA_PATH), "utf8"),
     );
+  });
+});
+
+// REQ-096 (docs/requirements.md): the foundation is every holder of a
+// privileged role, and nothing a Platform document leaves out.
+describe("the foundation", () => {
+  const platformOf = (text: string): PlatformIntentDocument => {
+    const result = parsePlatformIntent(text);
+    if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
+    return result.value.document;
+  };
+
+  it("is every holder of a privileged role the worked platform names", () => {
+    expect([...foundationOf(platformOf(WORKED))].sort()).toStrictEqual([
+      "delivery/collector",
+      "delivery/flagger",
+      "delivery/release-gate",
+      "delivery/reporter",
+      "edge/traefik-lan",
+      "edge/traefik-public",
+      "identity/identity",
+      "observability/otel-collector",
+      "observability/prometheus",
+      "secrets/vault",
+    ]);
+  });
+
+  it("is the tiers' proxies alone where the platform names no other role", () => {
+    const bare = platformOf(WORKED);
+    const {
+      delivery: _d,
+      apiAccess: _a,
+      telemetry: _t,
+      secretStore: _s,
+      signIn: _i,
+      ...rest
+    } = bare;
+
+    expect([...foundationOf(rest)].sort()).toStrictEqual([
+      "edge/traefik-lan",
+      "edge/traefik-public",
+    ]);
+  });
+
+  it("holds the delivery machinery without a gate or a reporter", () => {
+    const worked = platformOf(WORKED);
+    const delivery = worked.delivery as NonNullable<typeof worked.delivery>;
+    const { gate: _g, reporter: _r, ...machinery } = delivery;
+
+    expect(
+      [
+        ...foundationOf({
+          tiers: [],
+          delivery: machinery as typeof delivery,
+        } as unknown as PlatformIntentDocument),
+      ].sort(),
+    ).toStrictEqual([...delivery.machinery].sort());
+  });
+
+  it("holds a gate and a reporter that hold no other role", () => {
+    expect(
+      [
+        ...foundationOf({
+          tiers: [],
+          delivery: { machinery: [], gate: "gate/gate", reporter: "news/news" },
+        } as unknown as PlatformIntentDocument),
+      ].sort(),
+    ).toStrictEqual(["gate/gate", "news/news"]);
   });
 });

@@ -413,6 +413,27 @@ It is stated here, beside the destination it locates, because the platform chose
 that destination and nobody else knows where it is. At least one range is
 required: an off-cluster copy with nowhere to go is not one.
 
+## Priority
+
+```yaml
+priority:
+  data: {name: platform-data, value: 1000000}
+  critical: {name: platform-critical-app, value: 100000}
+  criticalApplications: [auth/auth]
+```
+
+No author claims a priority: it follows from what a Process is. A Process whose
+`engine` derives a backup, a datastore, runs at the `data` class, so it
+schedules before what reads it. The foundation, every holder of a
+[privileged role](#privileged-roles), and the Applications `criticalApplications`
+names run at the `critical` class, so they keep scheduling when a node is short.
+Every other Process runs at none. The render writes both classes as
+`PriorityClass` objects, estate-scoped, preempting lower priorities and default
+to no pod; a pod that names a class before it exists is refused at admission
+and created again once it does. A name in `criticalApplications` whose Project
+the set holds but which declares no such Application is
+`E_UNKNOWN_CRITICAL_APPLICATION`.
+
 ## Libraries
 
 A **Library** is a directory on one node that several projects share: the media
