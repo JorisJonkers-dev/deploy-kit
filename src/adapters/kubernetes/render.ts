@@ -26,6 +26,7 @@ import type {
   Kustomization,
   Labels,
   NodeAffinity,
+  PodAntiAffinity,
   PersistentVolumeClaim,
   PodSpec,
   Probe,
@@ -478,12 +479,33 @@ function containerOf(process: ResolvedProcess): Container {
  * eligible for it, each by name. Layer 2 resolved the set from the pinned node
  * contract, so the render names it whole, even where it is every node.
  */
-const affinityOf = ({ placement }: ResolvedProcess): NodeAffinity =>
-  nodeAffinityOf(
+const affinityOf = ({
+  name,
+  placement,
+  spreadAcross,
+}: ResolvedProcess): NodeAffinity & Partial<PodAntiAffinity> => ({
+  ...nodeAffinityOf(
     placement.boundTo === undefined
       ? placement.eligibleNodes
       : [placement.boundTo],
-  );
+  ),
+  // Replicas spread across nodes repel each other within one revision alone:
+  // a rollout's old and new pod may share a node, so the rollout completes
+  // where replicas equal eligible nodes.
+  ...(spreadAcross === undefined
+    ? {}
+    : {
+        podAntiAffinity: {
+          requiredDuringSchedulingIgnoredDuringExecution: [
+            {
+              labelSelector: { matchLabels: instanceOf(name) },
+              matchLabelKeys: ["pod-template-hash"] as const,
+              topologyKey: "kubernetes.io/hostname" as const,
+            },
+          ],
+        },
+      }),
+});
 
 type PodTemplate = Deployment["spec"]["template"];
 

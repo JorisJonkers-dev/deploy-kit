@@ -2151,3 +2151,99 @@ describe("the shared Middlewares, by adapter", () => {
     ).not.toContain("apps/edge/traefik-lan/middlewares.yaml");
   });
 });
+// REQ-089 (docs/requirements.md): replicas spread across nodes repel each
+// other within one revision, and need a node each.
+describe("replicas spread across nodes", () => {
+  const WHOAMI = "identity/identity.project.yml";
+  const workload = (edit?: (document: string) => string) => {
+    const tree = asTree(
+      artifact(
+        render(edit === undefined ? {} : { [WHOAMI]: edit }, ["identity"]),
+        "identity",
+      ),
+    );
+    const [deployment] = parseAllDocuments(
+      tree["apps/identity/whoami/workload.yaml"] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    return JSON.stringify(deployment);
+  };
+
+  it("repel each other on the hostname within one revision", () => {
+    expect(workload()).toContain(
+      '"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchLabels":{"app.kubernetes.io/instance":"whoami"}},"matchLabelKeys":["pod-template-hash"],"topologyKey":"kubernetes.io/hostname"}]}',
+    );
+  });
+
+  it("may share a node without `across`", () => {
+    expect(
+      workload((document) => document.replace("          across: node\n", "")),
+    ).not.toContain("podAntiAffinity");
+  });
+
+  it("are refused where fewer nodes can hold them than their count", () => {
+    expect(() =>
+      workload((document) =>
+        document.replace(
+          "replicas:\n          count: 2",
+          "replicas:\n          count: 40",
+        ),
+      ),
+    ).toThrow("E_PLACEMENT_UNSATISFIABLE");
+    expect(() =>
+      workload((document) =>
+        document
+          .replace(
+            "replicas:\n          count: 2",
+            "replicas:\n          count: 40",
+          )
+          .replace("          across: node\n", ""),
+      ),
+    ).not.toThrow();
+  });
+});
+
+describe("replicas spread across too few nodes", () => {
+  const refusals = (edit: (document: string) => string) => {
+    const result = renderIntentSet(
+      files({ "identity/identity.project.yml": edit }),
+      { ...OPTIONS, projects: ["identity"] },
+    );
+    return result.ok
+      ? []
+      : result.diagnostics.map(({ code, path, message }) => ({
+          code,
+          path,
+          message,
+        }));
+  };
+  const counted = (document: string) =>
+    document.replace(
+      "replicas:\n          count: 2",
+      "replicas:\n          count: 40",
+    );
+
+  it("names how many nodes can hold the Process", () => {
+    const [refusal, ...rest] = refusals(counted);
+
+    expect(rest).toStrictEqual([]);
+    expect(refusal?.code).toBe("E_PLACEMENT_UNSATISFIABLE");
+    expect(refusal?.path).toMatch(/\/processes\/0\/replicas$/);
+    expect(refusal?.message).toMatch(
+      /^whoami keeps 40 replicas on different nodes, and \d+ can hold it$/,
+    );
+  });
+
+  it("leaves a Process no node can hold to the placement's own refusal", () => {
+    const placed = refusals((document) =>
+      counted(document).replace(
+        /(name: whoami\n(?:.*\n)*?\s+memory: )\S+/,
+        "$164Gi",
+      ),
+    );
+
+    expect(placed.map(({ path }) => path.split("/").pop())).toStrictEqual([
+      "placement",
+    ]);
+  });
+});
+

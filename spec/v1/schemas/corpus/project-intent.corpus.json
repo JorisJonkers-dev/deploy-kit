@@ -392,6 +392,24 @@
           "value": "*/15 * * *"
         }
       ]
+    },
+    {
+      "name": "replicas spread across a zone, which the vocabulary does not hold",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/identity/identity.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/3/processes/0/replicas/across",
+          "value": "zone"
+        }
+      ]
+    },
+    {
+      "name": "replicas spread across nodes",
+      "verdict": "accept",
+      "file": "examples/identity/identity.project.yml"
     }
   ]
 }

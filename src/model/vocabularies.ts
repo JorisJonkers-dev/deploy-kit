@@ -66,6 +66,9 @@ export const KEY_ENCODINGS = ["hex", "base64", "base64url"] as const;
 export const TOLERANCES = ["restart", "reload"] as const;
 /** What a library grants a project, and what a Process mounts it for. */
 export const LIBRARY_ACCESS = ["read", "write"] as const;
+
+/** What a Process's replicas are kept apart across (spec/v1/10-project-intent.md#replicas-and-the-disruption-budget). */
+export const SPREADS = ["node"] as const;
 export const PLACEHOLDER_KINDS = [
   "secret",
   "dependency",

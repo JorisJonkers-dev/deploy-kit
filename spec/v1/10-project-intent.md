@@ -1096,6 +1096,23 @@ processes on one kernel. A Process that wants more states it as
 `auth-api`'s two replicas always were: a capacity decision on freed budget,
 recorded now instead of inferred.
 
+Replicas may share a node unless the Capacity says `across: node`:
+
+```yaml
+replicas:
+  count: 2
+  reason: Availability of the sign-in probe across a node loss.
+  across: node
+```
+
+Then no two replicas share a node: required pod anti-affinity on the hostname.
+Only pods of one revision repel each other (the anti-affinity matches the
+`pod-template-hash` each revision's pods carry), so a rollout still completes
+where the replicas fill every eligible node. The cost is that while a rollout
+runs, an old and a new pod may share a node. `across` admits `node` only. Fewer
+eligible nodes than `count` is `E_PLACEMENT_UNSATISFIABLE`: a replica would
+never schedule.
+
 A `PodDisruptionBudget` is emitted **only where `replicas` exceeds one**, and as
 `maxUnavailable: 1`:
 
@@ -2874,6 +2891,7 @@ already told them, and the lines reaching them made the model harder to read.
 | `Cutover` | `Process.cutover` | `continuous`, `interrupted` |
 | `DurabilityClass` | `Volume.durability` | `reconstructible`, `recoverable`, `irreplaceable` |
 | `LibraryAccess` | `LibraryMount.access`, `LibraryDeclaration.grants` | `read`, `write` |
+| `Spread` | `Capacity.across` | `node` |
 | `Arch` | `Placement.arch` | `amd64`, `arm64` |
 | `Media` | `DiskRequest.media` | `nvme`, `ssd`, `hdd` |
 | `AlertClass` | `Observability.alertClass` | `business-hours`, `urgent`, `page` |

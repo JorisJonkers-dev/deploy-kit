@@ -143,3 +143,11 @@ applications:
         probes:
           readiness: { path: /health, port: 8080 }
         cutover: continuous
+        # Two replicas on different nodes: losing one node leaves the probe
+        # answering. Only pods of one revision repel each other, so a rollout
+        # completes even where the replicas fill every eligible node
+        # (spec/v1/10-project-intent.md#replicas).
+        replicas:
+          count: 2
+          reason: Availability of the sign-in probe across a node loss.
+          across: node

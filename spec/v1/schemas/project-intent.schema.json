@@ -1184,6 +1184,9 @@
         "reason": {
           "type": "string",
           "minLength": 1
+        },
+        "across": {
+          "$ref": "#/$defs/Spread"
         }
       },
       "required": [
@@ -1191,6 +1194,12 @@
         "reason"
       ],
       "additionalProperties": false
+    },
+    "Spread": {
+      "type": "string",
+      "enum": [
+        "node"
+      ]
     },
     "ApiAccess": {
       "type": "object",

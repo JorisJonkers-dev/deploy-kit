@@ -142,9 +142,38 @@ function processRefusals(
               },
             ]
           : gpuRefusals(set, process, `${at}/placement/gpu`, document)),
+        ...spreadRefusals(set, process, `${at}/replicas`, document),
       ];
     }),
   );
+}
+
+/**
+ * Replicas spread across nodes need a node each
+ * (spec/v1/10-project-intent.md#replicas-and-the-disruption-budget): fewer eligible nodes than the count
+ * leave a replica that never schedules. None eligible is the placement's own
+ * refusal.
+ */
+function spreadRefusals(
+  set: PinnedSet,
+  process: EffectiveProcess,
+  path: string,
+  document: string,
+): Diagnostic[] {
+  const { replicas } = process;
+  if (replicas?.across === undefined) return [];
+  const nodes = eligibleNodes(process, set.nodeContract, set.platform).length;
+  return nodes === 0 || nodes >= replicas.count
+    ? []
+    : [
+        {
+          code: "E_PLACEMENT_UNSATISFIABLE",
+          document,
+          path,
+          message: `${process.name} keeps ${String(replicas.count)} replicas on different nodes, and ${String(nodes)} can hold it`,
+          hint: "Lower the count, relax a placement dimension, or drop `across`.",
+        },
+      ];
 }
 
 /** Every backup and catalog method the platform names is an image the lock holds. */

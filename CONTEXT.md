@@ -354,6 +354,9 @@ substituted rather than carrying it: `dependency`, `secret`, `exposure` or
 ([0022](docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)). There is no
 generic override mechanism.
 
+**Spread**: a Capacity exception's `across: node`, keeping a Process's
+replicas of one revision on different nodes.
+
 ## Composition: many repositories, one estate
 
 **Intent Fragment**: one project file published as an OCI artifact, by digest

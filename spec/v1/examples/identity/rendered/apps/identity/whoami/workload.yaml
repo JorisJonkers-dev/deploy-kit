@@ -56,6 +56,14 @@ spec:
                       - enschede-pi-2
                       - enschede-pi-3
                       - frankfurt-contabo-1
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: whoami
+              matchLabelKeys:
+                - pod-template-hash
+              topologyKey: kubernetes.io/hostname
       containers:
         - name: whoami
           image: docker.io/traefik/whoami@sha256:4e6a8c0d2f4b6e8a0c2d4f6b8e0a2c4d6f8b0e2a4c6d8f0b2e4a6c8d0f2b4e6a

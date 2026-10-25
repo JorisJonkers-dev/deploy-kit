@@ -498,6 +498,9 @@ export function resolveProcess(
     ...scheduleOf(process),
     deadline: inSeconds(deadlineOf(process, context.platform)),
     replicas: process.replicas?.count ?? 1,
+    ...(process.replicas?.across === undefined
+      ? {}
+      : { spreadAcross: process.replicas.across }),
     memory: process.placement.memory,
     cpu: process.placement.cpu,
     ...gpuOf(process, context),

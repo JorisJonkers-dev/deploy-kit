@@ -136,7 +136,7 @@ export interface PodSpec {
     readonly supplementalGroups?: readonly number[];
     readonly seccompProfile: { readonly type: "RuntimeDefault" };
   };
-  readonly affinity?: NodeAffinity;
+  readonly affinity?: NodeAffinity & Partial<PodAntiAffinity>;
   /** The VPN beside an attached Process, started before it and kept running. */
   readonly initContainers?: readonly VpnContainer[];
   readonly containers: readonly Container[];
@@ -144,6 +144,17 @@ export interface PodSpec {
 }
 
 /** The nodes a pod may be scheduled on, by name: required, never preferred. */
+/** Pods of one revision of a Process kept on different nodes. */
+export interface PodAntiAffinity {
+  readonly podAntiAffinity: {
+    readonly requiredDuringSchedulingIgnoredDuringExecution: readonly {
+      readonly labelSelector: { readonly matchLabels: Labels };
+      readonly matchLabelKeys: readonly ["pod-template-hash"];
+      readonly topologyKey: "kubernetes.io/hostname";
+    }[];
+  };
+}
+
 export interface NodeAffinity {
   readonly nodeAffinity: {
     readonly requiredDuringSchedulingIgnoredDuringExecution: {

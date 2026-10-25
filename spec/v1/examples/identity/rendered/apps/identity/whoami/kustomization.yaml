@@ -6,6 +6,7 @@ resources:
   - canary.yaml
   - client.yaml
   - configmap.yaml
+  - pdb.yaml
   - route-public.yaml
   - serviceaccount.yaml
   - workload.yaml
