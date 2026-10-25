@@ -15,7 +15,7 @@ import {
   type AuthoredFile,
   type RenderedArtifact,
 } from "../../src/index.ts";
-import { ADAPTERS } from "../../src/adapters/registry.ts";
+import { ADAPTERS, type Adapter } from "../../src/adapters/registry.ts";
 import { renderKubernetes } from "../../src/adapters/kubernetes/render.ts";
 import {
   collisions,
@@ -2122,5 +2122,32 @@ describe("the monitoring stack's selector", () => {
     expect(
       monitorLabels((document) => document.replace(LABELS, "")),
     ).not.toHaveProperty("release");
+  });
+});
+
+// REQ-087 (docs/requirements.md): the shared Middlewares ship with the routes
+// that name them, so a render without the traefik adapter writes none.
+describe("the shared Middlewares, by adapter", () => {
+  const paths = (adapters: readonly Adapter[]) => {
+    const result = renderIntentSet(files(), {
+      ...OPTIONS,
+      projects: ["edge"],
+      adapters,
+    });
+    return result.ok
+      ? (artifact(result.value, "edge")?.files ?? []).map(({ path }) => path)
+      : [];
+  };
+
+  it("render with the traefik adapter alone", () => {
+    expect(paths(ADAPTERS.filter(({ name }) => name === "traefik"))).toContain(
+      "apps/edge/traefik-lan/middlewares.yaml",
+    );
+  });
+
+  it("render with no traefik adapter not at all", () => {
+    expect(
+      paths(ADAPTERS.filter(({ name }) => name !== "traefik")),
+    ).not.toContain("apps/edge/traefik-lan/middlewares.yaml");
   });
 });
