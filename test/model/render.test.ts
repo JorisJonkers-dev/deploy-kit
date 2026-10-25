@@ -2759,12 +2759,45 @@ describe("the edge proxy's static configuration", () => {
   });
 
   it("opens no websecure entry point where the Process provides none", () => {
-    const args = argsOf("traefik-lan") as string[];
-
-    expect(args).toContain(
+    expect(argsOf("traefik-lan")).toStrictEqual([
+      "--entryPoints.web.address=:8000/tcp",
+      "--entryPoints.traefik.address=:8080/tcp",
+      "--ping=true",
+      "--ping.entryPoint=traefik",
+      "--metrics.prometheus=true",
+      "--metrics.prometheus.entryPoint=traefik",
+      "--providers.kubernetescrd=true",
       "--providers.kubernetescrd.ingressClass=traefik-lan",
-    );
-    expect(args.some((arg) => arg.includes("websecure"))).toBe(false);
+      "--providers.kubernetescrd.allowCrossNamespace=true",
+      "--providers.kubernetescrd.allowEmptyServices=true",
+      "--log.format=json",
+      "--accesslog=true",
+      "--accesslog.format=json",
+    ]);
+  });
+
+  it("serves TLS only where the tier terminates it and the Process provides websecure", () => {
+    const tlsOn = (args: unknown) =>
+      (args as string[]).includes("--entryPoints.websecure.http.tls=true");
+    // A tls tier whose proxy provides no websecure opens no TLS entry point.
+    expect(
+      tlsOn(
+        argsOf("traefik-public", (document) =>
+          document.replace("          websecure: 8443\n", ""),
+        ),
+      ),
+    ).toBe(false);
+    // A plain tier's proxy that provides websecure serves it without TLS.
+    expect(
+      tlsOn(
+        argsOf("traefik-lan", (document) =>
+          document.replace(
+            "          web: 8000\n          admin: 8080\n",
+            "          web: 8000\n          websecure: 8443\n          admin: 8080\n",
+          ),
+        ),
+      ),
+    ).toBe(false);
   });
 
   it("asks no ping or metrics where the Process provides no admin surface", () => {

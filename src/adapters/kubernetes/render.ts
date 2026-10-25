@@ -456,6 +456,8 @@ function portsOf(
   surfaces: NonNullable<ResolvedProcess["surfaces"]>,
   l4Exposure: ResolvedProcess["l4Exposure"],
 ): ContainerPort[] {
+  // A missing list and an empty one expose nothing alike.
+  // Stryker disable next-line ArrayDeclaration
   const onNode = (l4Exposure ?? []).flatMap((exposure) =>
     exposure.kind === "node" ? exposure.ports : [],
   );
@@ -498,8 +500,10 @@ function portsOf(
  */
 function edgeProxyArgsOf({ edgeProxy, surfaces }: ResolvedProcess): string[] {
   if (edgeProxy === undefined) return [];
+  // A proxy provides `web`, or it is no tier's proxy.
+  const provided = surfaces as NonNullable<typeof surfaces>;
   const port = (name: string) =>
-    surfaces?.find((surface) => surface.name === name)?.port;
+    provided.find((surface) => surface.name === name)?.port;
   const web = port("web");
   const websecure = port("websecure");
   const admin = port("admin");

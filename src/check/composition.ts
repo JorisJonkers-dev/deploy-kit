@@ -206,7 +206,10 @@ function nodePortRefusals(
                 node: address.node,
               },
             ]
-          : [];
+          : // A pool's entry shares no node's port: anything here keys nothing
+            // and owns nothing, so no refusal reads it.
+            // Stryker disable next-line ArrayDeclaration
+            [];
       }),
     ),
   );
