@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - backup.yaml
   - pvc.yaml
+  - route-lan.yaml
   - route-management.yaml
   - service.yaml
   - serviceaccount.yaml
