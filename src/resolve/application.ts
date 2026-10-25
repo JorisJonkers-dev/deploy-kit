@@ -369,6 +369,9 @@ export function resolveApplication(
             path: scrape.path,
             interval: context.platform.monitors.interval,
             timeout: context.platform.monitors.timeout,
+            ...(context.platform.monitors.labels === undefined
+              ? {}
+              : { labels: context.platform.monitors.labels }),
           },
         }),
     ...(gate === undefined ? {} : { releaseGate: gate }),

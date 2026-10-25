@@ -117,6 +117,11 @@ engines:
 monitors:
   interval: 30s
   timeout: 10s
+  # The live Prometheus selects its ServiceMonitors and PodMonitors by this
+  # label, so every monitor the render writes carries it
+  # (spec/v1/14-platform-intent.md#monitor-cadence).
+  labels:
+    release: metrics-stack
 
 # Where every exporting Runtime Profile sends its telemetry, the collector's
 # `otlp` surface, and the metrics stack every declared scrape surface admits,

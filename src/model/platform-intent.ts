@@ -179,8 +179,27 @@ const enginePolicies = z
   })
   .meta({ id: "EnginePolicies" });
 
+// A Kubernetes label key and value: the monitoring stack selects its monitors
+// by a label set the platform names, so a render never writes one the API
+// server refuses.
+const labelKey = z
+  .string()
+  .regex(
+    /^([a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?\/)?[A-Za-z0-9]([A-Za-z0-9._-]{0,61}[A-Za-z0-9])?$/,
+  );
+const labelValue = z
+  .string()
+  .regex(/^([A-Za-z0-9]([A-Za-z0-9._-]{0,61}[A-Za-z0-9])?)?$/);
+
+// One cadence for every monitor the estate renders, and the labels the
+// monitoring stack selects every monitor by
+// (spec/v1/14-platform-intent.md#monitor-cadence).
 const monitorCadence = z
-  .strictObject({ interval: text, timeout: text })
+  .strictObject({
+    interval: text,
+    timeout: text,
+    labels: z.record(labelKey, labelValue).exactOptional(),
+  })
   .meta({ id: "MonitorCadence" });
 
 const probeCadence = z

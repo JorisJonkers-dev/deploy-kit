@@ -29,7 +29,9 @@ export function renderPrometheus(project: ResolvedProject): Deliverable[] {
     const metadata = {
       name: process.name,
       namespace: application.namespace,
-      labels: labelsOf(process, application.id),
+      // The monitoring stack's selector, which the render's own labels never
+      // give way to.
+      labels: { ...scrape.labels, ...labelsOf(process, application.id) },
     };
     const endpoint = {
       port: scrape.surface,

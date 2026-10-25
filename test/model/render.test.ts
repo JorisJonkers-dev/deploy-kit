@@ -1983,3 +1983,50 @@ describe("a Process that listens below 1024", () => {
     expect(securityContext).not.toHaveProperty("sysctls");
   });
 });
+
+// REQ-082 (docs/requirements.md): every monitor the render writes carries the
+// label set the Platform document's `monitors` names, beside its own labels,
+// which win where a key is both; a platform that names none adds none.
+describe("the monitoring stack's selector", () => {
+  const PLATFORM = "platform/platform.intent.yml";
+  const LABELS = "  labels:\n    release: metrics-stack\n";
+  const monitorLabels = (
+    edit?: (document: string) => string,
+  ): Record<string, string> => {
+    const tree = asTree(
+      artifact(render(edit === undefined ? {} : { [PLATFORM]: edit }), "notes"),
+    );
+    const [monitor] = parseAllDocuments(
+      tree["apps/notes/notes/podmonitor.yaml"] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    return (monitor?.["metadata"] as { labels: Record<string, string> }).labels;
+  };
+
+  it("is carried by every monitor beside the render's own labels", () => {
+    expect(monitorLabels()).toStrictEqual({
+      release: "metrics-stack",
+      "app.kubernetes.io/name": "notes-api",
+      "app.kubernetes.io/instance": "notes-api",
+      "app.kubernetes.io/part-of": "notes",
+      "app.kubernetes.io/managed-by": "deploy-kit",
+      "app.kubernetes.io/component": "node",
+    });
+  });
+
+  it("never replaces a label the render writes", () => {
+    expect(
+      monitorLabels((document) =>
+        document.replace(
+          LABELS,
+          `${LABELS}    app.kubernetes.io/managed-by: someone-else\n`,
+        ),
+      )["app.kubernetes.io/managed-by"],
+    ).toBe("deploy-kit");
+  });
+
+  it("adds nothing where the platform names no labels", () => {
+    expect(
+      monitorLabels((document) => document.replace(LABELS, "")),
+    ).not.toHaveProperty("release");
+  });
+});
