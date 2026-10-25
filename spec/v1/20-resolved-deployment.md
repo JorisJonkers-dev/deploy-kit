@@ -2043,6 +2043,9 @@ classDiagram
         +L4Protocol protocol
         +string surface
         +int targetPort
+    class ResolvedEdgeProxy {
+        +string ingressClass
+        +bool tls
     }
     class ResolvedLibraryMount {
         +string library
@@ -2215,6 +2218,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" ResolvedNodeExposure : l4Exposure
     ResolvedPoolExposure "1" *-- "1..*" ResolvedL4Port : ports
     ResolvedNodeExposure "1" *-- "1..*" ResolvedL4Port : ports
+    ResolvedProcess "1" *-- "0..1" ResolvedEdgeProxy : edgeProxy
     ResolvedProcess "1" *-- "0..1" ResolvedGpu : gpu
     ResolvedProcess "1" *-- "0..1" ResolvedVpn : vpn
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets

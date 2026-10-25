@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **91** rows. The compiler's behaviours join it as they land.
+This ledger holds **92** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -112,5 +112,6 @@ This ledger holds **91** rows. The compiler's behaviours join it as they land.
 | REQ-087 | The Project that declares a tier's proxy renders the shared Middlewares every route names, `security-headers` and one `security-headers-<policy>` per content policy, once per proxy namespace, because a route naming a Middleware no one renders is served by no proxy | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-088 | An estate Project's share carries its routes once every Project that declares a tier's proxy is on the estate path, whatever else is still legacy, and none while one of them is legacy, because routes flip with the edge's handover and the old path's Traefik serves the edge until then | [test/application/compose.test.ts](../test/application/compose.test.ts) |
 | REQ-089 | A Process whose replicas declare `across: node` renders required pod anti-affinity on the hostname, matching its own pods of one revision by `pod-template-hash`, and fewer eligible nodes than its count is `E_PLACEMENT_UNSATISFIABLE`, because no two replicas may share a node while a rollout's old and new pod may | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-091 | A tier's proxy Process renders Traefik's static configuration as its arguments, entry points from its `web`, `websecure` and `admin` surfaces, TLS on `websecure` where the tier terminates it, and the CRD provider filtered on the tier's ingress class, and two tiers naming one proxy with two classes are `E_TIER_CLASS_UNFILTERED`, because a Traefik the estate renders must admit the routes it renders | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-096 | A Process with an `engine` runs at the Platform's `data` priority class, one of the foundation or a critical Application at its `critical` class, and any other at none; both classes render once, estate-scoped, and an unknown critical Application is refused, because no author claims a priority and the data layer must schedule before what reads it | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-097 | An exposure on a node-kind L4 Address renders each port a client dials as a host port on the Process's container, on the surface's own port entry where it dials that port over TCP and on an entry of its own otherwise, holds the Process to that node, and renders no Service; two exposures dialling one port and protocol on one node are `E_NODE_PORT_TAKEN`, replicas there are `E_NODE_ADDRESS_REPLICATED`, and a `continuous` cutover there is `E_CUTOVER_UNHONOURABLE` unless the Application is delivery machinery, whose rolling switchover never runs two pods | [test/model/render.test.ts](../test/model/render.test.ts) |

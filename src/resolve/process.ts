@@ -57,7 +57,6 @@ import {
 } from "./secrets.ts";
 import { resolveVolumes } from "./volumes.ts";
 
-/** What resolving one Process reads beyond the Process itself. */
 /**
  * The priority class a Process runs at (spec/v1/14-platform-intent.md#priority):
  * the data class for a datastore, whose engine derives a backup; the critical
@@ -80,6 +79,33 @@ function priorityOf(
     : {};
 }
 
+/**
+ * The tier a Process is the proxy of (spec/v1/30-deliverables.md#the-edge-proxy):
+ * the Process of a tier's `traefik` Application that serves `web`. A proxy
+ * named by two tiers carries one class, or E_TIER_CLASS_UNFILTERED refused the
+ * set, and every tier an exposure is on names one, or
+ * E_TIER_WITHOUT_INGRESS_CLASS did.
+ */
+function edgeProxyOf(
+  process: EffectiveProcess,
+  context: ProcessContext,
+): { readonly edgeProxy?: { ingressClass: string; tls: boolean } } {
+  const tier = context.platform.tiers.find(
+    ({ traefik, ingressClass }) =>
+      traefik === `${context.project}/${context.application}` &&
+      ingressClass !== undefined,
+  );
+  return tier === undefined || process.provides?.["web"] === undefined
+    ? {}
+    : {
+        edgeProxy: {
+          ingressClass: tier.ingressClass as string,
+          tls: tier.listener === "tls",
+        },
+      };
+}
+
+/** What resolving one Process reads beyond the Process itself. */
 export interface ProcessContext {
   readonly platform: PlatformIntentDocument;
   readonly contract: NodeContractDocument;
@@ -538,6 +564,7 @@ export function resolveProcess(
     ...(process.replicas?.across === undefined
       ? {}
       : { spreadAcross: process.replicas.across }),
+    ...edgeProxyOf(process, context),
     memory: process.placement.memory,
     cpu: process.placement.cpu,
     ...gpuOf(process, context),

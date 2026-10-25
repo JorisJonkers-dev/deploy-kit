@@ -489,12 +489,55 @@ function portsOf(
   ];
 }
 
+/**
+ * A tier proxy's static configuration, as Traefik's arguments
+ * (spec/v1/30-deliverables.md#the-edge-proxy): an entry point per surface it
+ * provides, `web`, `websecure` and `admin`, the CRD provider admitting only
+ * the routes of its tier's class across namespaces, ping and metrics on
+ * `admin`, and logs as JSON.
+ */
+function edgeProxyArgsOf({ edgeProxy, surfaces }: ResolvedProcess): string[] {
+  if (edgeProxy === undefined) return [];
+  const port = (name: string) =>
+    surfaces?.find((surface) => surface.name === name)?.port;
+  const web = port("web");
+  const websecure = port("websecure");
+  const admin = port("admin");
+  return [
+    `--entryPoints.web.address=:${String(web)}/tcp`,
+    ...(websecure === undefined
+      ? []
+      : [`--entryPoints.websecure.address=:${String(websecure)}/tcp`]),
+    ...(edgeProxy.tls && websecure !== undefined
+      ? ["--entryPoints.websecure.http.tls=true"]
+      : []),
+    ...(admin === undefined
+      ? []
+      : [
+          `--entryPoints.traefik.address=:${String(admin)}/tcp`,
+          "--ping=true",
+          "--ping.entryPoint=traefik",
+          "--metrics.prometheus=true",
+          "--metrics.prometheus.entryPoint=traefik",
+        ]),
+    "--providers.kubernetescrd=true",
+    `--providers.kubernetescrd.ingressClass=${edgeProxy.ingressClass}`,
+    "--providers.kubernetescrd.allowCrossNamespace=true",
+    "--providers.kubernetescrd.allowEmptyServices=true",
+    "--log.format=json",
+    "--accesslog=true",
+    "--accesslog.format=json",
+  ];
+}
+
 function containerOf(process: ResolvedProcess): Container {
   const env = envOf(process);
   const mounts = mountsOf(process);
+  const args = edgeProxyArgsOf(process);
   return {
     name: process.name,
     image: process.image,
+    ...(args.length === 0 ? {} : { args }),
     ...(process.surfaces === undefined
       ? {}
       : { ports: portsOf(process.surfaces, process.l4Exposure) }),

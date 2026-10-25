@@ -55,6 +55,22 @@ spec:
       containers:
         - name: traefik-public
           image: docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a
+          args:
+            - --entryPoints.web.address=:8000/tcp
+            - --entryPoints.websecure.address=:8443/tcp
+            - --entryPoints.websecure.http.tls=true
+            - --entryPoints.traefik.address=:8080/tcp
+            - --ping=true
+            - --ping.entryPoint=traefik
+            - --metrics.prometheus=true
+            - --metrics.prometheus.entryPoint=traefik
+            - --providers.kubernetescrd=true
+            - --providers.kubernetescrd.ingressClass=traefik-public
+            - --providers.kubernetescrd.allowCrossNamespace=true
+            - --providers.kubernetescrd.allowEmptyServices=true
+            - --log.format=json
+            - --accesslog=true
+            - --accesslog.format=json
           ports:
             - name: web
               containerPort: 8000

@@ -1173,6 +1173,9 @@
         "spreadAcross": {
           "$ref": "#/$defs/Spread"
         },
+        "edgeProxy": {
+          "$ref": "#/$defs/ResolvedEdgeProxy"
+        },
         "memory": {
           "type": "string",
           "minLength": 1
@@ -1415,6 +1418,23 @@
       "enum": [
         "node"
       ]
+    },
+    "ResolvedEdgeProxy": {
+      "type": "object",
+      "properties": {
+        "ingressClass": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tls": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ingressClass",
+        "tls"
+      ],
+      "additionalProperties": false
     },
     "ResolvedGpu": {
       "type": "object",

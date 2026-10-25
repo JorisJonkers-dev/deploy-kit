@@ -465,6 +465,36 @@ function deliveryRefusals(
   );
 }
 
+/**
+ * One Traefik filters on one ingress class
+ * (spec/v1/30-deliverables.md#the-edge-proxy): two tiers that name one proxy
+ * with two classes leave the second tier's routes admitted by no proxy.
+ */
+function unfiltered(platform: Named<PlatformIntentDocument>): Diagnostic[] {
+  const filters = new Map<string, string>();
+  return platform.document.tiers.flatMap(
+    ({ traefik, ingressClass }, index): Diagnostic[] => {
+      if (ingressClass === undefined) return [];
+      const filtered = filters.get(traefik);
+      if (filtered === undefined) {
+        filters.set(traefik, ingressClass);
+        return [];
+      }
+      return filtered === ingressClass
+        ? []
+        : [
+            {
+              code: "E_TIER_CLASS_UNFILTERED",
+              document: platform.name,
+              path: `/tiers/${String(index)}/ingressClass`,
+              message: `the proxy ${traefik} admits routes of ${filtered}, so no proxy admits this tier's ${ingressClass}`,
+              hint: "Give the tier the class its proxy admits, or its own proxy.",
+            },
+          ];
+    },
+  );
+}
+
 function projectRefusals(
   project: ProjectIntentDocument,
   platform: PlatformIntentDocument,
@@ -867,6 +897,7 @@ export function setDiagnostics(
     ) ?? [];
   return [
     ...proxies,
+    ...unfiltered(platform),
     ...machinery,
     ...apiHolders,
     ...telemetry,

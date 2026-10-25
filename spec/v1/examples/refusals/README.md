@@ -48,6 +48,7 @@ one defect so the refusal has a single cause.
 | [`unknown-library/`](unknown-library/) | `E_UNKNOWN_LIBRARY` | a Process mounting a library the Platform document does not declare ([chapter 14](../../14-platform-intent.md#libraries)) |
 | [`unknown-critical-application/`](unknown-critical-application/) | `E_UNKNOWN_CRITICAL_APPLICATION` | a critical Application the platform names and no project file declares ([chapter 14](../../14-platform-intent.md#priority)) |
 | [`tier-without-ingress-class/`](tier-without-ingress-class/) | `E_TIER_WITHOUT_INGRESS_CLASS` | an exposure on a tier that names no ingress class, so no proxy would admit its routes ([chapter 14](../../14-platform-intent.md#tiers)) |
+| [`tier-class-unfiltered/`](tier-class-unfiltered/) | `E_TIER_CLASS_UNFILTERED` | two tiers naming one proxy with two ingress classes ([chapter 30](../../30-deliverables.md#the-edge-proxy)) |
 | [`library-not-granted/`](library-not-granted/) | `E_LIBRARY_NOT_GRANTED` | a Process mounting `write` a library that grants its project `read` ([chapter 14](../../14-platform-intent.md#libraries)) |
 | [`unknown-l4-address/`](unknown-l4-address/) | `E_UNKNOWN_L4_ADDRESS` | an Application exposed on an L4 Address the Platform document does not declare ([chapter 14](../../14-platform-intent.md#l4-addresses)) |
 | [`l4-address-exhausted/`](l4-address-exhausted/) | `E_L4_ADDRESS_EXHAUSTED` | two Processes exposed on a pool whose range holds one address ([chapter 14](../../14-platform-intent.md#l4-addresses)) |

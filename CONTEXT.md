@@ -152,6 +152,10 @@ between, derived for each port a client dials on a Node address and never
 authored. A host port holds one copy of its Process, so a Process on a Node
 address has no replicas and cuts over `interrupted`.
 
+**Edge proxy**: the Process of a tier's `traefik` Application that serves
+`web`, whose static configuration (entry points, the class it admits) is
+derived from its surfaces and its tier.
+
 **Ingress class**: the name a tier's proxy admits routes by, declared on the
 tier. Every route rendered for the tier carries it, so a route reaches the one
 proxy its audience selects.
