@@ -2414,3 +2414,165 @@ describe("a Process's priority class", () => {
     ).toBeUndefined();
   });
 });
+// REQ-081 (docs/requirements.md): an Application exposed on a pool-kind L4
+// Address renders, per Process and address, one load balancer that requests the
+// pool and keeps the client's address, carrying each port a client dials to the
+// surface's own port; the Process is held to the pool's site, and its policy
+// admits any address on those ports.
+describe("an L4 exposure", () => {
+  const DATA = "data/data.project.yml";
+  const BROKER = "apps/data/platform-rabbitmq";
+  const EXPOSED =
+    "      - {address: lan-mqtt, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}\n";
+  const documents = (body: string | undefined) =>
+    parseAllDocuments(body ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+  const named = (body: string | undefined, name: string) =>
+    documents(body).find(
+      (document) => (document["metadata"] as { name: string }).name === name,
+    );
+  const data = (edit?: (document: string) => string) =>
+    asTree(
+      artifact(
+        render(edit === undefined ? {} : { [DATA]: edit }, ["data"]),
+        "data",
+      ),
+    );
+
+  it("renders a load balancer on the pool that keeps the client's address", () => {
+    expect(
+      named(data()[`${BROKER}/service.yaml`], "rabbitmq-lan-mqtt"),
+    ).toStrictEqual({
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: "rabbitmq-lan-mqtt",
+        namespace: "data-system",
+        labels: {
+          "app.kubernetes.io/name": "rabbitmq",
+          "app.kubernetes.io/instance": "rabbitmq",
+          "app.kubernetes.io/part-of": "platform-rabbitmq",
+          "app.kubernetes.io/managed-by": "deploy-kit",
+          "app.kubernetes.io/component": "none",
+        },
+        annotations: { "metallb.io/address-pool": "lan-mqtt" },
+      },
+      spec: {
+        type: "LoadBalancer",
+        externalTrafficPolicy: "Local",
+        selector: { "app.kubernetes.io/instance": "rabbitmq" },
+        ports: [
+          { name: "tcp-1883", port: 1883, protocol: "TCP", targetPort: 1883 },
+        ],
+      },
+    });
+  });
+
+  it("carries TCP and UDP on one address in one Service, a client's port apart from the container's", () => {
+    const tree = data((document) =>
+      document.replace(
+        EXPOSED,
+        `${EXPOSED}      - {address: lan-mqtt, port: 53, protocol: udp, process: rabbitmq, surface: mqtt}\n`,
+      ),
+    );
+    const service = named(tree[`${BROKER}/service.yaml`], "rabbitmq-lan-mqtt");
+
+    expect((service?.["spec"] as { ports: unknown[] }).ports).toStrictEqual([
+      { name: "udp-53", port: 53, protocol: "UDP", targetPort: 1883 },
+      { name: "tcp-1883", port: 1883, protocol: "TCP", targetPort: 1883 },
+    ]);
+    const policy = named(tree[`${BROKER}/networkpolicy.yaml`], "rabbitmq");
+    expect(
+      (policy?.["spec"] as { ingress: unknown[] }).ingress.filter((rule) =>
+        JSON.stringify(rule).includes("0.0.0.0/0"),
+      ),
+    ).toStrictEqual([
+      {
+        from: [{ ipBlock: { cidr: "0.0.0.0/0" } }],
+        ports: [{ protocol: "UDP", port: 1883 }],
+      },
+      {
+        from: [{ ipBlock: { cidr: "0.0.0.0/0" } }],
+        ports: [{ protocol: "TCP", port: 1883 }],
+      },
+    ]);
+  });
+
+  it("renders one Service per address in name order, and TCP before UDP on one port", () => {
+    const tree = data((document) =>
+      document.replace(
+        EXPOSED,
+        `      - {address: lan-mqtt, port: 1883, protocol: udp, process: rabbitmq, surface: mqtt}\n${EXPOSED}      - {address: lan-dns, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}\n      - {address: lan-dns, port: 1883, protocol: udp, process: rabbitmq, surface: mqtt}\n`,
+      ),
+    );
+    const services = documents(tree[`${BROKER}/service.yaml`]).filter(
+      (document) =>
+        (document["spec"] as { type?: string }).type === "LoadBalancer",
+    );
+
+    expect(
+      services.map((service) => [
+        (service["metadata"] as { name: string }).name,
+        (service["spec"] as { ports: { name: string }[] }).ports.map(
+          ({ name }) => name,
+        ),
+      ]),
+    ).toStrictEqual([
+      ["rabbitmq-lan-dns", ["tcp-1883", "udp-1883"]],
+      ["rabbitmq-lan-mqtt", ["tcp-1883", "udp-1883"]],
+    ]);
+  });
+
+  it("admits any address on the surface's own port, and nothing more", () => {
+    const policy = named(data()[`${BROKER}/networkpolicy.yaml`], "rabbitmq");
+    const ingress = (policy?.["spec"] as { ingress: unknown[] }).ingress;
+
+    expect(
+      ingress.filter((rule) => JSON.stringify(rule).includes("0.0.0.0/0")),
+    ).toStrictEqual([
+      {
+        from: [{ ipBlock: { cidr: "0.0.0.0/0" } }],
+        ports: [{ protocol: "TCP", port: 1883 }],
+      },
+    ]);
+  });
+
+  it("holds the Process to the pool's site", () => {
+    const workload = named(data()[`${BROKER}/workload.yaml`], "rabbitmq");
+
+    expect(JSON.stringify(workload)).toContain("enschede-t1000-1");
+    expect(JSON.stringify(workload)).not.toContain("frankfurt");
+  });
+
+  it("refuses a placement that contradicts the pool's site, naming the site", () => {
+    const result = renderIntentSet(
+      files({
+        [DATA]: (document) =>
+          document.replace(
+            "          memory: 2Gi       # the broker",
+            "          site: frankfurt\n          memory: 2Gi       # the broker",
+          ),
+      }),
+      { ...OPTIONS, projects: ["data"] },
+    );
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, message, hint }) => ({
+            code,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_PLACEMENT_UNSATISFIABLE",
+        message:
+          "no node in the node contract on enschede, the site of each pool rabbitmq is exposed on, can hold it",
+        hint: "Relax a placement dimension, or expose the Process on a pool of the site it is placed on.",
+      },
+    ]);
+  });
+});
+

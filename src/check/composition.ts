@@ -16,6 +16,7 @@ import {
   reporterEndpoint,
   secretStoreAddress,
 } from "../model/runtime-profiles.ts";
+import { addressesIn, l4AddressOf } from "../model/l4-addresses.ts";
 import { libraryOf } from "../model/libraries.ts";
 import type {
   LibraryMount,
@@ -91,6 +92,69 @@ function libraryRefusals(
                   ? `the library ${library} grants the project ${project.project} nothing`
                   : `the library ${library} grants the project ${project.project} read, and the Process mounts it write`,
               hint: "Grant the project the library in the Platform document, or mount it for what it is granted.",
+            },
+          ]
+        : [];
+    },
+  );
+}
+
+/**
+ * An L4 Address is the platform's to declare
+ * (spec/v1/14-platform-intent.md#l4-addresses): an exposure names one the
+ * Platform document declares.
+ */
+const l4AddressRefusals = (
+  application: Application,
+  at: string,
+  platform: PlatformIntentDocument,
+): Omit<Diagnostic, "document">[] =>
+  // A missing list and an empty one name no address alike.
+  // Stryker disable next-line ArrayDeclaration
+  (application.l4Exposure ?? []).flatMap(({ address }, index) =>
+    l4AddressOf(platform, address) === undefined
+      ? [
+          {
+            code: "E_UNKNOWN_L4_ADDRESS" as const,
+            path: `${at}/l4Exposure/${String(index)}`,
+            message: `the platform declares no L4 Address ${address}`,
+            hint: "Declare the address in the Platform document's `l4Addresses`, or expose on one it declares.",
+          },
+        ]
+      : [],
+  );
+
+/**
+ * A pool gives each Service exposed on it one address of its range, so it
+ * holds as many Processes as its range holds addresses: one more would wait
+ * for an address that never comes.
+ */
+function exhaustedRefusals(
+  platform: Named<PlatformIntentDocument>,
+  projects: readonly Named<ProjectIntentDocument>[],
+): Diagnostic[] {
+  const exposed = new Map<string, Set<string>>();
+  for (const { document } of projects)
+    for (const application of document.applications)
+      // Stryker disable next-line ArrayDeclaration: no list exposes nothing.
+      for (const { address, process } of application.l4Exposure ?? [])
+        exposed.set(
+          address,
+          (exposed.get(address) ?? new Set()).add(
+            `${document.project}/${process}`,
+          ),
+        );
+  return Object.entries(platform.document.l4Addresses ?? {}).flatMap(
+    ([name, { range }]): Diagnostic[] => {
+      const processes = exposed.get(name)?.size ?? 0;
+      return processes > addressesIn(range)
+        ? [
+            {
+              code: "E_L4_ADDRESS_EXHAUSTED",
+              document: platform.name,
+              path: `/l4Addresses/${name}`,
+              message: `${String(processes)} Processes are exposed on ${name}, whose range ${range} holds ${String(addressesIn(range))}`,
+              hint: "Widen the pool's range, or expose fewer Processes on it.",
             },
           ]
         : [];
@@ -332,6 +396,7 @@ function projectRefusals(
           noTier(route.audience, `${at}/exposure/${e}/routes/${r}`);
     }
     refusals.push(...grantRefusals(application.secrets ?? [], at, platform));
+    refusals.push(...l4AddressRefusals(application, at, platform));
     for (const [p, process] of application.processes.entries()) {
       const processAt = `${at}/processes/${p}`;
       const volumes = process.volumes ?? [];
@@ -692,6 +757,7 @@ export function setDiagnostics(
     ...issuing,
     ...enrolled,
     ...serving,
+    ...exhaustedRefusals(platform, projects),
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,

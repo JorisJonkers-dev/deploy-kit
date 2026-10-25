@@ -30,6 +30,7 @@ import {
   DELIVERIES,
   DURABILITY_CLASSES,
   KEY_ENCODINGS,
+  L4_PROTOCOLS,
   LIBRARY_ACCESS,
   SPREADS,
   LIFECYCLES,
@@ -443,6 +444,34 @@ const resolvedSurface = z
   .strictObject({ name: text, port })
   .meta({ id: "ResolvedSurface" });
 
+// A port a client off the cluster dials on an L4 Address, and the surface's
+// port it reaches (spec/v1/20-resolved-deployment.md#l4-exposure): `name` is
+// the protocol and the client's port, which no two ports of one Service share.
+const resolvedL4Port = z
+  .strictObject({
+    name: text,
+    port,
+    protocol: z.enum(L4_PROTOCOLS).meta({ id: "L4Protocol" }),
+    surface: text,
+    targetPort: port,
+  })
+  .meta({ id: "ResolvedL4Port" });
+
+// One L4 Address a Process is exposed on, as the Platform declares it, and the
+// Service that requests it: on a pool, a load balancer that keeps the
+// client's address and sends a connection only to a pod on the node that
+// announces it.
+const resolvedL4Exposure = z
+  .strictObject({
+    address: text,
+    kind: z.literal("pool"),
+    site: text,
+    range: text,
+    service: text,
+    ports: z.array(resolvedL4Port).min(1),
+  })
+  .meta({ id: "ResolvedL4Exposure" });
+
 const ingressRule = z.enum(INGRESS_RULES).meta({ id: "IngressRule" });
 
 // An inbound peer the Process's policy admits, on one of its own ports: a
@@ -581,6 +610,7 @@ const resolvedProcess = stated(
     writablePaths: z.array(writablePath).exactOptional(),
     environment: z.array(envEntry).exactOptional(),
     surfaces: z.array(resolvedSurface).exactOptional(),
+    l4Exposure: z.array(resolvedL4Exposure).exactOptional(),
     ingress: z.array(ingressPeer).exactOptional(),
     egress: z.array(egressPeer).exactOptional(),
   }),
@@ -1036,3 +1066,6 @@ export type ReleaseGate = NonNullable<
 export type ResolvedProbe = NonNullable<ResolvedProcess["readiness"]>;
 export type StartupProbe = NonNullable<ResolvedProcess["startup"]>;
 export type EnvEntry = NonNullable<ResolvedProcess["environment"]>[number];
+export type ResolvedL4Exposure = NonNullable<
+  ResolvedProcess["l4Exposure"]
+>[number];

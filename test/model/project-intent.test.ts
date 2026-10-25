@@ -628,3 +628,27 @@ describe("a route's redirect", () => {
     ]);
   });
 });
+// REQ-081 (docs/requirements.md): an L4 exposure names a Process and a surface
+// its Application holds, and is refused at its own path where it does not.
+describe("an L4 exposure's Process", () => {
+  it("is refused at the exposure where its Application holds none of that name", () => {
+    const data = readFileSync(
+      join(EXAMPLES, "data", "data.project.yml"),
+      "utf8",
+    );
+
+    expect(
+      refused(
+        data.replace(
+          "process: rabbitmq, surface: mqtt}",
+          "process: nobody, surface: mqtt}",
+        ),
+      ),
+    ).toContainEqual(
+      expect.objectContaining({
+        code: "E_UNKNOWN_PROCESS",
+        path: "/applications/1/l4Exposure/0",
+      }),
+    );
+  });
+});

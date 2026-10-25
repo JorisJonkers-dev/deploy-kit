@@ -899,6 +899,23 @@ data plane rather than chosen by the estate, so no document authors them; an
 Application of a Project not enrolled records no `mesh`, and its projection is
 what it was before the mesh existed.
 
+### L4 exposure
+
+A Process's `l4Exposure` holds one entry per L4 Address it is exposed on
+([chapter 10](10-project-intent.md#l4-exposure)), in name order: the address
+as the Platform document declares it (`kind`, `site`, `range`), the `service`
+that requests it, named `<process>-<address>`, and its `ports`, each the port a
+client dials, its protocol, the surface and that surface's own port
+(`targetPort`), ordered by port and then protocol. A port is named
+`<protocol>-<port>`, which no two ports of one Service share.
+
+On a pool the Service is a load balancer that requests the pool by its name and
+keeps the client's address (`Local` traffic policy). The pool's site joins the
+Process's placement as a hard pin, so its eligible nodes are those of that site
+alone, and the Process's network policy admits any address on each target port,
+since a client off the cluster may come from anywhere the pool's segment
+reaches.
+
 ## The release gate
 
 An Application is the Release Unit, and no member's new version receives traffic
@@ -1999,6 +2016,20 @@ classDiagram
         +Quantity size
         +DurabilityClass durability
     }
+    class ResolvedL4Exposure {
+        +string address
+        +string kind
+        +string site
+        +string range
+        +string service
+    }
+    class ResolvedL4Port {
+        +string name
+        +int port
+        +L4Protocol protocol
+        +string surface
+        +int targetPort
+    }
     class ResolvedLibraryMount {
         +string library
         +string claim
@@ -2166,6 +2197,8 @@ classDiagram
     ResolvedProcess "1" *-- "1" ResolvedPlacement : placement
     ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
     ResolvedProcess "1" *-- "0..*" ResolvedLibraryMount : libraries
+    ResolvedProcess "1" *-- "0..*" ResolvedL4Exposure : l4Exposure
+    ResolvedL4Exposure "1" *-- "1..*" ResolvedL4Port : ports
     ResolvedProcess "1" *-- "0..1" ResolvedGpu : gpu
     ResolvedProcess "1" *-- "0..1" ResolvedVpn : vpn
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets

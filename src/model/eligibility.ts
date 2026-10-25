@@ -3,7 +3,8 @@
 // contract publishes. Eligibility, not bin-packing: each Process is compared
 // against allocatable alone. Shared by the check that refuses an empty set and
 // the resolution that records the set. A library the Process mounts holds it to
-// the library's node (spec/v1/10-project-intent.md#libraries).
+// the library's node (spec/v1/10-project-intent.md#libraries), and a pool it is
+// exposed on to the pool's site (spec/v1/10-project-intent.md#l4-exposure).
 import type { EffectiveProcess } from "./effective-intent.ts";
 import { libraryOf } from "./libraries.ts";
 import type { NodeContractDocument } from "./node-contract.ts";
@@ -59,6 +60,7 @@ function eligible(
   process: EffectiveProcess,
   node: Node,
   platform: Pick<PlatformIntentDocument, "libraries" | "vpn">,
+  sites: readonly string[],
 ): boolean {
   const { arch, site, capabilities, gpu, disk } = process.placement;
   const { memory, cpu } = request(process, platform);
@@ -69,6 +71,7 @@ function eligible(
     (process.libraries ?? []).every(
       ({ library }) => libraryOf(platform, library)?.node === node.name,
     ) &&
+    sites.every((pinned) => pinned === node.site) &&
     mebibytes(node.allocatable.memory) >= memory * room &&
     millicores(node.allocatable.cpu) >= cpu * room &&
     (arch === undefined || arch.includes(node.arch)) &&
@@ -85,14 +88,18 @@ function eligible(
   );
 }
 
-/** The nodes a Process may land on, in the node contract's order. */
+/**
+ * The nodes a Process may land on, in the node contract's order. `sites` are
+ * the sites its L4 exposures hold it to, beside what it declares itself.
+ */
 export const eligibleNodes = (
   process: EffectiveProcess,
   contract: NodeContractDocument,
   platform: Pick<PlatformIntentDocument, "libraries" | "vpn">,
+  sites: readonly string[] = [],
 ): string[] =>
   contract.nodes
-    .filter((node) => eligible(process, node, platform))
+    .filter((node) => eligible(process, node, platform, sites))
     .map(({ name }) => name);
 
 /**
@@ -104,10 +111,11 @@ export const gpuVendors = (
   process: EffectiveProcess,
   contract: NodeContractDocument,
   platform: Pick<PlatformIntentDocument, "libraries" | "vpn">,
+  sites: readonly string[],
 ): string[] => [
   ...new Set(
     contract.nodes
-      .filter((node) => eligible(process, node, platform))
+      .filter((node) => eligible(process, node, platform, sites))
       .flatMap((node) =>
         matchingCards(process.placement.gpu as GpuRequest, node).map(
           ({ vendor }) => vendor,

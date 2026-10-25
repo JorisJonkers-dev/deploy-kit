@@ -107,13 +107,16 @@ function edited(
       {
         ...without(only, application(only)),
         // minimal's library mount and VPN attachment, with the internet
-        // egress the attachment derives, stay out unless an edit puts them
-        // back, so each variant holds one thing to spell.
+        // egress the attachment derives, and its L4 exposure, with the `ssh`
+        // surface it reaches, stay out unless an edit puts them back, so each
+        // variant holds one thing to spell.
         processes: [
           without(first, {
             libraries: undefined,
             vpn: undefined,
             internetEgress: undefined,
+            l4Exposure: undefined,
+            surfaces: first.surfaces?.filter(({ name }) => name !== "ssh"),
             ...process(first),
           }),
         ],

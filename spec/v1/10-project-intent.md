@@ -444,6 +444,7 @@ plus per-Process identity ([0031](../../docs/adr/model/0031-identity-per-process
 | `processes` | Application | yes | One or more. They switch together. |
 | the eight Shared Intent families | Application | no | The same eight, held by every Process of this Application ([Shared intent](#shared-intent)). The level a family is written at is an author's choice about where the fact belongs, never about what it means. |
 | `exposure` | Application | no | The hostnames this Application serves and how each routes into its Processes. On the Application, not the Process: one hostname fronts two processes in the live `auth` case. An Application nothing reaches from outside declares none. See [Exposure](#exposure). |
+| `l4Exposure` | Application | no | The raw TCP or UDP ports a client off the cluster dials, each on an L4 Address the Platform document declares ([L4 exposure](#l4-exposure)). |
 
 Uniqueness cannot be had by construction, only by check: the id encodes neither
 project nor repository, so nothing structural stops two repositories claiming one
@@ -1954,6 +1955,60 @@ A hostname the estate serves but does not deploy is a Registered Unmanaged Surfa
 composition input rather than here, and it takes part in `E_DUPLICATE_HOST` on
 equal terms with everything authored.
 
+## L4 exposure
+
+Some clients speak no HTTP and live off the cluster: the sensors on the LAN
+publish to the broker over MQTT, and the LAN's devices ask its DNS server for
+names. An Application exposes such a raw surface by naming an **L4 Address** the
+Platform document declares ([chapter 14](14-platform-intent.md#l4-addresses)). It
+never writes an IP address or a node: which addresses the estate announces, and
+where, are the platform's.
+
+```yaml
+l4Exposure:
+  - {address: lan-mqtt, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}
+```
+
+| field | required | notes |
+|---|---|---|
+| `address` | yes | The L4 Address, by its name in the Platform document's `l4Addresses`. |
+| `port` | yes | The port a client dials. It is separate from the port the container listens on, which stays the surface's, written once in `provides`. |
+| `protocol` | yes | `tcp` or `udp`. |
+| `process` | yes | The Process that answers, in this Application. |
+| `surface` | yes | The surface of that Process the port reaches. |
+
+One Process's entries on one address are one Service, so TCP and UDP may share
+an address, as DNS needs. On a pool, the address is a load balancer that keeps
+the client's address (`Local` traffic policy), and the Process is held to the
+pool's site, since the pool is announced on that site's network segment: the
+site pin is derived, and a placement the Process declares that contradicts it
+leaves no node eligible, which is `E_PLACEMENT_UNSATISFIABLE`
+([chapter 20](20-resolved-deployment.md#derived-mechanics)).
+
+Replicas behind a pool address are **failover, not load sharing**. One node
+announces the address, and the `Local` policy hands a connection only to a pod
+on that node, so a second replica on another node receives nothing until the
+announcement moves to it. A Process that needs more throughput than one pod gives
+needs a protocol that shares load itself.
+
+### What is checked
+
+| condition | error |
+|---|---|
+| an entry names an L4 Address the Platform document does not declare | `E_UNKNOWN_L4_ADDRESS` |
+| one Process is exposed twice on one address with the same `port` and `protocol` | `E_DUPLICATE_L4_PORT` |
+| an entry names a Process its Application does not have | `E_UNKNOWN_PROCESS` |
+| an entry's `{process, surface}` pair names no surface that Process provides | `E_UNKNOWN_SURFACE` |
+| a pool holds fewer addresses than the Processes exposed on it | `E_L4_ADDRESS_EXHAUSTED` |
+
+`E_DUPLICATE_L4_PORT`, `E_UNKNOWN_PROCESS` and `E_UNKNOWN_SURFACE` are scoped to
+the one document and refused as soon as the fragment is read.
+`E_UNKNOWN_L4_ADDRESS` and `E_L4_ADDRESS_EXHAUSTED` need the Platform document,
+and the second needs every Project, so both are refused at composition
+([chapter 40](40-composition.md)): each Service on a pool takes one address of
+its range, and one more Service than the range holds would wait for an address
+that never comes.
+
 ## Observability
 
 One optional block on the Application, or nothing at all
@@ -2899,6 +2954,7 @@ already told them, and the lines reaching them made the model harder to read.
 | `DurabilityClass` | `Volume.durability` | `reconstructible`, `recoverable`, `irreplaceable` |
 | `LibraryAccess` | `LibraryMount.access`, `LibraryDeclaration.grants` | `read`, `write` |
 | `Spread` | `Capacity.across` | `node` |
+| `L4Protocol` | `L4Exposure.protocol` | `tcp`, `udp` |
 | `Arch` | `Placement.arch` | `amd64`, `arm64` |
 | `Media` | `DiskRequest.media` | `nvme`, `ssd`, `hdd` |
 | `AlertClass` | `Observability.alertClass` | `business-hours`, `urgent`, `page` |

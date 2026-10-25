@@ -486,6 +486,25 @@ function applicationRefusals(
       seen.add(pair);
     }
   }
+  // One Process's exposures on one address are one Service's ports, and a
+  // Service carries a port and a protocol once.
+  const dialled = new Set<string>();
+  for (const [index, entry] of (application.l4Exposure ?? []).entries()) {
+    const key = JSON.stringify([
+      entry.process,
+      entry.address,
+      entry.protocol,
+      entry.port,
+    ]);
+    if (dialled.has(key))
+      refusals.push({
+        code: "E_DUPLICATE_L4_PORT",
+        path: `${at}/l4Exposure/${index}`,
+        message: `${entry.process} is already exposed on ${entry.address} at ${entry.protocol} port ${String(entry.port)}`,
+        hint: "A client dials one port and protocol on an address once: delete one, or give it another port.",
+      });
+    dialled.add(key);
+  }
   for (const [index, grant] of (application.secrets ?? []).entries())
     refusals.push(...grantRefusals(grant, `${at}/secrets/${index}`));
   for (const [index, process] of application.processes.entries())
@@ -762,9 +781,10 @@ export function ruleDiagnostics(
 }
 
 // ---------------------------------------------------------------------------
-// The names a route or a scrape writes, which must resolve inside the one
-// Application that holds them. A dependency edge names another Application,
-// which only the composed union can resolve, so it is not checked here.
+// The names a route, a scrape or an L4 exposure writes, which must resolve
+// inside the one Application that holds them. A dependency edge names another
+// Application, which only the composed union can resolve, so it is not checked
+// here.
 // ---------------------------------------------------------------------------
 
 interface Written {
@@ -796,7 +816,7 @@ function linkRefusal(
   return undefined;
 }
 
-/** Every route and scrape that names a Process or a surface its Application lacks. */
+/** Every route, scrape and L4 exposure that names a Process or a surface its Application lacks. */
 export function linkDiagnostics(
   document: ProjectIntentDocument,
 ): readonly Diagnostic[] {
@@ -817,6 +837,10 @@ export function linkDiagnostics(
               path: `${at}/observability/scrape`,
             },
           ]),
+      ...(application.l4Exposure ?? []).map((route, l) => ({
+        route,
+        path: `${at}/l4Exposure/${String(l)}`,
+      })),
     ];
     return written.flatMap(({ route, path }) => {
       const refusal = linkRefusal(route, application.processes, path);

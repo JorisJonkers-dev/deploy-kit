@@ -18,6 +18,7 @@ import {
   DURABILITY_CLASSES,
   ENGINES,
   KEY_ENCODINGS,
+  L4_PROTOCOLS,
   LIBRARY_ACCESS,
   SPREADS,
   LIFECYCLES,
@@ -397,6 +398,21 @@ const client = z
     roles: z.array(appRole).min(1).max(63).exactOptional(),
   })
   .meta({ id: "Client" });
+// A raw surface reached from off the cluster
+// (spec/v1/10-project-intent.md#l4-exposure): the port a client dials, its
+// protocol, and the L4 Address the Platform declares, by name. The port the
+// container listens on stays the surface's, declared once in `provides`.
+const l4Exposure = z
+  .strictObject({
+    // A name, as a library mount's is: it reaches the Platform document, and
+    // is checked when the two are read together.
+    address: text,
+    port,
+    protocol: z.enum(L4_PROTOCOLS).meta({ id: "L4Protocol" }),
+    process: processReference,
+    surface: surfaceReference,
+  })
+  .meta({ id: "L4Exposure" });
 
 const scrape = z
   .strictObject({
@@ -417,6 +433,7 @@ const application = z
     id: text,
     observability: observability.exactOptional(),
     exposure: z.array(exposure).min(1).exactOptional(),
+    l4Exposure: z.array(l4Exposure).min(1).exactOptional(),
     migration: migration.exactOptional(),
     client: client.exactOptional(),
     ...sharedIntent,
@@ -447,6 +464,7 @@ export type Placement = NonNullable<ProcessDocument["placement"]>;
 export type LibraryMount = NonNullable<ProcessDocument["libraries"]>[number];
 export type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
 export type Client = NonNullable<ApplicationDocument["client"]>;
+export type L4Exposure = NonNullable<ApplicationDocument["l4Exposure"]>[number];
 
 /** The eight families of spec/v1/10-project-intent.md#shared-intent that the
  * project file carries; the eighth, `env`, is the env files beside it. */

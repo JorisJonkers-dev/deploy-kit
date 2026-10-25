@@ -410,6 +410,62 @@
       "name": "replicas spread across nodes",
       "verdict": "accept",
       "file": "examples/identity/identity.project.yml"
+    },
+    {
+      "name": "an L4 exposure over a protocol outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/l4Exposure/0/protocol",
+          "value": "sctp"
+        }
+      ]
+    },
+    {
+      "name": "an L4 exposure that names no address",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/applications/1/l4Exposure/0/address"
+        }
+      ]
+    },
+    {
+      "name": "an L4 exposure that writes the IP address itself",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/l4Exposure/0/ip",
+          "value": "192.168.0.97"
+        }
+      ]
+    },
+    {
+      "name": "an L4 exposure over UDP on the same port",
+      "verdict": "accept",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/l4Exposure/-",
+          "value": {
+            "address": "lan-mqtt",
+            "port": 1883,
+            "protocol": "udp",
+            "process": "rabbitmq",
+            "surface": "mqtt"
+          }
+        }
+      ]
     }
   ]
 }

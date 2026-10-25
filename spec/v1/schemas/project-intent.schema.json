@@ -510,6 +510,13 @@
             "$ref": "#/$defs/Exposure"
           }
         },
+        "l4Exposure": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/L4Exposure"
+          }
+        },
         "migration": {
           "anyOf": [
             {
@@ -751,6 +758,48 @@
         "per"
       ],
       "additionalProperties": false
+    },
+    "L4Exposure": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "protocol": {
+          "$ref": "#/$defs/L4Protocol"
+        },
+        "process": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Process"
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1,
+          "reference": "Surface"
+        }
+      },
+      "required": [
+        "address",
+        "port",
+        "protocol",
+        "process",
+        "surface"
+      ],
+      "additionalProperties": false
+    },
+    "L4Protocol": {
+      "type": "string",
+      "enum": [
+        "tcp",
+        "udp"
+      ]
     },
     "SelfMigration": {
       "type": "string",

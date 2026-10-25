@@ -129,7 +129,11 @@ function probePorts(objects: readonly Doc[]): Map<string, number[]> {
 function enrolledFrom(policy: Policy, probes: Map<string, number[]>): Policy {
   const viaTunnel = (rule: Rule): Rule => {
     const dns = (rule.ports ?? []).some(({ port }) => port === 53);
-    const range = (rule.to ?? []).some((peer) => "ipBlock" in peer);
+    // A range is reached, or reaches in, without the tunnel: DNS, the
+    // internet, and a client off the cluster on an L4 Address.
+    const range = [...(rule.to ?? []), ...(rule.from ?? [])].some(
+      (peer) => "ipBlock" in peer,
+    );
     return dns || range || rule.ports === undefined
       ? rule
       : { ...rule, ports: [...rule.ports, TUNNEL] };
