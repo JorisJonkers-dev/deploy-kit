@@ -1508,6 +1508,7 @@ exposure:                            # on the Application: one host, its routes
   - name: public
     host: knowledge.jorisjonkers.dev # authored; carried through untouched
     tier: public-frankfurt           # arbitrated: the tier carrying `authenticated`
+    ingressClass: traefik-public     # the class the tier's proxy admits routes of
     listener: tls                    # the tier's facts, which the traefik adapter spells
     certificates: acme
     proxy: {application: traefik-public, namespace: edge-system}   # the tier's declared proxy

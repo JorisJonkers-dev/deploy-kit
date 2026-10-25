@@ -482,6 +482,21 @@ function projectRefusals(
       });
   };
 
+  // A route the tier's proxy admits carries the tier's ingress class, so an
+  // exposure on a tier that names none would be admitted by no proxy.
+  const unclassed = (audience: string, path: string): void => {
+    const tier = platform.tiers.find(({ audiences }) =>
+      (audiences as readonly string[]).includes(audience),
+    );
+    if (tier !== undefined && tier.ingressClass === undefined)
+      refusals.push({
+        code: "E_TIER_WITHOUT_INGRESS_CLASS",
+        path,
+        message: `the tier ${tier.name} names no ingress class, so no proxy would admit this exposure's routes`,
+        hint: "Name the ingress class the tier's Traefik admits in its `ingressClass`.",
+      });
+  };
+
   // A grant at the project header reaches every Process below it, so it is
   // refused where it is written, exactly as one on an Application or a Process.
   refusals.push(...grantRefusals(project.secrets ?? [], "", platform));
@@ -495,6 +510,7 @@ function projectRefusals(
     const at = `/applications/${a}`;
     for (const [e, exposure] of (application.exposure ?? []).entries()) {
       noTier(exposure.audience, `${at}/exposure/${e}`);
+      unclassed(exposure.audience, `${at}/exposure/${e}`);
       for (const [r, route] of exposure.routes.entries())
         if (route.audience !== undefined)
           noTier(route.audience, `${at}/exposure/${e}/routes/${r}`);

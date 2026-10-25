@@ -36,6 +36,7 @@ tiers:
     listener: plain
     certificates: none
     traefik: refusals/edge-proxy
+    ingressClass: edge-proxy
 durability:
   reconstructible: {}
   recoverable: { schedule: "15 3 * * *", retain: 14 }

@@ -8,6 +8,8 @@ metadata:
   labels:
     app.kubernetes.io/part-of: stalwart
     app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kubernetes.io/ingress.class: traefik-public
 spec:
   entryPoints:
     - websecure

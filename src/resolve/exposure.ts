@@ -117,6 +117,9 @@ function resolveOne(
     name: exposure.name,
     host: exposure.host,
     tier: tier.name,
+    // A tier an exposure is on names one, or E_TIER_WITHOUT_INGRESS_CLASS
+    // refused the set.
+    ingressClass: tier.ingressClass as string,
     listener: tier.listener,
     certificates: tier.certificates,
     proxy: {

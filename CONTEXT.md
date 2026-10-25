@@ -152,6 +152,10 @@ between, derived for each port a client dials on a Node address and never
 authored. A host port holds one copy of its Process, so a Process on a Node
 address has no replicas and cuts over `interrupted`.
 
+**Ingress class**: the name a tier's proxy admits routes by, declared on the
+tier. Every route rendered for the tier carries it, so a route reaches the one
+proxy its audience selects.
+
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the
 allowance, and the Tier decides which address counts as one client

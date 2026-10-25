@@ -139,6 +139,13 @@ const tier = z
     // The platform Application whose proxy this tier is, declared in a project
     // file the platform owns: a reference into another document.
     traefik: holder,
+    // The ingress class the tier's proxy admits routes of, and external-dns
+    // filters records on (spec/v1/14-platform-intent.md#tiers): a Kubernetes
+    // name, since it is written as an annotation's value.
+    ingressClass: z
+      .string()
+      .regex(/^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/)
+      .exactOptional(),
   })
   .meta({ id: "Tier" });
 
