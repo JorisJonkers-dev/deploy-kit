@@ -106,19 +106,31 @@ export interface IngressRoute {
   };
 }
 
-/** Traefik's Middleware, as a `rateLimit` (the one kind the render writes). */
+/** Traefik's Middleware, as a route's own `rateLimit` or a shared `headers` one. */
 export interface Middleware {
   readonly apiVersion: "traefik.io/v1alpha1";
   readonly kind: "Middleware";
   readonly metadata: ObjectMeta;
-  readonly spec: {
-    readonly rateLimit: {
-      readonly average: number;
-      readonly period: string;
-      readonly burst: number;
-      readonly sourceCriterion?: { readonly requestHeaderName: string };
-    };
-  };
+  readonly spec:
+    | {
+        readonly rateLimit: {
+          readonly average: number;
+          readonly period: string;
+          readonly burst: number;
+          readonly sourceCriterion?: { readonly requestHeaderName: string };
+        };
+      }
+    | {
+        readonly headers: {
+          readonly contentTypeNosniff: boolean;
+          readonly frameDeny: boolean;
+          readonly referrerPolicy: string;
+          readonly permissionsPolicy: string;
+          readonly stsSeconds: number;
+          readonly stsIncludeSubdomains: boolean;
+          readonly contentSecurityPolicy?: string;
+        };
+      };
 }
 
 export interface ServiceMonitor {

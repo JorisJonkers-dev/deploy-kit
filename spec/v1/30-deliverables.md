@@ -438,12 +438,31 @@ spells only what the projection holds:
 | a tier's `certificates` | `traefik` | `acme` is the certificate resolver of that name; `none` writes no TLS block |
 | a route's `gate` | `traefik` | the Rule's one service is the `gate`'s Service, in the `gate`'s namespace and on its port, rather than a Process of the Application ([chapter 17](17-sign-in.md#what-the-edge-derives)) |
 | a route's `precedence` | `traefik` | `priority` is 1000 less the precedence, since Traefik tries the higher priority first |
-| a route's `middleware` | `traefik` | a reference into the proxy's namespace: `forward-auth`, and `security-headers` suffixed with the content profile where one is named; the edge project renders the Middleware objects themselves |
+| a route's `middleware` | `traefik` | a reference into the proxy's namespace: `forward-auth`, and `security-headers` suffixed with the content profile where one is named; the edge project renders the shared ones, `security-headers` and `security-headers-<policy>` for each content policy, once per tier proxy's namespace ([Shared Middlewares](#shared-middlewares)) |
 | a route's `rate-limit` step | `traefik` | a `RateLimit` Middleware of the route's own, `<application>-<exposure>-<n>-rate-limit` for the route's place in its exposure, in the Application's namespace and in the IngressRoute's file: `average` is the allowance, `period` the period, `burst` the burst, and a `cloudflare` client address is `sourceCriterion.requestHeaderName: CF-Connecting-IP`, while `connection` writes no criterion, which Traefik reads as the connection's address ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)) |
 
 Two adapters (`kubernetes` and `networking`) declare the same `apps` prefix
 and are kept apart by the object segment. That is why `E_PATH_COLLISION` is
 decided on the plan, before any adapter runs, rather than left as a convention.
+
+
+### Shared Middlewares
+
+Every route names the security-headers Middleware its exposure's content policy
+selects, in its tier proxy's namespace. The Project that declares a tier's proxy
+renders those Middlewares, in the proxy's own directory, once per namespace (by
+the first proxy's name where two share one): `security-headers`, the baseline,
+and `security-headers-strict`, `-admin` and `-workflow`, each the baseline plus
+that policy's `Content-Security-Policy`. All four are rendered whatever the
+routes name, because the vocabulary is closed: no Project's exposure changes the
+edge's share, and no route names a Middleware the edge lacks.
+
+| Middleware | headers |
+|---|---|
+| `security-headers` | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Strict-Transport-Security: max-age=31536000; includeSubDomains` |
+| `security-headers-strict` | the baseline, and `Content-Security-Policy: default-src 'self'` |
+| `security-headers-admin` | the baseline, and `default-src 'self'; style-src 'self' 'unsafe-inline'` |
+| `security-headers-workflow` | the baseline, and `default-src 'self'; connect-src 'self' https:` |
 
 ## Ledgers
 

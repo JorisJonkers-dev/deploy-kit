@@ -789,6 +789,14 @@ describe("renderIntentSet", () => {
   // spec/v1/17-sign-in.md: the sign-in provider's share renders every Client
   // object, the gated Client's derived /.auth/ route, the provider's write and
   // the native Client's read on the client secret, and equals its committed tree.
+  // REQ-087 (docs/requirements.md): the edge Project renders the shared
+  // Middlewares every route names, once per tier proxy's namespace.
+  it("renders the edge project's share of the tree to its committed tree, byte for byte", () => {
+    expect(asTree(artifact(render(undefined, ["edge"]), "edge"))).toStrictEqual(
+      committed("edge/rendered"),
+    );
+  });
+
   it("renders the identity project's share of the tree to its committed tree, byte for byte", () => {
     expect(
       asTree(artifact(render(undefined, ["identity"]), "identity")),

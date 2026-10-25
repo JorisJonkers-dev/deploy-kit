@@ -3635,7 +3635,7 @@ describe("the Vault policy job", () => {
       // What the set does derive is where Flux's events go: the worked
       // platform names a Reporter. The catalogs' homes are always there,
       // and hold none.
-    ).toStrictEqual(["projects", "catalogHomes", "events"]);
+    ).toStrictEqual(["projects", "catalogHomes", "events", "tierProxies"]);
   });
 
   it("lands on no node that holds an sdcard medium, and on none too small for what it asks for", () => {
