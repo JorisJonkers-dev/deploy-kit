@@ -237,7 +237,7 @@ describe("renderIntentSet", () => {
 
       expect(jobFiles(paths)).toStrictEqual([]);
       expect(paths.filter((path) => path.includes("/policies/"))).toHaveLength(
-        6,
+        8,
       );
     });
 
@@ -391,6 +391,8 @@ describe("renderIntentSet", () => {
         "uid",
       ]);
       expect(Object.keys(named.documents)).toStrictEqual([
+        "data-system-mongo-backup.policy.json",
+        "data-system-mongo-backup.role.json",
         "data-system-postgres-backup.policy.json",
         "data-system-postgres-backup.role.json",
         "data-system-postgres.policy.json",

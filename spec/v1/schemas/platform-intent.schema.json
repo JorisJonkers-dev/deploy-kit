@@ -472,6 +472,9 @@
         "valkey": {
           "$ref": "#/$defs/EnginePolicy"
         },
+        "mongo": {
+          "$ref": "#/$defs/EnginePolicy"
+        },
         "files": {
           "$ref": "#/$defs/EnginePolicy"
         }

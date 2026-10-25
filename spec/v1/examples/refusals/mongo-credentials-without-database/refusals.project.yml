@@ -1,0 +1,57 @@
+# REFUSED: E_CREDENTIALS_WITHOUT_DATABASE
+#
+# `credentials` shapes the rotation of the credential an edge to a database
+# derives. A `mongo` owns no databases, so no catalog derives from this edge and
+# there is no credential to shape
+# (spec/v1/16-dependencies.md#the-database-catalog).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: documents
+    processes:
+      - name: mongo
+        lifecycle: application
+        image: mongo
+        runtime: none
+        engine: mongo
+        provides:
+          mongo: 27017
+        placement: { memory: 256Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 27017 }
+        startupBudget: 60s
+        cutover: interrupted
+        volumes:
+          - claim: mongo-data
+            mountAt: /data/db
+            size: 1Gi
+            durability: irreplaceable
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous
+  - id: editor
+    processes:
+      - name: editor
+        lifecycle: application
+        image: editor
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        startupBudget: 20s
+        probes: { readiness: { tcp: 8080 } }
+        cutover: continuous
+        dependsOn:
+          - { application: documents, surface: mongo, credentials: { rotation: { tolerates: restart } } }

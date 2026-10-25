@@ -4003,3 +4003,100 @@ describe("what a member waits for in its own Project", () => {
     ]);
   });
 });
+
+// REQ-077 (docs/requirements.md): a `mongo` is backed up by the platform's
+// mongo method over its own surface, and owns no databases, so an edge into it
+// derives no catalog, no credential and no question about a schema.
+describe("a mongo, the document store", () => {
+  const store = (durability: string) =>
+    processOf(
+      one(
+        serving(
+          "notes-store",
+          `        engine: mongo\n        volumes:\n          - { claim: documents, mountAt: /data/db, size: 1Gi, durability: ${durability} }\n`,
+        )
+          .replace("cutover: continuous", "cutover: interrupted")
+          .replace("provides: { http: 8080 }", "provides: { mongo: 27017 }"),
+      ),
+    );
+
+  it("is dumped by the mongo method over the surface the platform names, and admits that backup alone beside its consumers", () => {
+    const resolved = store("recoverable");
+    const [volume] = resolved.volumes ?? [];
+
+    expect(volume?.backup?.method).toBe(
+      `ghcr.io/jorisjonkers-dev/platform/mongo-backup@${LOCK.images["mongo-backup"]?.digest ?? ""}`,
+    );
+    expect(volume?.backup?.peer).toStrictEqual({
+      host: "notes-store.notes-system.svc.cluster.local",
+      port: 27017,
+      credential: {
+        path: "secret/data/notes/notes-store/backup",
+        access: "read",
+        delivery: "env",
+        destination: "notes-store-backup-notes-notes-store-backup",
+      },
+    });
+    expect(volume?.backup?.egress).toContainEqual({
+      rule: "datastore",
+      namespace: "notes-system",
+      process: "notes-store",
+      port: 27017,
+    });
+    expect(resolved.ingress).toContainEqual({
+      rule: "backup",
+      namespace: "notes-system",
+      process: "notes-store-backup",
+      port: 27017,
+    });
+  });
+
+  it("is refused where the platform names no mongo method, and where that method's surface is not provided", () => {
+    expect(
+      codesOf(
+        resolve(
+          one(
+            serving(
+              "notes-store",
+              "        engine: mongo\n        volumes:\n          - { claim: documents, mountAt: /data/db, size: 1Gi, durability: recoverable }\n",
+            ).replace("cutover: continuous", "cutover: interrupted"),
+          ),
+          {
+            platform: (document) =>
+              document.replace(
+                "  mongo: { backup: mongo-backup, surface: mongo }\n",
+                "",
+              ),
+          },
+        ),
+      ),
+    ).toStrictEqual(["E_NO_ENGINE_POLICY"]);
+    expect(
+      codesOf(
+        resolve(
+          one(
+            serving(
+              "notes-store",
+              "        engine: mongo\n        volumes:\n          - { claim: documents, mountAt: /data/db, size: 1Gi, durability: recoverable }\n",
+            ).replace("cutover: continuous", "cutover: interrupted"),
+          ),
+        ),
+      ),
+    ).toStrictEqual(["E_BACKUP_SURFACE_NOT_PROVIDED"]);
+  });
+
+  it("derives no database, credential or migration question for an edge into it", () => {
+    const edge =
+      "        dependsOn:\n          - { application: platform-mongo, surface: mongo }\n";
+    const consumer = processOf(one(serving("notes-api", edge)), {
+      env: DATA,
+    });
+
+    expect(consumer.secrets).toBeUndefined();
+    expect(consumer.identityToken).toBe(false);
+    expect(consumer.consumes).toStrictEqual(["platform-mongo.mongo"]);
+    expect(
+      application(one(serving("notes-api", edge)), { env: DATA }).migration,
+    ).toBeUndefined();
+  });
+});

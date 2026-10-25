@@ -2,25 +2,26 @@
 #
 #   collections/data/platform/data.project.yml
 #
-# THREE Applications in one file. They are neighbours, not a unit: co-location in a
-# project file couples nothing, and each of the three releases on its own
+# FOUR Applications in one file. They are neighbours, not a unit: co-location in a
+# project file couples nothing, and each of the four releases on its own
 # (docs/adr/model/0052-an-application-is-the-release-unit.md,
 # docs/adr/model/0009-intent-is-authored-one-file-per-project.md). "Every Application in a project file
 # releases as one" was considered and rejected exactly because it would let
 # someone couple nine rollouts by editing an unrelated line. Atomicity stops at
 # the Application boundary; the file is an authoring and publication unit.
 #
-# None of the three has a repository of its own. The data project ships from
+# None of the four has a repository of its own. The data project ships from
 # homelab-collections, and publication is repository-scoped, so the project may
 # stay there or split out later -- composition behaves identically
 # (docs/adr/model/0042-declarations-compose-from-intent-fragments.md). What may not happen is a project
 # spanning two repositories: this file is the whole project.
 #
-# Exercises: three independently released Applications, a third-party image behind
+# Exercises: four independently released Applications, a third-party image behind
 # an alias with `runtime: none`, declared writable paths, structured
 # `disk` placement, TCP probes, a static Asset, a sidecar, all three
-# Durability Classes, `provides` consumed by eight Applications, and one authored
-# hostname that does not follow its Application id.
+# Durability Classes, `provides` consumed by eight Applications, one authored
+# hostname that does not follow its Application id, and a document store
+# whose engine owns no databases.
 #
 # Companion env file (per Process, like every env file):
 #   platform/env/postgres/base.env   -- reproduced as env/postgres/base.env
@@ -249,7 +250,7 @@ applications:
   #
   # A second Application in the same file and the same namespace. It shares nothing
   # with postgres: not a release, not an identity, not a grant. `data-system`
-  # holds three Applications by construction, so it is NOT a trust boundary -- no
+  # holds four Applications by construction, so it is NOT a trust boundary -- no
   # isolation claim may rest on the namespace wall. Isolation here is the
   # derived default-deny edge set, evaluated per pod
   # (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md), plus per-Process identity
@@ -403,3 +404,50 @@ applications:
             # a render -- and this is the one class that gate does not cover,
             # which is a further reason to write it down rather than infer it.
 
+  # ========================================================== platform-mongo
+  #
+  # The document store. Overleaf is its one consumer today, which is not this
+  # file's to state: a consumer names `platform-mongo.mongo` in its own
+  # `dependsOn`, and the edge lives in that consumer's project file.
+  - id: platform-mongo
+    processes:
+      - name: mongo
+        lifecycle: application
+        image: mongo        # an alias, resolved through the images lock
+        runtime: none
+
+        # Keys the backup method: a dump over the wire protocol, on the surface
+        # the platform's `mongo` entry names
+        # (spec/v1/14-platform-intent.md#engines). A `mongo` owns no
+        # databases, so no edge into it derives a catalog: its one consumer
+        # needs none (spec/v1/16-dependencies.md#the-database-catalog).
+        engine: mongo
+
+        provides:
+          mongo: 27017
+
+        placement:
+          memory: 2Gi
+          cpu: 200m
+
+        # mongod writes its socket under /tmp and its config database under
+        # /data/configdb before it serves; /data/db is the volume.
+        writablePaths: [/tmp, /data/configdb]
+
+        probes:
+          readiness: {tcp: 27017}
+          liveness:  {tcp: 27017}
+
+        startupBudget: 60s
+
+        # `interrupted`: an RWO volume, as every datastore here.
+        cutover: interrupted
+
+        volumes:
+          - claim: mongo-data
+            mountAt: /data/db
+            size: 20Gi
+            # Every document and every account its consumer holds, so the
+            # same class as postgres: a backup job keeping 90 copies and an
+            # off-cluster copy.
+            durability: irreplaceable

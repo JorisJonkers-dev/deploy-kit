@@ -1,0 +1,68 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: mongo-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: mongo-backup
+    app.kubernetes.io/instance: mongo-backup
+    app.kubernetes.io/part-of: platform-mongo
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: data-system-mongo-backup
+    serviceAccount: mongo-backup
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: mongo-backup-platform-backup-off-cluster
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: mongo-backup
+    app.kubernetes.io/instance: mongo-backup
+    app.kubernetes.io/part-of: platform-mongo
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: mongo-backup
+  mount: secret
+  type: kv-v2
+  path: platform/backup/off-cluster
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: mongo-backup-platform-backup-off-cluster
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: mongo-backup-data-mongo-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: mongo-backup
+    app.kubernetes.io/instance: mongo-backup
+    app.kubernetes.io/part-of: platform-mongo
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: mongo-backup
+  mount: secret
+  type: kv-v2
+  path: data/mongo/backup
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: mongo-backup-data-mongo-backup
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

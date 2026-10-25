@@ -174,6 +174,7 @@ const enginePolicies = z
     postgres: enginePolicy.exactOptional(),
     rabbitmq: enginePolicy.exactOptional(),
     valkey: enginePolicy.exactOptional(),
+    mongo: enginePolicy.exactOptional(),
     files: enginePolicy.exactOptional(),
   })
   .meta({ id: "EnginePolicies" });

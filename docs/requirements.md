@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **77** rows. The compiler's behaviours join it as they land.
+This ledger holds **78** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -99,4 +99,5 @@ This ledger holds **77** rows. The compiler's behaviours join it as they land.
 | REQ-074 | Every container the worked examples render meets Pod Security's `restricted` profile, save the platform's VPN container, which is outside the posture and may add only `NET_ADMIN` and `NET_RAW` | [test/pod-security.test.ts](../test/pod-security.test.ts) |
 | REQ-075 | A Process that listens on a port below 1024 composes under the one hardening posture: its container listens on the port it declares, drops every capability and adds none, and its pod sets no sysctl, because a pod off the host network binds any port without one | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-076 | A `transit` grant that declares `read` covers `read` on `transit/keys/<key>`, the key's public part and versions, beside `update` on the one path each other operation maps to | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
+| REQ-077 | A Process whose `engine` is `mongo` is backed up by the method the Platform document names for `mongo`, which dumps it over the surface that entry names, and its volume's class decides the schedule, the copies kept and the off-cluster copy as for any engine; a `mongo` owns no databases, so an edge into it derives no catalog, no credential and no migration question, `credentials` on that edge is `E_CREDENTIALS_WITHOUT_DATABASE`, and a `mongo` over a volume that derives no backup is `E_ENGINE_WITHOUT_DURABILITY` | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
 | REQ-079 | A Process or migration image the images lock holds with uid 0 (a sidecar runs as its Process, so its own uid is not read) is refused as `E_IMAGE_RUNS_AS_ROOT`, naming the image, both when a project's share of the lock is packed for publishing and when composition reads the pinned inputs, because the posture would render that uid beside `runAsNonRoot` and the kubelet refuses the pod | [test/model/refusals.test.ts](../test/model/refusals.test.ts) |
