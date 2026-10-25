@@ -42,8 +42,47 @@ export const l4SitesOf = (
   platform: Pick<PlatformIntentDocument, "l4Addresses">,
 ): string[] => [
   ...new Set(
-    exposures.map(
-      ({ address }) => (l4AddressOf(platform, address) as L4Address).site,
+    addressesOf(exposures, platform).flatMap((address) =>
+      address.kind === "pool" ? [address.site] : [],
     ),
   ),
 ];
+
+/**
+ * The nodes a Process is held to by the node addresses it is exposed on, each
+ * once: a host port listens on its own node alone.
+ */
+export const l4NodesOf = (
+  exposures: readonly L4Exposure[],
+  platform: Pick<PlatformIntentDocument, "l4Addresses">,
+): string[] => [
+  ...new Set(
+    addressesOf(exposures, platform).flatMap((address) =>
+      address.kind === "node" ? [address.node] : [],
+    ),
+  ),
+];
+
+const addressesOf = (
+  exposures: readonly L4Exposure[],
+  platform: Pick<PlatformIntentDocument, "l4Addresses">,
+): L4Address[] =>
+  exposures.map(({ address }) => l4AddressOf(platform, address) as L4Address);
+
+/** Where a Process's L4 exposures hold it: the sites of its pools and the nodes of its node addresses. */
+export interface L4Hold {
+  readonly sites: readonly string[];
+  readonly nodes: readonly string[];
+}
+
+/** A Process exposed on no L4 Address is held nowhere. */
+export const HELD_NOWHERE: L4Hold = { sites: [], nodes: [] };
+
+/** Where `exposures` hold the Process they reach. */
+export const l4HoldOf = (
+  exposures: readonly L4Exposure[],
+  platform: Pick<PlatformIntentDocument, "l4Addresses">,
+): L4Hold => ({
+  sites: l4SitesOf(exposures, platform),
+  nodes: l4NodesOf(exposures, platform),
+});

@@ -903,11 +903,12 @@ what it was before the mesh existed.
 
 A Process's `l4Exposure` holds one entry per L4 Address it is exposed on
 ([chapter 10](10-project-intent.md#l4-exposure)), in name order: the address
-as the Platform document declares it (`kind`, `site`, `range`), the `service`
-that requests it, named `<process>-<address>`, and its `ports`, each the port a
-client dials, its protocol, the surface and that surface's own port
-(`targetPort`), ordered by port and then protocol. A port is named
-`<protocol>-<port>`, which no two ports of one Service share.
+as the Platform document declares it, and its `ports`, each the port a client
+dials, its protocol, the surface and that surface's own port (`targetPort`),
+ordered by port and then protocol. A port is named `<protocol>-<port>`, which
+no two ports of one address share. A pool's entry carries its `site` and
+`range`, and the `service` that requests it, named `<process>-<address>`; a
+node address's entry carries its `node`, and no Service.
 
 On a pool the Service is a load balancer that requests the pool by its name and
 keeps the client's address (`Local` traffic policy). The pool's site joins the
@@ -915,6 +916,13 @@ Process's placement as a hard pin, so its eligible nodes are those of that site
 alone, and the Process's network policy admits any address on each target port,
 since a client off the cluster may come from anywhere the pool's segment
 reaches.
+
+On a node address each port is a host port on the Process's container: on the
+surface's own port entry where the client dials that port over TCP, and on an
+entry of its own, named as the port is, where the port or the protocol differs.
+The node joins the Process's placement as a hard pin, so its one eligible node
+is that node, and its network policy admits any address on each target port, as
+on a pool.
 
 ## The release gate
 
@@ -2016,12 +2024,17 @@ classDiagram
         +Quantity size
         +DurabilityClass durability
     }
-    class ResolvedL4Exposure {
+    class ResolvedPoolExposure {
         +string address
         +string kind
         +string site
         +string range
         +string service
+    }
+    class ResolvedNodeExposure {
+        +string address
+        +string kind
+        +string node
     }
     class ResolvedL4Port {
         +string name
@@ -2197,8 +2210,10 @@ classDiagram
     ResolvedProcess "1" *-- "1" ResolvedPlacement : placement
     ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
     ResolvedProcess "1" *-- "0..*" ResolvedLibraryMount : libraries
-    ResolvedProcess "1" *-- "0..*" ResolvedL4Exposure : l4Exposure
-    ResolvedL4Exposure "1" *-- "1..*" ResolvedL4Port : ports
+    ResolvedProcess "1" *-- "0..*" ResolvedPoolExposure : l4Exposure
+    ResolvedProcess "1" *-- "0..*" ResolvedNodeExposure : l4Exposure
+    ResolvedPoolExposure "1" *-- "1..*" ResolvedL4Port : ports
+    ResolvedNodeExposure "1" *-- "1..*" ResolvedL4Port : ports
     ResolvedProcess "1" *-- "0..1" ResolvedGpu : gpu
     ResolvedProcess "1" *-- "0..1" ResolvedVpn : vpn
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets

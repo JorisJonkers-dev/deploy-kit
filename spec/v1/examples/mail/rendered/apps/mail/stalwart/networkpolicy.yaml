@@ -39,6 +39,38 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/stalwart.smtp: "true"
+      ports:
+        - protocol: TCP
+          port: 25
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/stalwart.imaps: "true"
+      ports:
+        - protocol: TCP
+          port: 993
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 25
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 993
   egress:
     - to:
         - namespaceSelector:

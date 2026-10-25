@@ -28,7 +28,11 @@ import {
 import { resolveApplication } from "../../src/resolve/application.ts";
 import { resolveLibraries } from "../../src/resolve/libraries.ts";
 import { mebibytes, millicores } from "../../src/model/quantities.ts";
-import { l4ExposuresOf, l4SitesOf } from "../../src/model/l4-addresses.ts";
+import {
+  l4ExposuresOf,
+  l4NodesOf,
+  l4SitesOf,
+} from "../../src/model/l4-addresses.ts";
 
 const EXAMPLES = join(
   import.meta.dirname,
@@ -4109,5 +4113,29 @@ describe("a Process's L4 exposures", () => {
     expect(
       l4SitesOf(l4ExposuresOf(application, "broker"), platform),
     ).toStrictEqual(["enschede"]);
+  });
+
+  // REQ-097: a node address holds the Process to its node, and to no site.
+  it("hold it to each node address's node once, and a pool's node to none", () => {
+    const onNodes = {
+      l4Addresses: {
+        ...platform.l4Addresses,
+        "mail-smtp": { kind: "node" as const, node: "enschede-1" },
+        "mail-imap": { kind: "node" as const, node: "enschede-1" },
+      },
+    };
+    const exposures = [
+      entry("broker", "mail-smtp"),
+      entry("broker", "mail-imap"),
+      entry("broker", "lan-mqtt"),
+    ];
+    expect(l4NodesOf(exposures, onNodes)).toStrictEqual(["enschede-1"]);
+    expect(l4SitesOf(exposures, onNodes)).toStrictEqual(["enschede"]);
+    expect(
+      l4NodesOf(l4ExposuresOf(application, "broker"), platform),
+    ).toStrictEqual([]);
+    expect(l4SitesOf([entry("broker", "mail-smtp")], onNodes)).toStrictEqual(
+      [],
+    );
   });
 });

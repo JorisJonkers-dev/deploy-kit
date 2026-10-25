@@ -457,11 +457,10 @@ const resolvedL4Port = z
   })
   .meta({ id: "ResolvedL4Port" });
 
-// One L4 Address a Process is exposed on, as the Platform declares it, and the
-// Service that requests it: on a pool, a load balancer that keeps the
-// client's address and sends a connection only to a pod on the node that
-// announces it.
-const resolvedL4Exposure = z
+// One L4 Address a Process is exposed on, as the Platform declares it. On a
+// pool, the Service that requests it: a load balancer that keeps the client's
+// address and sends a connection only to a pod on the node that announces it.
+const resolvedPoolExposure = z
   .strictObject({
     address: text,
     kind: z.literal("pool"),
@@ -470,7 +469,23 @@ const resolvedL4Exposure = z
     service: text,
     ports: z.array(resolvedL4Port).min(1),
   })
-  .meta({ id: "ResolvedL4Exposure" });
+  .meta({ id: "ResolvedPoolExposure" });
+
+// On a node's own address, the node the Process is held to: each port is a
+// host port there, so no Service stands between the client and the pod.
+const resolvedNodeExposure = z
+  .strictObject({
+    address: text,
+    kind: z.literal("node"),
+    node: text,
+    ports: z.array(resolvedL4Port).min(1),
+  })
+  .meta({ id: "ResolvedNodeExposure" });
+
+const resolvedL4Exposure = z.union([
+  resolvedPoolExposure,
+  resolvedNodeExposure,
+]);
 
 const ingressRule = z.enum(INGRESS_RULES).meta({ id: "IngressRule" });
 

@@ -5,8 +5,14 @@
 # /admin/ and answers 404 at the bare root, so the root of the host redirects
 # to /admin/. The redirect is the route's own: `match: exact` on `/`, so the
 # path it lands on is served by the prefix route below and never redirected
-# again (a redirect its own route matches is E_REDIRECT_LOOP). Mail's SMTP and
-# IMAP listeners and its mailboxes are not this example's.
+# again (a redirect its own route matches is E_REDIRECT_LOOP).
+#
+# Also exercises: a raw surface on a node's own address
+# (spec/v1/10-project-intent.md#l4-exposure). Mail's SMTP and IMAP listeners
+# are reached on `mail-node`, the address of a node at a site with no pool, so
+# each port renders a host port and the Process is held to that node. A host
+# port holds one copy, so the cutover is `interrupted`: a `continuous` one is
+# E_CUTOVER_UNHONOURABLE here. Mail's mailboxes are not this example's.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -24,6 +30,9 @@ applications:
         routes:
           - { path: /, match: exact, process: stalwart, surface: http, redirectTo: /admin/ }
           - { path: /, match: prefix, process: stalwart, surface: http }
+    l4Exposure:
+      - { address: mail-node, port: 25, protocol: tcp, process: stalwart, surface: smtp }
+      - { address: mail-node, port: 993, protocol: tcp, process: stalwart, surface: imaps }
     processes:
       - name: stalwart
         lifecycle: application
@@ -31,6 +40,8 @@ applications:
         runtime: none
         provides:
           http: 8080
+          smtp: 25
+          imaps: 993
         placement:
           memory: 512Mi
           cpu: 100m
@@ -38,4 +49,4 @@ applications:
           readiness: { path: /healthz/ready, port: 8080 }
           liveness: { path: /healthz/live, port: 8080 }
         startupBudget: 60s
-        cutover: continuous
+        cutover: interrupted

@@ -1,0 +1,51 @@
+# The project file this case's Platform document is read beside.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: mail-a
+    l4Exposure:
+      - {address: mail-node, port: 25, protocol: tcp, process: mail-a, surface: smtp}
+    processes:
+      - name: mail-a
+        lifecycle: application
+        image: stalwart
+        runtime: none
+        provides:
+          smtp: 25
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 25 }
+        startupBudget: 30s
+        cutover: interrupted
+  - id: mail-b
+    l4Exposure:
+      - {address: mail-node, port: 25, protocol: tcp, process: mail-b, surface: smtp}
+    processes:
+      - name: mail-b
+        lifecycle: application
+        image: stalwart
+        runtime: none
+        provides:
+          smtp: 25
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 25 }
+        startupBudget: 30s
+        cutover: interrupted
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous

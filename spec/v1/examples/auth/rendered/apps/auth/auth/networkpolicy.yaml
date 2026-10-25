@@ -83,6 +83,16 @@ spec:
     - to:
         - namespaceSelector:
             matchLabels:
+              kubernetes.io/metadata.name: mail-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: stalwart
+      ports:
+        - protocol: TCP
+          port: 25
+    - to:
+        - namespaceSelector:
+            matchLabels:
               kubernetes.io/metadata.name: kube-system
       ports:
         - protocol: UDP

@@ -18,7 +18,7 @@ import {
   rootImageMessage,
   runsAsRoot,
 } from "../model/images-lock.ts";
-import { l4ExposuresOf, l4SitesOf } from "../model/l4-addresses.ts";
+import { l4ExposuresOf, l4HoldOf, type L4Hold } from "../model/l4-addresses.ts";
 import { migrationImage } from "../model/migration-proof.ts";
 import type { PinnedSet } from "../model/resolution.ts";
 
@@ -45,6 +45,26 @@ function contractRefusals(
       ];
 }
 
+/** Why no node can hold a Process, naming where its L4 Addresses hold it. */
+function unplaceable(
+  name: string,
+  { sites, nodes }: L4Hold,
+): { message: string; hint: string } {
+  if (nodes.length > 0)
+    return {
+      message: `no node of ${String(nodes)}, the node of each node address ${name} is exposed on, can hold it`,
+      hint: "Relax a placement dimension, or expose the Process on the address of a node that can hold it.",
+    };
+  if (sites.length > 0)
+    return {
+      message: `no node in the node contract on ${String(sites)}, the site of each pool ${name} is exposed on, can hold it`,
+      hint: "Relax a placement dimension, or expose the Process on a pool of the site it is placed on.",
+    };
+  return {
+    message: `no node in the node contract can hold ${name}`,
+    hint: "Relax a placement dimension, or lower what the Process asks for.",
+  };
+}
 /**
  * A Process that requires a GPU requests one vendor's resource
  * (spec/v1/14-platform-intent.md#gpus): its cards share one vendor, and the
@@ -53,12 +73,12 @@ function contractRefusals(
 function gpuRefusals(
   set: PinnedSet,
   process: EffectiveProcess,
-  sites: readonly string[],
+  held: L4Hold,
   path: string,
   document: string,
 ): Diagnostic[] {
   if (process.placement.gpu === undefined) return [];
-  const vendors = gpuVendors(process, set.nodeContract, set.platform, sites);
+  const vendors = gpuVendors(process, set.nodeContract, set.platform, held);
   if (vendors.length > 1)
     return [
       {
@@ -115,8 +135,9 @@ function processRefusals(
   return effective.applications.flatMap((application, a) =>
     application.processes.flatMap((process, p): Diagnostic[] => {
       const at = `/applications/${String(a)}/processes/${String(p)}`;
-      // The pools the Process is exposed on hold it to their sites.
-      const sites = l4SitesOf(
+      // The L4 Addresses the Process is exposed on hold it to the sites of
+      // their pools and to their own nodes.
+      const held = l4HoldOf(
         l4ExposuresOf(application, process.name),
         set.platform,
       );
@@ -138,25 +159,18 @@ function processRefusals(
             hint: "Lock the alias, or name one the images lock holds.",
           })),
         ...rootRefusals(set, process.image, `${at}/image`, document),
-        ...(eligibleNodes(process, set.nodeContract, set.platform, sites)
+        ...(eligibleNodes(process, set.nodeContract, set.platform, held)
           .length === 0
           ? [
               {
                 code: "E_PLACEMENT_UNSATISFIABLE" as const,
                 document,
                 path: `${at}/placement`,
-                message:
-                  sites.length === 0
-                    ? `no node in the node contract can hold ${process.name}`
-                    : `no node in the node contract on ${String(sites)}, the site of each pool ${process.name} is exposed on, can hold it`,
-                hint:
-                  sites.length === 0
-                    ? "Relax a placement dimension, or lower what the Process asks for."
-                    : "Relax a placement dimension, or expose the Process on a pool of the site it is placed on.",
+                ...unplaceable(process.name, held),
               },
             ]
-          : gpuRefusals(set, process, sites, `${at}/placement/gpu`, document)),
-        ...spreadRefusals(set, process, sites, `${at}/replicas`, document),
+          : gpuRefusals(set, process, held, `${at}/placement/gpu`, document)),
+        ...spreadRefusals(set, process, held, `${at}/replicas`, document),
       ];
     }),
   );
@@ -171,7 +185,7 @@ function processRefusals(
 function spreadRefusals(
   set: PinnedSet,
   process: EffectiveProcess,
-  sites: readonly string[],
+  held: L4Hold,
   path: string,
   document: string,
 ): Diagnostic[] {
@@ -181,7 +195,7 @@ function spreadRefusals(
     process,
     set.nodeContract,
     set.platform,
-    sites,
+    held,
   ).length;
   return nodes === 0 || nodes >= replicas.count
     ? []

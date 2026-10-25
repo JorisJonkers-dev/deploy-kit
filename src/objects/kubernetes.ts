@@ -193,14 +193,19 @@ export interface NodeAffinity {
   };
 }
 
+/** A port the container listens on, and the node's port that reaches it where it has one. */
+export interface ContainerPort {
+  readonly name: string;
+  readonly containerPort: number;
+  readonly hostPort?: number;
+  readonly protocol?: "TCP" | "UDP";
+}
+
 export interface Container {
   readonly name: string;
   readonly image: string;
   readonly args?: readonly string[];
-  readonly ports?: readonly {
-    readonly name: string;
-    readonly containerPort: number;
-  }[];
+  readonly ports?: readonly ContainerPort[];
   readonly env?: readonly EnvVar[];
   readonly envFrom?: readonly {
     readonly secretRef: { readonly name: string };
