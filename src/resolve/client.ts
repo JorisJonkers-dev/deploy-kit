@@ -159,6 +159,9 @@ const readsTheSecret = ({ env }: EffectiveProcess): boolean =>
   (env ?? []).some(({ entries }) =>
     entries.some(
       ({ value }) =>
+        // Only a Client placeholder carries a `source`, so the first two
+        // terms narrow the type and decide nothing a third would not.
+        // Stryker disable next-line ConditionalExpression,LogicalOperator
         "kind" in value && value.kind === "client" && value.source === "secret",
     ),
   );
