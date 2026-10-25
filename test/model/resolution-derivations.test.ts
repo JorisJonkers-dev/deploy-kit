@@ -2094,7 +2094,7 @@ describe("what an engine grant derives", () => {
   it("covers one path per transit operation, each the one Vault maps it to", () => {
     expect(
       holding(
-        "{ engine: transit, key: notes-jwt, operations: [sign, verify, encrypt, decrypt, rotate], delivery: self, rotation: {tolerates: restart} }",
+        "{ engine: transit, key: notes-jwt, operations: [sign, verify, encrypt, decrypt, rotate, read], delivery: self, rotation: {tolerates: restart} }",
       ).secrets,
     ).toStrictEqual([
       {
@@ -2106,6 +2106,7 @@ describe("what an engine grant derives", () => {
           { path: "transit/encrypt/notes-jwt", allows: ["update"] },
           { path: "transit/decrypt/notes-jwt", allows: ["update"] },
           { path: "transit/keys/notes-jwt/rotate", allows: ["update"] },
+          { path: "transit/keys/notes-jwt", allows: ["read"] },
         ],
         restartTargets: ["notes-api"],
       },

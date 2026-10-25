@@ -317,7 +317,8 @@
         "verify",
         "encrypt",
         "decrypt",
-        "rotate"
+        "rotate",
+        "read"
       ]
     },
     "DependencyEdge": {

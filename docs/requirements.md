@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **76** rows. The compiler's behaviours join it as they land.
+This ledger holds **77** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -98,4 +98,5 @@ This ledger holds **76** rows. The compiler's behaviours join it as they land.
 | REQ-073 | A Route that declares `rateLimit: {requests, per}` is limited to that many requests per client over `per` at the edge, with a burst of the whole allowance, through a `RateLimit` Middleware of its own in its Application's namespace; a client is the address Cloudflare forwards on a Tier that states `proxiedBy: cloudflare`, and the connection's address otherwise; a limit with no period, no requests or a period in milliseconds is refused | [test/adapters/spelling.test.ts](../test/adapters/spelling.test.ts) |
 | REQ-074 | Every container the worked examples render meets Pod Security's `restricted` profile, save the platform's VPN container, which is outside the posture and may add only `NET_ADMIN` and `NET_RAW` | [test/pod-security.test.ts](../test/pod-security.test.ts) |
 | REQ-075 | A Process that listens on a port below 1024 composes under the one hardening posture: its container listens on the port it declares, drops every capability and adds none, and its pod sets no sysctl, because a pod off the host network binds any port without one | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-076 | A `transit` grant that declares `read` covers `read` on `transit/keys/<key>`, the key's public part and versions, beside `update` on the one path each other operation maps to | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
 | REQ-079 | A Process or migration image the images lock holds with uid 0 (a sidecar runs as its Process, so its own uid is not read) is refused as `E_IMAGE_RUNS_AS_ROOT`, naming the image, both when a project's share of the lock is packed for publishing and when composition reads the pinned inputs, because the posture would render that uid beside `runAsNonRoot` and the kubelet refuses the pod | [test/model/refusals.test.ts](../test/model/refusals.test.ts) |

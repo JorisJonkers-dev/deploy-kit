@@ -1734,6 +1734,7 @@ describe("the vault-policy adapter", () => {
         paths: [
           { path: "transit/sign/notes-jwt", allows: ["update"] },
           { path: "transit/keys/notes-jwt/rotate", allows: ["update"] },
+          { path: "transit/keys/notes-jwt", allows: ["read"] },
         ],
       }),
       "policy.json",
@@ -1743,6 +1744,7 @@ describe("the vault-policy adapter", () => {
       path: {
         "transit/sign/notes-jwt": { capabilities: ["update"] },
         "transit/keys/notes-jwt/rotate": { capabilities: ["update"] },
+        "transit/keys/notes-jwt": { capabilities: ["read"] },
       },
     });
   });

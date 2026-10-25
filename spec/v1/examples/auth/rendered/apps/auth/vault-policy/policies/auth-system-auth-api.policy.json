@@ -30,6 +30,11 @@
         "update"
       ]
     },
+    "transit/keys/auth-api-jwt": {
+      "capabilities": [
+        "read"
+      ]
+    },
     "database/creds/auth-data": {
       "capabilities": [
         "read"
