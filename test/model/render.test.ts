@@ -2286,6 +2286,40 @@ describe("a route's ingress class", () => {
       .annotations?.["kubernetes.io/ingress.class"];
   };
 
+  // REQ-094 (docs/requirements.md): a route on a tier that publishes its
+  // names carries the DNS controller's annotations; one on the LAN none.
+  it("carries the tier's DNS target and proxying, where the tier publishes", () => {
+    const annotationsOf = (edit?: (document: string) => string) => {
+      const tree = asTree(
+        artifact(
+          render(
+            edit === undefined ? {} : { "minimal/notes.project.yml": edit },
+          ),
+          "notes",
+        ),
+      );
+      const [route] = parseAllDocuments(
+        tree["apps/notes/notes/route-public.yaml"] ?? "",
+      ).map((document) => document.toJS() as Record<string, unknown>);
+      return (route?.["metadata"] as { annotations: Record<string, string> })
+        .annotations;
+    };
+
+    expect(annotationsOf()).toStrictEqual({
+      "kubernetes.io/ingress.class": "traefik-public",
+      "external-dns.alpha.kubernetes.io/target": "ingress.jorisjonkers.dev",
+      "external-dns.alpha.kubernetes.io/cloudflare-proxied": "true",
+    });
+    expect(
+      annotationsOf((document) =>
+        document.replace(
+          "audience: anonymous # selects the tier that carries it",
+          "audience: lan",
+        ),
+      ),
+    ).toStrictEqual({ "kubernetes.io/ingress.class": "traefik-lan" });
+  });
+
   it("is the tier's that carries the exposure's audience", () => {
     expect(classOf()).toBe("traefik-public");
     expect(

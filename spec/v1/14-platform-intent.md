@@ -322,6 +322,7 @@ tiers:
     proxiedBy: cloudflare              # optional: who forwards clients' requests to this edge
     traefik: edge/traefik-public       # <project>/<application>: the declared Application that is this tier's proxy
     ingressClass: traefik-public       # the class that proxy admits routes of
+    dns: {target: ingress.jorisjonkers.dev, proxied: true}
   - name: lan
     audiences: [lan]
     listener: plain
@@ -339,6 +340,7 @@ tiers:
 | `proxiedBy` | `cloudflare`, or absent. Who forwards clients' requests to this edge, which decides the address a route's `rateLimit` counts a client by: absent, the connection's own address; `cloudflare`, the address Cloudflare forwards in `CF-Connecting-IP`, since every connection then comes from a Cloudflare edge. State it only when every request reaches the tier through Cloudflare, since a client that reaches the edge directly writes that header itself ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)) |
 | `traefik` | the platform Application whose proxy this tier is, as `<project>/<application>` ([privileged roles](#privileged-roles)); an Application its Project does not declare is `E_UNKNOWN_TIER_PROXY` |
 | `ingressClass` | the ingress class this tier's proxy admits routes of, a Kubernetes name. Every route rendered for the tier carries it, and external-dns writes a record for a route by the same annotation, so one Traefik never serves another tier's routes. Optional in the document, but an exposure on a tier that names none is `E_TIER_WITHOUT_INGRESS_CLASS`: its routes would be admitted by no proxy |
+| `dns` | optional: where the tier's public names point (`target`) and whether the DNS provider proxies them (`proxied`). Every route rendered for the tier carries both as the annotations the DNS controller writes its record from; a tier without it, such as the LAN's, publishes no record |
 
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
 adapter. A route's audience is the **only** way it reaches a tier, so a `lan`

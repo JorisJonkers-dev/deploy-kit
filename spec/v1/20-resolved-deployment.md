@@ -2146,6 +2146,10 @@ classDiagram
         +VaultPath path
         +string key
     }
+    class ResolvedTierDns {
+        +string target
+        +bool proxied
+    }
     class ResolvedExposure {
         +ExposureName name
         +Fqdn host
@@ -2245,6 +2249,7 @@ classDiagram
 
     ResolvedExposure "1" *-- "1..*" ResolvedRoute : routes
     ResolvedExposure "1" *-- "1" TierProxy : proxy
+    ResolvedExposure "1" *-- "0..1" ResolvedTierDns : dns
     ResolvedRoute "1" *-- "0..*" MiddlewareStep : middleware
     ResolvedRoute "1" *-- "0..1" GateAddress : gate
 

@@ -120,6 +120,7 @@ function resolveOne(
     // A tier an exposure is on names one, or E_TIER_WITHOUT_INGRESS_CLASS
     // refused the set.
     ingressClass: tier.ingressClass as string,
+    ...(tier.dns === undefined ? {} : { dns: tier.dns }),
     listener: tier.listener,
     certificates: tier.certificates,
     proxy: {

@@ -118,6 +118,10 @@ const matchOf = (host: string, { match, path }: ResolvedRoute): string =>
 /** The annotation a Traefik and external-dns select a route by. */
 export const INGRESS_CLASS = "kubernetes.io/ingress.class";
 
+/** The annotations external-dns writes a route's record from. */
+const DNS_TARGET = "external-dns.alpha.kubernetes.io/target";
+const DNS_PROXIED = "external-dns.alpha.kubernetes.io/cloudflare-proxied";
+
 export function renderTraefik(project: ResolvedProject): Deliverable[] {
   return project.applications.flatMap((application) =>
     (application.exposure ?? []).map((exposure): Deliverable => {
@@ -136,7 +140,16 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
           labels,
           // The tier's proxy admits a route of its class, and external-dns
           // writes a record for one by the same annotation.
-          annotations: { [INGRESS_CLASS]: exposure.ingressClass },
+          annotations: {
+            [INGRESS_CLASS]: exposure.ingressClass,
+            // The DNS controller writes the tier's record for the host.
+            ...(exposure.dns === undefined
+              ? {}
+              : {
+                  [DNS_TARGET]: exposure.dns.target,
+                  [DNS_PROXIED]: String(exposure.dns.proxied),
+                }),
+          },
         },
         spec: {
           entryPoints: [ENTRY_POINTS[exposure.listener]],

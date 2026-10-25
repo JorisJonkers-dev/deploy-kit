@@ -505,6 +505,30 @@
           "value": "frankfurt-contabo-1"
         }
       ]
+    },
+    {
+      "name": "a tier whose DNS proxying is no boolean",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/tiers/0/dns/proxied",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "name": "a tier that publishes no names",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/tiers/0/dns"
+        }
+      ]
     }
   ]
 }
