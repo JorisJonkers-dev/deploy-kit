@@ -2210,10 +2210,11 @@ describe("replicas spread across too few nodes", () => {
     );
     return result.ok
       ? []
-      : result.diagnostics.map(({ code, path, message }) => ({
+      : result.diagnostics.map(({ code, path, message, hint }) => ({
           code,
           path,
           message,
+          hint,
         }));
   };
   const counted = (document: string) =>
@@ -2231,6 +2232,25 @@ describe("replicas spread across too few nodes", () => {
     expect(refusal?.message).toMatch(
       /^whoami keeps 40 replicas on different nodes, and \d+ can hold it$/,
     );
+    expect(refusal?.hint).toBe(
+      "Lower the count, relax a placement dimension, or drop `across`.",
+    );
+  });
+
+  it("holds as many replicas as eligible nodes, and tells how to fit more", () => {
+    const [refusal] = refusals(counted);
+    const nodes = Number(
+      /and (\d+) can hold it/.exec(refusal?.message ?? "")?.[1],
+    );
+    const fitted = (count: number) => (document: string) =>
+      document.replace(
+        "replicas:\n          count: 2",
+        `replicas:\n          count: ${String(count)}`,
+      );
+
+    expect(nodes).toBeGreaterThan(1);
+    expect(refusals(fitted(nodes))).toStrictEqual([]);
+    expect(refusals(fitted(nodes + 1))).toHaveLength(1);
   });
 
   it("leaves a Process no node can hold to the placement's own refusal", () => {
