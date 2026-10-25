@@ -200,6 +200,16 @@ apiAccess:
   server:
     - { cidr: 10.43.0.1/32, port: 443 }
 
+# Who among people may use the cluster, and as what
+# (spec/v1/14-platform-intent.md#human-grants): a group, written as the API
+# server sees it, granted one of Kubernetes' built-in cluster roles,
+# cluster-wide. Each grant renders one ClusterRoleBinding that no Application
+# holds, so removing an Application removes no one's access.
+humanGrants:
+  - group: oidc:k8s-admin
+    clusterRole: cluster-admin
+    reason: the platform owner administers the cluster with kubectl and headlamp over OIDC
+
 # The job that writes the rendered Vault policies and auth roles into the Secret
 # Store (spec/v1/14-platform-intent.md#the-vault-policy-job). It is derived, in
 # the Secret Store's namespace, from the documents each render holds; `role` is

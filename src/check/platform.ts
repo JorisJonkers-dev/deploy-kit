@@ -55,6 +55,33 @@ function durabilityRefusals(document: PlatformIntentDocument): Diagnostic[] {
   );
 }
 
+/**
+ * A group holds a role by one grant: a second would render a second binding
+ * under the first one's name.
+ */
+function humanGrantRefusals(document: PlatformIntentDocument): Diagnostic[] {
+  const seen = new Set<string>();
+  // A missing list and an empty one refuse nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  return (document.humanGrants ?? []).flatMap(
+    ({ group, clusterRole }, index): Diagnostic[] => {
+      const key = `${group} ${clusterRole}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        return [];
+      }
+      return [
+        {
+          code: "E_DUPLICATE_HUMAN_GRANT",
+          path: `/humanGrants/${String(index)}`,
+          message: `the group ${group} is granted ${clusterRole} twice`,
+          hint: "Keep one grant of the role to the group, with the reason it is held.",
+        },
+      ];
+    },
+  );
+}
+
 /** Every refusal the Platform document earns on its own. */
 export const platformDiagnostics = (
   document: PlatformIntentDocument,
@@ -62,4 +89,5 @@ export const platformDiagnostics = (
   ...forwardAuthRefusals(document),
   ...handoverRefusals(document),
   ...durabilityRefusals(document),
+  ...humanGrantRefusals(document),
 ];

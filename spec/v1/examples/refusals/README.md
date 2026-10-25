@@ -48,6 +48,7 @@ one defect so the refusal has a single cause.
 | [`unknown-library/`](unknown-library/) | `E_UNKNOWN_LIBRARY` | a Process mounting a library the Platform document does not declare ([chapter 14](../../14-platform-intent.md#libraries)) |
 | [`library-not-granted/`](library-not-granted/) | `E_LIBRARY_NOT_GRANTED` | a Process mounting `write` a library that grants its project `read` ([chapter 14](../../14-platform-intent.md#libraries)) |
 | [`no-vpn-policy/`](no-vpn-policy/) | `E_NO_VPN_POLICY` | a Process attaching to a VPN the Platform document does not run ([chapter 14](../../14-platform-intent.md#vpn)) |
+| [`duplicate-human-grant/`](duplicate-human-grant/) | `E_DUPLICATE_HUMAN_GRANT` | a Platform document granting one group one role twice ([chapter 14](../../14-platform-intent.md#human-grants)) |
 | [`durability-policy-incomplete/`](durability-policy-incomplete/) | `E_DURABILITY_POLICY_INCOMPLETE` | a backed-up class whose policy names no retention ([chapter 14](../../14-platform-intent.md#durability-policy)) |
 | [`generated-key-outside-project.project.yml`](generated-key-outside-project.project.yml) | `E_GENERATED_KEY_OUTSIDE_PROJECT` | a key generated under a shared platform path rather than its Project's own prefix ([chapter 10](../../10-project-intent.md#generated-keys)) |
 | [`generated-key-adopts-ungranted.project.yml`](generated-key-adopts-ungranted.project.yml) | `E_GENERATED_KEY_ADOPTS_UNGRANTED` | a generated key adopting the value of a path no grant of its project file reads ([chapter 10](../../10-project-intent.md#generated-keys)) |

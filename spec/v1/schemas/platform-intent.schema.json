@@ -115,6 +115,13 @@
         },
         "vpn": {
           "$ref": "#/$defs/VpnPolicy"
+        },
+        "humanGrants": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HumanGrant"
+          }
         }
       },
       "required": [
@@ -1027,6 +1034,37 @@
             }
           }
         }
+      ]
+    },
+    "HumanGrant": {
+      "type": "object",
+      "properties": {
+        "group": {
+          "type": "string",
+          "pattern": "^[^/%\\s]+$"
+        },
+        "clusterRole": {
+          "$ref": "#/$defs/HumanGrantRole"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "group",
+        "clusterRole",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "HumanGrantRole": {
+      "type": "string",
+      "enum": [
+        "cluster-admin",
+        "admin",
+        "edit",
+        "view"
       ]
     }
   }

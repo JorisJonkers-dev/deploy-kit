@@ -10,6 +10,7 @@ import {
   type Adapter,
 } from "../adapters/registry.ts";
 import { renderEvents } from "../adapters/kubernetes/events.ts";
+import { renderHumanGrants } from "../adapters/kubernetes/human-grants.ts";
 import { ADAPTER as TRAEFIK } from "../adapters/traefik/render.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
@@ -361,6 +362,8 @@ export function renderResolvedSet(
     ...(adapters.some(({ name }) => name === TRAEFIK)
       ? renderSharedMiddlewares(resolved.tierProxies, options.projects)
       : []),
+    // A Human Grant is the platform's, so every render holds it.
+    ...renderHumanGrants(resolved.humanGrants ?? []),
   ];
   const deliverables = [
     ...rendered,

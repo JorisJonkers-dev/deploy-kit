@@ -84,19 +84,23 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   with a letter or a digit, and nothing below `<repository>/` is the estate's,
   so no Project can ever name it. While the estate is handed
   over, a Project still on the old path is rendered and checked but not
-  published, and the `_estate` artifact holds only `estate-vso-secrets` while
-  a datastore the old path runs has a catalog the estate path applies, that
-  catalog's Jobs and the estate-scoped policy job that writes its documents,
-  which no Project's unit depends on. While the edge, a Project that declares
-  a tier's proxy, is on the old path, no Project's artifact carries a route
-  either, since the old path still serves the edge
+  published, and the `_estate` artifact holds `estate-human-grants`, the Human
+  Grants' bindings, whatever the ledger hands over, and `estate-vso-secrets`
+  while a datastore the old path runs has a catalog the estate path applies,
+  that catalog's Jobs and the estate-scoped policy job that writes its
+  documents. No Project's unit depends on either. While the edge, a Project
+  that declares a tier's proxy, is on the old path, no Project's artifact
+  carries a route either, since the old path still serves the edge
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
 - **The `_estate` artifact holds only what no Project can own.** A Project
   owns every object it delivers
   ([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)),
-  so the target `_estate` artifact holds the Stable Addresses alone
+  so the target `_estate` artifact holds the Stable Addresses
   ([chapter 16](16-dependencies.md#the-stable-address)), which must outlive a
-  provider's move between Projects. Each unit it holds today moves out in its
+  provider's move between Projects, and the Human Grants, which are the
+  Platform document's and no Project's
+  ([chapter 14](14-platform-intent.md#human-grants)), applied by
+  `estate-human-grants` in every composition. Each other unit it holds today moves out in its
   own change, as [chapter 20](20-resolved-deployment.md#the-reconcile-unit)'s
   table names: the policy job into each Project's artifact
   ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) with its
@@ -214,8 +218,9 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 
 A Project's artifact holds its one unit, its own Vault policy job among what
 it applies, its own routes among them once the edge is on the estate path. The
-estate-scoped artifact holds `estate-vso-secrets` where it carries the catalog
-of a datastore the old path still runs. A unit the artifact gains changes what
+estate-scoped artifact holds `estate-human-grants`, which follows nothing,
+where the Platform document declares a Human Grant, and `estate-vso-secrets`
+where it carries the catalog of a datastore the old path still runs. A unit the artifact gains changes what
 it holds, so its pin moves and the rewritten source applies the new unit, and
 a Project's routes arriving when the edge leaves the old path move its pin
 once. The rewrite keeps the annotations a Pause or a Rollback

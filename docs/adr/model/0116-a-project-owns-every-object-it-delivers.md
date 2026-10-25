@@ -8,7 +8,7 @@ normative: spec/v1/20-resolved-deployment.md#the-reconcile-unit
 rests-on: ["0006"]
 ---
 
-# A Project owns every object it delivers, depends on another only by name, and only the Stable Addresses stay estate-scoped
+# A Project owns every object it delivers, depends on another only by name, and only the Stable Addresses and the Human Grants stay estate-scoped
 
 Every object that exists because of one Project is rendered into that
 Project's share, published in its artifact and applied by its own unit: its
@@ -32,10 +32,12 @@ reached through the Stable Address. So a Project released on its own neither
 breaks nor re-renders another. A provider that drops a Surface a consumer still
 names is refused at composition with `E_UNKNOWN_SURFACE`, not delivered broken.
 
-The Stable Addresses alone stay estate-scoped, because each must outlive its
+The Stable Addresses stay estate-scoped, because each must outlive its
 provider's move between Projects
 ([chapter 20](../../../spec/v1/20-resolved-deployment.md#the-reconcile-unit),
 [chapter 55](../../../spec/v1/55-delivery.md#rendered-artifacts-and-pins)).
+So do the Human Grants, which exist because of the Platform document and no
+Project ([0118](0118-a-human-grant-is-declared-in-the-platform-document.md)).
 
 ## Rests on
 

@@ -26,6 +26,10 @@ the chapter's table says the refusal lands at.
 | [`rate-limit-period-in-milliseconds.project.yml`](rate-limit-period-in-milliseconds.project.yml) | a route's `rateLimit` over `500ms` | the value |
 | [`credentials-file-without-mount.project.yml`](credentials-file-without-mount.project.yml) | an edge's credential delivered `file` with no `mountAt` or `fileMode` | the edge's `credentials` |
 | [`platform-unknown-field/`](platform-unknown-field/) | a Platform document with a field the model does not have | the field |
+| [`human-grant-to-a-user/`](human-grant-to-a-user/) | a Human Grant naming a `user` instead of a `group` | the field, and where `group` would be |
+| [`human-grant-in-a-namespace/`](human-grant-in-a-namespace/) | a Human Grant scoped to a `namespace` | the field |
+| [`human-grant-role-outside-vocabulary/`](human-grant-role-outside-vocabulary/) | a Human Grant of a role outside the built-in four | the value |
+| [`human-grant-without-reason/`](human-grant-without-reason/) | a Human Grant with no `reason` | where the field would be |
 
 These oracles bind the production implementation only
 ([the parity contract](../../../../docs/architecture.md#the-parity-contract)):

@@ -557,6 +557,7 @@ describe("the refusal fixtures", () => {
       "cutover-mixed",
       "duplicate-backup-claim",
       "duplicate-claim",
+      "duplicate-human-grant",
       "duplicate-route-match",
       "durability-policy-incomplete",
       "durability-without-engine",
@@ -619,7 +620,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(68);
+    expect(refused).toHaveLength(69);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

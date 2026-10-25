@@ -333,6 +333,15 @@ It answers on its `http` surface; a Process that holds a Grant egresses to it,
 and its Application is ordered after the unit that materialises the credentials
 ([chapter 14](spec/v1/14-platform-intent.md#the-secret-store)).
 
+**Human Grant**: a group of people granted one of Kubernetes' built-in cluster
+roles (`cluster-admin`, `admin`, `edit`, `view`), cluster-wide, with a reason,
+in the Platform document. The group is written as the API server sees it, never
+a user; it renders one estate-scoped `ClusterRoleBinding`, so no Application's
+removal drops anyone's access
+([0118](docs/adr/model/0118-a-human-grant-is-declared-in-the-platform-document.md),
+[chapter 14](spec/v1/14-platform-intent.md#human-grants)). Not a Grant, which
+is a Process's access to a Secret Store path.
+
 **Env File**: one authored dotenv file, its Cluster Target and its variables.
 `base.env` names no target, because it is what does not vary; an overlay beside
 it names one. The directory holding it is the scope it reaches: the project, one

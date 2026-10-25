@@ -265,6 +265,78 @@ describe("parsePlatformIntent", () => {
     );
   });
 
+  // REQ-080 (docs/requirements.md): a group holds a role by one grant.
+  it("refuses a group granted one role twice, at the second grant, and accepts it granted two roles", () => {
+    const granted = (grants: string) =>
+      WORKED.replace(
+        /\nhumanGrants:\n( {2}.*\n)+/,
+        `\nhumanGrants:\n${grants}`,
+      );
+    const grant = (group: string, role: string) =>
+      `  - group: ${group}\n    clusterRole: ${role}\n    reason: works on the cluster\n`;
+    const result = parsePlatformIntent(
+      granted(
+        grant("oidc:k8s-admin", "cluster-admin") +
+          grant("oidc:k8s-viewers", "view") +
+          grant("oidc:k8s-admin", "cluster-admin"),
+      ),
+    );
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      {
+        code: "E_DUPLICATE_HUMAN_GRANT",
+        path: "/humanGrants/2",
+        message: "the group oidc:k8s-admin is granted cluster-admin twice",
+        hint: "Keep one grant of the role to the group, with the reason it is held.",
+      },
+    ]);
+    expect(
+      refusalsOf(
+        granted(
+          grant("oidc:k8s-admin", "cluster-admin") +
+            grant("oidc:k8s-admin", "view") +
+            grant("oidc:k8s-viewers", "view"),
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses a human grant to a user, in a namespace, of another role, or to a group no binding can be named for", () => {
+    const grant = (lines: string) =>
+      WORKED.replace(
+        /\nhumanGrants:\n( {2}.*\n)+/,
+        `\nhumanGrants:\n  - ${lines}`,
+      );
+
+    expect(
+      refusalsOf(
+        grant("user: joris\n    clusterRole: view\n    reason: reads\n"),
+      ),
+    ).toStrictEqual([
+      { code: "schema", path: "/humanGrants/0/group" },
+      { code: "schema", path: "/humanGrants/0/user" },
+    ]);
+    expect(
+      refusalsOf(
+        grant(
+          "group: g\n    clusterRole: view\n    namespace: a\n    reason: reads\n",
+        ),
+      ),
+    ).toStrictEqual([{ code: "schema", path: "/humanGrants/0/namespace" }]);
+    expect(
+      refusalsOf(
+        grant("group: g\n    clusterRole: system:node\n    reason: r\n"),
+      ),
+    ).toStrictEqual([{ code: "schema", path: "/humanGrants/0/clusterRole" }]);
+    for (const group of ["a/b", "a%b", "a b"])
+      expect(
+        refusalsOf(
+          grant(`group: "${group}"\n    clusterRole: view\n    reason: r\n`),
+        ),
+        group,
+      ).toStrictEqual([{ code: "schema", path: "/humanGrants/0/group" }]);
+  });
+
   it("points a schema failure at the chapter that defines the field", () => {
     const result = parsePlatformIntent(
       WORKED.replace("listener: plain", "listener: quic"),

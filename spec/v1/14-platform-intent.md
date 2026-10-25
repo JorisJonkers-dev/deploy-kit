@@ -68,8 +68,9 @@ something a project file claims by publishing a name
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
-`forwardAuth` ([Tiers](#tiers)), and the `handover` ledger puts no Project on
-both delivery paths (`E_HANDOVER_BOTH_PATHS`,
+`forwardAuth` ([Tiers](#tiers)), no group is granted one role twice
+(`E_DUPLICATE_HUMAN_GRANT`, [Human grants](#human-grants)), and the `handover`
+ledger puts no Project on both delivery paths (`E_HANDOVER_BOTH_PATHS`,
 [chapter 60](60-setup.md#handing-over-one-project-at-a-time)). Together, every reference one makes into the
 other resolves and every policy one asks for the other offers:
 
@@ -861,6 +862,47 @@ nothing, and an edge proxy is machinery that holds no access.
 
 The block is optional. A Platform document without it admits nobody, and every
 `api` declaration read beside it is refused.
+
+## Human grants
+
+```yaml
+humanGrants:
+  - group: oidc:k8s-admin
+    clusterRole: cluster-admin
+    reason: the platform owner administers the cluster with kubectl and headlamp over OIDC
+```
+
+Who among people may use the cluster, and as what
+([0118](../../docs/adr/model/0118-a-human-grant-is-declared-in-the-platform-document.md)).
+Who may administer the cluster is contended by every Project, so it is the
+platform's ([0004](../../docs/adr/model/0004-contention-decides-authority.md)),
+and a grant hangs off no Application: removing the tool a person uses, headlamp
+or anything else, removes no one's access. Each **Human Grant** is three facts:
+
+| field | required | notes |
+|---|---|---|
+| `group` | yes | The group, written exactly as the API server sees it, prefix included: `oidc:k8s-admin`, never `k8s-admin`. Who is in it is the identity provider's, and the prefix the control plane adds is a bootstrap fact the model does not restate. It names the binding, so it holds no `/`, `%` or whitespace. |
+| `clusterRole` | yes | One of Kubernetes' built-in cluster roles, the `HumanGrantRole` vocabulary: `cluster-admin`, `admin`, `edit` or `view`. |
+| `reason` | yes | Why the group holds the role, for whoever reviews the document. |
+
+The subject is always a group and never a user, so membership stays where it is
+reviewed. The grant is always cluster-wide: it names no namespace, and it
+authors no rules. API access for a Process stays declared on the Process
+([Kubernetes API access](#kubernetes-api-access)). Anything else is refused by
+the schema: a `user`, a `namespace`, a role outside the four, or a grant with
+no reason.
+
+Each grant renders one `ClusterRoleBinding` of its role to its group, named
+`human:<group>:<clusterRole>`
+([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)). A
+grant belongs to no Project, so its binding is estate-scoped and applied by
+the `estate-human-grants` unit, which follows nothing
+([chapter 20](20-resolved-deployment.md#the-reconcile-unit)). A group granted
+one role twice would render two bindings of one name, so the second grant is
+`E_DUPLICATE_HUMAN_GRANT`. One group may hold two roles, each by its own grant.
+
+The block is optional, and a Platform document without it grants no one
+anything.
 
 ## The Vault policy job
 

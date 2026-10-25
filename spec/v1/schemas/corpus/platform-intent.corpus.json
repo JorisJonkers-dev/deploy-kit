@@ -267,6 +267,132 @@
           "path": "/monitors/labels"
         }
       ]
+    },
+    {
+      "name": "a Platform that grants no human a cluster role",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/humanGrants"
+        }
+      ]
+    },
+    {
+      "name": "a human grant of each built-in role to a group",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants",
+          "value": [
+            {
+              "group": "oidc:k8s-admin",
+              "clusterRole": "cluster-admin",
+              "reason": "administers the cluster"
+            },
+            {
+              "group": "oidc:k8s-operators",
+              "clusterRole": "admin",
+              "reason": "operates every Project"
+            },
+            {
+              "group": "oidc:k8s-editors",
+              "clusterRole": "edit",
+              "reason": "edits every Project"
+            },
+            {
+              "group": "oidc:k8s-viewers",
+              "clusterRole": "view",
+              "reason": "reads every Project"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a human grant to a user",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants/0",
+          "value": {
+            "user": "joris",
+            "group": "oidc:k8s-admin",
+            "clusterRole": "cluster-admin",
+            "reason": "administers the cluster"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a human grant scoped to a namespace",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/humanGrants/0/namespace",
+          "value": "notes-system"
+        }
+      ]
+    },
+    {
+      "name": "a human grant of a role outside the built-in four",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants/0/clusterRole",
+          "value": "secret-reader"
+        }
+      ]
+    },
+    {
+      "name": "a human grant with no reason",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/humanGrants/0/reason"
+        }
+      ]
+    },
+    {
+      "name": "a human grant to a group no binding can be named for",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants/0/group",
+          "value": "oidc:/k8s-admin"
+        }
+      ]
+    },
+    {
+      "name": "an empty list of human grants",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants",
+          "value": []
+        }
+      ]
     }
   ]
 }

@@ -42,7 +42,20 @@ export interface ClusterRole {
   }[];
 }
 
-/** The one ServiceAccount a ClusterRole is bound to. */
+/** Who a ClusterRole is bound to: a holder's one ServiceAccount, or a Human Grant's group. */
+export type BindingSubject =
+  | {
+      readonly kind: "ServiceAccount";
+      readonly name: string;
+      readonly namespace: string;
+    }
+  | {
+      readonly apiGroup: "rbac.authorization.k8s.io";
+      readonly kind: "Group";
+      readonly name: string;
+    };
+
+/** A ClusterRole bound, cluster-wide, to its subjects. */
 export interface ClusterRoleBinding {
   readonly apiVersion: "rbac.authorization.k8s.io/v1";
   readonly kind: "ClusterRoleBinding";
@@ -52,11 +65,7 @@ export interface ClusterRoleBinding {
     readonly kind: "ClusterRole";
     readonly name: string;
   };
-  readonly subjects: readonly {
-    readonly kind: "ServiceAccount";
-    readonly name: string;
-    readonly namespace: string;
-  }[];
+  readonly subjects: readonly BindingSubject[];
 }
 
 export type Probe = (
