@@ -35,6 +35,7 @@ spec:
         image.jorisjonkers.dev/release-gate: 1.0.0
     spec:
       serviceAccountName: release-gate
+      priorityClassName: platform-critical-app
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true

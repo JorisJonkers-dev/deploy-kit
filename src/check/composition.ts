@@ -512,6 +512,29 @@ export function setDiagnostics(
             hint: "Name the collector as `<project>/<application>`, an Application its Project declares with an `otlp` surface on one of its Processes.",
           },
         ];
+  // A critical Application is one a project file declares; a set that holds
+  // no file of its Project, such as one Project's own check, cannot tell.
+  const composedProjects = new Set(
+    projects.map(({ document }) => document.project),
+  );
+  const critical: Diagnostic[] =
+    // A missing list and an empty one name no Application alike.
+    // Stryker disable next-line ArrayDeclaration
+    (platform.document.priority?.criticalApplications ?? []).flatMap(
+      (name, index): Diagnostic[] =>
+        holders.has(name) ||
+        !composedProjects.has(name.slice(0, name.indexOf("/")))
+          ? []
+          : [
+              {
+                code: "E_UNKNOWN_CRITICAL_APPLICATION",
+                document: platform.name,
+                path: `/priority/criticalApplications/${String(index)}`,
+                message: `no project file declares the Application ${name} the platform names critical`,
+                hint: "Name it as `<project>/<application>`, an Application its Project declares.",
+              },
+            ],
+    );
   // The metrics stack is an Application a project file declares, as a proxy is.
   const metrics = platform.document.telemetry?.metrics;
   const stack: Diagnostic[] =
@@ -661,6 +684,7 @@ export function setDiagnostics(
     ...machinery,
     ...apiHolders,
     ...telemetry,
+    ...critical,
     ...stack,
     ...release,
     ...reporting,

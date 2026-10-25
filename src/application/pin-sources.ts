@@ -22,6 +22,7 @@ import {
 } from "../model/platform-intent.ts";
 import {
   HUMAN_GRANTS_UNIT,
+  PRIORITY_CLASSES_UNIT,
   SECRETS_UNIT,
   unitOf,
 } from "../model/reconcile-units.ts";
@@ -30,6 +31,7 @@ import { rolloutAnnotations, type Rollout } from "../model/rollout.ts";
 import { readPinSource, samePinSource } from "../read/pin-source.ts";
 import {
   HUMAN_GRANTS_DIRECTORY,
+  PRIORITY_CLASSES_DIRECTORY,
   SECRETS_DIRECTORY,
 } from "../adapters/shared/paths.ts";
 import type { RenderedObject } from "../objects/deliverable.ts";
@@ -105,6 +107,17 @@ function unitsOf(
   const carries = (directory: string): boolean =>
     files.some(({ path }) => path.startsWith(`${directory}/`));
   return [
+    // The priority classes follow nothing: a pod that names one before it
+    // exists is refused at admission and created again once it does.
+    ...(carries(PRIORITY_CLASSES_DIRECTORY)
+      ? [
+          {
+            name: PRIORITY_CLASSES_UNIT,
+            path: PRIORITY_CLASSES_DIRECTORY,
+            after: [] as string[],
+          },
+        ]
+      : []),
     ...(carries(HUMAN_GRANTS)
       ? // A name no unit on the path carries is dropped from `dependsOn`, so
         // any list of them follows nothing alike.

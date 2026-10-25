@@ -469,6 +469,45 @@ const mesh = z
 // Kubernetes name refuses: no `/` and no `%`.
 export const HUMAN_GROUP = /^[^/%\s]+$/;
 
+// The priority classes the platform declares and renders
+// (spec/v1/14-platform-intent.md#priority): what a datastore runs at, and what
+// the foundation and the Applications the platform names keep running at.
+// Nothing is authored on a Process.
+const priorityClass = z
+  .strictObject({
+    name: z.string().regex(/^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/),
+    value: z.int().min(1).max(1_000_000_000),
+  })
+  .meta({ id: "PriorityClass" });
+
+const priorityPolicy = z
+  .strictObject({
+    data: priorityClass,
+    critical: priorityClass,
+    criticalApplications: z.array(holder).min(1).exactOptional(),
+  })
+  .meta({ id: "PriorityPolicy" });
+
+/**
+ * Every holder of a privileged role, as `<project>/<application>`
+ * (spec/v1/14-platform-intent.md#privileged-roles): the foundation.
+ */
+export const foundationOf = (platform: PlatformIntentDocument): Set<string> =>
+  new Set([
+    ...platform.tiers.map(({ traefik }) => traefik),
+    ...(platform.delivery?.machinery ?? []),
+    ...(platform.delivery?.gate === undefined ? [] : [platform.delivery.gate]),
+    ...(platform.delivery?.reporter === undefined
+      ? []
+      : [platform.delivery.reporter]),
+    ...(platform.apiAccess?.holders ?? []),
+    ...(platform.telemetry === undefined
+      ? []
+      : [platform.telemetry.collector, platform.telemetry.metrics]),
+    ...(platform.secretStore === undefined ? [] : [platform.secretStore]),
+    ...(platform.signIn === undefined ? [] : [platform.signIn.provider]),
+  ]);
+
 const humanGrant = z
   .strictObject({
     group: z.string().regex(HUMAN_GROUP),
@@ -526,6 +565,7 @@ export const platformIntent = z
       .exactOptional(),
     vpn: vpnPolicy.exactOptional(),
     humanGrants: z.array(humanGrant).min(1).exactOptional(),
+    priority: priorityPolicy.exactOptional(),
   })
   .meta({ id: "Platform" });
 

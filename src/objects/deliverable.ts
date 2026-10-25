@@ -23,6 +23,7 @@ import type {
   AliasService,
   ClusterRole,
   ClusterRoleBinding,
+  PriorityClass,
   ConfigMap,
   CronJob,
   Deployment,
@@ -57,6 +58,7 @@ export type RenderedObject =
   | ConfigMap
   | ClusterRole
   | ClusterRoleBinding
+  | PriorityClass
   | CronJob
   | Job
   | HorizontalPodAutoscaler

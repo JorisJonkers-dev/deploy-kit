@@ -35,6 +35,7 @@ spec:
         image.jorisjonkers.dev/traefik-lan: v3.3.4
     spec:
       serviceAccountName: traefik-lan
+      priorityClassName: platform-critical-app
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

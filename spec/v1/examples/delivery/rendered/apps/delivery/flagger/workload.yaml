@@ -36,6 +36,7 @@ spec:
         image.jorisjonkers.dev/flagger: 1.41.0
     spec:
       serviceAccountName: flagger
+      priorityClassName: platform-critical-app
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true

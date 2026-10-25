@@ -37,7 +37,7 @@ spec:
         metadata:
           application: auth
           process: auth-api
-          revision: sha256:0e66c2fda556f64d737974f88214ff20d8b8399afb81cf61159b2335be4adf59
+          revision: sha256:aeaf195d8f216bcc75f38f2e1a67115425b014fa7399fbe419c48c7471b1031b
           paths: /api /api/v1/users/register
           readiness: /api/actuator/health/readiness
           hostnames: auth.jorisjonkers.dev
@@ -49,7 +49,7 @@ spec:
         metadata:
           application: auth
           process: auth-api
-          revision: sha256:0e66c2fda556f64d737974f88214ff20d8b8399afb81cf61159b2335be4adf59
+          revision: sha256:aeaf195d8f216bcc75f38f2e1a67115425b014fa7399fbe419c48c7471b1031b
           paths: /api /api/v1/users/register
           readiness: /api/actuator/health/readiness
           hostnames: auth.jorisjonkers.dev
@@ -61,7 +61,7 @@ spec:
         metadata:
           application: auth
           process: auth-api
-          revision: sha256:0e66c2fda556f64d737974f88214ff20d8b8399afb81cf61159b2335be4adf59
+          revision: sha256:aeaf195d8f216bcc75f38f2e1a67115425b014fa7399fbe419c48c7471b1031b
           paths: /api /api/v1/users/register
           readiness: /api/actuator/health/readiness
           hostnames: auth.jorisjonkers.dev
@@ -120,7 +120,7 @@ spec:
         metadata:
           application: auth
           process: auth-ui
-          revision: sha256:0e66c2fda556f64d737974f88214ff20d8b8399afb81cf61159b2335be4adf59
+          revision: sha256:aeaf195d8f216bcc75f38f2e1a67115425b014fa7399fbe419c48c7471b1031b
           paths: /
           readiness: /
           hostnames: auth.jorisjonkers.dev
@@ -132,7 +132,7 @@ spec:
         metadata:
           application: auth
           process: auth-ui
-          revision: sha256:0e66c2fda556f64d737974f88214ff20d8b8399afb81cf61159b2335be4adf59
+          revision: sha256:aeaf195d8f216bcc75f38f2e1a67115425b014fa7399fbe419c48c7471b1031b
           paths: /
           readiness: /
           hostnames: auth.jorisjonkers.dev
@@ -144,7 +144,7 @@ spec:
         metadata:
           application: auth
           process: auth-ui
-          revision: sha256:0e66c2fda556f64d737974f88214ff20d8b8399afb81cf61159b2335be4adf59
+          revision: sha256:aeaf195d8f216bcc75f38f2e1a67115425b014fa7399fbe419c48c7471b1031b
           paths: /
           readiness: /
           hostnames: auth.jorisjonkers.dev

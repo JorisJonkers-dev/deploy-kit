@@ -106,6 +106,7 @@ function pulled(): string {
       // no sign-in provider, since no Project composed here declares a Client.
       .replace("  reporter: delivery/reporter\n", "")
       .replace(/\nhumanGrants:\n(?: {2}.*\n)+/, "\n")
+      .replace(/\npriority:\n(?: {2}.*\n)+/, "\n")
       .replace(/\nsignIn:\n(?: {2}.*\n)+/, "\n")
       .replace(
         /\nhandover:\n(?: {2}.*\n)+/,

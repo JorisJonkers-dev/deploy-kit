@@ -541,6 +541,9 @@ function podTemplateOf(
     ),
     spec: {
       serviceAccountName: process.identity,
+      ...(process.priorityClass === undefined
+        ? {}
+        : { priorityClassName: process.priorityClass }),
       automountServiceAccountToken: process.identityToken,
       // An absent policy and an undefined one render alike: YAML drops the key.
       // Stryker disable next-line ConditionalExpression

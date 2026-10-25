@@ -205,6 +205,15 @@ apiAccess:
 # server sees it, granted one of Kubernetes' built-in cluster roles,
 # cluster-wide. Each grant renders one ClusterRoleBinding that no Application
 # holds, so removing an Application removes no one's access.
+# The priority classes the platform declares and renders: a datastore runs at
+# the data class, and the foundation and the Applications named here at the
+# critical one, so they keep scheduling when a node is short
+# (spec/v1/14-platform-intent.md#priority). Nothing is authored on a Process.
+priority:
+  data: {name: platform-data, value: 1000000}
+  critical: {name: platform-critical-app, value: 100000}
+  criticalApplications: [auth/auth]
+
 humanGrants:
   - group: oidc:k8s-admin
     clusterRole: cluster-admin

@@ -122,6 +122,9 @@
           "items": {
             "$ref": "#/$defs/HumanGrant"
           }
+        },
+        "priority": {
+          "$ref": "#/$defs/PriorityPolicy"
         }
       },
       "required": [
@@ -1066,6 +1069,50 @@
         "edit",
         "view"
       ]
+    },
+    "PriorityPolicy": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/$defs/PriorityClass"
+        },
+        "critical": {
+          "$ref": "#/$defs/PriorityClass"
+        },
+        "criticalApplications": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[^/\\s]+\\/[^/\\s]+$",
+            "reference": "Application"
+          }
+        }
+      },
+      "required": [
+        "data",
+        "critical"
+      ],
+      "additionalProperties": false
+    },
+    "PriorityClass": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$"
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000000
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "additionalProperties": false
     }
   }
 }

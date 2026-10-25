@@ -32,6 +32,7 @@ spec:
         image.jorisjonkers.dev/reporter: 1.0.0
     spec:
       serviceAccountName: reporter
+      priorityClassName: platform-critical-app
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true

@@ -2,6 +2,7 @@
 // (spec/v1/20-resolved-deployment.md#derived-mechanics): what the Application
 // declared, carried through, and every mechanic derived from it and from the
 // pinned platform facts. Nothing here is authored and nothing may be.
+import { foundationOf } from "../model/platform-intent.ts";
 import type { ClusterStateDocument } from "../model/cluster-state.ts";
 import type {
   EffectiveApplication,
@@ -56,6 +57,26 @@ import {
 import { resolveVolumes } from "./volumes.ts";
 
 /** What resolving one Process reads beyond the Process itself. */
+/**
+ * The priority class a Process runs at (spec/v1/14-platform-intent.md#priority):
+ * the data class for a datastore, whose engine derives a backup; the critical
+ * class for the foundation and the Applications the platform names; none
+ * otherwise. Nothing is authored on a Process.
+ */
+function priorityOf(
+  process: EffectiveProcess,
+  context: ProcessContext,
+): { readonly priorityClass?: string } {
+  const policy = context.platform.priority;
+  if (policy === undefined) return {};
+  if (process.engine !== undefined) return { priorityClass: policy.data.name };
+  const holder = `${context.project}/${context.application}`;
+  return foundationOf(context.platform).has(holder) ||
+    (policy.criticalApplications ?? []).includes(holder)
+    ? { priorityClass: policy.critical.name }
+    : {};
+}
+
 export interface ProcessContext {
   readonly platform: PlatformIntentDocument;
   readonly contract: NodeContractDocument;
@@ -498,6 +519,7 @@ export function resolveProcess(
     ...scheduleOf(process),
     deadline: inSeconds(deadlineOf(process, context.platform)),
     replicas: process.replicas?.count ?? 1,
+    ...priorityOf(process, context),
     ...(process.replicas?.across === undefined
       ? {}
       : { spreadAcross: process.replicas.across }),

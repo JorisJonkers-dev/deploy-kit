@@ -34,6 +34,7 @@ spec:
         image.jorisjonkers.dev/identity: 1.0.0
     spec:
       serviceAccountName: identity
+      priorityClassName: platform-critical-app
       automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true

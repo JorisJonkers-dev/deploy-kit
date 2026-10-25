@@ -13,3 +13,4 @@ export const SECRETS_UNIT = "estate-vso-secrets";
 
 /** The unit that applies the Human Grants' bindings, where the platform declares any. */
 export const HUMAN_GRANTS_UNIT = "estate-human-grants";
+export const PRIORITY_CLASSES_UNIT = "estate-priority-classes";

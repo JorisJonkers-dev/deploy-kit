@@ -35,6 +35,7 @@ spec:
         image.jorisjonkers.dev/vpn: v3.40.0
     spec:
       serviceAccountName: karakeep
+      priorityClassName: platform-data
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true

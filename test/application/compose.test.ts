@@ -65,6 +65,8 @@ const REPORTER = "  reporter: delivery/reporter\n";
 const SIGN_IN = /\nsignIn:\n(?: {2}.*\n)+/;
 /** The worked Platform document's Human Grants, which every render holds. */
 const HUMAN_GRANTS = /\nhumanGrants:\n(?: {2}.*\n)+/;
+/** The worked Platform document's priority classes, which every render holds. */
+const PRIORITY = /\npriority:\n(?: {2}.*\n)+/;
 const withLedger = (platform: string, ledger: string): string =>
   platform.replace(/\nhandover:\n(?: {2}.*\n)+/, `\n${ledger}`);
 
@@ -132,7 +134,8 @@ const PLATFORM: Fragment = {
         text("platform/platform.intent.yml")
           .replace(REPORTER, "")
           .replace(SIGN_IN, "\n")
-          .replace(HUMAN_GRANTS, "\n"),
+          .replace(HUMAN_GRANTS, "\n")
+          .replace(PRIORITY, "\n"),
         LEDGER,
       ),
     },

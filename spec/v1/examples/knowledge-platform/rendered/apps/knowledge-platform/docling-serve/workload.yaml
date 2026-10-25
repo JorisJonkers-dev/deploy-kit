@@ -32,6 +32,7 @@ spec:
         image.jorisjonkers.dev/docling-serve: v1.5.0
     spec:
       serviceAccountName: docling-serve
+      priorityClassName: platform-data
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
