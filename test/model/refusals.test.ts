@@ -557,6 +557,7 @@ describe("the refusal fixtures", () => {
       "cutover-mixed",
       "duplicate-backup-claim",
       "duplicate-claim",
+      "duplicate-human-grant",
       "duplicate-route-match",
       "durability-policy-incomplete",
       "durability-without-engine",

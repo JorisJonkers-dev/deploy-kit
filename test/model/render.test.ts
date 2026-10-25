@@ -136,10 +136,98 @@ describe("renderIntentSet", () => {
     );
   });
 
-  it("renders nothing estate-scoped for both, each holding its own routes", () => {
+  it("renders nothing estate-scoped for both but the platform's Human Grants, each holding its own routes", () => {
     expect(
-      artifact(render(undefined, ["notes", "data"]), "_estate"),
-    ).toBeUndefined();
+      Object.keys(
+        asTree(artifact(render(undefined, ["notes", "data"]), "_estate")),
+      ),
+    ).toStrictEqual(Object.keys(committed("platform/rendered")));
+  });
+
+  // REQ-080 (docs/requirements.md): each Human Grant the Platform document
+  // declares renders one ClusterRoleBinding of its built-in role to its group,
+  // cluster-wide and estate-scoped, in every render whatever it holds.
+  describe("the Human Grants", () => {
+    it("render, estate-scoped, to the platform's committed tree, byte for byte", () => {
+      expect(asTree(artifact(render(undefined, []), "_estate"))).toStrictEqual(
+        committed("platform/rendered"),
+      );
+    });
+
+    it("render one binding per grant, of its role to its group as the API server sees it", () => {
+      const tree = asTree(
+        artifact(
+          render(
+            {
+              "platform/platform.intent.yml": (document) =>
+                document.replace(
+                  "    reason: the platform owner",
+                  "    reason: readers\n  - group: oidc:k8s-viewers\n    clusterRole: view\n    reason: the platform owner",
+                ),
+            },
+            [],
+          ),
+          "_estate",
+        ),
+      );
+      const bindings = parseAllDocuments(
+        tree["estate/human-grants/clusterrolebindings.yaml"] ?? "",
+      ).map((document) => document.toJS() as Record<string, unknown>);
+
+      expect(bindings).toStrictEqual([
+        expect.objectContaining({
+          metadata: {
+            name: "human:oidc:k8s-admin:cluster-admin",
+            labels: { "app.kubernetes.io/managed-by": "deploy-kit" },
+          },
+          roleRef: {
+            apiGroup: "rbac.authorization.k8s.io",
+            kind: "ClusterRole",
+            name: "cluster-admin",
+          },
+          subjects: [
+            {
+              apiGroup: "rbac.authorization.k8s.io",
+              kind: "Group",
+              name: "oidc:k8s-admin",
+            },
+          ],
+        }),
+        expect.objectContaining({
+          metadata: {
+            name: "human:oidc:k8s-viewers:view",
+            labels: { "app.kubernetes.io/managed-by": "deploy-kit" },
+          },
+          roleRef: {
+            apiGroup: "rbac.authorization.k8s.io",
+            kind: "ClusterRole",
+            name: "view",
+          },
+          subjects: [
+            {
+              apiGroup: "rbac.authorization.k8s.io",
+              kind: "Group",
+              name: "oidc:k8s-viewers",
+            },
+          ],
+        }),
+      ]);
+    });
+
+    it("render nothing where the platform declares none", () => {
+      expect(
+        artifact(
+          render(
+            {
+              "platform/platform.intent.yml": (document) =>
+                document.replace(/\nhumanGrants:\n( {2}.*\n)+/, "\n"),
+            },
+            ["notes"],
+          ),
+          "_estate",
+        ),
+      ).toBeUndefined();
+    });
   });
 
   // REQ-052 (docs/requirements.md): auth's render carries its migration Jobs,
@@ -159,7 +247,10 @@ describe("renderIntentSet", () => {
     expect({
       ...asTree(artifact(artifacts, "auth")),
       ...asTree(artifact(artifacts, "_estate")),
-    }).toStrictEqual(committed("auth/rendered"));
+    }).toStrictEqual({
+      ...committed("auth/rendered"),
+      ...committed("platform/rendered"),
+    });
   });
 
   // documents of the render it belongs to, and is named by their digest.
@@ -715,8 +806,10 @@ describe("renderIntentSet", () => {
     });
   });
 
-  it("renders only the projects it is asked for", () => {
-    expect(render(undefined, []).map(({ name }) => name)).toStrictEqual([]);
+  it("renders only the projects it is asked for, and what is estate-scoped", () => {
+    expect(render(undefined, []).map(({ name }) => name)).toStrictEqual([
+      "_estate",
+    ]);
   });
 
   it("refuses the set before rendering where resolution refuses it", () => {
@@ -830,7 +923,10 @@ describe("renderIntentSet", () => {
     expect({
       ...asTree(artifact(artifacts, "knowledge-platform")),
       ...asTree(artifact(artifacts, "_estate")),
-    }).toStrictEqual(committed("knowledge-platform/rendered"));
+    }).toStrictEqual({
+      ...committed("knowledge-platform/rendered"),
+      ...committed("platform/rendered"),
+    });
   });
 
   it("orders the tree whatever order the adapters hand it out in", () => {
@@ -849,7 +945,10 @@ describe("renderIntentSet", () => {
     const paths = (name: string) =>
       artifact(artifacts, name)?.files.map(({ path }) => path) ?? [];
 
-    expect(artifacts.map(({ name }) => name)).toStrictEqual(["notes"]);
+    expect(artifacts.map(({ name }) => name)).toStrictEqual([
+      "_estate",
+      "notes",
+    ]);
     expect(paths("notes")).toStrictEqual([
       "apps/notes/kustomization.yaml",
       "apps/notes/libraries.yaml",
@@ -899,7 +998,12 @@ describe("renderIntentSet", () => {
     ).toStrictEqual([
       [
         "_estate",
-        ["estate/edge/lan/kustomization.yaml", "estate/edge/lan/x.yaml"],
+        [
+          "estate/edge/lan/kustomization.yaml",
+          "estate/edge/lan/x.yaml",
+          "estate/human-grants/clusterrolebindings.yaml",
+          "estate/human-grants/kustomization.yaml",
+        ],
       ],
       [
         "edge",

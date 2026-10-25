@@ -16,6 +16,13 @@ export const CERTIFICATE_SOURCES = ["acme", "none"] as const;
 export const HARDENING_CLASSES = ["restricted"] as const;
 /** Who forwards clients' requests to a tier's edge, where anyone does. */
 export const FORWARDERS = ["cloudflare"] as const;
+/** The built-in cluster roles a Human Grant may bind, and no other. */
+export const HUMAN_GRANT_ROLES = [
+  "cluster-admin",
+  "admin",
+  "edit",
+  "view",
+] as const;
 
 export type Datastore = (typeof DATASTORES)[number];
 export type PolicyController = (typeof POLICY_CONTROLLERS)[number];
@@ -23,6 +30,7 @@ export type Listener = (typeof LISTENERS)[number];
 export type CertificateSource = (typeof CERTIFICATE_SOURCES)[number];
 export type HardeningClass = (typeof HARDENING_CLASSES)[number];
 export type Forwarder = (typeof FORWARDERS)[number];
+export type HumanGrantRole = (typeof HUMAN_GRANT_ROLES)[number];
 
 const text = z.string().min(1);
 const count = z.int().min(1);
@@ -455,6 +463,22 @@ const mesh = z
   .strictObject({ enrolled: z.array(text).min(1) })
   .meta({ id: "Mesh" });
 
+// A group of people granted a built-in cluster role, cluster-wide
+// (spec/v1/14-platform-intent.md#human-grants). The group is written as the
+// API server sees it, and names the binding, so it holds no character a
+// Kubernetes name refuses: no `/` and no `%`.
+export const HUMAN_GROUP = /^[^/%\s]+$/;
+
+const humanGrant = z
+  .strictObject({
+    group: z.string().regex(HUMAN_GROUP),
+    clusterRole: z.enum(HUMAN_GRANT_ROLES).meta({ id: "HumanGrantRole" }),
+    reason: text,
+  })
+  .meta({ id: "HumanGrant" });
+
+export type HumanGrant = z.output<typeof humanGrant>;
+
 const provider = z
   .strictObject({
     name: text,
@@ -501,6 +525,7 @@ export const platformIntent = z
       .meta({ entry: "GpuVendor" })
       .exactOptional(),
     vpn: vpnPolicy.exactOptional(),
+    humanGrants: z.array(humanGrant).min(1).exactOptional(),
   })
   .meta({ id: "Platform" });
 

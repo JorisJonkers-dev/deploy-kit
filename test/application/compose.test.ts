@@ -63,6 +63,8 @@ const LEDGER = `handover:
 const REPORTER = "  reporter: delivery/reporter\n";
 /** The worked Platform document's sign-in provider, which no Project here declares. */
 const SIGN_IN = /\nsignIn:\n(?: {2}.*\n)+/;
+/** The worked Platform document's Human Grants, which every render holds. */
+const HUMAN_GRANTS = /\nhumanGrants:\n(?: {2}.*\n)+/;
 const withLedger = (platform: string, ledger: string): string =>
   platform.replace(/\nhandover:\n(?: {2}.*\n)+/, `\n${ledger}`);
 
@@ -122,13 +124,15 @@ const PLATFORM: Fragment = {
   files: [
     {
       name: "platform.intent.yml",
-      // Without a Reporter, so the estate-scoped artifact holds what each
-      // test below gives it; the Reporter's own tests name one again. Without
-      // a sign-in provider, since no Project composed here declares a Client.
+      // Without a Reporter or a Human Grant, so the estate-scoped artifact
+      // holds what each test below gives it; their own tests name them again.
+      // Without a sign-in provider, since no Project composed here declares a
+      // Client.
       text: withLedger(
         text("platform/platform.intent.yml")
           .replace(REPORTER, "")
-          .replace(SIGN_IN, "\n"),
+          .replace(SIGN_IN, "\n")
+          .replace(HUMAN_GRANTS, "\n"),
         LEDGER,
       ),
     },
@@ -208,11 +212,14 @@ const readsTheLegacyPostgres = (body: string): string =>
       "        runtime: node\n        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n",
     );
 /** A composition whose estate-scoped artifact holds a legacy datastore's catalog. */
-function withLegacyCatalog(input: Partial<ComposeInput> = {}): Composition {
+function withLegacyCatalog(
+  input: Partial<ComposeInput> = {},
+  platform: Fragment = PLATFORM,
+): Composition {
   return compose({
     platform: {
-      ...PLATFORM,
-      files: PLATFORM.files.map((file) =>
+      ...platform,
+      files: platform.files.map((file) =>
         file.name === "platform.intent.yml"
           ? { ...file, text: withLedger(file.text, LEGACY_CATALOG) }
           : file,
@@ -2832,6 +2839,51 @@ describe("composeEstate, for the catalog of a datastore the old path runs", () =
     expect(
       composed.sources.find(({ name }) => name === "_estate")?.text,
     ).toContain("name: estate-vso-secrets");
+  });
+});
+
+// REQ-080 (docs/requirements.md): the Human Grants are the platform's, so the
+// estate-scoped artifact holds them in every composition, applied by a unit of
+// their own that follows nothing, beside the catalog's unit where it is held.
+describe("composeEstate, for the Human Grants", () => {
+  const granting = (platform: Fragment): Fragment => ({
+    ...platform,
+    files: platform.files.map((file) =>
+      file.name === "platform.intent.yml"
+        ? {
+            ...file,
+            text: file.text.replace(
+              "\npolicyJob:\n",
+              `${HUMAN_GRANTS.exec(text("platform/platform.intent.yml"))?.[0] ?? ""}policyJob:\n`,
+            ),
+          }
+        : file,
+    ),
+  });
+
+  it("delivers the bindings estate-scoped, by a unit that follows nothing, whatever the ledger hands over", () => {
+    const composed = compose({ platform: granting(PLATFORM) });
+    const estate = composed.artifacts.find(({ name }) => name === "_estate");
+
+    expect(estate?.files.map(({ path }) => path)).toStrictEqual([
+      "estate/human-grants/clusterrolebindings.yaml",
+      "estate/human-grants/kustomization.yaml",
+    ]);
+    expect(composed.sources.find(({ name }) => name === "_estate")?.text).toBe(
+      text("pins/rendered/projects/_estate/source.yaml"),
+    );
+  });
+
+  it("holds both estate-scoped units beside each other where the catalog is held too", () => {
+    const composed = withLegacyCatalog({}, granting(PLATFORM));
+    const estate = composed.artifacts.find(({ name }) => name === "_estate");
+    const source = composed.sources.find(({ name }) => name === "_estate");
+
+    expect(estate?.files.map(({ path }) => path)).toContain(
+      "estate/human-grants/clusterrolebindings.yaml",
+    );
+    expect(source?.text).toContain("name: estate-human-grants");
+    expect(source?.text).toContain("name: estate-vso-secrets");
   });
 });
 

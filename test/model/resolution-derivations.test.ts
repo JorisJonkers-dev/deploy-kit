@@ -3632,10 +3632,16 @@ describe("the Vault policy job", () => {
       Object.keys(
         set((platform) => platform.replace("secretStore: secrets/vault\n", "")),
       ),
-      // What the set does derive is where Flux's events go: the worked
-      // platform names a Reporter. The catalogs' homes are always there,
-      // and hold none.
-    ).toStrictEqual(["projects", "catalogHomes", "events", "tierProxies"]);
+      // What the set does derive is where Flux's events go, since the worked
+      // platform names a Reporter, the tiers' proxies, and the groups it grants
+      // a cluster role. The catalogs' homes are always there, and hold none.
+    ).toStrictEqual([
+      "projects",
+      "catalogHomes",
+      "events",
+      "tierProxies",
+      "humanGrants",
+    ]);
   });
 
   it("lands on no node that holds an sdcard medium, and on none too small for what it asks for", () => {

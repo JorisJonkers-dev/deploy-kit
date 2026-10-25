@@ -102,9 +102,10 @@ function pulled(): string {
   writeFileSync(
     document,
     readFileSync(document, "utf8")
-      // No Reporter, so the estate-scoped artifact holds no route to one, and
+      // No Reporter and no Human Grant, so the estate-scoped artifact holds no route to one, and
       // no sign-in provider, since no Project composed here declares a Client.
       .replace("  reporter: delivery/reporter\n", "")
+      .replace(/\nhumanGrants:\n(?: {2}.*\n)+/, "\n")
       .replace(/\nsignIn:\n(?: {2}.*\n)+/, "\n")
       .replace(
         /\nhandover:\n(?: {2}.*\n)+/,
