@@ -2808,7 +2808,15 @@ describe("the edge proxy's static configuration", () => {
       ),
     ) as string[];
 
-    expect(args.some((arg) => arg.startsWith("--ping"))).toBe(false);
-    expect(args).toContain("--entryPoints.web.address=:8000/tcp");
+    expect(args).toStrictEqual([
+      "--entryPoints.web.address=:8000/tcp",
+      "--providers.kubernetescrd=true",
+      "--providers.kubernetescrd.ingressClass=traefik-lan",
+      "--providers.kubernetescrd.allowCrossNamespace=true",
+      "--providers.kubernetescrd.allowEmptyServices=true",
+      "--log.format=json",
+      "--accesslog=true",
+      "--accesslog.format=json",
+    ]);
   });
 });
