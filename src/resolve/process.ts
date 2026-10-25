@@ -3,6 +3,7 @@
 // declared, carried through, and every mechanic derived from it and from the
 // pinned platform facts. Nothing here is authored and nothing may be.
 import { foundationOf } from "../model/platform-intent.ts";
+import type { L4Hold } from "../model/l4-addresses.ts";
 import type { ClusterStateDocument } from "../model/cluster-state.ts";
 import type {
   EffectiveApplication,
@@ -100,8 +101,8 @@ export interface ProcessContext {
   readonly application: string;
   /** The grants its Application's Client, or the provider's role, derives on the Process. */
   readonly clientGrants: readonly ResolvedGrant[];
-  /** The sites the pools the Process is exposed on hold it to. */
-  readonly sites: readonly string[];
+  /** Where the L4 Addresses the Process is exposed on hold it. */
+  readonly held: L4Hold;
 }
 
 type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
@@ -395,7 +396,7 @@ function placementOf(
       process,
       context.contract,
       context.platform,
-      context.sites,
+      context.held,
     ),
     ...(binding === undefined
       ? {}
@@ -417,7 +418,7 @@ function gpuOf(
     process,
     context.contract,
     context.platform,
-    context.sites,
+    context.held,
   );
   const policy = context.platform.gpus?.[vendor as string] as NonNullable<
     PlatformIntentDocument["gpus"]

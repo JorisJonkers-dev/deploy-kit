@@ -1329,6 +1329,12 @@ together:
 | no privilege escalation | `allowPrivilegeEscalation: false`, so a setuid binary in the image cannot regain what the other controls take away |
 | default syscall filter | `seccompProfile.type: RuntimeDefault` |
 
+A host port is no control of the five, and the only one the render writes is
+the rendering of an exposure on a node's own address
+([L4 exposure](#l4-exposure)), which holds the Process to that one node. So
+the posture admits a host port on a pod held to exactly one node, the shape a
+node address derives, and none elsewhere; no Process authors one.
+
 ### Writable paths are declared, not exempted
 
 A read-only root filesystem is not a filesystem nothing writes. A JVM needs
@@ -1991,6 +1997,27 @@ on that node, so a second replica on another node receives nothing until the
 announcement moves to it. A Process that needs more throughput than one pod gives
 needs a protocol that shares load itself.
 
+On a **node address**, a node's own address for a site with no pool, the
+Application writes the same entry; the address's kind decides the rendering.
+Each port is a **host port** on the Process: the node's port the client dials,
+reaching the surface's own port in the container, with no Service between. The
+Process is held to that node, a derived hard pin like a pool's site pin, so a
+placement that contradicts it is `E_PLACEMENT_UNSATISFIABLE` too. No Application
+names a node, and a host port is never authored.
+
+A node listens on a port and a protocol once, so two entries that dial the same
+one on one node, from any two Processes in the estate, are
+`E_NODE_PORT_TAKEN`. A host port also holds one copy of the Process. Replicas
+on a node address could never all start, which is `E_NODE_ADDRESS_REPLICATED`.
+The second revision a blue/green switch starts beside the old one could not
+bind the port either, so a Process on a node address cuts over `interrupted`:
+`continuous` there is `E_CUTOVER_UNHONOURABLE`, as it is over a volume that
+cannot attach twice ([Cutover is declared, not promised](#cutover-is-declared-not-promised)).
+Delivery machinery is the exception: its `continuous` cutover derives a
+rolling switchover that stops one pod before it starts the next
+([chapter 55](55-delivery.md#switchover)), which a host port honours, so an edge
+proxy on a node address keeps it.
+
 ### What is checked
 
 | condition | error |
@@ -2000,6 +2027,9 @@ needs a protocol that shares load itself.
 | an entry names a Process its Application does not have | `E_UNKNOWN_PROCESS` |
 | an entry's `{process, surface}` pair names no surface that Process provides | `E_UNKNOWN_SURFACE` |
 | a pool holds fewer addresses than the Processes exposed on it | `E_L4_ADDRESS_EXHAUSTED` |
+| two entries dial the same `port` and `protocol` on one node, through its node addresses | `E_NODE_PORT_TAKEN` |
+| a Process exposed on a node address declares `replicas` | `E_NODE_ADDRESS_REPLICATED` |
+| a Process exposed on a node address cuts over `continuous`, and its Application is not delivery machinery | `E_CUTOVER_UNHONOURABLE` |
 
 `E_DUPLICATE_L4_PORT`, `E_UNKNOWN_PROCESS` and `E_UNKNOWN_SURFACE` are scoped to
 the one document and refused as soon as the fragment is read.
@@ -2007,7 +2037,9 @@ the one document and refused as soon as the fragment is read.
 and the second needs every Project, so both are refused at composition
 ([chapter 40](40-composition.md)): each Service on a pool takes one address of
 its range, and one more Service than the range holds would wait for an address
-that never comes.
+that never comes. The three refusals of a node address need the Platform
+document to know the address's kind, and `E_NODE_PORT_TAKEN` needs every
+Project, so they are refused at composition too.
 
 ## Observability
 
@@ -2639,7 +2671,7 @@ boolean nobody reads:
 
 | value | means | validation |
 |---|---|---|
-| `continuous` | the next revision must keep serving throughout its cutover: it starts beside the old one and takes traffic only once every member of its Application has passed analysis, a **blue/green** switchover; on delivery machinery, which cannot gate itself, a **rolling** one ([chapter 55](55-delivery.md#switchover)) | refused over storage that cannot hold a second copy, including an **`ReadWriteOnce`** volume: `E_CUTOVER_UNHONOURABLE`; eligible only on a node that fits two copies of the Process ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)) |
+| `continuous` | the next revision must keep serving throughout its cutover: it starts beside the old one and takes traffic only once every member of its Application has passed analysis, a **blue/green** switchover; on delivery machinery, which cannot gate itself, a **rolling** one ([chapter 55](55-delivery.md#switchover)) | refused over storage that cannot hold a second copy, including an **`ReadWriteOnce`** volume, and on a node address, whose host port holds one, save on delivery machinery: `E_CUTOVER_UNHONOURABLE`; eligible only on a node that fits two copies of the Process ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)) |
 | `interrupted` | the owner accepts a stop-then-start cutover | accepted for any storage; the adapter derives the safe strategy |
 
 The two values name the owner's promise, not a mechanism: the Kubernetes and

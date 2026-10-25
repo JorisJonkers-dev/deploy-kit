@@ -84,6 +84,7 @@ other resolves and every policy one asks for the other offers:
 | a Process mounts a library `libraries` does not declare | `E_UNKNOWN_LIBRARY` |
 | an Application's `l4Exposure` names an address `l4Addresses` does not declare | `E_UNKNOWN_L4_ADDRESS` |
 | more Processes are exposed on a pool than its `range` holds addresses | `E_L4_ADDRESS_EXHAUSTED` |
+| two exposures dial the same port and protocol on one node through its node addresses | `E_NODE_PORT_TAKEN` |
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
@@ -482,19 +483,30 @@ l4Addresses:
     kind: pool
     site: enschede
     range: 192.168.0.97/32
+  mail-node:
+    kind: node
+    node: frankfurt-contabo-1
 ```
 
-| field | required | notes |
-|---|---|---|
-| `kind` | yes | How the address is reached. `pool` is the one kind: a range of IPv4 addresses announced on one site's network segment. |
-| `site` | yes | The site whose segment announces the pool. Every Process exposed on it is held to this site. |
-| `range` | yes | The IPv4 range, in CIDR form, the address is taken from. A `/32` is one address. It sits outside the router's DHCP scope. |
+`kind` says how the address is reached, and each kind has its own fields.
+
+| kind | field | required | notes |
+|---|---|---|---|
+| `pool` | `site` | yes | The site whose segment announces the pool: a range of IPv4 addresses on one site's network segment. Every Process exposed on it is held to this site. |
+| `pool` | `range` | yes | The IPv4 range, in CIDR form, the address is taken from. A `/32` is one address. It sits outside the router's DHCP scope. |
+| `node` | `node` | yes | The node, as the node contract names it, whose own address a client dials: for a site with no pool. Every Process exposed on it is held to this node, and each of its ports is a host port there. |
 
 Each Service exposed on a pool takes one address of its range, as a load
 balancer requesting the pool by its name, so the pool's name is also the name
 of the address pool the cluster's load balancer announces from. The render
 installs no load balancer and declares no pool on it: an entry asserts that the
 substrate announces the range on the site's segment.
+
+A node address takes no address of a range, so it is never exhausted. What it
+has to share is the node's ports: a node listens on a port and a protocol once,
+so two exposures dialling the same one there, through any of its node
+addresses, are `E_NODE_PORT_TAKEN`. The entry asserts that the node's address
+reaches the node, and that no firewall of the substrate's drops the ports.
 
 ## GPUs
 

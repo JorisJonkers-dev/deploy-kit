@@ -12,11 +12,9 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
 spec:
+  replicas: 1
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+    type: Recreate
   progressDeadlineSeconds: 300
   selector:
     matchLabels:
@@ -49,12 +47,6 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: In
                     values:
-                      - enschede-t1000-1
-                      - enschede-rx7900xtx-1
-                      - enschede-gtx-960m-1
-                      - enschede-pi-1
-                      - enschede-pi-2
-                      - enschede-pi-3
                       - frankfurt-contabo-1
       containers:
         - name: stalwart
@@ -62,6 +54,12 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+            - name: smtp
+              containerPort: 25
+              hostPort: 25
+            - name: imaps
+              containerPort: 993
+              hostPort: 993
           resources:
             requests:
               memory: 512Mi

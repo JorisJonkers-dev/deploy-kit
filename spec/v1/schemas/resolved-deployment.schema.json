@@ -1280,7 +1280,14 @@
         "l4Exposure": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/ResolvedL4Exposure"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ResolvedPoolExposure"
+              },
+              {
+                "$ref": "#/$defs/ResolvedNodeExposure"
+              }
+            ]
           }
         },
         "ingress": {
@@ -2293,7 +2300,7 @@
       ],
       "additionalProperties": false
     },
-    "ResolvedL4Exposure": {
+    "ResolvedPoolExposure": {
       "type": "object",
       "properties": {
         "address": {
@@ -2374,6 +2381,37 @@
         "tcp",
         "udp"
       ]
+    },
+    "ResolvedNodeExposure": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "node"
+        },
+        "node": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ports": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedL4Port"
+          }
+        }
+      },
+      "required": [
+        "address",
+        "kind",
+        "node",
+        "ports"
+      ],
+      "additionalProperties": false
     },
     "IngressPeer": {
       "anyOf": [

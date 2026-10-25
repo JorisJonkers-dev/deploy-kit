@@ -539,6 +539,13 @@ const poolAddress = z
   })
   .meta({ id: "PoolAddress" });
 
+// A node's own address, for a site with no pool: an exposure on it is a host
+// port on the Process, which is held to that node, since no other node
+// listens there. The node is named as the node contract names it.
+const nodeAddress = z
+  .strictObject({ kind: z.literal("node"), node: text })
+  .meta({ id: "NodeAddress" });
+
 const provider = z
   .strictObject({
     name: text,
@@ -588,7 +595,10 @@ export const platformIntent = z
     humanGrants: z.array(humanGrant).min(1).exactOptional(),
     priority: priorityPolicy.exactOptional(),
     l4Addresses: z
-      .record(z.string().regex(L4_ADDRESS_NAME), poolAddress)
+      .record(
+        z.string().regex(L4_ADDRESS_NAME),
+        z.union([poolAddress, nodeAddress]),
+      )
       .meta({ entry: "L4Address" })
       .exactOptional(),
   })

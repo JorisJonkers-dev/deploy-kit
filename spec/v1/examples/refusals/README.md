@@ -50,6 +50,9 @@ one defect so the refusal has a single cause.
 | [`library-not-granted/`](library-not-granted/) | `E_LIBRARY_NOT_GRANTED` | a Process mounting `write` a library that grants its project `read` ([chapter 14](../../14-platform-intent.md#libraries)) |
 | [`unknown-l4-address/`](unknown-l4-address/) | `E_UNKNOWN_L4_ADDRESS` | an Application exposed on an L4 Address the Platform document does not declare ([chapter 14](../../14-platform-intent.md#l4-addresses)) |
 | [`l4-address-exhausted/`](l4-address-exhausted/) | `E_L4_ADDRESS_EXHAUSTED` | two Processes exposed on a pool whose range holds one address ([chapter 14](../../14-platform-intent.md#l4-addresses)) |
+| [`node-port-taken/`](node-port-taken/) | `E_NODE_PORT_TAKEN` | two Processes exposed on one node's own address at the same port and protocol ([chapter 10](../../10-project-intent.md#l4-exposure)) |
+| [`node-address-replicated/`](node-address-replicated/) | `E_NODE_ADDRESS_REPLICATED` | a Process with replicas exposed on a node's own address ([chapter 10](../../10-project-intent.md#l4-exposure)) |
+| [`node-address-continuous/`](node-address-continuous/) | `E_CUTOVER_UNHONOURABLE` | a continuous cutover on a Process exposed on a node's own address ([chapter 10](../../10-project-intent.md#cutover-is-declared-not-promised)) |
 | [`no-vpn-policy/`](no-vpn-policy/) | `E_NO_VPN_POLICY` | a Process attaching to a VPN the Platform document does not run ([chapter 14](../../14-platform-intent.md#vpn)) |
 | [`duplicate-human-grant/`](duplicate-human-grant/) | `E_DUPLICATE_HUMAN_GRANT` | a Platform document granting one group one role twice ([chapter 14](../../14-platform-intent.md#human-grants)) |
 | [`durability-policy-incomplete/`](durability-policy-incomplete/) | `E_DURABILITY_POLICY_INCOMPLETE` | a backed-up class whose policy names no retention ([chapter 14](../../14-platform-intent.md#durability-policy)) |

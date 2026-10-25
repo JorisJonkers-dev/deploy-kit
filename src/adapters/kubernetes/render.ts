@@ -26,6 +26,7 @@ import type {
   EnvVar,
   Kustomization,
   Labels,
+  ContainerPort,
   LoadBalancerService,
   NodeAffinity,
   PodAntiAffinity,
@@ -444,6 +445,50 @@ function sidecarOf(
   };
 }
 
+/**
+ * The ports a container listens on, one per surface, and a host port for each
+ * port a client dials on a node's own address
+ * (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection): on the
+ * surface's own entry where the client dials the surface's port over TCP, and
+ * on one of its own, named as the resolved port is, where it does not.
+ */
+function portsOf(
+  surfaces: NonNullable<ResolvedProcess["surfaces"]>,
+  l4Exposure: ResolvedProcess["l4Exposure"],
+): ContainerPort[] {
+  const onNode = (l4Exposure ?? []).flatMap((exposure) =>
+    exposure.kind === "node" ? exposure.ports : [],
+  );
+  // A port's target is its surface's own port, so a TCP port the client
+  // dials at that same number is the surface's entry with a host port.
+  const merges = ({
+    port,
+    protocol,
+    targetPort,
+  }: (typeof onNode)[number]): boolean =>
+    protocol === "tcp" && port === targetPort;
+  return [
+    ...surfaces.map(({ name, port }) => {
+      const dialled = onNode.find(
+        (entry) => entry.surface === name && merges(entry),
+      );
+      return {
+        name,
+        containerPort: port,
+        ...(dialled === undefined ? {} : { hostPort: dialled.port }),
+      };
+    }),
+    ...onNode
+      .filter((entry) => !merges(entry))
+      .map(({ name, port, protocol, targetPort }) => ({
+        name,
+        containerPort: targetPort,
+        hostPort: port,
+        protocol: protocol === "udp" ? ("UDP" as const) : ("TCP" as const),
+      })),
+  ];
+}
+
 function containerOf(process: ResolvedProcess): Container {
   const env = envOf(process);
   const mounts = mountsOf(process);
@@ -452,12 +497,7 @@ function containerOf(process: ResolvedProcess): Container {
     image: process.image,
     ...(process.surfaces === undefined
       ? {}
-      : {
-          ports: process.surfaces.map(({ name, port }) => ({
-            name,
-            containerPort: port,
-          })),
-        }),
+      : { ports: portsOf(process.surfaces, process.l4Exposure) }),
     ...(env.length === 0 ? {} : { env }),
     resources: gpuShareOf(process, resourcesOf(process.memory, process.cpu)),
     securityContext: RESTRICTED,
@@ -691,27 +731,29 @@ const l4ServicesOf = (
 ): LoadBalancerService[] =>
   // A missing list and an empty one expose nothing alike.
   // Stryker disable next-line ArrayDeclaration
-  (process.l4Exposure ?? []).map(({ address, service, ports }) => ({
-    apiVersion: "v1",
-    kind: "Service",
-    metadata: {
-      name: service,
-      namespace: application.namespace,
-      labels: labelsOf(process, application.id),
-      annotations: { [ADDRESS_POOL]: address },
-    },
-    spec: {
-      type: "LoadBalancer",
-      externalTrafficPolicy: "Local",
-      selector: instanceOf(process.name),
-      ports: ports.map(({ name, port, protocol, targetPort }) => ({
-        name,
-        port,
-        protocol: protocol === "udp" ? "UDP" : "TCP",
-        targetPort,
-      })),
-    },
-  }));
+  (process.l4Exposure ?? [])
+    .flatMap((exposure) => (exposure.kind === "pool" ? [exposure] : []))
+    .map(({ address, service, ports }) => ({
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: service,
+        namespace: application.namespace,
+        labels: labelsOf(process, application.id),
+        annotations: { [ADDRESS_POOL]: address },
+      },
+      spec: {
+        type: "LoadBalancer",
+        externalTrafficPolicy: "Local",
+        selector: instanceOf(process.name),
+        ports: ports.map(({ name, port, protocol, targetPort }) => ({
+          name,
+          port,
+          protocol: protocol === "udp" ? "UDP" : "TCP",
+          targetPort,
+        })),
+      },
+    }));
 
 /**
  * A claim for each volume, `ReadWriteOnce` as `local-path` provides, and for

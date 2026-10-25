@@ -2575,3 +2575,111 @@ describe("an L4 exposure", () => {
     ]);
   });
 });
+
+// REQ-097 (docs/requirements.md): an exposure on a node-kind L4 Address renders
+// a host port on the Process, the client's port on the node to the surface's
+// own, and holds the Process to that node; it renders no load balancer.
+describe("an exposure on a node address", () => {
+  const MAIL = "mail/mail.project.yml";
+  const SMTP =
+    "      - { address: mail-node, port: 25, protocol: tcp, process: stalwart, surface: smtp }\n";
+  const workloadOf = (edit?: (document: string) => string) =>
+    parseAllDocuments(
+      asTree(
+        artifact(
+          render(edit === undefined ? {} : { [MAIL]: edit }, ["mail"]),
+          "mail",
+        ),
+      )["apps/mail/stalwart/workload.yaml"] ?? "",
+    )
+      .map((document) => document.toJS() as Record<string, unknown>)
+      .find(({ kind }) => kind === "Deployment") as {
+      spec: {
+        template: {
+          spec: {
+            containers: { ports: unknown[] }[];
+            affinity: unknown;
+          };
+        };
+      };
+    };
+
+  it("puts the client's port on the surface's own port as a host port", () => {
+    expect(workloadOf().spec.template.spec.containers[0]?.ports).toStrictEqual([
+      { name: "http", containerPort: 8080 },
+      { name: "smtp", containerPort: 25, hostPort: 25 },
+      { name: "imaps", containerPort: 993, hostPort: 993 },
+    ]);
+  });
+
+  it("adds a port of its own where the client's port or protocol is not the surface's", () => {
+    const ports = workloadOf((document) =>
+      document.replace(
+        SMTP,
+        `${SMTP}      - { address: mail-node, port: 587, protocol: tcp, process: stalwart, surface: smtp }\n      - { address: mail-node, port: 25, protocol: udp, process: stalwart, surface: smtp }\n`,
+      ),
+    ).spec.template.spec.containers[0]?.ports;
+
+    expect(ports).toStrictEqual([
+      { name: "http", containerPort: 8080 },
+      { name: "smtp", containerPort: 25, hostPort: 25 },
+      { name: "imaps", containerPort: 993, hostPort: 993 },
+      { name: "udp-25", containerPort: 25, hostPort: 25, protocol: "UDP" },
+      { name: "tcp-587", containerPort: 25, hostPort: 587, protocol: "TCP" },
+    ]);
+  });
+
+  it("refuses a placement no node of the address can meet, naming the node", () => {
+    const result = renderIntentSet(
+      files({
+        [MAIL]: (document) =>
+          document.replace(
+            "          memory: 512Mi",
+            "          site: enschede\n          memory: 512Mi",
+          ),
+      }),
+      { ...OPTIONS, projects: ["mail"] },
+    );
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, message, hint }) => ({
+            code,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_PLACEMENT_UNSATISFIABLE",
+        message:
+          "no node of frankfurt-contabo-1, the node of each node address stalwart is exposed on, can hold it",
+        hint: "Relax a placement dimension, or expose the Process on the address of a node that can hold it.",
+      },
+    ]);
+  });
+
+  it("holds the Process to the node, and renders no load balancer", () => {
+    expect(workloadOf().spec.template.spec.affinity).toStrictEqual({
+      nodeAffinity: {
+        requiredDuringSchedulingIgnoredDuringExecution: {
+          nodeSelectorTerms: [
+            {
+              matchExpressions: [
+                {
+                  key: "kubernetes.io/hostname",
+                  operator: "In",
+                  values: ["frankfurt-contabo-1"],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    const tree = asTree(artifact(render(undefined, ["mail"]), "mail"));
+    expect(
+      Object.values(tree).some((body) => body.includes("LoadBalancer")),
+    ).toBe(false);
+  });
+});

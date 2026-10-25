@@ -17,6 +17,7 @@ import {
   secretStoreAddress,
 } from "../model/runtime-profiles.ts";
 import { addressesIn, l4AddressOf } from "../model/l4-addresses.ts";
+import { serves } from "../model/vocabularies.ts";
 import { libraryOf } from "../model/libraries.ts";
 import type {
   LibraryMount,
@@ -125,6 +126,105 @@ const l4AddressRefusals = (
   );
 
 /**
+ * A node's own address is a host port on one node
+ * (spec/v1/10-project-intent.md#l4-exposure), and a host port holds one copy:
+ * a second replica, or the second revision a blue/green switch starts beside
+ * the old one, could never bind it.
+ */
+const nodeAddressRefusals = (
+  project: ProjectIntentDocument,
+  application: Application,
+  a: number,
+  platform: PlatformIntentDocument,
+): Omit<Diagnostic, "document">[] => {
+  const onNode = new Set(
+    // A missing list and an empty one expose nothing alike.
+    // Stryker disable next-line ArrayDeclaration
+    (application.l4Exposure ?? [])
+      .filter(({ address }) => l4AddressOf(platform, address)?.kind === "node")
+      .map(({ process }) => process),
+  );
+  // The delivery machinery cuts over rolling, never a pod more, which a host
+  // port honours; a continuous cutover anywhere else switches blue/green.
+  const machinery =
+    platform.delivery?.machinery.includes(
+      `${project.project}/${application.id}`,
+    ) === true;
+  return application.processes.flatMap((process, p) => {
+    if (!onNode.has(process.name)) return [];
+    const at = `/applications/${String(a)}/processes/${String(p)}`;
+    return [
+      ...(process.replicas === undefined
+        ? []
+        : [
+            {
+              code: "E_NODE_ADDRESS_REPLICATED" as const,
+              path: `${at}/replicas`,
+              message: `${process.name} is exposed on a node's own address, where a host port holds one copy, so its replicas could never all start`,
+              hint: "Drop `replicas`, or expose the Process on a pool.",
+            },
+          ]),
+      ...(serves(process.lifecycle) &&
+      !machinery &&
+      effectiveCutover([process, application, project]) === "continuous"
+        ? [
+            {
+              code: "E_CUTOVER_UNHONOURABLE" as const,
+              path: at,
+              message: `${process.name} is exposed on a node's own address, whose host port the second copy a continuous cutover starts beside the old one cannot bind`,
+              hint: "Declare `cutover: interrupted`, which is what a host port can honour.",
+            },
+          ]
+        : []),
+    ];
+  });
+};
+
+/**
+ * A node listens on a port and a protocol once, so two Processes, or one on
+ * two of a node's addresses, never dial the same one there
+ * (spec/v1/10-project-intent.md#l4-exposure). Every entry that shares it is
+ * refused; one Process's repeat on one address is E_DUPLICATE_L4_PORT's.
+ */
+function nodePortRefusals(
+  platform: Named<PlatformIntentDocument>,
+  projects: readonly Named<ProjectIntentDocument>[],
+): Diagnostic[] {
+  const entries = projects.flatMap(({ name, document }) =>
+    document.applications.flatMap((application, a) =>
+      // Stryker disable next-line ArrayDeclaration
+      (application.l4Exposure ?? []).flatMap((entry, e) => {
+        const address = l4AddressOf(platform.document, entry.address);
+        return address?.kind === "node"
+          ? [
+              {
+                document: name,
+                path: `/applications/${String(a)}/l4Exposure/${String(e)}`,
+                key: JSON.stringify([address.node, entry.protocol, entry.port]),
+                owner: JSON.stringify([name, a, entry.process, entry.address]),
+                entry,
+                node: address.node,
+              },
+            ]
+          : [];
+      }),
+    ),
+  );
+  const owners = new Map<string, Set<string>>();
+  for (const { key, owner } of entries)
+    owners.set(key, (owners.get(key) ?? new Set()).add(owner));
+  return entries
+    .filter(({ key }) => (owners.get(key) as Set<string>).size > 1)
+    .map(({ document, path, entry, node }) => ({
+      code: "E_NODE_PORT_TAKEN",
+      document,
+      path,
+      message: `${entry.protocol} port ${String(entry.port)} on ${node} is dialled by more than one exposure`,
+      hint: "A node listens on a port and a protocol once: give one exposure another port, or expose it on another address.",
+    }));
+}
+
+/**
  * A pool gives each Service exposed on it one address of its range, so it
  * holds as many Processes as its range holds addresses: one more would wait
  * for an address that never comes.
@@ -145,7 +245,11 @@ function exhaustedRefusals(
           ),
         );
   return Object.entries(platform.document.l4Addresses ?? {}).flatMap(
-    ([name, { range }]): Diagnostic[] => {
+    ([name, address]): Diagnostic[] => {
+      // A node's own address takes no address of a range: its ports are
+      // counted by E_NODE_PORT_TAKEN instead.
+      if (address.kind === "node") return [];
+      const { range } = address;
       const processes = exposed.get(name)?.size ?? 0;
       return processes > addressesIn(range)
         ? [
@@ -397,6 +501,7 @@ function projectRefusals(
     }
     refusals.push(...grantRefusals(application.secrets ?? [], at, platform));
     refusals.push(...l4AddressRefusals(application, at, platform));
+    refusals.push(...nodeAddressRefusals(project, application, a, platform));
     for (const [p, process] of application.processes.entries()) {
       const processAt = `${at}/processes/${p}`;
       const volumes = process.volumes ?? [];
@@ -758,6 +863,7 @@ export function setDiagnostics(
     ...enrolled,
     ...serving,
     ...exhaustedRefusals(platform, projects),
+    ...nodePortRefusals(platform, projects),
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,

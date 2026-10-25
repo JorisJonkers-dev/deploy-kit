@@ -33,6 +33,7 @@ spec:
         consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
         consumes.deploy-kit.jorisjonkers.dev/platform-valkey.redis: "true"
         consumes.deploy-kit.jorisjonkers.dev/platform-rabbitmq.amqp: "true"
+        consumes.deploy-kit.jorisjonkers.dev/stalwart.smtp: "true"
       annotations:
         image.jorisjonkers.dev/auth-api: 2.3.0
     spec:
@@ -74,7 +75,7 @@ spec:
             - name: DEPLOYMENT_ENVIRONMENT
               value: production
             - name: MAIL_HOST
-              value: 10.0.0.12
+              value: stalwart
             - name: MAIL_PORT
               value: "25"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT

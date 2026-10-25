@@ -14,6 +14,12 @@
 // ADR 0020). The posture's own controls (non-root, drop ALL, no privilege
 // escalation, a read-only root filesystem) therefore do not apply to it; the
 // rest of the profile does, and it may add no capability but those two.
+//
+// One control is relaxed where the model derives it: a host port, which the
+// profile's baseline forbids, is the rendering of an exposure on a node's own
+// address (chapter 10's L4 exposure section), and it comes with a hard pin to
+// that node. A host port on a pod held to exactly one node by name passes;
+// any other is still a finding.
 import { parseAllDocuments } from "yaml";
 
 type Json = Readonly<Record<string, unknown>>;
@@ -137,16 +143,38 @@ function podFindings(spec: Json, annotations: Json): string[] {
   return findings;
 }
 
+/**
+ * Whether a pod's required node affinity holds it to exactly one node by name:
+ * the hard pin a node address derives beside its host ports.
+ */
+function heldToOneNode(spec: Json): boolean {
+  const terms = list(
+    record(
+      record(record(spec.affinity).nodeAffinity)
+        .requiredDuringSchedulingIgnoredDuringExecution,
+    ).nodeSelectorTerms,
+  ).map(record);
+  if (terms.length !== 1) return false;
+  const expressions = list((terms[0] as Json).matchExpressions).map(record);
+  return (
+    expressions.length === 1 &&
+    (expressions[0] as Json).key === "kubernetes.io/hostname" &&
+    (expressions[0] as Json).operator === "In" &&
+    list((expressions[0] as Json).values).length === 1
+  );
+}
+
 function containerFindings(
   container: Json,
   pod: Json,
   isVpn: boolean,
+  pinned: boolean,
 ): string[] {
   const findings: string[] = [];
   const context = record(container.securityContext);
   if (context.privileged === true) findings.push("privileged");
   for (const port of list(container.ports).map(record))
-    if (typeof port.hostPort === "number" && port.hostPort !== 0)
+    if (typeof port.hostPort === "number" && port.hostPort !== 0 && !pinned)
       findings.push(`hostPort ${scalar(port.hostPort)}`);
   if (context.procMount !== undefined && context.procMount !== "Default")
     findings.push(`procMount is ${scalar(context.procMount)}`);
@@ -212,6 +240,7 @@ export function podSecurityFindings(text: string): string[] {
     for (const finding of podFindings(spec, annotations))
       findings.push(`${name}: ${finding}`);
     const pod = record(spec.securityContext);
+    const pinned = heldToOneNode(spec);
     const groups = [
       ["initContainers", list(spec.initContainers)],
       ["containers", list(spec.containers)],
@@ -223,7 +252,7 @@ export function podSecurityFindings(text: string): string[] {
           group === "initContainers" &&
           container.name === "vpn" &&
           container.restartPolicy === "Always";
-        for (const finding of containerFindings(container, pod, isVpn))
+        for (const finding of containerFindings(container, pod, isVpn, pinned))
           findings.push(
             `${name} container "${scalar(container.name)}": ${finding}`,
           );

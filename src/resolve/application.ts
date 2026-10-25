@@ -34,7 +34,7 @@ import { resolveExposure } from "./exposure.ts";
 import { clientGrantsOf, resolveClient } from "./client.ts";
 import { resolveMesh } from "./mesh.ts";
 import { resolveL4Exposure } from "./l4-exposure.ts";
-import { l4ExposuresOf, l4SitesOf } from "../model/l4-addresses.ts";
+import { l4ExposuresOf, l4HoldOf } from "../model/l4-addresses.ts";
 import { managed } from "./database.ts";
 import { resolveMigration } from "./migration.ts";
 import { egressOf, ingressOf } from "./policy.ts";
@@ -48,7 +48,7 @@ export type ResolvedElement = Omit<
 
 export interface ApplicationContext extends Omit<
   ProcessContext,
-  "machinery" | "migratesItself" | "application" | "clientGrants" | "sites"
+  "machinery" | "migratesItself" | "application" | "clientGrants" | "held"
 > {
   /** The project that declares each Application of the union, by its id. */
   readonly projectOf: ReadonlyMap<string, string>;
@@ -336,7 +336,7 @@ export function resolveApplication(
           migratesItself: application.migration === "self",
           application: application.id,
           clientGrants,
-          sites: l4SitesOf(exposures, context.platform),
+          held: l4HoldOf(exposures, context.platform),
         }),
         ...(l4Exposure.length === 0 ? {} : { l4Exposure }),
         ...(ingress.length === 0 ? {} : { ingress }),

@@ -140,7 +140,17 @@ dials is its own; the port the container listens on stays the Surface's.
 **L4 Address**: an address off-cluster clients reach a raw surface on, declared
 by name in the Platform document. A `pool` is an IPv4 range announced on one
 site's network segment: every Process exposed on it is held to that site, and
-its replicas are failover, not load sharing.
+its replicas are failover, not load sharing. A `node` address is one node's
+own address, for a site with no pool: every Process exposed on it is held to
+that node, through a Host port.
+
+**Node address**: an L4 Address of kind `node`, naming a node as the node
+contract does. It takes no address of a range; it shares the node's ports.
+
+**Host port**: a node's port that reaches a container's port with no Service
+between, derived for each port a client dials on a Node address and never
+authored. A host port holds one copy of its Process, so a Process on a Node
+address has no replicas and cuts over `interrupted`.
 
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the

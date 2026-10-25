@@ -377,6 +377,66 @@ describe("the access by delivery matrix", () => {
   });
 });
 
+// REQ-097: a node listens on a port and a protocol once, and on as many as
+// its exposures dial.
+describe("two exposures on one node", () => {
+  it("are accepted on different ports", () => {
+    expect(
+      checkIntentSet(
+        filesOf("node-port-taken").map((file) =>
+          file.name === "refusals.project.yml"
+            ? {
+                ...file,
+                text: file.text.replace(
+                  "{address: mail-node, port: 25, protocol: tcp, process: mail-b,",
+                  "{address: mail-node, port: 26, protocol: tcp, process: mail-b,",
+                ),
+              }
+            : file,
+        ),
+      ).ok,
+    ).toBe(true);
+  });
+});
+
+// REQ-097: delivery machinery cuts over rolling, never a pod more, so a host
+// port honours its continuous cutover; only a blue/green switch is refused.
+describe("a continuous cutover on a node address", () => {
+  it("is refused under a platform with no delivery policy, which names no machinery", () => {
+    const result = checkIntentSet(
+      filesOf("node-address-continuous").map((file) =>
+        file.name === "platform.intent.yml"
+          ? {
+              ...file,
+              text: file.text.replace(/\ndelivery:\n( {2}.*\n)+/, "\n"),
+            }
+          : file,
+      ),
+    );
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ code }) => code),
+    ).toContain("E_CUTOVER_UNHONOURABLE");
+  });
+
+  it("is accepted where the Application is delivery machinery", () => {
+    expect(
+      checkIntentSet(
+        filesOf("node-address-continuous").map((file) =>
+          file.name === "platform.intent.yml"
+            ? {
+                ...file,
+                text: file.text.replace(
+                  "machinery: [refusals/edge-proxy]",
+                  "machinery: [refusals/edge-proxy, refusals/mail]",
+                ),
+              }
+            : file,
+        ),
+      ).ok,
+    ).toBe(true);
+  });
+});
+
 describe("a library mount", () => {
   const granted = (edit: (text: string) => string) =>
     checkIntentSet(
@@ -592,6 +652,9 @@ describe("the refusal fixtures", () => {
       "no-sign-in-provider",
       "no-tier-for-audience",
       "no-vpn-policy",
+      "node-address-continuous",
+      "node-address-replicated",
+      "node-port-taken",
       "non-kv-delivery",
       "owner-role-granted",
       "placement-incomplete",
@@ -624,7 +687,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(73);
+    expect(refused).toHaveLength(76);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

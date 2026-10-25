@@ -467,6 +467,44 @@
           "path": "/l4Addresses/lan-mqtt/site"
         }
       ]
+    },
+    {
+      "name": "a node address with no node",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/l4Addresses/mail-node/node"
+        }
+      ]
+    },
+    {
+      "name": "a node address that also names a pool's range",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/l4Addresses/mail-node/range",
+          "value": "192.168.0.99/32"
+        }
+      ]
+    },
+    {
+      "name": "an L4 Address that is neither a pool nor a node address",
+      "verdict": "refuse",
+      "breaks": "union",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/l4Addresses/mail-node",
+          "value": "frankfurt-contabo-1"
+        }
+      ]
     }
   ]
 }
