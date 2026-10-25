@@ -539,10 +539,13 @@ describe("deploy-kit compose", () => {
       readFileSync(join(root, "first", "composition.json"), "utf8"),
     ) as {
       artifacts: { name: string; contentHash: string; moves: boolean }[];
+      removedSources: unknown[];
       rollouts: unknown[];
       statuses: unknown[];
       conditions: unknown[];
     };
+    // No pin source was committed, so none is removed.
+    expect(report.removedSources).toStrictEqual([]);
     expect(report.statuses).toHaveLength(7);
     expect(report.conditions).toEqual([]);
     // REQ-056 (docs/requirements.md): one Rollout per Project whose pin

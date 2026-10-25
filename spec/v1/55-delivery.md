@@ -221,6 +221,15 @@ a Project's routes arriving when the edge leaves the old path move its pin
 once. The rewrite keeps the annotations a Pause or a Rollback
 recorded on the pin ([Pause and Rollback](#pause-and-rollback)).
 
+Once the estate-scoped artifact holds nothing, composition publishes none and
+writes no source for it, and names its committed source in `removedSources` of
+`composition.json`, which the Estate repository deletes. A source that stayed
+would pin an artifact no composition publishes again, and its units would hold
+whatever they last applied. Deleting it lets Flux prune the source and its
+units, which hold nothing by then. A Project's own source is never removed
+this way: a Project leaves the estate through its handover, not through an
+empty render.
+
 ## Pause and Rollback
 
 A human can hold one Project still, or take it back to an earlier release,
