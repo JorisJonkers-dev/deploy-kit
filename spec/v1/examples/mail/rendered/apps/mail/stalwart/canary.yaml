@@ -1,0 +1,65 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: stalwart
+  namespace: mail-system
+  labels:
+    app.kubernetes.io/name: stalwart
+    app.kubernetes.io/instance: stalwart
+    app.kubernetes.io/part-of: stalwart
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: stalwart
+  progressDeadlineSeconds: 300
+  service:
+    port: 8080
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: stalwart
+          process: stalwart
+          revision: sha256:8552022b8d84456b685ca636984907cb3e48c701e293a60e11cac824666cf1f0
+          paths: /
+          readiness: /healthz/ready
+          hostnames: mail.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: stalwart
+          process: stalwart
+          revision: sha256:8552022b8d84456b685ca636984907cb3e48c701e293a60e11cac824666cf1f0
+          paths: /
+          readiness: /healthz/ready
+          hostnames: mail.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: stalwart
+          process: stalwart
+          revision: sha256:8552022b8d84456b685ca636984907cb3e48c701e293a60e11cac824666cf1f0
+          paths: /
+          readiness: /healthz/ready
+          hostnames: mail.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms

@@ -218,7 +218,7 @@ policyJob:
 handover:
   retireBy: 2027-03-31
   legacy: [auth, data, knowledge, notes]
-  estate: [delivery, edge, identity, knowledge-platform, observability, secrets]
+  estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]
   # Where the old path keeps the legacy Postgres's administrative login, which
   # applies the catalog of the estate path's databases until data moves.
   serving:
