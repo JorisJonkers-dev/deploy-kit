@@ -48,7 +48,7 @@ const platformOf = (signIn = SIGN_IN, crd = CLIENT_CRD): string =>
     certificates: acme
     forwardAuth: "${GATE}"
     traefik: signin/edge-proxy
-    ingressClass: signin
+    ingressClass: edge-proxy
 `,
     )
     .replaceAll("refusals/edge-proxy", "signin/edge-proxy")

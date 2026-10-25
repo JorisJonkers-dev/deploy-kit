@@ -2713,3 +2713,110 @@ describe("an exposure on a node address", () => {
     ).toBe(false);
   });
 });
+// REQ-091 (docs/requirements.md): a tier's proxy takes its static
+// configuration from the model: entry points from its surfaces, the CRD
+// provider filtered on its tier's ingress class, ping and metrics on `admin`.
+describe("the edge proxy's static configuration", () => {
+  const argsOf = (
+    application: string,
+    edit?: (document: string) => string,
+  ): unknown => {
+    const tree = asTree(
+      artifact(
+        render(edit === undefined ? {} : { "edge/edge.project.yml": edit }, [
+          "edge",
+        ]),
+        "edge",
+      ),
+    );
+    const [workload] = parseAllDocuments(
+      tree[`apps/edge/${application}/workload.yaml`] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    const spec = workload?.["spec"] as {
+      template: { spec: { containers: { args?: string[] }[] } };
+    };
+    return spec.template.spec.containers[0]?.args;
+  };
+
+  it("serves TLS on websecure, and admits only its tier's class", () => {
+    expect(argsOf("traefik-public")).toStrictEqual([
+      "--entryPoints.web.address=:8000/tcp",
+      "--entryPoints.websecure.address=:8443/tcp",
+      "--entryPoints.websecure.http.tls=true",
+      "--entryPoints.traefik.address=:8080/tcp",
+      "--ping=true",
+      "--ping.entryPoint=traefik",
+      "--metrics.prometheus=true",
+      "--metrics.prometheus.entryPoint=traefik",
+      "--providers.kubernetescrd=true",
+      "--providers.kubernetescrd.ingressClass=traefik-public",
+      "--providers.kubernetescrd.allowCrossNamespace=true",
+      "--providers.kubernetescrd.allowEmptyServices=true",
+      "--log.format=json",
+      "--accesslog=true",
+      "--accesslog.format=json",
+    ]);
+  });
+
+  it("opens no websecure entry point where the Process provides none", () => {
+    expect(argsOf("traefik-lan")).toStrictEqual([
+      "--entryPoints.web.address=:8000/tcp",
+      "--entryPoints.traefik.address=:8080/tcp",
+      "--ping=true",
+      "--ping.entryPoint=traefik",
+      "--metrics.prometheus=true",
+      "--metrics.prometheus.entryPoint=traefik",
+      "--providers.kubernetescrd=true",
+      "--providers.kubernetescrd.ingressClass=traefik-lan",
+      "--providers.kubernetescrd.allowCrossNamespace=true",
+      "--providers.kubernetescrd.allowEmptyServices=true",
+      "--log.format=json",
+      "--accesslog=true",
+      "--accesslog.format=json",
+    ]);
+  });
+
+  it("serves TLS only where the tier terminates it and the Process provides websecure", () => {
+    const tlsOn = (args: unknown) =>
+      (args as string[]).includes("--entryPoints.websecure.http.tls=true");
+    // A tls tier whose proxy provides no websecure opens no TLS entry point.
+    expect(
+      tlsOn(
+        argsOf("traefik-public", (document) =>
+          document.replace("          websecure: 8443\n", ""),
+        ),
+      ),
+    ).toBe(false);
+    // A plain tier's proxy that provides websecure serves it without TLS.
+    expect(
+      tlsOn(
+        argsOf("traefik-lan", (document) =>
+          document.replace(
+            "          web: 8000\n          admin: 8080\n",
+            "          web: 8000\n          websecure: 8443\n          admin: 8080\n",
+          ),
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("asks no ping or metrics where the Process provides no admin surface", () => {
+    const args = argsOf("traefik-lan", (document) =>
+      document.replace(
+        "          web: 8000\n          admin: 8080\n",
+        "          web: 8000\n",
+      ),
+    ) as string[];
+
+    expect(args).toStrictEqual([
+      "--entryPoints.web.address=:8000/tcp",
+      "--providers.kubernetescrd=true",
+      "--providers.kubernetescrd.ingressClass=traefik-lan",
+      "--providers.kubernetescrd.allowCrossNamespace=true",
+      "--providers.kubernetescrd.allowEmptyServices=true",
+      "--log.format=json",
+      "--accesslog=true",
+      "--accesslog.format=json",
+    ]);
+  });
+});

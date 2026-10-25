@@ -599,6 +599,12 @@ const resolvedProcess = stated(
     priorityClass: text.exactOptional(),
     // No two replicas of one revision share a node.
     spreadAcross: z.enum(SPREADS).meta({ id: "Spread" }).exactOptional(),
+    // Where the Process is a tier's proxy: the class its routes carry, and
+    // whether the tier terminates TLS (spec/v1/30-deliverables.md#the-edge-proxy).
+    edgeProxy: z
+      .strictObject({ ingressClass: text, tls: z.boolean() })
+      .meta({ id: "ResolvedEdgeProxy" })
+      .exactOptional(),
     memory: text,
     cpu: text,
     gpu: resolvedGpu.exactOptional(),

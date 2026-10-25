@@ -94,6 +94,27 @@ gate that guards every pull request. It is deleted in the code pass, and nothing
 it contains is promoted for free: bringing its behaviour back is a port across
 the adapter port and costs what writing a new adapter costs.
 
+### The edge proxy
+
+A tier's proxy is a Traefik the platform declares as an Application like any
+other ([chapter 14](14-platform-intent.md#the-foundation-is-declared)), and its
+static configuration is derived, never authored: the `kubernetes` adapter
+writes it as the container's arguments on the Process of the tier's `traefik`
+Application that provides a `web` surface.
+
+| argument | from |
+|---|---|
+| `--entryPoints.web.address`, `--entryPoints.websecure.address`, `--entryPoints.traefik.address` | the Process's `web`, `websecure` and `admin` surfaces, each where it provides one |
+| `--entryPoints.websecure.http.tls=true` | the tier's `listener: tls`, where the Process provides `websecure` |
+| `--ping`, `--metrics.prometheus`, each on the `traefik` entry point | the `admin` surface, where the Process provides one |
+| `--providers.kubernetescrd.ingressClass` | the tier's `ingressClass` ([chapter 14](14-platform-intent.md#tiers)) |
+| `--providers.kubernetescrd.allowCrossNamespace`, `allowEmptyServices` | always: a route names Middlewares in the proxy's namespace, and a route to a Process with no ready pod answers 503 rather than vanishing |
+| `--log.format`, `--accesslog`, `--accesslog.format` | always JSON |
+
+One Traefik filters on one class, so two tiers that name one proxy with two
+classes are `E_TIER_CLASS_UNFILTERED`: the second tier's routes would be
+admitted by no proxy.
+
 ## The adapter port
 
 Every adapter satisfies one typed port

@@ -674,6 +674,7 @@ describe("the refusal fixtures", () => {
       "shared-intent-merged",
       "shared-quantity",
       "surface-label-invalid",
+      "tier-class-unfiltered",
       "tier-without-ingress-class",
       "unauthorised-secret-reference",
       "unbound-secret-grant",
@@ -688,7 +689,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(77);
+    expect(refused).toHaveLength(78);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",
