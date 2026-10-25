@@ -293,6 +293,8 @@ export function resolveIntentSet(
       ...(set.platform.humanGrants === undefined
         ? {}
         : { humanGrants: set.platform.humanGrants }),
+      // No policy and an undefined one render no class alike.
+      // Stryker disable next-line ConditionalExpression
       ...(set.platform.priority === undefined
         ? {}
         : { priority: set.platform.priority }),

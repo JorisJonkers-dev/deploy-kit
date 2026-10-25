@@ -416,4 +416,15 @@ describe("the foundation", () => {
       ].sort(),
     ).toStrictEqual([...delivery.machinery].sort());
   });
+
+  it("holds a gate and a reporter that hold no other role", () => {
+    expect(
+      [
+        ...foundationOf({
+          tiers: [],
+          delivery: { machinery: [], gate: "gate/gate", reporter: "news/news" },
+        } as unknown as PlatformIntentDocument),
+      ].sort(),
+    ).toStrictEqual(["gate/gate", "news/news"]);
+  });
 });
