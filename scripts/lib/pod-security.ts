@@ -20,6 +20,11 @@
 // address (chapter 10's L4 exposure section), and it comes with a hard pin to
 // that node. A host port on a pod held to exactly one node by name passes;
 // any other is still a finding.
+//
+// The Node Agents are outside it whole: each DaemonSet in node-system holds
+// the host privileges its catalog entry fixes (chapter 14's Node Agents
+// section), which no author declares and the catalog alone renders. The
+// speaker's controller, a Deployment beside them, holds none and is checked.
 import { parseAllDocuments } from "yaml";
 
 type Json = Readonly<Record<string, unknown>>;
@@ -225,6 +230,14 @@ function podTemplate(
       };
 }
 
+/**
+ * Whether an object is a Node Agent: a DaemonSet in node-system, which only the
+ * Node Agent catalog renders, with the host privileges its entry fixes.
+ */
+const isNodeAgent = (object: Json): boolean =>
+  object.kind === "DaemonSet" &&
+  record(object.metadata).namespace === "node-system";
+
 /** Every way the objects in one YAML stream break the restricted profile. */
 export function podSecurityFindings(text: string): string[] {
   const findings: string[] = [];
@@ -233,6 +246,7 @@ export function podSecurityFindings(text: string): string[] {
     for (const error of document.errors)
       findings.push(`does not parse: ${error.message}`);
     const object = record(document.toJS());
+    if (isNodeAgent(object)) continue;
     const template = podTemplate(object);
     if (template === undefined) continue;
     const { spec, annotations } = template;

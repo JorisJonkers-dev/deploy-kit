@@ -254,3 +254,33 @@ images:
     uid: 65532
     gid: 65532
     version: "v1.11.0"
+  dcgm-exporter:
+    repository: nvcr.io/nvidia/k8s/dcgm-exporter
+    digest: "sha256:6faf8666aeffe3aa674aa33eb59433addf6b8d5ec267ac1a096892d1ffab6a0b"
+    uid: 0
+    gid: 0
+    version: "4.1.1-4.0.4"
+  metallb-controller:
+    repository: quay.io/metallb/controller
+    digest: "sha256:8bd722cbf5d88cf8b9c82fed1ab069dc1a2f8e5ee383dcf57e49c359ee9d27a3"
+    uid: 65534
+    gid: 65534
+    version: "0.14.9"
+  metallb-speaker:
+    repository: quay.io/metallb/speaker
+    digest: "sha256:a2de24e2d206541cb9f101b66876944ecd5a2f19d1783d674e982bfb829defbe"
+    uid: 0
+    gid: 0
+    version: "0.14.9"
+  node-exporter:
+    repository: quay.io/prometheus/node-exporter
+    digest: "sha256:2303824a4e3dc61fe3195d1a6e978029d4774876cc9aba9d2c60ef85eb96a845"
+    uid: 65534
+    gid: 65534
+    version: "1.9.0"
+  nvidia-device-plugin:
+    repository: nvcr.io/nvidia/k8s-device-plugin
+    digest: "sha256:eeaf499dbb6f09bb79d95f788d3d87ca6ffa0ae36ed63210d5672e08ba266ff4"
+    uid: 0
+    gid: 0
+    version: "0.17.0"

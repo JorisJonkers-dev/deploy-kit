@@ -559,6 +559,36 @@ const poolAddress = z
 const nodeAddress = z
   .strictObject({ kind: z.literal("node"), node: text })
   .meta({ id: "NodeAddress" });
+// What one Node Agent's copy runs and requests
+// (spec/v1/14-platform-intent.md#node-agents): its image alias, and its memory
+// and cpu. Its privileges are the catalog's, so no entry names one.
+const nodeAgentPolicy = z
+  .strictObject({ image: text, memory: text, cpu: text })
+  .meta({ id: "NodeAgentPolicy" });
+
+// The speaker announces the pools from each node of their sites; its
+// controller, which hands each Service its address, runs once.
+const speakerPolicy = z
+  .strictObject({
+    image: text,
+    memory: text,
+    cpu: text,
+    controller: nodeAgentPolicy,
+  })
+  .meta({ id: "SpeakerPolicy" });
+
+// The closed Node Agent catalog: an agent the facts derive needs its entry
+// here, or E_NO_NODE_AGENT_POLICY refuses the set.
+const nodeAgents = z
+  .strictObject({
+    "gpu-device": nodeAgentPolicy.exactOptional(),
+    "gpu-metrics": nodeAgentPolicy.exactOptional(),
+    "node-metrics": nodeAgentPolicy.exactOptional(),
+    "l4-speaker": speakerPolicy.exactOptional(),
+  })
+  .meta({ id: "NodeAgents" });
+
+export type NodeAgentPolicy = z.output<typeof nodeAgentPolicy>;
 
 const provider = z
   .strictObject({
@@ -606,6 +636,7 @@ export const platformIntent = z
       .meta({ entry: "GpuVendor" })
       .exactOptional(),
     vpn: vpnPolicy.exactOptional(),
+    nodeAgents: nodeAgents.exactOptional(),
     humanGrants: z.array(humanGrant).min(1).exactOptional(),
     priority: priorityPolicy.exactOptional(),
     l4Addresses: z

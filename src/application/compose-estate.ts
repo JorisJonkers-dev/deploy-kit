@@ -12,6 +12,7 @@
 // (spec/v1/55-delivery.md#pause-and-rollback). What comes out is one artifact
 // per Project and the estate, which pins move, the lock, and what the workflow
 // reports (spec/v1/55-delivery.md#notifications). Nothing here performs IO.
+import { NODE_PROJECT } from "../model/node-agents.ts";
 import {
   ESTATE_ARTIFACT,
   artifactRepositoryOf,
@@ -571,12 +572,16 @@ function deliver(
       // Stryker disable next-line ArrayDeclaration
       (ledger?.legacy ?? []).includes(traefik.slice(0, traefik.indexOf("/"))),
     ),
-    projects: resolved.projects
-      .map(({ project }) => project)
-      .filter(
-        (project) =>
-          ledger === undefined || ledger.estate?.includes(project) === true,
-      ),
+    // The Node Agents' Project declares nothing, so no fragment names it:
+    // every node runs an agent, so it is always the estate's, and the ledger
+    // hands it over like any other.
+    projects: [
+      ...resolved.projects.map(({ project }) => project),
+      NODE_PROJECT,
+    ].filter(
+      (project) =>
+        ledger === undefined || ledger.estate?.includes(project) === true,
+    ),
   });
   return rendered.ok
     ? {

@@ -6,6 +6,7 @@
 // composition derives. A Project's artifact holds its one unit; the
 // estate-scoped one holds the unit that applies the Human Grants, and the
 // unit that provisions secrets while a datastore the old path runs needs it.
+import { NODE_PROJECT } from "../model/node-agents.ts";
 import {
   ESTATE_ARTIFACT,
   ESTATE_SOURCE,
@@ -81,8 +82,16 @@ function unitsOf(
         applications.some(({ id }) => holds(application, project, id)),
       )
       .map(({ project }) => unitOf(project));
+  // The Node Agents' Project declares nothing, and follows nothing: an agent
+  // needs only its node (spec/v1/14-platform-intent.md#node-agents).
+  if (name === NODE_PROJECT)
+    // A name no unit on the path carries is dropped from `dependsOn`, so any
+    // list of them follows nothing alike.
+    // Stryker disable next-line ArrayDeclaration
+    return [{ name: unitOf(name), path: `apps/${name}`, after: [] }];
   if (name !== ESTATE) {
-    // A delivered artifact that is not the estate's is a resolved Project's.
+    // A delivered artifact that is not the estate's or the Node Agents' is a
+    // resolved Project's.
     const project = projects.find(
       (candidate) => candidate.project === name,
     ) as ResolvedProject;

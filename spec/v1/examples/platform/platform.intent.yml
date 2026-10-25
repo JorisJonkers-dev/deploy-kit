@@ -57,6 +57,7 @@ bootstrap:
     - monitoring.coreos.com/v1
     - flagger.app/v1beta1 # the Canary every blue-green Process renders
     - identity.jorisjonkers.dev/v1 # the Client every client block renders
+    - metallb.io/v1beta1 # the address pools and advertisements l4-speaker renders
 
 # Where the edge terminates. Four facts per tier; the traefik adapter owns every
 # Traefik spelling. A route's audience is the only way it reaches a tier, so a
@@ -297,6 +298,22 @@ l4Addresses:
   mail-node:
     kind: node
     node: frankfurt-contabo-1
+
+# The host-privileged agents the nodes run
+# (spec/v1/14-platform-intent.md#node-agents). The catalog is closed and its
+# privileges are fixed; an entry pins the image and what each copy requests.
+# Which nodes run an agent is derived: every node runs node-metrics, a node with
+# an nvidia card gpu-device and gpu-metrics, and the nodes of a site with a pool
+# l4-speaker, whose controller runs once.
+nodeAgents:
+  gpu-device: { image: nvidia-device-plugin, memory: 64Mi, cpu: 10m }
+  gpu-metrics: { image: dcgm-exporter, memory: 256Mi, cpu: 50m }
+  node-metrics: { image: node-exporter, memory: 64Mi, cpu: 20m }
+  l4-speaker:
+    image: metallb-speaker
+    memory: 64Mi
+    cpu: 20m
+    controller: { image: metallb-controller, memory: 64Mi, cpu: 10m }
 
 # The VPN an attached Process's traffic leaves through
 # (spec/v1/14-platform-intent.md#vpn): one privileged container the render adds

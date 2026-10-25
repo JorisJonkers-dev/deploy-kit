@@ -529,6 +529,60 @@
           "path": "/tiers/0/dns"
         }
       ]
+    },
+    {
+      "name": "a Node Agent the catalog does not hold",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/nodeAgents/log-collector",
+          "value": {
+            "image": "alloy",
+            "memory": "64Mi",
+            "cpu": "10m"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a Node Agent entry with no image",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/nodeAgents/node-metrics/image"
+        }
+      ]
+    },
+    {
+      "name": "a Node Agent entry that declares a privilege",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/nodeAgents/node-metrics/privileged",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "a speaker with no controller",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/nodeAgents/l4-speaker/controller"
+        }
+      ]
     }
   ]
 }

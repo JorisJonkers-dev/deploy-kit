@@ -3,6 +3,11 @@
 // the one the Platform document pins, every image alias is locked, no image a
 // pod runs as its own user runs as root, and every Process has somewhere to
 // land. After these, resolution is total.
+import {
+  GPU_AGENT_VENDOR,
+  NODE_AGENTS,
+  nodeAgentsOf,
+} from "../model/node-agents.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
 import {
   eligibleNodes,
@@ -246,6 +251,69 @@ const vpnRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
 };
 
 /**
+ * Each Node Agent the node contract and the pools derive has its catalog entry,
+ * and every image the catalog names is one the lock holds
+ * (spec/v1/14-platform-intent.md#node-agents).
+ */
+const nodeAgentRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
+  const catalog = set.platform.nodeAgents ?? {};
+  const missing = nodeAgentsOf(set.platform, set.nodeContract)
+    .filter(({ agent }) => catalog[agent] === undefined)
+    .map(({ agent, nodes }): Diagnostic => ({
+      code: "E_NO_NODE_AGENT_POLICY",
+      document: platform,
+      path: `/nodeAgents/${agent}`,
+      message: `${agent} runs on ${String(nodes)}, and the catalog names no image for it`,
+      hint: `Declare \`nodeAgents.${agent}\` in the Platform document: its image, memory and cpu.`,
+    }));
+  const images = NODE_AGENTS.flatMap((agent) => {
+    const entry = catalog[agent];
+    if (entry === undefined) return [];
+    return [
+      { path: `/nodeAgents/${agent}/image`, image: entry.image },
+      ...("controller" in entry
+        ? [
+            {
+              path: `/nodeAgents/${agent}/controller/image`,
+              image: entry.controller.image,
+            },
+          ]
+        : []),
+    ];
+  });
+  // The GPU agents run under the runtime class the platform names for their
+  // cards' vendor, so a vendor it names nothing for leaves them blind.
+  const gpuAgents = nodeAgentsOf(set.platform, set.nodeContract).some(
+    ({ agent }) => agent === "gpu-device",
+  );
+  const unnamed: Diagnostic[] =
+    gpuAgents && set.platform.gpus?.[GPU_AGENT_VENDOR] === undefined
+      ? [
+          {
+            code: "E_NO_GPU_POLICY",
+            document: platform,
+            path: "/gpus",
+            message: `the GPU agents run on ${GPU_AGENT_VENDOR} cards, and the platform names no runtime class for them`,
+            hint: "Add the vendor to the Platform document's `gpus`.",
+          },
+        ]
+      : [];
+  return [
+    ...missing,
+    ...unnamed,
+    ...images
+      .filter(({ image }) => !Object.hasOwn(set.imagesLock.images, image))
+      .map(({ path, image }): Diagnostic => ({
+        code: "E_UNLOCKED_IMAGE",
+        document: platform,
+        path,
+        message: `the images lock holds no entry for ${image}`,
+        hint: "Lock the alias, or name one the images lock holds.",
+      })),
+  ];
+};
+
+/**
  * The Vault policy job, where the platform names one, runs an image the lock
  * holds, on some node the contract offers it.
  */
@@ -308,6 +376,7 @@ export const pinnedDiagnostics = (
   ...contractRefusals(set, contractDigest, platform),
   ...methodRefusals(set, platform),
   ...vpnRefusals(set, platform),
+  ...nodeAgentRefusals(set, platform),
   ...policyJobRefusals(set, platform),
   ...located.flatMap((project) => processRefusals(set, project)),
   ...located.flatMap((project) => migrationRefusals(set, project)),
