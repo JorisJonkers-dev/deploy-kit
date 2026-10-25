@@ -230,6 +230,43 @@
           "value": "overleaf"
         }
       ]
+    },
+    {
+      "name": "a monitor label whose key the API server refuses",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/monitors/labels/not a key",
+          "value": "x"
+        }
+      ]
+    },
+    {
+      "name": "a monitor label whose value the API server refuses",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/monitors/labels/release",
+          "value": "metrics stack"
+        }
+      ]
+    },
+    {
+      "name": "monitors that name no labels",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/monitors/labels"
+        }
+      ]
     }
   ]
 }

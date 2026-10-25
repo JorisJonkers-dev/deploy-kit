@@ -316,6 +316,17 @@
         "timeout": {
           "type": "string",
           "pattern": "^\\d+(ms|s|m|h)$"
+        },
+        "labels": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       },
       "required": [

@@ -630,11 +630,20 @@ document states are the two a derivation needs, and no more.
 monitors:
   interval: 30s
   timeout: 10s
+  labels:
+    release: metrics-stack
 ```
 
 One cadence for every monitor the estate renders, here for the same reason the
 probe cadence below is: it is contended, and no Application knows better
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
+
+`labels` is optional: the label set the monitoring stack selects its monitors
+by. Every ServiceMonitor and PodMonitor the render writes carries it beside its
+own labels, which win where a key is both, so a monitor is never written that
+the stack does not read. Which labels the stack selects by is a fact of how the
+platform installed it, and the same for every Project, so no Project writes it.
+Each key and value is a Kubernetes label key and value.
 
 ## Telemetry
 

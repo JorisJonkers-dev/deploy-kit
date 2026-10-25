@@ -791,7 +791,8 @@ const resolvedMesh = z
   .meta({ id: "ResolvedMesh" });
 
 // The monitor an Application's observability derives: which surface of which
-// Process, at which path, at the platform's cadence.
+// Process, at which path, at the platform's cadence, carrying the labels the
+// monitoring stack selects it by.
 const resolvedScrape = z
   .strictObject({
     process: text,
@@ -799,6 +800,9 @@ const resolvedScrape = z
     path: text,
     interval: duration,
     timeout: duration,
+    // The labels the monitoring stack selects every monitor by, as the
+    // Platform document's `monitors` names them.
+    labels: z.record(text, text).exactOptional(),
   })
   .meta({ id: "ResolvedScrape" });
 
