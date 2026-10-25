@@ -2268,6 +2268,36 @@ describe("the shared Middlewares, by adapter", () => {
     ).not.toContain("apps/edge/traefik-lan/middlewares.yaml");
   });
 });
+
+// REQ-085 (docs/requirements.md): every route rendered for a tier carries the
+// ingress class the tier's proxy admits, so it reaches that proxy alone.
+describe("a route's ingress class", () => {
+  const classOf = (edit?: (document: string) => string): unknown => {
+    const tree = asTree(
+      artifact(
+        render(edit === undefined ? {} : { "minimal/notes.project.yml": edit }),
+        "notes",
+      ),
+    );
+    const [route] = parseAllDocuments(
+      tree["apps/notes/notes/route-public.yaml"] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    return (route?.["metadata"] as { annotations?: Record<string, string> })
+      .annotations?.["kubernetes.io/ingress.class"];
+  };
+
+  it("is the tier's that carries the exposure's audience", () => {
+    expect(classOf()).toBe("traefik-public");
+    expect(
+      classOf((document) =>
+        document.replace(
+          "audience: anonymous # selects the tier that carries it",
+          "audience: lan",
+        ),
+      ),
+    ).toBe("traefik-lan");
+  });
+});
 // REQ-089 (docs/requirements.md): replicas spread across nodes repel each
 // other within one revision, and need a node each.
 describe("replicas spread across nodes", () => {

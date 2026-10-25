@@ -695,6 +695,8 @@ const resolvedExposure = z
     name: text,
     host: text,
     tier: text,
+    // The ingress class the tier's proxy admits its routes by.
+    ingressClass: text,
     listener,
     certificates,
     proxy: tierProxy,

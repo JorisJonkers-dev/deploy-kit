@@ -115,6 +115,9 @@ function serviceOf(
 const matchOf = (host: string, { match, path }: ResolvedRoute): string =>
   `Host(\`${host}\`) && ${match === "exact" ? "Path" : "PathPrefix"}(\`${path}\`)`;
 
+/** The annotation a Traefik and external-dns select a route by. */
+export const INGRESS_CLASS = "kubernetes.io/ingress.class";
+
 export function renderTraefik(project: ResolvedProject): Deliverable[] {
   return project.applications.flatMap((application) =>
     (application.exposure ?? []).map((exposure): Deliverable => {
@@ -131,6 +134,9 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
           name: `${application.id}-${exposure.name}`,
           namespace: application.namespace,
           labels,
+          // The tier's proxy admits a route of its class, and external-dns
+          // writes a record for one by the same annotation.
+          annotations: { [INGRESS_CLASS]: exposure.ingressClass },
         },
         spec: {
           entryPoints: [ENTRY_POINTS[exposure.listener]],

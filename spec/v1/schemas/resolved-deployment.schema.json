@@ -759,6 +759,10 @@
           "type": "string",
           "minLength": 1
         },
+        "ingressClass": {
+          "type": "string",
+          "minLength": 1
+        },
         "listener": {
           "$ref": "#/$defs/Listener"
         },
@@ -780,6 +784,7 @@
         "name",
         "host",
         "tier",
+        "ingressClass",
         "listener",
         "certificates",
         "proxy",

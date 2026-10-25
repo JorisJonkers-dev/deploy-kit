@@ -72,11 +72,13 @@ tiers:
     proxiedBy: cloudflare # every public host is proxied, so a client is the address Cloudflare forwards
     traefik: edge/traefik-public # the declared Application in the platform edge project,
     # placed on the public-ingress node
+    ingressClass: traefik-public # the class this Traefik admits routes of
   - name: lan
     audiences: [lan]
     listener: plain
     certificates: none
     traefik: edge/traefik-lan # placed on a LAN node
+    ingressClass: traefik-lan
 
 # One policy per Durability Class (docs/adr/model/0018-durability-class-derives-a-backup.md).
 durability:

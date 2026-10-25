@@ -308,7 +308,7 @@ No platform Application's Assets, pod template or pin move with it.
 
 ## Tiers
 
-A tier is where the edge terminates. It declares **five edge facts**, in the
+A tier is where the edge terminates. It declares its **edge facts**, in the
 model's words, and the `traefik` adapter maps them to Traefik's
 ([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)):
 
@@ -321,11 +321,13 @@ tiers:
     forwardAuth: http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward
     proxiedBy: cloudflare              # optional: who forwards clients' requests to this edge
     traefik: edge/traefik-public       # <project>/<application>: the declared Application that is this tier's proxy
+    ingressClass: traefik-public       # the class that proxy admits routes of
   - name: lan
     audiences: [lan]
     listener: plain
     certificates: none
     traefik: edge/traefik-lan
+    ingressClass: traefik-lan
 ```
 
 | fact | meaning |
@@ -336,6 +338,7 @@ tiers:
 | `forwardAuth` | the endpoint that authenticates for it; required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
 | `proxiedBy` | `cloudflare`, or absent. Who forwards clients' requests to this edge, which decides the address a route's `rateLimit` counts a client by: absent, the connection's own address; `cloudflare`, the address Cloudflare forwards in `CF-Connecting-IP`, since every connection then comes from a Cloudflare edge. State it only when every request reaches the tier through Cloudflare, since a client that reaches the edge directly writes that header itself ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)) |
 | `traefik` | the platform Application whose proxy this tier is, as `<project>/<application>` ([privileged roles](#privileged-roles)); an Application its Project does not declare is `E_UNKNOWN_TIER_PROXY` |
+| `ingressClass` | the ingress class this tier's proxy admits routes of, a Kubernetes name. Every route rendered for the tier carries it, and external-dns writes a record for a route by the same annotation, so one Traefik never serves another tier's routes. Optional in the document, but an exposure on a tier that names none is `E_TIER_WITHOUT_INGRESS_CLASS`: its routes would be admitted by no proxy |
 
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
 adapter. A route's audience is the **only** way it reaches a tier, so a `lan`
