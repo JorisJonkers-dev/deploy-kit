@@ -72,6 +72,8 @@ function priorityOf(
   if (process.engine !== undefined) return { priorityClass: policy.data.name };
   const holder = `${context.project}/${context.application}`;
   return foundationOf(context.platform).has(holder) ||
+    // A missing list and an empty one name no Application alike.
+    // Stryker disable next-line ArrayDeclaration
     (policy.criticalApplications ?? []).includes(holder)
     ? { priorityClass: policy.critical.name }
     : {};
