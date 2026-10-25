@@ -336,6 +336,19 @@
           "value": "80"
         }
       ]
+    },
+    {
+      "name": "an engine outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/3/processes/0/engine",
+          "value": "mongodb"
+        }
+      ]
     }
   ]
 }

@@ -316,6 +316,7 @@ describe("resolveIntentSet", () => {
       ["platform-postgres", "resolved.json"],
       ["platform-rabbitmq", "resolved.platform-rabbitmq.json"],
       ["platform-valkey", "resolved.platform-valkey.json"],
+      ["platform-mongo", "resolved.platform-mongo.json"],
     ])(
       "resolves %s to its committed projection, byte for byte",
       (id, oracle) => {
