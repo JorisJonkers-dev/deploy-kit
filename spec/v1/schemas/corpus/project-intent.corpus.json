@@ -349,6 +349,49 @@
           "value": "mongodb"
         }
       ]
+    },
+    {
+      "name": "a scheduled Process at five cron fields",
+      "verdict": "accept",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/0/processes/0/lifecycle",
+          "value": "scheduled"
+        },
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/schedule",
+          "value": "30 2 * * MON-FRI"
+        }
+      ]
+    },
+    {
+      "name": "a schedule written as a cron macro",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/4/processes/0/schedule",
+          "value": "@hourly"
+        }
+      ]
+    },
+    {
+      "name": "a schedule of four fields",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/4/processes/0/schedule",
+          "value": "*/15 * * *"
+        }
+      ]
     }
   ]
 }
