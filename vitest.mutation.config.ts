@@ -56,6 +56,7 @@ export default defineConfig({
       "test/adapters/flux-source.test.ts",
       "test/adapters/holders.test.ts",
       "test/adapters/labels.test.ts",
+      "test/adapters/shared-middlewares.test.ts",
       "test/adapters/spelling.test.ts",
       "test/canonical-json.test.ts",
       "test/published-schemas.test.ts",

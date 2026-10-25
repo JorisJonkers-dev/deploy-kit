@@ -127,13 +127,31 @@ const bootstrap = z
   })
   .meta({ id: "Bootstrap" });
 
+// Who answers a tier's forward-auth (spec/v1/14-platform-intent.md#tiers): a
+// declared Application by reference, the surface it answers on and the path it
+// answers at, never a URL, so the address follows the provider. The response
+// headers are the ones the edge hands on to the route's Process.
+const forwardAuth = z
+  .strictObject({
+    provider: holder,
+    surface: text,
+    path: z.string().regex(/^(\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\/?$/),
+    responseHeaders: z
+      .array(z.string().regex(/^[A-Za-z0-9-]+$/))
+      .min(1)
+      .exactOptional(),
+  })
+  .meta({ id: "ForwardAuth" });
+
+export type ForwardAuth = z.output<typeof forwardAuth>;
+
 const tier = z
   .strictObject({
     name: text,
     audiences: z.array(audience).min(1),
     listener,
     certificates: certificateSource,
-    forwardAuth: text.exactOptional(),
+    forwardAuth: forwardAuth.exactOptional(),
     // Absent where clients connect to the edge themselves.
     proxiedBy: forwarder.exactOptional(),
     // The platform Application whose proxy this tier is, declared in a project

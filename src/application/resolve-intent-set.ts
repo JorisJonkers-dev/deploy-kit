@@ -4,6 +4,8 @@
 // projections written. The hash arrives as a port; nothing here performs IO.
 import type { ResolvedNodeAgent } from "../model/node-agents.ts";
 import { resolveNodeAgents } from "../resolve/node-agents.ts";
+import { forwardAuthEndpoint } from "../model/runtime-profiles.ts";
+import type { ResolvedForwardAuth } from "../adapters/traefik/shared-middlewares.ts";
 import { pinnedDiagnostics } from "../check/pinned-inputs.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { ScopedEnv } from "../model/env.ts";
@@ -70,6 +72,8 @@ export interface ResolvedSet {
   readonly priority?: PlatformIntentDocument["priority"];
   /** The Node Agents the node contract and the pools derive. */
   readonly nodeAgents: readonly ResolvedNodeAgent[];
+  /** Each tier proxy whose tier names a forward-auth provider, and where the edge asks it. */
+  readonly forwardAuths: readonly ResolvedForwardAuth[];
 }
 
 const NODE_CONTRACT = "node-contract.yml";
@@ -307,6 +311,32 @@ export function resolveIntentSet(
       ...(set.platform.priority === undefined
         ? {}
         : { priority: set.platform.priority }),
+      // A provider the union does not declare is asked by no route, or
+      // E_UNKNOWN_FORWARD_AUTH_PROVIDER refused the set, so its Middleware is
+      // not rendered.
+      forwardAuths: set.platform.tiers.flatMap(
+        ({ traefik, forwardAuth }): ResolvedForwardAuth[] => {
+          if (forwardAuth === undefined) return [];
+          const address = forwardAuthEndpoint(
+            set.platform,
+            set.projects,
+            forwardAuth,
+          );
+          return address === undefined
+            ? []
+            : [
+                {
+                  proxy: traefik,
+                  address,
+                  // No list and an undefined one hand on nothing alike.
+                  // Stryker disable next-line ConditionalExpression
+                  ...(forwardAuth.responseHeaders === undefined
+                    ? {}
+                    : { responseHeaders: forwardAuth.responseHeaders }),
+                },
+              ];
+        },
+      ),
     },
   };
 }

@@ -68,7 +68,7 @@ tiers:
     audiences: [anonymous, authenticated]
     listener: tls
     certificates: acme
-    forwardAuth: "http://identity.identity-system.svc.cluster.local:8080/gate/forward" # the
+    forwardAuth: {provider: identity/identity, surface: http, path: /gate/forward} # the
     # sign-in provider's Gate, which every gated Client's routes ask
     proxiedBy: cloudflare # every public host is proxied, so a client is the address Cloudflare forwards
     traefik: edge/traefik-public # the declared Application in the platform edge project,

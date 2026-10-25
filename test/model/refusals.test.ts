@@ -681,6 +681,7 @@ describe("the refusal fixtures", () => {
       "unknown-api-holder",
       "unknown-critical-application",
       "unknown-enrolled-project",
+      "unknown-forward-auth-provider",
       "unknown-l4-address",
       "unknown-library",
       "unknown-machinery",
@@ -689,7 +690,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(78);
+    expect(refused).toHaveLength(79);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

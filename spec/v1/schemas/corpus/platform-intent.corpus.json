@@ -583,6 +583,45 @@
           "path": "/nodeAgents/l4-speaker/controller"
         }
       ]
+    },
+    {
+      "name": "a forward-auth written as a URL, which names no provider",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/tiers/0/forwardAuth",
+          "value": "http://identity.identity-system.svc.cluster.local:8080/gate/forward"
+        }
+      ]
+    },
+    {
+      "name": "a forward-auth that names no surface",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/tiers/0/forwardAuth/surface"
+        }
+      ]
+    },
+    {
+      "name": "a forward-auth that hands headers on to the route",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/tiers/0/forwardAuth/responseHeaders",
+          "value": [
+            "X-User-Id"
+          ]
+        }
+      ]
     }
   ]
 }

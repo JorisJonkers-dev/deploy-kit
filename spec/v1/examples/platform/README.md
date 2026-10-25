@@ -43,7 +43,7 @@ instances the tiers name, and [`observability`](../observability/observability.p
 declares the collector `telemetry` names, so the worked Platform document composes
 with them and the delivery project and refuses nothing it names. Beside them,
 [`identity`](../identity/identity.project.yml) declares the Identity Provider
-`signIn` names, whose Gate the public tier's `forwardAuth` endpoint is, and three
+`signIn` names, whose Gate the public tier's `forwardAuth` names as its provider, and three
 Applications that sign people in through it, one per way
 [chapter 17](../../17-sign-in.md) works through. The secrets
 project is the next to write. Hostnames nobody deploys and nobody depends on are

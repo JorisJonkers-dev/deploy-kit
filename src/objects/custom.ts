@@ -121,6 +121,13 @@ export interface Middleware {
         };
       }
     | {
+        readonly forwardAuth: {
+          readonly address: string;
+          readonly trustForwardHeader: boolean;
+          readonly authResponseHeaders?: readonly string[];
+        };
+      }
+    | {
         readonly headers: {
           readonly contentTypeNosniff: boolean;
           readonly frameDeny: boolean;

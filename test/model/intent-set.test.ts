@@ -143,7 +143,7 @@ describe("checkIntentSet", () => {
         .replace("gate: delivery/release-gate", "gate: notes/notes")
         .replace("reporter: delivery/reporter", "reporter: notes/notes")
         .replace("secretStore: secrets/vault", "secretStore: notes/notes")
-        .replace("provider: identity/identity", "provider: notes/notes")
+        .replaceAll("provider: identity/identity", "provider: notes/notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
     };
@@ -172,7 +172,7 @@ describe("checkIntentSet", () => {
         .replace("gate: delivery/release-gate", "gate: notes/notes")
         .replace("reporter: delivery/reporter", "reporter: notes/notes")
         .replace("secretStore: secrets/vault", "secretStore: notes/notes")
-        .replace("provider: identity/identity", "provider: notes/notes")
+        .replaceAll("provider: identity/identity", "provider: notes/notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
     };

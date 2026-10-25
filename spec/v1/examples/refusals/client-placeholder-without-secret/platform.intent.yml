@@ -35,7 +35,7 @@ tiers:
     audiences: [anonymous, authenticated, internal]
     listener: tls
     certificates: acme
-    forwardAuth: "http://identity.refusals-system.svc.cluster.local:8080/gate"
+    forwardAuth: {provider: refusals/identity, surface: http, path: /gate}
     traefik: refusals/edge-proxy
     ingressClass: edge-proxy
   - name: lan

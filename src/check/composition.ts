@@ -12,6 +12,7 @@ import {
 } from "../model/platform-intent.ts";
 import {
   collectorEndpoint,
+  forwardAuthEndpoint,
   gateEndpoint,
   reporterEndpoint,
   secretStoreAddress,
@@ -754,6 +755,36 @@ export function setDiagnostics(
               },
             ],
     );
+  // A tier's forward-auth names an Application whose Process provides the
+  // surface it names: the edge asks it there. A set that holds no file of the
+  // provider's Project, such as one Project's own check, cannot tell, and the
+  // composition, which holds every Project, does.
+  const composed = new Set(projects.map(({ document }) => document.project));
+  const forwardAuth: Diagnostic[] = platform.document.tiers.flatMap(
+    (tier, index): Diagnostic[] =>
+      tier.forwardAuth === undefined ||
+      !composed.has(
+        tier.forwardAuth.provider.slice(
+          0,
+          tier.forwardAuth.provider.indexOf("/"),
+        ),
+      ) ||
+      forwardAuthEndpoint(
+        platform.document,
+        projects.map(({ document }) => document),
+        tier.forwardAuth,
+      ) !== undefined
+        ? []
+        : [
+            {
+              code: "E_UNKNOWN_FORWARD_AUTH_PROVIDER",
+              document: platform.name,
+              path: `/tiers/${String(index)}/forwardAuth`,
+              message: `no project file declares an Application ${tier.forwardAuth.provider} whose Process provides a \`${tier.forwardAuth.surface}\` surface`,
+              hint: "Name the provider as `<project>/<application>`, an Application its Project declares with that surface on one of its Processes.",
+            },
+          ],
+  );
   // The metrics stack is an Application a project file declares, as a proxy is.
   const metrics = platform.document.telemetry?.metrics;
   const stack: Diagnostic[] =
@@ -905,6 +936,7 @@ export function setDiagnostics(
     ...apiHolders,
     ...telemetry,
     ...critical,
+    ...forwardAuth,
     ...stack,
     ...release,
     ...reporting,
