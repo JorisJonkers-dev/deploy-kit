@@ -2877,6 +2877,38 @@ describe("composeEstate, for the Human Grants", () => {
     );
   });
 
+  // REQ-096 (docs/requirements.md): the priority classes are delivered
+  // estate-scoped too, by their own unit, which follows nothing.
+  it("delivers the priority classes estate-scoped, by a unit of their own that follows nothing", () => {
+    const composed = compose({
+      platform: {
+        ...PLATFORM,
+        files: PLATFORM.files.map((file) =>
+          file.name === "platform.intent.yml"
+            ? {
+                ...file,
+                text: file.text.replace(
+                  "\npolicyJob:\n",
+                  `${PRIORITY.exec(text("platform/platform.intent.yml"))?.[0] ?? ""}policyJob:\n`,
+                ),
+              }
+            : file,
+        ),
+      },
+    });
+    const estate = composed.artifacts.find(({ name }) => name === "_estate");
+    const source =
+      composed.sources.find(({ name }) => name === "_estate")?.text ?? "";
+
+    expect(estate?.files.map(({ path }) => path)).toStrictEqual([
+      "estate/priority-classes/kustomization.yaml",
+      "estate/priority-classes/priorityclasses.yaml",
+    ]);
+    expect(source).toContain("name: estate-priority-classes");
+    expect(source).toContain("path: ./estate/priority-classes");
+    expect(source).not.toContain("dependsOn");
+  });
+
   it("holds both estate-scoped units beside each other where the catalog is held too", () => {
     const composed = withLegacyCatalog({}, granting(PLATFORM));
     const estate = composed.artifacts.find(({ name }) => name === "_estate");
