@@ -2779,4 +2779,3 @@ describe("the edge proxy's static configuration", () => {
     expect(args).toContain("--entryPoints.web.address=:8000/tcp");
   });
 });
-
