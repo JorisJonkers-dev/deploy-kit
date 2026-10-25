@@ -121,6 +121,10 @@ policy. Holds one or more Routes.
 **Route**: a path within an Exposure, naming the Process and Surface that
 serve it.
 
+**Split horizon**: one host exposed on two tiers, each a different proxy, so
+the LAN and the public reach the same name through their own routes. A host
+is unique on a tier, not across the estate.
+
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the
 allowance, and the Tier decides which address counts as one client

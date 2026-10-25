@@ -1882,7 +1882,7 @@ gap, not an argument for a field.
 
 | condition | error |
 |---|---|
-| two exposures declare the same `host` | `E_DUPLICATE_HOST` |
+| two exposures declare the same `host` on one tier, the tier that carries each one's `audience` | `E_DUPLICATE_HOST` |
 | two exposures of one Application share a `name` | `E_DUPLICATE_EXPOSURE_NAME` |
 | two routes of one exposure share the same `path` + `match` pair | `E_DUPLICATE_ROUTE_MATCH` |
 | a route names a Process its Application does not have | `E_UNKNOWN_PROCESS` |
@@ -1892,6 +1892,15 @@ gap, not an argument for a field.
 Unmanaged Surfaces included, because a name the estate already answers on is taken
 whether or not this model deploys what answers (chapter 40). The other four are
 scoped to a single document and are refused as soon as the fragment is read.
+
+A host is unique **on a tier**, not across the estate. Inside one proxy two
+rules for one host have no defined winner, so one host twice on one tier is
+refused. Two tiers are two proxies, so one host on two tiers is the **split
+horizon** the media hosts already use: the same name answered on the LAN by the
+LAN tier and in public by the public one, each exposure with its own routes. The
+tier is the one that carries the exposure's `audience`, so the check reads the
+Platform document; an exposure whose audience no tier carries is
+`E_NO_TIER_FOR_AUDIENCE` and claims its host on no tier.
 
 A route's `process` and `surface` are **references**, not strings: reading the
 document links each to the Process and the surface it names, inside the one

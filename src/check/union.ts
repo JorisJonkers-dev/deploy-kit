@@ -540,20 +540,37 @@ export const INVARIANTS: readonly Invariant[] = [
         ),
   },
   {
+    // A host is unique on a tier: inside one proxy two rules for one host have
+    // no defined winner, while two tiers are two proxies, the split-horizon
+    // shape a host served both on the LAN and in public takes
+    // (spec/v1/10-project-intent.md#what-is-checked).
     code: "E_DUPLICATE_HOST",
-    needsPlatform: false,
-    answer: (union) =>
-      collisions(
-        union.flatMap(applicationsOf).flatMap(exposuresOf),
-        ({ value }) => value.host,
+    needsPlatform: true,
+    answer: (union, platform) => {
+      // An audience no tier carries is E_NO_TIER_FOR_AUDIENCE's, so an
+      // exposure that asks for one claims its host on no tier.
+      const tierOf = (audience: string): string | undefined =>
+        platform.tiers.find(({ audiences }) =>
+          (audiences as readonly string[]).includes(audience),
+        )?.name;
+      return collisions(
+        union
+          .flatMap(applicationsOf)
+          .flatMap(exposuresOf)
+          .flatMap((exposure) => {
+            const tier = tierOf(exposure.value.audience);
+            return tier === undefined ? [] : [{ ...exposure, tier }];
+          }),
+        ({ value, tier }) => JSON.stringify([value.host, tier]),
       ).map((exposure) =>
         refusal(
           "E_DUPLICATE_HOST",
           exposure,
-          `more than one exposure claims the host ${exposure.value.host}`,
-          "A host is unique across the estate: route the paths of one host from one exposure, or choose another host.",
+          `more than one exposure claims the host ${exposure.value.host} on the tier ${exposure.tier}`,
+          "A host is unique on a tier: route the paths of one host from one exposure, or put the other on a tier that carries another audience.",
         ),
-      ),
+      );
+    },
   },
   {
     code: "E_UNRESOLVED_APPLICATION",

@@ -932,6 +932,7 @@ describe("composeEstate", () => {
 
     expect(routes(handingOver)).toStrictEqual([]);
     expect(routes(under(""))).toStrictEqual([
+      "apps/data/platform-rabbitmq/route-lan.yaml",
       "apps/data/platform-rabbitmq/route-management.yaml",
     ]);
     // data's own unit applies its own policy job, and waits on no

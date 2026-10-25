@@ -272,7 +272,7 @@ applications:
     # `<application>.<zone>` rule produces `platform-rabbitmq.jorisjonkers.dev`,
     # which resolves to nothing -- and it would be right for auth, so the
     # derivation would look correct until someone read this line. `host` is
-    # therefore the full FQDN, authored, unique across the estate
+    # therefore the full FQDN, authored, unique on a tier
     # (E_DUPLICATE_HOST at composition) (review/EXPOSURE-MANIFEST.md).
     exposure:
       - name: management        # unique within the Application; names what this
@@ -292,6 +292,14 @@ applications:
         # hostnames auth's CORS list maintains by hand today -- under this model
         # that list derives from edges like this one rather than being retyped
         # (chapter 16). The predicate is still open.
+      - name: lan               # the same host on the LAN tier: split horizon.
+        host: rabbitmq.jorisjonkers.dev
+        audience: lan           # a second tier is a second proxy, so one host
+                                # on two tiers has a winner in each; on one
+                                # tier it would be E_DUPLICATE_HOST
+                                # (spec/v1/10-project-intent.md#what-is-checked)
+        routes:
+          - {path: /, match: prefix, process: rabbitmq, surface: management}
 
     processes:
       - name: rabbitmq
