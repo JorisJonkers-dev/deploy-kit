@@ -4042,3 +4042,18 @@ describe("a mongo, the document store", () => {
     ).toBeUndefined();
   });
 });
+
+describe("a Process nothing reaches", () => {
+  it("records no ingress at all, not an empty one", () => {
+    const worker = `      - name: notes-worker
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        placement: { memory: 64Mi, cpu: 10m }
+        probes: none
+        startupBudget: 20s
+        cutover: interrupted
+`;
+    expect(processOf(one(worker))).not.toHaveProperty("ingress");
+  });
+});
