@@ -541,6 +541,8 @@ function podTemplateOf(
     ),
     spec: {
       serviceAccountName: process.identity,
+      // No class and an undefined one render alike: YAML drops the key.
+      // Stryker disable next-line ConditionalExpression
       ...(process.priorityClass === undefined
         ? {}
         : { priorityClassName: process.priorityClass }),
