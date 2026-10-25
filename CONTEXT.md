@@ -125,6 +125,10 @@ serve it.
 the LAN and the public reach the same name through their own routes. A host
 is unique on a tier, not across the estate.
 
+**Shared Middleware**: a Middleware every route names by name, the
+security-headers baseline or one per content policy, rendered once in each tier
+proxy's namespace by the Project that declares the proxy.
+
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the
 allowance, and the Tier decides which address counts as one client

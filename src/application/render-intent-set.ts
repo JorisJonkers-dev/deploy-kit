@@ -3,6 +3,7 @@
 // kustomizations list what each directory applies, and the one serializer the
 // caller hands in writes the bytes. A path two Deliverables claim is refused
 // before anything is serialized. Nothing here performs IO.
+import { renderSharedMiddlewares } from "../adapters/traefik/shared-middlewares.ts";
 import {
   ADAPTERS,
   kustomizationsFor,
@@ -355,6 +356,10 @@ export function renderResolvedSet(
     ...rendering.flatMap(({ project }) =>
       events === undefined ? [] : renderEvents(events, project),
     ),
+    // The Middlewares every route names, with the routes they serve.
+    ...(adapters.some(({ name }) => name === TRAEFIK)
+      ? renderSharedMiddlewares(resolved.tierProxies, options.projects)
+      : []),
   ];
   const deliverables = [
     ...rendered,

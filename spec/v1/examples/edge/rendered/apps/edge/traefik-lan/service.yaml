@@ -1,0 +1,23 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-lan
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/name: traefik-lan
+    app.kubernetes.io/instance: traefik-lan
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: traefik-lan
+  ports:
+    - name: web
+      port: 8000
+      targetPort: web
+    - name: admin
+      port: 8080
+      targetPort: admin

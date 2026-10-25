@@ -56,6 +56,8 @@ export interface ResolvedSet {
   readonly catalogHomes: ReadonlyMap<ResolvedCatalogJob, CatalogHome>;
   /** Where Flux's events go, where the platform names a Reporter. */
   readonly events?: ResolvedEvents;
+  /** Every tier's proxy, as `<project>/<application>`: where the shared Middlewares live. */
+  readonly tierProxies: readonly string[];
 }
 
 const NODE_CONTRACT = "node-contract.yml";
@@ -277,6 +279,7 @@ export function resolveIntentSet(
       ...(catalogs.length === 0 ? {} : { catalogJobs: catalogs }),
       catalogHomes: homes,
       ...(events === undefined ? {} : { events }),
+      tierProxies: set.platform.tiers.map(({ traefik }) => traefik),
     },
   };
 }
