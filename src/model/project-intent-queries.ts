@@ -43,6 +43,32 @@ export function clientExposure(
   return exposures.length === 1 ? exposures[0] : undefined;
 }
 
+/**
+ * The Route of an exposure a request for `path` takes: of the Routes that
+ * reach a Process, the longest whose path opens it under `prefix` or is it
+ * under `exact`, the first declared on a tie
+ * (spec/v1/17-sign-in.md#what-is-checked). A redirect Route reaches none.
+ */
+export function routeFor(
+  exposure: Pick<Exposure, "routes">,
+  path: string,
+): Exposure["routes"][number] | undefined {
+  let found: Exposure["routes"][number] | undefined;
+  for (const route of exposure.routes) {
+    const reaches =
+      route.redirectTo === undefined &&
+      (route.match === "exact"
+        ? path === route.path
+        : path.startsWith(route.path));
+    if (
+      reaches &&
+      (found === undefined || route.path.length > found.path.length)
+    )
+      found = route;
+  }
+  return found;
+}
+
 /** A key's name, whether or not it is generated. */
 export const keyName = (key: KvKey): string =>
   typeof key === "string" ? key : key.name;

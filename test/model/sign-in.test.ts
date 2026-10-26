@@ -324,10 +324,103 @@ ${PROCESSES("grafana")}`),
     },
   );
 
+  // deploy-kit#629: the Release Gate asks a gate member for the path.
+  it("is refused where no route of its exposure reaches the protected path", () => {
+    expect(
+      explained(
+        grafana(NATIVE, exposureOf("public", "authenticated", "/dashboards/")),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_CLIENT_PATH_UNROUTED",
+        path: `${AT}/protectedPath`,
+        message:
+          "no route of the exposure public reaches the protected path /api/user",
+        hint: "Name a path a route of the Client's exposure reaches, or route it to the Process that refuses it.",
+      },
+    ]);
+    // An exact route reaches its own path and no other.
+    const exact = (path: string) =>
+      grafana(
+        NATIVE,
+        exposureOf("public", "authenticated", "/dashboards/") +
+          `          - { path: ${path}, match: exact, process: grafana, surface: http }\n`,
+      );
+    expect(refusals(exact("/api/user"))).toStrictEqual([]);
+    expect(refusals(exact("/api"))).toStrictEqual([
+      { code: "E_CLIENT_PATH_UNROUTED", path: `${AT}/protectedPath` },
+    ]);
+  });
+
+  it("is refused where the protected path reaches a Process that publishes no readiness", () => {
+    expect(
+      explained(
+        grafana(NATIVE).replace(
+          "probes: { readiness: { tcp: 8080 } }",
+          "probes: none",
+        ),
+      ),
+    ).toContainEqual({
+      code: "E_CLIENT_PATH_UNROUTED",
+      path: `${AT}/protectedPath`,
+      message:
+        "the protected path /api/user reaches grafana, which publishes no readiness, so the Release Gate cannot ask it",
+      hint: "Give the Process a readiness probe, or route the protected path to one that has.",
+    });
+  });
+
+  it("asks for readiness of the Process the route reaches, and of no other", () => {
+    const unrouted = {
+      code: "E_CLIENT_PATH_UNROUTED",
+      path: `${AT}/protectedPath`,
+    };
+    // The route reaches the second Process, which publishes none.
+    const second =
+      grafana(
+        NATIVE,
+        exposureOf("public", "authenticated").replace(
+          "process: grafana",
+          "process: grafana-web",
+        ),
+      ) +
+      PROCESSES("grafana-web")
+        .replace("    processes:\n", "")
+        .replace(
+          "probes: { readiness: { tcp: 8080 } }",
+          "probes: { liveness: { tcp: 8080 } }",
+        );
+    expect(refusals(second)).toContainEqual(unrouted);
+    // A Process that declares no probes publishes no readiness either.
+    expect(
+      refusals(
+        grafana(NATIVE).replace(
+          "        probes: { readiness: { tcp: 8080 } }\n",
+          "",
+        ),
+      ),
+    ).toContainEqual(unrouted);
+    // A route to a Process the Application lacks is refused for that alone.
+    expect(
+      refusals(
+        grafana(
+          NATIVE,
+          exposureOf("public", "authenticated").replace(
+            "process: grafana",
+            "process: nobody",
+          ),
+        ),
+      ),
+    ).not.toContainEqual(unrouted);
+  });
+
   it("leaves a native Application its own route under /.auth/", () => {
     expect(
       refusals(
-        grafana(NATIVE, exposureOf("public", "authenticated", "/.auth/")),
+        grafana(
+          NATIVE,
+          exposureOf("public", "authenticated", "/.auth/") +
+            "          - { path: /api/, match: prefix, process: grafana, surface: http }\n",
+        ),
       ),
     ).toStrictEqual([]);
   });

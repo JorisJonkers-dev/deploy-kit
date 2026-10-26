@@ -25,8 +25,10 @@ import type {
 import type { MigrationProofDocument } from "../model/migration-proof.ts";
 import { applicationRevision } from "../model/revision.ts";
 import {
+  clientExposure,
   ownsDatabases,
   reachesDatabase,
+  routeFor,
 } from "../model/project-intent-queries.ts";
 import { unitOf } from "../model/reconcile-units.ts";
 import {
@@ -404,8 +406,9 @@ function releaseGateOf(
   pairs: readonly Resolved[],
   context: ApplicationContext,
   plan: ResolvedMigration | undefined,
-  client: EffectiveApplication["client"],
+  application: EffectiveApplication,
 ): ReleaseGate | undefined {
+  const { client } = application;
   const { platform, gate } = context;
   const gated = pairs.filter(
     ({ resolved }) => resolved.switchover === "blue-green",
@@ -454,10 +457,29 @@ function releaseGateOf(
     // What the gate asks anonymously before it switches a native Client, which
     // signs people in itself (spec/v1/17-sign-in.md#what-is-checked). A native
     // Client names the path, or E_CLIENT_FIELD_FOR_MODE refused it.
-    ...(client?.signIn === "native"
-      ? { protectedPath: client.protectedPath as string }
-      : {}),
+    ...(client?.signIn === "native" ? protectedOf(application, client) : {}),
   };
+}
+
+/**
+ * A native Client's protected path, and the member the gate asks for it: the
+ * Process the longest Route of the Client's exposure takes it to. The Client
+ * names the path and its exposure resolves, or E_CLIENT_FIELD_FOR_MODE and
+ * E_CLIENT_EXPOSURE_UNRESOLVED refused it, and a Route reaches the path, or
+ * E_CLIENT_PATH_UNROUTED did.
+ */
+function protectedOf(
+  application: EffectiveApplication,
+  client: NonNullable<EffectiveApplication["client"]>,
+): { protectedPath: string; protectedBy: string } {
+  const path = client.protectedPath as string;
+  const exposure = clientExposure(application, client) as NonNullable<
+    ReturnType<typeof clientExposure>
+  >;
+  const route = routeFor(exposure, path) as NonNullable<
+    ReturnType<typeof routeFor>
+  >;
+  return { protectedPath: path, protectedBy: route.process };
 }
 
 /**
@@ -548,7 +570,7 @@ export function resolveApplication(
   const plan = managed(application)
     ? resolveMigration(application, context)
     : undefined;
-  const gate = releaseGateOf(pairs, context, plan, application.client);
+  const gate = releaseGateOf(pairs, context, plan, application);
   const scrape = application.observability?.scrape;
   const element = {
     id: application.id,
