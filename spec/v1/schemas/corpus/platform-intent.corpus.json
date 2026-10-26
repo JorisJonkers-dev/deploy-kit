@@ -109,6 +109,34 @@
       ]
     },
     {
+      "name": "an empty list of namespace holders",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/apiAccess/namespaceHolders",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "a namespace holder that names no Project",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/apiAccess/namespaceHolders",
+          "value": [
+            "agents"
+          ]
+        }
+      ]
+    },
+    {
       "name": "a Vault policy job with no role to log in as",
       "verdict": "refuse",
       "breaks": "missing-required",

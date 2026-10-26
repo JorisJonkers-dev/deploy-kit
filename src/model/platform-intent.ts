@@ -350,7 +350,12 @@ const vaultPolicyJob = z
 // Processes may declare `api`, and the ranges an egress policy admits for it.
 const apiAccessPolicy = z
   .strictObject({
+    // May hold rules at either scope: a cluster-wide grant is a privileged
+    // role, so these are the foundation's.
     holders: z.array(holder).min(1),
+    // May hold rules scoped to their own namespace alone: no privileged role,
+    // so a tenant Application is admitted here.
+    namespaceHolders: z.array(holder).min(1).exactOptional(),
     server: z.array(destinationRange).min(1),
   })
   .meta({ id: "ApiAccessPolicy" });

@@ -765,7 +765,10 @@ binding are cluster-scoped, so no namespace holds two apart: both are named
 **`<namespace>-<identity>`**, the name the identity's Vault role carries, for
 the same reason. Writing a rule at the narrower scope is how a holder that
 writes only its own records, as the Release Gate does its release records,
-keeps that write out of every other namespace.
+keeps that write out of every other namespace. A platform that admits an
+Application to its own namespace alone, in `apiAccess.namespaceHolders`, gives
+it `namespace` rules and nothing more
+([chapter 14](14-platform-intent.md#kubernetes-api-access)).
 
 Admission is by id, so it holds only for an id one Application carries. A
 second project that names an Application of its own after an admitted one is

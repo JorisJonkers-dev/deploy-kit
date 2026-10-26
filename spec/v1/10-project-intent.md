@@ -700,7 +700,9 @@ project inherits is one nobody asked for by name.
 Declaring it is not holding it. The Platform document admits the Applications
 whose Processes may declare `api`
 ([chapter 14](14-platform-intent.md#kubernetes-api-access)), and a declaration
-in any other Application is `E_PROCESS_RBAC_GRANT`, whatever its rules' scope.
+in any other Application is `E_PROCESS_RBAC_GRANT`. An Application the
+platform admits to its own namespace alone holds `namespace` rules only, and a
+rule of it that reaches the cluster is refused the same way.
 What an admitted declaration derives, its Role and ClusterRole, its mounted
 token and its policy's egress,
 is [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)'s.
