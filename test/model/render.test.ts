@@ -1766,6 +1766,92 @@ describe("the bucket catalog", () => {
     );
   });
 
+  it("names in each store only the buckets edges into that store give, and no store no reader names", () => {
+    const resolve = (
+      edits: Readonly<Record<string, (text: string) => string>>,
+    ) => {
+      const result = resolveIntentSet(
+        [
+          ...SET.filter((name) => !name.startsWith("minimal/")),
+          ...KNOWLEDGE_PLATFORM,
+        ].map((name) => ({
+          name,
+          text: (edits[name] ?? ((same: string) => same))(text(name)),
+        })),
+        OPTIONS,
+      );
+      if (!result.ok)
+        throw new Error(
+          JSON.stringify(result.diagnostics.map(({ code }) => code)),
+        );
+      return (result.value.catalogJobs ?? [])
+        .filter(({ identity }) => identity === "garage-catalog")
+        .map(({ namespace, catalog }) => [
+          namespace,
+          "keys" in catalog
+            ? catalog.keys.map(({ name, buckets }) => [name, buckets])
+            : [],
+        ]);
+    };
+    const edge = (store: string, bucket: string) =>
+      `        dependsOn:\n          - { application: ${store}, surface: s3, buckets: [${bucket}] }\n`;
+    // A second store in mail, under the same Process name as data's.
+    const store = `  - id: mail-garage
+    processes:
+      - name: garage
+        lifecycle: application
+        image: garage
+        runtime: none
+        engine: s3
+        provides: { s3: 3900, admin: 3903 }
+        placement: { memory: 256Mi, cpu: 50m }
+        probes: { readiness: { tcp: 3900 } }
+        startupBudget: 60s
+        cutover: interrupted
+        volumes:
+          - { claim: mail-garage-data, mountAt: /var/lib/garage/data, size: 1Gi, durability: recoverable }
+`;
+
+    expect(
+      resolve({
+        "mail/mail.project.yml": (document) =>
+          document.replace(
+            "      - name: stalwart\n",
+            `      - name: stalwart\n${edge("platform-garage", "archive")}          - { application: mail-garage, surface: s3, buckets: [spool] }\n`,
+          ) + store,
+        "utility/utility.project.yml": (document) =>
+          document.replace(
+            "      - name: adguard\n",
+            `      - name: adguard\n${edge("platform-garage", "backups")}`,
+          ),
+      }),
+    ).toStrictEqual([
+      ["mail-system", [["mail", ["mail-spool"]]]],
+      [
+        "data-system",
+        [
+          ["knowledge-platform", ["knowledge-platform-assets"]],
+          ["mail", ["mail-archive"]],
+          ["utility", ["utility-backups"]],
+        ],
+      ],
+    ]);
+    expect(
+      resolve({
+        [PLATFORM]: (document) =>
+          document
+            .replace(
+              "legacy: [auth, data, knowledge, notes]",
+              "legacy: [auth, data, knowledge, knowledge-platform, notes]",
+            )
+            .replace(
+              "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+              "estate: [delivery, edge, identity, mail, observability, secrets, utility]",
+            ),
+      }),
+    ).toStrictEqual([]);
+  });
+
   it("grants each Process naming buckets read on its project's key, once per store", () => {
     const tree = asTree(artifact(render(TWO_EDGES), "knowledge-platform"));
     const policy = (process: string) =>

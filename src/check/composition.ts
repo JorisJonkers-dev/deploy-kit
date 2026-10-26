@@ -429,7 +429,10 @@ function credentialsRefusals(
       : []),
     ...(edge.buckets !== undefined &&
     estate.declared.has(edge.application) &&
-    estate.buckets.get(edge.application)?.has(edge.surface) !== true
+    // Every declared Application has its entry, an empty set where it owns no buckets.
+    !(estate.buckets.get(edge.application) as ReadonlySet<string>).has(
+      edge.surface,
+    )
       ? [
           {
             code: "E_BUCKETS_WITHOUT_OBJECT_STORE" as const,

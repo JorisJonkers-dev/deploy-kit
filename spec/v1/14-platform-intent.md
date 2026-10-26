@@ -1438,10 +1438,13 @@ classDiagram
         +EnginePolicy valkey
         +EnginePolicy mongo
         +EnginePolicy files
+        +EnginePolicy s3
     }
     class EnginePolicy {
         +ImageAlias backup
         +SurfaceName surface
+        +ImageAlias catalog
+        +SurfaceName catalogSurface
     }
     class MonitorCadence {
         +Duration interval

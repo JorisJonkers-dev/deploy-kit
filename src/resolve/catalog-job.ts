@@ -7,7 +7,6 @@ import type { EffectiveProject } from "../model/effective-intent.ts";
 import { type LockedImage, versionOf } from "../model/images-lock.ts";
 import {
   bucketOf,
-  bucketStoreOf,
   dataRole,
   ownerRole,
   ownsBuckets,
@@ -107,9 +106,11 @@ interface Owner {
 }
 
 /** The projects on the estate path whose Processes name buckets in one object store, with the buckets each names. */
+// A missing list and an empty one hold no edge, and no bucket, alike.
+// Stryker disable ArrayDeclaration
 function bucketReadersOf(
   set: PinnedSet,
-  { application, process }: Owner,
+  { application }: Pick<Owner, "application">,
 ): { readonly project: string; readonly buckets: readonly string[] }[] {
   return set.projects
     .filter(({ project }) => onEstatePath(set, project))
@@ -119,24 +120,21 @@ function bucketReadersOf(
         ...new Set(
           applications
             .flatMap(({ processes }) => processes)
-            // A missing list and an empty one hold no edge alike.
-            // Stryker disable next-line ArrayDeclaration
             .flatMap(({ dependsOn }) => dependsOn ?? [])
-            .filter(
-              (edge) =>
-                edge.application === application.id &&
-                bucketStoreOf(edge, set.projects) === process.name,
-            )
-            // Stryker disable next-line ArrayDeclaration: an edge reaching a
-            // store with no buckets is filtered below either way.
+            // Surfaces are unique in an Application, so it runs one store
+            // that provides the surface its catalog is applied over.
+            .filter((edge) => edge.application === application.id)
             .flatMap((edge) => edge.buckets ?? [])
             .map((name) => bucketOf(project, name)),
         ),
       ].sort(),
     }))
     .filter(({ buckets }) => buckets.length > 0)
+    // No two readers share a project, so `<=` would order the same list.
+    // Stryker disable next-line EqualityOperator
     .sort((a, b) => (a.project < b.project ? -1 : 1));
 }
+// Stryker restore ArrayDeclaration
 
 /** The login a catalog method applies its catalog with, where it has one. */
 function adminOf(

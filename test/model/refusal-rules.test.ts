@@ -728,3 +728,55 @@ describe("a backed-up durability class", () => {
     ]);
   });
 });
+
+// spec/v1/14-platform-intent.md#catalog-methods
+describe("a catalog surface", () => {
+  const store = (provides: string) => `  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        image: garage
+        runtime: none
+        engine: s3
+${provides}        placement: { memory: 128Mi, cpu: 25m }
+        startupBudget: 60s
+        cutover: interrupted
+        volumes:
+          - { claim: data, mountAt: /data, size: 1Gi, durability: recoverable }
+`;
+  const catalogued = (entry: string) => (text: string) =>
+    text.replace(
+      "  postgres: { backup: postgres-backup }\n",
+      `  postgres: { backup: postgres-backup }\n  s3: ${entry}\n`,
+    );
+  const codes = (provides: string, entry: string) =>
+    refusals(store(provides), { platform: catalogued(entry) })
+      .filter(({ code }) => code === "E_CATALOG_SURFACE_NOT_PROVIDED")
+      .map(({ path, message }) => [path, message]);
+
+  it("is refused where the Process provides nothing at all", () => {
+    expect(
+      codes(
+        "",
+        "{ backup: file-backup, catalog: garage-catalog, catalogSurface: admin }",
+      ),
+    ).toStrictEqual([
+      [
+        AT,
+        "the catalog of engine s3 is applied over the surface admin, which api does not provide",
+      ],
+    ]);
+  });
+
+  it("is not checked where the engine names no catalog method", () => {
+    expect(
+      codes("", "{ backup: file-backup, catalogSurface: admin }"),
+    ).toStrictEqual([]);
+    expect(
+      codes(
+        "        provides: { admin: 3903 }\n",
+        "{ backup: file-backup, catalog: garage-catalog, catalogSurface: admin }",
+      ),
+    ).toStrictEqual([]);
+  });
+});
