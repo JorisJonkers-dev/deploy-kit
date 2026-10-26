@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hindsight-worker
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-worker
+    app.kubernetes.io/instance: hindsight-worker
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  selector:
+    app.kubernetes.io/instance: hindsight-worker
+  ports:
+    - name: worker
+      port: 8889
+      targetPort: worker

@@ -722,6 +722,8 @@ function cronJobOf(
     },
     spec: {
       schedule: process.schedule as string,
+      // A parked schedule starts no run; one in flight finishes.
+      ...(process.parked === true ? { suspend: true } : {}),
       concurrencyPolicy: "Forbid",
       startingDeadlineSeconds: wholeSeconds(process.startDeadline as string),
       jobTemplate: {

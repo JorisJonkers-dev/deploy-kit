@@ -1801,6 +1801,30 @@ describe("a scheduled Process", () => {
       "        image: asset-sync\n        dependsOn:\n          - { application: platform-valkey, surface: redis }\n",
     );
 
+  // REQ-095 (docs/requirements.md): a parked schedule starts no run.
+  it("suspends its CronJob while parked, and only then", () => {
+    const suspendOf = (
+      edits?: Readonly<Record<string, (text: string) => string>>,
+    ) =>
+      (
+        objects(tree(edits)[`${SYNC}/workload.yaml`])[0]?.["spec"] as Record<
+          string,
+          unknown
+        >
+      )["suspend"];
+
+    expect(suspendOf()).toBeUndefined();
+    expect(
+      suspendOf({
+        "data/data.project.yml": (document) =>
+          document.replace(
+            "        image: asset-sync\n",
+            "        image: asset-sync\n        parked: {reason: Paused.}\n",
+          ),
+      }),
+    ).toBe(true);
+  });
+
   it("renders a CronJob that forbids a second run and skips a late one, and nothing that serves", () => {
     const rendered = tree();
     const [cronJob] = objects(rendered[`${SYNC}/workload.yaml`]);

@@ -399,7 +399,9 @@ describe("resolveIntentSet", () => {
       ).toBe(text("knowledge-platform/expected/resolved.hindsight.json"));
     });
 
-    it("holds hindsight's API and worker until the embedding model, a stop-start Application of the same Project, has started", () => {
+    // REQ-095 (docs/requirements.md): the parked worker is no member, so the
+    // gate waits on the Processes that run.
+    it("holds hindsight's API until the embedding model, a stop-start Application of the same Project, has started, and not its parked worker", () => {
       const members = knowledgePlatform().applications.find(
         ({ id }) => id === "hindsight",
       )?.releaseGate?.members;
@@ -409,15 +411,6 @@ describe("resolveIntentSet", () => {
       ).toStrictEqual([
         [
           "hindsight-api",
-          [
-            {
-              application: "hindsight-embedding",
-              process: "hindsight-tei-embedding",
-            },
-          ],
-        ],
-        [
-          "hindsight-worker",
           [
             {
               application: "hindsight-embedding",

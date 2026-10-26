@@ -650,8 +650,8 @@ describe("the metamodel refuses", () => {
     expect(refused(withProcess({ deadline }))).toBe(!valid);
   });
 
-  it("a replica count below one", () => {
-    expect(refused(withProcess({ replicas: 0 }))).toBe(true);
+  it("a replica count below zero, which only a parked Process reaches", () => {
+    expect(refused(withProcess({ replicas: -1 }))).toBe(true);
   });
 
   it.each([
@@ -861,5 +861,41 @@ describe("the Application revision", () => {
       edit(edited);
       expect(applicationRevision(edited)).not.toBe(before);
     }
+  });
+});
+
+// REQ-095 (docs/requirements.md): a parked Process stops and starts, whatever
+// its cutover, and the metamodel says so where it refuses another switchover.
+describe("a parked Process's switchover", () => {
+  const hindsight = (): Record<string, unknown> =>
+    JSON.parse(
+      readFileSync(
+        join(
+          import.meta.dirname,
+          "..",
+          "..",
+          "spec/v1/examples/knowledge-platform/expected/resolved.hindsight.json",
+        ),
+        "utf8",
+      ),
+    ) as Record<string, unknown>;
+
+  it("is stop-start, and nothing else", () => {
+    const document = hindsight();
+    const processes = document["processes"] as Record<string, unknown>[];
+    const index = processes.findIndex(({ parked }) => parked === true);
+    (processes[index] as Record<string, unknown>)["switchover"] = "blue-green";
+
+    expect(
+      resolvedApplicationDocument
+        .safeParse(document)
+        .error?.issues.map(({ path, message }) => ({ path, message })),
+    ).toContainEqual({
+      path: ["processes", index, "switchover"],
+      message: "a parked Process stops and starts",
+    });
+    expect(resolvedApplicationDocument.safeParse(hindsight()).success).toBe(
+      true,
+    );
   });
 });

@@ -2935,6 +2935,25 @@ them, and nothing undoes it.
   own are `E_PREPARE_PROCESS_SERVES`. A `cutover` shared from above does not
   reach it, and it is not required to have one.
 
+## Parked Processes
+
+```yaml
+parked: {reason: Ingestion paused while the job store is migrated.}
+```
+
+A Process of any lifecycle may be **parked**, with a reason: it stops running,
+and nothing it owns is pruned. A parked Process renders zero replicas, or a
+suspended CronJob where it is scheduled; its claims, grants, Service and network
+policy stay rendered, so unparking is deleting the line. It gets no disruption
+budget, and it is no member of its Application's release gate: a parked Process
+stops and starts whatever its cutover, since it has no release to gate. It is
+checked like any other, eligibility included, and an edge from a running
+Process to a parked provider is allowed.
+
+Parking a scheduled Process lets a run in flight finish; unparking it starts a
+run at once only where a slot fell within the last 300 seconds, the start
+deadline, and otherwise waits for the next slot.
+
 ## Scheduled Processes
 
 ```yaml

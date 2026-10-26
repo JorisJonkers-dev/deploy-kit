@@ -323,11 +323,16 @@ const sharedIntent = {
   cutover: cutover.exactOptional(),
 };
 
+// A Process that stops running and keeps everything it owns
+// (spec/v1/10-project-intent.md#parked-processes), with the reason it does.
+const parked = z.strictObject({ reason: text }).meta({ id: "Parked" });
+
 const process = z
   .strictObject({
     name: text,
     lifecycle: lifecycle,
     schedule: schedule.exactOptional(),
+    parked: parked.exactOptional(),
     image: text,
     runtime: runtime,
     engine: engine.exactOptional(),

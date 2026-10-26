@@ -1360,8 +1360,12 @@
         },
         "replicas": {
           "type": "integer",
-          "minimum": 1,
+          "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "parked": {
+          "type": "boolean",
+          "const": true
         },
         "priorityClass": {
           "type": "string",
@@ -1540,6 +1544,16 @@
               "cutover": {
                 "const": "continuous"
               }
+            },
+            "not": {
+              "required": [
+                "parked"
+              ],
+              "properties": {
+                "parked": {
+                  "const": true
+                }
+              }
             }
           },
           "then": {
@@ -1562,6 +1576,16 @@
               "cutover": {
                 "const": "interrupted"
               }
+            },
+            "not": {
+              "required": [
+                "parked"
+              ],
+              "properties": {
+                "parked": {
+                  "const": true
+                }
+              }
             }
           },
           "then": {
@@ -1570,6 +1594,25 @@
                 "enum": [
                   "stop-start"
                 ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "parked"
+            ],
+            "properties": {
+              "parked": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "switchover": {
+                "const": "stop-start"
               }
             }
           }

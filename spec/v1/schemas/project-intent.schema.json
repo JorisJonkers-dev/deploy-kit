@@ -950,6 +950,9 @@
           "type": "string",
           "pattern": "^[0-9A-Za-z*/,?-]+( [0-9A-Za-z*/,?-]+){4}$"
         },
+        "parked": {
+          "$ref": "#/$defs/Parked"
+        },
         "image": {
           "type": "string",
           "minLength": 1
@@ -1082,6 +1085,19 @@
         "prepare",
         "scheduled"
       ]
+    },
+    "Parked": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false
     },
     "Runtime": {
       "type": "string",
