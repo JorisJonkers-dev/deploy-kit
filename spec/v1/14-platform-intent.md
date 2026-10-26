@@ -1468,6 +1468,15 @@ classDiagram
         +ApplicationId[] machinery
         +ApplicationId gate
     }
+    class MoveMethod {
+        +ImageAlias image
+        +MoveBreak breaksOn
+        +MoveReverse reverse
+    }
+    class MovePolicy {
+        +Duration timeout
+        +Duration retention
+    }
     class AnalysisPolicy {
         +Duration interval
         +int iterations
@@ -1519,6 +1528,7 @@ classDiagram
     Platform "1" *-- "0..1" ApiAccessPolicy : apiAccess
     Platform "1" *-- "0..1" VaultPolicyJob : policyJob
     DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
+    DeliveryPolicy "1" *-- "0..1" MovePolicy : move
     Platform "1" *-- "0..1" HandoverLedger : handover
     HandoverLedger "1" *-- "0..*" ServingLocation : serving
     Platform "1" *-- "0..*" Provider : providers
@@ -1533,4 +1543,5 @@ classDiagram
     DurabilityPolicy "1" *-- "0..1" OffClusterCopy : offCluster
     OffClusterCopy "1" *-- "1..*" DestinationRange : egress
     EnginePolicies "1" *-- "0..5" EnginePolicy : per engine
+    EnginePolicy "1" *-- "0..1" MoveMethod : move
 ```

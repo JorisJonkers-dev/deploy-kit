@@ -159,6 +159,42 @@ describe("the ClusterState snapshot", () => {
     ).toBe(false);
   });
 
+  // REQ-109 (docs/requirements.md): the facts a Move is derived from.
+  it("records each engine Process's active Instance, and an open Move's phase and when its flip held", () => {
+    const active = {
+      application: "platform-postgres",
+      instance: "postgres",
+      version: "17.2.0",
+      namespace: "data-system",
+      node: "enschede-t1000-1",
+    };
+
+    expect(
+      clusterState.safeParse({ ...STATE, instances: [active] }).success,
+    ).toBe(true);
+    expect(
+      clusterState.safeParse({
+        ...STATE,
+        instances: [
+          { ...active, phase: "retire", flippedAt: "2026-10-26T12:00:00Z" },
+        ],
+      }).success,
+    ).toBe(true);
+    // A phase is one of a Move's steps.
+    expect(
+      clusterState.safeParse({
+        ...STATE,
+        instances: [{ ...active, phase: "halfway" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      clusterState.safeParse({
+        ...STATE,
+        instances: [{ ...active, version: undefined }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("records how each Rollback's backup Job ended, and only that it succeeded or failed", () => {
     const ended = {
       request: "38526643693",
