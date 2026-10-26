@@ -919,9 +919,9 @@ describe("renderIntentSet", () => {
   // REQ-107 (docs/requirements.md): a spawn template derives its pods' rules,
   // labels and policy, and hands its Process the image and labels.
   it("renders the agents project's share of the tree to its committed tree, byte for byte", () => {
-    expect(asTree(artifact(render(undefined, ["agents"]), "agents"))).toStrictEqual(
-      committed("agents/rendered"),
-    );
+    expect(
+      asTree(artifact(render(undefined, ["agents"]), "agents")),
+    ).toStrictEqual(committed("agents/rendered"));
   });
 
   it("renders the utility project's share of the tree to its committed tree, byte for byte", () => {

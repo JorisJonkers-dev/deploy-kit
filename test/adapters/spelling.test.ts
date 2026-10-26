@@ -1217,23 +1217,23 @@ describe("the networking adapter", () => {
     const own = policies.find(({ metadata }) => metadata.name === "notes-api");
 
     // The Process reaches its template's pods on the surfaces they serve.
-    expect(
-      (own?.spec["egress"] as unknown[] | undefined) ?? [],
-    ).toContainEqual({
-      to: [
-        {
-          namespaceSelector: {
-            matchLabels: { "kubernetes.io/metadata.name": "notes-system" },
-          },
-          podSelector: {
-            matchLabels: {
-              "deploy-kit.jorisjonkers.dev/spawned-from": "notes-api-runner",
+    expect((own?.spec["egress"] as unknown[] | undefined) ?? []).toContainEqual(
+      {
+        to: [
+          {
+            namespaceSelector: {
+              matchLabels: { "kubernetes.io/metadata.name": "notes-system" },
+            },
+            podSelector: {
+              matchLabels: {
+                "deploy-kit.jorisjonkers.dev/spawned-from": "notes-api-runner",
+              },
             },
           },
-        },
-      ],
-      ports: [{ protocol: "TCP", port: 8090 }],
-    });
+        ],
+        ports: [{ protocol: "TCP", port: 8090 }],
+      },
+    );
 
     expect(runner?.spec).toStrictEqual({
       podSelector: {
