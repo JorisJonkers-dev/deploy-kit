@@ -4482,6 +4482,41 @@ describe("a Process that serves DNS", () => {
     expect(rules(resolved)).toContain("cluster-dns");
   });
 
+  it("keeps every other peer its policy admits, the Secret Store's among them", () => {
+    const grant =
+      "        secrets:\n          - { path: secret/data/notes/key, keys: [key], access: read, delivery: file, mountAt: /run/key, fileMode: '0400', rotation: {tolerates: restart} }\n";
+    const holding = one(
+      serving("notes-api", grant).replace(
+        "provides: { http: 8080 }",
+        "provides: { http: 8080, dns: 5353 }",
+      ),
+    ).replace("    processes:\n", ON_53);
+
+    expect(rules(processOf(holding))).toStrictEqual(["secret-store"]);
+  });
+
+  it("is refused at each Process's first entry on port 53, whatever comes before it", () => {
+    const two = `  - id: notes
+    l4Exposure:
+      - { address: lan-dns, port: 53, protocol: udp, process: notes-dns, surface: dns }
+      - { address: lan-mqtt, port: 8080, protocol: tcp, process: notes-api, surface: http }
+      - { address: lan-mqtt, port: 53, protocol: udp, process: notes-api, surface: dns }
+    processes:
+${serving("notes-api").replace("provides: { http: 8080 }", "provides: { http: 8080, dns: 5353 }")}${serving("notes-dns").replace("provides: { http: 8080 }", "provides: { dns: 5353 }")}`;
+    const result = resolve(two, { platform: without });
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics
+            .filter(({ code }) => code === "E_NO_UPSTREAM_NAMESERVERS")
+            .map(({ path }) => path),
+    ).toStrictEqual([
+      "/applications/0/l4Exposure/0",
+      "/applications/0/l4Exposure/2",
+    ]);
+  });
+
   it("is refused under a platform that names no upstream nameservers", () => {
     expect(
       notesCodesOf(resolve(servesDns, { platform: without })),
