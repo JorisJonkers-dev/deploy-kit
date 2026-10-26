@@ -224,6 +224,58 @@ The tier's `forwardAuth` keeps its meaning and its place
 Gate: the sign-in provider, its surface and the Gate's path, and is required where a tier
 carries a `gated` Client.
 
+## Generated App Roles
+
+An application checks the App Roles its Client declares, so it names them in
+its own code. `deploy-kit generate identity` writes that code from the
+project file, so a role is written once and a renamed or removed one breaks the
+application's build until its code follows:
+
+```
+deploy-kit generate identity <file|directory>... --lang <go|kotlin|typescript|python|rust>
+                    [--application <id>] [--package <name>] [--out <file> [--check]]
+```
+
+It reads the project file and the Platform document, each checked on its own as
+`validate` checks it, and never the estate: an application's repository holds
+its own project file, and no other Project needs to be present. The file it
+writes for the one Application that declares `client` (or the one
+`--application` names) states three things, each a plain string, so it depends
+on no adapter library:
+
+| states | from |
+|---|---|
+| the App Roles | `user`, then `client.roles` in the order declared: the Client's own `roles` ([The Client](#the-client)) |
+| the Client id | the Application Id, which names the Client |
+| the contract version | the Platform document's `signIn.contract` ([chapter 14](14-platform-intent.md#sign-in)), `major.minor`: the Principal contract version the application expects |
+
+| `--lang` | the file |
+|---|---|
+| `go` | `package identity`: `ClientID`, `ContractVersion`, a `Role` string type with one `Role<Name>` constant a role, and `Roles` |
+| `kotlin` | the package `--package` names, which a Kotlin file cannot do without: `CLIENT_ID`, `CONTRACT_VERSION` and `enum class AppRole(val value: String)` |
+| `typescript` | a module: `CLIENT_ID`, `CONTRACT_VERSION`, `APP_ROLES` as a constant tuple, and the `AppRole` type it spells |
+| `python` | a module: `CLIENT_ID`, `CONTRACT_VERSION` and `class AppRole(str, Enum)` |
+| `rust` | a module: `CLIENT_ID`, `CONTRACT_VERSION`, and `enum AppRole` with `ALL` and `as_str` |
+
+A role keeps its spelling as each value, and is named in the language's case:
+`release-manager` is `RoleReleaseManager` in Go, `ReleaseManager` in Rust, and
+`RELEASE_MANAGER` in Kotlin and Python. Two roles that one case spells alike
+(`a-b` and `a--b`), and a role Rust cannot name (`self`), get no file in that
+language. Each file is laid out as its language's formatter would lay it out
+(gofmt, prettier, black, rustfmt), so a formatter check in the application
+leaves it alone.
+
+Without `--out` the file goes to stdout. With `--out` it is written there, and
+with `--check` as well nothing is written: the command fails where the file at
+`--out` is missing or differs from what it would write, which is how an
+application's CI fails on a stale file. A project file that declares no
+`client`, a Platform document that names no `contract`, and a set in which
+several Applications declare one and `--application` names none each get no
+file and a message saying why; a document that does not check is refused with
+its diagnostics. The worked [identity](examples/identity/identity.project.yml)
+example's `grafana` is written in every language under
+[`examples/identity/generated/`](examples/identity/generated/).
+
 ## What is checked
 
 | code | refused when | where |

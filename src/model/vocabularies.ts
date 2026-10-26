@@ -32,6 +32,14 @@ export const AUDIENCES = [
 ] as const;
 export const CONTENT_POLICIES = ["strict", "admin", "workflow"] as const;
 export const MATCHES = ["prefix", "exact"] as const;
+/** The languages an Application's identity file is generated in (spec/v1/17-sign-in.md#generated-app-roles). */
+export const IDENTITY_LANGUAGES = [
+  "go",
+  "kotlin",
+  "typescript",
+  "python",
+  "rust",
+] as const;
 export const DATABASE_ENGINES = ["database"] as const;
 export const TRANSIT_ENGINES = ["transit"] as const;
 export const ACCESS_TIERS = [

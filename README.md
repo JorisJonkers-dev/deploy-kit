@@ -101,7 +101,7 @@ runs the suite without enforcing coverage. `npm run test:coverage` (part of
 [`src/cli/`](src/cli/main.ts). The package ships it as a bin, built to
 JavaScript before the package is packed, so a repository that pins the package
 runs `npx --no-install deploy-kit`; from a clone it runs as below, with no
-build. It has three commands. Each reads and writes directories
+build. It has four commands. Each reads and writes files and directories
 and never the registry: a workflow pulls fragments into a directory, runs the
 command, and pushes what it wrote.
 
@@ -122,6 +122,12 @@ node src/cli/index.ts compose --fragments fragments/ --participants participants
   --cluster-state cluster-state.yml --schema-package-integrity <sha256:...> --out composed/ \
   [--platform platform/] [--held held/] [--pins pins.json] [--sources projects/] \
   [--lock lock.json --lock-commit <commit>]
+
+# Write an Application's App Roles, Client id and Principal contract version in its
+# language, from its project file and the Platform document; --check fails a stale file.
+node src/cli/index.ts generate identity spec/v1/examples/platform/platform.intent.yml \
+  spec/v1/examples/identity/identity.project.yml --application grafana --lang go \
+  [--package <name>] [--out identity.go [--check]]
 ```
 
 - **Help.** `deploy-kit --help` or `-h`, alone or after a command, prints the

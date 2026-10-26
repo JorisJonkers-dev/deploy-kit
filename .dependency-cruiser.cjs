@@ -15,6 +15,8 @@
 //   src/check/          the constraints, one function per code. Step.
 //   src/lower/          Project Intent to the Effective Intent. Step.
 //   src/resolve/        the Effective Intent to the Resolved Deployment. Step.
+//   src/generate/       an Application's declarations to source text an
+//                       application compiles against. Step.
 //   src/adapters/       the registered adapters. Step.
 //   src/application/    the use-cases: run the steps in order, pass each model
 //                       on, perform no IO of their own.
@@ -146,9 +148,9 @@ module.exports = {
       comment:
         "A step receives the previous model as a value from the use-case. One " +
         "that imports another step turns evaluation order into semantics.",
-      from: { path: "^src/(read|check|lower|resolve)/" },
+      from: { path: "^src/(read|check|lower|resolve|generate)/" },
       to: {
-        path: "^src/(read|check|lower|resolve|adapters|application|infrastructure|cli)/",
+        path: "^src/(read|check|lower|resolve|generate|adapters|application|infrastructure|cli)/",
         pathNot: "^src/$1/",
       },
     },
@@ -159,7 +161,7 @@ module.exports = {
         "No filesystem, network, clock, environment or crypto in a metamodel or " +
         "a step. Hashing arrives through a port, which is what keeps renderHash " +
         "a pure function of the pinned inputs.",
-      from: { path: "^src/(model|read|check|lower|resolve)/" },
+      from: { path: "^src/(model|read|check|lower|resolve|generate)/" },
       to: { path: ambientPattern },
     },
     {
@@ -206,7 +208,7 @@ module.exports = {
       to: {
         path: [
           ambientPattern,
-          "^src/(application|cli|infrastructure|read|check|lower|resolve)/",
+          "^src/(application|cli|infrastructure|read|check|lower|resolve|generate)/",
         ],
       },
     },
@@ -226,7 +228,9 @@ module.exports = {
         "A port implementation satisfies an interface the model declares. It " +
         "does not orchestrate, and it does not render.",
       from: { path: "^src/infrastructure/" },
-      to: { path: "^src/(application|adapters|read|check|lower|resolve)/" },
+      to: {
+        path: "^src/(application|adapters|read|check|lower|resolve|generate)/",
+      },
     },
     {
       name: "nothing-depends-on-the-cli",

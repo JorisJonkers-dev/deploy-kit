@@ -50,6 +50,9 @@ export default defineConfig({
       "test/application/images-lock-shares.test.ts",
       // The CLI in process; its process-level runs reach no instrumented code.
       "test/cli/main.test.ts",
+      "test/cli/generate-identity.test.ts",
+      "test/generate/identity.test.ts",
+      "test/application/generate-identity.test.ts",
       "test/cli/index.test.ts",
       "test/cli/conventions.test.ts",
       "test/adapters/contract.test.ts",

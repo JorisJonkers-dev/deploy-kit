@@ -221,6 +221,44 @@ describe("the boundary lint", () => {
     expect(output).toMatch(/no-step-imports-another-step/);
   });
 
+  // deploy-kit#514: the generator is a step like the others.
+  it("fails the generator importing resolution, and resolution importing the generator", () => {
+    for (const files of [
+      {
+        "src/resolve/application.ts": mod(),
+        "src/generate/identity.ts": mod(["../resolve/application.js"]),
+        "src/cli/index.ts": mod(["../generate/identity.js"]),
+      },
+      {
+        "src/generate/identity.ts": mod(),
+        "src/resolve/application.ts": mod(["../generate/identity.js"]),
+        "src/cli/index.ts": mod(["../resolve/application.js"]),
+      },
+    ]) {
+      const { code, output } = cruise(files);
+      expect(code).not.toBe(0);
+      expect(output).toMatch(/no-step-imports-another-step/);
+    }
+  });
+
+  it("fails the generator reaching the filesystem", () => {
+    const { code, output } = cruise({
+      "src/generate/identity.ts": mod(["node:fs"]),
+      "src/cli/index.ts": mod(["../generate/identity.js"]),
+    });
+    expect(code).not.toBe(0);
+    expect(output).toMatch(/the-chain-reads-nothing-ambient/);
+  });
+
+  it("passes the generator importing the model", () => {
+    const { code, output } = cruise({
+      "src/model/intent.ts": mod(),
+      "src/generate/identity.ts": mod(["../model/intent.js"]),
+      "src/cli/index.ts": mod(["../generate/identity.js"]),
+    });
+    expect(code, output).toBe(0);
+  });
+
   it("passes a step importing its own directory and the model", () => {
     const { code, output } = cruise({
       "src/model/intent.ts": mod(),

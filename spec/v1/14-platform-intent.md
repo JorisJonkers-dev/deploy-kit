@@ -451,12 +451,14 @@ The Platform document names who issues sign-ins for the estate
 signIn:
   issuer: https://auth.jorisjonkers.dev
   provider: identity
+  contract: "1.2"
 ```
 
 | fact | meaning |
 |---|---|
 | `issuer` | the Issuer URL every Client trusts, and what `${client:issuer}` resolves to |
 | `provider` | the Application that is the Identity Provider; each of its Processes is granted write on every derived client credential path ([chapter 17](17-sign-in.md#credentials-and-placeholders)) |
+| `contract` | optional: the Principal contract version the provider serves, `major.minor`, which every generated identity file states its application expects ([chapter 17](17-sign-in.md#generated-app-roles)); one platform change moves it for every application |
 
 An Application declaring `client` while the Platform document has no `signIn`
 is `E_NO_SIGN_IN_PROVIDER`, and a `provider` no project file declares is

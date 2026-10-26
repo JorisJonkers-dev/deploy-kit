@@ -14,7 +14,10 @@ The compiler reads Project Intent and Platform Intent, lowers them to the
 Effective Intent, resolves the Resolved Deployment, and adapts it to the
 Deliverable Set, which one serializer writes. Each arrow is a step: a pure
 function from one typed model to the next, in its own directory (`read/`,
-`check/`, `lower/`, `resolve/`, `adapters/<name>/`). The metamodels sit
+`check/`, `lower/`, `resolve/`, `adapters/<name>/`). One step leaves the chain
+beside it: `generate/` turns an Application's declarations into source text the
+application compiles against, its App Roles in its own language, and holds to
+the same rules as every other step. The metamodels sit
 innermost, in `model/`, and every step imports only `model/`. No step imports
 another step; the use-case in `application/` runs the steps in order and passes
 each model on. A step is a module of named mappings, one exported function per
