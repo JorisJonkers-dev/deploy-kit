@@ -21,7 +21,7 @@ describe("the participants list", () => {
         "participants:",
         "  notes: {}",
         "  media: { maxAge: 21d, reason: releases batch fortnightly }",
-        "  observability: { dormant: true, owner: joris, reason: stable, reviewBy: 2026-11-30 }",
+        "  observability: { dormant: true, owner: joris, reason: stable }",
         "",
       ].join("\n"),
     );
@@ -33,7 +33,6 @@ describe("the participants list", () => {
         dormant: true,
         owner: "joris",
         reason: "stable",
-        reviewBy: "2026-11-30",
       },
     });
     expect(DEFAULT_MAX_AGE).toBe("7d");
@@ -47,17 +46,16 @@ describe("the participants list", () => {
     ]);
   });
 
-  it("refuses a dormant participant that names no owner, no reason or no review date, each where it is missing", () => {
+  it("refuses a dormant participant that names no owner or no reason, each where it is missing", () => {
     expect(
       refusalsOf("participants:\n  observability: { dormant: true }\n"),
     ).toStrictEqual([
       "schema /participants/observability/owner a dormant participant names its owner",
       "schema /participants/observability/reason a dormant participant names its reason",
-      "schema /participants/observability/reviewBy a dormant participant names its reviewBy",
     ]);
   });
 
-  it("refuses an age that is not whole days, a review date that is not a day, and a file that is not YAML", () => {
+  it("refuses an age that is not whole days, a review date it no longer reads, and a file that is not YAML", () => {
     expect(
       refusalsOf("participants:\n  media: { maxAge: 3w, reason: slow }\n"),
     ).toHaveLength(1);

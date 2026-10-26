@@ -26,7 +26,6 @@ applications:
     # `provides`. Omitting the block entirely is how an Application says it wants no
     # monitoring -- there is no `none` to write.
     observability:
-      alertClass: business-hours
       scrape:
         process: notes-api
         surface: http

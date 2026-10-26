@@ -578,9 +578,6 @@ export function resolveApplication(
     namespace: namespaceOf(context.project),
     reconcileUnit: unitOf(context.project),
     ...(after.length === 0 ? {} : { reconcileAfter: after }),
-    ...(application.observability === undefined
-      ? {}
-      : { alertClass: application.observability.alertClass }),
     ...dashboardsOf(application, context),
     ...alertingOf(application, context),
     ...(scrape === undefined

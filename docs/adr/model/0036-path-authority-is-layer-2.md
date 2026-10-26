@@ -31,8 +31,8 @@ Application emits one directory per Application: `auth` has one Application so n
 collides, `data` has three and renders three identical Namespace objects at
 three paths, with nothing but write order deciding which survives. And the
 Gatus endpoints ConfigMap is estate-scoped: it lands in `utility-system`, a
-namespace no participating Application owns, and `E_FOREIGN_NAMESPACE` is satisfied
-only because the adapter owns the path rather than the Application. Under an
+namespace no participating Application owns, and that is allowed only because
+the adapter owns the path rather than the Application. Under an
 adapter-computed path both outcomes are accidents; under a plan both are
 assignments with an owner.
 

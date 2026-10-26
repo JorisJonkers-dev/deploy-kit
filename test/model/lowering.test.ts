@@ -324,7 +324,9 @@ describe("lowerProject, over the families a worked document does not hold", () =
       document(
         {},
         {
-          observability: { alertClass: "urgent" },
+          observability: {
+            scrape: { process: "w", surface: "http", path: "/metrics" },
+          },
           exposure: [
             {
               name: "public",
@@ -342,7 +344,7 @@ describe("lowerProject, over the families a worked document does not hold", () =
     );
 
     expect(result.applications[0]?.observability).toStrictEqual({
-      alertClass: "urgent",
+      scrape: { process: "w", surface: "http", path: "/metrics" },
     });
     expect(result.applications[0]?.exposure?.[0]?.routes[0]?.process).toBe("w");
   });
@@ -707,59 +709,38 @@ describe("what the lowered shape carries, and what it leaves out", () => {
     );
   });
 
-  it("writes a base file with no Cluster Target, and an overlay with one", () => {
-    const process = lowered({}, {}, {}, [
-      {
-        path: "env/w/base.env",
-        scope: { level: "process", name: "w" },
-        file: { entries: [{ name: "A", value: { text: "1" } }] },
-      },
-      {
-        path: "env/w/production.env",
-        scope: { level: "process", name: "w" },
-        file: {
-          cluster: "production",
-          entries: [{ name: "A", value: { text: "2" } }],
-        },
-      },
-    ]);
-
-    expect(process.env).toStrictEqual([
-      { entries: [{ name: "A", value: { text: "1" } }] },
-      {
-        cluster: "production",
-        entries: [{ name: "A", value: { text: "2" } }],
-      },
-    ]);
-  });
-
-  it("keeps an overlay's variables out of the base file, and the other way round", () => {
+  it("merges every scope into the Process's one file, the lowest scope's value where two set one", () => {
     const process = lowered({}, {}, {}, [
       {
         path: "env/_project/base.env",
         scope: { level: "project" },
-        file: { entries: [{ name: "SHARED", value: { text: "1" } }] },
+        file: {
+          entries: [
+            { name: "SHARED", value: { text: "1" } },
+            { name: "A", value: { text: "project" } },
+          ],
+        },
       },
       {
-        path: "env/w/production.env",
+        path: "env/w/base.env",
         scope: { level: "process", name: "w" },
-        file: {
-          cluster: "production",
-          entries: [{ name: "ONLY_THERE", value: { text: "2" } }],
-        },
+        file: { entries: [{ name: "A", value: { text: "process" } }] },
       },
     ]);
 
-    expect(
-      process.env?.map(({ cluster, entries }) => [
-        cluster,
-        entries.map(({ name }) => name),
-      ]),
-      // Lowest level first, so the Process's own overlay leads.
-    ).toStrictEqual([
-      ["production", ["ONLY_THERE"]],
-      [undefined, ["SHARED"]],
+    // Lowest level first, so the Process's own variable leads and holds.
+    expect(process.env).toStrictEqual([
+      {
+        entries: [
+          { name: "A", value: { text: "process" } },
+          { name: "SHARED", value: { text: "1" } },
+        ],
+      },
     ]);
+  });
+
+  it("holds no file where no scope has one", () => {
+    expect(lowered({}, {}, {}, [])).not.toHaveProperty("env");
   });
 
   it("reaches an Application's own scope, and not a sibling Application's", () => {

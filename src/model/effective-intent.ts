@@ -26,7 +26,7 @@ export type CompletePlacement = Placement & {
 export type EffectiveProcess = Omit<ProcessDocument, SharedIntentKey> &
   Partial<Pick<ProcessDocument, Exclude<SharedIntentKey, "placement">>> & {
     readonly placement: CompletePlacement;
-    /** One file per Cluster Target, each extended by the scopes above. */
+    /** The Process's one file, extended by the scopes above, or none. */
     readonly env?: readonly EnvFile[];
   };
 

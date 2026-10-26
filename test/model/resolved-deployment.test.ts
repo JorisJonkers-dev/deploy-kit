@@ -575,7 +575,6 @@ describe("the metamodel names every class the chapter draws", () => {
     expect(extra).toStrictEqual([
       "AccessTier",
       "AdapterName",
-      "AlertClass",
       "AnalysisCheck",
       "ApiVerb",
       "Audience",

@@ -38,17 +38,17 @@ Layer 1 is authored as two kinds of file:
 | file | owns |
 |---|---|
 | `platform/<project>.project.yml` | one project: its `owner`, and every Application in it: processes, surfaces, dependencies, exposure, probes, volumes, placement, hardening, and secret **access**, each declared at whichever of the three levels shares it ([Shared intent](#shared-intent)) |
-| `platform/env/<process>/base.env` + `platform/env/<process>/<cluster>.env` | every environment variable that **that Process** receives |
-| `platform/env/_project/base.env` + `platform/env/_project/<cluster>.env` | every environment variable **every Process of the project** receives |
-| `platform/env/_applications/<application>/base.env` + `.../<cluster>.env` | every environment variable **every Process of that Application** receives |
+| `platform/env/<process>/base.env` | every environment variable that **that Process** receives |
+| `platform/env/_project/base.env` | every environment variable **every Process of the project** receives |
+| `platform/env/_applications/<application>/base.env` | every environment variable **every Process of that Application** receives |
 
 Both paths are normative, and the worked examples follow them. The
 `.project.yml` suffix names the `kind` the file carries, `Project`, so a
 `platform/` tree holding several project files beside its `env/` tree says which
 files a publish step reads without a convention nobody wrote down. A Process's
 env files live in **a directory named for the Process**, never in one file per
-Process named after it: the overlay `<cluster>.env` has to sit beside its
-`base.env`, and a flat `<process>.base.env` leaves the overlay nowhere to go.
+Process named after it: every scope is a directory holding its `base.env`, so
+a Process's own scope reads the way the two shared ones do.
 
 The two shared scopes are directories beside the Processes' own, named
 `_project` and `_applications`. The leading underscore is what keeps them
@@ -104,7 +104,7 @@ gets its own namespace. `kind` names the authored document (one project holding
 many Applications) while chapter 40's `IntentFragment` is the envelope that
 publishes it. `schemaVersion` is the **data model's own semver**, not the
 toolkit package's version, and composition accepts a range rather than an
-equality ([0044](../../docs/adr/model/0044-artifact-schema-versioning.md)); chapter 40
+equality ([0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)); chapter 40
 defines the range and what the lock records.
 
 ## Reading a file
@@ -252,7 +252,7 @@ that Process's version of the grant, not a copy of it.
 | family | one declaration is identified by | merging two levels gives |
 |---|---|---|
 | `secrets` | the **derived** read path ([Secrets](#secrets)), so a `kv` grant and a `database` grant never collide | every path either level grants; the lower grant's access, delivery and rotation where both grant a path |
-| `env` | the variable name, within one Cluster Target | every variable either scope sets; the lower scope's value where both set one |
+| `env` | the variable name | every variable either scope sets; the lower scope's value where both set one |
 | `dependsOn` | `{application, surface}`; `required` is a term rather than part of the identity, so an edge that differs in it is a replacement | every edge either level declares; the lower edge's `required` where both declare one |
 | `assets` | `mountAt`: two files cannot arrive at one path | every mount either level declares; the lower Asset's `from` where both mount a path |
 | `writablePaths` | the path | the union of the paths |
@@ -440,7 +440,7 @@ plus per-Process identity ([0031](../../docs/adr/model/0031-identity-per-process
 | `owner` | file header | yes | Who is notified. Not shared and not inherited: it is the project's, and an Application needing a different owner needs its own project. |
 | the eight Shared Intent families | file header | no | `secrets`, `env`, `dependsOn`, `assets`, `writablePaths`, `placement`, `cutover`, `startupBudget`, each held by every Process in the file ([Shared intent](#shared-intent)). `memory` and `cpu` are refused here: `E_SHARED_QUANTITY`. |
 | `id` | Application | yes | The one referencable identity, estate-unique. The repository or product name. |
-| `observability` | Application | no | `{alertClass, scrape {process, surface, path}}`, whole or absent. Absent means no monitoring is rendered. Urgency, never routing ([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)). Never raised to the project: a project would then page as loudly as its loudest member. See [Observability](#observability). |
+| `observability` | Application | no | `{scrape {process, surface, path}}`, or absent. Absent means no monitoring is rendered ([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)). Never raised to the project. See [Observability](#observability). |
 | `processes` | Application | yes | One or more. They switch together. |
 | the eight Shared Intent families | Application | no | The same eight, held by every Process of this Application ([Shared intent](#shared-intent)). The level a family is written at is an author's choice about where the fact belongs, never about what it means. |
 | `exposure` | Application | no | The hostnames this Application serves and how each routes into its Processes. On the Application, not the Process: one hostname fronts two processes in the live `auth` case. An Application nothing reaches from outside declares none. See [Exposure](#exposure). |
@@ -839,9 +839,9 @@ there are two shared **scopes** beside the per-Process one
 | Process | `platform/env/<process>/` | that Process |
 
 A scope is a directory rather than a block in the project file because these are
-files, and a file is what a dotenv is. Each scope holds the same pair a Process's
-own does, a `base.env` and one overlay per Cluster Target, so a shared variable
-that differs per cluster says so where it is written.
+files, and a file is what a dotenv is. Each scope holds one file, `base.env`,
+as a Process's own does. Project Intent never names a cluster, so no file
+varies by one; any other file in a scope directory is refused.
 
 A scope directory that names no Application and no Process the project file
 declares is `E_UNKNOWN_ENV_SCOPE`, at the file. A directory is how a variable
@@ -856,19 +856,14 @@ DB_HOST=${dependency:platform-postgres.host}
 DB_USER=${secret:secret/data/platform/postgres/kb#user}
 ```
 
-`base.env` carries everything that does not vary; one overlay per Cluster Target
-(`<cluster>.env` beside it) carries only what differs, overlay
-winning key by key. **The overlay is the only place a key is written twice.**
 Across scopes the rule is the same one every Shared Intent family follows
 ([Sharing merges, and a duplicate is refused](#sharing-merges-and-a-duplicate-is-refused)):
-a Process's effective environment is the three scopes merged, per Cluster Target,
-the narrower scope's value holds for a variable two scopes set, and the same
-variable set to the same value in two scopes is
-`E_SHARED_DECLARATION_DUPLICATED`. So `DB_HOST` on the project scope and
-`DB_HOST` in one Process's `base.env` is that Process reading a different
-database, said where a reader sees it; the same line copied into both is refused. With one cluster the overlay is usually empty, which is
-already what `stalwart-provisioner` half-invented, its `production.env` and
-`staging.env` being byte-identical.
+a Process's effective environment is the three scopes merged, the narrower
+scope's value holds for a variable two scopes set, and the same variable set to
+the same value in two scopes is `E_SHARED_DECLARATION_DUPLICATED`. So `DB_HOST`
+on the project scope and `DB_HOST` in one Process's `base.env` is that Process
+reading a different database, said where a reader sees it; the same line copied
+into both is refused. A key written twice in one file is refused too.
 
 A literal is written literally. A derived value is a **named placeholder**:
 `${dependency:…}` for a coordinate, `${secret:…}` for a secret, `${exposure:…}`
@@ -913,7 +908,7 @@ that export telemetry and HTTP server metrics inject anything; `static` and
 
 | variable | value | injected by |
 |---|---|---|
-| `DEPLOYMENT_ENVIRONMENT` | the Platform document's `metadata.cluster`, the Cluster Target the render is for | `jvm`, `node`, `python` |
+| `DEPLOYMENT_ENVIRONMENT` | the Platform document's `metadata.cluster`, the cluster the render is for | `jvm`, `node`, `python` |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://` and the address of the collector's `otlp` surface ([chapter 14](14-platform-intent.md#telemetry)); absent where the platform names no collector | `jvm`, `node`, `python` |
 | `OTEL_SERVICE_NAME` | the Process's name | `jvm`, `node`, `python` |
 | `PORT` | the port of the Process's only surface; absent where it provides none or more than one, because then no single port is the one it listens on | `jvm`, `node`, `python` |
@@ -1176,7 +1171,7 @@ would have violated.
 
 The `kubernetes` adapter emits the resulting `CronJob`, one per volume that
 derives a backup, because that kind is already its
-([chapter 30](30-deliverables.md#the-registered-set)). The method image keeps the
+([chapter 30](30-deliverables.md#adapters)). The method image keeps the
 class's `retain` newest copies and prunes the rest in the same run, so there is
 no separate sweep. Each backup runs as the Process's **backup identity**,
 `<process>-backup`, and writes its copies to a derived **backup claim**,
@@ -1388,9 +1383,7 @@ predicted.
 vocabulary, no `allow` list and no `hardening: privileged` shorthand: an image
 that needs root, a writable root filesystem, a dropped capability back or a
 relaxed syscall filter is `E_HARDENING_UNMET` at composition. The fix is the
-image, or an entry in a Bidirectional Ledger with an owner and a reason
-([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)) while the image is
-replaced.
+image; until it is replaced, the Process stays on the old path.
 
 An escape hatch in the DSL is the thing this model exists to remove. A per-field
 relaxation carried with a reason is an override under another name, and it
@@ -1757,7 +1750,7 @@ The rendered route carries that ordering explicitly, so what the document says
 is what the edge does, the ordering is visible in a diff, and a proxy that
 tie-breaks differently changes nothing.
 
-Two routes on one host with the same `path` and `match` are `E_DUPLICATE_ROUTE`
+Two routes on one host with the same `path` and `match` are `E_DUPLICATE_ROUTE_MATCH`
 ([chapter 40](40-composition.md#references)). There is no correct
 interpretation of the pair: whichever wins is decided by a string comparison
 inside a proxy, which no author can see in the document.
@@ -1801,9 +1794,8 @@ the estate, which is what contention means, and
 [0004](../../docs/adr/model/0004-contention-decides-authority.md), as this chapter's
 preamble restates it, decides who **arbitrates**, not who **authors**. The Application
 writes the FQDN it serves; composition refuses the collision with
-`E_DUPLICATE_HOST`, over the composed union together with the Registered Unmanaged
-Surfaces, so an authored host cannot quietly take a name the estate already
-answers on.
+`E_DUPLICATE_HOST`, over the composed union, so an authored host cannot quietly
+take a name another Application already answers on.
 
 What this ends is the duplication. `kb.jorisjonkers.dev` was declared in seven
 authoritative places: the reachability channel, both edge catalogs, both Traefik
@@ -1923,9 +1915,8 @@ gap, not an argument for a field.
 | a route names a Process its Application does not have | `E_UNKNOWN_PROCESS` |
 | a route's `{process, surface}` pair names no surface that Process provides | `E_UNKNOWN_SURFACE` |
 
-`E_DUPLICATE_HOST` is evaluated at composition over the whole union, Registered
-Unmanaged Surfaces included, because a name the estate already answers on is taken
-whether or not this model deploys what answers (chapter 40). The other four are
+`E_DUPLICATE_HOST` is evaluated at composition over the whole union, because a
+name another Project answers on is taken (chapter 40). The other four are
 scoped to a single document and are refused as soon as the fragment is read.
 
 A host is unique **on a tier**, not across the estate. Inside one proxy two
@@ -1963,11 +1954,6 @@ routes to the same rule: a route names a surface by name, never by port, so the
 integer stays written once, by the process that listens on it. Either half of the
 pair failing raises it: a route naming a Process this Application does not hold names
 no surface either.
-
-A hostname the estate serves but does not deploy is a Registered Unmanaged Surface
-([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)), declared in the
-composition input rather than here, and it takes part in `E_DUPLICATE_HOST` on
-equal terms with everything authored.
 
 ## L4 exposure
 
@@ -2056,7 +2042,6 @@ One optional block on the Application, or nothing at all
 
 ```yaml
 observability:
-  alertClass: business-hours
   scrape:
     process: notes-api      # which Process publishes it
     surface: metrics         # a name from that Process's `provides`
@@ -2065,18 +2050,8 @@ observability:
 
 **Absent means no monitoring, and that is a complete answer.** An Application that
 declares nothing gets no monitor, no rule and no alert, and nothing is refused.
-The vocabulary carries no `none` member, because an omission already says it and
-a member that means "I wrote the field to say I did not want the field" is
-ceremony. `platform-valkey` is the case: a cache with no exporter beside it and
+`platform-valkey` is the case: a cache with no exporter beside it and
 no exposure to check publishes nothing, so it declares nothing.
-
-The block is **whole or absent**. Declaring `alertClass` without `scrape` is
-`E_ALERT_CLASS_WITHOUT_SIGNAL`: a class is a statement about how loudly to wake
-someone, and it is meaningless without a signal to wake them about. That refusal
-is the one guarantee this chapter makes about monitoring, and it exists because
-the estate's two holes were both silent ones: Gatus watched 41 endpoints and
-notified nobody, its ConfigMap carrying `storage` and `ui` and no `alerting`
-section at all.
 
 `scrape` names a **surface, not a port**, the same way a route does
 ([Exposure](#exposure)). The port is already declared once in `provides`, and a
@@ -2090,9 +2065,8 @@ genuinely varies ( `/actuator/prometheus`, `/api/actuator/prometheus`,
 nothing and report success.
 
 The whole block sits on the **Application** and is never raised to the project
-header, for the same reason `owner` is: urgency is a per-Application fact, and a
-project that pages because one of its Applications does is a project that gets muted.
-`process` points into the Application's own Processes, which is what lets one
+header, for the same reason `owner` is: what is scraped is a per-Application
+fact. `process` points into the Application's own Processes, which is what lets one
 declaration name the exporter sidecar's surface without the sidecar authoring
 anything.
 
@@ -2106,26 +2080,21 @@ that needs a monitoring stack's opinion, so it stays a Deliverable like any
 other and takes part in the derivation map's properties
 ([chapter 16](16-dependencies.md#the-derivation-map)).
 
-From `alertClass` the model derives **nothing at all**. It is carried into
-`resolved.yml` as a resolved fact and stops there. Rule expressions, severity
-mapping, receiver routing and notifier channels are the monitoring stack's, and
-they are the parts a deployment model has no business owning: PromQL in a project
-file is a mechanism in layer 1, and a receiver is a shared notification channel,
-so by [0004](../../docs/adr/model/0004-contention-decides-authority.md) it is
+How urgent an alert is, and whom it wakes, is not an Application's to say: rule
+expressions, severity and receivers are the monitoring stack's
+([Alert rules](#alert-rules), [chapter 14](14-platform-intent.md#monitoring)),
+because PromQL in a tenant's project file is a mechanism in layer 1, and a
+receiver is a shared notification channel, so by
+[0004](../../docs/adr/model/0004-contention-decides-authority.md) it is
 platform-assigned.
 
 | concern | where it lives |
 |---|---|
-| `alertClass`, `scrape {process, surface, path}` | authored, per Application |
+| `scrape {process, surface, path}` | authored, per Application |
 | ServiceMonitor / PodMonitor | derived by the model, from `scrape` and `provides` |
 | scrape cadence | the Platform document, one value for the estate |
-| rule expressions, severity, receivers | the monitoring stack, reading `resolved.yml` |
+| rule expressions, severity, receivers | the monitoring stack's own rule groups and the Platform document's routing |
 | external checks | derived from `exposure`, as the Gatus endpoint already is |
-
-There is no second configuration document in this specification and no runner
-contract, because neither is the model's to define. A monitoring stack that
-wants the estate's alert classes reads the published projection, which is what
-[chapter 20](20-resolved-deployment.md#publish-back) publishes it for.
 
 ### What does not move
 
@@ -2176,8 +2145,7 @@ carries its rule groups as files beside the project file, each Prometheus rule
 groups (a `groups` list), and each renders one `PrometheusRule` in the
 Application's namespace. A rule's `severity` label picks the route the Platform
 document declares for it. An Application outside the monitoring stack carries
-none: its signal is its `scrape`, and its urgency its `alertClass`
-([Observability](#observability)).
+none: its signal is its `scrape` ([Observability](#observability)).
 
 | condition | error |
 |---|---|
@@ -2470,8 +2438,11 @@ value reaches a process, never what its token may read.
 **The Vault Secrets Operator is the only delivery path.** Nothing renders a
 Vault Agent injector annotation, and **no Vault token is delivered**: an
 Application that talks to the Secret Store itself takes `self` and logs in with
-its ServiceAccount, and one that does not mounts no token at all. `self` stays
-accepted for any grant for now.
+its ServiceAccount, and one that does not mounts no token at all. `self` is
+accepted only for a Process that talks to Vault itself: its env file wires its
+own client with a `${identity:vaultRole}` placeholder, the role it logs in as.
+A Process holding a `self` grant that wires no such client could never read
+what it was granted, and is refused with `E_SELF_WITHOUT_VAULT_CLIENT`.
 
 **A static secret polls every ten minutes, and restarts its consumer.** Every
 `kv` grant delivered `env` or `file` is re-read from its path at one interval,
@@ -3065,7 +3036,6 @@ already told them, and the lines reaching them made the model harder to read.
 | `L4Protocol` | `L4Exposure.protocol` | `tcp`, `udp` |
 | `Arch` | `Placement.arch` | `amd64`, `arm64` |
 | `Media` | `DiskRequest.media` | `nvme`, `ssd`, `hdd` |
-| `AlertClass` | `Observability.alertClass` | `business-hours`, `urgent`, `page` |
 | `Audience` | `Exposure.audience`, `Route.audience` | `anonymous`, `authenticated`, `internal`, `lan` |
 | `ContentPolicy` | `Exposure.contentPolicy` | `strict`, `admin`, `workflow` |
 | `Match` | `Route.match` | `prefix`, `exact` |
@@ -3092,15 +3062,13 @@ Process that serves traffic start without anyone checking it. The metamodel
 encodes both: `observability` is optional, and `probes` is either a block or the
 word `none`.
 
-Three carry a constraint the list alone does not state. `AccessTier` is `kv`-only
+Two carry a constraint the list alone does not state. `AccessTier` is `kv`-only
 except for `read`, and `TransitOp` applies to a `transit` grant only
-([Access tiers](#access-tiers)). `AlertClass` has no `none` member: an Application
-that wants no monitoring omits its `observability` block
-([Observability](#observability)).
+([Access tiers](#access-tiers)).
 
 Every other attribute type is either a primitive (`string`, `int`, `bool`,
 `map`) or a named string this chapter constrains: `ProjectName`, `ApplicationId`,
-`ImageAlias`, `Fqdn`, `ExposureName`, `VaultPath`, `ClusterTarget`, `Site`,
+`ImageAlias`, `Fqdn`, `ExposureName`, `VaultPath`, `Site`,
 `Capability`, `GpuClassName`, `Path`, `Quantity`, `Duration`, `FileMode`,
 `SemVer` and `dotenv`. Each is defined where the field that uses it is defined.
 
@@ -3251,7 +3219,6 @@ classDiagram
         +Path changelog
     }
     class Observability {
-        +AlertClass alertClass
     }
     class Process {
         +string name

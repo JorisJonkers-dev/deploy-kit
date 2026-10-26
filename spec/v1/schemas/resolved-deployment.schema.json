@@ -209,9 +209,6 @@
             "minLength": 1
           }
         },
-        "alertClass": {
-          "$ref": "#/$defs/AlertClass"
-        },
         "alertRules": {
           "minItems": 1,
           "type": "array",
@@ -298,14 +295,6 @@
           "releaseGate": false
         }
       }
-    },
-    "AlertClass": {
-      "type": "string",
-      "enum": [
-        "business-hours",
-        "urgent",
-        "page"
-      ]
     },
     "ResolvedAlertRules": {
       "type": "object",

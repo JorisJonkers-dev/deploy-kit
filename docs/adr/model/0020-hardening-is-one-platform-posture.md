@@ -76,8 +76,8 @@ to resolve a digest, so it reads the user too. An init container that chowns the
 volume would need root on every stateful Process.
 
 **The render settles it.** Whether an image starts under the posture is found at
-apply, and the answer is the image or a ledger entry
-([0038](0038-bidirectional-ledgers.md)).
+apply, and the answer is the image; until it changes, the Process stays on the
+old path.
 
 ## Alternatives
 

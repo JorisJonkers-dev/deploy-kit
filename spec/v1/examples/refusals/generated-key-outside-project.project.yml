@@ -29,5 +29,6 @@ applications:
           - path: secret/data/platform/session
             keys: [{ name: session_key, generate: {} }]
             access: read
-            delivery: self
+            delivery: file
+            mountAt: /run/secrets/app
             rotation: { tolerates: restart }

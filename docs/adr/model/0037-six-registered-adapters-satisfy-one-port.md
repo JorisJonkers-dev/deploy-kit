@@ -48,8 +48,8 @@ rewrite. One typed input, the Resolved Deployment, removes the dispatch: every
 adapter is central ([0047](0047-one-publication-path.md)).
 
 **Attribution is what makes a diff readable.** It lets a diff say which
-subsystem produced a file, and lets the ledgers ask who produced an object
-([0038](0038-bidirectional-ledgers.md)). Deriving it from what the path plan
+subsystem produced a file, and lets a Project's handover diff ask who produced
+an object. Deriving it from what the path plan
 handed each adapter ([0036](0036-path-authority-is-layer-2.md)) means it is a
 query, not a second registry.
 

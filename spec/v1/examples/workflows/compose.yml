@@ -248,7 +248,7 @@ jobs:
           # The lock records what was composed -- every fragment by digest and
           # release, every isolation and why, and the toolkit that composed
           # them, since the accepted schemaVersion RANGE is not enough to
-          # replay with (docs/adr/model/0044-artifact-schema-versioning.md).
+          # replay with (docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md).
           REF="ghcr.io/${{ github.repository_owner }}/composed:latest"
           git rev-parse HEAD > composed/COMMIT
           ( cd composed && oras push "$REF" lock.json composition.json COMMIT )

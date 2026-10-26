@@ -259,6 +259,12 @@ describe("renderIntentSet", () => {
 
   // documents of the render it belongs to, and is named by their digest.
   describe("the Vault policy job", () => {
+    // A self grant needs its Process to wire its own Vault client.
+    const CLIENT = {
+      "data/env/postgres/base.env": (text: string) =>
+        `${text}VAULT_ROLE=\${identity:vaultRole}\n`,
+    };
+
     /** The paths of one Project's share of a render of `projects`. */
     const share = (
       projects: readonly string[],
@@ -300,6 +306,7 @@ describe("renderIntentSet", () => {
         );
       const before = both();
       const after = both({
+        ...CLIENT,
         "data/data.project.yml": (document) =>
           document.replace(
             "          - path: secret/data/platform/postgres/exporter\n            keys: [datasource]",
@@ -345,7 +352,7 @@ describe("renderIntentSet", () => {
         );
       const tree = asTree(
         artifact(
-          render({ "data/data.project.yml": adopting }, ["data"]),
+          render({ ...CLIENT, "data/data.project.yml": adopting }, ["data"]),
           "data",
         ),
       );
@@ -379,7 +386,7 @@ describe("renderIntentSet", () => {
         );
       const tree = asTree(
         artifact(
-          render({ "data/data.project.yml": generating }, ["data"]),
+          render({ ...CLIENT, "data/data.project.yml": generating }, ["data"]),
           "data",
         ),
       );

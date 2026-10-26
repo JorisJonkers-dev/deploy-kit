@@ -224,8 +224,8 @@ repository already uses between a chapter and an ADR.
 | [`16-dependencies.md`](16-dependencies.md) | dependency edges, the Stable Address, per-Process identity, derived network policy, the derivation map | drawn |
 | [`17-sign-in.md`](17-sign-in.md) | the `client` block, Sign-in Modes, what the edge derives from a Client, the `Client` object, client credentials and their placeholders | not yet |
 | [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, the one capacity exception, the Reconcile Unit, publish-back | drawn |
-| [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, ledgers, coverage re-derived from the registry | drawn |
-| [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout, unmanaged surfaces | drawn |
+| [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, a Project's handover diff, coverage | drawn |
+| [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout | drawn |
 | [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Application contract changes, lock lifecycle | drawn |
 | [`55-delivery.md`](55-delivery.md) | delivery: rendered artifacts and pins, blue/green switchover, the Release Gate, held releases, migrations, release order, failure and undo, Moves | not yet |
 | [`60-setup.md`](60-setup.md) | bootstrap order, secrets at rest, CNI selection, node facts, restore, onboarding and adoption | drawn |
@@ -235,8 +235,8 @@ that it is checkable by a script rather than read by eye. Three properties hold
 over it:
 
 1. **Provenance**, no Deliverable has in-degree zero. An object reachable from no
-   declaration is hand-written, and must either become derived or be entered in
-   a Bidirectional Ledger. This is what was violated seven ways over by
+   declaration is hand-written, and must become derived before its Project
+   hands over. This is what was violated seven ways over by
    `kb.jorisjonkers.dev`.
 2. **Single authority**, no field of a Deliverable has two declaring sites.
    Checked against the renderer's attribution table, not the diagram, because
@@ -265,7 +265,7 @@ parse-checked in CI.
 | `examples/workflows/project-publish-fragment.yml` | the shared workflow an application repository calls after its image build: the toolkit at the version it pins, every image digest resolved, `oras push` then `oras resolve`, read back |
 | `examples/workflows/compose.yml` | pull participants, assert the estate-wide invariants, **prove the gate can fail**, then publish one signed artifact per Project and commit the moved pins |
 | [`examples/negative/`](examples/negative/README.md) | one negative fixture per estate-wide invariant over the union, each with its diagnostics beside it, so an invariant that stops running is detectable |
-| [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: an alert class with no signal, the `continuous`/`interrupted` pair over RWO storage, and a mixed-cutover Application |
+| [`examples/refusals/`](examples/refusals/README.md) | the refusal fixtures: the `continuous`/`interrupted` pair over RWO storage, a mixed-cutover Application, and one per refusal the chapters name |
 | [`examples/schema-refusals/`](examples/schema-refusals/README.md) | the files the reader refuses before any rule runs: a class outside the vocabulary, an unknown, missing or mistyped field, a value matching no shape, and text outside the YAML subset |
 
 Both remaining workflows are **one job with many steps**, each step carrying
@@ -291,8 +291,8 @@ through, with the deciding ADR named.
    which is what `E_DUPLICATE_EXPOSURE_NAME` had always checked and nothing had
    defined, and what `${exposure:<application>.<name>#url}` addresses. Estate-wide
    uniqueness of `host` becomes a composition check,
-   `E_DUPLICATE_HOST`, evaluated over the composed union together with the
-   Registered Unmanaged Surfaces ([chapter 40](40-composition.md#identity)):
+   `E_DUPLICATE_HOST`, evaluated over the composed union
+   ([chapter 40](40-composition.md#identity)):
    the Application authors the value and composition arbitrates the collision,
    which is [0004](../../docs/adr/model/0004-contention-decides-authority.md)
    restated as contention deciding who arbitrates rather than who authors.
@@ -359,8 +359,8 @@ through, with the deciding ADR named.
    - **Owner:** joris.
    - **Settled by:** one grading pass per field against the contention test,
      landed either as a decision in `docs/adr/model/` with a `normative:` pointer into
-     chapter 10, or as an explicit rejection with the live objects re-homed in a
-     Bidirectional Ledger.
+     chapter 10, or as an explicit rejection with the live objects left on the old
+     path until their Project hands over.
    - **Blocks:** approving chapter 10; the availability half of item 4.
 
 6. **Whether the composed union may span clusters** (chapter 40). The lock is

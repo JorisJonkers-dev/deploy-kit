@@ -213,7 +213,7 @@ field's placement link to this anchor rather than copying rows.
 | `project` | Application | no contention | the file header, and the unit of fragment publication ([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)); the namespace derives from it |
 | `owner` | Application | no contention | the project's own field, shared with nothing below it; notification target, never routing |
 | `id` | Application | unique, checked | estate-unique; `E_DUPLICATE_APPLICATION_ID` at composition. It is also the atomic release boundary ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)) |
-| `observability` `{alertClass, scrape}` | Application | no contention | urgency and the surface that carries the signal, per Application and never raised: a project would page as loudly as its loudest member. Absent means no monitoring ([chapter 10](10-project-intent.md#observability)) |
+| `observability` `{scrape}` | Application | no contention | the surface that carries the signal, per Application and never raised. Absent means no monitoring ([chapter 10](10-project-intent.md#observability)) |
 | process `name` | Application | unique, checked | unique within the **project**; `E_DUPLICATE_PROCESS_NAME`, and it names the derived identity |
 | `provides` surface names and ports | Application | no contention | declared on the Process, because a port is a property of a process; written once, there |
 | `dependsOn` edges | Application | no contention | provider, surface, necessity ([chapter 16](16-dependencies.md#dependency-edges)) |
@@ -221,7 +221,7 @@ field's placement link to this anchor rather than copying rows.
 | env files, `assets` | Application | no contention | per Process; derived values appear only as placeholders |
 | `secrets` grants: `path`, `keys`, `access`, `delivery`, `rotation` | Application | no contention to declare | per Application and never raised; the *path* is arbitrated (below), what an Application asks of a path is its own |
 | `exposure[].name` | Application | unique, checked | required; unique **within the Application**, `E_DUPLICATE_EXPOSURE_NAME` at composition. It is the half `${exposure:<application>.<name>#url}` addresses |
-| `exposure[].host` | Application | unique, checked | the full FQDN, authored: no label, no zone rule, no apex flag. Estate-unique across the composed union taken together with the register of unmanaged surfaces: `E_DUPLICATE_HOST` ([chapter 40](40-composition.md#identity)) |
+| `exposure[].host` | Application | unique, checked | the full FQDN, authored: no label, no zone rule, no apex flag. Estate-unique across the composed union: `E_DUPLICATE_HOST` ([chapter 40](40-composition.md#identity)) |
 | `exposure` `audience`, and a route's `audience` override | Application | no contention | one closed audience vocabulary; the per-route form is the anonymous path inside an authenticated host |
 | `exposure[].contentPolicy` | Application | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
 | `exposure[].routes`: `path`, `match`, `process`, `surface`, `redirectTo` | Application | no contention | which of the Application's own Processes serves which path of the host. The surface must be one that Process `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
@@ -246,7 +246,7 @@ field's placement link to this anchor rather than copying rows.
 | middleware chain | platform | pool | tier + audience + `contentPolicy`; `forward-auth` for `authenticated` on a public tier, the security-headers baseline with the named content profile, the redirect rule a route's `redirectTo` asks for, and the rate limit a route's `rateLimit` asks for, with its burst and the address its tier counts a client by |
 | backup window, retention count, off-cluster destination | platform | pool | one policy per Durability Class; the window is one node's IO and the destination is one remote target ([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)) |
 | the backup method | platform | pool | the image the Platform document names per `engine`, resolved through the images lock; nothing executable is authored ([chapter 14](14-platform-intent.md#engines)) |
-| alert rules, their severity and their receiver | the monitoring stack | pool | derived nowhere in this model. `alertClass` is published as a resolved fact and the stack that reads it decides what a class means ([chapter 10](10-project-intent.md#observability)) |
+| alert rules, their severity and their receiver | the monitoring stack | pool | the monitoring stack's own rule groups and the Platform document's routing ([chapter 14](14-platform-intent.md#monitoring)) |
 | monitor `interval` and `timeout` | platform | pool | the metrics stack's ingest budget is shared, so it is one estate-wide value in the Platform document ([chapter 14](14-platform-intent.md#monitor-cadence)) |
 | the backup identity's grant on the destination | platform | pool | derived, never authored: the platform chose the destination, so it owns the credential, and only the backup identity holds it, never the serving Process |
 | the backup identity's peer and its grant on the peer's credential | platform | pool | derived, never authored, where the engine's method dumps over the network: the Process's Service on the port of the engine's surface, and `secret/data/<project>/<process>/backup`, held by the backup identity alone ([chapter 14](14-platform-intent.md#engines)) |
@@ -304,8 +304,8 @@ replaced by one.
 That is the rule's second reading, not an exception to it. A hostname must be
 unique across the estate and draws on no pool the platform holds, so the Application
 declares it and the **uniqueness check is arbitrated at composition**:
-`E_DUPLICATE_HOST` over the composed union taken together with the Registered
-Unmanaged Surfaces ([chapter 40](40-composition.md#identity)). Nobody's fragment
+`E_DUPLICATE_HOST` over the composed union
+([chapter 40](40-composition.md#identity)). Nobody's fragment
 wins a contested host: the union fails and no `ComposedIntent` is produced until
 an author changes one of them. Contention decided who arbitrates, not who
 authors, which is the same restatement `placement` forced
@@ -1166,8 +1166,7 @@ a defect in the plan.
 site (the derivation) and an assignment has exactly one author (the platform)
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md),
 [0005](../../docs/adr/model/0005-derivation-is-total.md)). Nothing in this
-chapter is restated with a reason, and there is no `E_UNKNOWN_OVERRIDE` because
-there is no key set to fall outside.
+chapter is restated with a reason.
 
 The one local exception is capacity, and it is a named field rather than a hatch
 ([chapter 10](10-project-intent.md#capacity)):
@@ -1233,9 +1232,8 @@ Application lives is a second record of one fact, and it drifts.
 The posture is platform policy and a Process authors none of it. There is no
 per-control relaxation carried with a reason, because that is an override under
 another name and it outlives the image that justified it. An image that cannot
-meet `restricted` is `E_HARDENING_UNMET`; the fix is the image, or a
-Bidirectional Ledger entry with an owner while it is replaced
-([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)).
+meet `restricted` is `E_HARDENING_UNMET`; the fix is the image, and until it is
+replaced the Process stays on the old path.
 
 ## The Reconcile Unit
 
@@ -1759,8 +1757,7 @@ the one thing a proxy used to decide by sorting rule names.
    `host: auth.jorisjonkers.dev`; `apex: true` is not vocabulary
    ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)). Two Applications writing
    the bare project are one duplicated host like any other
-   ([chapter 40](40-composition.md#identity)), which is what `E_DUPLICATE_APEX`
-   names when the contested name is that one.
+   ([chapter 40](40-composition.md#identity)), `E_DUPLICATE_HOST` like any other.
 3. **The drift check's failure mode for upstream-caused staleness.** A
    hand-edited `resolved.yml` fails the build. What is not settled is the copy
    that is merely behind (stale because someone else's change has not yet
@@ -1889,7 +1886,6 @@ classDiagram
         +Namespace namespace
         +UnitName reconcileUnit
         +UnitName[] reconcileAfter
-        +AlertClass alertClass
         +Uri secretStore
     }
     class ReleaseGate {

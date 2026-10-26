@@ -5,7 +5,6 @@
 import { z } from "zod";
 import {
   ACCESS_TIERS,
-  ALERT_CLASSES,
   API_VERBS,
   EGRESS_TARGETS,
   ARCHITECTURES,
@@ -37,7 +36,6 @@ import {
 const accessTier = z.enum(ACCESS_TIERS).meta({ id: "AccessTier" });
 const databaseEngine = z.enum(DATABASE_ENGINES).meta({ id: "DatabaseEngine" });
 const transitEngine = z.enum(TRANSIT_ENGINES).meta({ id: "TransitEngine" });
-const alertClass = z.enum(ALERT_CLASSES).meta({ id: "AlertClass" });
 const arch = z.enum(ARCHITECTURES).meta({ id: "Arch" });
 const audience = z.enum(AUDIENCES).meta({ id: "Audience" });
 const contentPolicy = z.enum(CONTENT_POLICIES).meta({ id: "ContentPolicy" });
@@ -427,11 +425,8 @@ const scrape = z
   })
   .meta({ id: "Scrape" });
 
-// `scrape` is optional in the shape, not in the model: a block carrying a class
-// and no signal is refused by a rule with its own code, not by the schema.
-const observability = z
-  .strictObject({ alertClass: alertClass, scrape: scrape.exactOptional() })
-  .meta({ id: "Observability" });
+// What an Application exposes for scraping: the one signal the block holds.
+const observability = z.strictObject({ scrape }).meta({ id: "Observability" });
 
 // A dashboard the Application ships (spec/v1/10-project-intent.md#dashboards):
 // a Grafana dashboard's JSON beside the project file, vendored, never fetched.
@@ -514,15 +509,14 @@ const envVariable = z
 
 export const envFile = z
   .strictObject({
-    cluster: text.exactOptional(),
-    // An overlay that carries only comments holds no entry, and is still a file.
+    // A file that carries only comments holds no entry, and is still a file.
     entries: z.array(envVariable).exactOptional(),
   })
   .meta({ id: "EnvFile" });
 
 export type EnvVariable = z.output<typeof envVariable>;
-/** A file as the reader holds it: an overlay carrying only comments holds no
- * entry, and still has the list. */
+/** A file as the reader holds it: one carrying only comments holds no entry,
+ * and still has the list. */
 export type EnvFile = Omit<z.output<typeof envFile>, "entries"> & {
   readonly entries: readonly EnvVariable[];
 };

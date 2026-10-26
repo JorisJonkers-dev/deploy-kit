@@ -613,25 +613,14 @@
     "Observability": {
       "type": "object",
       "properties": {
-        "alertClass": {
-          "$ref": "#/$defs/AlertClass"
-        },
         "scrape": {
           "$ref": "#/$defs/Scrape"
         }
       },
       "required": [
-        "alertClass"
+        "scrape"
       ],
       "additionalProperties": false
-    },
-    "AlertClass": {
-      "type": "string",
-      "enum": [
-        "business-hours",
-        "urgent",
-        "page"
-      ]
     },
     "Scrape": {
       "type": "object",

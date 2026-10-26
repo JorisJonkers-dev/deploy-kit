@@ -13,8 +13,8 @@ in isolation:
 |---|---|---|
 | Application Id uniqueness | every Application in the estate | [0010](../../docs/adr/model/0010-flat-application-identity.md) |
 | project uniqueness, and exactly one publisher per project | every fragment in the estate | [0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md) |
-| hostname uniqueness | every exposure in the estate, plus the register of surfaces the model does not deploy | [0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md) |
-| reachability completeness, derived ∪ registered | every exposure plus the unmanaged register | [0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md) |
+| hostname uniqueness | every exposure in the estate | [0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md) |
+| reachability completeness | every exposure, and every provider the Platform document names | [0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md) |
 | the Reconcile Unit DAG | every required dependency edge | [0033](../../docs/adr/model/0033-reconcile-unit-derived.md) |
 | inbound derivations, CORS origins, one database per consumer | edges pointing *at* an Application | [0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md) |
 | the reader set of a secret path | every grant in the estate | [0028](../../docs/adr/model/0028-grant-unit-is-the-path.md) |
@@ -84,7 +84,6 @@ A fragment carries:
 - the node contract, for the fragment that owns the fleet: the `allocatable`
   table every `placement` is matched against
   ([0048](../../docs/adr/model/0048-node-facts-are-authored-once.md))
-- Registered Unmanaged Surfaces the project is responsible for
 - its share of the images lock: every image alias the project file names,
   resolved to the digest its repository's build pushed, with the UID and GID it
   runs as ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md))
@@ -268,7 +267,6 @@ whose remaining set still fails produces no `ComposedIntent`.
 | a `host` is unique across the composed union | `E_DUPLICATE_HOST` |
 | exposure names are unique within their Application | `E_DUPLICATE_EXPOSURE_NAME` |
 | two routes on one exposure do not share a `path` + `match` pair | `E_DUPLICATE_ROUTE_MATCH` |
-| at most one Application claims the apex host | `E_DUPLICATE_APEX` |
 | Secret Store path prefixes do not overlap between Subtrees | `E_SUBTREE_PREFIX_COLLISION` |
 
 **Application ids stay estate-unique even though they no longer determine the
@@ -319,17 +317,11 @@ Nothing in the model makes a hostname unique by construction: `host` is a full
 FQDN authored on an Application's `exposure` entry
 ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)), and two project files in
 two repositories can write the same string with neither able to read the other.
-`E_DUPLICATE_HOST` over the union is the only place the property holds at all,
-and it is evaluated over **derived hosts and Registered Unmanaged Surfaces
-together** ([Unmanaged surfaces](#unmanaged-surfaces)), because a hostname the
-model does not deploy occupies the name exactly as completely as one it does. An
-exposure claiming `samba.lan.jorisjonkers.dev` collides with the register entry
-that excuses it, which is the collision worth catching.
+`E_DUPLICATE_HOST` over the union is the only place the property holds at all.
 
 Because the whole FQDN is authored, the apex is a host value rather than a
 marker. `home-portal` writes `host: jorisjonkers.dev`, and two Applications writing
-it are the same collision as any other duplicated host; `E_DUPLICATE_APEX` names
-that pair specifically so the message can say which name was contested.
+it are the same collision as any other duplicated host, `E_DUPLICATE_HOST`.
 
 **`E_DUPLICATE_EXPOSURE_NAME` has a definition at last: unique within the
 Application.** It checked a field nothing defined until `name` became required, and
@@ -357,7 +349,6 @@ because the vocabulary they were written in had no path to declare: the
 | every `dependsOn.surface` is provided by a Process of that Application, or listed by that provider | `E_UNKNOWN_SURFACE` |
 | every provider an edge targets carries an address and the port for that surface ([chapter 14](14-platform-intent.md#providers)) | `E_PROVIDER_WITHOUT_COORDINATES` |
 | every route's `surface` is provided by the Process that route names | `E_UNKNOWN_SURFACE` |
-| no two routes on one host share a `path` and `match` ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) | `E_DUPLICATE_ROUTE` |
 | the graph of **required** edges is acyclic | `E_DEPENDENCY_CYCLE` |
 | no edge's alias takes the name of a Service its Project renders, or a name another Application's alias takes in that Project ([chapter 16](16-dependencies.md#the-alias)) | `E_ALIAS_COLLISION` |
 | every exposure's audience is carryable by some tier | `E_NO_TIER_FOR_AUDIENCE` |
@@ -386,16 +377,11 @@ Optional edges are excluded from the cycle check deliberately. `required: false`
 means a Process starts without its peer, so a cycle through optional edges
 cannot deadlock a rollout.
 
-Two release-unit invariants left this table on 2026-09-07.
-`E_RELEASE_UNIT_SINGLETON` existed only because `releaseUnit` was a free string
-joined at composition and nowhere else: an Application held at most one, no Application
-could see its co-members, and a misspelt name yielded two units of one rather
-than an error, atomicity silently gone with every gate green. An Application is now
-itself the unit of atomic release
+An Application is itself the unit of atomic release
 ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)), so there is no join
 key to misspell, no membership for composition to materialise, and nothing left
 for that error to catch: the members are the Processes listed in the Application's
-own document. The readiness requirement the second error carried is unchanged in
+own document. The readiness requirement of a Release Unit is unchanged in
 substance (no member's new version takes traffic until every member is healthy,
 health meaning that member's own declared readiness
 ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)), but it is now a property
@@ -506,15 +492,11 @@ Three points of precision, all following from the grant unit being the path
 | every expected participant resolves | `E_PARTICIPANT_MISSING` |
 | every participant's publish is within its `maxAge` | `E_PARTICIPANT_STALE` |
 | every fragment composed is of a project the participants list names | `E_PARTICIPANT_UNLISTED` |
-| reachability equals derived ∪ registered exactly | `E_UNREGISTERED_SURFACE` |
-| every live object is attributable or ledgered (chapter 30) | `E_UNATTRIBUTED_OBJECT` |
-| every ledger entry still matches something | `E_LEDGER_ENTRY_STALE` |
 | no derived value is removed while a consumer still depends on it (chapter 50) | `E_CONTRACT_TOO_EARLY` |
 
-The last two here, and `E_DISK_BINDING_CONFLICT` above, are evaluated against the
-pinned `ClusterState` snapshot
-([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)), so their verdict is
-exactly as fresh as that snapshot: composition reads no live cluster.
+`E_DISK_BINDING_CONFLICT` above is evaluated against the pinned `ClusterState`
+snapshot ([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md)), so its
+verdict is exactly as fresh as that snapshot: composition reads no live cluster.
 
 ## Participants
 
@@ -548,7 +530,6 @@ participants:
     dormant: true
     owner: joris
     reason: changes when the platform does, not weekly
-    reviewBy: 2027-03-31
   data:          {}                # maxAge defaults to 7d
   knowledge:     {}
   agents:        {}
@@ -559,7 +540,6 @@ participants:
     dormant: true
     owner: joris
     reason: stable since 2026-03; no declaration change expected before v1
-    reviewBy: 2026-11-30
 ```
 
 **An entry is keyed by the project's name**, the one its fragment declares, and
@@ -587,10 +567,8 @@ is caught in the week it breaks
 genuinely publishes less often overrides the default **with a written reason**;
 an override without one is a build error.
 
-`dormant: true` is the separate exemption and is a Bidirectional Ledger entry
-like any other (chapter 30): owner, reason, review date, and a date in the past
-fails the build, `E_LEDGER_REVIEW_OVERDUE`. It exempts a participant from `maxAge` **and from nothing
-else**: a dormant fragment still unions, still satisfies every invariant above,
+`dormant: true` is the separate exemption, with its reason. It exempts a
+participant from `maxAge` **and from nothing else**: a dormant fragment still unions, still satisfies every invariant above,
 and still has to sit inside the accepted version range below. A project nobody is
 otherwise touching must therefore still be republished when the model moves.
 
@@ -614,26 +592,22 @@ Project stays exactly as delivered, and is never rendered absent.
 
 ## Versioning
 
-`schemaVersion` is **the data model's own semver**. It starts at `1.0.0` and
-moves only when the model moves:
+`schemaVersion` is **the package version a fragment was validated with**, patch
+included: from 1.0.0 on, the toolkit and the data model move in lockstep, so a
+release that changes the model is a release of the package, and its semver says
+how much changed:
 
 | bump | when |
 |---|---|
 | major | a field is removed, or the meaning of an existing field changes |
 | minor | vocabulary is added |
-| patch | wording is clarified with no field change |
+| patch | a fix, or wording clarified with no field change |
 
-It is **not** the toolkit package's version. Today the two are one number by
-construction: `src/cluster-context/schema.ts:75-79` throws
-`E_SCHEMA_VERSION_MISMATCH` when `ctx.spec.schemaVersion !== getPackageVersion()`,
-and `getPackageVersion()` reads `package.json`, which sits at `0.22.0` and moves
-at release cadence: 26 releases in ten weeks, most of which changed code and not
-the model. Under this rule the literal `schemaVersion: 1.0.0` written by every
-document in this specification, including the lock below, is correct and stays
-correct across those releases: the model is at `1.0.0`, the toolkit is at
-`0.22.0`, and they are allowed to differ
+Every document in this specification writes `schemaVersion: 1.0.0`, the
+release that made the breaking cuts once rather than reaching 2.0.0 before
+anything was deployed
 ([0007](../../docs/adr/model/0007-schema-version-separable.md),
-[0044](../../docs/adr/model/0044-artifact-schema-versioning.md)).
+[0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)).
 
 Composition admits a fragment on a **range**, not on equality:
 
@@ -726,78 +700,6 @@ Under the range, most releases open no consumer PR at all: only a model change
 moves the pin, so a bump becomes rare, and correspondingly less rehearsed.
 Rollout of anything other than a version pin, including how a composed lock
 reaches a cluster, is [chapter 55](55-delivery.md#rendered-artifacts-and-pins)'s.
-
-## Unmanaged surfaces
-
-Project Intent covers Kubernetes processes only. The estate has three deployment
-targets, not one: `samba` exists only as a NixOS module yet owns
-`samba.lan.jorisjonkers.dev`; `wolf` exists in neither target and owns
-`wolf.jorisjonkers.dev`; `adguard` and `ollama` exist in both; and host-level
-applications (`tailscale`, `media-storage`, `backup-storage`,
-`btrfs-backup-snapshots`), have no cluster presence at all. `tailscale` here is
-the host daemon; it is not a placement capability, that use having retired with
-the flat capability vocabulary
-([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). Modelling NixOS was
-rejected: rendering it is not writing a file but producing a build and an
-activation, an order of magnitude more v1 scope for roughly eight hosts.
-
-That leaves a remainder, and an unbounded remainder is how the seven-way split of
-`kb.jorisjonkers.dev` began: a scope boundary silent about what falls outside it
-bounds nothing, it just moves the drift where no check looks.
-
-Every hostname the model does not deploy is therefore a **Registered Unmanaged
-Surface**, a Bidirectional Ledger entry (chapter 30) carrying an owner, a reason
-and a review date:
-
-A hostname the estate **depends on** is not an entry here. Something the estate
-runs and does not deploy but reaches (`stalwart` for SMTP) is a **provider**,
-a fact with an address and surfaces in the Platform document
-([chapter 14](14-platform-intent.md#providers)), resolvable by an edge
-([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)). The
-register below holds the remainder: hostnames nobody deploys and nobody depends
-on, each an accepted hole with a review date. An edge resolves against facts,
-never against exemptions ([0045](../../docs/adr/model/0045-platform-intent-is-the-second-authored-document.md)).
-
-```yaml
-unmanagedSurfaces:
-  - host: samba.lan.jorisjonkers.dev
-    owner: joris
-    reason: NixOS module; no Kubernetes process exists
-    reviewBy: 2026-11-30
-  - host: wolf.jorisjonkers.dev
-    owner: joris
-    reason: deployed in neither target; public and unowned until this entry
-    reviewBy: 2026-11-30
-```
-
-Composition asserts **set equality**: estate reachability equals the derived set
-plus the registered set, exactly.
-
-| condition | error |
-|---|---|
-| a reachable hostname is in neither set | `E_UNREGISTERED_SURFACE` |
-| a registered entry matches no reachable hostname | `E_LEDGER_ENTRY_STALE` |
-| a registered host is also authored as an exposure `host` | `E_DUPLICATE_HOST` |
-| an entry's `reviewBy` is in the past, or `owner`/`reason` is empty | `E_LEDGER_REVIEW_OVERDUE` |
-
-The third row is [Identity](#identity)'s `E_DUPLICATE_HOST` reaching across this
-boundary. The two sets do not merely cover the hostname space between them, they
-**partition** it, so the check is asserted over their union rather than over the
-derived half alone: `wolf.jorisjonkers.dev` is spoken for by a ledger
-entry, and an Application later authoring `host: wolf.jorisjonkers.dev` has to
-collide with it rather than quietly take the name back.
-
-Derived entries come from Audience declarations
-([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)); registered entries come
-from the ledger; anything in neither is a build error
-([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)). Because the check
-is symmetric, the register cannot quietly outlive what it excuses.
-
-A registration is an **unverified assertion**: nothing proves `samba` is actually
-listening where the entry claims. What it buys is that every hostname in the
-estate has exactly one owner of record (derived or registered), and that
-`wolf`'s status becomes explicit data with a name against it rather than an
-accident nobody had noticed.
 
 ## The composition lock
 
@@ -895,7 +797,7 @@ stays parked in [docs/adr/deferred/README.md](../../docs/adr/deferred/README.md)
 ## Open in this chapter
 
 1. ~~**The range's determinism claim is untested.**~~ It is
-   [0044](../../docs/adr/model/0044-artifact-schema-versioning.md)'s own
+   [0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)'s own
    settling test (render the pinned inputs once per toolkit minor and assert
    the render hash is equal across the set), and it is recorded there, where a
    failure flips the claim rather than a chapter item.
@@ -953,7 +855,7 @@ flowchart TB
     end
 
     subgraph UNION["2. union"]
-        u1["merge project files, Applications, Processes,<br/>Secret Subtrees, unmanaged surfaces"]
+        u1["merge project files, Applications, Processes,<br/>Secret Subtrees"]
         u2["materialise the required-edge DAG<br/>and the node allocatable table"]
     end
 

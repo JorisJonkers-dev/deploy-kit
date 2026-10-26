@@ -92,12 +92,12 @@ describe("the descriptor", () => {
 
   it("lists every closed vocabulary the chapter names", () => {
     expect(
-      descriptor().vocabularies.find(({ name }) => name === "AlertClass"),
+      descriptor().vocabularies.find(({ name }) => name === "Cutover"),
     ).toStrictEqual({
-      name: "AlertClass",
-      literals: ["business-hours", "urgent", "page"],
+      name: "Cutover",
+      literals: ["continuous", "interrupted"],
     });
-    expect(descriptor().vocabularies).toHaveLength(34);
+    expect(descriptor().vocabularies).toHaveLength(33);
   });
 });
 

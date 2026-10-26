@@ -67,8 +67,7 @@ Deployment schema (`schemas/deployment.schema.json`, over 1,100 lines) and its
 chapter (`../../spec/v1/20-resolved-deployment.md`), and re-founding every
 decision that rests on this premise,
 [0032](0032-the-resolved-deployment-is-a-versioned-artifact.md) and
-[0037](0037-six-registered-adapters-satisfy-one-port.md) through
-[0038](0038-bidirectional-ledgers.md); days of spec and schema work with the
+[0037](0037-six-registered-adapters-satisfy-one-port.md); days of spec and schema work with the
 whole render pipeline as blast radius.
 Becomes irreversible once: parties outside this repository pin the Resolved
 Deployment schema version or diff resolved artifacts in their own CI, the

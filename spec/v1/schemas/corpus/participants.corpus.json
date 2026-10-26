@@ -9,8 +9,7 @@
           "jorisjonkers.dev": {
             "dormant": true,
             "owner": "joris",
-            "reason": "the Platform document changes when the platform does, not weekly",
-            "reviewBy": "2027-03-31"
+            "reason": "the Platform document changes when the platform does, not weekly"
           },
           "notes": {},
           "media": {
@@ -87,18 +86,6 @@
         {
           "op": "remove",
           "path": "/participants/media/reason"
-        }
-      ]
-    },
-    {
-      "name": "a dormant participant with no review date",
-      "verdict": "refuse",
-      "breaks": "rule",
-      "case": "a list with a default, an override and a dormant participant",
-      "patch": [
-        {
-          "op": "remove",
-          "path": "/participants/jorisjonkers.dev/reviewBy"
         }
       ]
     }

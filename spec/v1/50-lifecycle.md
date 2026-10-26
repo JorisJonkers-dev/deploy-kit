@@ -62,7 +62,7 @@ event produces one.
 | a PV rebinds after a node failure; a node joins or leaves | **yes** | the ClusterState snapshot changes, so `clusterStateDigest` changes, and the rebind lands as a visible decision rather than as drift |
 | a node contract republishes new `allocatable`, a reserve is retuned, RAM is added | **yes** | placement is matched against allocatable, so eligibility can change without any Intent changing |
 | a pod restarts; a Kustomization reports Ready; a health check flips | no | that is what is *running*. Chapter 20 keeps the health document (`cluster-state.schema.json`) distinct from the pinned ClusterState snapshot; only the snapshot is an input |
-| the toolkit is upgraded with no model change | no | `schemaVersion` is the data model's own semver and moves only on a model change ([0044](../../docs/adr/model/0044-artifact-schema-versioning.md)); the lock records the exact versions it was composed under |
+| the toolkit is upgraded with no model change | no | `schemaVersion` is the data model's own semver and moves only on a model change ([0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)); the lock records the exact versions it was composed under |
 
 ### What a lock guarantees
 
@@ -214,10 +214,9 @@ The three phases, and what composition sees at each:
 Two limits are worth stating plainly. First, composition sees **declared** edges
 only: an undeclared consumer is invisible to the check, which is why a
 dependency edge names the provider and the surface
-([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)) and why a
-hostname served by something outside the model is a Registered Unmanaged Surface
-([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)) rather than an
-absence. Second, the check is about *declarations*, not about running pods:
+([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)) and why
+something outside the model that a Process depends on is a provider
+([chapter 14](14-platform-intent.md#providers)) rather than an absence. Second, the check is about *declarations*, not about running pods:
 whether a consumer at an older lock is still serving is a delivery question, and
 [chapter 55](55-delivery.md) owns any stronger guarantee that wants to read live
 state.

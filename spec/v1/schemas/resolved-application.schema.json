@@ -43,9 +43,6 @@
             "minLength": 1
           }
         },
-        "alertClass": {
-          "$ref": "#/$defs/AlertClass"
-        },
         "alertRules": {
           "minItems": 1,
           "type": "array",
@@ -192,14 +189,6 @@
         "node-contract",
         "images-lock",
         "cluster-state"
-      ]
-    },
-    "AlertClass": {
-      "type": "string",
-      "enum": [
-        "business-hours",
-        "urgent",
-        "page"
       ]
     },
     "ResolvedAlertRules": {

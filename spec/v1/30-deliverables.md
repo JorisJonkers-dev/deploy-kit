@@ -130,10 +130,10 @@ Every adapter satisfies one typed port
 |---|---|---|
 | one input shape | An adapter receives the Resolved Deployment as parsed, pinned documents and nothing else. There is no discriminated union and no hand-set input string. | compile error |
 | attributed output | Every returned Deliverable carries `adapter`, set by the port, not by the adapter. | compile error |
-| deterministic | Same documents in, byte-identical Deliverables out, in a stable order. | `E_RENDER_NONDETERMINISTIC` |
-| no ambient reads | No environment variable, clock, network or filesystem read inside `render`. Reading manifests from disk is the caller's job; the parsed documents are passed in. | `E_AMBIENT_INPUT_FORBIDDEN`, `E_INPUT_OUTSIDE_WORKDIR` |
+| deterministic | Same documents in, byte-identical Deliverables out, in a stable order. | the adapter contract test |
+| no ambient reads | No environment variable, clock, network or filesystem read inside `render`. Reading manifests from disk is the caller's job; the parsed documents are passed in. | the dependency rule `the-chain-reads-nothing-ambient` |
 | one owner per path | Two adapters may never claim the same output path, and no two objects one ServiceAccount: a Vault role is bound to the account's name and namespace alone, so a second owner of the name would hold the first one's role. | `E_PATH_COLLISION` |
-| safe paths | Every path is relative and normalised; `..` and absolute paths are rejected. | `E_UNSAFE_OUTPUT_PATH` |
+| safe paths | Every path is relative and normalised; `..` and absolute paths are rejected. | the adapter contract test |
 
 Each of these is stated because the seam does not have it today. The registry
 declares `render: (input: never) => RenderResult` under a comment calling the
@@ -166,7 +166,7 @@ Narrowing the port is cheap now and expensive later. Once adapters outside this
 repository register through the public `registerAdapter` export, the port is a
 compatibility surface every out-of-tree adapter pins, and narrowing it means a
 major toolkit release, a version number separate from `schemaVersion`
-([0044](../../docs/adr/model/0044-artifact-schema-versioning.md), chapter 40).
+([0032](../../docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md), chapter 40).
 
 ## Vault configuration is rendered, not applied
 
@@ -497,110 +497,30 @@ Where two tiers of one namespace name one, the first in the Platform document is
 | `security-headers-admin` | the baseline, and `default-src 'self'; style-src 'self' 'unsafe-inline'` |
 | `security-headers-workflow` | the baseline, and `default-src 'self'; connect-src 'self' https:` |
 
-## Ledgers
+## A Project's handover diff
 
-**Every accepted hole is a bidirectional ledger**
-([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)). Each ledger fails **both**
-when something is missing from it and when one of its own entries no longer
-matches anything, which is the property `catalog/accepted-fragment-drift.yml`
-already has and states:
+Nothing live goes unattributed while two delivery paths coexist, because each
+Project hands over one at a time
+([chapter 14](14-platform-intent.md#handover-ledger)), and its handover includes
+a one-off diff of its render against the hand-written objects the old path
+applies for it. Every difference is explained by a decision before the Project
+moves; what cannot be declared yet stays on the old path. The diff is a tool the
+handover runs, not a model rule, so no ledger of accepted holes is kept and no
+review date fails a build.
 
-> *"fails on anything absent from this file, and also fails on an entry here that
-> no longer matches anything, so the list cannot quietly outlive the thing it
-> excuses. Every entry is a deferred fix, not a permanent exemption."*
-
-| ledger | holds | absent from it | stale entry in it |
-|---|---|---|---|
-| coverage ledger | every live object with no producing adapter | `E_UNATTRIBUTED_OBJECT` | `E_LEDGER_ENTRY_STALE` |
-| accepted fragment drift | differences between the render and what an Application published, each a deferred fix | `E_UNACCEPTED_DRIFT` | `E_LEDGER_ENTRY_STALE` |
-| registered unmanaged surfaces | hostnames the model does not deploy ([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md), chapter 40) | `E_UNREGISTERED_SURFACE` | `E_LEDGER_ENTRY_STALE` |
-
-Every entry carries three fields and a build consequence:
-
-| field | rule |
-|---|---|
-| `owner` | a person, never a team alias; required |
-| `reason` | why the hole is accepted, in prose a reviewer can disagree with |
-| `review-date` | a date; **a date in the past fails the build**, `E_LEDGER_REVIEW_OVERDUE` |
-
-A review date with no consequence is an adjective. With one maintainer across
-three identities in `git shortlog`, every review date is a note to self, and the
-build failure, not the review, is what enforces the deadline.
-
-The check runs against the pinned `ClusterState` snapshot
-([0034](../../docs/adr/model/0034-cluster-state-is-a-pinned-input.md), chapter 20), so a
-ledger verdict is exactly as fresh as that snapshot's `clusterStateDigest` and no
-fresher. Closing a hole is therefore always two changes, register the adapter,
-delete the entry, and forgetting the second breaks the build. That is the whole
-point of the stale half: without it, a coverage entry outlives the adapter that
-closed it and no build says so.
-
-One live drift entry marks where the limit genuinely is: `agent-gateway` cannot be
-probed because it is *"a sidecar jar inside agent-runner pods, not a process of
-its own"*, and its per-runner Applications are created and destroyed by `agents-api`
-at runtime. Some objects are outside any declarative model. The ledger is where
-they belong: with an owner and a reason, not with silence.
-
-## Coverage
-
-Coverage is re-derived from the registry, never asserted from memory. What
-follows is the enumeration of `adapterContract()` as it stands, and the gap that
-enumeration genuinely leaves.
-
-### The registered set
-
-The six adapters above are the set, and their `defaultPath`s are the roots of
-the path plan. The estate's coverage is the union of what they emit plus the
-bootstrap set ([chapter 14](14-platform-intent.md#the-bootstrap-set)) plus the
-ledgers; anything live that is in none of the three is `E_UNATTRIBUTED_OBJECT`.
-
-### The estate, by class
-
-The 2026-08-31 survey stands and is retained as scale. Counted across
-`fleet-infra/cluster`, excluding the Flux installer (`gotk-components.yaml`, 32
-objects rendered from nothing): **450 objects, 39 distinct kinds, 329 files**.
-`kind: Kustomization` is two unrelated APIs and is counted separately: 74
-`kustomize.config.k8s.io/v1beta1` (a file list per directory) and 15
-`kustomize.toolkit.fluxcd.io/v1` (a Flux reconcile unit); a claim that conflates
-them is wrong by 74.
-
-| class | objects | share | how it is produced |
-|---|---|---|---|
-| **A, derived from Project Intent** | 364 | 81% | a registered adapter, per Application |
-| **B, the foundation** | 41 | 9% | was pack-delivered from `flux-modules` at a pinned ref; now **declared** as Applications of the platform projects and rendered like class A ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)). The CRDs among them are the bootstrap set |
-| **C, authored content** | 45 | 10% | not derivable; ledgered until its owner lands |
-
-Class C is entirely Grafana: 31 `GrafanaDashboard`, 14 `GrafanaFolder`. Nothing
-in Project Intent implies a dashboard's panels; deriving one would be inventing a
-dashboard DSL. It is ledgered rather than permanent: 14 application dashboards become
-Assets on the owning Application ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)), 3
-runtime-family dashboards ship with the Runtime Profile, 14 platform dashboards
-become Assets of the declared observability Applications, and `service-overview` / `service-template` derive
-per Application from the scrape surface and exposure
-([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)).
-
-### The true gap
-
-Every kind the 2026-08-31 survey found unrendered now has a decision: `Role` and
-`RoleBinding` are not rendered ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md)),
-`ClusterRole` and `ClusterRoleBinding` are `kubernetes`'s, for a Process the
-platform admits to hold API access and for no other
-([0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)),
-and a `ClusterRoleBinding` of a built-in role is also `kubernetes`'s for a
-Human Grant
-([0118](../../docs/adr/model/0118-a-human-grant-is-declared-in-the-platform-document.md)),
-`NetworkPolicy` is `networking`'s ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)),
-`ServiceMonitor` and `PodMonitor` are `prometheus`'s, from the declared
-`observability.scrape` surface, and `PrometheusRule` and `AlertmanagerConfig` for the monitoring stack alone
-([chapter 14](14-platform-intent.md#monitoring)),
-and `GitRepository` is a bootstrap fact
-([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)), created by
-`flux bootstrap`, never rendered.
-
-The number itself is arithmetic on an old survey, not a fresh measurement. The
-object-level gap is re-measured per adapter against the registered generation
-before any schedule is committed, because counting files under
-`fleet-infra/cluster` measures the cluster tree rather than the registry.
+The estate's coverage is the union of what the registered adapters emit, the
+derived Node Agents and the bootstrap set
+([chapter 14](14-platform-intent.md#the-bootstrap-set)). Every kind the
+2026-08-31 survey found unrendered now has an owner: `ClusterRole` and
+`ClusterRoleBinding` are `kubernetes`'s, for a Process the platform admits to
+hold API access and for a Human Grant, and for no other
+([0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md),
+[0118](../../docs/adr/model/0118-a-human-grant-is-declared-in-the-platform-document.md));
+`NetworkPolicy` is `networking`'s
+([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md));
+`ServiceMonitor`, `PodMonitor`, `PrometheusRule` and `AlertmanagerConfig` are
+`prometheus`'s; `GrafanaDashboard` is `grafana`'s; and `GitRepository` is a
+bootstrap fact, never rendered. `Role` and `RoleBinding` are not rendered.
 
 ## Determinism and parity
 
@@ -632,13 +552,13 @@ needs a decision, not an allowlist entry."*
 
 | forbidden | why |
 |---|---|
-| a kind on the forbidden list, `Secret`, `Role`, `RoleBinding`, `CustomResourceDefinition`, a `ClusterRole` that a held `api` did not derive, and a `ClusterRoleBinding` that neither a held `api` nor a Human Grant derived | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and the only RBAC rendered is what a Process the platform admits declares and what the platform grants a group of people ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md), [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted), [chapter 14](14-platform-intent.md#human-grants)) |
-| an object in a namespace the Application does not own | `E_FOREIGN_NAMESPACE` |
+| a kind on the forbidden list, `Secret`, `Role`, `RoleBinding`, `CustomResourceDefinition`, a `ClusterRole` that a held `api` did not derive, and a `ClusterRoleBinding` that neither a held `api` nor a Human Grant derived | the rendered-object type names none of them, so rendering one is a compile error; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and the only RBAC rendered is what a Process the platform admits declares and what the platform grants a group of people ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md), [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted), [chapter 14](14-platform-intent.md#human-grants)) |
+| an object in a namespace the Application does not own | every namespace is derived, never authored, so no Deliverable can name another |
 | a floating image tag | `E_FLOATING_IMAGE`; digests only |
 | a path claimed by two adapters | `E_PATH_COLLISION`; attribution becomes ambiguous |
-| a path outside the gitops root, or containing `..` | `E_UNSAFE_OUTPUT_PATH` |
-| a hand-added file inside the rendered tree | `E_RENDER_OVERWRITE_REFUSED`; the writer refuses to overwrite a file it does not manage, and parity would stay red |
-| a hand-written object of any kind, a raw manifest, a pack file | there is no pass-through ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)); what cannot be declared yet is a ledger entry with a review date |
+| a path outside the gitops root, or containing `..` | the adapter contract test |
+| a hand-added file inside the rendered tree | the tree is published whole as a signed artifact, so a file added beside it never reaches the cluster |
+| a hand-written object of any kind, a raw manifest, a pack file | there is no pass-through ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)); what cannot be declared yet stays on the old path until its Project hands over |
 
 ## Flagger-ready objects
 

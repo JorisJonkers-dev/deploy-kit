@@ -378,7 +378,7 @@ derived (`<project>-system`), so no step below names one.
    release ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)), and
    there is no field that couples two of them.
 2. Write `platform/env/<process>/base.env` **per Process** (never one file per
-   Application), plus a cluster overlay only where something differs.
+   Application); a variable two Processes share goes in a shared scope.
 3. Declare `secrets[]` at the level they are shared, each entry carrying `path`,
    `keys`, `access`, `delivery` and `rotation`. They stay on the Application and are
    never raised to the project header, which would hand every Application in the file
@@ -428,10 +428,8 @@ before anything is applied, and it is the half worth doing carefully.
    of three things: intent that is wrong, an object that is genuinely
    hand-written, or an adapter gap.
 3. **Close the diff.** Wrong intent gets fixed. A genuine hand-written object
-   becomes an entry in a Bidirectional Ledger
-   ([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)), whose header already
-   says *"every entry is a deferred fix, not a permanent exemption."* An adapter
-   gap is chapter 30's coverage work.
+   stays on the old path until it can be declared, and the Project hands over
+   when none is left. An adapter gap is chapter 30's coverage work.
 4. **Swap the source** once the render reproduces the live objects.
 
 Two differences are expected at step 2 and are not adapter gaps. The namespace
@@ -451,11 +449,10 @@ old source to its pin, are
 pin itself is [chapter 55](55-delivery.md#rendered-artifacts-and-pins)'s.
 
 **What adoption leaves behind.** Any live object that no render produces is an
-orphan: attributed to no adapter, and invisible to every later comparison.
-Expect the ledger to grow during adoption and shrink as adapters become total.
-That growth is the coverage assertion's problem
-([chapter 30](30-deliverables.md#coverage)), and it is the honest cost of
-adopting an estate that was hand-written first.
+orphan: attributed to no adapter, and invisible to every later comparison. Each
+Project's handover diff finds them
+([chapter 30](30-deliverables.md#a-projects-handover-diff)), and it is the honest
+cost of adopting an estate that was hand-written first.
 
 ## The Estate repository
 

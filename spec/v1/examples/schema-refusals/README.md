@@ -9,7 +9,6 @@ the chapter's table says the refusal lands at.
 
 | fixture | what it breaks | where it is refused |
 |---|---|---|
-| [`alert-class-unknown.project.yml`](alert-class-unknown.project.yml) | a value outside the closed `AlertClass` vocabulary | the value |
 | [`unknown-field.project.yml`](unknown-field.project.yml) | two fields the model does not have, on one Application | each field, once |
 | [`missing-field.project.yml`](missing-field.project.yml) | a Process with no `image` | where the field would be |
 | [`wrong-type.project.yml`](wrong-type.project.yml) | a port written as a string | the value |

@@ -368,15 +368,10 @@ A port below 1024 is not an exception: off the host network it binds with no
 capability ([chapter 14](spec/v1/14-platform-intent.md#substrate-facts)).
 
 **Runtime Profile**: the profile selected by `runtime`, from which observability
-and runtime environment variables are derived: the Cluster Target, the
-collector's endpoint, the service name and the one port, for `jvm`, `node` and
+and runtime environment variables are derived: the cluster the render is for,
+the collector's endpoint, the service name and the one port, for `jvm`, `node` and
 `python` ([chapter 10](spec/v1/10-project-intent.md#runtime-profiles)). Writing
 one of its keys by hand is a build error.
-
-**Alert Class**: how urgently a signal about this Application should wake
-someone. Urgency only: which receiver, which channel and which severity mapping
-belong to the monitoring stack that reads the projection, never to this model
-([0025](docs/adr/model/0025-observability-is-one-optional-block.md)).
 
 **Grant**: declared access to a Secret Store path, its keys, its access tier
 and its delivery mode. One of the eight Shared Intent families, so it lives at
@@ -411,10 +406,9 @@ removal drops anyone's access
 [chapter 14](spec/v1/14-platform-intent.md#human-grants)). Not a Grant, which
 is a Process's access to a Secret Store path.
 
-**Env File**: one authored dotenv file, its Cluster Target and its variables.
-`base.env` names no target, because it is what does not vary; an overlay beside
-it names one. The directory holding it is the scope it reaches: the project, one
-Application, or one Process
+**Env File**: one authored dotenv file, `base.env`, and its variables. Each
+scope holds one, and none varies by cluster. The directory holding it is the
+scope it reaches: the project, one Application, or one Process
 ([0013](docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md),
 [0012](docs/adr/model/0012-shared-intent-descends-and-is-lowered.md)).
 
@@ -456,7 +450,7 @@ visible ([0043](docs/adr/model/0043-participants-list-staleness.md)).
 
 **Schema version**: the data model's own semver, carried by each document
 family and separate from the toolkit's package version
-([0044](docs/adr/model/0044-artifact-schema-versioning.md)).
+([0032](docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md)).
 
 **Privileged role**: what a Platform document field hands the Application it
 names and no project file can give itself: a tier's proxy, the delivery
@@ -592,15 +586,6 @@ Deliverables out; deterministic; no ambient reads
 [0037](docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md)).
 
 **Adapter port**: the single typed contract every Adapter satisfies.
-
-**Bidirectional ledger**: where an accepted hole is recorded, with an owner and
-a reason. Bidirectional because an entry outliving the gap it covered fails the
-build too ([0038](docs/adr/model/0038-bidirectional-ledgers.md)).
-
-**Unmanaged surface**: a hostname nobody deploys and nobody depends on,
-registered as a ledger entry rather than ignored
-([0024](docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)). Something the
-estate *depends on* is a Provider, not an unmanaged surface.
 
 ## Delivery: how a render reaches the cluster
 

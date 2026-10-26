@@ -71,9 +71,8 @@ hand-maintained values surface every invariant reading a Deployment would miss,
 and a chart version pinned beside it would be a second thing to keep in step.
 
 **The bootstrap set is a table, not a habit.** Every item in it is an object the
-invariants never see. It is a Bidirectional Ledger in shape
-([0038](0038-bidirectional-ledgers.md)): an entry nothing needs fails the build,
-and an undeclared component is `E_UNATTRIBUTED_OBJECT`. The per-layer Flux
+invariants never see, so growing it is a decision recorded in chapter 14, and an
+undeclared component is found by its Project's handover diff. The per-layer Flux
 Kustomizations are not in it, because they encode the Reconcile Unit ordering,
 which changes on the first new edge.
 

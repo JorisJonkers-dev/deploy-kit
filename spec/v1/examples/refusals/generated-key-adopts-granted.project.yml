@@ -29,10 +29,12 @@ applications:
           - path: secret/data/refusals-system/session
             keys: [{ name: session_key, generate: { adopt: "secret/data/platform/session#session_key" } }]
             access: read
-            delivery: self
+            delivery: file
+            mountAt: /run/secrets/app
             rotation: { tolerates: restart }
           - path: secret/data/platform/session
             keys: [session_key]
             access: read
-            delivery: self
+            delivery: file
+            mountAt: /run/secrets/app
             rotation: { tolerates: restart }

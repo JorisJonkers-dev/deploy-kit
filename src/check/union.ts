@@ -800,6 +800,36 @@ export const INVARIANTS: readonly Invariant[] = [
       ),
   },
   {
+    // `self` is for a Process that talks to Vault itself, which it shows by
+    // wiring its own Vault client with the role the platform derived for it
+    // (spec/v1/10-project-intent.md#which-tier-may-use-which-delivery); every
+    // other grant arrives through the operator, as env or file.
+    code: "E_SELF_WITHOUT_VAULT_CLIENT",
+    needsPlatform: false,
+    answer: (union) =>
+      union.flatMap(heldIn).flatMap((held): Diagnostic[] => {
+        // A missing list and an empty one hold no grant alike.
+        // Stryker disable next-line ArrayDeclaration
+        const self = (held.process.secrets ?? []).findIndex(
+          ({ delivery }) => delivery === "self",
+        );
+        const wired = placeholders(held.process, "identity").some(
+          ({ source }) => source === "vaultRole",
+        );
+        return self === -1 || wired
+          ? []
+          : [
+              {
+                code: "E_SELF_WITHOUT_VAULT_CLIENT",
+                document: held.document,
+                path: held.path,
+                message: `${held.process.name} has a grant delivered self, and wires no Vault client of its own`,
+                hint: "Deliver the grant as env or file, or wire the Process's Vault client with `${identity:vaultRole}`.",
+              },
+            ];
+      }),
+  },
+  {
     code: "E_PROFILE_KEY_AUTHORED",
     needsPlatform: true,
     answer: (union, platform) =>

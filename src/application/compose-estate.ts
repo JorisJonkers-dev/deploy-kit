@@ -264,17 +264,6 @@ const PARTICIPANTS = "participants.yml";
 
 /** What stops the run before anything composes: the list's own entries, and the platform's standing. */
 function listRefusals(input: ComposeInput, generatedAt: string): Diagnostic[] {
-  const today = generatedAt.slice(0, "2026-01-01".length);
-  const overdue = Object.entries(input.participants.participants)
-    // An entry with no review date is not one that is past it.
-    .filter(([, { reviewBy }]) => (reviewBy ?? today) < today)
-    .map(([project, { reviewBy }]): Diagnostic => ({
-      code: "E_LEDGER_REVIEW_OVERDUE",
-      document: PARTICIPANTS,
-      path: `/participants/${project}/reviewBy`,
-      message: `${project} is dormant until a review on ${reviewBy as string}, which has passed`,
-      hint: "Review the participant: set a later date with its reason, or drop `dormant`.",
-    }));
   const platform = input.platform;
   const project = platform?.manifest.spec.project;
   const standing =
@@ -282,7 +271,6 @@ function listRefusals(input: ComposeInput, generatedAt: string): Diagnostic[] {
       ? "E_PARTICIPANT_MISSING"
       : standingOf(input, generatedAt, project, platform);
   return [
-    ...overdue,
     ...(standing === undefined
       ? []
       : [
@@ -399,8 +387,8 @@ export function composeEstate(
   input: ComposeInput,
   options: ComposeOptions,
 ): Result<Composition> {
-  // A dormant entry past its review, and a Platform document that is missing,
-  // stale or unlisted, stop the run: there is nothing to isolate.
+  // A Platform document that is missing, stale or unlisted stops the run:
+  // there is nothing to isolate.
   const refusals = listRefusals(input, options.generatedAt);
   return refusals.length > 0
     ? { ok: false, diagnostics: refusals }

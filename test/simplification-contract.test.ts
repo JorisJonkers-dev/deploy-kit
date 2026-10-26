@@ -117,7 +117,7 @@ test("no project file carries overrides, and replicas is the sole capacity excep
   }
 });
 
-test("the observability block is whole or absent, and never partial", () => {
+test("the observability block is a scrape or absent", () => {
   let declared = 0;
   let omitted = 0;
 
@@ -129,7 +129,7 @@ test("the observability block is whole or absent, and never partial", () => {
       }
       expect(
         application.observability.scrape,
-        `${application.id}: a class with no scrape is E_ALERT_CLASS_WITHOUT_SIGNAL`,
+        `${application.id}: an observability block holds its scrape`,
       ).toBeDefined();
       declared += 1;
     }
@@ -141,12 +141,11 @@ test("the observability block is whole or absent, and never partial", () => {
   ).toBeGreaterThan(0);
 });
 
-test("`none` is gone: an omitted block is the opt-out", () => {
+test("`alertClass` is gone: an omitted block is the opt-out", () => {
   for (const file of [...projectFiles, platform])
-    expect(
-      read(file),
-      `${file}: alertClass none is no longer a member of the vocabulary`,
-    ).not.toMatch(/alertClass:\s*none/);
+    expect(read(file), `${file}: alertClass is no longer a field`).not.toMatch(
+      /alertClass:/,
+    );
 });
 
 test("a scrape names a surface its own Process provides, never a port", () => {

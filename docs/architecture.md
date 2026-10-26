@@ -166,9 +166,10 @@ A refusal's code is one of a closed set, the `RefusalCode` type: every code a
 chapter defines and `schema`. A code no chapter defines fails the typecheck,
 and a code a chapter defines that the type lacks fails `npm run lint:codes`.
 
-The codes are the spec's: `E_PATH_COLLISION`, `E_RENDER_NONDETERMINISTIC`,
-`E_AMBIENT_INPUT_FORBIDDEN`, `E_UNSAFE_OUTPUT_PATH` and the rest live in the
-chapters that define the rules they enforce. A code is what CI asserts on, so a
+The codes are the spec's: `E_PATH_COLLISION` and the rest live in the chapters
+that define the rules they enforce. A guarantee the compiler owes itself, such
+as a deterministic render or a safe output path, is a test or a dependency
+rule, never a code: a code refuses an author's input. A code is what CI asserts on, so a
 test proving an invariant fires matches a code and never a message.
 
 The estate-wide invariants ([chapter
@@ -384,7 +385,7 @@ numbers in their shortest form, no insignificant whitespace. An absent
 optional field is absent, never `null`.
 
 **A path** is an RFC 6901 JSON Pointer into the canonical intent document,
-`/applications/0/observability/alertClass`. A diagnostic about a derived value
+`/applications/0/observability/scrape/surface`. A diagnostic about a derived value
 points at the authored value it derives from. Messages and hints are free per
 implementation; the code, the document and the path are the contract.
 

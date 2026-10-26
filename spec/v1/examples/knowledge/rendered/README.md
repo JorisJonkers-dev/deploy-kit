@@ -68,7 +68,7 @@ This project's routes use the Middleware set; it does not own that object.
 | `kustomization.yaml` | `kubernetes` | the Application set of the project | - |
 | `apps/knowledge/workload.yaml` | `kubernetes` | `lifecycle`, `image`, `runtime`, `provides`, `placement`, `hardening`, `probes`, `startupBudget`, `cutover`, `stateful`, `volumes`, `secrets`, env files | `replicas` (`minAvailable` ungraded); the image's UID behind `runAsNonRoot`; a scratch volume for a read-only-root JVM (**G-04**); what `stateful` changes about the object kind (**G-05**); the PV-bound node (**G-06**); env-var renaming through `envFrom` (**G-03**); readable mode on the 0400 key (**G-08**) |
 | `apps/knowledge/serviceaccount.yaml` | `kubernetes` | process `name` × 2, `project` | none (the adapter names one account after the *Application*: **G-09**) |
-| `apps/knowledge/configmap.yaml` | `kubernetes` | env files, `dependsOn`, the `provides` port, Cluster Target, process `name` | 15 of the 16 Runtime Profile keys (**G-13**); the database name spelling (**G-12**); change propagation on edit (**G-10**) |
+| `apps/knowledge/configmap.yaml` | `kubernetes` | env files, `dependsOn`, the `provides` port, the render's cluster, process `name` | 15 of the 16 Runtime Profile keys (**G-13**); the database name spelling (**G-12**); change propagation on edit (**G-10**) |
 | `apps/knowledge/pvc.yaml` | `kubernetes` | `volumes[].claim`, `volumes[].durability`, `stateful` | `resources.requests.storage`: **the object does not apply without it** (**G-15**); the durability annotation key (**G-14**) |
 | `apps/knowledge/servicemonitor.yaml` | `prometheus` (a `PodMonitor`) | `observability.scrape {process, surface, path}`, `provides` | cadence from the Platform document |
 | `apps/knowledge/networkpolicy.yaml` | `networking`, **not registered** (**G-16**) | `dependsOn`, `provides`, `exposure`, `scrape`, effective grant set, baseline | egress to anything outside the estate, the worker's git remote (**G-20**); ingress from consumers absent from the union (**G-18**); whether a namespace catch-all is emitted (**G-17**) |
@@ -97,7 +97,7 @@ This project's routes use the Middleware set; it does not own that object.
 |---|---|---|
 | backup `CronJob` + retention sweep + off-cluster copy | `durability: irreplaceable` on `knowledge-vault-clone` | **none.** No adapter reads `durability`, and even with one, three values have no declaring site: the schedule, the retention window and the off-cluster destination. Not rendered rather than invented (**G-31**). |
 | `PodDisruptionBudget` | the `kubernetes` adapter builds one from an availability field | **not derivable.** `minAvailable` is ungraded and no `replicas` assignment exists; a PDB over a single-replica Deployment blocks every node drain (**G-32**). |
-| `PrometheusRule` | nothing in this model | **correctly none.** PromQL, severity and receivers belong to the monitoring stack, which reads `alertClass` from the projection. |
+| `PrometheusRule` | nothing in this model | **correctly none.** PromQL, severity and receivers belong to the monitoring stack, which owns its own rules. |
 | `Role` / `RoleBinding` per Process | per-Process identity | **none.** No `rbac` adapter. It is also what keeps the two Secret boundaries apart in a shared namespace (**G-24**). |
 | `resolved.yml` (the `ResolvedApplication` projection) | publish-back | central composition; not part of a Deliverable Set. |
 
@@ -268,13 +268,13 @@ unverified end to end. What is missing is not the URL, which the authored host
 and the route path now give, but a route whose audience is anonymous over a
 health path.
 
-**G-29** `alertClass: business-hours` renders no rule here, which is now the
-model's position rather than a hole: the class is published as a resolved fact
-and the monitoring stack owns what a class means. Its out-degree is not zero, and
-the `observability` block it sits in also carries the `scrape` surface the
-`ServiceMonitor` above derives from. The historic defect this records is that
-the gatus ConfigMap carried `endpoints` only and no adapter emitted a receiver
-or a notifier route, so nothing downstream acted on the class at all.
+**G-29** No alert rule renders here, which is now the model's position rather
+than a hole: `observability` holds only the `scrape` surface the
+`ServiceMonitor` above derives from, and the monitoring stack owns its rules.
+The historic defect this records is that an alert class was declared, the gatus
+ConfigMap carried `endpoints` only and no adapter emitted a receiver or a
+notifier route, so nothing downstream acted on the class at all. The class is
+gone.
 
 **G-30** Attribution is a property of the Fragment record, so the rendered YAML
 carries no machine-readable adapter. A diff over the tree cannot name the
