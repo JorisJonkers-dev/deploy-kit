@@ -73,6 +73,17 @@ backup identity does, and the derived Vault policy shows the two apart. The
 copies land on a claim derived beside the volume, the same size, because
 `recoverable` keeps no copy anywhere else.
 
+**An off-cluster copy leaves the cluster encrypted, to a key the cluster never
+holds.** The destination is a provider's bucket, outside the estate, holding
+personal data: photos, a vault, watch history. The method encrypts each copy on
+the pod to the age public key the class's policy names, so the provider holds
+nothing readable, and the private key stays off the cluster, because a copy is
+for the day the cluster is gone and a key kept beside it would go with it. One
+key per class, not per Project: one platform restores them all, and a restore
+needs one key in one safe place. Each volume's copies sit under their own
+`<project>/<process>/<claim>` prefix of the destination, so a method prunes only
+its own.
+
 **The destination credential is derived.** The platform chose the destination,
 so the grant is derived, recorded in the projection
 ([0032](0032-the-resolved-deployment-is-a-versioned-artifact.md)) and visible in
@@ -106,6 +117,8 @@ disagree.
 | Run the backup as the serving Process | one identity fewer | the long-running Process holds the off-cluster credential it never uses |
 | Copy off-cluster only, for every backed-up class | no on-cluster claim | `recoverable` gains a destination and a credential it was defined not to need |
 | One dump credential per engine, named in the Platform document | explicit, one field | every Process of one engine shares one login, which two servers of that engine cannot |
+| Rely on the provider's encryption at rest | nothing to keep, no key to lose | the provider can read every copy, and so can anyone holding the bucket's credential |
+| An age recipient per Project | a Project's copies readable only by its owner | one platform restores the estate, so every key ends up in the same hands, and there are many keys to lose instead of one |
 | A dynamic database role the backup identity reads itself | short-lived credentials | `postgres` only; a broker's management API still needs a static one |
 | Each engine's own variables (`PGHOST`, a management URL) | an image reads its tool's names unchanged | the renderer learns every engine's names, and a new engine is a renderer change |
 
@@ -126,6 +139,9 @@ delivered render and the mark is the only thing that kept it.
   one for a new engine.
 - The platform owns a credential that writes to an off-cluster destination, and
   its blast radius is visible in the derived policy.
+- Whoever runs the platform keeps the off-cluster copies' private key, off the
+  cluster. Losing it loses every off-cluster copy, which is why a restore is
+  rehearsed before an `irreplaceable` volume's first production apply.
 - Whoever runs a datastore writes its dump credential at the derived path
   before its first backup runs; until then the method fails, loudly, at 03:00.
 - A volume whose engine has no method cannot derive a backup, so a new datastore

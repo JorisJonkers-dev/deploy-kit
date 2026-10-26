@@ -211,6 +211,10 @@ const offClusterCopy = z
   .strictObject({
     destination: text,
     credential: text,
+    // The age public key every copy is encrypted to before it leaves the
+    // cluster; the private key is kept off it
+    // (spec/v1/14-platform-intent.md#durability-policy).
+    recipient: z.string().regex(/^age1[02-9ac-hj-np-z]{58}$/),
     egress: z.array(destinationRange).min(1),
   })
   .meta({ id: "OffClusterCopy" });

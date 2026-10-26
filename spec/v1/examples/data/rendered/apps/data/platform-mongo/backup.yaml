@@ -45,6 +45,10 @@ spec:
                   value: "90"
                 - name: BACKUP_OFF_CLUSTER
                   value: s3://backup-storage/jorisjonkers-dev
+                - name: BACKUP_OFF_CLUSTER_PATH
+                  value: data/mongo/mongo-data
+                - name: BACKUP_OFF_CLUSTER_RECIPIENT
+                  value: age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8
                 - name: BACKUP_HOST
                   value: mongo.data-system.svc.cluster.local
                 - name: BACKUP_PORT

@@ -87,6 +87,7 @@ durability:
     offCluster:
       destination: "s3://backup-storage/jorisjonkers-dev"
       credential: secret/data/platform/backup/off-cluster
+      recipient: age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8
       # Where that destination is, as a network policy can say it: a policy
       # admits an address range and a port, never a hostname. It is what the
       # backup identity's own policy lets its pods reach.

@@ -340,8 +340,9 @@ by the engine's entry in the Platform document
 [0095](docs/adr/model/0095-each-engine-states-how-its-data-moves.md)).
 
 **Durability policy**: the platform's terms for one Durability Class: the
-backup window, the retention count, and the off-cluster destination. Carried by
-the Platform Intent, never authored per volume.
+backup window, the retention count, and the off-cluster destination with the
+key its copies are encrypted to. Carried by the Platform Intent, never authored
+per volume.
 
 **Placement**: the hard dimensions a Process requires of a node: memory, cpu,
 architecture, site, capabilities, and optionally disk and GPU. Eligibility, not

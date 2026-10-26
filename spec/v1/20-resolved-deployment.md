@@ -1619,7 +1619,10 @@ processes:
         backup:
           schedule: '45 2 * * *'     # the platform's policy for the class
           retain: 90                 # copies kept: the method prunes the rest
-          offCluster: 's3://backup-storage/jorisjonkers-dev'
+          offCluster:                # where the copy goes, who can read it, and where under it
+            destination: 's3://backup-storage/jorisjonkers-dev'
+            recipient: age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8
+            path: knowledge/knowledge-ingest-worker/knowledge-vault-clone   # <project>/<process>/<claim>
           method: ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:…
           uid: 1000                  # the Process's own: `files` reads the volume alone
           gid: 1000
@@ -2114,7 +2117,6 @@ classDiagram
     class BackupPlan {
         +Schedule schedule
         +int retain
-        +Uri offCluster
         +ImageRef method
         +int uid
         +int gid
@@ -2122,6 +2124,11 @@ classDiagram
         +ClaimName claim
         +ResolvedGrant credential
         +EgressPeer egress
+    }
+    class OffClusterPlan {
+        +Uri destination
+        +AgeRecipient recipient
+        +string path
     }
     class BackupPeer {
         +string host
@@ -2292,6 +2299,7 @@ classDiagram
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
     ResolvedProcess "1" *-- "0..1" ResolvedApiAccess : api
     ResolvedApiAccess "1" *-- "1..*" ResolvedApiRule : rules
+    BackupPlan "1" *-- "0..1" OffClusterPlan : offCluster
     BackupPlan "1" *-- "0..1" BackupPeer : peer
     BackupPlan "1" *-- "0..*" DestinationRange : destinations
     EnvEntry "1" *-- "0..1" SecretReference : secret

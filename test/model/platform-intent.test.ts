@@ -146,6 +146,33 @@ describe("parsePlatformIntent", () => {
     ).toStrictEqual([{ code: "schema", path: "/tiers/1/listener" }]);
   });
 
+  // REQ-104 (docs/requirements.md): an off-cluster copy is encrypted to an
+  // age public key the platform names, so a destination without one, or with
+  // something that is no such key, is refused with the document.
+  it("refuses an off-cluster copy with no recipient, or one that is no age public key, at the recipient", () => {
+    const recipient =
+      /\n {6}recipient: age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8\n/;
+    const path = "/durability/irreplaceable/offCluster/recipient";
+
+    expect(refusalsOf(WORKED.replace(recipient, "\n"))).toStrictEqual([
+      { code: "schema", path },
+    ]);
+    for (const wrong of [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI",
+      // One character short, and one outside the bech32 alphabet.
+      "age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h",
+      "age1b6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8",
+      // A key with anything before or after it is no key.
+      "xage1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8",
+      "age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h88",
+    ])
+      expect(
+        refusalsOf(
+          WORKED.replace(recipient, `\n      recipient: "${wrong}"\n`),
+        ),
+      ).toStrictEqual([{ code: "schema", path }]);
+  });
+
   // REQ-057 (docs/requirements.md): the Release Gate's two thresholds are
   // the platform's to state, and a delivery policy without one is refused.
   it("refuses an analysis that states no threshold, or one that is no share or no latency", () => {
