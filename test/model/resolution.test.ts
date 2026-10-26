@@ -40,6 +40,7 @@ const MINIMAL_SET = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "mail/mail.project.yml",

@@ -431,12 +431,16 @@ const observability = z
 // A dashboard the Application ships (spec/v1/10-project-intent.md#dashboards):
 // a Grafana dashboard's JSON beside the project file, vendored, never fetched.
 const dashboard = z.strictObject({ from: text }).meta({ id: "Dashboard" });
+// A rule-group file the monitoring stack's Application carries
+// (spec/v1/10-project-intent.md#alert-rules), beside the project file.
+const alertRules = z.strictObject({ from: text }).meta({ id: "AlertRules" });
 
 const application = z
   .strictObject({
     id: text,
     observability: observability.exactOptional(),
     dashboards: z.array(dashboard).min(1).exactOptional(),
+    alertRules: z.array(alertRules).min(1).exactOptional(),
     exposure: z.array(exposure).min(1).exactOptional(),
     l4Exposure: z.array(l4Exposure).min(1).exactOptional(),
     migration: migration.exactOptional(),

@@ -645,6 +645,55 @@
           "path": "/telemetry/dashboards"
         }
       ]
+    },
+    {
+      "name": "a monitoring stack with no Alertmanager",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/monitoring/alertmanager"
+        }
+      ]
+    },
+    {
+      "name": "a receiver whose webhook is written as a URL",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/monitoring/receivers/0/discord/webhook",
+          "value": "https://discord.example/hook"
+        }
+      ]
+    },
+    {
+      "name": "a severity route that repeats every few seconds",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/monitoring/routes/0/repeat",
+          "value": "30s"
+        }
+      ]
+    },
+    {
+      "name": "a platform with no monitoring stack",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/monitoring"
+        }
+      ]
     }
   ]
 }

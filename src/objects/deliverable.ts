@@ -19,6 +19,8 @@ import type {
   VaultDynamicSecret,
   VaultStaticSecret,
   GrafanaDashboard,
+  AlertmanagerConfig,
+  PrometheusRule,
 } from "./custom.ts";
 import type {
   AliasService,
@@ -69,6 +71,8 @@ export type RenderedObject =
   | ClusterRoleBinding
   | PriorityClass
   | GrafanaDashboard
+  | PrometheusRule
+  | AlertmanagerConfig
   | CronJob
   | Job
   | HorizontalPodAutoscaler

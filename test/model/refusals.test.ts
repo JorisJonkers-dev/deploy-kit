@@ -606,6 +606,9 @@ describe("the refusal fixtures", () => {
   it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
     expect(fixtures).toStrictEqual([
       "alert-class-without-signal",
+      "alert-rules-not-found",
+      "alert-rules-outside-monitoring",
+      "alert-rules-without-groups",
       "asset-not-found",
       "backup-surface-not-provided",
       "client-crd-not-bootstrapped",
@@ -689,12 +692,14 @@ describe("the refusal fixtures", () => {
       "unknown-l4-address",
       "unknown-library",
       "unknown-machinery",
+      "unknown-monitoring-application",
+      "unknown-receiver",
       "unknown-surface",
       "unknown-telemetry-collector",
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(83);
+    expect(refused).toHaveLength(88);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

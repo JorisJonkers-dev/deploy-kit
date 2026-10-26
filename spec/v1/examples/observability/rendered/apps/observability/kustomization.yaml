@@ -1,0 +1,12 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - alertmanager
+  - namespace.yaml
+  - otel-collector
+  - prometheus
+  - rollout-events
+  - vault-policy
+  - vaultconnection.yaml

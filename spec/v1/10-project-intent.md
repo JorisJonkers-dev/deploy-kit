@@ -446,6 +446,7 @@ plus per-Process identity ([0031](../../docs/adr/model/0031-identity-per-process
 | `exposure` | Application | no | The hostnames this Application serves and how each routes into its Processes. On the Application, not the Process: one hostname fronts two processes in the live `auth` case. An Application nothing reaches from outside declares none. See [Exposure](#exposure). |
 | `l4Exposure` | Application | no | The raw TCP or UDP ports a client off the cluster dials, each on an L4 Address the Platform document declares ([L4 exposure](#l4-exposure)). |
 | `dashboards` | Application | no | The Grafana dashboards the Application ships, each a JSON file beside the project file ([Dashboards](#dashboards)). |
+| `alertRules` | Application | no | Rule-group files, beside the project file, on an Application of the monitoring stack alone ([Alert rules](#alert-rules)). |
 
 Uniqueness cannot be had by construction, only by check: the id encodes neither
 project nor repository, so nothing structural stops two repositories claiming one
@@ -2156,6 +2157,27 @@ dashboards of the estate share one.
 | the file's JSON names no `uid` | `E_DASHBOARD_WITHOUT_UID` |
 | a second dashboard of the estate carries a `uid` already carried | `E_DUPLICATE_DASHBOARD_UID` |
 | an Application ships a dashboard and the Platform document names no `telemetry.dashboards` | `E_NO_DASHBOARD_POLICY` |
+## Alert rules
+
+```yaml
+alertRules:
+  - {from: rules/platform.yaml}
+```
+
+Alert rules have one home: the monitoring stack the Platform document names by
+role ([chapter 14](14-platform-intent.md#monitoring)). An Application of it
+carries its rule groups as files beside the project file, each Prometheus rule
+groups (a `groups` list), and each renders one `PrometheusRule` in the
+Application's namespace. A rule's `severity` label picks the route the Platform
+document declares for it. An Application outside the monitoring stack carries
+none: its signal is its `scrape`, and its urgency its `alertClass`
+([Observability](#observability)).
+
+| condition | error |
+|---|---|
+| no file at `from` is read beside the project file | `E_ALERT_RULES_NOT_FOUND` |
+| the file holds no `groups` list | `E_ALERT_RULES_WITHOUT_GROUPS` |
+| an Application the Platform document's `monitoring` does not name carries alert rules | `E_ALERT_RULES_OUTSIDE_MONITORING` |
 
 ## Secrets
 

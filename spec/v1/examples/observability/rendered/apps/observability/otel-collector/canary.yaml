@@ -1,0 +1,59 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: otel-collector
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: otel-collector
+    app.kubernetes.io/instance: otel-collector
+    app.kubernetes.io/part-of: otel-collector
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: otel-collector
+  progressDeadlineSeconds: 180
+  service:
+    port: 4317
+    targetPort: otlp
+    portName: otlp
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: otel-collector
+          process: otel-collector
+          revision: sha256:828f117123cb12e30270c1d7acd09f21992b426e5af6629d6947ca678f8a4664
+          readiness: /
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: otel-collector
+          process: otel-collector
+          revision: sha256:828f117123cb12e30270c1d7acd09f21992b426e5af6629d6947ca678f8a4664
+          readiness: /
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: otel-collector
+          process: otel-collector
+          revision: sha256:828f117123cb12e30270c1d7acd09f21992b426e5af6629d6947ca678f8a4664
+          readiness: /
+          errorRate: 1%
+          latency: 500ms

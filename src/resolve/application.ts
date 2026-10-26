@@ -3,6 +3,8 @@
 // its Reconcile Unit, the release-gate inputs a blue/green switch reads, and
 // the revision that names this release of it.
 import { dashboardUidOf } from "../model/dashboards.ts";
+import { ruleGroupsOf } from "../model/alert-rules.ts";
+import { destinationOf } from "./secrets.ts";
 import type {
   EffectiveApplication,
   EffectiveProcess,
@@ -96,6 +98,90 @@ function dashboardsOf(
         };
       }),
     },
+  };
+}
+
+type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
+
+/** Whether the Application is the monitoring stack's Alertmanager. */
+const routesAlerts = (
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): boolean =>
+  context.platform.monitoring?.alertmanager ===
+  `${context.project}/${application.id}`;
+
+/**
+ * Each receiver's credential, read from Vault onto the Alertmanager's first
+ * Process through the one secret delivery
+ * (spec/v1/14-platform-intent.md#monitoring), so the routing object can name
+ * the Secret it lands in.
+ */
+function receiverGrantsOf(
+  process: EffectiveProcess,
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): ResolvedGrant[] {
+  if (
+    !routesAlerts(application, context) ||
+    (application.processes[0] as EffectiveProcess).name !== process.name
+  )
+    return [];
+  // The Alertmanager is named, so the Platform document has its block.
+  const { receivers } = context.platform.monitoring as NonNullable<
+    PlatformIntentDocument["monitoring"]
+  >;
+  return receivers.map(({ discord: { webhook } }) => ({
+    path: webhook.path,
+    keys: [webhook.key],
+    access: "read" as const,
+    delivery: "env" as const,
+    destination: destinationOf(process.name, webhook.path),
+  }));
+}
+
+/**
+ * The monitoring stack's alerting (spec/v1/10-project-intent.md#alert-rules):
+ * every Application of it carries its rule groups, and the Alertmanager the
+ * one routing of every alert, each receiver's webhook in the Secret its grant
+ * lands in.
+ */
+function alertingOf(
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): {
+  readonly alertRules?: NonNullable<ResolvedApplicationDocument["alertRules"]>;
+  readonly alerting?: NonNullable<ResolvedApplicationDocument["alerting"]>;
+} {
+  const monitoring = context.platform.monitoring;
+  const process = application.processes[0]?.name as string;
+  return {
+    ...(application.alertRules === undefined
+      ? {}
+      : {
+          alertRules: application.alertRules.map(({ from }) => ({
+            from,
+            // The file is read beside its project and holds groups, or
+            // E_ALERT_RULES_NOT_FOUND or E_ALERT_RULES_WITHOUT_GROUPS refused it.
+            groups: ruleGroupsOf(
+              context.assets.get(from) as string,
+            ) as unknown[],
+          })),
+        }),
+    ...(monitoring === undefined || !routesAlerts(application, context)
+      ? {}
+      : {
+          alerting: {
+            receivers: monitoring.receivers.map(({ name, discord }) => ({
+              name,
+              discord: {
+                secret: destinationOf(process, discord.webhook.path),
+                key: discord.webhook.key,
+              },
+            })),
+            routes: monitoring.routes,
+          },
+        }),
   };
 }
 
@@ -388,7 +474,10 @@ export function resolveApplication(
           machinery,
           migratesItself: application.migration === "self",
           application: application.id,
-          clientGrants,
+          clientGrants: [
+            ...clientGrants,
+            ...receiverGrantsOf(process, application, context),
+          ],
           held: l4HoldOf(exposures, context.platform),
         }),
         ...(l4Exposure.length === 0 ? {} : { l4Exposure }),
@@ -420,6 +509,7 @@ export function resolveApplication(
       ? {}
       : { alertClass: application.observability.alertClass }),
     ...dashboardsOf(application, context),
+    ...alertingOf(application, context),
     ...(scrape === undefined
       ? {}
       : {

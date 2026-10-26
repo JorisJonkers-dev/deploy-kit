@@ -808,6 +808,40 @@ severity mapping, no rule catalog: those belong to the monitoring stack, which
 reads `alertClass` from the published projection
 ([chapter 10](10-project-intent.md#observability)).
 
+## Monitoring
+
+```yaml
+monitoring:
+  grafana: identity/grafana
+  prometheus: observability/prometheus
+  alertmanager: observability/alertmanager
+  receivers:
+    - name: discord
+      discord:
+        webhook: {path: secret/data/platform/alertmanager-discord, key: webhook-url}
+  routes:
+    - {severity: critical, receiver: discord, repeat: 4h}
+    - {severity: warning, receiver: discord, repeat: 12h}
+```
+
+The **monitoring stack** is three declared Applications by role, each as
+`<project>/<application>`: `grafana`, `prometheus` and `alertmanager`. Only
+they carry alert rules ([chapter 10](10-project-intent.md#alert-rules)). A role
+whose Project the set holds but which declares no such Application is
+`E_UNKNOWN_MONITORING_APPLICATION`; a set that holds no file of its Project,
+such as one Project's own check, cannot tell, and the composition does.
+
+Alerts have one routing, which renders as one `AlertmanagerConfig` in the
+Alertmanager's namespace and routes the alerts of every namespace. A
+**receiver** is named, and of one kind: `discord`, its webhook read from Vault
+at `path` and `key` through the one secret delivery, as a grant on the
+Alertmanager's Process; the routing names the Secret it lands in, never the
+value. A **severity route** sends the alerts whose `severity` label is
+`severity` to `receiver`, repeated every `repeat`; an alert that matches no
+route reaches a `null` receiver and is not delivered. A route naming a receiver
+the block does not declare is `E_UNKNOWN_RECEIVER`, and the Alertmanager reads
+the Secret Store, so a platform naming none is `E_NO_SECRET_STORE` for it.
+
 ## Hardening policy
 
 One posture for every container a Project runs

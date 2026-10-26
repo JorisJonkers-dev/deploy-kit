@@ -82,6 +82,28 @@ function humanGrantRefusals(document: PlatformIntentDocument): Diagnostic[] {
   );
 }
 
+/**
+ * A severity route names a receiver the Platform document declares
+ * (spec/v1/14-platform-intent.md#monitoring), or an alert it routes reaches no one.
+ */
+function receiverRefusals(document: PlatformIntentDocument): Diagnostic[] {
+  const { monitoring } = document;
+  if (monitoring === undefined) return [];
+  const declared = new Set(monitoring.receivers.map(({ name }) => name));
+  return monitoring.routes.flatMap(({ receiver }, index): Diagnostic[] =>
+    declared.has(receiver)
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_RECEIVER",
+            path: `/monitoring/routes/${String(index)}/receiver`,
+            message: `the platform declares no receiver ${receiver}`,
+            hint: "Name a receiver `monitoring.receivers` declares, or declare it there.",
+          },
+        ],
+  );
+}
+
 /** Every refusal the Platform document earns on its own. */
 export const platformDiagnostics = (
   document: PlatformIntentDocument,
@@ -90,4 +112,5 @@ export const platformDiagnostics = (
   ...handoverRefusals(document),
   ...durabilityRefusals(document),
   ...humanGrantRefusals(document),
+  ...receiverRefusals(document),
 ];

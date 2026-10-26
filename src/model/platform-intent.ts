@@ -395,6 +395,42 @@ const telemetryPolicy = z
   })
   .meta({ id: "TelemetryPolicy" });
 
+// Where an alert is delivered (spec/v1/14-platform-intent.md#monitoring): a
+// named receiver of one kind, its credential read from Vault through the one
+// secret delivery, never written here.
+const vaultValue = z
+  .strictObject({ path: text, key: text })
+  .meta({ id: "VaultValue" });
+const receiver = z
+  .strictObject({
+    name: z.string().regex(/^[a-z][a-z0-9-]*$/),
+    discord: z
+      .strictObject({ webhook: vaultValue })
+      .meta({ id: "DiscordReceiver" }),
+  })
+  .meta({ id: "Receiver" });
+
+// Which receiver an alert of one severity reaches, and how often it repeats.
+const severityRoute = z
+  .strictObject({
+    severity: text,
+    receiver: text,
+    repeat: z.string().regex(/^[1-9][0-9]*[mh]$/),
+  })
+  .meta({ id: "SeverityRoute" });
+
+// The monitoring stack by role, each a declared Application, and the one
+// routing of every alert of the estate (spec/v1/14-platform-intent.md#monitoring).
+const monitoring = z
+  .strictObject({
+    grafana: holder,
+    prometheus: holder,
+    alertmanager: holder,
+    receivers: z.array(receiver).min(1),
+    routes: z.array(severityRoute).min(1),
+  })
+  .meta({ id: "Monitoring" });
+
 // A directory on one node the platform grants to projects
 // (spec/v1/14-platform-intent.md#libraries): absolute, with no `.` or `..`
 // segment, never `/`, and owned by a group a mount runs with.
@@ -642,6 +678,7 @@ export const platformIntent = z
     engines: enginePolicies,
     monitors: monitorCadence,
     telemetry: telemetryPolicy.exactOptional(),
+    monitoring: monitoring.exactOptional(),
     // The Secret Store every grant is read from, on its `http` surface: an
     // Application a project file the platform owns declares
     // (spec/v1/14-platform-intent.md#the-secret-store).

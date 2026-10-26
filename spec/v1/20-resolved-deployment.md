@@ -276,7 +276,7 @@ field's placement link to this anchor rather than copying rows.
 | dependency coordinates | derived | - | from the edge set and the provider's surfaces, bound to the key the consumer chose |
 | Runtime Profile values | derived | - | from `runtime` |
 | ServiceMonitor, PodMonitor | derived | - | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document |
-| PrometheusRule, severity, receiver route | the monitoring stack | - | not rendered by this model. PromQL is a mechanism and a receiver is a shared channel ([chapter 10](10-project-intent.md#observability)) |
+| PrometheusRule, severity, receiver route | the monitoring stack | - | a PrometheusRule per rule-group file the monitoring stack's Applications carry, and one AlertmanagerConfig on its Alertmanager routing each severity the Platform document routes to its receiver ([chapter 14](14-platform-intent.md#monitoring)); no other Application carries rules |
 | a library's volume and claim | derived | - | one per project and library it mounts: the volume `<namespace>-<library>` onto the library's `path`, held to its `node`, and the claim `library-<library>` bound to it, shared by every Process of the project that mounts the library ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)) |
 | backup job, its identity and its claim | derived | - | from `volumes[].durability`: the job runs as `<process>-backup` and writes to `<claim>-backup`, of the volume's `size`, keeping `retain` copies; `reconstructible` renders none |
 | NetworkPolicy set | derived | - | from the edge set, exposure, grants, plus the baseline ([chapter 16](16-dependencies.md#network-policy)) |
@@ -1914,6 +1914,21 @@ classDiagram
         +string from
         +string content
         +string[] inputs
+    class ResolvedAlertRules {
+        +string from
+        +list groups
+    }
+    class ResolvedAlerting {
+    }
+    class ResolvedReceiver {
+        +string name
+        +string discordSecret
+        +string discordKey
+    }
+    class ResolvedSeverityRoute {
+        +string severity
+        +string receiver
+        +string repeat
     }
     class ResolvedScrape {
         +string process
@@ -2214,6 +2229,10 @@ classDiagram
     ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape
     ResolvedApplication "1" *-- "0..1" ResolvedDashboards : dashboards
     ResolvedDashboards "1" *-- "1..*" ResolvedDashboard : files
+    ResolvedApplication "1" *-- "0..*" ResolvedAlertRules : alertRules
+    ResolvedApplication "1" *-- "0..1" ResolvedAlerting : alerting
+    ResolvedAlerting "1" *-- "1..*" ResolvedReceiver : receivers
+    ResolvedAlerting "1" *-- "1..*" ResolvedSeverityRoute : routes
     ResolvedApplication "1" *-- "0..1" ResolvedClient : client
     ResolvedApplication "1" *-- "0..1" ResolvedMesh : mesh
     ResolvedPolicyJob "1" *-- "0..1" ResolvedMesh : mesh

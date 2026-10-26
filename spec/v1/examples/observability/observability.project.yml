@@ -37,6 +37,10 @@ applications:
   # declared scrape surface admits it, and nothing else scrapes
   # (spec/v1/16-dependencies.md#the-derived-allow-set).
   - id: prometheus
+    # The platform's alert rules: only the monitoring stack carries them
+    # (spec/v1/10-project-intent.md#alert-rules).
+    alertRules:
+      - {from: rules/platform.yaml}
     processes:
       - name: prometheus
         lifecycle: application
@@ -52,4 +56,26 @@ applications:
           readiness: { path: /-/ready, port: 9090 }
           liveness: { path: /-/healthy, port: 9090 }
         startupBudget: 60s
+        cutover: continuous
+
+  # The monitoring stack's Alertmanager, which the Platform document names by
+  # role; the one routing of every alert renders into its namespace, and each
+  # receiver's webhook reaches it through the one secret delivery
+  # (spec/v1/14-platform-intent.md#monitoring).
+  - id: alertmanager
+    processes:
+      - name: alertmanager
+        lifecycle: application
+        image: alertmanager
+        runtime: none
+        provides:
+          http: 9093
+        placement:
+          memory: 128Mi
+          cpu: 50m
+        writablePaths: [/alertmanager]
+        probes:
+          readiness: { path: /-/ready, port: 9093 }
+          liveness: { path: /-/healthy, port: 9093 }
+        startupBudget: 30s
         cutover: continuous

@@ -140,6 +140,21 @@ telemetry:
     instance: {dashboards: grafana}
     datasource: prometheus
 
+# The monitoring stack by role, each a declared Application, and the one
+# routing of every alert (spec/v1/14-platform-intent.md#monitoring). A
+# receiver's webhook is read from Vault, never written here.
+monitoring:
+  grafana: identity/grafana
+  prometheus: observability/prometheus
+  alertmanager: observability/alertmanager
+  receivers:
+    - name: discord
+      discord:
+        webhook: {path: secret/data/platform/alertmanager-discord, key: webhook-url}
+  routes:
+    - {severity: critical, receiver: discord, repeat: 4h}
+    - {severity: warning, receiver: discord, repeat: 12h}
+
 # The Secret Store every grant is read from, on its `http` surface: the
 # Application the worked `secrets` project declares
 # (spec/v1/14-platform-intent.md#the-secret-store).

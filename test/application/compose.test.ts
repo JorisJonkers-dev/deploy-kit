@@ -54,7 +54,10 @@ const PROJECTS: Readonly<Record<string, readonly [string, readonly string[]]>> =
     ],
     delivery: ["delivery", ["delivery.project.yml"]],
     edge: ["edge", ["edge.project.yml"]],
-    observability: ["observability", ["observability.project.yml"]],
+    observability: [
+      "observability",
+      ["observability.project.yml", "rules/platform.yaml"],
+    ],
     secrets: ["secrets", ["secrets.project.yml"]],
   };
 

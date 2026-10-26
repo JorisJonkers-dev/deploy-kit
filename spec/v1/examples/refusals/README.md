@@ -54,6 +54,11 @@ one defect so the refusal has a single cause.
 | [`dashboard-without-uid/`](dashboard-without-uid/) | `E_DASHBOARD_WITHOUT_UID` | a dashboard whose JSON names no `uid` ([chapter 10](../../10-project-intent.md#dashboards)) |
 | [`duplicate-dashboard-uid/`](duplicate-dashboard-uid/) | `E_DUPLICATE_DASHBOARD_UID` | two dashboards carrying one `uid` ([chapter 10](../../10-project-intent.md#dashboards)) |
 | [`no-dashboard-policy/`](no-dashboard-policy/) | `E_NO_DASHBOARD_POLICY` | a dashboard on a platform that names no Grafana ([chapter 14](../../14-platform-intent.md#telemetry)) |
+| [`alert-rules-not-found/`](alert-rules-not-found/) | `E_ALERT_RULES_NOT_FOUND` | a rule-group file not beside the project file ([chapter 10](../../10-project-intent.md#alert-rules)) |
+| [`alert-rules-without-groups/`](alert-rules-without-groups/) | `E_ALERT_RULES_WITHOUT_GROUPS` | a rule file with no `groups` list ([chapter 10](../../10-project-intent.md#alert-rules)) |
+| [`alert-rules-outside-monitoring/`](alert-rules-outside-monitoring/) | `E_ALERT_RULES_OUTSIDE_MONITORING` | alert rules on an Application the monitoring stack does not name ([chapter 14](../../14-platform-intent.md#monitoring)) |
+| [`unknown-monitoring-application/`](unknown-monitoring-application/) | `E_UNKNOWN_MONITORING_APPLICATION` | a monitoring role naming an undeclared Application ([chapter 14](../../14-platform-intent.md#monitoring)) |
+| [`unknown-receiver/`](unknown-receiver/) | `E_UNKNOWN_RECEIVER` | a severity route to a receiver the platform does not declare ([chapter 14](../../14-platform-intent.md#monitoring)) |
 | [`library-not-granted/`](library-not-granted/) | `E_LIBRARY_NOT_GRANTED` | a Process mounting `write` a library that grants its project `read` ([chapter 14](../../14-platform-intent.md#libraries)) |
 | [`unknown-l4-address/`](unknown-l4-address/) | `E_UNKNOWN_L4_ADDRESS` | an Application exposed on an L4 Address the Platform document does not declare ([chapter 14](../../14-platform-intent.md#l4-addresses)) |
 | [`l4-address-exhausted/`](l4-address-exhausted/) | `E_L4_ADDRESS_EXHAUSTED` | two Processes exposed on a pool whose range holds one address ([chapter 14](../../14-platform-intent.md#l4-addresses)) |

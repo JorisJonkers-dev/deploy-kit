@@ -368,7 +368,9 @@ test("every rendered kind is a column of the deliverables matrix", () => {
 });
 
 test("no rendered fixture carries a kind the model stopped rendering", () => {
-  const gone = ["PrometheusRule"];
+  // PrometheusRule renders again, for the monitoring stack alone
+  // (spec/v1/14-platform-intent.md#monitoring).
+  const gone: string[] = [];
   for (const file of walk(join(spec, "examples")).filter((f) =>
     f.endsWith(".yaml"),
   ))

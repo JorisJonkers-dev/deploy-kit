@@ -278,13 +278,15 @@ function packProject(
     : [];
   const parsed = parseProjectIntent(text, env);
   if (!parsed.ok) return parsed.diagnostics;
-  // Every file the project names beside itself: its Assets and its dashboards.
+  // Every file the project names beside itself: its Assets, its dashboards
+  // and its rule groups.
   const assets = parsed.value.effective.applications.flatMap(
-    ({ processes, dashboards }) => [
+    ({ processes, dashboards, alertRules }) => [
       ...processes.flatMap(({ assets: named }) =>
         (named ?? []).map(({ from }) => from),
       ),
       ...(dashboards ?? []).map(({ from }) => from),
+      ...(alertRules ?? []).map(({ from }) => from),
     ],
   );
   const share =

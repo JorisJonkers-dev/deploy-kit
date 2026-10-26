@@ -45,6 +45,7 @@ const SET = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "mail/mail.project.yml",
@@ -3084,5 +3085,82 @@ describe("the Node Agents", () => {
       readOnlyRootFilesystem: true,
       capabilities: { add: ["NET_RAW"], drop: ["ALL"] },
     });
+  });
+});
+
+// REQ-093 (docs/requirements.md): the monitoring stack carries the estate's
+// alert rules and its one routing of every alert.
+describe("the monitoring stack's alerting", () => {
+  const tree = () =>
+    asTree(artifact(render(undefined, ["observability"]), "observability"));
+  const objectsAt = (path: string) =>
+    parseAllDocuments(tree()[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+
+  it("renders the observability project's share of the tree to its committed tree, byte for byte", () => {
+    expect(tree()).toStrictEqual(committed("observability/rendered"));
+  });
+
+  it("renders a rule-group file as one PrometheusRule of its groups", () => {
+    const [rule] = objectsAt(
+      "apps/observability/prometheus/alertrules.yaml",
+    ) as {
+      kind: string;
+      metadata: { name: string };
+      spec: { groups: { name: string }[] };
+    }[];
+
+    expect(rule?.kind).toBe("PrometheusRule");
+    expect(rule?.metadata.name).toBe("prometheus-platform");
+    expect(rule?.spec.groups.map(({ name }) => name)).toStrictEqual([
+      "platform",
+    ]);
+  });
+
+  it("routes each severity to its receiver, its webhook read from the Secret its grant lands in", () => {
+    const [config] = objectsAt(
+      "apps/observability/alertmanager/alertmanagerconfig.yaml",
+    ) as { spec: Record<string, unknown> }[];
+
+    expect(config?.spec).toStrictEqual({
+      route: {
+        receiver: "null",
+        groupBy: ["alertname", "namespace"],
+        groupWait: "1m",
+        groupInterval: "5m",
+        repeatInterval: "12h",
+        routes: [
+          {
+            matchers: [{ name: "severity", value: "critical" }],
+            receiver: "discord",
+            repeatInterval: "4h",
+          },
+          {
+            matchers: [{ name: "severity", value: "warning" }],
+            receiver: "discord",
+            repeatInterval: "12h",
+          },
+        ],
+      },
+      receivers: [
+        { name: "null" },
+        {
+          name: "discord",
+          discordConfigs: [
+            {
+              apiURL: {
+                name: "alertmanager-platform-alertmanager-discord",
+                key: "webhook-url",
+              },
+              sendResolved: true,
+            },
+          ],
+        },
+      ],
+    });
+    expect(Object.keys(tree())).toContain(
+      "apps/observability/alertmanager/vso.yaml",
+    );
   });
 });

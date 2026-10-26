@@ -865,6 +865,10 @@ export const INVARIANTS: readonly Invariant[] = [
               // A Client holding a secret keeps it in the Secret Store
               // (spec/v1/17-sign-in.md#credentials-and-placeholders).
               application.client?.credential === "secret" ||
+              // The Alertmanager reads each receiver's webhook from it
+              // (spec/v1/14-platform-intent.md#monitoring).
+              platform.monitoring?.alertmanager ===
+                `${effective.project}/${application.id}` ||
               application.processes.some(
                 ({ secrets, volumes, dependsOn }) =>
                   (secrets?.length ?? 0) > 0 ||

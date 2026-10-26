@@ -62,6 +62,7 @@ function minimal(): ResolvedProject {
       "delivery/delivery.project.yml",
       "edge/edge.project.yml",
       "observability/observability.project.yml",
+      "observability/rules/platform.yaml",
       "secrets/secrets.project.yml",
       "identity/identity.project.yml",
       "identity/env/grafana/base.env",

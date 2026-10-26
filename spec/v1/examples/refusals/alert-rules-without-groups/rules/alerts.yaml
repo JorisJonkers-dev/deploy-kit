@@ -1,0 +1,3 @@
+rules:
+  - alert: ApiDown
+    expr: up == 0

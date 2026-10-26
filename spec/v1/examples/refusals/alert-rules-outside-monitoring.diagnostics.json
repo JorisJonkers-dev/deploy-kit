@@ -1,0 +1,1 @@
+[{"code":"E_ALERT_RULES_OUTSIDE_MONITORING","document":"refusals.project.yml","path":"/applications/0/alertRules"},{"code":"E_TIER_WITHOUT_INGRESS_CLASS","document":"refusals.project.yml","path":"/applications/0/exposure/0"}]
