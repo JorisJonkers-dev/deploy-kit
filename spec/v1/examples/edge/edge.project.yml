@@ -55,3 +55,36 @@ applications:
           liveness: { path: /ping, port: 8080 }
         startupBudget: 20s
         cutover: continuous
+
+  # The DNS controller: it publishes each route's host under the tier its
+  # annotations name, so its records follow the routes and no one writes them
+  # by hand. Its flags are its environment, and the provider's token reaches it
+  # through the one secret delivery, as any Process's grant does; the estate's
+  # own file names both.
+  - id: external-dns
+    processes:
+      - name: external-dns
+        lifecycle: application
+        image: external-dns
+        runtime: none
+        provides:
+          metrics: 7979
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        probes:
+          readiness: { path: /healthz, port: 7979 }
+          liveness: { path: /healthz, port: 7979 }
+        startupBudget: 30s
+        cutover: interrupted
+        egress: { to: internet, reason: the DNS provider's API }
+        api:
+          reason: >-
+            external-dns reads every route and the Services behind it, cluster-wide, to publish their hosts
+          rules:
+            - group: core
+              objects: [services, endpoints, pods, nodes]
+              verbs: [get, list, watch]
+            - group: traefik.io
+              objects: [ingressroutes]
+              verbs: [get, list, watch]

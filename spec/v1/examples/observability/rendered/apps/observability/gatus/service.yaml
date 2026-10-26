@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatus
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: gatus
+    app.kubernetes.io/instance: gatus
+    app.kubernetes.io/part-of: gatus
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: gatus
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

@@ -3399,3 +3399,43 @@ describe("the monitoring stack's alerting", () => {
     );
   });
 });
+
+// REQ-101 (docs/requirements.md): the foundation renders as declared
+// Applications and derived agents alone: no admission webhook, no chart hook
+// Job and no aggregated role anywhere in a rendered tree, and the log collector
+// reads pod logs through the API as one ordinary copy.
+describe("the declared foundation", () => {
+  const renderedFiles = (dir: string): string[] =>
+    readdirSync(dir, { recursive: true, encoding: "utf8" })
+      .map((name) => join(dir, name))
+      .filter((path) => path.includes("/rendered/") && path.endsWith(".yaml"));
+
+  it("renders no webhook, chart hook or aggregated role in any tree", () => {
+    const found = renderedFiles(EXAMPLES).filter((path) =>
+      /kind: (Mutating|Validating)WebhookConfiguration|helm\.sh\/hook|aggregate-to-/.test(
+        readFileSync(path, "utf8"),
+      ),
+    );
+    expect(found).toStrictEqual([]);
+  });
+
+  it("reads every pod's log through the API, as one copy with no host privilege", () => {
+    const tree = asTree(
+      artifact(render(undefined, ["observability"]), "observability"),
+    );
+    const objects = Object.entries(tree)
+      .filter(([path]) => path.startsWith("apps/observability/alloy/"))
+      .flatMap(([, body]) =>
+        parseAllDocuments(body).map(
+          (document) => document.toJS() as Record<string, unknown>,
+        ),
+      );
+    expect(objects.some(({ kind }) => kind === "DaemonSet")).toBe(false);
+    const role = objects.find(({ kind }) => kind === "ClusterRole") as
+      { rules: { resources: string[] }[] } | undefined;
+    expect(role?.rules.flatMap(({ resources }) => resources)).toContain(
+      "pods/log",
+    );
+    expect(JSON.stringify(objects)).not.toContain("hostNetwork");
+  });
+});

@@ -231,6 +231,7 @@ bootstrap:
     - monitoring.coreos.com/v1
     - flagger.app/v1beta1
     - identity.jorisjonkers.dev/v1             # the Client, once the Identity Provider serves it
+    - metallb.io/v1beta1                       # the pools and advertisements of the l4-speaker Node Agent
 ```
 
 | in the set | why it cannot be declared |
@@ -245,6 +246,12 @@ Everything not in this table is a declared Application. The set is a
 needs fails the build, and a component that should be declared and is not is
 `E_UNATTRIBUTED_OBJECT`.
 
+MetalLB's CRDs ship with a conversion webhook stanza that points at its
+controller's webhook Service. No admission or conversion webhook is rendered,
+and the estate serves one version of each kind, so the stanza is dropped when
+the CRDs are pinned: the API server converts nothing, and nothing waits on a
+webhook that is never there.
+
 One entry is checked against what renders today: a `Client`
 ([chapter 17](17-sign-in.md#the-client)) applies only on a cluster that holds its
 kind, so an Application declaring `client` beside a set that does not list
@@ -252,13 +259,39 @@ kind, so an Application declaring `client` beside a set that does not list
 
 ## The foundation is declared
 
-Vault, VSO, Traefik, Prometheus and Gatus are Applications in project files the
-platform owns: `platform/edge.project.yml`, `platform/secrets.project.yml`,
-`platform/observability.project.yml`, with an `image`, Processes, `engine`, grants,
-`exposure`, volumes and a Durability Class like any tenant Application
+The foundation's controllers and servers are Applications in project files the
+platform owns, with an `image`, Processes, `engine`, grants, `exposure`, volumes
+and a Durability Class like any tenant Application
 ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)). Nothing
 about them is hand-written, and every estate-wide invariant in
-[chapter 40](40-composition.md#the-estate-wide-invariants) sees them.
+[chapter 40](40-composition.md#the-estate-wide-invariants) sees them. Each
+platform project owns its part:
+
+| project | owns |
+|---|---|
+| `edge` | both Traefik proxies and the DNS controller, external-dns |
+| `secrets` | Vault, with no agent injector and no CSI provider, and the Vault Secrets Operator |
+| `observability` | the Prometheus operator, Prometheus, Alertmanager, kube-state-metrics, the Grafana operator, Loki, Tempo, Pyroscope, Gatus, the telemetry collector and the log collector |
+| `node` | the [Node Agents](#node-agents), which no project file declares |
+
+What runs on the hosts themselves is the one split: a host-privileged agent is
+a derived [Node Agent](#node-agents), and everything else is a declared
+Application. The log collector is the second kind: Alloy tails pod logs through
+the Kubernetes API with a cluster-scope read on pods and their logs, admitted
+like any other API access ([Kubernetes API access](#kubernetes-api-access)),
+runs one copy rather than one per node, and holds no host privilege. No log
+canary runs per node: logs are read through the API, so a canary on every node
+would test nothing per node.
+
+Prometheus and Alertmanager take their configuration from the Prometheus
+operator, which reads the monitors, rules and alert routing each Project
+renders as objects of its own; it is the operator, not Prometheus, that
+collects them. Gatus keeps the inbound shape below.
+
+Configuration the render owns changes a pod's template whenever it changes:
+an Asset is a ConfigMap named for its content, a proxy's static configuration
+is its arguments, and a rotated credential restarts the Processes its sync
+object names. So no reloader runs.
 
 Their objects live where any Application's do, in `<project>-system` of the
 project that declares them ([chapter 10](10-project-intent.md#application-identity)):
@@ -269,8 +302,12 @@ derivation that names one (a tier's proxy, the collector a profile is handed, th
 metrics stack a scrape admits, the Secret Store a grant reaches) resolves to
 that namespace, and to no other.
 
-Two consequences are normative:
+Three consequences are normative:
 
+- **No admission webhook is rendered**, and no chart's hook Job or aggregated
+  user role: every optional webhook of a component is switched off, and the one
+  a component required belonged to cert-manager, which a tier's own
+  certificate retired.
 - **No chart is rendered.** A component whose upstream ships a Helm chart is
   declared from its image; what the chart added (defaults and CRDs) is
   respectively what a declaration replaces and what the bootstrap set pins.

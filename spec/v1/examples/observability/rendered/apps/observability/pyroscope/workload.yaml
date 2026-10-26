@@ -1,0 +1,105 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pyroscope
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: pyroscope
+    app.kubernetes.io/instance: pyroscope
+    app.kubernetes.io/part-of: pyroscope
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  progressDeadlineSeconds: 210
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pyroscope
+      app.kubernetes.io/instance: pyroscope
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pyroscope
+        app.kubernetes.io/instance: pyroscope
+        app.kubernetes.io/part-of: pyroscope
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/pyroscope: 1.12.0
+    spec:
+      serviceAccountName: pyroscope
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - enschede-pi-1
+                      - enschede-pi-2
+                      - enschede-pi-3
+                      - frankfurt-contabo-1
+      containers:
+        - name: pyroscope
+          image: docker.io/grafana/pyroscope@sha256:af2bcaf32f82481f3d0138ebd1f99ba2ca96ac6104acac0a10ee9b193e5df2af
+          ports:
+            - name: http
+              containerPort: 4040
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: pyroscope
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 4040
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 4040
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: 4040
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+      volumes:
+        - name: pyroscope
+          persistentVolumeClaim:
+            claimName: pyroscope

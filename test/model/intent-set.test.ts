@@ -286,6 +286,12 @@ describe("checkIntentSet", () => {
       "no project file declares the Application edge/traefik-lan this tier's proxy names",
       "no project file declares the Application edge/traefik-public the delivery machinery names",
       "no project file declares the Application edge/traefik-lan the delivery machinery names",
+      "no project file declares the Application edge/external-dns the platform admits to hold Kubernetes API access",
+      "no project file declares the Application observability/prometheus-operator the platform admits to hold Kubernetes API access",
+      "no project file declares the Application observability/kube-state-metrics the platform admits to hold Kubernetes API access",
+      "no project file declares the Application observability/grafana-operator the platform admits to hold Kubernetes API access",
+      "no project file declares the Application observability/gatus the platform admits to hold Kubernetes API access",
+      "no project file declares the Application observability/alloy the platform admits to hold Kubernetes API access",
       "no project file declares an Application observability/otel-collector whose Process provides an `otlp` surface",
       "no project file declares the Application observability/prometheus the metrics stack names",
     ]);
@@ -293,6 +299,12 @@ describe("checkIntentSet", () => {
       "Name the proxy as `<project>/<application>`, an Application its Project declares.",
       "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `delivery.machinery`.",
       "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `delivery.machinery`.",
+      "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `apiAccess.holders`.",
+      "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `apiAccess.holders`.",
+      "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `apiAccess.holders`.",
+      "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `apiAccess.holders`.",
+      "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `apiAccess.holders`.",
+      "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `apiAccess.holders`.",
       "Name the collector as `<project>/<application>`, an Application its Project declares with an `otlp` surface on one of its Processes.",
       "Name the metrics stack as `<project>/<application>`, an Application its Project declares.",
     ]);
@@ -562,8 +574,8 @@ describe("checkIntentSet", () => {
       {
         name: (platform as AuthoredFile).name,
         text: (platform as AuthoredFile).text.replace(
-          "holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter]",
-          "holders: [delivery/flagger, delivery/release-gate, delivery/reporter]",
+          "delivery/release-gate, delivery/collector, ",
+          "delivery/release-gate, ",
         ),
       },
       ...projects,

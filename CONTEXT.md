@@ -516,6 +516,15 @@ route's audience is the only way it reaches a tier
 depend on: an address and surfaces, in the Platform document. A fact, not a hole
 ([chapter 14](spec/v1/14-platform-intent.md#providers)).
 
+**Foundation**: the controllers and servers every Project relies on (the edge
+proxies and DNS controller, the Secret Store and its operator, the monitoring,
+logging, tracing and profiling Applications), declared as Applications in
+platform-owned project files, beside the derived Node Agents.
+
+**Log collector**: the Application that tails every pod's log through the
+Kubernetes API with an admitted cluster-scope read, one copy and no host
+privilege; not a Node Agent.
+
 **Bootstrap set**: what must exist before the first rendered object can apply:
 k3s, the Flux source, Vault's unseal, the CRDs. Recorded, enumerated, never
 declared ([0046](docs/adr/model/0046-the-foundation-is-declared.md)).

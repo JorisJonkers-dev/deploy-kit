@@ -430,12 +430,19 @@ describe("the foundation", () => {
       "delivery/flagger",
       "delivery/release-gate",
       "delivery/reporter",
+      "edge/external-dns",
       "edge/traefik-lan",
       "edge/traefik-public",
       "identity/identity",
+      "observability/alloy",
+      "observability/gatus",
+      "observability/grafana-operator",
+      "observability/kube-state-metrics",
       "observability/otel-collector",
       "observability/prometheus",
+      "observability/prometheus-operator",
       "secrets/vault",
+      "secrets/vault-secrets-operator",
     ]);
   });
 
