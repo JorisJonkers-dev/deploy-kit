@@ -310,7 +310,12 @@ const backupPlan = z
     schedule: text,
     // How many copies are kept: the method prunes to this count after a run.
     retain: count,
-    offCluster: text.exactOptional(),
+    // Where the off-cluster copy goes, who can read it, and where under the
+    // destination this volume's copies are kept.
+    offCluster: z
+      .strictObject({ destination: text, recipient: text, path: text })
+      .meta({ id: "OffClusterPlan" })
+      .exactOptional(),
     method: text,
     // The software version the images lock records for the method's image.
     methodVersion: text.exactOptional(),

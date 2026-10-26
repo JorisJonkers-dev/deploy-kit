@@ -3392,7 +3392,14 @@ describe("a volume and what its class derives", () => {
         {
           schedule: "45 2 * * *",
           retain: 90,
-          offCluster: "s3://backup-storage/jorisjonkers-dev",
+          // REQ-104: where the copy goes, the key it is encrypted to, and
+          // where under the destination this volume's copies are kept.
+          offCluster: {
+            destination: "s3://backup-storage/jorisjonkers-dev",
+            recipient:
+              "age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8",
+            path: "notes/notes-store/keep",
+          },
           method:
             "ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2",
           methodVersion: LOCK.images["rabbitmq-backup"]?.version,

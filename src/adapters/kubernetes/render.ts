@@ -960,7 +960,14 @@ function backupPodOf({ claim, backup }: Backed): PodSpec {
     { name: "BACKUP_RETAIN", value: String(backup.retain) },
     ...(backup.offCluster === undefined
       ? []
-      : [{ name: "BACKUP_OFF_CLUSTER", value: backup.offCluster }]),
+      : [
+          { name: "BACKUP_OFF_CLUSTER", value: backup.offCluster.destination },
+          { name: "BACKUP_OFF_CLUSTER_PATH", value: backup.offCluster.path },
+          {
+            name: "BACKUP_OFF_CLUSTER_RECIPIENT",
+            value: backup.offCluster.recipient,
+          },
+        ]),
     ...(backup.peer === undefined
       ? []
       : [

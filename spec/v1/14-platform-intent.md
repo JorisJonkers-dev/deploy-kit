@@ -518,8 +518,8 @@ One policy per Durability Class
 is one node's IO and the destination one remote target, so both are
 platform-assigned. `retain` is how many copies a backup keeps, the newest, and
 `offCluster` names where an `irreplaceable` copy also goes, the Secret Store
-path of the credential that writes there, and where that destination is on the
-network. A volume whose class has no policy here is `E_NO_DURABILITY_POLICY`,
+path of the credential that writes there, the key every copy is encrypted to,
+and where that destination is on the network. A volume whose class has no policy here is `E_NO_DURABILITY_POLICY`,
 and a policy for a class that derives a backup (`recoverable`, `irreplaceable`)
 names both `schedule` and `retain`, or the document is refused on its own with
 `E_DURABILITY_POLICY_INCOMPLETE`:
@@ -531,8 +531,18 @@ durability:
   irreplaceable: {schedule: "45 2 * * *", retain: 90,
                   offCluster: {destination: s3://backup-storage/jorisjonkers-dev,
                                credential: secret/data/platform/backup/off-cluster,
+                               recipient: age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8,
                                egress: [{cidr: 203.0.113.0/24, port: 443}]}}
 ```
+
+`recipient` is an [age](https://age-encryption.org) public key, `age1` and 58
+more characters. The method encrypts each copy to it on the pod, before the
+copy leaves the cluster, so the destination's provider never holds a readable
+copy. Its private key is kept off the cluster, and only a restore uses it: a
+key the cluster held would be lost with the cluster it protects against
+([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)). A
+policy with `offCluster` and no `recipient`, or one that is not an age public
+key, is refused with the document.
 
 `egress` is the destination as a network policy can say it: one or more address
 ranges, each with a port. A policy admits a range, never a hostname, so a
@@ -736,7 +746,10 @@ image does is versioned and digested; a string in YAML is neither.
 What a method image is handed is fixed, so one image serves every volume of its
 engine: the volume, read-only, at `/data`; the backup claim at `/backup`; the
 count to keep as `BACKUP_RETAIN`; for an off-cluster copy the destination as
-`BACKUP_OFF_CLUSTER` and its credential's keys as variables; and for a method
+`BACKUP_OFF_CLUSTER`, where under it this volume's copies go as
+`BACKUP_OFF_CLUSTER_PATH` (`<project>/<process>/<claim>`), the key each copy is
+encrypted to as `BACKUP_OFF_CLUSTER_RECIPIENT`, and its credential's keys as
+variables; and for a method
 that dumps over the network the Process it dumps, as `BACKUP_HOST`, the
 Process's Service, and `BACKUP_PORT`, the port of the engine's `surface`, with
 the keys of the credential it logs in with as variables. That credential is
@@ -1384,6 +1397,7 @@ classDiagram
     class OffClusterCopy {
         +string destination
         +VaultPath credential
+        +AgeRecipient recipient
     }
     class DestinationRange {
         +Cidr cidr

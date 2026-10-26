@@ -2114,8 +2114,7 @@
           "maximum": 9007199254740991
         },
         "offCluster": {
-          "type": "string",
-          "minLength": 1
+          "$ref": "#/$defs/OffClusterPlan"
         },
         "method": {
           "type": "string",
@@ -2171,6 +2170,29 @@
         "identity",
         "claim",
         "egress"
+      ],
+      "additionalProperties": false
+    },
+    "OffClusterPlan": {
+      "type": "object",
+      "properties": {
+        "destination": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recipient": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "destination",
+        "recipient",
+        "path"
       ],
       "additionalProperties": false
     },

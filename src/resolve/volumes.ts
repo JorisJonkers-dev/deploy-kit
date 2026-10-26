@@ -85,7 +85,15 @@ function backupOf(
   return {
     schedule: policy.schedule as string,
     retain: policy.retain as number,
-    ...(offCluster === undefined ? {} : { offCluster: offCluster.destination }),
+    ...(offCluster === undefined
+      ? {}
+      : {
+          offCluster: {
+            destination: offCluster.destination,
+            recipient: offCluster.recipient,
+            path: `${project}/${process.name}/${claim}`,
+          },
+        }),
     method: `${image.repository}@${image.digest}`,
     ...versionOf("methodVersion", image),
     uid: runAs.uid,

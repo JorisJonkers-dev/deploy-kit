@@ -611,7 +611,7 @@ describe("a platform that names no Secret Store", () => {
         platform: (text) =>
           withoutStore(text).replace(
             'irreplaceable: { schedule: "45 2 * * *", retain: 90 }',
-            'irreplaceable: { schedule: "45 2 * * *", retain: 90, offCluster: { destination: s3://b, credential: secret/data/b, egress: [{ cidr: 10.0.0.0/8, port: 443 }] } }',
+            'irreplaceable: { schedule: "45 2 * * *", retain: 90, offCluster: { destination: s3://b, credential: secret/data/b, recipient: age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8, egress: [{ cidr: 10.0.0.0/8, port: 443 }] } }',
           ),
       })
         .map(({ code }) => code)

@@ -45,6 +45,10 @@ spec:
                   value: "90"
                 - name: BACKUP_OFF_CLUSTER
                   value: s3://backup-storage/jorisjonkers-dev
+                - name: BACKUP_OFF_CLUSTER_PATH
+                  value: knowledge-platform/docling-serve/docling-serve-archive
+                - name: BACKUP_OFF_CLUSTER_RECIPIENT
+                  value: age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8
               envFrom:
                 - secretRef:
                     name: docling-serve-backup-platform-backup-off-cluster
