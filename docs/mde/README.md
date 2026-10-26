@@ -57,6 +57,12 @@ documents, sections and PDF pages; several of those documents run to 200-400
 pages. Every PDF has a Markdown conversion beside it, `<name>.md`, with figures
 in `<name>-images/`, produced with docling.
 
+The submodule's `exam/prep/` holds the author's own study notes for the final
+exam, kept there beside the papers they quote: a cheat sheet and a narrative
+summary of the course, each exam paper worked through the exam's eight
+questions, an audio summary with the script that generates it, and printable
+LaTeX study notes, whose Overleaf project is `6adf38ec3afd0f952d32eac7`.
+
 What the course asks for stays in this repository, because it is the brief the
 reports answer: [`assignment.md`](assignment.md) for the project's tasks, and
 [`practicals.md`](practicals.md) for the six practical sessions.
