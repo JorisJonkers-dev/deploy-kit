@@ -284,8 +284,18 @@ describe("the kubernetes adapter", () => {
   const API = {
     reason: "it reads what the cluster holds",
     rules: [
-      { group: "core", objects: ["configmaps", "pods"], verbs: ["get"] },
-      { group: "flagger.app", objects: ["canaries"], verbs: ["get", "list"] },
+      {
+        group: "core",
+        objects: ["configmaps", "pods"],
+        verbs: ["get"],
+        scope: "cluster",
+      },
+      {
+        group: "flagger.app",
+        objects: ["canaries"],
+        verbs: ["get", "list"],
+        scope: "cluster",
+      },
     ],
     server: [{ cidr: "10.43.0.1/32", port: 443 }],
   } as const;
@@ -366,6 +376,87 @@ describe("the kubernetes adapter", () => {
     expect(
       renderKubernetes(edited()).map(({ path }) => path.split("/").at(-1)),
     ).not.toContain("rbac.yaml");
+  });
+
+  // REQ-106 (docs/requirements.md): an api rule's scope is its Process's
+  // namespace or the cluster, and renders a Role or a ClusterRole to match.
+  it("binds a namespace-scoped rule to a Role in the Process's namespace, and a cluster-scoped one to a ClusterRole", () => {
+    const rendered = renderKubernetes(
+      edited(undefined, () => ({
+        api: {
+          ...API,
+          rules: [
+            {
+              group: "core",
+              objects: ["configmaps"],
+              verbs: ["create", "update"],
+              scope: "namespace",
+            },
+            {
+              group: "batch",
+              objects: ["jobs"],
+              verbs: ["patch"],
+              scope: "cluster",
+            },
+          ],
+        },
+      })),
+    );
+    const objects = objectsAt(rendered, "notes/rbac.yaml") as {
+      kind: string;
+      metadata: { name: string; namespace?: string };
+      rules?: unknown[];
+      roleRef?: unknown;
+    }[];
+
+    expect(
+      objects.map(({ kind, metadata }) => [
+        kind,
+        metadata.name,
+        metadata.namespace,
+      ]),
+    ).toStrictEqual([
+      ["Role", "notes-api", "notes-system"],
+      ["RoleBinding", "notes-api", "notes-system"],
+      ["ClusterRole", "notes-system-notes-api", undefined],
+      ["ClusterRoleBinding", "notes-system-notes-api", undefined],
+    ]);
+    expect(objects[0]?.rules).toStrictEqual([
+      {
+        apiGroups: [""],
+        resources: ["configmaps"],
+        verbs: ["create", "update"],
+      },
+    ]);
+    expect(objects[1]?.roleRef).toStrictEqual({
+      apiGroup: "rbac.authorization.k8s.io",
+      kind: "Role",
+      name: "notes-api",
+    });
+    expect(objects[2]?.rules).toStrictEqual([
+      { apiGroups: ["batch"], resources: ["jobs"], verbs: ["patch"] },
+    ]);
+  });
+
+  it("renders no ClusterRole for a Process whose every rule is namespace-scoped", () => {
+    const kinds = (
+      objectsAt(
+        renderKubernetes(
+          edited(undefined, () => ({
+            api: {
+              ...API,
+              rules: API.rules.map((rule) => ({
+                ...rule,
+                scope: "namespace" as const,
+              })),
+            },
+          })),
+        ),
+        "notes/rbac.yaml",
+      ) as { kind: string }[]
+    ).map(({ kind }) => kind);
+
+    expect(kinds).toStrictEqual(["Role", "RoleBinding"]);
   });
 
   it("admits where the Kubernetes API answers, by address, for a Process that holds access to it, and for no other", () => {

@@ -33,7 +33,7 @@ spec:
         metadata:
           application: kube-state-metrics
           process: kube-state-metrics
-          revision: sha256:fbf45c36ca030e079ec1cc5a216e2d24e2de4ae9802554809073776301411200
+          revision: sha256:2193c1c60acedf71736b49fb4c5a7d1cab725c5a383d968c13bc29fa1c28c22a
           readiness: /livez
           errorRate: 1%
           latency: 500ms
@@ -43,7 +43,7 @@ spec:
         metadata:
           application: kube-state-metrics
           process: kube-state-metrics
-          revision: sha256:fbf45c36ca030e079ec1cc5a216e2d24e2de4ae9802554809073776301411200
+          revision: sha256:2193c1c60acedf71736b49fb4c5a7d1cab725c5a383d968c13bc29fa1c28c22a
           readiness: /livez
           errorRate: 1%
           latency: 500ms
@@ -53,7 +53,7 @@ spec:
         metadata:
           application: kube-state-metrics
           process: kube-state-metrics
-          revision: sha256:fbf45c36ca030e079ec1cc5a216e2d24e2de4ae9802554809073776301411200
+          revision: sha256:2193c1c60acedf71736b49fb4c5a7d1cab725c5a383d968c13bc29fa1c28c22a
           readiness: /livez
           errorRate: 1%
           latency: 500ms

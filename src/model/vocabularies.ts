@@ -56,6 +56,8 @@ export const TRANSIT_OPERATIONS = [
   "read",
 ] as const;
 /** What a Process that holds Kubernetes API access may ask of a resource. */
+/** Where a Process's Kubernetes API rule reaches: its own namespace, or the cluster. */
+export const API_SCOPES = ["namespace", "cluster"] as const;
 export const API_VERBS = [
   "get",
   "list",
@@ -122,6 +124,7 @@ export type TransitEngine = (typeof TRANSIT_ENGINES)[number];
 export type AccessTier = (typeof ACCESS_TIERS)[number];
 export type TransitOperation = (typeof TRANSIT_OPERATIONS)[number];
 export type ApiVerb = (typeof API_VERBS)[number];
+export type ApiScope = (typeof API_SCOPES)[number];
 export type Delivery = (typeof DELIVERIES)[number];
 export type Tolerance = (typeof TOLERANCES)[number];
 export type LibraryAccess = (typeof LIBRARY_ACCESS)[number];

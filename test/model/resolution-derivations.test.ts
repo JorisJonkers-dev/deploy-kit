@@ -4446,6 +4446,34 @@ describe("a replicated Process on a pool", () => {
   });
 });
 
+// REQ-106 (docs/requirements.md): an api rule reaches the cluster unless it
+// says its Process's namespace.
+describe("a Process's Kubernetes API access", () => {
+  const admitted = (document: string): string =>
+    document.replace("  holders: [", "  holders: [notes/notes, ");
+  const holding = (rules: string) =>
+    processOf(
+      one(
+        serving(
+          "notes-api",
+          `        api:\n          reason: it reads what the cluster holds\n          rules:\n${rules}`,
+        ),
+      ),
+      { platform: admitted },
+    ).api?.rules.map(({ objects, scope }) => [objects.join(","), scope]);
+
+  it("reaches the cluster where a rule names no scope, and its namespace where it says so", () => {
+    expect(
+      holding(
+        "            - { group: core, objects: [pods], verbs: [get] }\n            - { group: core, objects: [configmaps], verbs: [create], scope: namespace }\n",
+      ),
+    ).toStrictEqual([
+      ["pods", "cluster"],
+      ["configmaps", "namespace"],
+    ]);
+  });
+});
+
 // REQ-105 (docs/requirements.md): a Process that serves DNS resolves through
 // the platform's upstream nameservers, never the cluster's own DNS.
 describe("a Process that serves DNS", () => {

@@ -1087,7 +1087,9 @@ Who may call the Kubernetes API, and where it answers
 Two facts, both the platform's:
 
 - **`holders`** names the Applications whose Processes may declare `api`
-  ([chapter 10](10-project-intent.md#kubernetes-api-access)). A Process says what
+  ([chapter 10](10-project-intent.md#kubernetes-api-access)), at either scope:
+  admission is of the holder, and a rule's scope only narrows what it holds.
+  A Process says what
   it asks of the API; the platform says who is allowed to ask at all, because
   what a ServiceAccount may do to the cluster is a decision about the cluster,
   and a shared resource is the platform's to assign

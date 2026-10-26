@@ -2117,6 +2117,7 @@ classDiagram
         +string group
         +string[] objects
         +ApiVerb[] verbs
+        +ApiScope scope
     }
     class BackupPlan {
         +Schedule schedule
