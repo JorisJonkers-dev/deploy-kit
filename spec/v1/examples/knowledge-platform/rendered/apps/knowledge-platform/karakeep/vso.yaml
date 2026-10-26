@@ -49,6 +49,30 @@ spec:
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
+  name: karakeep-knowledge-platform-garage-s3
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: karakeep
+    app.kubernetes.io/instance: karakeep
+    app.kubernetes.io/part-of: karakeep
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  vaultAuthRef: karakeep
+  mount: secret
+  type: kv-v2
+  path: knowledge-platform/garage/s3
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: karakeep-knowledge-platform-garage-s3
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
   name: karakeep-vpn-platform-vpn-knowledge-platform-karakeep
   namespace: knowledge-platform-system
   labels:

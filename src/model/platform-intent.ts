@@ -244,13 +244,15 @@ const durabilityPolicies = z
 
 // The method image, and the surface of the Process it connects to where it
 // dumps over the network. An engine whose method reads the volume alone names
-// none. An engine that owns databases may name the method that applies their
-// catalog (spec/v1/14-platform-intent.md#catalog-methods).
+// none. An engine whose Processes own databases or buckets may name the method
+// that applies their catalog, and the surface it applies it over where that is
+// not `surface` (spec/v1/14-platform-intent.md#catalog-methods).
 const enginePolicy = z
   .strictObject({
     backup: text,
     surface: text.exactOptional(),
     catalog: text.exactOptional(),
+    catalogSurface: text.exactOptional(),
   })
   .meta({ id: "EnginePolicy" });
 
@@ -261,6 +263,7 @@ const enginePolicies = z
     valkey: enginePolicy.exactOptional(),
     mongo: enginePolicy.exactOptional(),
     files: enginePolicy.exactOptional(),
+    s3: enginePolicy.exactOptional(),
   })
   .meta({ id: "EnginePolicies" });
 
@@ -368,10 +371,14 @@ const apiAccessPolicy = z
 // pods run in, and the instance label they and their Service carry where it is
 // not the Process's own name.
 // The KV document where the old path keeps a datastore's administrative
-// login, and the keys of its user and password.
-const adminLogin = z
-  .strictObject({ path: text, user: text, password: text })
-  .meta({ id: "AdminLogin" });
+// login, and the keys of its user and password, or of the one token an object
+// store's admin API takes.
+const adminLogin = z.union([
+  z
+    .strictObject({ path: text, user: text, password: text })
+    .meta({ id: "AdminLogin" }),
+  z.strictObject({ path: text, token: text }).meta({ id: "AdminToken" }),
+]);
 
 const servingLocation = z
   .strictObject({

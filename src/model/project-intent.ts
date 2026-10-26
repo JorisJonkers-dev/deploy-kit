@@ -213,12 +213,18 @@ const credentials = z
   })
   .meta({ id: "Credentials" });
 
+// A bucket an edge to an object store derives, as `<project>-<name>`
+// (spec/v1/16-dependencies.md#the-bucket-catalog): what the two make together
+// is a valid S3 bucket name.
+export const BUCKET_NAME = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
+
 const dependencyEdge = z
   .strictObject({
     application: text,
     surface: text,
     required: z.boolean().exactOptional(),
     credentials: credentials.exactOptional(),
+    buckets: z.array(z.string().regex(BUCKET_NAME)).min(1).exactOptional(),
   })
   .meta({ id: "DependencyEdge" });
 

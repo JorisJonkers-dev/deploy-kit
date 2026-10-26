@@ -49,6 +49,8 @@ const PROJECTS: Readonly<Record<string, readonly [string, readonly string[]]>> =
         "data.project.yml",
         "env/postgres/base.env",
         "config/postgresql.conf",
+        "config/garage.toml",
+        "env/garage/base.env",
         "dashboards/rabbitmq.json",
       ],
     ],

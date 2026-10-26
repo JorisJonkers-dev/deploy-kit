@@ -86,8 +86,12 @@ spec:
           volumes:
             - name: policies
               configMap:
-                name: vault-policy-18b34d166286
+                name: vault-policy-1971956a0616
                 items:
+                  - key: data-system-garage-catalog.policy.json
+                    path: data-system-garage-catalog.policy.json
+                  - key: data-system-garage-catalog.role.json
+                    path: data-system-garage-catalog.role.json
                   - key: data-system-postgres-catalog.policy.json
                     path: data-system-postgres-catalog.policy.json
                   - key: data-system-postgres-catalog.role.json

@@ -1,0 +1,204 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: garage-catalog
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: garage-catalog
+    app.kubernetes.io/instance: garage-catalog
+    app.kubernetes.io/part-of: garage-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: garage-catalog-1e2e72807623
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: garage-catalog
+    app.kubernetes.io/instance: garage-catalog
+    app.kubernetes.io/part-of: garage-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  catalog.json: |
+    {"admin":{"path":"secret/data/platform/garage","token":"admin-token"},"host":"garage.data-system.svc.cluster.local","keys":[{"buckets":["knowledge-platform-assets"],"name":"knowledge-platform","path":"secret/data/knowledge-platform/garage/s3"}],"port":3903}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: garage-catalog-1e2e72807623
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: garage-catalog
+    app.kubernetes.io/instance: garage-catalog
+    app.kubernetes.io/part-of: garage-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/force: Enabled
+spec:
+  backoffLimit: 2147483647
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: garage-catalog
+        app.kubernetes.io/instance: garage-catalog
+        app.kubernetes.io/part-of: garage-catalog
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+        consumes.deploy-kit.jorisjonkers.dev/platform-garage.admin: "true"
+      annotations:
+        image.jorisjonkers.dev/garage-catalog: 1.0.0
+    spec:
+      serviceAccountName: garage-catalog
+      automountServiceAccountToken: true
+      restartPolicy: OnFailure
+      activeDeadlineSeconds: 120
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - frankfurt-contabo-1
+      containers:
+        - name: garage-catalog
+          image: ghcr.io/jorisjonkers-dev/delivery/garage-catalog@sha256:3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e
+          env:
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: data-system-garage-catalog
+            - name: CATALOG_FILE
+              value: /catalog/catalog.json
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 10m
+            limits:
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: catalog
+              mountPath: /catalog
+              readOnly: true
+      volumes:
+        - name: catalog
+          configMap:
+            name: garage-catalog-1e2e72807623
+            items:
+              - key: catalog.json
+                path: catalog.json
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: garage-catalog
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: garage-catalog
+    app.kubernetes.io/instance: garage-catalog
+    app.kubernetes.io/part-of: garage-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  schedule: "@hourly"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: garage-catalog
+        app.kubernetes.io/instance: garage-catalog
+        app.kubernetes.io/part-of: garage-catalog
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+    spec:
+      backoffLimit: 2147483647
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: garage-catalog
+            app.kubernetes.io/instance: garage-catalog
+            app.kubernetes.io/part-of: garage-catalog
+            app.kubernetes.io/managed-by: deploy-kit
+            app.kubernetes.io/component: none
+            consumes.deploy-kit.jorisjonkers.dev/platform-garage.admin: "true"
+          annotations:
+            image.jorisjonkers.dev/garage-catalog: 1.0.0
+        spec:
+          serviceAccountName: garage-catalog
+          automountServiceAccountToken: true
+          restartPolicy: OnFailure
+          activeDeadlineSeconds: 120
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values:
+                          - enschede-t1000-1
+                          - enschede-rx7900xtx-1
+                          - enschede-gtx-960m-1
+                          - frankfurt-contabo-1
+          containers:
+            - name: garage-catalog
+              image: ghcr.io/jorisjonkers-dev/delivery/garage-catalog@sha256:3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e
+              env:
+                - name: VAULT_ADDR
+                  value: http://vault.secrets-system.svc.cluster.local:8200
+                - name: VAULT_ROLE
+                  value: data-system-garage-catalog
+                - name: CATALOG_FILE
+                  value: /catalog/catalog.json
+              resources:
+                requests:
+                  memory: 64Mi
+                  cpu: 10m
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: catalog
+                  mountPath: /catalog
+                  readOnly: true
+          volumes:
+            - name: catalog
+              configMap:
+                name: garage-catalog-1e2e72807623
+                items:
+                  - key: catalog.json
+                    path: catalog.json

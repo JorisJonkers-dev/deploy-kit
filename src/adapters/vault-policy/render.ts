@@ -119,21 +119,29 @@ function renderIdentities(
 /**
  * A catalog method's own policy and auth role
  * (spec/v1/16-dependencies.md#applying-the-catalog): it reads the login it
- * applies the catalog with, and writes the database roles the catalog names.
- * They land beside the job that writes them, in `directory`.
+ * applies the catalog with, and writes the database roles, or the keys, the
+ * catalog names. They land beside the job that writes them, in `directory`.
  */
 export function renderCatalogVault(
   job: ResolvedCatalogJob,
   directory: string,
 ): Deliverable[] {
-  const { admin, databases } = job.catalog;
-  const roles = databases.flatMap(({ owner, data }) => [owner, data]);
+  const { catalog } = job;
+  const written =
+    "databases" in catalog
+      ? catalog.databases.flatMap(({ owner, data }) =>
+          [owner, data].map((role) => `database/roles/${role}`),
+        )
+      : catalog.keys.map(({ path }) => path);
   const policy: VaultPolicy = {
     path: Object.fromEntries<{ capabilities: string[] }>([
-      [admin.path, { capabilities: ["read"] }],
-      [admin.path.replace(KV_DATA, KV_METADATA), { capabilities: ["read"] }],
-      ...roles.map((role): [string, { capabilities: string[] }] => [
-        `database/roles/${role}`,
+      [catalog.admin.path, { capabilities: ["read"] }],
+      [
+        catalog.admin.path.replace(KV_DATA, KV_METADATA),
+        { capabilities: ["read"] },
+      ],
+      ...written.map((path): [string, { capabilities: string[] }] => [
+        path,
         { capabilities: ["create", "read", "update"] },
       ]),
     ]),

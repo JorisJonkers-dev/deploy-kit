@@ -285,11 +285,13 @@ const heldCatalogs = (
 ): ResolvedCatalogJob[] =>
   (resolved.catalogJobs ?? []).filter((job) => {
     const home = resolved.catalogHomes.get(job);
-    return home === undefined
-      ? job.catalog.databases.some(({ name }) =>
+    if (home !== undefined) return projects.includes(home.project);
+    const { catalog } = job;
+    return "databases" in catalog
+      ? catalog.databases.some(({ name }) =>
           projects.some((project) => name === `${project}_db`),
         )
-      : projects.includes(home.project);
+      : catalog.keys.some(({ name }) => projects.includes(name));
   });
 
 /**

@@ -1,0 +1,42 @@
+# The project file this case's Platform document is read beside.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: store
+    processes:
+      - name: store
+        lifecycle: application
+        image: garage
+        runtime: none
+        engine: s3
+        # The platform's s3 catalog is applied over the `admin` surface, and
+        # this Process provides only the S3 one.
+        provides:
+          s3: 3900
+        placement: { memory: 256Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 3900 }
+        startupBudget: 60s
+        cutover: interrupted
+        volumes:
+          - claim: store-data
+            mountAt: /var/lib/garage/data
+            size: 1Gi
+            durability: recoverable
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous

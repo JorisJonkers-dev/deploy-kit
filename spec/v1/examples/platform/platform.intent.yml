@@ -130,6 +130,9 @@ engines:
   # (spec/v1/16-dependencies.md#the-database-catalog).
   mongo: { backup: mongo-backup, surface: mongo }
   files: { backup: file-backup }
+  # An object store is backed up by the files method over its volumes, and its
+  # bucket catalog is applied over the admin API, not the S3 surface.
+  s3: { backup: file-backup, catalog: garage-catalog, catalogSurface: admin }
 
 # One cadence for every rendered monitor, for the same reason the probe cadence
 # below is here: it is contended across the estate, and no Application knows better
@@ -287,6 +290,10 @@ handover:
     - application: platform-postgres
       namespace: data-system
       admin: { path: secret/data/platform/postgres, user: postgres.user, password: postgres.password }
+    # And the legacy Garage's admin token, which applies the bucket catalog.
+    - application: platform-garage
+      namespace: data-system
+      admin: { path: secret/data/platform/garage, token: admin-token }
 
 # Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date

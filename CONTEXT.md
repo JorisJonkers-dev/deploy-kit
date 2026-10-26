@@ -255,11 +255,20 @@ The edge delivers it `self`; `env`, where an env file reads it as
 files, `username` and `password`, in the directory `mountAt`
 ([chapter 10](spec/v1/10-project-intent.md#migration)).
 
-**Catalog method**: the image an engine that owns databases names in the
-Platform document to apply its database catalog in the cluster. It creates each
-estate-path project's database and roles, **adopts** a database that already
-exists by moving its objects to the owner role, and writes the Secret Store's
-database roles ([chapter 16](spec/v1/16-dependencies.md#applying-the-catalog)).
+**Catalog method**: the image an engine that owns databases or buckets names in
+the Platform document to apply its catalog in the cluster. For a database
+catalog it creates each estate-path project's database and roles, **adopts** a
+database that already exists by moving its objects to the owner role, and
+writes the Secret Store's database roles; for a bucket catalog it creates each
+bucket and mints each project's key
+([chapter 16](spec/v1/16-dependencies.md#applying-the-catalog)).
+
+**Bucket catalog**: what the inbound edges of an `s3` Process derive, one entry
+per consuming project: its **bucket key**, minted by the catalog method and
+written to `secret/data/<project>/<process>/s3`, and the buckets the key may
+use, each `<project>-<name>` for a name an edge's `buckets` gives. An edge
+naming buckets hands its consumer `endpoint`, `accessKeyId` and
+`secretAccessKey` ([chapter 16](spec/v1/16-dependencies.md#the-bucket-catalog)).
 
 **Migration policy**: the Platform document's runner image alias, deadline and
 resources, which every managed migration builds on
@@ -331,9 +340,10 @@ DNS and the off-cluster destination's address ranges, and no ingress
 ([0091](docs/adr/model/0091-a-backup-identity-has-a-policy-of-its-own.md)).
 
 **Engine**: what a Process *is*, where the platform must treat it
-specially: `postgres`, `rabbitmq`, `valkey`, `mongo`, `files`. Not `runtime`,
+specially: `postgres`, `rabbitmq`, `valkey`, `mongo`, `files`, `s3`. Not `runtime`,
 which says how a process is instrumented. Only `postgres` owns databases, so
-only an edge into it derives a database catalog; `mongo` is a document store
+only an edge into it derives a database catalog; only `s3` owns buckets, so only
+an edge into it derives a bucket catalog; `mongo` is a document store
 backed up over its wire protocol, with no catalog until a consumer needs one
 ([0019](docs/adr/model/0019-engine-is-process-vocabulary.md)).
 

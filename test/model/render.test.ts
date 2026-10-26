@@ -54,6 +54,8 @@ const SET = [
   "data/data.project.yml",
   "data/env/postgres/base.env",
   "data/config/postgresql.conf",
+  "data/config/garage.toml",
+  "data/env/garage/base.env",
   "data/dashboards/rabbitmq.json",
 ];
 
@@ -341,7 +343,7 @@ describe("renderIntentSet", () => {
 
       expect(jobFiles(paths)).toStrictEqual([]);
       expect(paths.filter((path) => path.includes("/policies/"))).toHaveLength(
-        10,
+        12,
       );
     });
 
@@ -497,6 +499,8 @@ describe("renderIntentSet", () => {
       expect(Object.keys(named.documents)).toStrictEqual([
         "data-system-asset-sync.policy.json",
         "data-system-asset-sync.role.json",
+        "data-system-garage.policy.json",
+        "data-system-garage.role.json",
         "data-system-mongo-backup.policy.json",
         "data-system-mongo-backup.role.json",
         "data-system-postgres-backup.policy.json",
@@ -1276,7 +1280,7 @@ describe("the database catalog", () => {
 
     for (const tree of [noMethod, noLogin])
       expect(
-        Object.keys(tree).filter((path) => path.includes("catalog")),
+        Object.keys(tree).filter((path) => path.includes("postgres-catalog")),
       ).toStrictEqual([]);
   });
 
@@ -1380,8 +1384,12 @@ describe("the database catalog", () => {
     expect(
       Object.keys(owner).filter((path) => path.includes("catalog")),
     ).toStrictEqual([
+      "apps/data/platform-garage/garage-catalog-networkpolicy.yaml",
+      "apps/data/platform-garage/garage-catalog.yaml",
       "apps/data/platform-postgres/postgres-catalog-networkpolicy.yaml",
       OWNED,
+      "apps/data/vault-policy/policies/data-system-garage-catalog.policy.json",
+      "apps/data/vault-policy/policies/data-system-garage-catalog.role.json",
       "apps/data/vault-policy/policies/data-system-postgres-catalog.policy.json",
       "apps/data/vault-policy/policies/data-system-postgres-catalog.role.json",
     ]);
@@ -1555,7 +1563,11 @@ describe("the database catalog", () => {
         throw new Error(
           JSON.stringify(result.diagnostics.map(({ code }) => code)),
         );
-      return result.value.catalogJobs;
+      // The object store's catalog is the bucket catalog's to test.
+      const jobs = (result.value.catalogJobs ?? []).filter(
+        ({ identity }) => identity === "postgres-catalog",
+      );
+      return jobs.length === 0 ? undefined : jobs;
     };
     const noSurface = {
       [PLATFORM]: (document: string) =>
@@ -1619,7 +1631,9 @@ describe("the database catalog", () => {
         ),
       );
 
-    expect(result.value.catalogJobs?.[0]?.catalog.connection).toBe("pg");
+    expect(result.value.catalogJobs?.[0]?.catalog).toMatchObject({
+      connection: "pg",
+    });
   });
 
   it("finds the datastore's own location among the ledger's, and reaches it, the store and DNS", () => {
@@ -1665,6 +1679,281 @@ describe("the database catalog", () => {
         path: "/engines/postgres/catalog",
       }),
     ]);
+  });
+});
+
+// spec/v1/16-dependencies.md#the-bucket-catalog
+describe("the bucket catalog", () => {
+  const PLATFORM = "platform/platform.intent.yml";
+  const KP = "knowledge-platform/knowledge-platform.project.yml";
+  const render = (
+    edits: Readonly<Record<string, (text: string) => string>> = {},
+    projects: readonly string[] = ["knowledge-platform"],
+  ) => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({
+        name,
+        text: (edits[name] ?? ((same: string) => same))(text(name)),
+      })),
+      { ...OPTIONS, projects },
+    );
+    if (!result.ok)
+      throw new Error(
+        JSON.stringify(result.diagnostics.map(({ code }) => code)),
+      );
+    return result.value;
+  };
+  const catalogIn = (tree: Record<string, string>, path: string): unknown =>
+    JSON.parse(
+      /catalog\.json: \|\n {4}(.*)\n/.exec(tree[path] ?? "")?.[1] ?? "null",
+    );
+  const ESTATE = "estate/vso-secrets/garage-catalog.yaml";
+  const OWNED = "apps/data/platform-garage/garage-catalog.yaml";
+  /** A second edge of the project, naming one bucket again and one more. */
+  const TWO_EDGES = {
+    [KP]: (document: string) =>
+      document.replace(
+        "          - { application: hindsight-embedding, surface: embeddings }\n",
+        "          - { application: hindsight-embedding, surface: embeddings }\n          - { application: platform-garage, surface: s3, buckets: [litestream, assets] }\n",
+      ),
+  };
+
+  it("names each estate-path project's key and its buckets, and signs in with the old path's token", () => {
+    expect(
+      catalogIn(asTree(artifact(render(TWO_EDGES), "_estate")), ESTATE),
+    ).toStrictEqual({
+      admin: { path: "secret/data/platform/garage", token: "admin-token" },
+      host: "garage.data-system.svc.cluster.local",
+      keys: [
+        {
+          buckets: [
+            "knowledge-platform-assets",
+            "knowledge-platform-litestream",
+          ],
+          name: "knowledge-platform",
+          path: "secret/data/knowledge-platform/garage/s3",
+        },
+      ],
+      port: 3903,
+    });
+  });
+
+  it("names one key per project, in name order", () => {
+    const keys = catalogIn(
+      asTree(
+        artifact(
+          render({
+            "mail/mail.project.yml": (document) =>
+              document.replace(
+                "      - name: stalwart\n",
+                "      - name: stalwart\n        dependsOn:\n          - { application: platform-garage, surface: s3, buckets: [archive] }\n",
+              ),
+          }),
+          "_estate",
+        ),
+      ),
+      ESTATE,
+    ) as { keys: { name: string; buckets: string[] }[] };
+
+    expect(keys.keys.map(({ name, buckets }) => [name, buckets])).toStrictEqual(
+      [
+        ["knowledge-platform", ["knowledge-platform-assets"]],
+        ["mail", ["mail-archive"]],
+      ],
+    );
+  });
+
+  it("names in each store only the buckets edges into that store give, and no store no reader names", () => {
+    const resolve = (
+      edits: Readonly<Record<string, (text: string) => string>>,
+    ) => {
+      const result = resolveIntentSet(
+        [
+          ...SET.filter((name) => !name.startsWith("minimal/")),
+          ...KNOWLEDGE_PLATFORM,
+        ].map((name) => ({
+          name,
+          text: (edits[name] ?? ((same: string) => same))(text(name)),
+        })),
+        OPTIONS,
+      );
+      if (!result.ok)
+        throw new Error(
+          JSON.stringify(result.diagnostics.map(({ code }) => code)),
+        );
+      return (result.value.catalogJobs ?? [])
+        .filter(({ identity }) => identity === "garage-catalog")
+        .map(({ namespace, catalog }) => [
+          namespace,
+          "keys" in catalog
+            ? catalog.keys.map(({ name, buckets }) => [name, buckets])
+            : [],
+        ]);
+    };
+    const edge = (store: string, bucket: string) =>
+      `        dependsOn:\n          - { application: ${store}, surface: s3, buckets: [${bucket}] }\n`;
+    // A second store in mail, under the same Process name as data's.
+    const store = `  - id: mail-garage
+    processes:
+      - name: garage
+        lifecycle: application
+        image: garage
+        runtime: none
+        engine: s3
+        provides: { s3: 3900, admin: 3903 }
+        placement: { memory: 256Mi, cpu: 50m }
+        probes: { readiness: { tcp: 3900 } }
+        startupBudget: 60s
+        cutover: interrupted
+        volumes:
+          - { claim: mail-garage-data, mountAt: /var/lib/garage/data, size: 1Gi, durability: recoverable }
+`;
+
+    expect(
+      resolve({
+        "mail/mail.project.yml": (document) =>
+          document.replace(
+            "      - name: stalwart\n",
+            `      - name: stalwart\n${edge("platform-garage", "archive")}          - { application: mail-garage, surface: s3, buckets: [spool] }\n`,
+          ) + store,
+        "utility/utility.project.yml": (document) =>
+          document.replace(
+            "      - name: adguard\n",
+            `      - name: adguard\n${edge("platform-garage", "backups")}`,
+          ),
+      }),
+    ).toStrictEqual([
+      ["mail-system", [["mail", ["mail-spool"]]]],
+      [
+        "data-system",
+        [
+          ["knowledge-platform", ["knowledge-platform-assets"]],
+          ["mail", ["mail-archive"]],
+          ["utility", ["utility-backups"]],
+        ],
+      ],
+    ]);
+    expect(
+      resolve({
+        [PLATFORM]: (document) =>
+          document
+            .replace(
+              "legacy: [auth, data, knowledge, notes]",
+              "legacy: [auth, data, knowledge, knowledge-platform, notes]",
+            )
+            .replace(
+              "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+              "estate: [delivery, edge, identity, mail, observability, secrets, utility]",
+            ),
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("grants each Process naming buckets read on its project's key, once per store", () => {
+    const tree = asTree(artifact(render(TWO_EDGES), "knowledge-platform"));
+    const policy = (process: string) =>
+      Object.keys(
+        (
+          JSON.parse(
+            tree[
+              `apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-${process}.policy.json`
+            ] ?? "{}",
+          ) as { path: Record<string, unknown> }
+        ).path,
+      ).filter((path) => path.includes("/garage/"));
+
+    for (const process of ["karakeep", "hindsight-api"])
+      expect(policy(process)).toStrictEqual([
+        "secret/data/knowledge-platform/garage/s3",
+        "secret/metadata/knowledge-platform/garage/s3",
+      ]);
+    expect(policy("hindsight-worker")).toStrictEqual([]);
+  });
+
+  it("signs in with the derived token once the store's Project is on the estate path", () => {
+    const moved = {
+      [PLATFORM]: (document: string) =>
+        document
+          .replace(
+            "legacy: [auth, data, knowledge, notes]",
+            "legacy: [auth, knowledge, notes]",
+          )
+          .replace(
+            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+          )
+          .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
+    };
+    const tree = asTree(
+      artifact(render(moved, ["data", "knowledge-platform"]), "data"),
+    );
+
+    expect(catalogIn(tree, OWNED)).toMatchObject({
+      admin: { path: "secret/data/data/garage/catalog", token: "token" },
+    });
+  });
+
+  it("is applied by no method where the engine names none, the old path's login is a user's, or no reader is on the estate path", () => {
+    const garage = (
+      edits: Readonly<Record<string, (text: string) => string>>,
+    ) =>
+      Object.keys(asTree(artifact(render(edits), "_estate"))).filter((path) =>
+        path.includes("garage-catalog"),
+      );
+
+    expect(garage({})).toContain(ESTATE);
+    expect(
+      garage({
+        [PLATFORM]: (document) =>
+          document.replace(
+            ", catalog: garage-catalog, catalogSurface: admin }",
+            " }",
+          ),
+      }),
+    ).toStrictEqual([]);
+    expect(
+      garage({
+        [PLATFORM]: (document) =>
+          document.replace(
+            "admin: { path: secret/data/platform/garage, token: admin-token }",
+            "admin: { path: secret/data/platform/garage, user: u, password: p }",
+          ),
+      }),
+    ).toStrictEqual([]);
+    expect(
+      garage({
+        [PLATFORM]: (document) =>
+          document
+            .replace(
+              "legacy: [auth, data, knowledge, notes]",
+              "legacy: [auth, data, knowledge, knowledge-platform, notes]",
+            )
+            .replace(
+              "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+              "estate: [delivery, edge, identity, mail, observability, secrets, utility]",
+            ),
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("applies the catalog over the engine's surface where its entry names no catalog surface", () => {
+    const tree = asTree(
+      artifact(
+        render({
+          [PLATFORM]: (document) =>
+            document.replace(
+              "catalog: garage-catalog, catalogSurface: admin }",
+              "surface: admin, catalog: garage-catalog }",
+            ),
+        }),
+        "_estate",
+      ),
+    );
+
+    expect(catalogIn(tree, ESTATE)).toMatchObject({ port: 3903 });
   });
 });
 

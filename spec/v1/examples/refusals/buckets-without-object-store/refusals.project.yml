@@ -1,0 +1,37 @@
+# REFUSED: E_BUCKETS_WITHOUT_OBJECT_STORE
+#
+# `buckets` names the buckets an edge into an object store derives, and
+# `edge-proxy` runs no `s3` Process, so this edge derives none
+# (spec/v1/16-dependencies.md#the-bucket-catalog).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous
+  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        image: api
+        runtime: node
+        placement: { memory: 128Mi, cpu: 25m }
+        startupBudget: 20s
+        probes: { readiness: { tcp: 8080 } }
+        cutover: continuous
+        dependsOn:
+          - { application: edge-proxy, surface: http, buckets: [assets] }

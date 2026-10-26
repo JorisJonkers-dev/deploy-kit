@@ -2970,7 +2970,14 @@
           }
         },
         "catalog": {
-          "$ref": "#/$defs/ResolvedCatalog"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResolvedCatalog"
+            },
+            {
+              "$ref": "#/$defs/ResolvedBucketCatalog"
+            }
+          ]
         },
         "consumes": {
           "type": "array",
@@ -3086,6 +3093,82 @@
         "name",
         "owner",
         "data"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedBucketCatalog": {
+      "type": "object",
+      "properties": {
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "admin": {
+          "$ref": "#/$defs/CatalogAdminToken"
+        },
+        "keys": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CatalogKey"
+          }
+        }
+      },
+      "required": [
+        "host",
+        "port",
+        "admin",
+        "keys"
+      ],
+      "additionalProperties": false
+    },
+    "CatalogAdminToken": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "token": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "token"
+      ],
+      "additionalProperties": false
+    },
+    "CatalogKey": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "buckets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "name",
+        "path",
+        "buckets"
       ],
       "additionalProperties": false
     },

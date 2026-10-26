@@ -14,6 +14,7 @@ export const ENGINES = [
   "valkey",
   "mongo",
   "files",
+  "s3",
 ] as const;
 export const CUTOVERS = ["continuous", "interrupted"] as const;
 export const DURABILITY_CLASSES = [

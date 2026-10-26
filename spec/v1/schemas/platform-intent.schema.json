@@ -586,6 +586,9 @@
         },
         "files": {
           "$ref": "#/$defs/EnginePolicy"
+        },
+        "s3": {
+          "$ref": "#/$defs/EnginePolicy"
         }
       },
       "additionalProperties": false
@@ -602,6 +605,10 @@
           "minLength": 1
         },
         "catalog": {
+          "type": "string",
+          "minLength": 1
+        },
+        "catalogSurface": {
           "type": "string",
           "minLength": 1
         }
@@ -1099,7 +1106,14 @@
           "minLength": 1
         },
         "admin": {
-          "$ref": "#/$defs/AdminLogin"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AdminLogin"
+            },
+            {
+              "$ref": "#/$defs/AdminToken"
+            }
+          ]
         }
       },
       "required": [
@@ -1128,6 +1142,24 @@
         "path",
         "user",
         "password"
+      ],
+      "additionalProperties": false
+    },
+    "AdminToken": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "token": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "token"
       ],
       "additionalProperties": false
     },

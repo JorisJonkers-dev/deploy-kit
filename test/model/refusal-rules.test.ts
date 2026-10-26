@@ -88,7 +88,7 @@ function refusals(
 
 const AT = "/applications/0/processes/0";
 const PLACEHOLDER_HINT =
-  "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, or `username` or `password` where that edge delivers its credential `env`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`; a client placeholder reads `issuer`, `id` or the whole `secret` of its own Application's Client.";
+  "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, `username` or `password` where that edge delivers its credential `env`, or `endpoint`, `accessKeyId` or `secretAccessKey` where it names buckets; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`; a client placeholder reads `issuer`, `id` or the whole `secret` of its own Application's Client.";
 
 describe("a dependency or exposure placeholder", () => {
   const edges = `        dependsOn:
@@ -130,6 +130,18 @@ describe("a dependency or exposure placeholder", () => {
       "edge-proxy.username",
       "the edge to edge-proxy delivers its credential to no environment",
     ],
+    [
+      "an endpoint on an edge naming no bucket",
+      edges,
+      "edge-proxy.endpoint",
+      "the edge to edge-proxy names no bucket, so it reaches no object store",
+    ],
+    [
+      "a key on an edge naming no bucket",
+      edges,
+      "edge-proxy.accessKeyId",
+      "the edge to edge-proxy names no bucket, so it derives no key",
+    ],
   ])("is refused, naming %s", (_, extra, source, why) => {
     expect(
       refusals(api(extra), {
@@ -169,6 +181,34 @@ describe("a dependency or exposure placeholder", () => {
       refusals(api(delivered), {
         env: "X=${dependency:edge-proxy.password}\n",
       }).filter(({ code }) => code === "E_UNRESOLVED_PLACEHOLDER"),
+    ).toStrictEqual([]);
+  });
+
+  // spec/v1/16-dependencies.md#the-bucket-catalog
+  it("reads an edge's bucket key whole, and its endpoint with a path after it", () => {
+    const buckets = `        dependsOn:
+          - { application: edge-proxy, surface: http, buckets: [assets] }
+`;
+    const unresolved = (env: string) =>
+      refusals(api(buckets), { env }).filter(
+        ({ code }) => code === "E_UNRESOLVED_PLACEHOLDER",
+      );
+
+    expect(
+      unresolved("X=${dependency:edge-proxy.secretAccessKey}x\n"),
+    ).toStrictEqual([
+      {
+        code: "E_UNRESOLVED_PLACEHOLDER",
+        path: AT,
+        message:
+          "X reads ${dependency:edge-proxy.secretAccessKey}, and a credential is a whole value, never part of one",
+        hint: PLACEHOLDER_HINT,
+      },
+    ]);
+    expect(
+      unresolved(
+        "A=${dependency:edge-proxy.accessKeyId}\nS=${dependency:edge-proxy.secretAccessKey}\nE=${dependency:edge-proxy.endpoint}/bucket\n",
+      ),
     ).toStrictEqual([]);
   });
 
@@ -686,5 +726,57 @@ describe("a backed-up durability class", () => {
         "Give the policy a `schedule` and a `retain` count.",
       ],
     ]);
+  });
+});
+
+// spec/v1/14-platform-intent.md#catalog-methods
+describe("a catalog surface", () => {
+  const store = (provides: string) => `  - id: api
+    processes:
+      - name: api
+        lifecycle: application
+        image: garage
+        runtime: none
+        engine: s3
+${provides}        placement: { memory: 128Mi, cpu: 25m }
+        startupBudget: 60s
+        cutover: interrupted
+        volumes:
+          - { claim: data, mountAt: /data, size: 1Gi, durability: recoverable }
+`;
+  const catalogued = (entry: string) => (text: string) =>
+    text.replace(
+      "  postgres: { backup: postgres-backup }\n",
+      `  postgres: { backup: postgres-backup }\n  s3: ${entry}\n`,
+    );
+  const codes = (provides: string, entry: string) =>
+    refusals(store(provides), { platform: catalogued(entry) })
+      .filter(({ code }) => code === "E_CATALOG_SURFACE_NOT_PROVIDED")
+      .map(({ path, message }) => [path, message]);
+
+  it("is refused where the Process provides nothing at all", () => {
+    expect(
+      codes(
+        "",
+        "{ backup: file-backup, catalog: garage-catalog, catalogSurface: admin }",
+      ),
+    ).toStrictEqual([
+      [
+        AT,
+        "the catalog of engine s3 is applied over the surface admin, which api does not provide",
+      ],
+    ]);
+  });
+
+  it("is not checked where the engine names no catalog method", () => {
+    expect(
+      codes("", "{ backup: file-backup, catalogSurface: admin }"),
+    ).toStrictEqual([]);
+    expect(
+      codes(
+        "        provides: { admin: 3903 }\n",
+        "{ backup: file-backup, catalog: garage-catalog, catalogSurface: admin }",
+      ),
+    ).toStrictEqual([]);
   });
 });

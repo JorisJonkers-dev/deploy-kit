@@ -41,6 +41,8 @@ const SET = [
   "data/data.project.yml",
   "data/env/postgres/base.env",
   "data/config/postgresql.conf",
+  "data/config/garage.toml",
+  "data/env/garage/base.env",
   "data/dashboards/rabbitmq.json",
   "auth/auth.project.yml",
   "auth/env/auth-api/base.env",

@@ -164,6 +164,13 @@ describe("parseProjectIntent", () => {
             "utf8",
           ),
         },
+        {
+          path: "data/env/garage/base.env",
+          text: readFileSync(
+            join(EXAMPLES, "data", "env", "garage", "base.env"),
+            "utf8",
+          ),
+        },
       ],
     );
 

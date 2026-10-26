@@ -627,13 +627,15 @@ Application's new version starts ([Prepare Processes](#prepare-processes)), and
 `none` is correct for a third-party image and injects no profile values at all.
 
 `engine` names **what the process is**, where that is something the platform
-has to treat specially: `postgres`, `rabbitmq`, `valkey`, `mongo`, `files`, or absent.
+has to treat specially: `postgres`, `rabbitmq`, `valkey`, `mongo`, `files`, `s3`, or absent.
 It is a fact about the Process rather than a mechanism, which is why it belongs
 here ([0019](../../docs/adr/model/0019-engine-is-process-vocabulary.md)), and
 it is what the platform keys its backup method off
 ([Storage and durability](#storage-and-durability)), and what the database
 catalog an inbound edge derives keys off
-([chapter 16](16-dependencies.md#the-database-catalog)). It is required on a
+([chapter 16](16-dependencies.md#the-database-catalog)), or the bucket catalog
+an edge into an `s3` derives
+([chapter 16](16-dependencies.md#the-bucket-catalog)). It is required on a
 Process holding a volume of a class that derives a backup,
 `E_DURABILITY_WITHOUT_ENGINE`, and refused only where it derives nothing: on a
 Process holding no such volume whose engine owns no databases,
@@ -2605,7 +2607,7 @@ reader-set model auditable from the repository.
 | placeholder | resolves to | resolved from |
 |---|---|---|
 | `${secret:<path>#<key>}` | one key of one granted Secret Store path | the grant, byte-matched ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)) |
-| `${dependency:<application>.<coordinate>}` | one coordinate of an Application this Process depends on: `host` or `port` of the Process's one edge to it, or `username` or `password` of the credential that edge delivers `env` | the edge set (chapter 16) |
+| `${dependency:<application>.<coordinate>}` | one coordinate of an Application this Process depends on: `host` or `port` of the Process's one edge to it, `username` or `password` of the credential that edge delivers `env`, or, where that edge names buckets, `endpoint`, `accessKeyId` or `secretAccessKey` ([chapter 16](16-dependencies.md#the-bucket-catalog)) | the edge set (chapter 16) |
 | `${exposure:<application>.<name>#<field>}` | one field of a declared exposure | the composed union's exposure set ([Exposure](#exposure)) |
 | `${client:<field>}` | the Issuer, or this Application's own Client id or secret | the Application's `client` block and the Platform document ([chapter 17](17-sign-in.md#credentials-and-placeholders)) |
 
@@ -2647,8 +2649,8 @@ already checks the other two sources: the Application must resolve in it, exactl
 a `dependsOn` target must (`E_UNRESOLVED_APPLICATION`), and it must declare an
 exposure by that name, with `url`, `host` or `scheme` after it
 (`E_UNRESOLVED_PLACEHOLDER`). A `${dependency:…}` placeholder names the
-Application of exactly one edge the Process holds, and `host` or `port`, or it
-is `E_UNRESOLVED_PLACEHOLDER` too. A refused placeholder is reported at the
+Application of exactly one edge the Process holds, and `host` or `port`, or a
+coordinate that edge hands out, or it is `E_UNRESOLVED_PLACEHOLDER` too. A refused placeholder is reported at the
 Process the env file reaches, naming the variable. Reading a host this way is **not** a dependency edge: it
 resolves to a string at build time and derives no egress, so a Process that
 actually calls the host still declares `dependsOn`
@@ -3048,7 +3050,7 @@ already told them, and the lines reaching them made the model harder to read.
 |---|---|---|
 | `Lifecycle` | `Process.lifecycle` | `application`, `job`, `prepare`, `scheduled` |
 | `Runtime` | `Process.runtime` | `jvm`, `python`, `node`, `static`, `none` |
-| `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `mongo`, `files` |
+| `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `mongo`, `files`, `s3` |
 | `Cutover` | `Process.cutover` | `continuous`, `interrupted` |
 | `DurabilityClass` | `Volume.durability` | `reconstructible`, `recoverable`, `irreplaceable` |
 | `LibraryAccess` | `LibraryMount.access`, `LibraryDeclaration.grants` | `read`, `write` |

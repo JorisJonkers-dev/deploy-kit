@@ -23,6 +23,7 @@ dependsOn:
 | `application` | yes | An Application Id, the only referencable identity ([0010](../../docs/adr/model/0010-flat-application-identity.md)). It must resolve in the composed union: `E_UNRESOLVED_APPLICATION`. |
 | `surface` | yes | One surface declared by one of that Application's Processes. The port is written once, by the provider, and never restated by a consumer: `E_UNKNOWN_SURFACE` where the name matches nothing. |
 | `required` | no | Defaults to `true`. |
+| `buckets` | no | The buckets the consumer uses in an object store, each a name of up to 32 lower-case letters, digits and hyphens that begins and ends with a letter or a digit ([The bucket catalog](#the-bucket-catalog)). On an edge whose surface no `s3` Process provides it derives nothing, and is `E_BUCKETS_WITHOUT_OBJECT_STORE`. |
 
 **`provides` moved to the Process; the edge did not.** A port is a property of
 a process, so surfaces are declared by the Process that listens
@@ -251,6 +252,46 @@ mismatch R20 recorded (a grant path is not the path a credential is read from)
 and it is why the catalog could not render until the grant vocabulary became a
 union on engine.
 
+### The bucket catalog
+
+An edge into an `s3` Process names the buckets its consumer uses, and the
+inbound edge set derives the store's **bucket catalog** the way it derives a
+database catalog: one entry per consuming **project**, naming its key and the
+buckets that key may read and write
+([0119](../../docs/adr/model/0119-an-edge-names-its-buckets-and-the-stores-method-mints-each-projects-key.md)).
+
+```yaml
+dependsOn:
+  - {application: platform-garage, surface: s3, buckets: [assets, litestream]}
+```
+
+**The names are fixed functions of the project and the edge.** Each bucket is
+`<project>-<name>`, the spelling the live estate already uses
+(`karakeep-assets`, `karakeep-litestream`), so adopting a project renames no
+bucket. A project holds one key per store, named after the project and scoped
+to every bucket any of its edges names, and two of its Applications naming one
+bucket share it. No author writes a bucket's full name or a key.
+
+**The key is minted, not pre-generated.** The catalog method creates the key in
+the store, and writes it to the project's derived document
+`secret/data/<project>/<process>/s3`, keys `access-key-id` and
+`secret-access-key`, where `<process>` is the store's. Where that document
+already exists the method imports it instead, so a store rebuilt from nothing
+gets every project's key back. No operator step comes before a new consumer.
+
+**What a consumer reads.** An edge naming buckets hands its consumer three more
+coordinates: `endpoint`, the store's S3 surface as an `http://` URL, and
+`accessKeyId` and `secretAccessKey`, the project's key, which an env file reads
+as `${dependency:<application>.accessKeyId}` and
+`${dependency:<application>.secretAccessKey}`. The key is synced to the
+consumer's environment like any `env` grant: the Process holds `read` on the
+document, and nothing it authors names the path. A bucket's name is written as
+the text it is, since the project and the edge fix it. On an edge naming no
+bucket, all three are `E_UNRESOLVED_PLACEHOLDER`.
+
+A bucket the platform owns rather than a consumer, such as one whose name is a public website's hostname, is not
+a catalog entry: no edge names it.
+
 ### Applying the catalog
 
 The catalog is applied in the cluster by its engine's method
@@ -268,7 +309,7 @@ an old-path Application still owns.
 
 **Where it runs.** For each Process whose engine names a `catalog` method, where
 the platform names the Vault policy job and the applied catalog names a
-database, the render derives one identity, `<process>-catalog`, in the
+database or a key, the render derives one identity, `<process>-catalog`, in the
 datastore's namespace, or the namespace a `serving` location states while the
 datastore's Project is `legacy`. Its objects are its datastore's own: they are
 in the artifact of the Project that runs the datastore, applied by that
@@ -288,8 +329,8 @@ namespace or a Process that the unit applying it does not bring up:
 
 | object | holds |
 |---|---|
-| the catalog | one JSON document: the datastore's `host` and `port`, the Secret Store's database `connection` its roles issue through, named after the datastore's Process, so two datastores of one engine never share one, the `admin` login's `path`, `user` and `password` keys, and the `databases`, each a `name`, an `owner` and a `data` role, in name order |
-| the identity's Vault policy and auth role | `read` on the admin login's document and its metadata, and `create`, `read` and `update` on `database/roles/<role>` for each role the catalog names, written by the Vault policy job like every identity's |
+| the catalog | one JSON document: the datastore's `host` and `port`, the Secret Store's database `connection` its roles issue through, named after the datastore's Process, so two datastores of one engine never share one, the `admin` login's `path`, `user` and `password` keys, and the `databases`, each a `name`, an `owner` and a `data` role, in name order; or, for an object store, its `host` and `port` on the surface the catalog is applied over, the `admin` login's `path` and `token` key, and the `keys`, each a `name`, the `path` the key is written to and its `buckets`, in name order |
+| the identity's Vault policy and auth role | `read` on the admin login's document and its metadata, and `create`, `read` and `update` on `database/roles/<role>` for each role the catalog names, or on each key's `path`, written by the Vault policy job like every identity's |
 | a `ConfigMap`, a `Job` and an hourly `CronJob` | the method image, as the user the lock records, handed the catalog; the policy job's requests, deadline and eligible nodes, and its retries, spelled as its Job and CronJob are ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)); named `<process>-catalog-<12 hex>`, the digest of the catalog with what the pod runs with, so a changed catalog or method is a new Job, and marked for the applier to recreate it where only the render changed its template. Its pods carry the [consumer label](#the-consumer-label) of the datastore's surface, which the datastore's policy admits |
 
 The method runs as the platform's operator would, once per run and in this
@@ -314,13 +355,26 @@ order, for each database the catalog names:
 It never drops a role, a database or a privilege. A run applied twice changes
 nothing the second time.
 
+An object store's method runs, once per run and in this order, for each key the
+catalog names:
+
+1. It reads the key's document. Where it holds a key, the method imports that key
+   into the store if the store lacks it; where it is absent, the method creates a
+   key named after the project and writes its id and secret there.
+2. It creates each of the key's buckets where it is absent.
+3. It grants the key read and write on each of its buckets.
+
+It never deletes a bucket, a key or a grant, and a run applied twice changes
+nothing the second time.
+
 **The admin login.** While the datastore's Project is `legacy`, the method signs
 in with the login the old path keeps, which the datastore's `serving` location
 names as `admin` ([chapter 14](14-platform-intent.md#handover-ledger)); a legacy
 datastore with no `admin` applies no catalog. Once the Project moves, it signs
 in with the derived `secret/data/<project>/<process>/catalog`, keys `user` and
-`password`, which the platform's operator writes, as for a backup's and a
-move's login.
+`password`, or `token` for an object store, which the platform's operator
+writes, as for a backup's and a move's login. A location whose `admin` is not
+the shape its engine's catalog signs in with applies no catalog.
 
 ## Process identity
 
