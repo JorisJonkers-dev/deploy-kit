@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.32.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.31.0...v0.32.0) (2026-10-26)
+
+
+### Features
+
+* **compose:** remove the estate-scoped pin source once its artifact is empty ([#604](https://github.com/JorisJonkers-dev/deploy-kit/issues/604)) ([5cc93ff](https://github.com/JorisJonkers-dev/deploy-kit/commit/5cc93ffb2bf01000135e20ede67dcf9eb2ff093e))
+* **compose:** routes flip with the edge's own handover ([#610](https://github.com/JorisJonkers-dev/deploy-kit/issues/610)) ([e29f8fc](https://github.com/JorisJonkers-dev/deploy-kit/commit/e29f8fc8d1b7142cdd9c921586bfd1223893f45f))
+* **edge:** derive Traefik's static configuration for a tier's proxy ([#614](https://github.com/JorisJonkers-dev/deploy-kit/issues/614)) ([a422ad1](https://github.com/JorisJonkers-dev/deploy-kit/commit/a422ad1bac1e949e7171417df7eb132119b1e7cc))
+* **edge:** render the shared Middlewares every route names ([#609](https://github.com/JorisJonkers-dev/deploy-kit/issues/609)) ([8db4b60](https://github.com/JorisJonkers-dev/deploy-kit/commit/8db4b60d716e74450a169f2a58f76c442898e253)), closes [#580](https://github.com/JorisJonkers-dev/deploy-kit/issues/580)
+* **model:** a host is unique on a tier, so one host may sit on two ([#605](https://github.com/JorisJonkers-dev/deploy-kit/issues/605)) ([35cc41b](https://github.com/JorisJonkers-dev/deploy-kit/commit/35cc41bf59580c962708923eb2dfc88707a3dbb4)), closes [#384](https://github.com/JorisJonkers-dev/deploy-kit/issues/384)
+* **model:** a Process may listen below 1024, because the substrate binds any port without a capability ([#591](https://github.com/JorisJonkers-dev/deploy-kit/issues/591)) ([607836b](https://github.com/JorisJonkers-dev/deploy-kit/commit/607836ba5be458c6c9f6437ae5bbe1e21e0760e9)), closes [#383](https://github.com/JorisJonkers-dev/deploy-kit/issues/383)
+* **model:** a rendered route carries its tier's DNS annotations ([#618](https://github.com/JorisJonkers-dev/deploy-kit/issues/618)) ([1bb1b78](https://github.com/JorisJonkers-dev/deploy-kit/commit/1bb1b786a9288ca0ce939235a8995ad809193e25))
+* **model:** a rendered route carries its tier's ingress class ([#607](https://github.com/JorisJonkers-dev/deploy-kit/issues/607)) ([1f444cb](https://github.com/JorisJonkers-dev/deploy-kit/commit/1f444cb3f2d9618f4b46457c41af3bc843d705f8))
+* **model:** a tier's forward-auth names its provider, not a URL ([#612](https://github.com/JorisJonkers-dev/deploy-kit/issues/612)) ([2e19bcf](https://github.com/JorisJonkers-dev/deploy-kit/commit/2e19bcfb833aeeed8edca9149f7b210aca99bfc8)), closes [#396](https://github.com/JorisJonkers-dev/deploy-kit/issues/396)
+* **model:** add the mongo engine ([#592](https://github.com/JorisJonkers-dev/deploy-kit/issues/592)) ([25dcb6e](https://github.com/JorisJonkers-dev/deploy-kit/commit/25dcb6e17b25fd6c4ed1156a1b508ffb09384d37))
+* **model:** an Application's client block, and what composition refuses in it ([#577](https://github.com/JorisJonkers-dev/deploy-kit/issues/577)) ([b825adf](https://github.com/JorisJonkers-dev/deploy-kit/commit/b825adfd064c09cb774a4c88811f296aa08506b6))
+* **model:** declare a scheduled Process ([#593](https://github.com/JorisJonkers-dev/deploy-kit/issues/593)) ([cb4568a](https://github.com/JorisJonkers-dev/deploy-kit/commit/cb4568a9425638dc84ef5742ee4e2d9c229170fa))
+* **model:** declare alert rules, the monitoring stack and receivers ([#616](https://github.com/JorisJonkers-dev/deploy-kit/issues/616)) ([93ac372](https://github.com/JorisJonkers-dev/deploy-kit/commit/93ac372eb6feeab5922dd10b72020f6f31e37fc2))
+* **model:** declare Human Grants in the Platform document ([#600](https://github.com/JorisJonkers-dev/deploy-kit/issues/600)) ([9754587](https://github.com/JorisJonkers-dev/deploy-kit/commit/9754587f81ceef7415117ec3eb44b354428d13fc))
+* **model:** derive a Process's priority class ([#621](https://github.com/JorisJonkers-dev/deploy-kit/issues/621)) ([31f6e3c](https://github.com/JorisJonkers-dev/deploy-kit/commit/31f6e3ca8ebb455689ec7123f84e49ee5b48511a))
+* **model:** derive the Node Agents from node facts and pools ([#623](https://github.com/JorisJonkers-dev/deploy-kit/issues/623)) ([98551cb](https://github.com/JorisJonkers-dev/deploy-kit/commit/98551cb433acbed1b2924b2ae07d876bb80d0013)), closes [#404](https://github.com/JorisJonkers-dev/deploy-kit/issues/404)
+* **model:** enrol the Projects the Platform document names in the ambient mesh ([#599](https://github.com/JorisJonkers-dev/deploy-kit/issues/599)) ([aa26bb5](https://github.com/JorisJonkers-dev/deploy-kit/commit/aa26bb5ff30d5e4f7baa7da5e645acee0775d85a))
+* **model:** every monitor carries the labels the monitoring stack selects by ([#601](https://github.com/JorisJonkers-dev/deploy-kit/issues/601)) ([1fb3072](https://github.com/JorisJonkers-dev/deploy-kit/commit/1fb30729e5a5bfe007e37e148e9febb4d24adc15)), closes [#588](https://github.com/JorisJonkers-dev/deploy-kit/issues/588)
+* **model:** expose a raw surface on a node's own address ([#622](https://github.com/JorisJonkers-dev/deploy-kit/issues/622)) ([3999cb1](https://github.com/JorisJonkers-dev/deploy-kit/commit/3999cb174918d30b9ef9d32d26479abb0357875d))
+* **model:** expose a raw surface on a Platform-declared L4 Address ([#603](https://github.com/JorisJonkers-dev/deploy-kit/issues/603)) ([2e0b429](https://github.com/JorisJonkers-dev/deploy-kit/commit/2e0b4298bbb9c1875013a56a95a56f2819220237))
+* **model:** give a tier its L4 Address and its own certificate ([#624](https://github.com/JorisJonkers-dev/deploy-kit/issues/624)) ([50ea3b3](https://github.com/JorisJonkers-dev/deploy-kit/commit/50ea3b390215a1e919dd77d428678a9fce73fd44)), closes [#405](https://github.com/JorisJonkers-dev/deploy-kit/issues/405)
+* **model:** grant read on a transit key ([#595](https://github.com/JorisJonkers-dev/deploy-kit/issues/595)) ([544f24c](https://github.com/JorisJonkers-dev/deploy-kit/commit/544f24cb05362d926d6c11d1cf18b4d41ed80781)), closes [#587](https://github.com/JorisJonkers-dev/deploy-kit/issues/587)
+* **model:** park a Process without pruning what it owns ([#619](https://github.com/JorisJonkers-dev/deploy-kit/issues/619)) ([fcc8493](https://github.com/JorisJonkers-dev/deploy-kit/commit/fcc84937852cf243fb8771d8021ce83afda93dd4)), closes [#389](https://github.com/JorisJonkers-dev/deploy-kit/issues/389)
+* **model:** render a route's redirect as its own Middleware ([#608](https://github.com/JorisJonkers-dev/deploy-kit/issues/608)) ([201cab9](https://github.com/JorisJonkers-dev/deploy-kit/commit/201cab990cd20d9f9f16834e5d474686de137892)), closes [#581](https://github.com/JorisJonkers-dev/deploy-kit/issues/581)
+* **model:** ship an Application's Grafana dashboards ([#615](https://github.com/JorisJonkers-dev/deploy-kit/issues/615)) ([4b8e249](https://github.com/JorisJonkers-dev/deploy-kit/commit/4b8e249bbde9e3bde65b84f3789cbf1ad9087cd6)), closes [#406](https://github.com/JorisJonkers-dev/deploy-kit/issues/406)
+* **model:** spread a Process's replicas across nodes ([#611](https://github.com/JorisJonkers-dev/deploy-kit/issues/611)) ([dd1101f](https://github.com/JorisJonkers-dev/deploy-kit/commit/dd1101fa320531260e7c0e2dd09c10f9ad1096df))
+* **model:** what a Client derives: the Client object, the Gate's route, the credential and its grants ([#597](https://github.com/JorisJonkers-dev/deploy-kit/issues/597)) ([c286544](https://github.com/JorisJonkers-dev/deploy-kit/commit/c286544086d8b1fb4e2394634cd2a184ca92e72c))
+
+
+### Bug Fixes
+
+* **model:** refuse an image whose locked uid is 0 ([#596](https://github.com/JorisJonkers-dev/deploy-kit/issues/596)) ([c109d51](https://github.com/JorisJonkers-dev/deploy-kit/commit/c109d51b0333d6d881682d05c6f2eaafb2ca426c)), closes [#586](https://github.com/JorisJonkers-dev/deploy-kit/issues/586)
+
 ## [0.31.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.30.0...v0.31.0) (2026-10-22)
 
 
