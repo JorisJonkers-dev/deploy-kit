@@ -540,6 +540,39 @@ export const INVARIANTS: readonly Invariant[] = [
         ),
   },
   {
+    // A Process that serves DNS resolves through the platform's upstream
+    // nameservers, never the cluster's DNS it must keep working without
+    // (spec/v1/10-project-intent.md#l4-exposure).
+    code: "E_NO_UPSTREAM_NAMESERVERS",
+    needsPlatform: true,
+    answer: (union, platform) =>
+      platform.substrate.upstreamNameservers !== undefined
+        ? []
+        : union.flatMap(applicationsOf).flatMap(({ document, path, value }) => {
+            // Stryker disable next-line ArrayDeclaration: an Application with
+            // no l4Exposure and one with an empty list serve nothing alike.
+            const entries = value.l4Exposure ?? [];
+            return [
+              ...new Set(
+                entries
+                  .filter(({ port }) => port === 53)
+                  .map(({ process }) => process),
+              ),
+            ].map((process) =>
+              refusal(
+                "E_NO_UPSTREAM_NAMESERVERS",
+                {
+                  document,
+                  path: `${path}/l4Exposure/${String(entries.findIndex((entry) => entry.port === 53 && entry.process === process))}`,
+                  value: process,
+                },
+                `${process} serves DNS, and the platform names no upstream nameservers for it to resolve through`,
+                "Add `upstreamNameservers` to the Platform document's `substrate`: a resolver must not depend on the cluster's own DNS.",
+              ),
+            );
+          }),
+  },
+  {
     // A host is unique on a tier: inside one proxy two rules for one host have
     // no defined winner, while two tiers are two proxies, the split-horizon
     // shape a host served both on the LAN and in public takes

@@ -49,6 +49,7 @@ const SET = [
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "mail/mail.project.yml",
+  "utility/utility.project.yml",
   "identity/env/grafana/base.env",
   "data/data.project.yml",
   "data/env/postgres/base.env",
@@ -912,6 +913,14 @@ describe("renderIntentSet", () => {
     );
   });
 
+  // REQ-105 (docs/requirements.md): a Process that serves DNS resolves
+  // through the platform's upstream nameservers, never the cluster's DNS.
+  it("renders the utility project's share of the tree to its committed tree, byte for byte", () => {
+    expect(
+      asTree(artifact(render(undefined, ["utility"]), "utility")),
+    ).toStrictEqual(committed("utility/rendered"));
+  });
+
   it("renders the identity project's share of the tree to its committed tree, byte for byte", () => {
     expect(
       asTree(artifact(render(undefined, ["identity"]), "identity")),
@@ -1245,8 +1254,8 @@ describe("the database catalog", () => {
             "legacy: [auth, data, knowledge, knowledge-platform, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
-            "estate: [delivery, edge, identity, mail, observability, secrets]",
+            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [delivery, edge, identity, mail, observability, secrets, utility]",
           ),
     });
 
@@ -1280,8 +1289,8 @@ describe("the database catalog", () => {
           "legacy: [auth, knowledge, notes]",
         )
         .replace(
-          "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
-          "estate: [data, delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
+          "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+          "estate: [data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
         )
         .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
   };
@@ -1509,8 +1518,8 @@ describe("the database catalog", () => {
             "legacy: [data, knowledge, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
-            "estate: [auth, delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
+            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [auth, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
           ),
     };
     const tree = estate(both, ["knowledge-platform"], AUTH);
@@ -1564,8 +1573,8 @@ describe("the database catalog", () => {
             "legacy: [auth, data, knowledge, knowledge-platform, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
-            "estate: [delivery, edge, identity, mail, observability, secrets]",
+            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [delivery, edge, identity, mail, observability, secrets, utility]",
           ),
     };
 
@@ -2775,10 +2784,25 @@ describe("an L4 exposure", () => {
   });
 
   it("renders one Service per address in name order, and TCP before UDP on one port", () => {
-    const tree = data((document) =>
-      document.replace(
-        EXPOSED,
-        `      - {address: lan-mqtt, port: 1883, protocol: udp, process: rabbitmq, surface: mqtt}\n${EXPOSED}      - {address: lan-dns, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}\n      - {address: lan-dns, port: 1883, protocol: udp, process: rabbitmq, surface: mqtt}\n`,
+    // A spare one-address pool of its own: lan-dns is utility's resolver's.
+    const tree = asTree(
+      artifact(
+        render(
+          {
+            [DATA]: (document) =>
+              document.replace(
+                EXPOSED,
+                `      - {address: lan-mqtt, port: 1883, protocol: udp, process: rabbitmq, surface: mqtt}\n${EXPOSED}      - {address: lan-aux, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}\n      - {address: lan-aux, port: 1883, protocol: udp, process: rabbitmq, surface: mqtt}\n`,
+              ),
+            "platform/platform.intent.yml": (document) =>
+              document.replace(
+                "\nl4Addresses:\n",
+                "\nl4Addresses:\n  lan-aux:\n    kind: pool\n    site: enschede\n    range: 192.168.0.96/32\n",
+              ),
+          },
+          ["data"],
+        ),
+        "data",
       ),
     );
     const services = documents(tree[`${BROKER}/service.yaml`]).filter(
@@ -2794,7 +2818,7 @@ describe("an L4 exposure", () => {
         ),
       ]),
     ).toStrictEqual([
-      ["rabbitmq-lan-dns", ["tcp-1883", "udp-1883"]],
+      ["rabbitmq-lan-aux", ["tcp-1883", "udp-1883"]],
       ["rabbitmq-lan-mqtt", ["tcp-1883", "udp-1883"]],
     ]);
   });

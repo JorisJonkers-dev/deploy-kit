@@ -103,7 +103,10 @@ Store's Application that answers on its `http` surface
 the Release Gate, `gate-members`, which names no peer: every pod carrying the
 [member label](16-dependencies.md#the-member-label); and, for a Process that
 declares it, its `internetEgress`, the reason it reaches the public internet
-([chapter 16](16-dependencies.md#internet-egress)). An Application records
+([chapter 16](16-dependencies.md#internet-egress)). A Process that serves DNS
+records its `nameservers`, the platform's upstream nameservers it resolves
+through, and holds no `cluster-dns` peer
+([chapter 10](10-project-intent.md#l4-exposure)). An Application records
 its `scrape`, the monitored surface at the Platform document's cadence; an
 exposure its tier's `listener`, `certificates` and `proxy`, the Application that
 serves the tier and the namespace it runs in; and the release gate the `endpoint`
@@ -2003,6 +2006,7 @@ classDiagram
         +HardeningClass hardening
         +bool identityToken
         +string[] consumes
+        +IPv4[] nameservers
     }
     class ResolvedGpu {
         +string resource

@@ -1,0 +1,82 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: adguard
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/name: adguard
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/part-of: adguard
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: adguard
+  autoscalerRef:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: adguard
+  progressDeadlineSeconds: 210
+  service:
+    port: 3000
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: adguard
+          process: adguard
+          revision: sha256:317915ee61c803f369754a4145083bfd08c3dc5bf14b7ca35c90da133568e552
+          readiness: /login.html
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: adguard
+          process: adguard
+          revision: sha256:317915ee61c803f369754a4145083bfd08c3dc5bf14b7ca35c90da133568e552
+          readiness: /login.html
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: adguard
+          process: adguard
+          revision: sha256:317915ee61c803f369754a4145083bfd08c3dc5bf14b7ca35c90da133568e552
+          readiness: /login.html
+          errorRate: 1%
+          latency: 500ms
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: adguard
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/name: adguard
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/part-of: adguard
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: adguard
+  minReplicas: 2
+  maxReplicas: 2

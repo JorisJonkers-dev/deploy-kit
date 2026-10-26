@@ -4446,6 +4446,84 @@ describe("a replicated Process on a pool", () => {
   });
 });
 
+// REQ-105 (docs/requirements.md): a Process that serves DNS resolves through
+// the platform's upstream nameservers, never the cluster's own DNS.
+describe("a Process that serves DNS", () => {
+  const ON_53 =
+    "    l4Exposure:\n      - { address: lan-dns, port: 53, protocol: udp, process: notes-api, surface: dns }\n      - { address: lan-dns, port: 53, protocol: tcp, process: notes-api, surface: dns }\n    processes:\n";
+  const servesDns = one(
+    serving("notes-api").replace(
+      "provides: { http: 8080 }",
+      "provides: { http: 8080, dns: 5353 }",
+    ),
+  ).replace("    processes:\n", ON_53);
+  // The worked Platform document names the upstream nameservers.
+  const without = (document: string): string =>
+    document.replace(
+      /\n {2}upstreamNameservers: [^\n]*\n( {2}#[^\n]*\n)*/,
+      "\n",
+    );
+  const rules = (process: ReturnType<typeof processOf>): string[] =>
+    (process.egress ?? []).map(({ rule }) => rule);
+
+  it("resolves names through the platform's upstream nameservers, and not the cluster's DNS", () => {
+    const resolved = processOf(servesDns);
+
+    expect(resolved.nameservers).toStrictEqual(["9.9.9.10", "149.112.112.10"]);
+    expect(rules(resolved)).not.toContain("cluster-dns");
+  });
+
+  it("leaves a Process exposed on another port with the cluster's DNS", () => {
+    const resolved = processOf(
+      servesDns.replaceAll("port: 53,", "port: 5300,"),
+    );
+
+    expect(resolved).not.toHaveProperty("nameservers");
+    expect(rules(resolved)).toContain("cluster-dns");
+  });
+
+  it("keeps every other peer its policy admits, the Secret Store's among them", () => {
+    const grant =
+      "        secrets:\n          - { path: secret/data/notes/key, keys: [key], access: read, delivery: file, mountAt: /run/key, fileMode: '0400', rotation: {tolerates: restart} }\n";
+    const holding = one(
+      serving("notes-api", grant).replace(
+        "provides: { http: 8080 }",
+        "provides: { http: 8080, dns: 5353 }",
+      ),
+    ).replace("    processes:\n", ON_53);
+
+    expect(rules(processOf(holding))).toStrictEqual(["secret-store"]);
+  });
+
+  it("is refused at each Process's first entry on port 53, whatever comes before it", () => {
+    const two = `  - id: notes
+    l4Exposure:
+      - { address: lan-dns, port: 53, protocol: udp, process: notes-dns, surface: dns }
+      - { address: lan-mqtt, port: 8080, protocol: tcp, process: notes-api, surface: http }
+      - { address: lan-mqtt, port: 53, protocol: udp, process: notes-api, surface: dns }
+    processes:
+${serving("notes-api").replace("provides: { http: 8080 }", "provides: { http: 8080, dns: 5353 }")}${serving("notes-dns").replace("provides: { http: 8080 }", "provides: { dns: 5353 }")}`;
+    const result = resolve(two, { platform: without });
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics
+            .filter(({ code }) => code === "E_NO_UPSTREAM_NAMESERVERS")
+            .map(({ path }) => path),
+    ).toStrictEqual([
+      "/applications/0/l4Exposure/0",
+      "/applications/0/l4Exposure/2",
+    ]);
+  });
+
+  it("is refused under a platform that names no upstream nameservers", () => {
+    expect(
+      notesCodesOf(resolve(servesDns, { platform: without })),
+    ).toStrictEqual(["E_NO_UPSTREAM_NAMESERVERS"]);
+  });
+});
+
 // REQ-091: only the Process of a tier's proxy that serves `web`, under a tier
 // that names its class, carries the edge proxy's configuration; and a tier's
 // forward-auth whose provider the set does not hold asks nothing.
