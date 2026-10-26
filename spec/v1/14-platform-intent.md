@@ -84,6 +84,11 @@ other resolves and every policy one asks for the other offers:
 | a Process mounts a library `libraries` does not declare | `E_UNKNOWN_LIBRARY` |
 | an Application's `l4Exposure` names an address `l4Addresses` does not declare | `E_UNKNOWN_L4_ADDRESS` |
 | more Processes are exposed on a pool than its `range` holds addresses | `E_L4_ADDRESS_EXHAUSTED` |
+| a tier names an `address` `l4Addresses` does not declare | `E_UNKNOWN_L4_ADDRESS` |
+| a tier names an address, and no Process of its proxy provides the surfaces its listener reaches | `E_TIER_SURFACE_MISSING` |
+| a tier issues through `acme`, and `acme` is absent | `E_NO_ACME_POLICY` |
+| a tier issues through `acme`, and `secretStore` is absent | `E_NO_SECRET_STORE` |
+| a Process of an acme tier's proxy declares `replicas` | `E_ACME_PROXY_REPLICATED` |
 | two exposures dial the same port and protocol on one node through its node addresses | `E_NODE_PORT_TAKEN` |
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
@@ -372,12 +377,19 @@ tiers:
     traefik: edge/traefik-public       # <project>/<application>: the declared Application that is this tier's proxy
     ingressClass: traefik-public       # the class that proxy admits routes of
     dns: {target: ingress.jorisjonkers.dev, proxied: true}
+    address: edge-frankfurt            # optional: the L4 Address its proxy listens on
   - name: lan
     audiences: [lan]
     listener: plain
     certificates: none
     traefik: edge/traefik-lan
     ingressClass: traefik-lan
+    address: lan-edge
+
+acme:                                  # how an acme tier's proxy registers and proves its names
+  email: hostmaster@jorisjonkers.dev
+  dnsProvider: cloudflare
+  token: secret/data/platform/cloudflare
 ```
 
 | fact | meaning |
@@ -390,6 +402,34 @@ tiers:
 | `traefik` | the platform Application whose proxy this tier is, as `<project>/<application>` ([privileged roles](#privileged-roles)); an Application its Project does not declare is `E_UNKNOWN_TIER_PROXY` |
 | `ingressClass` | the ingress class this tier's proxy admits routes of, a Kubernetes name. Every route rendered for the tier carries it, and external-dns writes a record for a route by the same annotation, so one Traefik never serves another tier's routes. Optional in the document, but an exposure on a tier that names none is `E_TIER_WITHOUT_INGRESS_CLASS`: its routes would be admitted by no proxy |
 | `dns` | optional: where the tier's public names point (`target`) and whether the DNS provider proxies them (`proxied`). Every route rendered for the tier carries both as the annotations the DNS controller writes its record from; a tier without it, such as the LAN's, publishes no record |
+| `address` | the [L4 Address](#l4-addresses) the proxy listens on, by name; one `l4Addresses` does not declare is `E_UNKNOWN_L4_ADDRESS`. Absent, the proxy is exposed on none, and the substrate reaches it however it does |
+
+**The proxy's ports follow from the listener** and are never authored: every
+tier derives port 80 on its proxy, to the surface `web`, and a `tls` tier port
+443 too, to `websecure`. They are L4 exposures of the proxy on the tier's
+address, so they render as any exposure on that address does
+([chapter 10](10-project-intent.md#l4-exposure)): a load balancer on a pool,
+host ports on a node address, with the Process held to the pool's site or the
+node. The proxy provides the surfaces its tier's listener reaches, or the tier
+is `E_TIER_SURFACE_MISSING`. Where every tier a proxy serves is `tls`, a plain
+request is sent to TLS.
+
+**A tier that issues through `acme` owns its certificate.** On its own proxy it
+derives an ACME resolver named for the tier, a `reconstructible` claim that
+keeps the ACME state, and the DNS provider's token, read from the Secret Store
+path `acme.token` through the one secret delivery, as `CF_DNS_API_TOKEN` for
+Cloudflare. Nothing is shared between two proxies, and no `Certificate`, issuer
+or hand-written TLS store is rendered. An acme tier under a document with no
+`acme` is `E_NO_ACME_POLICY`, and under one with no `secretStore`
+`E_NO_SECRET_STORE`. The ACME state sits on one claim, so the proxy runs one
+copy: `replicas` on any of its Processes is `E_ACME_PROXY_REPLICATED`. An edge
+proxy is delivery machinery, whose rolling switchover never runs two copies.
+
+**The issuance allowance is shared.** Tiers that issue the same names draw on
+one allowance at the certificate authority. Both of the estate's tiers issue
+the same wildcard, so a lost claim on either reissues against the allowance of
+both: five losses within seven days, counted across the tiers, exhaust it. The
+claim stays `reconstructible`; losing it costs a reissue, never data.
 
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
 adapter. A route's audience is the **only** way it reaches a tier, so a `lan`

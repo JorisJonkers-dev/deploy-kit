@@ -49,6 +49,18 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 8000
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 8443
   egress:
     - to:
         - namespaceSelector:
@@ -59,3 +71,25 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: secrets-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: vault
+      ports:
+        - protocol: UDP
+          port: 8200
+        - protocol: TCP
+          port: 8200
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 100.64.0.0/10
+              - 169.254.0.0/16
+              - 127.0.0.0/8

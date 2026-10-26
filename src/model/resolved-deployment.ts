@@ -624,10 +624,24 @@ const resolvedProcess = stated(
     priorityClass: text.exactOptional(),
     // No two replicas of one revision share a node.
     spreadAcross: z.enum(SPREADS).meta({ id: "Spread" }).exactOptional(),
-    // Where the Process is a tier's proxy: the class its routes carry, and
-    // whether the tier terminates TLS (spec/v1/30-deliverables.md#the-edge-proxy).
+    // Where the Process is a tier's proxy: the class its routes carry, whether
+    // the tier terminates TLS, and on an acme tier the resolver named for it,
+    // with the account and where its state is kept
+    // (spec/v1/30-deliverables.md#the-edge-proxy).
     edgeProxy: z
-      .strictObject({ ingressClass: text, tls: z.boolean() })
+      .strictObject({
+        ingressClass: text,
+        tls: z.boolean(),
+        resolver: z
+          .strictObject({
+            name: text,
+            email: text,
+            dnsProvider: text,
+            storage: text,
+          })
+          .meta({ id: "ResolvedResolver" })
+          .exactOptional(),
+      })
       .meta({ id: "ResolvedEdgeProxy" })
       .exactOptional(),
     memory: text,

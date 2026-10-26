@@ -2899,6 +2899,101 @@ describe("an exposure on a node address", () => {
     ).toBe(false);
   });
 });
+
+// REQ-099 (docs/requirements.md): a tier's proxy is exposed on the L4 Address
+// the tier names, on the ports its listener derives, as any exposure on that
+// address renders: host ports on a node address, a load balancer on a pool.
+describe("a tier's proxy", () => {
+  const edge = () => asTree(artifact(render(undefined, ["edge"]), "edge"));
+  const objectsOf = (path: string) =>
+    parseAllDocuments(edge()[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+
+  it("listens on the node address of a tls tier, on 80 and 443", () => {
+    const [workload] = objectsOf("apps/edge/traefik-public/workload.yaml") as {
+      spec: {
+        template: {
+          spec: { containers: { ports: unknown[] }[]; affinity: unknown };
+        };
+      };
+    }[];
+    expect(workload?.spec.template.spec.containers[0]?.ports).toStrictEqual([
+      { name: "web", containerPort: 8000 },
+      { name: "websecure", containerPort: 8443 },
+      { name: "admin", containerPort: 8080 },
+      { name: "tcp-80", containerPort: 8000, hostPort: 80, protocol: "TCP" },
+      { name: "tcp-443", containerPort: 8443, hostPort: 443, protocol: "TCP" },
+    ]);
+    expect(JSON.stringify(workload?.spec.template.spec.affinity)).toContain(
+      '"values":["frankfurt-contabo-1"]',
+    );
+  });
+
+  it("issues an acme tier's certificate through a resolver named for the tier", () => {
+    const [workload] = objectsOf("apps/edge/traefik-public/workload.yaml") as {
+      spec: { template: { spec: { containers: { args: string[] }[] } } };
+    }[];
+    expect(
+      workload?.spec.template.spec.containers[0]?.args.filter((arg) =>
+        arg.startsWith("--certificatesresolvers."),
+      ),
+    ).toStrictEqual([
+      "--certificatesresolvers.public-frankfurt.acme.email=hostmaster@jorisjonkers.dev",
+      "--certificatesresolvers.public-frankfurt.acme.storage=/acme/public-frankfurt.json",
+      "--certificatesresolvers.public-frankfurt.acme.dnschallenge.provider=cloudflare",
+    ]);
+    const [lan] = objectsOf("apps/edge/traefik-lan/workload.yaml") as {
+      spec: { template: { spec: { containers: { args: string[] }[] } } };
+    }[];
+    expect(
+      lan?.spec.template.spec.containers[0]?.args.some((arg) =>
+        arg.startsWith("--certificatesresolvers."),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps an acme tier's state on its own claim, reads the DNS token, and reaches out", () => {
+    const [workload] = objectsOf("apps/edge/traefik-public/workload.yaml") as {
+      spec: {
+        template: {
+          spec: {
+            containers: { volumeMounts: unknown[] }[];
+            volumes: unknown[];
+          };
+        };
+      };
+    }[];
+    const pod = workload?.spec.template.spec;
+    expect(pod?.volumes).toContainEqual({
+      name: "acme",
+      persistentVolumeClaim: { claimName: "acme" },
+    });
+    expect(pod?.containers[0]?.volumeMounts).toContainEqual({
+      name: "acme",
+      mountPath: "/acme",
+    });
+    expect(JSON.stringify(pod?.containers[0])).toContain(
+      '{"name":"CF_DNS_API_TOKEN","valueFrom":{"secretKeyRef":{"name":"traefik-public-platform-cloudflare","key":"CF_DNS_API_TOKEN"}}}',
+    );
+    expect(edge()["apps/edge/traefik-public/networkpolicy.yaml"]).toContain(
+      "0.0.0.0/0",
+    );
+  });
+
+  it("listens on the pool of a plain tier, on 80", () => {
+    const service = objectsOf("apps/edge/traefik-lan/service.yaml").find(
+      ({ metadata }) =>
+        (metadata as { name: string }).name === "traefik-lan-lan-edge",
+    );
+    expect(service?.["spec"]).toStrictEqual({
+      type: "LoadBalancer",
+      externalTrafficPolicy: "Local",
+      selector: { "app.kubernetes.io/instance": "traefik-lan" },
+      ports: [{ name: "tcp-80", port: 80, protocol: "TCP", targetPort: 8000 }],
+    });
+  });
+});
 // REQ-091 (docs/requirements.md): a tier's proxy takes its static
 // configuration from the model: entry points from its surfaces, the CRD
 // provider filtered on its tier's ingress class, ping and metrics on `admin`.
@@ -2906,12 +3001,19 @@ describe("the edge proxy's static configuration", () => {
   const argsOf = (
     application: string,
     edit?: (document: string) => string,
+    platform?: (document: string) => string,
   ): unknown => {
     const tree = asTree(
       artifact(
-        render(edit === undefined ? {} : { "edge/edge.project.yml": edit }, [
-          "edge",
-        ]),
+        render(
+          {
+            ...(edit === undefined ? {} : { "edge/edge.project.yml": edit }),
+            ...(platform === undefined
+              ? {}
+              : { "platform/platform.intent.yml": platform }),
+          },
+          ["edge"],
+        ),
         "edge",
       ),
     );
@@ -2938,6 +3040,9 @@ describe("the edge proxy's static configuration", () => {
       "--providers.kubernetescrd.ingressClass=traefik-public",
       "--providers.kubernetescrd.allowCrossNamespace=true",
       "--providers.kubernetescrd.allowEmptyServices=true",
+      "--certificatesresolvers.public-frankfurt.acme.email=hostmaster@jorisjonkers.dev",
+      "--certificatesresolvers.public-frankfurt.acme.storage=/acme/public-frankfurt.json",
+      "--certificatesresolvers.public-frankfurt.acme.dnschallenge.provider=cloudflare",
       "--log.format=json",
       "--accesslog=true",
       "--accesslog.format=json",
@@ -2968,8 +3073,12 @@ describe("the edge proxy's static configuration", () => {
     // A tls tier whose proxy provides no websecure opens no TLS entry point.
     expect(
       tlsOn(
-        argsOf("traefik-public", (document) =>
-          document.replace("          websecure: 8443\n", ""),
+        argsOf(
+          "traefik-public",
+          (document) => document.replace("          websecure: 8443\n", ""),
+          // A tier whose proxy lacks websecure names no address it listens on.
+          (document) =>
+            document.replace(/\n {4}address: edge-frankfurt[^\n]*/, ""),
         ),
       ),
     ).toBe(false);
@@ -3083,6 +3192,8 @@ describe("the Node Agents", () => {
           ],
         },
       },
+      expect.objectContaining({ kind: "IPAddressPool", name: "lan-edge" }),
+      expect.objectContaining({ kind: "L2Advertisement", name: "lan-edge" }),
       expect.objectContaining({ kind: "IPAddressPool", name: "lan-mqtt" }),
       expect.objectContaining({ kind: "L2Advertisement", name: "lan-mqtt" }),
     ]);

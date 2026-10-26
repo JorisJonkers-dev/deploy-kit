@@ -8,6 +8,7 @@ import {
   NODE_AGENTS,
   nodeAgentsOf,
 } from "../model/node-agents.ts";
+import { exposuresOf } from "../model/tier-proxy.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
 import {
   eligibleNodes,
@@ -143,7 +144,16 @@ function processRefusals(
       // The L4 Addresses the Process is exposed on hold it to the sites of
       // their pools and to their own nodes.
       const held = l4HoldOf(
-        l4ExposuresOf(application, process.name),
+        l4ExposuresOf(
+          {
+            l4Exposure: exposuresOf(
+              set.platform,
+              effective.project,
+              application,
+            ),
+          },
+          process.name,
+        ),
         set.platform,
       );
       const images = [

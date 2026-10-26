@@ -39,6 +39,12 @@ spec:
       ports:
         - protocol: TCP
           port: 8080
+    - from:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 8000
   egress:
     - to:
         - namespaceSelector:

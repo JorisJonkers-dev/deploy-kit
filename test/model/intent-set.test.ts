@@ -140,6 +140,8 @@ describe("checkIntentSet", () => {
         .replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: edge/traefik-public", "traefik: notes/notes")
         .replace("traefik: edge/traefik-lan", "traefik: notes/notes")
+        // notes serves no proxy's surfaces, so neither tier names an address.
+        .replaceAll(/\n {4}address: (edge-frankfurt|lan-edge)[^\n]*/g, "")
         .replace("ingressClass: traefik-lan", "ingressClass: traefik-public")
         .replace(MACHINERY, "machinery: [notes/notes]")
         .replace("gate: delivery/release-gate", "gate: notes/notes")
@@ -169,6 +171,8 @@ describe("checkIntentSet", () => {
         .text.replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: edge/traefik-public", "traefik: notes/notes")
         .replace("traefik: edge/traefik-lan", "traefik: notes/notes")
+        // notes serves no proxy's surfaces, so neither tier names an address.
+        .replaceAll(/\n {4}address: (edge-frankfurt|lan-edge)[^\n]*/g, "")
         .replace("ingressClass: traefik-lan", "ingressClass: traefik-public")
         .replace(MACHINERY, "machinery: [notes/notes]")
         .replace("gate: delivery/release-gate", "gate: notes/notes")

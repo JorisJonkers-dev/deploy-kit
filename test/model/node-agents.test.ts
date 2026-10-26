@@ -68,7 +68,10 @@ describe("the Node Agents", () => {
 
   it("derive no speaker where the Platform declares no pool", () => {
     const { platform, contract } = inputs((document) =>
-      document.replace(/\nl4Addresses:\n( {2}.*\n)+/, "\n"),
+      document
+        .replace(/\nl4Addresses:\n( {2}.*\n)+/, "\n")
+        // With no address declared, no tier names one.
+        .replaceAll(/\n {4}address: [a-z-]+[^\n]*/g, ""),
     );
     expect(
       nodeAgentsOf(platform, contract).map(({ agent }) => agent),
@@ -82,6 +85,7 @@ describe("the Node Agents", () => {
     );
     expect(speaker?.pools).toStrictEqual([
       { name: "lan-dns", range: "192.168.0.98/32", nodes: ENSCHEDE },
+      { name: "lan-edge", range: "192.168.0.99/32", nodes: ENSCHEDE },
       { name: "lan-mqtt", range: "192.168.0.97/32", nodes: ENSCHEDE },
     ]);
   });

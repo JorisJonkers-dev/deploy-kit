@@ -694,6 +694,57 @@
           "path": "/monitoring"
         }
       ]
+    },
+    {
+      "name": "a tier address that is no L4 Address name",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/tiers/1/address",
+          "value": "Lan_Edge"
+        }
+      ]
+    },
+    {
+      "name": "an acme account whose email is none",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/acme/email",
+          "value": "hostmaster"
+        }
+      ]
+    },
+    {
+      "name": "an acme account whose DNS provider the platform offers none of",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/acme/dnsProvider",
+          "value": "route53"
+        }
+      ]
+    },
+    {
+      "name": "an acme account with no token",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/acme/token"
+        }
+      ]
     }
   ]
 }

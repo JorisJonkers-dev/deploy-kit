@@ -33,6 +33,8 @@ import {
   l4NodesOf,
   l4SitesOf,
 } from "../../src/model/l4-addresses.ts";
+import { tierExposuresOf } from "../../src/model/tier-proxy.ts";
+import type { ApplicationDocument } from "../../src/model/project-intent.ts";
 
 const EXAMPLES = join(
   import.meta.dirname,
@@ -1204,10 +1206,13 @@ ${serving("notes-api")}  - id: notes-proxy
 ${serving("notes-proxy")}`,
       {
         platform: (platform) =>
-          platform.replace(
-            "traefik: edge/traefik-public",
-            "traefik: notes/notes-proxy",
-          ),
+          platform
+            .replace(
+              "traefik: edge/traefik-public",
+              "traefik: notes/notes-proxy",
+            )
+            // notes-proxy serves no tier's surfaces, so the tier names no address.
+            .replace(/\n {4}address: edge-frankfurt[^\n]*/, ""),
       },
     );
 
@@ -1876,7 +1881,10 @@ describe("what a grant derives", () => {
       notesCodesOf(
         resolve(granted(SELF), {
           platform: (document) =>
-            document.replace("secretStore: secrets/vault\n", ""),
+            // With no Secret Store, no tier issues through acme either.
+            document
+              .replace("secretStore: secrets/vault\n", "")
+              .replace("certificates: acme", "certificates: none"),
         }),
       ),
     ).toStrictEqual(["E_NO_SECRET_STORE"]);
@@ -2242,8 +2250,11 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     const refusedNotes = (applications: string) => {
       const result = resolve(applications, {
         env: DATA,
+        // With no Secret Store, no tier issues through acme either.
         platform: (document) =>
-          document.replace("secretStore: secrets/vault\n", ""),
+          document
+            .replace("secretStore: secrets/vault\n", "")
+            .replace("certificates: acme", "certificates: none"),
       });
       return result.ok
         ? []
@@ -2829,7 +2840,7 @@ describe("the order edges impose, and a platform with no register", () => {
           ),
           {
             platform: (platform) =>
-              platform.replace(/\nproviders:\n(.*\n?)+$/, "\n"),
+              platform.replace(/\nproviders:\n( {2}.*\n)+/, "\n"),
           },
         ),
       ),
@@ -3177,8 +3188,11 @@ describe("a volume and what its class derives", () => {
             "        engine: files\n",
           ),
           {
+            // With no Secret Store, no tier issues through acme either.
             platform: (document) =>
-              document.replace("secretStore: secrets/vault\n", ""),
+              document
+                .replace("secretStore: secrets/vault\n", "")
+                .replace("certificates: acme", "certificates: none"),
           },
         ),
       ),
@@ -3199,7 +3213,9 @@ describe("a volume and what its class derives", () => {
             ),
           {
             platform: (document) =>
-              document.replace("secretStore: secrets/vault\n", ""),
+              document
+                .replace("secretStore: secrets/vault\n", "")
+                .replace("certificates: acme", "certificates: none"),
           },
         ),
       );
@@ -3610,7 +3626,9 @@ describe("the Vault policy job", () => {
           (platform) =>
             platform
               .replace("secretStore: secrets/vault\n", "")
-              .replace(/\nmonitoring:\n( {2}.*\n)+/, "\n"),
+              .replace(/\nmonitoring:\n( {2}.*\n)+/, "\n")
+              // With no Secret Store, no tier issues through acme either.
+              .replace("certificates: acme", "certificates: none"),
           // Without the monitoring stack, whose Alertmanager reads its
           // receivers' webhooks from the Secret Store, and so its rules.
           (name, text) =>
@@ -4355,5 +4373,173 @@ describe("a tier's proxy, read from the set", () => {
       ["traefik-public", true],
       ["traefik-public-logs", false],
     ]);
+  });
+});
+
+// REQ-099 (docs/requirements.md): a tier names the L4 Address its proxy
+// listens on, and its listener derives the ports: 80 to the proxy's `web`
+// surface, and on a `tls` listener 443 to `websecure` as well.
+describe("a tier's address", () => {
+  const platform = parsePlatformIntent(PLATFORM);
+  const edge = parseProjectIntent(text("edge/edge.project.yml"));
+  if (!platform.ok || !edge.ok)
+    throw new Error("the worked inputs did not read");
+  const applicationNamed = (id: string) =>
+    edge.value.document.applications.find(
+      (application) => application.id === id,
+    ) as ApplicationDocument;
+  const entry = (
+    address: string,
+    port: number,
+    process: string,
+    surface: string,
+  ) => ({
+    address,
+    port,
+    protocol: "tcp" as const,
+    process,
+    surface,
+  });
+
+  it("derives 80 and 443 on a tls tier's proxy, and 80 alone on a plain one's", () => {
+    expect(
+      tierExposuresOf(
+        platform.value.document,
+        "edge",
+        applicationNamed("traefik-public"),
+      ),
+    ).toStrictEqual([
+      entry("edge-frankfurt", 80, "traefik-public", "web"),
+      entry("edge-frankfurt", 443, "traefik-public", "websecure"),
+    ]);
+    expect(
+      tierExposuresOf(
+        platform.value.document,
+        "edge",
+        applicationNamed("traefik-lan"),
+      ),
+    ).toStrictEqual([entry("lan-edge", 80, "traefik-lan", "web")]);
+  });
+
+  it("hands an acme proxy its DNS token beside its own variables, in name order", () => {
+    const proxy = processOf(
+      one(
+        serving("notes-api")
+          .replace(
+            "provides: { http: 8080 }",
+            "provides: { web: 8000, websecure: 8443 }",
+          )
+          .replace(
+            "readiness: { path: /ready, port: 8080 }",
+            "readiness: { path: /ready, port: 8000 }",
+          )
+          .replace(
+            "liveness: { path: /live, port: 8080 }",
+            "liveness: { path: /live, port: 8000 }",
+          ),
+      ),
+      {
+        platform: (document) =>
+          document
+            .replace("traefik: edge/traefik-public", "traefik: notes/notes")
+            .replace(/\n {4}address: edge-frankfurt[^\n]*/, ""),
+      },
+    );
+    expect(proxy.environment?.map(({ name }) => name)).toStrictEqual([
+      "CF_DNS_API_TOKEN",
+      "DEPLOYMENT_ENVIRONMENT",
+      "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "OTEL_SERVICE_NAME",
+    ]);
+  });
+
+  it("derives on an acme tier's proxy its resolver, claim, token and way out", () => {
+    const proxy = projectNamed(
+      projects(one(serving("notes-api"))),
+      "edge",
+    ).applications.find(({ id }) => id === "traefik-public")?.processes[0];
+    expect(proxy?.edgeProxy).toStrictEqual({
+      ingressClass: "traefik-public",
+      tls: true,
+      resolver: {
+        name: "public-frankfurt",
+        email: "hostmaster@jorisjonkers.dev",
+        dnsProvider: "cloudflare",
+        storage: "/acme/public-frankfurt.json",
+      },
+    });
+    expect(proxy?.volumes?.find(({ claim }) => claim === "acme")).toMatchObject(
+      {
+        mountAt: "/acme",
+        size: "16Mi",
+        durability: "reconstructible",
+      },
+    );
+    expect(proxy?.secrets).toContainEqual({
+      path: "secret/data/platform/cloudflare",
+      keys: ["CF_DNS_API_TOKEN"],
+      access: "read",
+      delivery: "env",
+      destination: "traefik-public-platform-cloudflare",
+      restartTargets: ["traefik-public"],
+    });
+    expect(proxy?.internetEgress).toStrictEqual({
+      reason: "ACME issuance and its DNS challenge",
+    });
+  });
+
+  it("refuses a port a tier derives on a node that another exposure dials there, at both", () => {
+    const refused = resolve(
+      one(
+        serving("notes-api").replace(
+          "cutover: continuous",
+          "cutover: interrupted",
+        ),
+      ).replace(
+        "    processes:\n",
+        "    l4Exposure:\n      - { address: mail-node, port: 443, protocol: tcp, process: notes-api, surface: http }\n    processes:\n",
+      ),
+    );
+    expect(
+      refused.ok
+        ? []
+        : refused.diagnostics.map(({ code, document, path }) => ({
+            code,
+            document,
+            path,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_NODE_PORT_TAKEN",
+        document: "minimal/notes.project.yml",
+        path: "/applications/0/l4Exposure/0",
+      },
+      {
+        code: "E_NODE_PORT_TAKEN",
+        document: "platform/platform.intent.yml",
+        path: "/tiers/0/address",
+      },
+    ]);
+  });
+
+  it("derives nothing on an Application no tier names, or a tier with no address", () => {
+    expect(
+      tierExposuresOf(
+        platform.value.document,
+        "notes",
+        applicationNamed("traefik-lan"),
+      ),
+    ).toStrictEqual([]);
+    const unaddressed = parsePlatformIntent(
+      PLATFORM.replace(/\n {4}address: lan-edge.*\n/, "\n"),
+    );
+    if (!unaddressed.ok) throw new Error("the edited platform did not read");
+    expect(
+      tierExposuresOf(
+        unaddressed.value.document,
+        "edge",
+        applicationNamed("traefik-lan"),
+      ),
+    ).toStrictEqual([]);
   });
 });

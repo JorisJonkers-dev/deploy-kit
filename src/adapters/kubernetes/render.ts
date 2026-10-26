@@ -528,6 +528,15 @@ function edgeProxyArgsOf({ edgeProxy, surfaces }: ResolvedProcess): string[] {
     `--providers.kubernetescrd.ingressClass=${edgeProxy.ingressClass}`,
     "--providers.kubernetescrd.allowCrossNamespace=true",
     "--providers.kubernetescrd.allowEmptyServices=true",
+    // An acme tier's resolver, named for the tier, keeping its state on the
+    // claim the tier derives and answering the DNS challenge with its token.
+    ...(edgeProxy.resolver === undefined
+      ? []
+      : [
+          `--certificatesresolvers.${edgeProxy.resolver.name}.acme.email=${edgeProxy.resolver.email}`,
+          `--certificatesresolvers.${edgeProxy.resolver.name}.acme.storage=${edgeProxy.resolver.storage}`,
+          `--certificatesresolvers.${edgeProxy.resolver.name}.acme.dnschallenge.provider=${edgeProxy.resolver.dnsProvider}`,
+        ]),
     "--log.format=json",
     "--accesslog=true",
     "--accesslog.format=json",

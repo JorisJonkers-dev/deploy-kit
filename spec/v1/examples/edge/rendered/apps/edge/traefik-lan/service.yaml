@@ -21,3 +21,27 @@ spec:
     - name: admin
       port: 8080
       targetPort: admin
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: traefik-lan-lan-edge
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/name: traefik-lan
+    app.kubernetes.io/instance: traefik-lan
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    metallb.io/address-pool: lan-edge
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app.kubernetes.io/instance: traefik-lan
+  ports:
+    - name: tcp-80
+      port: 80
+      protocol: TCP
+      targetPort: 8000

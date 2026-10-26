@@ -110,6 +110,7 @@ Application that provides a `web` surface.
 | `--entryPoints.websecure.http.tls=true` | the tier's `listener: tls`, where the Process provides `websecure` |
 | `--ping`, `--metrics.prometheus`, each on the `traefik` entry point | the `admin` surface, where the Process provides one |
 | `--providers.kubernetescrd.ingressClass` | the tier's `ingressClass` ([chapter 14](14-platform-intent.md#tiers)) |
+| `--certificatesresolvers.<tier>.acme.email`, `.storage`, `.dnschallenge.provider` | an acme tier's resolver, named for the tier: the platform's `acme` account, the state file on the tier's `acme` claim, and its DNS provider, whose token arrives as the provider client's variable ([chapter 14](14-platform-intent.md#tiers)) |
 | `--providers.kubernetescrd.allowCrossNamespace`, `allowEmptyServices` | always: a route names Middlewares in the proxy's namespace, and a route to a Process with no ready pod answers 503 rather than vanishing |
 | `--log.format`, `--accesslog`, `--accesslog.format` | always JSON |
 

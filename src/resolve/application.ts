@@ -5,6 +5,8 @@
 import { dashboardUidOf } from "../model/dashboards.ts";
 import { ruleGroupsOf } from "../model/alert-rules.ts";
 import { destinationOf } from "./secrets.ts";
+import { deriveProxy } from "./tier-proxy.ts";
+import { exposuresOf } from "../model/tier-proxy.ts";
 import type {
   EffectiveApplication,
   EffectiveProcess,
@@ -458,6 +460,26 @@ function releaseGateOf(
   };
 }
 
+/**
+ * A Process's variables with the ones a tier derives on it, in name order as
+ * its own are; none derived leaves them as they are.
+ */
+const withEnvironment = (
+  resolved: ResolvedProcess,
+  derived: Readonly<NonNullable<ResolvedProcess["environment"]>>,
+): Pick<ResolvedProcess, "environment"> => {
+  if (derived.length === 0) return {};
+  const merged = [
+    // A missing list and an empty one hold no variable alike.
+    // Stryker disable next-line ArrayDeclaration
+    ...(resolved.environment ?? []),
+    ...derived,
+  ];
+  // No two variables share a name, so `<=` would order the same list.
+  // Stryker disable next-line EqualityOperator
+  return { environment: merged.sort((a, b) => (a.name < b.name ? -1 : 1)) };
+};
+
 export function resolveApplication(
   application: EffectiveApplication,
   context: ApplicationContext,
@@ -466,26 +488,40 @@ export function resolveApplication(
     context.platform.delivery?.machinery.includes(
       `${context.projectOf.get(application.id) as string}/${application.id}`,
     ) === true;
-  const pairs = application.processes.map((process) => {
+  const pairs = application.processes.map((authored) => {
+    // A tier derives its proxy's configuration, and on an acme tier its
+    // claim, egress and token, before anything reads the Process.
+    const derived = deriveProxy(authored, application, context);
+    const { process } = derived;
     const ingress = ingressOf(process, application, context);
-    const clientGrants = clientGrantsOf(process, application, context);
-    const exposures = l4ExposuresOf(application, process.name);
+    const clientGrants = [
+      ...clientGrantsOf(process, application, context),
+      ...derived.grants,
+    ];
+    const exposures = l4ExposuresOf(
+      {
+        l4Exposure: exposuresOf(context.platform, context.project, application),
+      },
+      process.name,
+    );
     const l4Exposure = resolveL4Exposure(exposures, process, context.platform);
+    const base = resolveProcess(process, {
+      ...context,
+      machinery,
+      migratesItself: application.migration === "self",
+      application: application.id,
+      clientGrants: [
+        ...clientGrants,
+        ...receiverGrantsOf(process, application, context),
+      ],
+      held: l4HoldOf(exposures, context.platform),
+    });
     return {
       process,
       resolved: {
-        ...resolveProcess(process, {
-          ...context,
-          machinery,
-          migratesItself: application.migration === "self",
-          application: application.id,
-          clientGrants: [
-            ...clientGrants,
-            ...receiverGrantsOf(process, application, context),
-          ],
-          held: l4HoldOf(exposures, context.platform),
-        }),
+        ...base,
         ...(l4Exposure.length === 0 ? {} : { l4Exposure }),
+        ...withEnvironment(base, derived.environment),
         ...(ingress.length === 0 ? {} : { ingress }),
         egress: egressOf(process, context, clientGrants.length > 0),
       },

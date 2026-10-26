@@ -437,6 +437,94 @@ describe("a continuous cutover on a node address", () => {
   });
 });
 
+// REQ-099: a tier's proxy provides the surfaces its listener reaches.
+describe("a tier whose proxy lacks its surface", () => {
+  it("says which surfaces the listener reaches", () => {
+    const result = checkIntentSet(filesOf("tier-surface-missing"));
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message:
+          "no Process of refusals/edge-proxy provides web, which tier lan's plain listener reaches",
+        hint: "Provide the surfaces on the proxy's Process, or name a proxy that provides them.",
+      },
+    ]);
+  });
+
+  it("names both surfaces of a tls listener", () => {
+    const result = checkIntentSet(
+      filesOf("tier-surface-missing").map((file) =>
+        file.name === "platform.intent.yml"
+          ? {
+              ...file,
+              text: file.text.replace("listener: plain", "listener: tls"),
+            }
+          : file,
+      ),
+    );
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ message }) => message),
+    ).toContain(
+      "no Process of refusals/edge-proxy provides web and websecure, which tier lan's tls listener reaches",
+    );
+  });
+});
+
+// REQ-097: a node's port is taken across Projects as much as within one.
+describe("two Projects on one node port", () => {
+  it("are both refused, though their Processes share a name", () => {
+    const files = filesOf("node-port-taken");
+    const project = files.find(({ name }) => name === "refusals.project.yml");
+    if (project === undefined) throw new Error("no project file");
+    const other = {
+      name: "other.project.yml",
+      text: project.text
+        .replace("project: refusals", "project: other")
+        // Application ids are the estate's; the Process keeps its name.
+        .replace("- id: mail-a", "- id: mail-x")
+        .replace(/\n {2}- id: mail-b\n(.*\n)*?(?= {2}- id: )/, "\n")
+        .replace(/\n {2}- id: edge-proxy\n(.*\n?)*$/, "\n"),
+    };
+    const result = checkIntentSet([
+      ...files.map((file) =>
+        file.name === "refusals.project.yml"
+          ? {
+              ...file,
+              text: file.text.replace(
+                /\n {2}- id: mail-b\n(.*\n)*?(?= {2}- id: )/,
+                "\n",
+              ),
+            }
+          : file,
+      ),
+      other,
+    ]);
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, document, path }) => ({
+            code,
+            document,
+            path,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_NODE_PORT_TAKEN",
+        document: "refusals.project.yml",
+        path: "/applications/0/l4Exposure/0",
+      },
+      {
+        code: "E_NODE_PORT_TAKEN",
+        document: "other.project.yml",
+        path: "/applications/0/l4Exposure/0",
+      },
+    ]);
+  });
+});
+
 describe("a library mount", () => {
   const granted = (edit: (text: string) => string) =>
     checkIntentSet(
@@ -605,6 +693,7 @@ ${volumes
 describe("the refusal fixtures", () => {
   it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
     expect(fixtures).toStrictEqual([
+      "acme-proxy-replicated",
       "alert-class-without-signal",
       "alert-rules-not-found",
       "alert-rules-outside-monitoring",
@@ -649,6 +738,7 @@ describe("the refusal fixtures", () => {
       "migration-without-database",
       "mongo-credentials-without-database",
       "mongo-without-durability",
+      "no-acme-policy",
       "no-dashboard-policy",
       "no-delivery-policy",
       "no-durability-policy",
@@ -682,6 +772,7 @@ describe("the refusal fixtures", () => {
       "shared-quantity",
       "surface-label-invalid",
       "tier-class-unfiltered",
+      "tier-surface-missing",
       "tier-without-ingress-class",
       "unauthorised-secret-reference",
       "unbound-secret-grant",
@@ -699,7 +790,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(88);
+    expect(refused).toHaveLength(91);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",
