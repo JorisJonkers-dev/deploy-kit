@@ -505,6 +505,33 @@
           "value": []
         }
       ]
+    },
+    {
+      "name": "a Process parked with no reason",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/parked",
+          "value": {}
+        }
+      ]
+    },
+    {
+      "name": "a parked Process",
+      "verdict": "accept",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/parked",
+          "value": {
+            "reason": "Paused."
+          }
+        }
+      ]
     }
   ]
 }

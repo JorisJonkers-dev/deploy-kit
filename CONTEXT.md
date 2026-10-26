@@ -181,6 +181,9 @@ document, its credential read from Vault.
 **Severity route**: which receiver an alert of one `severity` reaches, and how
 often it repeats.
 
+**Parked Process**: a Process that runs no pod and keeps everything it owns,
+with the reason it is parked.
+
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the
 allowance, and the Tier decides which address counts as one client

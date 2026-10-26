@@ -148,7 +148,10 @@ function switchoverOf(
 ): ResolvedProcess["switchover"] {
   // Every serving Process declares a cutover, or E_CUTOVER_MISSING refused it.
   if (process.lifecycle !== "application") return undefined;
-  if (process.cutover === "interrupted") return "stop-start";
+  // A parked Process runs no pod, so it has no release to gate: it stops
+  // and starts like an interrupted one.
+  if (process.cutover === "interrupted" || process.parked !== undefined)
+    return "stop-start";
   return machinery ? "rolling" : "blue-green";
 }
 
@@ -559,7 +562,8 @@ export function resolveProcess(
     ...(switchover === undefined ? {} : { switchover }),
     ...scheduleOf(process),
     deadline: inSeconds(deadlineOf(process, context.platform)),
-    replicas: process.replicas?.count ?? 1,
+    replicas: process.parked === undefined ? (process.replicas?.count ?? 1) : 0,
+    ...(process.parked === undefined ? {} : { parked: true as const }),
     ...priorityOf(process, context),
     ...(process.replicas?.across === undefined
       ? {}

@@ -219,6 +219,22 @@ describe("the Resolved Deployment schema", () => {
         ],
       }),
     ],
+    [
+      "a parked Process that switches anything but stop-start",
+      () => {
+        const hindsight = projection(
+          "knowledge-platform/expected/resolved.hindsight.json",
+        );
+        return {
+          ...hindsight,
+          processes: processesOf(hindsight).map((process) =>
+            process["parked"] === true
+              ? { ...process, switchover: "rolling" }
+              : process,
+          ),
+        };
+      },
+    ],
   ])("and the model both refuse %s", (_, document) => {
     expect(valid(document())).toBe(false);
     expect(resolvedApplicationDocument.safeParse(document()).success).toBe(

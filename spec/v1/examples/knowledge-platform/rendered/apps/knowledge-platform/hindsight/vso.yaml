@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: python
   annotations:
-    estate.jorisjonkers.dev/revision: sha256:8fdfb54194f38dd95b469945161e228cc14913e682d286a07a4f89c153148328
+    estate.jorisjonkers.dev/revision: sha256:932b57848c01da8ff277900e56678d27f4f8199d36c5e1a68f59012b6a4a5de6
     kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   vaultConnectionRef: secret-store
@@ -34,7 +34,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: python
   annotations:
-    estate.jorisjonkers.dev/revision: sha256:8fdfb54194f38dd95b469945161e228cc14913e682d286a07a4f89c153148328
+    estate.jorisjonkers.dev/revision: sha256:932b57848c01da8ff277900e56678d27f4f8199d36c5e1a68f59012b6a4a5de6
     kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   vaultAuthRef: hindsight-api
@@ -64,7 +64,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: python
   annotations:
-    estate.jorisjonkers.dev/revision: sha256:8fdfb54194f38dd95b469945161e228cc14913e682d286a07a4f89c153148328
+    estate.jorisjonkers.dev/revision: sha256:932b57848c01da8ff277900e56678d27f4f8199d36c5e1a68f59012b6a4a5de6
     kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   vaultAuthRef: hindsight-api
@@ -91,7 +91,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: python
   annotations:
-    estate.jorisjonkers.dev/revision: sha256:8fdfb54194f38dd95b469945161e228cc14913e682d286a07a4f89c153148328
+    estate.jorisjonkers.dev/revision: sha256:932b57848c01da8ff277900e56678d27f4f8199d36c5e1a68f59012b6a4a5de6
     kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   vaultConnectionRef: secret-store
@@ -113,7 +113,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: python
   annotations:
-    estate.jorisjonkers.dev/revision: sha256:8fdfb54194f38dd95b469945161e228cc14913e682d286a07a4f89c153148328
+    estate.jorisjonkers.dev/revision: sha256:932b57848c01da8ff277900e56678d27f4f8199d36c5e1a68f59012b6a4a5de6
     kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   vaultAuthRef: hindsight-worker
@@ -129,7 +129,7 @@ spec:
       flagger.app/config-tracking: disabled
   rolloutRestartTargets:
     - kind: Deployment
-      name: hindsight-worker-primary
+      name: hindsight-worker
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultDynamicSecret
@@ -143,7 +143,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: python
   annotations:
-    estate.jorisjonkers.dev/revision: sha256:8fdfb54194f38dd95b469945161e228cc14913e682d286a07a4f89c153148328
+    estate.jorisjonkers.dev/revision: sha256:932b57848c01da8ff277900e56678d27f4f8199d36c5e1a68f59012b6a4a5de6
     kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   vaultAuthRef: hindsight-worker
@@ -156,4 +156,4 @@ spec:
       flagger.app/config-tracking: disabled
   rolloutRestartTargets:
     - kind: Deployment
-      name: hindsight-worker-primary
+      name: hindsight-worker

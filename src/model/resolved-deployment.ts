@@ -536,6 +536,7 @@ const SWITCHOVERS_OF = {
  * cutover derives, and a Process with no cutover switches nothing.
  */
 const switchoverFollowsCutover: ShapeRule<{
+  readonly parked?: true;
   readonly cutover?: keyof typeof SWITCHOVERS_OF;
   readonly switchover?: string;
 }> = {
@@ -546,13 +547,34 @@ const switchoverFollowsCutover: ShapeRule<{
         if: {
           required: ["cutover"],
           properties: { cutover: { const: cutover } },
+          not: {
+            required: ["parked"],
+            properties: { parked: { const: true } },
+          },
         },
         then: { properties: { switchover: { enum: [...switchovers] } } },
       })),
+      // A parked Process stops and starts, whatever its cutover.
+      {
+        if: {
+          required: ["parked"],
+          properties: { parked: { const: true } },
+        },
+        then: { properties: { switchover: { const: "stop-start" } } },
+      },
     ],
   },
-  breaches: ({ cutover, switchover }) => {
+  breaches: ({ cutover, switchover, parked }) => {
     if (switchover === undefined) return [];
+    if (parked === true)
+      return switchover === "stop-start"
+        ? []
+        : [
+            {
+              path: ["switchover"],
+              message: "a parked Process stops and starts",
+            },
+          ];
     if (cutover === undefined)
       return [
         {
@@ -594,7 +616,10 @@ const resolvedProcess = stated(
     schedule: text.exactOptional(),
     startDeadline: duration.exactOptional(),
     deadline: duration,
-    replicas: z.int().min(1),
+    // None while the Process is parked.
+    replicas: z.int().min(0),
+    // A parked Process runs no pod and keeps everything it owns.
+    parked: z.literal(true).exactOptional(),
     // The priority class it runs at, where the platform derives one.
     priorityClass: text.exactOptional(),
     // No two replicas of one revision share a node.
