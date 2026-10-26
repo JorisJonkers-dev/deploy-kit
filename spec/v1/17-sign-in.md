@@ -289,6 +289,7 @@ example's `grafana` is written in every language under
 | `E_CLIENT_CRD_NOT_BOOTSTRAPPED` | an Application declares `client` and the Platform document's bootstrap set does not list `identity.jorisjonkers.dev/v1` | composition |
 | `E_NO_SIGN_IN_PROVIDER` | an Application declares `client` and the Platform document names no sign-in provider | composition |
 | `E_CLIENT_PLACEHOLDER_WITHOUT_SECRET` | `${client:secret}` is referenced and the Client is not `credential: secret` | composition |
+| `E_CLIENT_PATH_UNROUTED` | no Route of a native Client's exposure reaches its `protectedPath`, or the Route that does reaches a Process that publishes no readiness | composition |
 | `E_CLIENT_OPEN` | the Release Gate's anonymous request to a native Client's `protectedPath` is answered with 2xx | release ([chapter 55](55-delivery.md#the-release-gate)) |
 
 `E_CLIENT_OPEN` is the proof a native Client owes: the model cannot see whether
@@ -298,6 +299,16 @@ the input: a native Client's Application carries its `protectedPath` in its
 release-gate inputs ([chapter 20](20-resolved-deployment.md#the-release-gate)),
 and the Release Gate requests it, anonymously, before it switches
 ([chapter 55](55-delivery.md#the-release-gate)).
+
+**The path is asked of the member the edge would send it to.** Of the Routes of
+the Client's exposure that reach a Process, the one whose path is the longest
+match takes it: a `prefix` Route matches a path it opens, an `exact` one the
+path itself, and a redirect Route reaches no Process. A tie goes to the Route
+declared first. That Process is the inputs' `protectedBy`. Asking another
+member would prove nothing, and a static member that answers every path with
+its index page would hold every release. So the path must reach a gate member:
+a Route must take it to a Process, and that Process must publish readiness.
+Otherwise the Client is refused, `E_CLIENT_PATH_UNROUTED`.
 
 ## Open in this chapter
 

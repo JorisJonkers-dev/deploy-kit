@@ -1665,6 +1665,51 @@ ${serving("alpha-api")}`;
       ).toBe("/api/me");
     });
 
+    // deploy-kit#629: the member the edge would send the path to.
+    it("is handed the member the longest Route of the Client's exposure takes the path to", () => {
+      const protectedBy = (routes: string) =>
+        application(
+          signingIn(NATIVE, { routes, extra: serving("notes-web") }),
+          SIGNED_IN,
+        ).releaseGate?.protectedBy;
+      const route = (path: string, match: string, process: string) =>
+        `          - { path: ${path}, match: ${match}, process: ${process}, surface: http }\n`;
+
+      expect(protectedBy("")).toBe("notes-api");
+      expect(protectedBy(route("/api/", "prefix", "notes-web"))).toBe(
+        "notes-web",
+      );
+      // An exact Route takes its own path only, and the longer one wins.
+      expect(
+        protectedBy(
+          route("/api/", "prefix", "notes-web") +
+            route("/api/me", "exact", "notes-api"),
+        ),
+      ).toBe("notes-api");
+      expect(protectedBy(route("/api/m", "exact", "notes-web"))).toBe(
+        "notes-api",
+      );
+      // The longer Route wins wherever it is declared, and a tie goes to the first.
+      expect(
+        protectedBy(
+          route("/api/me", "exact", "notes-web") +
+            route("/api/", "prefix", "notes-api"),
+        ),
+      ).toBe("notes-web");
+      expect(
+        protectedBy(
+          route("/api/me", "prefix", "notes-web") +
+            route("/api/me", "exact", "notes-api"),
+        ),
+      ).toBe("notes-web");
+      // A redirect Route answers at the edge and reaches no Process.
+      expect(
+        protectedBy(
+          "          - { path: /api/, match: prefix, process: notes-web, surface: http, redirectTo: https://notes.jorisjonkers.dev/ }\n",
+        ),
+      ).toBe("notes-api");
+    });
+
     it("is handed no path for a Client that is not native", () => {
       expect(
         application(signingIn(GATED), SIGNED_IN).releaseGate,

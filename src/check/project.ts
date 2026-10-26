@@ -19,6 +19,7 @@ import type {
 } from "../model/project-intent.ts";
 import {
   clientExposure,
+  routeFor,
   declared,
   effectiveCutover,
   NODE_DIMENSIONS,
@@ -363,6 +364,48 @@ const CLIENT_AUDIENCES: Readonly<Record<Client["signIn"], readonly string[]>> =
 /** The path the Gate takes back on a gated host, which no route of its own may claim. */
 const GATE_PATH = "/.auth";
 
+/**
+ * A native Client's protected path must reach a gate member, which the
+ * Release Gate asks for it anonymously (E_CLIENT_OPEN): the Process the
+ * longest Route of the Client's exposure takes it to, which publishes
+ * readiness.
+ */
+function protectedPathRefusals(
+  application: Application,
+  exposure: NonNullable<ReturnType<typeof clientExposure>>,
+  path: string,
+  at: string,
+): Refusal[] {
+  const route = routeFor(exposure, path);
+  if (route === undefined)
+    return [
+      {
+        code: "E_CLIENT_PATH_UNROUTED",
+        path: at,
+        message: `no route of the exposure ${exposure.name} reaches the protected path ${path}`,
+        hint: "Name a path a route of the Client's exposure reaches, or route it to the Process that refuses it.",
+      },
+    ];
+  const process = application.processes.find(
+    ({ name }) => name === route.process,
+  );
+  // A route names a Process of its Application, or E_UNKNOWN_PROCESS refused it.
+  if (
+    process === undefined ||
+    (typeof process.probes === "object" &&
+      process.probes.readiness !== undefined)
+  )
+    return [];
+  return [
+    {
+      code: "E_CLIENT_PATH_UNROUTED",
+      path: at,
+      message: `the protected path ${path} reaches ${route.process}, which publishes no readiness, so the Release Gate cannot ask it`,
+      hint: "Give the Process a readiness probe, or route the protected path to one that has.",
+    },
+  ];
+}
+
 function clientRefusals(application: Application, at: string): Refusal[] {
   const client = application.client;
   if (client === undefined) return [];
@@ -408,6 +451,15 @@ function clientRefusals(application: Application, at: string): Refusal[] {
       message: `a ${client.signIn} Client cannot sign people in on the ${exposure.audience} exposure ${exposure.name}`,
       hint: "A native or gated Client's exposure is authenticated; a token Client's is authenticated or internal.",
     });
+  if (exposure !== undefined && client.protectedPath !== undefined)
+    refusals.push(
+      ...protectedPathRefusals(
+        application,
+        exposure,
+        client.protectedPath,
+        `${where}/protectedPath`,
+      ),
+    );
   const seen = new Set(["user"]);
   if (client.roles !== undefined)
     for (const [index, role] of client.roles.entries()) {
