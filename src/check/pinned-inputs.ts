@@ -4,12 +4,21 @@
 // pod runs as its own user runs as root, and every Process has somewhere to
 // land. After these, resolution is total.
 import {
+  boundToOf,
+  engineOf,
+  movePolicyOf,
+  moveTriggers,
+  reversibleOf,
+  type Placed,
+} from "../model/move.ts";
+import { namespaceOf } from "../model/runtime-profiles.ts";
+import {
   GPU_AGENT_VENDOR,
   NODE_AGENTS,
   nodeAgentsOf,
 } from "../model/node-agents.ts";
 import { exposuresOf } from "../model/tier-proxy.ts";
-import type { Diagnostic } from "../model/diagnostic.ts";
+import type { Diagnostic, RefusalCode } from "../model/diagnostic.ts";
 import {
   eligibleNodes,
   estateJobNodes,
@@ -23,6 +32,7 @@ import {
   ROOT_IMAGE_HINT,
   rootImageMessage,
   runsAsRoot,
+  type LockedImage,
 } from "../model/images-lock.ts";
 import { l4ExposuresOf, l4HoldOf, type L4Hold } from "../model/l4-addresses.ts";
 import { migrationImage } from "../model/migration-proof.ts";
@@ -172,6 +182,98 @@ function versionRefusals(
       ];
 }
 
+/**
+ * The Move a Process derives, refused where the set cannot carry it
+ * (spec/v1/20-resolved-deployment.md#the-move): an engine with no method, a
+ * platform with no move policy, a second Move while one is open, and an
+ * irreversible Move nobody acknowledged; and an acknowledgement nothing needs.
+ */
+function moveRefusals(
+  set: PinnedSet,
+  process: EffectiveProcess,
+  placement: Placed,
+  where: { readonly project: string; readonly application: string },
+  at: string,
+  document: string,
+): Diagnostic[] {
+  const refusal = (
+    code: RefusalCode,
+    path: string,
+    message: string,
+    hint: string,
+  ): Diagnostic => ({ code, document, path, message, hint });
+  // An unlocked image derives no Move: E_UNLOCKED_IMAGE refuses it.
+  if (!Object.hasOwn(set.imagesLock.images, process.image)) return [];
+  const locked = set.imagesLock.images[process.image] as LockedImage;
+  const derived = moveTriggers(process, placement, {
+    platform: set.platform,
+    lock: set.imagesLock,
+    clusterState: set.clusterState,
+    ...where,
+  });
+  const engine = engineOf(set.platform, process);
+  const irreversible =
+    derived !== undefined &&
+    derived.triggers.length > 0 &&
+    engine?.move !== undefined &&
+    !reversibleOf(engine.move.reverse, derived.active.version, locked.version);
+  const unused =
+    process.rollback === "forward-only" && !irreversible
+      ? [
+          refusal(
+            "E_FORWARD_ONLY_UNUSED",
+            `${at}/rollback`,
+            `${process.name} acknowledges a Move that cannot be rolled back, and this release derives none`,
+            "Remove `rollback: forward-only`: it acknowledges the one Move derived in its release, and no other.",
+          ),
+        ]
+      : [];
+  if (derived === undefined || derived.triggers.length === 0) return unused;
+  const why = derived.triggers.join(" and ");
+  if (engine !== undefined && engine.move === undefined)
+    return [
+      refusal(
+        "E_MOVE_UNSUPPORTED",
+        at,
+        `${process.name} changes its ${why} in a way its data cannot follow in place, and engine ${process.engine as string} names no move method`,
+        "Name a `move` method for the engine in the Platform document, or keep the Process where its data is.",
+      ),
+    ];
+  if (movePolicyOf(set.platform) === undefined)
+    return [
+      refusal(
+        "E_NO_MOVE_POLICY",
+        at,
+        `${process.name} derives a Move of its ${why}, and the platform names no move policy to bound it`,
+        "Add `delivery.move` with its `timeout` and `retention` to the Platform document.",
+      ),
+    ];
+  const { active } = derived;
+  if (
+    active.target !== undefined &&
+    (active.target.version !== locked.version ||
+      active.target.namespace !== namespaceOf(where.project))
+  )
+    return [
+      refusal(
+        "E_MOVE_OPEN",
+        at,
+        `${process.name} changes again while its Move to ${active.target.version} in ${active.target.namespace} is open`,
+        "Let the open Move finish and its source retire before changing what it is moving.",
+      ),
+    ];
+  return irreversible && process.rollback !== "forward-only"
+    ? [
+        refusal(
+          "E_MOVE_IRREVERSIBLE",
+          at,
+          `${process.name} moves from ${active.version} to ${locked.version}, and its method cannot replicate back, so a rollback would lose what was written after the fence`,
+          "Write `rollback: forward-only` on the Process to accept it for this release, or move to a version the method can reverse.",
+        ),
+      ]
+    : [];
+}
+
 function processRefusals(
   set: PinnedSet,
   { document, effective }: Located,
@@ -231,6 +333,22 @@ function processRefusals(
             ]
           : gpuRefusals(set, process, held, `${at}/placement/gpu`, document)),
         ...spreadRefusals(set, process, held, `${at}/replicas`, document),
+        ...moveRefusals(
+          set,
+          process,
+          {
+            eligibleNodes: eligibleNodes(
+              process,
+              set.nodeContract,
+              set.platform,
+              held,
+            ),
+            boundTo: boundToOf(set.clusterState, process),
+          },
+          { project: effective.project, application: application.id },
+          at,
+          document,
+        ),
       ];
     }),
   );

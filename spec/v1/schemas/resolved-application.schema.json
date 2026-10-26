@@ -1401,6 +1401,9 @@
             "$ref": "#/$defs/ResolvedSpawn"
           }
         },
+        "move": {
+          "$ref": "#/$defs/ResolvedMove"
+        },
         "ingress": {
           "type": "array",
           "items": {
@@ -2753,6 +2756,153 @@
         "egress"
       ],
       "additionalProperties": false
+    },
+    "ResolvedMove": {
+      "type": "object",
+      "properties": {
+        "triggers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MoveTrigger"
+          }
+        },
+        "source": {
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "namespace": {
+              "type": "string",
+              "minLength": 1
+            },
+            "node": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "version",
+            "namespace",
+            "node"
+          ],
+          "additionalProperties": false
+        },
+        "target": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1
+            },
+            "version": {
+              "type": "string",
+              "minLength": 1
+            },
+            "namespace": {
+              "type": "string",
+              "minLength": 1
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "required": [
+            "image",
+            "version",
+            "namespace",
+            "nodes"
+          ],
+          "additionalProperties": false
+        },
+        "method": {
+          "type": "object",
+          "properties": {
+            "image": {
+              "type": "string",
+              "minLength": 1
+            },
+            "imageVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "image"
+          ],
+          "additionalProperties": false
+        },
+        "identity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "flips": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "reversible": {
+          "type": "boolean"
+        },
+        "bounds": {
+          "type": "object",
+          "properties": {
+            "timeout": {
+              "type": "string",
+              "minLength": 1
+            },
+            "retention": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "timeout",
+            "retention"
+          ],
+          "additionalProperties": false
+        },
+        "phase": {
+          "$ref": "#/$defs/MoveStep"
+        }
+      },
+      "required": [
+        "triggers",
+        "source",
+        "target",
+        "identity",
+        "flips",
+        "reversible",
+        "bounds"
+      ],
+      "additionalProperties": false
+    },
+    "MoveTrigger": {
+      "type": "string",
+      "enum": [
+        "version",
+        "namespace",
+        "binding"
+      ]
+    },
+    "MoveStep": {
+      "type": "string",
+      "enum": [
+        "sync",
+        "lag",
+        "fence",
+        "unfence",
+        "reverse",
+        "retire"
+      ]
     },
     "IngressPeer": {
       "anyOf": [

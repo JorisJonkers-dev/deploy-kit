@@ -1023,6 +1023,9 @@
             "$ref": "#/$defs/SpawnTemplate"
           }
         },
+        "rollback": {
+          "$ref": "#/$defs/Rollback"
+        },
         "secrets": {
           "minItems": 1,
           "type": "array",
@@ -1509,6 +1512,10 @@
         "cpu"
       ],
       "additionalProperties": false
+    },
+    "Rollback": {
+      "type": "string",
+      "const": "forward-only"
     }
   }
 }

@@ -4514,6 +4514,240 @@ describe("a replicated Process on a pool", () => {
   });
 });
 
+// REQ-112 (docs/requirements.md): a change an engine's data cannot follow in
+// place derives a Move, refused where the set cannot carry it.
+describe("a Move", () => {
+  const store = (extra = "", engine = "postgres", surface = "postgres") =>
+    one(`      - name: store
+        lifecycle: application
+        image: notes-api
+        runtime: none
+        engine: ${engine}
+        provides: { ${surface}: 5432 }
+        placement: { memory: 64Mi, cpu: 10m }
+        cutover: interrupted
+        volumes: [{ claim: data, mountAt: /data, size: 1Gi, durability: recoverable }]
+${extra}`);
+  const versioned = (version: string) => (lock: string) =>
+    lock.replace(
+      /(\n {2}notes-api:\n(?: {4}.*\n)*? {4}version: )"[^"]*"/,
+      `$1"${version}"`,
+    );
+  const recorded =
+    (instance: string, capturedAt?: string) => (name: string, body: string) =>
+      name === "platform/cluster-state.yml"
+        ? `${capturedAt === undefined ? body : body.replace(/capturedAt: "[^"]*"/, `capturedAt: "${capturedAt}"`)}instances:\n  - {application: notes, instance: store, ${instance}}\n`
+        : body;
+  const SOURCE =
+    "version: 16.4.0, namespace: notes-system, node: enschede-t1000-1";
+  const moving = (extra = "", instance = SOURCE, options: Options = {}) =>
+    resolve(store(extra), {
+      lock: versioned("17.2.0"),
+      foundation: recorded(instance),
+      ...options,
+    });
+  const codes = (result: ReturnType<typeof resolve>) => notesCodesOf(result);
+  const AT = "/applications/0/processes/0";
+  const refused = (result: ReturnType<typeof resolve>) =>
+    result.ok
+      ? []
+      : result.diagnostics
+          .filter(({ document }) => document === "minimal/notes.project.yml")
+          .map(({ code, path, message, hint }) => ({
+            code,
+            path,
+            message,
+            hint,
+          }));
+  const moveOf = (result: ReturnType<typeof resolve>) =>
+    result.ok
+      ? result.value.projects.find(({ project }) => project === "notes")
+          ?.applications[0]?.processes[0]?.move
+      : undefined;
+
+  it("is derived from a version change in the component its engine breaks on, acknowledged where it cannot be rolled back", () => {
+    const move = moveOf(moving("        rollback: forward-only\n"));
+
+    expect(move).toMatchObject({
+      triggers: ["version"],
+      source: {
+        version: "16.4.0",
+        namespace: "notes-system",
+        node: "enschede-t1000-1",
+      },
+      target: { version: "17.2.0", namespace: "notes-system" },
+      identity: "store-move",
+      reversible: false,
+      bounds: { timeout: "300s", retention: "7d" },
+    });
+    expect(move?.method?.image).toMatch(/postgres-move@sha256:/);
+  });
+
+  it("derives nothing from an image the lock does not hold, which is refused as unlocked", () => {
+    expect(
+      codes(
+        resolve(store().replace("image: notes-api", "image: notes-unlocked"), {
+          foundation: recorded(SOURCE),
+        }),
+      ),
+    ).toStrictEqual(["E_UNLOCKED_IMAGE"]);
+  });
+
+  it("derives nothing where the Process resolves to what its active Instance is", () => {
+    const result = resolve(store(), {
+      lock: versioned("16.4.0"),
+      foundation: recorded(SOURCE),
+    });
+
+    expect(codes(result)).toStrictEqual([]);
+    expect(moveOf(result)).toBeUndefined();
+  });
+
+  it("is refused where it cannot be rolled back and nobody acknowledged it", () => {
+    expect(refused(moving())).toStrictEqual([
+      {
+        code: "E_MOVE_IRREVERSIBLE",
+        path: AT,
+        message:
+          "store moves from 16.4.0 to 17.2.0, and its method cannot replicate back, so a rollback would lose what was written after the fence",
+        hint: "Write `rollback: forward-only` on the Process to accept it for this release, or move to a version the method can reverse.",
+      },
+    ]);
+  });
+
+  it("refuses an acknowledgement where no irreversible Move is derived", () => {
+    expect(
+      refused(
+        resolve(store("        rollback: forward-only\n"), {
+          lock: versioned("16.5.0"),
+          foundation: recorded(SOURCE),
+        }),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_FORWARD_ONLY_UNUSED",
+        path: `${AT}/rollback`,
+        message:
+          "store acknowledges a Move that cannot be rolled back, and this release derives none",
+        hint: "Remove `rollback: forward-only`: it acknowledges the one Move derived in its release, and no other.",
+      },
+    ]);
+  });
+
+  it("is refused for an engine that names no move method, naming each change", () => {
+    // Its data is bound to a node its placement no longer admits, in a
+    // namespace it no longer resolves to.
+    const bound = (name: string, body: string) =>
+      recorded("version: 1.4.0, namespace: other-system, node: gone-1")(
+        name,
+        body,
+      ).replace("bindings: []", "bindings: [{claim: data, node: gone-1}]");
+
+    expect(
+      refused(
+        resolve(store("", "rabbitmq", "management"), { foundation: bound }),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_MOVE_UNSUPPORTED",
+        path: AT,
+        message:
+          "store changes its namespace and binding in a way its data cannot follow in place, and engine rabbitmq names no move method",
+        hint: "Name a `move` method for the engine in the Platform document, or keep the Process where its data is.",
+      },
+    ]);
+  });
+
+  it("is refused under a platform that names no move policy", () => {
+    expect(
+      refused(
+        moving("        rollback: forward-only\n", SOURCE, {
+          platform: (document) =>
+            document.replace(
+              /\n {2}move:\n {4}timeout: [^\n]*\n {4}retention: [^\n]*\n/,
+              "\n",
+            ),
+        }),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_NO_MOVE_POLICY",
+        path: AT,
+        message:
+          "store derives a Move of its version, and the platform names no move policy to bound it",
+        hint: "Add `delivery.move` with its `timeout` and `retention` to the Platform document.",
+      },
+    ]);
+  });
+
+  it("is refused where a second change comes while one is open", () => {
+    expect(
+      refused(
+        moving(
+          "        rollback: forward-only\n",
+          `${SOURCE}, phase: lag, target: {version: 17.1.0, namespace: notes-system}`,
+        ),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_MOVE_OPEN",
+        path: AT,
+        message:
+          "store changes again while its Move to 17.1.0 in notes-system is open",
+        hint: "Let the open Move finish and its source retire before changing what it is moving.",
+      },
+    ]);
+    // A Move open to another namespace is as open.
+    expect(
+      codes(
+        moving(
+          "        rollback: forward-only\n",
+          `${SOURCE}, phase: sync, target: {version: 17.2.0, namespace: storage-system}`,
+        ),
+      ),
+    ).toStrictEqual(["E_MOVE_OPEN"]);
+    // The same Move, still open, derives as it was, at its phase.
+    expect(
+      moveOf(
+        moving(
+          "        rollback: forward-only\n",
+          `${SOURCE}, phase: lag, target: {version: 17.2.0, namespace: notes-system}`,
+        ),
+      )?.phase,
+    ).toBe("lag");
+  });
+
+  it("moves a Process with no engine that changes namespace, with no data to carry and nothing a rollback loses", () => {
+    const move = moveOf(
+      resolve(one(serving("store")), {
+        foundation: recorded(
+          "version: 1.4.0, namespace: old-system, node: enschede-t1000-1",
+        ),
+      }),
+    );
+
+    expect(move).toMatchObject({
+      triggers: ["namespace"],
+      target: { namespace: "notes-system" },
+      reversible: true,
+    });
+    expect(move).not.toHaveProperty("method");
+  });
+
+  it("retires once its flip has held past the retention, and derives nothing more", () => {
+    const retired = resolve(store(), {
+      lock: versioned("17.2.0"),
+      foundation: recorded(
+        `${SOURCE}, phase: retire, flippedAt: "2026-09-01T00:00:00Z"`,
+        "2026-09-30T00:00:00Z",
+      ),
+    });
+
+    expect(codes(retired)).toStrictEqual([]);
+    expect(moveOf(retired)).toBeUndefined();
+  });
+});
+
 // REQ-111 (docs/requirements.md): every surface an edge or a tier's
 // forward-auth names derives a Stable Address targeting its active Instance.
 describe("a Stable Address", () => {

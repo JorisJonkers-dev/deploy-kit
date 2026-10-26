@@ -391,6 +391,13 @@ const process = z
     egress: egress.exactOptional(),
     vpn: vpnAttachment.exactOptional(),
     spawns: z.array(spawnTemplate).min(1).exactOptional(),
+    // The one acknowledgement that a Move derived in this release cannot be
+    // rolled back without losing what was written after its fence
+    // (spec/v1/10-project-intent.md#rollback).
+    rollback: z
+      .literal("forward-only")
+      .meta({ id: "Rollback" })
+      .exactOptional(),
     ...sharedIntent,
   })
   .meta({ id: "Process" });

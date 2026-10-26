@@ -591,9 +591,10 @@ instances:
 
 `instances` is what the Release Gate records as serving, read by the Collector
 from the gate's own record ([chapter 55](55-delivery.md#moves)); an open Move
-adds its `phase`, the [step](14-platform-intent.md#move-methods) it is at
-(`sync`, `lag`, `fence`, `unfence`, `reverse` or `retire`), and, once the flip
-has held, `flippedAt`.
+adds its `target`, the `version`, `namespace` and, where it is bound, `node` it
+is moving to, its `phase`, the [step](14-platform-intent.md#move-methods) it is
+at (`sync`, `lag`, `fence`, `unfence`, `reverse` or `retire`), and, once the
+flip has held, `flippedAt`.
 
 `capturedAt` is written quoted, as every value carrying a colon is in the
 documents the model reads. It is when the Collector first captured these facts, not when it last
@@ -1094,17 +1095,19 @@ its [Stable Address](16-dependencies.md#the-stable-address), and the old
 Instance's retirement. That is how a stateless provider such as `auth` changes
 Project without its consumers noticing.
 
-Layer 2 carries, per Process a Move is derived for:
+Layer 2 carries, as the Process's `move`, per Process a Move is derived for:
 
 | field | derived from |
 |---|---|
-| the source Instance | the active Instance in ClusterState: its version, namespace and node |
-| the target Instance | the Process as it now resolves: its image, namespace and eligible node set, and a volume of its own, the same size and Durability Class as the source's |
-| the method | the engine's `move.image`, through the images lock; absent for a Process with no engine |
-| the move identity | one per Process with an open Move, `<process>-move`, holding the method's credential and nothing else ([chapter 16](16-dependencies.md#process-identity)) |
-| the Stable Addresses it flips | every Stable Address whose target is the source Instance |
-| `reversible` | the engine's `move.reverse` read against the two versions: `always` is true, `same-major` is true only when both versions share a major, `never` is false |
-| the bounds | the Platform document's `delivery.move`: `timeout` and `retention` ([chapter 14](14-platform-intent.md#delivery-policy)) |
+| `triggers` | which rows of the table above derived it: `version`, `namespace` or `binding` |
+| `source` | the active Instance in ClusterState: its version, namespace and node |
+| `target` | the Process as it now resolves: its image and version, namespace and eligible node set, and a volume of its own, the same size and Durability Class as the source's |
+| `method` | the engine's `move.image`, through the images lock; absent for a Process with no engine |
+| `identity` | one per Process with an open Move, `<process>-move`, holding the method's credential and nothing else ([chapter 16](16-dependencies.md#process-identity)) |
+| `flips` | the Stable Addresses whose target is the source Instance: one per surface of the Process that an edge names |
+| `reversible` | the engine's `move.reverse` read against the two versions: `always` is true, `same-major` is true only when both versions share a major, `never` is false; true for a Process with no engine, which has no data to lose |
+| `bounds` | the Platform document's `delivery.move`: `timeout` and `retention` ([chapter 14](14-platform-intent.md#delivery-policy)) |
+| `phase` | the step ClusterState records the open Move at, where it records one |
 
 A Move whose `reversible` is false cannot keep the promise a rollback makes, so
 it is refused, `E_MOVE_IRREVERSIBLE`, unless the Process acknowledges it with
@@ -1115,7 +1118,9 @@ outlives the release it was written for.
 
 **One Move at a time.** While a Process's Move is open (its source not yet
 retired), a second change that would derive another is `E_MOVE_OPEN`: the
-target of the first is not yet the Instance a second could start from. A
+target of the first is not yet the Instance a second could start from. The
+pinned ClusterState records that target on the active Instance, and a Process
+that now resolves to a version or namespace other than it is the second change. A
 release that changes nothing a Move derives from leaves an open Move as it is.
 
 **Retirement is derived too.** Once ClusterState records the flip as held for
@@ -2028,6 +2033,13 @@ classDiagram
         +string selector
         +string[] consumes
     }
+    class ResolvedMove {
+        +MoveTrigger[] triggers
+        +string identity
+        +string[] flips
+        +bool reversible
+        +MoveStep phase
+    }
     class ResolvedGpu {
         +string resource
         +string runtimeClass
@@ -2306,6 +2318,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" ResolvedLibraryMount : libraries
     ResolvedProcess "1" *-- "0..*" ResolvedPoolExposure : l4Exposure
     ResolvedProcess "1" *-- "0..*" ResolvedSpawn : spawns
+    ResolvedProcess "1" *-- "0..1" ResolvedMove : move
     ResolvedProcess "1" *-- "0..*" ResolvedNodeExposure : l4Exposure
     ResolvedPoolExposure "1" *-- "1..*" ResolvedL4Port : ports
     ResolvedNodeExposure "1" *-- "1..*" ResolvedL4Port : ports
