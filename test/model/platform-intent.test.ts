@@ -86,7 +86,7 @@ describe("parsePlatformIntent", () => {
         errorRate: "1%",
         latency: "500ms",
       },
-      move: { timeout: "300s", retention: "7d" },
+      move: { timeout: "300s", retention: "7d", memory: "128Mi", cpu: "100m" },
     });
     expect(ungated.ok && "delivery" in ungated.value.document).toBe(false);
   });

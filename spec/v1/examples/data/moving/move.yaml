@@ -1,0 +1,553 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postgres-move
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: data-system-postgres-move
+  namespace: estate-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+    resourceNames:
+      - platform-postgres-postgres
+    verbs:
+      - get
+      - update
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: data-system-postgres-move
+  namespace: estate-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: data-system-postgres-move
+subjects:
+  - kind: ServiceAccount
+    name: postgres-move
+    namespace: data-system
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-move-start-fe331b712e81
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  suspend: true
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-move
+        app.kubernetes.io/instance: postgres-move
+        app.kubernetes.io/part-of: platform-postgres
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/move: 1.0.0
+    spec:
+      serviceAccountName: postgres-move
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: move
+          image: ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f
+          env:
+            - name: MOVE_STEP
+              value: start
+            - name: MOVE_SOURCE_HOST
+              value: postgres.data-system.svc.cluster.local
+            - name: MOVE_TARGET_HOST
+              value: postgres-fe331b712e81.data-system.svc.cluster.local
+            - name: MOVE_PORT
+              value: "5432"
+            - name: MOVE_FLIPS
+              value: platform-postgres-postgres
+            - name: MOVE_FLIP_NAMESPACE
+              value: estate-system
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: data-system-postgres-move
+            - name: VAULT_CREDENTIALS_PATH
+              value: secret/data/data/postgres/move
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-move-sync-fe331b712e81
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  suspend: true
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-move
+        app.kubernetes.io/instance: postgres-move
+        app.kubernetes.io/part-of: platform-postgres
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/move: 1.0.0
+    spec:
+      serviceAccountName: postgres-move
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: move
+          image: ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f
+          env:
+            - name: MOVE_STEP
+              value: sync
+            - name: MOVE_SOURCE_HOST
+              value: postgres.data-system.svc.cluster.local
+            - name: MOVE_TARGET_HOST
+              value: postgres-fe331b712e81.data-system.svc.cluster.local
+            - name: MOVE_PORT
+              value: "5432"
+            - name: MOVE_FLIPS
+              value: platform-postgres-postgres
+            - name: MOVE_FLIP_NAMESPACE
+              value: estate-system
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: data-system-postgres-move
+            - name: VAULT_CREDENTIALS_PATH
+              value: secret/data/data/postgres/move
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-move-lag-fe331b712e81
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  suspend: true
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-move
+        app.kubernetes.io/instance: postgres-move
+        app.kubernetes.io/part-of: platform-postgres
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/move: 1.0.0
+    spec:
+      serviceAccountName: postgres-move
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: move
+          image: ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f
+          env:
+            - name: MOVE_STEP
+              value: lag
+            - name: MOVE_SOURCE_HOST
+              value: postgres.data-system.svc.cluster.local
+            - name: MOVE_TARGET_HOST
+              value: postgres-fe331b712e81.data-system.svc.cluster.local
+            - name: MOVE_PORT
+              value: "5432"
+            - name: MOVE_FLIPS
+              value: platform-postgres-postgres
+            - name: MOVE_FLIP_NAMESPACE
+              value: estate-system
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: data-system-postgres-move
+            - name: VAULT_CREDENTIALS_PATH
+              value: secret/data/data/postgres/move
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-move-fence-fe331b712e81
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  suspend: true
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-move
+        app.kubernetes.io/instance: postgres-move
+        app.kubernetes.io/part-of: platform-postgres
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/move: 1.0.0
+    spec:
+      serviceAccountName: postgres-move
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: move
+          image: ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f
+          env:
+            - name: MOVE_STEP
+              value: fence
+            - name: MOVE_SOURCE_HOST
+              value: postgres.data-system.svc.cluster.local
+            - name: MOVE_TARGET_HOST
+              value: postgres-fe331b712e81.data-system.svc.cluster.local
+            - name: MOVE_PORT
+              value: "5432"
+            - name: MOVE_FLIPS
+              value: platform-postgres-postgres
+            - name: MOVE_FLIP_NAMESPACE
+              value: estate-system
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: data-system-postgres-move
+            - name: VAULT_CREDENTIALS_PATH
+              value: secret/data/data/postgres/move
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-move-final-lag-fe331b712e81
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  suspend: true
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-move
+        app.kubernetes.io/instance: postgres-move
+        app.kubernetes.io/part-of: platform-postgres
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/move: 1.0.0
+    spec:
+      serviceAccountName: postgres-move
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: move
+          image: ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f
+          env:
+            - name: MOVE_STEP
+              value: lag
+            - name: MOVE_SOURCE_HOST
+              value: postgres.data-system.svc.cluster.local
+            - name: MOVE_TARGET_HOST
+              value: postgres-fe331b712e81.data-system.svc.cluster.local
+            - name: MOVE_PORT
+              value: "5432"
+            - name: MOVE_FLIPS
+              value: platform-postgres-postgres
+            - name: MOVE_FLIP_NAMESPACE
+              value: estate-system
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: data-system-postgres-move
+            - name: VAULT_CREDENTIALS_PATH
+              value: secret/data/data/postgres/move
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-move-flip-fe331b712e81
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  suspend: true
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-move
+        app.kubernetes.io/instance: postgres-move
+        app.kubernetes.io/part-of: platform-postgres
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/move: 1.0.0
+    spec:
+      serviceAccountName: postgres-move
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: move
+          image: ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f
+          env:
+            - name: MOVE_STEP
+              value: flip
+            - name: MOVE_SOURCE_HOST
+              value: postgres.data-system.svc.cluster.local
+            - name: MOVE_TARGET_HOST
+              value: postgres-fe331b712e81.data-system.svc.cluster.local
+            - name: MOVE_PORT
+              value: "5432"
+            - name: MOVE_FLIPS
+              value: platform-postgres-postgres
+            - name: MOVE_FLIP_NAMESPACE
+              value: estate-system
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: data-system-postgres-move
+            - name: VAULT_CREDENTIALS_PATH
+              value: secret/data/data/postgres/move
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-move-unfence-fe331b712e81
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres-move
+    app.kubernetes.io/instance: postgres-move
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  suspend: true
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: postgres-move
+        app.kubernetes.io/instance: postgres-move
+        app.kubernetes.io/part-of: platform-postgres
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/move: 1.0.0
+    spec:
+      serviceAccountName: postgres-move
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: move
+          image: ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f
+          env:
+            - name: MOVE_STEP
+              value: unfence
+            - name: MOVE_SOURCE_HOST
+              value: postgres.data-system.svc.cluster.local
+            - name: MOVE_TARGET_HOST
+              value: postgres-fe331b712e81.data-system.svc.cluster.local
+            - name: MOVE_PORT
+              value: "5432"
+            - name: MOVE_FLIPS
+              value: platform-postgres-postgres
+            - name: MOVE_FLIP_NAMESPACE
+              value: estate-system
+            - name: VAULT_ADDR
+              value: http://vault.secrets-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: data-system-postgres-move
+            - name: VAULT_CREDENTIALS_PATH
+              value: secret/data/data/postgres/move
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 100m
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL

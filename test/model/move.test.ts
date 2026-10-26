@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { ClusterStateDocument } from "../../src/model/cluster-state.ts";
 import type { ImagesLockDocument } from "../../src/model/images-lock.ts";
 import type { PlatformIntentDocument } from "../../src/model/platform-intent.ts";
+import { resolveMove } from "../../src/resolve/move.ts";
 import {
   activeInstanceOf,
   boundToOf,
@@ -168,5 +169,58 @@ describe("what a Move is read from", () => {
     );
 
     expect(derived?.triggers).toStrictEqual(["version"]);
+  });
+});
+
+describe("the Move a Process resolves", () => {
+  it("says nowhere for the flip to write under a platform that says nowhere the API answers", () => {
+    const platform = {
+      engines: {
+        postgres: {
+          surface: "postgres",
+          move: { image: "m", breaksOn: "major", reverse: "never" },
+        },
+      },
+      delivery: {
+        move: { timeout: "300s", retention: "7d", memory: "64Mi", cpu: "10m" },
+      },
+      substrate: { clusterDns: "kube-system" },
+      tiers: [],
+    } as unknown as PlatformIntentDocument;
+    const move = resolveMove(
+      {
+        name: "postgres",
+        image: "postgres",
+        engine: "postgres",
+        provides: { postgres: 5432 },
+      } as never,
+      { eligibleNodes: ["enschede-t1000-1"] },
+      {
+        platform,
+        lock: {
+          images: {
+            postgres: { repository: "r", digest: "d", version: "17.2.0" },
+            m: {
+              repository: "m",
+              digest: "e",
+              version: "1.0.0",
+              uid: 1,
+              gid: 1,
+            },
+          },
+        } as unknown as ImagesLockDocument,
+        clusterState: {
+          capturedAt: "2026-10-30T00:00:00Z",
+          bindings: [],
+          instances: [ACTIVE],
+        } as unknown as ClusterStateDocument,
+        union: [],
+        project: "data",
+        application: "platform-postgres",
+      },
+    );
+
+    expect(move?.identity).toBe("postgres-move");
+    expect(move).not.toHaveProperty("server");
   });
 });

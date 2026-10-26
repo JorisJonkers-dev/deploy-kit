@@ -9,13 +9,10 @@ import {
 } from "../../model/stable-address.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import type { AliasService, Namespace } from "../../objects/kubernetes.ts";
-import { managedOnly } from "../shared/labels.ts";
+import { CREATED_ONCE, managedOnly } from "../shared/labels.ts";
 import { STABLE_ADDRESSES_DIRECTORY } from "../shared/paths.ts";
 // Attributed to this adapter, which speaks the Kubernetes core vocabulary.
 import { ADAPTER } from "./render.ts";
-
-/** What keeps Flux from writing an object again once it exists. */
-const CREATED_ONCE = { "kustomize.toolkit.fluxcd.io/ssa": "IfNotPresent" };
 
 export function renderStableAddresses(
   addresses: readonly ResolvedStableAddress[],

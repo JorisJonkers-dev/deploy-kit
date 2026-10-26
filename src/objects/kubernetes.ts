@@ -38,6 +38,8 @@ export interface ClusterRole {
   readonly rules: readonly {
     readonly apiGroups: readonly string[];
     readonly resources: readonly string[];
+    /** The objects a rule is narrowed to, by name, where it is narrowed. */
+    readonly resourceNames?: readonly string[];
     readonly verbs: readonly string[];
   }[];
 }

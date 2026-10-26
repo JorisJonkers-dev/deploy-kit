@@ -8,6 +8,15 @@ export { CONSUMER_LABEL };
 
 const MANAGED_BY = { "app.kubernetes.io/managed-by": "deploy-kit" } as const;
 
+/**
+ * The mark that makes Flux create an object once and never update it
+ * (spec/v1/30-deliverables.md#flagger-ready-objects): a Job the Release Gate
+ * starts, a Stable Address a Move flips, a source Instance a Move freezes.
+ */
+export const CREATED_ONCE = {
+  "kustomize.toolkit.fluxcd.io/ssa": "IfNotPresent",
+} as const;
+
 /** What an estate- or project-scoped object carries: it belongs to no Process. */
 export const managedOnly = (): Labels => ({ ...MANAGED_BY });
 

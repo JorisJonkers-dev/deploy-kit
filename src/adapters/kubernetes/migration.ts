@@ -12,14 +12,12 @@ import { vaultNameOf } from "../../model/runtime-profiles.ts";
 import type { RenderedObject } from "../../objects/deliverable.ts";
 import type { Job, Labels, ServiceAccount } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
-import { consumerLabelsOf, labelsOf, podMetadataOf } from "../shared/labels.ts";
-
-/**
- * The mark that makes the applier create a Job and never update it
- * (spec/v1/30-deliverables.md#flagger-ready-objects): the Release Gate alone
- * writes `suspend` afterwards.
- */
-const CREATED_ONCE = { "kustomize.toolkit.fluxcd.io/ssa": "IfNotPresent" };
+import {
+  CREATED_ONCE,
+  consumerLabelsOf,
+  labelsOf,
+  podMetadataOf,
+} from "../shared/labels.ts";
 
 /** The runner's one writable path, and the volume it is mounted from. */
 const SCRATCH = "/tmp";

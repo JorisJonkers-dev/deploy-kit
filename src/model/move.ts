@@ -141,6 +141,24 @@ export const engineOf = (
       ];
 
 /**
+ * Where the Instance that serves a Process runs, where ClusterState records
+ * one: the target of a Move whose flip has held, and otherwise the active
+ * Instance, under its own name or the Process's.
+ */
+export function servingOf(
+  clusterState: ClusterStateDocument,
+  application: string,
+  process: string,
+): { readonly name: string; readonly namespace: string } | undefined {
+  const active = activeInstanceOf(clusterState, application, process);
+  if (active === undefined) return undefined;
+  const { target } = active;
+  return active.flippedAt !== undefined && target !== undefined
+    ? { name: target.name, namespace: target.namespace }
+    : { name: active.name ?? process, namespace: active.namespace };
+}
+
+/**
  * What derives a Move for `process` against its active Instance, before
  * anything decides whether the set may carry one: none where ClusterState
  * records no Instance, or where the open Move's source has retired.
