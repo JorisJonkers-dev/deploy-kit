@@ -9,6 +9,7 @@ import {
   duplicateUidDiagnostics,
   type Placed,
 } from "../check/dashboards.ts";
+import { alertRuleDiagnostics } from "../check/alert-rules.ts";
 import { assetDiagnostics } from "../check/assets.ts";
 import { setDiagnostics } from "../check/composition.ts";
 import { unionDiagnostics } from "../check/union.ts";
@@ -147,6 +148,16 @@ export function composeIntentSet(
     placed.push(...shipped.placed.map((each) => ({ ...each, document: name })));
   }
   refusals.push(...duplicateUidDiagnostics(placed));
+  // A rule-group file is read beside its project file, and holds groups.
+  for (const { name, value } of parsedProjects)
+    tagged(
+      name,
+      alertRuleDiagnostics(
+        value.document,
+        (from) =>
+          files.find((file) => file.name === directoryOf(name) + from)?.text,
+      ),
+    );
   const [platform] = parsedPlatforms;
   // Dashboards ship to the Grafana the Platform document names.
   if (platform?.value.document.telemetry?.dashboards === undefined)

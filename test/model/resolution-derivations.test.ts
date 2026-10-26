@@ -52,6 +52,7 @@ const FOUNDATION = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
 ].map((name): AuthoredFile => ({ name, text: text(name) }));
 
@@ -114,6 +115,8 @@ interface Options {
   readonly platform?: (platform: string) => string;
   /** Whether the set signs people in: the platform names its provider, and the set composes it. */
   readonly signIn?: boolean;
+  /** A change to a foundation file, by its name. */
+  readonly foundation?: (name: string, text: string) => string;
   /** Files read beside the project: its env files, and its Asset files. */
   readonly env?: readonly AuthoredFile[];
   readonly lock?: (lock: string) => string;
@@ -123,6 +126,14 @@ interface Options {
 /** The codes a resolution refused with, in the order it reported them. */
 const codesOf = (result: ReturnType<typeof resolve>): string[] =>
   result.ok ? [] : result.diagnostics.map(({ code }) => code);
+
+/** The codes of the refusals the notes project earns, beside the foundation's own. */
+const notesCodesOf = (result: ReturnType<typeof resolve>): string[] =>
+  result.ok
+    ? []
+    : result.diagnostics
+        .filter(({ document }) => document === "minimal/notes.project.yml")
+        .map(({ code }) => code);
 
 function resolve(applications: string, options: Options = {}) {
   return resolveIntentSet(
@@ -139,7 +150,9 @@ function resolve(applications: string, options: Options = {}) {
           : file.name === "platform/node-contract.yml" &&
               options.contract !== undefined
             ? { ...file, text: options.contract(file.text) }
-            : file,
+            : options.foundation === undefined
+              ? file
+              : { ...file, text: options.foundation(file.name, file.text) },
       ),
       ...(options.signIn === true ? IDENTITY : []),
       { name: "minimal/notes.project.yml", text: HEADER + applications },
@@ -1860,7 +1873,7 @@ describe("what a grant derives", () => {
 
   it("refuses a grant under a platform that names no Secret Store", () => {
     expect(
-      codesOf(
+      notesCodesOf(
         resolve(granted(SELF), {
           platform: (document) =>
             document.replace("secretStore: secrets/vault\n", ""),
@@ -2586,6 +2599,10 @@ describe("the profiles that inject, and the collector they are handed", () => {
           text: observability,
         },
         {
+          name: "observability/rules/platform.yaml",
+          text: text("observability/rules/platform.yaml"),
+        },
+        {
           name: "minimal/notes.project.yml",
           text: HEADER + one(serving("notes-api")),
         },
@@ -3153,7 +3170,7 @@ describe("a volume and what its class derives", () => {
 
   it("refuses a backup holding the off-cluster credential under a platform that names no Secret Store", () => {
     expect(
-      codesOf(
+      notesCodesOf(
         resolve(
           holding(
             "          - { claim: keep, mountAt: /k, size: 1Gi, durability: irreplaceable }\n",
@@ -3170,7 +3187,7 @@ describe("a volume and what its class derives", () => {
     // credential the Secret Store holds; one that reads the volume does not.
     // One such Process is enough, beside one that holds nothing.
     const unstored = (engine: string) =>
-      codesOf(
+      notesCodesOf(
         resolve(
           holding(
             "          - { claim: keep, mountAt: /k, size: 1Gi, durability: recoverable }\n",
@@ -3537,11 +3554,14 @@ describe("a volume and what its class derives", () => {
 // REQ-049 (docs/requirements.md): the Vault policy job is derived where the
 // platform names it and a Secret Store answers.
 describe("the Vault policy job", () => {
-  const set = (platform?: (text: string) => string) => {
-    const result = resolve(
-      one(serving("notes-api")),
-      platform === undefined ? {} : { platform },
-    );
+  const set = (
+    platform?: (text: string) => string,
+    foundation?: (name: string, text: string) => string,
+  ) => {
+    const result = resolve(one(serving("notes-api")), {
+      ...(platform === undefined ? {} : { platform }),
+      ...(foundation === undefined ? {} : { foundation }),
+    });
     if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
     return result.value;
   };
@@ -3586,7 +3606,21 @@ describe("the Vault policy job", () => {
     // Not a job that is undefined: no job at all.
     expect(
       Object.keys(
-        set((platform) => platform.replace("secretStore: secrets/vault\n", "")),
+        set(
+          (platform) =>
+            platform
+              .replace("secretStore: secrets/vault\n", "")
+              .replace(/\nmonitoring:\n( {2}.*\n)+/, "\n"),
+          // Without the monitoring stack, whose Alertmanager reads its
+          // receivers' webhooks from the Secret Store, and so its rules.
+          (name, text) =>
+            name === "observability/observability.project.yml"
+              ? text.replace(
+                  "    alertRules:\n      - {from: rules/platform.yaml}\n",
+                  "",
+                )
+              : text,
+        ),
       ),
       // What the set does derive is where Flux's events go, since the worked
       // platform names a Reporter, the tiers' proxies, the groups it grants a
@@ -4207,6 +4241,119 @@ describe("the Node Agent catalog", () => {
         code: "E_UNLOCKED_IMAGE",
         path: "/nodeAgents/l4-speaker/controller/image",
       },
+    ]);
+  });
+});
+
+// REQ-093 (docs/requirements.md): a receiver's webhook is granted to the
+// Alertmanager's first Process alone.
+describe("a receiver's credential", () => {
+  it("is granted to the Alertmanager's first Process, and no other", () => {
+    const result = resolve(one(serving("notes-api")), {
+      foundation: (name, text) =>
+        name === "observability/observability.project.yml"
+          ? text +
+            `      - name: alertmanager-sidecar
+        lifecycle: application
+        image: alertmanager
+        runtime: none
+        provides: { admin: 9094 }
+        placement: { memory: 64Mi, cpu: 10m }
+        probes:
+          readiness: { tcp: 9094 }
+        startupBudget: 20s
+        cutover: continuous
+`
+          : text,
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
+    const alertmanager = result.value.projects
+      .find(({ project }) => project === "observability")
+      ?.applications.find(({ id }) => id === "alertmanager");
+    const paths = alertmanager?.processes.map(({ name, secrets }) => [
+      name,
+      (secrets ?? []).map((grant) => ("path" in grant ? grant.path : "")),
+    ]);
+
+    expect(paths).toStrictEqual([
+      ["alertmanager", ["secret/data/platform/alertmanager-discord"]],
+      ["alertmanager-sidecar", []],
+    ]);
+  });
+});
+
+// REQ-097: a pool holds as many copies as the Process runs, and a blue/green
+// switch, so neither refusal of a node's own address reaches a pool.
+describe("a replicated Process on a pool", () => {
+  it("is refused neither its replicas nor its continuous cutover", () => {
+    const codes = codesOf(
+      resolve(
+        one(
+          serving(
+            "notes-api",
+            "        replicas: { count: 2, reason: two copies serve while one restarts }\n",
+          ),
+        ).replace(
+          "    processes:\n",
+          "    l4Exposure:\n      - { address: lan-dns, port: 8080, protocol: tcp, process: notes-api, surface: http }\n    processes:\n",
+        ),
+      ),
+    );
+    expect(codes).not.toContain("E_NODE_ADDRESS_REPLICATED");
+    expect(codes).not.toContain("E_CUTOVER_UNHONOURABLE");
+  });
+});
+
+// REQ-091: only the Process of a tier's proxy that serves `web`, under a tier
+// that names its class, carries the edge proxy's configuration; and a tier's
+// forward-auth whose provider the set does not hold asks nothing.
+describe("a tier's proxy, read from the set", () => {
+  const resolved = (options: Options = {}) => {
+    const result = resolve(one(serving("notes-api")), options);
+    if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
+    return result.value;
+  };
+  const edgeProcesses = (options: Options = {}) =>
+    projectNamed([...resolved(options).projects], "edge")
+      .applications.find(({ id }) => id === "traefik-public")
+      ?.processes.map(({ name, edgeProxy }) => [name, edgeProxy !== undefined]);
+
+  it("asks no forward-auth provider the set does not hold", () => {
+    expect(resolved().forwardAuths).toStrictEqual([]);
+  });
+
+  it("configures no proxy under a tier that names no class", () => {
+    expect(
+      edgeProcesses({
+        platform: (platform) =>
+          platform.replace(/\n {4}ingressClass: traefik-public[^\n]*/, ""),
+      }),
+    ).toStrictEqual([["traefik-public", false]]);
+  });
+
+  it("configures the proxy's Process that serves web, and no other", () => {
+    expect(
+      edgeProcesses({
+        foundation: (name, text) =>
+          name === "edge/edge.project.yml"
+            ? text.replace(
+                "  - id: traefik-lan\n",
+                `      - name: traefik-public-logs
+        lifecycle: application
+        image: traefik
+        runtime: none
+        placement: { memory: 32Mi, cpu: 10m }
+        probes: none
+        startupBudget: 20s
+        cutover: continuous
+
+  - id: traefik-lan\n`,
+              )
+            : text,
+      }),
+    ).toStrictEqual([
+      ["traefik-public", true],
+      ["traefik-public-logs", false],
     ]);
   });
 });

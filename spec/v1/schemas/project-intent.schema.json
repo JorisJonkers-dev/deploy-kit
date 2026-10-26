@@ -510,6 +510,13 @@
             "$ref": "#/$defs/Dashboard"
           }
         },
+        "alertRules": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AlertRules"
+          }
+        },
         "exposure": {
           "minItems": 1,
           "type": "array",
@@ -652,6 +659,19 @@
       "additionalProperties": false
     },
     "Dashboard": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from"
+      ],
+      "additionalProperties": false
+    },
+    "AlertRules": {
       "type": "object",
       "properties": {
         "from": {

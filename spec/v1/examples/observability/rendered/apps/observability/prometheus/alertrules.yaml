@@ -1,0 +1,28 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: prometheus-platform
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  groups:
+    - name: platform
+      rules:
+        - alert: JobFailed
+          expr: kube_job_status_failed > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Job {{ $labels.namespace }}/{{ $labels.job_name }} failed
+        - alert: TargetDown
+          expr: up == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.job }} on {{ $labels.instance }} is down"

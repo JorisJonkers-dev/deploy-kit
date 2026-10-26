@@ -49,6 +49,9 @@
         "telemetry": {
           "$ref": "#/$defs/TelemetryPolicy"
         },
+        "monitoring": {
+          "$ref": "#/$defs/Monitoring"
+        },
         "secretStore": {
           "type": "string",
           "pattern": "^[^/\\s]+\\/[^/\\s]+$",
@@ -662,6 +665,118 @@
       "required": [
         "instance",
         "datasource"
+      ],
+      "additionalProperties": false
+    },
+    "Monitoring": {
+      "type": "object",
+      "properties": {
+        "grafana": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
+          "reference": "Application"
+        },
+        "prometheus": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
+          "reference": "Application"
+        },
+        "alertmanager": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
+          "reference": "Application"
+        },
+        "receivers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Receiver"
+          }
+        },
+        "routes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SeverityRoute"
+          }
+        }
+      },
+      "required": [
+        "grafana",
+        "prometheus",
+        "alertmanager",
+        "receivers",
+        "routes"
+      ],
+      "additionalProperties": false
+    },
+    "Receiver": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "discord": {
+          "$ref": "#/$defs/DiscordReceiver"
+        }
+      },
+      "required": [
+        "name",
+        "discord"
+      ],
+      "additionalProperties": false
+    },
+    "DiscordReceiver": {
+      "type": "object",
+      "properties": {
+        "webhook": {
+          "$ref": "#/$defs/VaultValue"
+        }
+      },
+      "required": [
+        "webhook"
+      ],
+      "additionalProperties": false
+    },
+    "VaultValue": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "key"
+      ],
+      "additionalProperties": false
+    },
+    "SeverityRoute": {
+      "type": "object",
+      "properties": {
+        "severity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "receiver": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repeat": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*[mh]$"
+        }
+      },
+      "required": [
+        "severity",
+        "receiver",
+        "repeat"
       ],
       "additionalProperties": false
     },

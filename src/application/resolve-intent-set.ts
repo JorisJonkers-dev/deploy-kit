@@ -143,6 +143,10 @@ function assetsOf(
   for (const { dashboards } of project.applications)
     // Stryker disable next-line ArrayDeclaration: no list ships nothing.
     for (const { from } of dashboards ?? []) named.add(from);
+  // A rule-group file is read the same way, by the `from` it names.
+  for (const { alertRules } of project.applications)
+    // Stryker disable next-line ArrayDeclaration: no list carries nothing.
+    for (const { from } of alertRules ?? []) named.add(from);
   const beside = directoryOf(name);
   return new Map(
     // The set holds every Asset's file, or E_ASSET_NOT_FOUND refused it.

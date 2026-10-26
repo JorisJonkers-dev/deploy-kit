@@ -46,6 +46,7 @@ const SET = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "identity/env/grafana/base.env",
@@ -138,7 +139,7 @@ describe("deploy-kit validate", () => {
   it("accepts a set the checks accept", () => {
     expect(run("validate", ...SET)).toEqual({
       code: 0,
-      stdout: "accepted (9 read)\n",
+      stdout: "accepted (10 read)\n",
       stderr: "",
     });
   });

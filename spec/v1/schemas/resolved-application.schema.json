@@ -46,6 +46,16 @@
         "alertClass": {
           "$ref": "#/$defs/AlertClass"
         },
+        "alertRules": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedAlertRules"
+          }
+        },
+        "alerting": {
+          "$ref": "#/$defs/ResolvedAlerting"
+        },
         "scrape": {
           "$ref": "#/$defs/ResolvedScrape"
         },
@@ -191,6 +201,102 @@
         "urgent",
         "page"
       ]
+    },
+    "ResolvedAlertRules": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "groups": {
+          "minItems": 1,
+          "type": "array",
+          "items": {}
+        }
+      },
+      "required": [
+        "from",
+        "groups"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedAlerting": {
+      "type": "object",
+      "properties": {
+        "receivers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedReceiver"
+          }
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedSeverityRoute"
+          }
+        }
+      },
+      "required": [
+        "receivers",
+        "routes"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedReceiver": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "discord": {
+          "type": "object",
+          "properties": {
+            "secret": {
+              "type": "string",
+              "minLength": 1
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "secret",
+            "key"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "name",
+        "discord"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedSeverityRoute": {
+      "type": "object",
+      "properties": {
+        "severity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "receiver": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repeat": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "severity",
+        "receiver",
+        "repeat"
+      ],
+      "additionalProperties": false
     },
     "ResolvedScrape": {
       "type": "object",

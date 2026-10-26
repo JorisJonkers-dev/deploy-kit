@@ -180,9 +180,12 @@ test("no Process restates a scrape port, and no project carries alerting policy"
       text,
       `${file}: a scrape restates a port that provides already declares`,
     ).not.toMatch(/^\s+scrape:\s*\{?\s*port:/m);
-    expect(text, `${file}: receivers map present`).not.toMatch(
-      /^\s*receivers:/m,
-    );
+    // Receivers are the Platform document's alone, in its monitoring block
+    // (spec/v1/14-platform-intent.md#monitoring).
+    if (file !== platform)
+      expect(text, `${file}: receivers map present`).not.toMatch(
+        /^\s*receivers:/m,
+      );
     expect(text, `${file}: rule catalog present`).not.toMatch(
       /^\s*ruleCatalog:/m,
     );

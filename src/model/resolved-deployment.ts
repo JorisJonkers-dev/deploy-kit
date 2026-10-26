@@ -894,6 +894,32 @@ const resolvedDashboards = z
     files: z.array(resolvedDashboard).min(1),
   })
   .meta({ id: "ResolvedDashboards" });
+// A rule-group file the monitoring stack carries, as its groups
+// (spec/v1/10-project-intent.md#alert-rules).
+const resolvedAlertRules = z
+  .strictObject({ from: text, groups: z.array(z.unknown()).min(1) })
+  .meta({ id: "ResolvedAlertRules" });
+
+// The one routing of every alert, on the Alertmanager's Application
+// (spec/v1/14-platform-intent.md#monitoring): each receiver's webhook in the
+// Secret its grant lands in, and a route per severity.
+const resolvedAlerting = z
+  .strictObject({
+    receivers: z.array(
+      z
+        .strictObject({
+          name: text,
+          discord: z.strictObject({ secret: text, key: text }),
+        })
+        .meta({ id: "ResolvedReceiver" }),
+    ),
+    routes: z.array(
+      z
+        .strictObject({ severity: text, receiver: text, repeat: text })
+        .meta({ id: "ResolvedSeverityRoute" }),
+    ),
+  })
+  .meta({ id: "ResolvedAlerting" });
 
 const application = {
   id: text,
@@ -905,6 +931,8 @@ const application = {
   reconcileUnit: text,
   reconcileAfter: z.array(text).exactOptional(),
   alertClass: alertClass.exactOptional(),
+  alertRules: z.array(resolvedAlertRules).min(1).exactOptional(),
+  alerting: resolvedAlerting.exactOptional(),
   scrape: resolvedScrape.exactOptional(),
   dashboards: resolvedDashboards.exactOptional(),
   // Absent on an `interrupted` Application: it stops before it starts, so no

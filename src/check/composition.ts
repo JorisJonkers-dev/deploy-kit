@@ -499,6 +499,62 @@ function unfiltered(platform: Named<PlatformIntentDocument>): Diagnostic[] {
   );
 }
 
+/**
+ * The monitoring stack is three declared Applications by role, and only they
+ * carry alert rules (spec/v1/14-platform-intent.md#monitoring): a rule
+ * anywhere else would be a second home for alerting.
+ */
+function monitoringRefusals(
+  platform: Named<PlatformIntentDocument>,
+  projects: readonly Named<ProjectIntentDocument>[],
+  holders: ReadonlySet<string>,
+): Diagnostic[] {
+  const { monitoring } = platform.document;
+  // The roles, each by name; no block names none.
+  const roles = new Map<string, string>(
+    monitoring === undefined
+      ? undefined
+      : (["grafana", "prometheus", "alertmanager"] as const).map((role) => [
+          role,
+          monitoring[role],
+        ]),
+  );
+  // A set that holds no file of a role's Project, such as one Project's own
+  // check, cannot tell; the composition, which holds every Project, does.
+  const composed = new Set(projects.map(({ document }) => document.project));
+  const unknown = [...roles].flatMap(([role, name]): Diagnostic[] =>
+    holders.has(name) || !composed.has(name.slice(0, name.indexOf("/")))
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_MONITORING_APPLICATION",
+            document: platform.name,
+            path: `/monitoring/${role}`,
+            message: `no project file declares the Application ${name} the monitoring stack's ${role} names`,
+            hint: "Name it as `<project>/<application>`, an Application its Project declares.",
+          },
+        ],
+  );
+  const stack = new Set(roles.values());
+  const outside = projects.flatMap(({ name, document }) =>
+    document.applications.flatMap((application, a): Diagnostic[] =>
+      application.alertRules === undefined ||
+      stack.has(`${document.project}/${application.id}`)
+        ? []
+        : [
+            {
+              code: "E_ALERT_RULES_OUTSIDE_MONITORING",
+              document: name,
+              path: `/applications/${String(a)}/alertRules`,
+              message: `${application.id} carries alert rules and is not the monitoring stack`,
+              hint: "Carry alert rules on an Application `monitoring` names, or name this one there.",
+            },
+          ],
+    ),
+  );
+  return [...unknown, ...outside];
+}
+
 function projectRefusals(
   project: ProjectIntentDocument,
   platform: PlatformIntentDocument,
@@ -938,6 +994,7 @@ export function setDiagnostics(
     ...critical,
     ...forwardAuth,
     ...stack,
+    ...monitoringRefusals(platform, projects, holders),
     ...release,
     ...reporting,
     ...secrets,

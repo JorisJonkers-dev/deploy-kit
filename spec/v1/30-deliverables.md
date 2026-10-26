@@ -62,6 +62,7 @@ one of them is a **central** adapter running once over the composed union:
 | `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence, carrying the labels its `monitors` names. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-project-intent.md#observability)) |
 | `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md), [0047](../../docs/adr/model/0047-one-publication-path.md)), including the derived `/.auth/` route of each gated Client ([chapter 17](17-sign-in.md#what-the-edge-derives)). A route's `redirectTo` is a `RedirectRegex` Middleware of the route's own, `<application>-<exposure>-<n>-redirect`, beside its IngressRoute. Each `IngressRoute` carries its tier's ingress class as the `kubernetes.io/ingress.class` annotation, and, where the tier publishes its names, `external-dns.alpha.kubernetes.io/target` and `…/cloudflare-proxied` from its `dns` |
 | `grafana` | monitoring | one `GrafanaDashboard` per dashboard file an Application ships, in its own namespace and its Project's folder, selecting the Grafana instance the Platform document names (`allowCrossNamespaceImport`), its JSON verbatim, and a vendored file's data source inputs mapped to the Platform's data source |
+| `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence, carrying the labels its `monitors` names. A `PrometheusRule` per rule-group file the monitoring stack's Applications carry, and one `AlertmanagerConfig` on its Alertmanager, from the Platform document's `monitoring` ([chapter 14](14-platform-intent.md#monitoring)) |
 | `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md), [0047](../../docs/adr/model/0047-one-publication-path.md)), including the derived `/.auth/` route of each gated Client ([chapter 17](17-sign-in.md#what-the-edge-derives)) |
 | `vault-policy` | secret store | one policy and one auth role per Process identity, as JSON ([0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)) |
 | `vso` | secret delivery | `VaultConnection` per namespace, `VaultAuth` per identity that holds a synced grant, `VaultStaticSecret`, `VaultDynamicSecret` |
@@ -589,8 +590,8 @@ Human Grant
 ([0118](../../docs/adr/model/0118-a-human-grant-is-declared-in-the-platform-document.md)),
 `NetworkPolicy` is `networking`'s ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)),
 `ServiceMonitor` and `PodMonitor` are `prometheus`'s, from the declared
-`observability.scrape` surface, and `PrometheusRule` is rendered by nothing here
-([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)),
+`observability.scrape` surface, and `PrometheusRule` and `AlertmanagerConfig` for the monitoring stack alone
+([chapter 14](14-platform-intent.md#monitoring)),
 and `GitRepository` is a bootstrap fact
 ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)), created by
 `flux bootstrap`, never rendered.

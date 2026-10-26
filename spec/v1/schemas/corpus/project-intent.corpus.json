@@ -492,6 +492,19 @@
           "value": []
         }
       ]
+    },
+    {
+      "name": "alert rules written inline",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/observability/observability.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/alertRules/0/groups",
+          "value": []
+        }
+      ]
     }
   ]
 }

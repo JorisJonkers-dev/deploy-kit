@@ -57,6 +57,7 @@ export default defineConfig({
       "test/adapters/holders.test.ts",
       "test/adapters/labels.test.ts",
       "test/adapters/shared-middlewares.test.ts",
+      "test/adapters/rule-names.test.ts",
       "test/adapters/spelling.test.ts",
       "test/canonical-json.test.ts",
       "test/published-schemas.test.ts",

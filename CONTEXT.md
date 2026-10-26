@@ -172,6 +172,15 @@ proxy its audience selects.
 **Dashboard**: a Grafana dashboard's JSON an Application ships beside its
 project file, rendered into its Project's folder; vendored, never fetched.
 
+**Monitoring stack**: the Grafana, Prometheus and Alertmanager the Platform
+document names by role; the only Applications that carry alert rules.
+
+**Receiver**: a named place an alert is delivered, declared in the Platform
+document, its credential read from Vault.
+
+**Severity route**: which receiver an alert of one `severity` reaches, and how
+often it repeats.
+
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the
 allowance, and the Tier decides which address counts as one client

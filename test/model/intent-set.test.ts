@@ -30,6 +30,7 @@ const WORKED = [
   "knowledge/knowledge.project.yml",
   "minimal/notes.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   // The Asset data's Process mounts, read beside its project file.
   "data/config/postgresql.conf",

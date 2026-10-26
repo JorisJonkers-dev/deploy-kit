@@ -353,3 +353,42 @@ export interface GrafanaDashboard {
     }[];
   };
 }
+
+/** The Prometheus operator's rule groups, as a rule-group file holds them. */
+export interface PrometheusRule {
+  readonly apiVersion: "monitoring.coreos.com/v1";
+  readonly kind: "PrometheusRule";
+  readonly metadata: ObjectMeta;
+  readonly spec: { readonly groups: readonly unknown[] };
+}
+
+/** The Prometheus operator's alert routing: one route per severity, and the receivers. */
+export interface AlertmanagerConfig {
+  readonly apiVersion: "monitoring.coreos.com/v1alpha1";
+  readonly kind: "AlertmanagerConfig";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly route: {
+      readonly receiver: string;
+      readonly groupBy: readonly string[];
+      readonly groupWait: string;
+      readonly groupInterval: string;
+      readonly repeatInterval: string;
+      readonly routes: readonly {
+        readonly matchers: readonly {
+          readonly name: string;
+          readonly value: string;
+        }[];
+        readonly receiver: string;
+        readonly repeatInterval: string;
+      }[];
+    };
+    readonly receivers: readonly {
+      readonly name: string;
+      readonly discordConfigs?: readonly {
+        readonly apiURL: { readonly name: string; readonly key: string };
+        readonly sendResolved: boolean;
+      }[];
+    }[];
+  };
+}
