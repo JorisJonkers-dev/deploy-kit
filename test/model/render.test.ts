@@ -1854,8 +1854,8 @@ describe("the bucket catalog", () => {
               "legacy: [auth, data, knowledge, knowledge-platform, notes]",
             )
             .replace(
-              "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-              "estate: [delivery, edge, identity, mail, observability, secrets, utility]",
+              "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+              "estate: [agents, delivery, edge, identity, mail, observability, secrets, utility]",
             ),
       }),
     ).toStrictEqual([]);
@@ -1891,8 +1891,8 @@ describe("the bucket catalog", () => {
             "legacy: [auth, knowledge, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-            "estate: [data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [agents, data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
           )
           .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
     };
@@ -1941,8 +1941,8 @@ describe("the bucket catalog", () => {
               "legacy: [auth, data, knowledge, knowledge-platform, notes]",
             )
             .replace(
-              "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-              "estate: [delivery, edge, identity, mail, observability, secrets, utility]",
+              "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+              "estate: [agents, delivery, edge, identity, mail, observability, secrets, utility]",
             ),
       }),
     ).toStrictEqual([]);
