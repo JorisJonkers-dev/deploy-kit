@@ -1741,6 +1741,31 @@ describe("the bucket catalog", () => {
     });
   });
 
+  it("names one key per project, in name order", () => {
+    const keys = catalogIn(
+      asTree(
+        artifact(
+          render({
+            "mail/mail.project.yml": (document) =>
+              document.replace(
+                "      - name: stalwart\n",
+                "      - name: stalwart\n        dependsOn:\n          - { application: platform-garage, surface: s3, buckets: [archive] }\n",
+              ),
+          }),
+          "_estate",
+        ),
+      ),
+      ESTATE,
+    ) as { keys: { name: string; buckets: string[] }[] };
+
+    expect(keys.keys.map(({ name, buckets }) => [name, buckets])).toStrictEqual(
+      [
+        ["knowledge-platform", ["knowledge-platform-assets"]],
+        ["mail", ["mail-archive"]],
+      ],
+    );
+  });
+
   it("grants each Process naming buckets read on its project's key, once per store", () => {
     const tree = asTree(artifact(render(TWO_EDGES), "knowledge-platform"));
     const policy = (process: string) =>

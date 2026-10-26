@@ -145,7 +145,10 @@ function adminOf(
 ): AdminLogin | undefined {
   if (onEstatePath(set, project.project))
     return ownsBuckets(process)
-      ? { path: catalogCredentialOf(project.project, process.name), ...TOKEN_KEY }
+      ? {
+          path: catalogCredentialOf(project.project, process.name),
+          ...TOKEN_KEY,
+        }
       : {
           path: catalogCredentialOf(project.project, process.name),
           ...DERIVED_KEYS,
@@ -239,7 +242,10 @@ export function resolveCatalogJobs(
           // E_UNLOCKED_IMAGE.
           const image = set.imagesLock.images[policy.catalog] as LockedImage;
           const identity = catalogIdentityOf(process.name);
-          const store = storeOf({ platform: set.platform, union: set.projects });
+          const store = storeOf({
+            platform: set.platform,
+            union: set.projects,
+          });
           const resolved: ResolvedCatalogJob = {
             identity,
             namespace: home.namespace,

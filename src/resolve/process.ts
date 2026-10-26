@@ -349,7 +349,10 @@ function entryOf(
       return {
         name,
         secret: {
-          path: bucketKeyOf(context.project, storeOf(value.source, process, context)),
+          path: bucketKeyOf(
+            context.project,
+            storeOf(value.source, process, context),
+          ),
           key: BUCKET_KEY_KEYS[coordinate],
         },
       };
