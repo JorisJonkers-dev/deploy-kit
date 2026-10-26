@@ -10,9 +10,13 @@ rests-on: ["0002", "0003"]
 
 # The foundation is declared as Applications, nothing hand-written enters the render, and what must exist first is a recorded bootstrap table
 
-Vault, VSO, Traefik, Prometheus, Flagger, the Release Gate and Gatus are declared
-as Applications in platform-owned project files, in the same vocabulary as any
-other. No Helm chart is rendered and no raw manifest passes through an adapter.
+The foundation's controllers and servers (Vault, VSO, Traefik, external-dns, the
+Prometheus operator and its stack, Flagger, the Release Gate, Gatus and the log
+collector) are declared as Applications in platform-owned project files, in the
+same vocabulary as any other. The host-privileged agents a node runs are the one
+exception: they are **derived** from node facts and pools as Node Agents, with
+privileges a closed catalog fixes, so no author declares a privilege. No Helm
+chart is rendered and no raw manifest passes through an adapter.
 What must exist before the first rendered object can apply is the **bootstrap
 set**, a recorded, enumerated table: k3s, the Flux controllers and source,
 Vault's unseal, and the CRDs the render's kinds need, each pinned by version
@@ -46,10 +50,19 @@ the part carrying the CVEs and the CRD upgrades.
 
 **The alternative to a pack is a declaration.** Vault is a Process with an
 `irreplaceable` volume and an `engine`. Traefik is two Applications, each the
-proxy for one tier. Prometheus and Gatus take their configuration from objects
-each Project renders for itself, a monitor per scrape surface and a ConfigMap of
-external checks per exposure, which they collect by label
+proxy for one tier. The Prometheus operator configures Prometheus and
+Alertmanager from the objects each Project renders for itself, a monitor per
+scrape surface and its rules, and Gatus collects a ConfigMap of external checks
+per exposure by label
 ([0117](0117-an-external-check-is-rendered-by-its-own-project.md)).
+
+**A host-privileged agent is derived, not declared.** A device plugin, a node
+exporter and a load balancer's announcer hold host privileges no tenant
+Application may, and where they run follows from node facts already written
+down. Declaring them would make a privilege authorable; deriving them from a
+closed catalog keeps every privilege in one reviewed place. An agent that holds
+no host privilege, such as the log collector reading through the API, is an
+ordinary declaration.
 
 **Helm dissolves into two parts.** A chart's defaults are what a declaration
 replaces. A chart's CRDs are cluster-scoped schema that must exist first, so they
