@@ -291,7 +291,7 @@ describe("a secret placeholder and the grant it reads", () => {
   });
 });
 
-// REQ-100 (docs/requirements.md): a self grant needs the Process's own Vault client.
+// REQ-102 (docs/requirements.md): a self grant needs the Process's own Vault client.
 describe("a self grant", () => {
   const SELF = `        secrets:\n          - { path: secret/data/refusals-system/app, keys: [k], access: read, delivery: self, rotation: { tolerates: restart } }\n`;
   const codes = (env: string): string[] =>
