@@ -590,9 +590,10 @@ instances:
 ```
 
 `instances` is what the Release Gate records as serving, read by the Collector
-from the gate's own record ([chapter 55](55-delivery.md#moves)); an open Move
-adds its `target`, the `version`, `namespace` and, where it is bound, `node` it
-is moving to, its `phase`, the [step](14-platform-intent.md#move-methods) it is
+from the gate's own record ([chapter 55](55-delivery.md#moves)): its `name`,
+where a Move made it and it is not the Process's own, and an open Move adds its
+`target`, the `name`, `version`, `namespace` and, where it is bound, `node` of
+the Instance it is moving to, its `phase`, the [step](14-platform-intent.md#move-methods) it is
 at (`sync`, `lag`, `fence`, `unfence`, `reverse` or `retire`), and, once the
 flip has held, `flippedAt`.
 
@@ -1100,13 +1101,14 @@ Layer 2 carries, as the Process's `move`, per Process a Move is derived for:
 | field | derived from |
 |---|---|
 | `triggers` | which rows of the table above derived it: `version`, `namespace` or `binding` |
-| `source` | the active Instance in ClusterState: its version, namespace and node |
-| `target` | the Process as it now resolves: its image and version, namespace and eligible node set, and a volume of its own, the same size and Durability Class as the source's |
-| `method` | the engine's `move.image`, through the images lock; absent for a Process with no engine |
+| `source` | the active Instance in ClusterState: its `instance` name, version, namespace and node |
+| `target` | the Process as it now resolves: its image and version, namespace and eligible node set, and a volume of its own, the same size and Durability Class as the source's; its `instance` name where the gate recorded one, or where it runs in a namespace of its own, which keeps the Process's name. Beside its source, an unrecorded target is named `<process>-<tag>` by the render, the tag of the release that derived it ([chapter 55](55-delivery.md#moves)) |
+| `method` | the engine's `move.image`, through the images lock, with the user it runs as, the engine `surface`'s `port` it syncs over, the `credential` it logs in with, `read` on `secret/data/<project>/<process>/move` delivered `self`, and the `egress` its Jobs reach: both Instances on that port, the Secret Store and the cluster's DNS; absent for a Process with no engine |
 | `identity` | one per Process with an open Move, `<process>-move`, holding the method's credential and nothing else ([chapter 16](16-dependencies.md#process-identity)) |
 | `flips` | the Stable Addresses whose target is the source Instance: one per surface of the Process that an edge names |
 | `reversible` | the engine's `move.reverse` read against the two versions: `always` is true, `same-major` is true only when both versions share a major, `never` is false; true for a Process with no engine, which has no data to lose |
-| `bounds` | the Platform document's `delivery.move`: `timeout` and `retention` ([chapter 14](14-platform-intent.md#delivery-policy)) |
+| `bounds` | the Platform document's `delivery.move`: `timeout`, `retention`, and the `memory` and `cpu` each step Job requests ([chapter 14](14-platform-intent.md#delivery-policy)) |
+| `server` | where the Kubernetes API answers, which the flip writes to, where the Platform document's `apiAccess` says |
 | `phase` | the step ClusterState records the open Move at, where it records one |
 
 A Move whose `reversible` is false cannot keep the promise a rollback makes, so
@@ -1115,6 +1117,15 @@ it is refused, `E_MOVE_IRREVERSIBLE`, unless the Process acknowledges it with
 acknowledgement acknowledges one Move and nothing else: written where no
 irreversible Move is derived, it is `E_FORWARD_ONLY_UNUSED`, so it never
 outlives the release it was written for.
+
+**An Instance keeps the name it was made under.** A Process whose active
+Instance ClusterState records under a `name` of its own resolves with that
+name as its `instance`, and renders its workload, Service and claims under it:
+the data a Move carried lives in the target's claims, which no rename can
+reach. Every Instance's pods carry the Process's instance label, which every
+policy selects, and their own Instance's name label, which their workload and
+Service select. Once the flip has held, the Process resolves to the target's
+recorded name, and the Stable Address names the target.
 
 **One Move at a time.** While a Process's Move is open (its source not yet
 retired), a second change that would derive another is `E_MOVE_OPEN`: the
@@ -2006,6 +2017,7 @@ classDiagram
     }
     class ResolvedProcess {
         +string name
+        +string instance
         +Lifecycle lifecycle
         +Runtime runtime
         +Identity identity

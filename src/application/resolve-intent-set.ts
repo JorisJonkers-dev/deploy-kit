@@ -308,7 +308,11 @@ export function resolveIntentSet(
       catalogHomes: homes,
       ...(events === undefined ? {} : { events }),
       tierProxies: set.platform.tiers.map(({ traefik }) => traefik),
-      stableAddresses: resolveStableAddresses(set.projects, set.platform),
+      stableAddresses: resolveStableAddresses(
+        set.projects,
+        set.platform,
+        set.clusterState,
+      ),
       nodeAgents: resolveNodeAgents(
         set.platform,
         set.nodeContract,

@@ -2627,3 +2627,424 @@ describe("a sidecar, as the kubernetes adapter spells it", () => {
     );
   });
 });
+
+// REQ-113 (docs/requirements.md): an open Move renders its frozen source
+// beside its target, each selecting its own pods under its Process's label,
+// and its step Jobs as the move identity; an Instance recorded under another
+// name renders under it.
+describe("a Move, as the adapters spell it", () => {
+  const TAG = "0123456789ab";
+  const STORE = "http://vault.secrets-system.svc.cluster.local:8200";
+  const SELF = "notes-system";
+  const MOVE = {
+    triggers: ["version" as const],
+    source: {
+      instance: "notes-api",
+      version: "1.3.0",
+      namespace: SELF,
+      node: "enschede-t1000-1",
+    },
+    target: {
+      image: "ghcr.io/example/notes-api@sha256:00",
+      version: "1.4.0",
+      namespace: SELF,
+      nodes: ["enschede-t1000-1", "enschede-2"],
+    },
+    method: {
+      image: "ghcr.io/example/notes-move@sha256:11",
+      imageVersion: "1.0.0",
+      uid: 999,
+      gid: 998,
+      port: 8080,
+      credential: {
+        path: "secret/data/notes/notes-api/move",
+        access: "read" as const,
+        delivery: "self" as const,
+      },
+      egress: [
+        {
+          rule: "datastore" as const,
+          namespace: SELF,
+          process: "notes-api",
+          port: 8080,
+        },
+        { rule: "cluster-dns" as const, namespace: "kube-system", port: 53 },
+      ],
+    },
+    identity: "notes-api-move",
+    flips: ["notes-http", "notes-metrics"],
+    reversible: true,
+    bounds: { timeout: "300s", retention: "7d", memory: "64Mi", cpu: "50m" },
+    server: [{ cidr: "10.43.0.1/32", port: 443 }],
+  };
+  const VOLUME = {
+    claim: "notes-data",
+    mountAt: "/data",
+    size: "1Gi",
+    durability: "reconstructible" as const,
+  };
+  const moving = (move: object = {}, process: object = {}) =>
+    edited(
+      () => ({
+        revision: `sha256:${TAG}${"0".repeat(52)}`,
+        secretStore: STORE,
+      }),
+      // An engine stops before it starts again: Flagger switches no Service of it.
+      () => ({
+        switchover: "stop-start" as const,
+        volumes: [VOLUME],
+        move: { ...MOVE, ...move },
+        ...process,
+      }),
+    );
+  interface Rendered {
+    kind: string;
+    metadata: { name: string; annotations?: Record<string, string> };
+    spec: Record<string, unknown> & {
+      selector?: unknown;
+      template?: {
+        metadata: { labels: Record<string, string> };
+        spec: Record<string, unknown>;
+      };
+    };
+  }
+  const at = (project: ResolvedProject, file: string) =>
+    objectsAt(renderKubernetes(project), `notes/${file}`) as Rendered[];
+  const TARGET = `notes-api-${TAG}`;
+
+  it("renders the source created once, beside a target named by the release, each selecting its own pods", () => {
+    const [source, target] = at(moving(), "workload.yaml");
+
+    expect(source?.metadata.name).toBe("notes-api");
+    // The source stays on the node its data is bound to.
+    expect(JSON.stringify(source?.spec.template?.spec["affinity"])).toContain(
+      "enschede-t1000-1",
+    );
+    expect(
+      JSON.stringify(source?.spec.template?.spec["affinity"]),
+    ).not.toContain("enschede-2");
+    expect(source?.metadata.annotations).toStrictEqual({
+      "kustomize.toolkit.fluxcd.io/ssa": "IfNotPresent",
+    });
+    expect(source?.spec.selector).toStrictEqual({
+      matchLabels: {
+        "app.kubernetes.io/name": "notes-api",
+        "app.kubernetes.io/instance": "notes-api",
+      },
+    });
+    expect(target?.metadata).not.toHaveProperty("annotations");
+    expect(target?.metadata.name).toBe(TARGET);
+    expect(target?.spec.selector).toStrictEqual({
+      matchLabels: {
+        "app.kubernetes.io/name": TARGET,
+        "app.kubernetes.io/instance": "notes-api",
+      },
+    });
+    expect(target?.spec.template?.metadata.labels).toMatchObject({
+      "app.kubernetes.io/name": TARGET,
+      "app.kubernetes.io/instance": "notes-api",
+    });
+    expect(JSON.stringify(target?.spec.template?.spec["affinity"])).toContain(
+      "enschede-2",
+    );
+    expect(
+      at(moving(), "service.yaml").map(({ metadata, spec }) => [
+        metadata.name,
+        spec.selector,
+      ]),
+    ).toStrictEqual([
+      [
+        "notes-api",
+        {
+          "app.kubernetes.io/name": "notes-api",
+          "app.kubernetes.io/instance": "notes-api",
+        },
+      ],
+      [
+        TARGET,
+        {
+          "app.kubernetes.io/name": TARGET,
+          "app.kubernetes.io/instance": "notes-api",
+        },
+      ],
+    ]);
+    expect(
+      at(moving(), "pvc.yaml").map(({ metadata }) => metadata.name),
+    ).toStrictEqual(["notes-data", `notes-data-${TAG}`]);
+  });
+
+  it("renders the target as the gate recorded it, and alone where its source runs in another namespace", () => {
+    expect(
+      at(
+        moving({
+          target: { ...MOVE.target, instance: "notes-api-aaaaaaaaaaaa" },
+        }),
+        "workload.yaml",
+      ).map(({ metadata }) => metadata.name),
+    ).toStrictEqual(["notes-api", "notes-api-aaaaaaaaaaaa"]);
+    expect(
+      at(
+        moving({
+          source: { ...MOVE.source, namespace: "old-system" },
+          target: { ...MOVE.target, instance: "notes-api" },
+        }),
+        "workload.yaml",
+      ).map(({ metadata }) => metadata.name),
+    ).toStrictEqual(["notes-api"]);
+  });
+
+  it("renders a Process under the name ClusterState records its Instance by", () => {
+    const named = edited(undefined, () => ({
+      switchover: "stop-start" as const,
+      instance: "notes-api-aaaaaaaaaaaa",
+      volumes: [VOLUME],
+    }));
+
+    expect(
+      at(named, "workload.yaml").map(({ metadata, spec }) => [
+        metadata.name,
+        spec.selector,
+      ]),
+    ).toStrictEqual([
+      [
+        "notes-api-aaaaaaaaaaaa",
+        {
+          matchLabels: {
+            "app.kubernetes.io/name": "notes-api-aaaaaaaaaaaa",
+            "app.kubernetes.io/instance": "notes-api",
+          },
+        },
+      ],
+    ]);
+    expect(at(named, "workload.yaml")[0]?.metadata).not.toHaveProperty(
+      "annotations",
+    );
+    expect(
+      at(named, "service.yaml").map(({ metadata }) => metadata.name),
+    ).toStrictEqual(["notes-api-aaaaaaaaaaaa"]);
+    // One that holds no claim renders none under any name.
+    expect(
+      at(
+        edited(undefined, () => ({
+          switchover: "stop-start" as const,
+          instance: "notes-api-aaaaaaaaaaaa",
+        })),
+        "workload.yaml",
+      ).map(({ metadata }) => metadata.name),
+    ).toStrictEqual(["notes-api-aaaaaaaaaaaa"]);
+    expect(
+      at(named, "pvc.yaml").map(({ metadata }) => metadata.name),
+    ).toStrictEqual(["notes-data-aaaaaaaaaaaa"]);
+  });
+
+  it("mounts each Instance's own claim in the sidecars that name it", () => {
+    const SIDE = {
+      image: "ghcr.io/example/side@sha256:00",
+      memory: "32Mi",
+      cpu: "10m",
+    };
+    const pods = at(
+      moving(
+        {},
+        {
+          sidecars: [
+            {
+              name: "backup",
+              ...SIDE,
+              volumes: [{ claim: "notes-data", mountAt: "/backup" }],
+            },
+            { name: "sync", ...SIDE },
+          ],
+        },
+      ),
+      "workload.yaml",
+    ).map(({ spec }) => {
+      const pod = spec.template?.spec as {
+        volumes: { name: string }[];
+        containers: { name: string; volumeMounts?: { name: string }[] }[];
+      };
+      const mounted = (name: string) =>
+        (
+          pod.containers.find((container) => container.name === name)
+            ?.volumeMounts ?? []
+        )
+          .map(({ name: volume }) => volume)
+          .filter((volume) => volume.startsWith("notes-data"));
+      return [
+        pod.volumes
+          .map(({ name }) => name)
+          .filter((name) => name.startsWith("notes-data")),
+        mounted("backup"),
+        mounted("sync"),
+      ];
+    });
+
+    expect(pods).toStrictEqual([
+      [["notes-data"], ["notes-data"], []],
+      [[`notes-data-${TAG}`], [`notes-data-${TAG}`], []],
+    ]);
+  });
+
+  it("renders one suspended Job per step as the move identity, which may update the Stable Addresses it flips alone", () => {
+    const objects = at(moving(), "move.yaml");
+    const jobs = objects.filter(({ kind }) => kind === "Job");
+    const env = (job: Rendered | undefined) =>
+      (
+        (
+          job?.spec.template?.spec["containers"] as {
+            env: { name: string; value: string }[];
+          }[]
+        )[0]?.env ?? []
+      ).map(({ name, value }) => [name, value]);
+
+    expect(objects.map(({ kind }) => kind).slice(0, 3)).toStrictEqual([
+      "ServiceAccount",
+      "Role",
+      "RoleBinding",
+    ]);
+    expect(objects[1]).toMatchObject({
+      metadata: {
+        name: "notes-system-notes-api-move",
+        namespace: "estate-system",
+      },
+      rules: [
+        {
+          apiGroups: [""],
+          resources: ["services"],
+          resourceNames: ["notes-http", "notes-metrics"],
+          verbs: ["get", "update", "patch"],
+        },
+      ],
+    });
+    expect(jobs.map(({ metadata }) => metadata.name)).toStrictEqual(
+      [
+        "start",
+        "sync",
+        "lag",
+        "fence",
+        "final-lag",
+        "flip",
+        "unfence",
+        "reverse",
+      ].map((step) => `notes-api-move-${step}-${TAG}`),
+    );
+    expect(jobs.map((job) => env(job)[0]?.[1])).toStrictEqual([
+      "start",
+      "sync",
+      "lag",
+      "fence",
+      "lag",
+      "flip",
+      "unfence",
+      "reverse",
+    ]);
+    expect(env(jobs[0])).toStrictEqual([
+      ["MOVE_STEP", "start"],
+      ["MOVE_SOURCE_HOST", "notes-api.notes-system.svc.cluster.local"],
+      ["MOVE_TARGET_HOST", `${TARGET}.notes-system.svc.cluster.local`],
+      ["MOVE_PORT", "8080"],
+      ["MOVE_FLIPS", "notes-http,notes-metrics"],
+      ["MOVE_FLIP_NAMESPACE", "estate-system"],
+      ["VAULT_ADDR", STORE],
+      ["VAULT_ROLE", "notes-system-notes-api-move"],
+      ["VAULT_CREDENTIALS_PATH", "secret/data/notes/notes-api/move"],
+    ]);
+    expect(jobs[0]?.spec).toMatchObject({ suspend: true, backoffLimit: 0 });
+    expect(jobs[0]?.metadata.annotations).toStrictEqual({
+      "kustomize.toolkit.fluxcd.io/ssa": "IfNotPresent",
+    });
+    expect(jobs[0]?.spec.template?.spec).toMatchObject({
+      serviceAccountName: "notes-api-move",
+      automountServiceAccountToken: true,
+      restartPolicy: "Never",
+      securityContext: { runAsUser: 999, runAsGroup: 998 },
+    });
+  });
+
+  it("renders no reverse step for a Move that cannot be rolled back, no permission where it flips nothing, and no step where it carries no data", () => {
+    const kinds = (move: object) =>
+      at(moving(move), "move.yaml").map(({ kind, metadata }) =>
+        kind === "Job" ? metadata.name.split("-")[3] : kind,
+      );
+
+    expect(kinds({ reversible: false })).not.toContain("reverse");
+    expect(kinds({ flips: [] }).slice(0, 2)).toStrictEqual([
+      "ServiceAccount",
+      "start",
+    ]);
+    expect(
+      renderKubernetes(moving({ method: undefined })).filter(({ path }) =>
+        path.endsWith("move.yaml"),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("admits the move Jobs and each Instance to the other on the method's surface, and polices the Jobs", () => {
+    const policies = (project: ResolvedProject) =>
+      objectsAt(
+        renderNetworking(project),
+        "notes/notes/networkpolicy.yaml",
+      ) as {
+        metadata: { name: string };
+        spec: Record<string, unknown>;
+      }[];
+    const [own, identity] = policies(moving()).filter(({ metadata }) =>
+      ["notes-api", "notes-api-move"].includes(metadata.name),
+    );
+    const peer = (instance: string) => ({
+      namespaceSelector: {
+        matchLabels: { "kubernetes.io/metadata.name": SELF },
+      },
+      podSelector: { matchLabels: { "app.kubernetes.io/instance": instance } },
+    });
+
+    expect(own?.spec["ingress"]).toContainEqual({
+      from: [peer("notes-api-move"), peer("notes-api")],
+      ports: [{ protocol: "TCP", port: 8080 }],
+    });
+    expect(own?.spec["egress"]).toContainEqual({
+      to: [peer("notes-api")],
+      ports: [{ protocol: "TCP", port: 8080 }],
+    });
+    expect(identity?.spec).toStrictEqual({
+      podSelector: {
+        matchLabels: { "app.kubernetes.io/instance": "notes-api-move" },
+      },
+      policyTypes: ["Ingress", "Egress"],
+      egress: [
+        { to: [peer("notes-api")], ports: [{ protocol: "TCP", port: 8080 }] },
+        {
+          to: [
+            {
+              namespaceSelector: {
+                matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+              },
+            },
+          ],
+          ports: [
+            { protocol: "UDP", port: 53 },
+            { protocol: "TCP", port: 53 },
+          ],
+        },
+        {
+          to: [{ ipBlock: { cidr: "10.43.0.1/32" } }],
+          ports: [{ protocol: "TCP", port: 443 }],
+        },
+      ],
+    });
+    expect(
+      policies(moving({ method: undefined })).map(
+        ({ metadata }) => metadata.name,
+      ),
+    ).not.toContain("notes-api-move");
+  });
+
+  it("writes the move identity's role and policy, on the credential its method logs in with", () => {
+    expect(JSON.stringify(renderVaultPolicy(moving()))).toContain(
+      "notes-system-notes-api-move",
+    );
+    expect(JSON.stringify(renderVaultPolicy(moving()))).toContain(
+      "secret/data/notes/notes-api/move",
+    );
+  });
+});

@@ -1305,6 +1305,10 @@
           "type": "string",
           "minLength": 1
         },
+        "instance": {
+          "type": "string",
+          "minLength": 1
+        },
         "lifecycle": {
           "$ref": "#/$defs/Lifecycle"
         },
@@ -2875,6 +2879,10 @@
         "source": {
           "type": "object",
           "properties": {
+            "instance": {
+              "type": "string",
+              "minLength": 1
+            },
             "version": {
               "type": "string",
               "minLength": 1
@@ -2889,6 +2897,7 @@
             }
           },
           "required": [
+            "instance",
             "version",
             "namespace",
             "node"
@@ -2898,6 +2907,10 @@
         "target": {
           "type": "object",
           "properties": {
+            "instance": {
+              "type": "string",
+              "minLength": 1
+            },
             "image": {
               "type": "string",
               "minLength": 1
@@ -2936,10 +2949,39 @@
             "imageVersion": {
               "type": "string",
               "minLength": 1
+            },
+            "uid": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "gid": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            },
+            "credential": {
+              "$ref": "#/$defs/ResolvedGrant"
+            },
+            "egress": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EgressPeer"
+              }
             }
           },
           "required": [
-            "image"
+            "image",
+            "uid",
+            "gid",
+            "port",
+            "credential",
+            "egress"
           ],
           "additionalProperties": false
         },
@@ -2967,13 +3009,30 @@
             "retention": {
               "type": "string",
               "minLength": 1
+            },
+            "memory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "cpu": {
+              "type": "string",
+              "minLength": 1
             }
           },
           "required": [
             "timeout",
-            "retention"
+            "retention",
+            "memory",
+            "cpu"
           ],
           "additionalProperties": false
+        },
+        "server": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DestinationRange"
+          }
         },
         "phase": {
           "$ref": "#/$defs/MoveStep"

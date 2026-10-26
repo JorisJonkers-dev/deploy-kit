@@ -832,10 +832,13 @@ repository; an engine whose reverse direction has not been rehearsed says
 `never`, which costs a rollback its replication and nothing else.
 
 What the method image is handed is fixed, as a backup method's is: the step it
-performs as `MOVE_STEP` (`sync`, `lag`, `fence`, `unfence`, `reverse`, `retire`),
-the source and target Instances' hosts and the engine's `surface` port as
-`MOVE_SOURCE_HOST`, `MOVE_TARGET_HOST` and `MOVE_PORT`, and the keys of the
-credential it logs in with as variables. That credential is derived, one per
+performs as `MOVE_STEP` (`start`, `sync`, `lag`, `fence`, `flip`, `unfence`,
+`reverse`; the final lag is a second `lag`), the source and target Instances'
+hosts and the engine's `surface` port as `MOVE_SOURCE_HOST`,
+`MOVE_TARGET_HOST` and `MOVE_PORT`, the Stable Addresses the flip updates and
+their namespace as `MOVE_FLIPS`, comma-joined, and `MOVE_FLIP_NAMESPACE`, and
+where it logs in to the Secret Store as `VAULT_ADDR`, `VAULT_ROLE` and
+`VAULT_CREDENTIALS_PATH`, the path of the credential it logs in with. That credential is derived, one per
 Process with an open Move, the Secret Store's
 `secret/data/<project>/<process>/move`, held by the move identity alone
 ([chapter 16](16-dependencies.md#process-identity)); the platform's operator
@@ -1064,15 +1067,19 @@ facts, all the platform's:
 - **`move`** bounds a [Move](55-delivery.md#moves): `timeout`, how long the
   steps from the fence to the unfence may take before the gate puts the source
   back, and `retention`, how long the source Instance is kept, with reverse
-  replication running, once the flip has held. Both are the platform's: the
-  write pause a timeout allows and the storage a retention costs are estate
-  decisions, not an Application's.
+  replication running, once the flip has held. `memory` and `cpu` are what
+  each of its step Jobs requests, the method being a client of the engine
+  rather than the engine. All four are the platform's: the write pause a
+  timeout allows and the storage a retention costs are estate decisions, not
+  an Application's.
 
 ```yaml
 delivery:
   move:
     timeout: 300s
     retention: 7d
+    memory: 128Mi
+    cpu: 100m
 ```
 
 A platform that omits `move` offers no Move: a change that derives one is
@@ -1496,6 +1503,8 @@ classDiagram
     class MovePolicy {
         +Duration timeout
         +Duration retention
+        +Quantity memory
+        +Quantity cpu
     }
     class AnalysisPolicy {
         +Duration interval

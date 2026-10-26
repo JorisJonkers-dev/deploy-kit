@@ -236,11 +236,14 @@ delivery:
     threshold: 3
     errorRate: 1%
     latency: 500ms
-  # A Move's write pause may last five minutes, and its source is kept a week
-  # once the flip has held (spec/v1/14-platform-intent.md#delivery-policy).
+  # A Move's write pause may last five minutes, its source is kept a week once
+  # the flip has held, and each of its step Jobs is a small client
+  # (spec/v1/14-platform-intent.md#delivery-policy).
   move:
     timeout: 300s
     retention: 7d
+    memory: 128Mi
+    cpu: 100m
 
 # Who may hold Kubernetes API access, and where the API answers
 # (spec/v1/14-platform-intent.md#kubernetes-api-access). A Process declares

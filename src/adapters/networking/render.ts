@@ -164,7 +164,8 @@ function policyOf(
   // mesh rewrites them to. A client off the cluster never arrives through the
   // mesh tunnel, so its rule carries none.
   const probes = mesh === undefined ? [] : probeRulesOf(process, mesh);
-  const ingress = [...admitted, ...l4, ...probes];
+  const moving = moveRulesOf(process, application);
+  const ingress = [...admitted, ...l4, ...probes, ...moving.ingress];
   // A missing list and an empty one admit the same nothing.
   // Stryker disable next-line ArrayDeclaration
   const edges = (process.dependencies ?? []).flatMap((edge) =>
@@ -256,12 +257,93 @@ function policyOf(
         ...edges,
         ...spawned,
         ...baseline,
+        ...moving.egress,
         ...upstream,
         ...api,
         ...internet,
       ],
     },
   };
+}
+
+/**
+ * What an open Move admits between a Process's Instances and its step Jobs
+ * (spec/v1/16-dependencies.md#the-derived-allow-set): every Instance carries
+ * the Process's label, so one rule reaches both. The Jobs reach every
+ * Instance on the engine's surface, and each Instance reaches the other on
+ * it, wherever the method syncs from.
+ */
+function moveRulesOf(
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): {
+  ingress: { from: PolicyPeer[]; ports: PolicyPort[] }[];
+  egress: { to: PolicyPeer[]; ports: PolicyPort[] }[];
+} {
+  const method = process.move?.method;
+  if (method === undefined) return { ingress: [], egress: [] };
+  const ports = portsOf(method.port, application.mesh);
+  const instances = method.egress
+    .filter(({ rule }) => rule === "datastore")
+    .map((peer) => peerOf(peer.namespace, peer.process));
+  return {
+    ingress: [
+      {
+        from: [
+          peerOf(
+            application.namespace,
+            (process.move as NonNullable<ResolvedProcess["move"]>).identity,
+          ),
+          ...instances,
+        ],
+        ports,
+      },
+    ],
+    egress: [{ to: instances, ports }],
+  };
+}
+
+/**
+ * The move identity's own policy: what its Jobs reach, the Instances on the
+ * engine's surface, the store and the cluster's DNS, and where the
+ * Kubernetes API answers, which the flip writes to; and nothing in.
+ */
+function movePolicyOf(
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): NetworkPolicy[] {
+  const move = process.move;
+  if (move?.method === undefined) return [];
+  return [
+    {
+      apiVersion: "networking.k8s.io/v1",
+      kind: "NetworkPolicy",
+      metadata: {
+        name: move.identity,
+        namespace: application.namespace,
+        labels: labelsOf(
+          { name: move.identity, runtime: "none" },
+          application.id,
+        ),
+      },
+      spec: {
+        podSelector: { matchLabels: instanceOf(move.identity) },
+        policyTypes: ["Ingress", "Egress"],
+        egress: [
+          ...move.method.egress.map((peer) => ({
+            to: [peerOf(peer.namespace, peer.process)],
+            ports: egressPortsOf(peer, application.mesh),
+          })),
+          // A platform that says where the API answers is one a flip reaches.
+          // Stryker disable next-line ArrayDeclaration
+          ...(move.server ?? []).map(({ cidr, port }) => ({
+            to: [{ ipBlock: { cidr } }],
+            ports: [tcp(port)],
+          })),
+        ],
+      },
+    },
+  ];
 }
 
 type Spawn = NonNullable<ResolvedProcess["spawns"]>[number];
@@ -501,6 +583,7 @@ export function renderNetworking(project: ResolvedProject): Deliverable[] {
             spawnPolicyOf(process, spawn, application),
           ),
           ...backupPoliciesOf(process, application),
+          ...movePolicyOf(process, application),
         ]),
         ...migrationPoliciesOf(application),
       ],

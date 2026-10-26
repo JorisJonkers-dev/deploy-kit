@@ -4663,10 +4663,7 @@ ${extra}`);
       refused(
         moving("        rollback: forward-only\n", SOURCE, {
           platform: (document) =>
-            document.replace(
-              /\n {2}move:\n {4}timeout: [^\n]*\n {4}retention: [^\n]*\n/,
-              "\n",
-            ),
+            document.replace(/\n {2}move:\n(?: {4}[^\n]*\n)+/, "\n"),
         }),
       ),
     ).toStrictEqual([
@@ -4685,7 +4682,7 @@ ${extra}`);
       refused(
         moving(
           "        rollback: forward-only\n",
-          `${SOURCE}, phase: lag, target: {version: 17.1.0, namespace: notes-system}`,
+          `${SOURCE}, phase: lag, target: {name: store-0123456789ab, version: 17.1.0, namespace: notes-system}`,
         ),
       ),
     ).toStrictEqual([
@@ -4702,7 +4699,7 @@ ${extra}`);
       codes(
         moving(
           "        rollback: forward-only\n",
-          `${SOURCE}, phase: sync, target: {version: 17.2.0, namespace: storage-system}`,
+          `${SOURCE}, phase: sync, target: {name: store-0123456789ab, version: 17.2.0, namespace: storage-system}`,
         ),
       ),
     ).toStrictEqual(["E_MOVE_OPEN"]);
@@ -4711,7 +4708,7 @@ ${extra}`);
       moveOf(
         moving(
           "        rollback: forward-only\n",
-          `${SOURCE}, phase: lag, target: {version: 17.2.0, namespace: notes-system}`,
+          `${SOURCE}, phase: lag, target: {name: store-0123456789ab, version: 17.2.0, namespace: notes-system}`,
         ),
       )?.phase,
     ).toBe("lag");
@@ -4732,6 +4729,118 @@ ${extra}`);
       reversible: true,
     });
     expect(move).not.toHaveProperty("method");
+  });
+
+  it("carries what its Jobs run, hold and reach, and what bounds them", () => {
+    const move = moveOf(moving("        rollback: forward-only\n"));
+
+    expect(move?.source.instance).toBe("store");
+    // Beside its source, the target is named by the release that renders it.
+    expect(move?.target).not.toHaveProperty("instance");
+    expect(move?.bounds).toStrictEqual({
+      timeout: "300s",
+      retention: "7d",
+      memory: "128Mi",
+      cpu: "100m",
+    });
+    expect(move?.server?.length).toBeGreaterThan(0);
+    expect(move?.method).toMatchObject({
+      uid: expect.any(Number) as number,
+      gid: expect.any(Number) as number,
+      port: 5432,
+      credential: {
+        path: "secret/data/notes/store/move",
+        access: "read",
+        delivery: "self",
+      },
+    });
+    expect(
+      move?.method?.egress.map(({ rule, namespace, process, port }) => [
+        rule,
+        namespace,
+        process,
+        port,
+      ]),
+    ).toStrictEqual([
+      ["datastore", "notes-system", "store", 5432],
+      ["secret-store", "secrets-system", "vault", 8200],
+      ["cluster-dns", "kube-system", undefined, 53],
+    ]);
+  });
+
+  it("names the Secret Store for an Application whose Move logs in with a credential", () => {
+    const storeOf = (result: ReturnType<typeof resolve>) =>
+      result.ok
+        ? result.value.projects.find(({ project }) => project === "notes")
+            ?.applications[0]?.secretStore
+        : undefined;
+
+    // A volume nothing backs up holds no credential of its own.
+    const unbacked = (version: string, extra = "") =>
+      resolve(
+        store(extra).replace(
+          "durability: recoverable",
+          "durability: reconstructible",
+        ),
+        { lock: versioned(version), foundation: recorded(SOURCE) },
+      );
+    const still = unbacked("16.4.0");
+
+    expect(
+      storeOf(unbacked("17.2.0", "        rollback: forward-only\n")),
+    ).toBe("http://vault.secrets-system.svc.cluster.local:8200");
+    expect(still.ok).toBe(true);
+    expect(storeOf(still)).toBeUndefined();
+  });
+
+  it("names its target as the gate recorded it, and keeps the Process's name in a namespace of its own", () => {
+    const recordedTarget = moveOf(
+      moving(
+        "        rollback: forward-only\n",
+        `${SOURCE}, phase: sync, target: {name: store-0123456789ab, version: 17.2.0, namespace: notes-system}`,
+      ),
+    );
+    const elsewhere = moveOf(
+      resolve(store("        rollback: forward-only\n"), {
+        lock: versioned("17.2.0"),
+        foundation: recorded(
+          "version: 16.4.0, namespace: old-system, node: enschede-t1000-1",
+        ),
+      }),
+    );
+
+    expect(recordedTarget?.target.instance).toBe("store-0123456789ab");
+    expect(elsewhere?.target.instance).toBe("store");
+    // Both Instances, wherever each runs, on the engine's surface.
+    expect(
+      elsewhere?.method?.egress
+        .filter(({ rule }) => rule === "datastore")
+        .map(({ namespace }) => namespace),
+    ).toStrictEqual(["old-system", "notes-system"]);
+  });
+
+  it("serves under the target's name once its flip has held, and under the recorded one before", () => {
+    const serving = (instance: string, capturedAt?: string) => {
+      const result = resolve(store(), {
+        lock: versioned("16.4.0"),
+        foundation: recorded(instance, capturedAt),
+      });
+      return result.ok
+        ? result.value.projects.find(({ project }) => project === "notes")
+            ?.applications[0]?.processes[0]
+        : undefined;
+    };
+
+    expect(serving(SOURCE)).not.toHaveProperty("instance");
+    expect(serving(`name: store-aaaaaaaaaaaa, ${SOURCE}`)?.instance).toBe(
+      "store-aaaaaaaaaaaa",
+    );
+    expect(
+      serving(
+        `${SOURCE}, phase: retire, flippedAt: "2026-09-01T00:00:00Z", target: {name: store-0123456789ab, version: 16.4.0, namespace: notes-system}`,
+        "2026-09-30T00:00:00Z",
+      )?.instance,
+    ).toBe("store-0123456789ab");
   });
 
   it("retires once its flip has held past the retention, and derives nothing more", () => {
@@ -4772,6 +4881,31 @@ ${serving("notes-store").replace("provides: { http: 8080 }", "provides: { store:
       port: 7000,
       consumers: ["notes"],
     });
+  });
+
+  it("targets where ClusterState records the surface's Instance serving, and its target once the flip has held", () => {
+    const target = (instance: string) => {
+      const result = resolve(consumer, {
+        foundation: (name, body) =>
+          name === "platform/cluster-state.yml"
+            ? `${body}instances:\n  - {application: notes-store, instance: notes-store, ${instance}}\n`
+            : body,
+      });
+      return (result.ok ? result.value.stableAddresses : []).find(
+        ({ name }) => name === "notes-store-store",
+      )?.target;
+    };
+    const SERVING =
+      "version: 1.4.0, namespace: notes-system, node: enschede-t1000-1";
+    const OPEN = `${SERVING}, phase: unfence, target: {name: notes-store-0123456789ab, version: 1.4.0, namespace: notes-system}`;
+
+    expect(target(`name: notes-store-aaaaaaaaaaaa, ${SERVING}`)).toBe(
+      "notes-store-aaaaaaaaaaaa.notes-system.svc.cluster.local",
+    );
+    expect(target(OPEN)).toBe("notes-store.notes-system.svc.cluster.local");
+    expect(target(`${OPEN}, flippedAt: "2026-09-30T00:00:00Z"`)).toBe(
+      "notes-store-0123456789ab.notes-system.svc.cluster.local",
+    );
   });
 
   it("is not derived for a surface nothing names", () => {
