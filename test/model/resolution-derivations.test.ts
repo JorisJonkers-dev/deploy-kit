@@ -4488,7 +4488,7 @@ describe("a Process's Kubernetes API access", () => {
       one(
         serving(
           "notes-api",
-          "        api:\n          reason: it keeps its sessions beside itself\n          rules:\n            - { group: core, objects: [configmaps], verbs: [create], scope: namespace }\n            - { group: core, objects: [nodes], verbs: [get] }\n",
+          "        api:\n          reason: it keeps its sessions beside itself\n          rules:\n            - { group: core, objects: [configmaps], verbs: [create], scope: namespace }\n            - { group: core, objects: [nodes, namespaces], verbs: [get] }\n",
         ),
       ),
       { platform: local },
@@ -4499,9 +4499,19 @@ describe("a Process's Kubernetes API access", () => {
         ? []
         : refused.diagnostics
             .filter(({ document }) => document === "minimal/notes.project.yml")
-            .map(({ code, path }) => [code, path]),
+            .map(({ code, path, message, hint }) => [
+              code,
+              path,
+              message,
+              hint,
+            ]),
     ).toStrictEqual([
-      ["E_PROCESS_RBAC_GRANT", "/applications/0/processes/0/api/rules/1"],
+      [
+        "E_PROCESS_RBAC_GRANT",
+        "/applications/0/processes/0/api/rules/1",
+        "notes-api asks the whole cluster for nodes, namespaces, and the platform admits the Application notes only to its own namespace",
+        "Scope the rule `namespace`, or name the Application in the Platform document's `apiAccess.holders` instead of `namespaceHolders`.",
+      ],
     ]);
   });
 
