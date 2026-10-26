@@ -45,7 +45,7 @@ import { resolveL4Exposure } from "./l4-exposure.ts";
 import { l4ExposuresOf, l4HoldOf } from "../model/l4-addresses.ts";
 import { managed } from "./database.ts";
 import { resolveMigration } from "./migration.ts";
-import { egressOf, ingressOf } from "./policy.ts";
+import { egressOf, gateEgressOf, gateIngressOf, ingressOf } from "./policy.ts";
 import { resolveProcess, type ProcessContext } from "./process.ts";
 
 /** An Application's element: the projection without its document header and provenance. */
@@ -515,7 +515,6 @@ export function resolveApplication(
     // claim, egress and token, before anything reads the Process.
     const derived = deriveProxy(authored, application, context);
     const { process } = derived;
-    const ingress = ingressOf(process, application, context);
     const clientGrants = [
       ...clientGrantsOf(process, application, context),
       ...derived.grants,
@@ -538,6 +537,14 @@ export function resolveApplication(
       ],
       held: l4HoldOf(exposures, context.platform),
     });
+    // A blue-green Process that publishes readiness is a gate member, and
+    // admits the gate's own requests.
+    const member =
+      base.switchover === "blue-green" && readinessOf(process) !== undefined;
+    const ingress = [
+      ...ingressOf(process, application, context),
+      ...gateIngressOf(base, member, context),
+    ];
     return {
       process,
       resolved: {
@@ -545,7 +552,10 @@ export function resolveApplication(
         ...(l4Exposure.length === 0 ? {} : { l4Exposure }),
         ...withEnvironment(base, derived.environment),
         ...(ingress.length === 0 ? {} : { ingress }),
-        egress: egressOf(process, context, clientGrants.length > 0),
+        egress: [
+          ...egressOf(process, context, clientGrants.length > 0),
+          ...gateEgressOf(application, context),
+        ],
       },
     };
   });

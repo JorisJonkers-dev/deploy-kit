@@ -33,7 +33,7 @@ spec:
         metadata:
           application: alertmanager
           process: alertmanager
-          revision: sha256:cd18d9280f84cf0a015bff0cdbd9f5cb56089945057811df6b9d2d19593780b2
+          revision: sha256:d9f557e6af7f39728e3985f209dbcdb62583cae345612e85f262db489819262f
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms
@@ -43,7 +43,7 @@ spec:
         metadata:
           application: alertmanager
           process: alertmanager
-          revision: sha256:cd18d9280f84cf0a015bff0cdbd9f5cb56089945057811df6b9d2d19593780b2
+          revision: sha256:d9f557e6af7f39728e3985f209dbcdb62583cae345612e85f262db489819262f
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms
@@ -53,7 +53,7 @@ spec:
         metadata:
           application: alertmanager
           process: alertmanager
-          revision: sha256:cd18d9280f84cf0a015bff0cdbd9f5cb56089945057811df6b9d2d19593780b2
+          revision: sha256:d9f557e6af7f39728e3985f209dbcdb62583cae345612e85f262db489819262f
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms

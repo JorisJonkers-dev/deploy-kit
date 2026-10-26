@@ -524,6 +524,8 @@ producer.
 | from the route tier carrying the audience | a route on the Application's `exposure` naming this Process | ingress |
 | from the metrics stack, to the scrape port | the Process's `scrape` surface | ingress |
 | from the Process's own backup identity, to the surface its backups dump | the surface the Platform document's `engines` names for the Process's `engine` | ingress |
+| from the Release Gate, to a gate member's first surface | the Process being a member of its Application's release-gate inputs ([chapter 20](20-resolved-deployment.md#the-release-gate)), and the Platform document's `delivery.gate` naming the gate: every Process of the gate, on the port the member's Canary service targets, where the gate's own requests arrive ([chapter 55](55-delivery.md#the-release-gate)) | ingress |
+| to every pod carrying the member label, on any port | every Process of the Application the Platform document's `delivery.gate` names ([The member label](#the-member-label)) | egress |
 | from Flux's notification controller, to the Reporter's `http` surface | the Platform document's `delivery.reporter` naming the Application ([chapter 14](14-platform-intent.md#delivery-policy)): the first of its Processes that provides the surface, and no other. The peer is in the namespace `bootstrap.flux.sourceRef` names and is selected by the `app` label Flux's own install gives the controller, because Flux is in the bootstrap set and no Process, so nothing renders a label for it | ingress |
 | to where the Kubernetes API answers, by address | the Process's `api`, and the Platform document's `apiAccess.server` ([Kubernetes API access is declared and admitted](#kubernetes-api-access-is-declared-and-admitted)) | egress |
 | between a provider's Instances, on the surface its engine's move method syncs over | an open Move of the provider ([chapter 55](55-delivery.md#moves)): from the target Instance to the source while the sync runs, and back while reverse replication runs | egress and ingress |
@@ -575,6 +577,24 @@ A label's name is at most 63 characters of letters, digits, `-`, `_` and `.`,
 starting and ending with a letter or digit. An Application whose id, joined by a
 dot to a surface one of its Processes provides, is no label name is refused at
 that Process as soon as the fragment is read: `E_SURFACE_LABEL_INVALID`.
+
+### The member label
+
+The Release Gate reaches every gate member without naming one. The pods of every
+member, a Process its Application's release-gate inputs name, carry
+`gated.deploy-kit.jorisjonkers.dev/release-gate: "true"`. The gate's policy
+admits egress to every pod carrying it, in any namespace labelled
+`app.kubernetes.io/managed-by: deploy-kit`, on any port, and each member's
+policy admits the gate on the one port its Canary service targets, the port of
+its first surface. The gate's rule reads no Project's Processes, and a member's
+rule reads the Platform document's `delivery.gate` alone, so a member added,
+changed or removed changes its own share and never the gate's
+([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
+
+The gate's rule names no port because members serve on many and no one fact of
+the delivery Project holds them; the member's own ingress is what bounds it. The
+label is rendered only on a Process the release-gate inputs name, on pod
+templates only, never in a selector, the same trust as the consumer label's.
 
 ### The baseline
 

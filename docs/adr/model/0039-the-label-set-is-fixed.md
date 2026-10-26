@@ -95,6 +95,14 @@ provider's render. It is on pod templates only, derived from an edge and
 never authored, and never a workload's selector, so an edge added or removed
 changes a template and nothing immutable.
 
+**The member label is the same case, in the other direction.** Every gate
+member's pods carry `gated.deploy-kit.jorisjonkers.dev/release-gate`, which the
+Release Gate's NetworkPolicy reaches
+([0035](0035-network-policy-is-default-deny-and-render-only.md)). Naming each
+member in the gate's policy would put every gated Application into the delivery
+Project's render. It is on pod templates only, derived from the release-gate
+inputs, and never a selector.
+
 ## Alternatives
 | option | cost if taken | why rejected |
 |---|---|---|

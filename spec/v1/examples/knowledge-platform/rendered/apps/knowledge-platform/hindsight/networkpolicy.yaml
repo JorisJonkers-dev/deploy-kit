@@ -39,6 +39,16 @@ spec:
       ports:
         - protocol: TCP
           port: 8888
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: delivery-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: release-gate
+      ports:
+        - protocol: TCP
+          port: 8888
   egress:
     - to:
         - namespaceSelector:
@@ -190,6 +200,16 @@ spec:
           podSelector:
             matchLabels:
               consumes.deploy-kit.jorisjonkers.dev/hindsight.console: "true"
+      ports:
+        - protocol: TCP
+          port: 3000
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: delivery-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: release-gate
       ports:
         - protocol: TCP
           port: 3000

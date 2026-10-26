@@ -70,6 +70,7 @@ export const INGRESS_RULES = [
   "metrics-stack",
   "backup",
   "flux-events",
+  "release-gate",
 ] as const;
 
 /** Which rule admits an outbound peer beyond an edge: the baseline, or a grant. */
@@ -278,6 +279,13 @@ const egressPeer = z
     port,
   })
   .meta({ id: "EgressPeer" });
+
+// Every gate member's pods, wherever they run, on any port: what the Release
+// Gate's own requests reach (spec/v1/16-dependencies.md#the-member-label). The
+// member's own policy names the port it admits them on.
+const gateMembersPeer = z
+  .strictObject({ rule: z.literal("gate-members") })
+  .meta({ id: "GateMembersPeer" });
 
 // An address range a policy admits by address, on one port, because no
 // namespace or pod is the peer: where an off-cluster copy goes
@@ -672,7 +680,7 @@ const resolvedProcess = stated(
     surfaces: z.array(resolvedSurface).exactOptional(),
     l4Exposure: z.array(resolvedL4Exposure).exactOptional(),
     ingress: z.array(ingressPeer).exactOptional(),
-    egress: z.array(egressPeer).exactOptional(),
+    egress: z.array(z.union([egressPeer, gateMembersPeer])).exactOptional(),
   }),
   "ResolvedProcess",
   switchoverFollowsCutover,
@@ -1169,6 +1177,8 @@ export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;
 export type ResolvedPolicyJob = z.output<typeof resolvedPolicyJob>;
 export type ResolvedDashboards = z.output<typeof resolvedDashboards>;
 export type ResolvedCatalogJob = z.output<typeof resolvedCatalogJob>;
+/** An outbound peer named by namespace, and by Process where one Process is the peer. */
+export type EgressPeer = z.output<typeof egressPeer>;
 export type ResolvedEvents = z.output<typeof resolvedEvents>;
 export type ResolvedApplicationDocument = z.output<
   typeof resolvedApplicationDocument

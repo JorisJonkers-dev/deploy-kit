@@ -972,6 +972,58 @@ describe("renderIntentSet", () => {
     ]);
   });
 
+  // deploy-kit#602: only a member's pods carry the label the gate's policy
+  // reaches; a blue-green Process that publishes no readiness is no member.
+  it("labels a gate member's pods for the Release Gate, and no other Process's", () => {
+    const worker = `    processes:
+      - name: notes-worker
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        provides: { http: 8081 }
+        placement: { memory: 64Mi, cpu: 10m }
+        probes: none
+        startupBudget: 20s
+        cutover: continuous
+`;
+    const tree = asTree(
+      artifact(
+        render({
+          "minimal/notes.project.yml": (document) =>
+            document.replace("    processes:\n", worker),
+        }),
+        "notes",
+      ),
+    );
+    const podLabels = Object.fromEntries(
+      parseAllDocuments(tree["apps/notes/notes/workload.yaml"] ?? "")
+        .map((document) => document.toJS() as unknown)
+        .filter(
+          (
+            object,
+          ): object is {
+            kind: string;
+            metadata: { name: string };
+            spec: {
+              template: { metadata: { labels: Record<string, string> } };
+            };
+          } => (object as { kind?: string } | null)?.kind === "Deployment",
+        )
+        .map(({ metadata, spec }) => [
+          metadata.name,
+          spec.template.metadata.labels,
+        ]),
+    );
+    const member = "gated.deploy-kit.jorisjonkers.dev/release-gate";
+
+    expect(Object.keys(podLabels).sort()).toStrictEqual([
+      "notes-api",
+      "notes-worker",
+    ]);
+    expect(podLabels["notes-api"]?.[member]).toBe("true");
+    expect(podLabels["notes-worker"]?.[member]).toBeUndefined();
+  });
+
   it("puts a path under estate/ in the _estate artifact, and a Project named for an estate directory in its own", () => {
     const result = renderIntentSet(files(), {
       ...OPTIONS,
@@ -2992,6 +3044,54 @@ describe("a tier's proxy", () => {
       selector: { "app.kubernetes.io/instance": "traefik-lan" },
       ports: [{ name: "tcp-80", port: 80, protocol: "TCP", targetPort: 8000 }],
     });
+  });
+});
+
+// REQ-100 (docs/requirements.md): a route takes its TLS from its tier: on an
+// acme tier the resolver named for the tier, on a tls tier that issues none the
+// certificate the proxy already holds, and on a plain tier none at all.
+describe("a route's TLS", () => {
+  const tlsOf = (edit?: (platform: string) => string) => {
+    const tree = asTree(
+      artifact(
+        render(
+          edit === undefined ? {} : { "platform/platform.intent.yml": edit },
+          ["data"],
+        ),
+        "data",
+      ),
+    );
+    return Object.fromEntries(
+      ["route-management", "route-lan"].map((route) => [
+        route,
+        (
+          parseAllDocuments(
+            tree[`apps/data/platform-rabbitmq/${route}.yaml`] ?? "",
+          )[0]?.toJS() as { spec: { tls?: unknown } }
+        ).spec.tls,
+      ]),
+    );
+  };
+
+  it("names its acme tier's own resolver, and none on a plain tier", () => {
+    expect(tlsOf()).toStrictEqual({
+      "route-management": { certResolver: "public-frankfurt" },
+      "route-lan": undefined,
+    });
+  });
+
+  it("terminates TLS with no resolver on a tls tier that issues none", () => {
+    expect(
+      tlsOf((platform) =>
+        platform
+          .replace(
+            "listener: plain\n    certificates: none",
+            "listener: tls\n    certificates: none",
+          )
+          // The LAN proxy provides no websecure, so the tier names no address.
+          .replace(/\n {4}address: lan-edge[^\n]*/, ""),
+      )["route-lan"],
+    ).toStrictEqual({});
   });
 });
 // REQ-091 (docs/requirements.md): a tier's proxy takes its static

@@ -35,6 +35,11 @@ export const consumerLabelsOf = (consumes: readonly string[]): Labels =>
 /** The prefix of every consumer label (spec/v1/16-dependencies.md#the-consumer-label). */
 export const CONSUMER_LABEL = "consumes.deploy-kit.jorisjonkers.dev/";
 
+/** The label every gate member's pods carry, which the Release Gate's policy admits (spec/v1/16-dependencies.md#the-member-label). */
+export const MEMBER_LABEL = {
+  "gated.deploy-kit.jorisjonkers.dev/release-gate": "true",
+} as const;
+
 /** The selector every rendered object but a disruption budget uses. */
 export const instanceOf = (process: string): Labels => ({
   "app.kubernetes.io/instance": process,

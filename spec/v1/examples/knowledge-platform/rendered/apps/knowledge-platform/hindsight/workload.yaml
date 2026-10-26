@@ -32,6 +32,7 @@ spec:
         app.kubernetes.io/component: python
         consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
         consumes.deploy-kit.jorisjonkers.dev/hindsight-embedding.embeddings: "true"
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
       annotations:
         image.jorisjonkers.dev/hindsight-api: 0.4.0
     spec:
@@ -309,6 +310,7 @@ spec:
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: node
         consumes.deploy-kit.jorisjonkers.dev/hindsight.api: "true"
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
       annotations:
         image.jorisjonkers.dev/hindsight-control-plane: 0.4.0
     spec:

@@ -34,6 +34,7 @@ spec:
         consumes.deploy-kit.jorisjonkers.dev/platform-valkey.redis: "true"
         consumes.deploy-kit.jorisjonkers.dev/platform-rabbitmq.amqp: "true"
         consumes.deploy-kit.jorisjonkers.dev/stalwart.smtp: "true"
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
       annotations:
         image.jorisjonkers.dev/auth-api: 2.3.0
     spec:
@@ -177,6 +178,7 @@ spec:
         app.kubernetes.io/part-of: auth
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: static
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
       annotations:
         image.jorisjonkers.dev/auth-ui: 2.3.0
     spec:

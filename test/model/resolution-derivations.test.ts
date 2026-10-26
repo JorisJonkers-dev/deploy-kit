@@ -1804,9 +1804,10 @@ describe("what a grant derives", () => {
 
   it("admits the Secret Store's http surface to a Process that holds a grant, and to no other", () => {
     const rules = (applications: string) =>
-      processOf(applications).egress?.map(
-        ({ rule, namespace, process, port }) =>
-          `${rule} ${namespace} ${process ?? "*"} ${String(port)}`,
+      processOf(applications).egress?.map((peer) =>
+        peer.rule === "gate-members"
+          ? peer.rule
+          : `${peer.rule} ${peer.namespace} ${peer.process ?? "*"} ${String(peer.port)}`,
       );
 
     expect(rules(granted(SELF))).toStrictEqual([
@@ -3011,9 +3012,16 @@ ${serving("notes-api")}`,
   });
 });
 
+/** Every peer but the gate's own, which every member admits and its own block tests. */
+const beyondTheGate = <T extends { readonly rule: string }>(
+  peers: readonly T[] | undefined,
+): T[] | undefined => peers?.filter(({ rule }) => rule !== "release-gate");
+
 describe("the peers a policy admits", () => {
   const ingressOf = (all: ResolvedProject[], project: string, index = 0) =>
-    projectNamed(all, project).applications[0]?.processes[index]?.ingress;
+    beyondTheGate(
+      projectNamed(all, project).applications[0]?.processes[index]?.ingress,
+    );
   /** The peers a policy names by namespace and Process: every one but a consumer's. */
   const named = (all: ResolvedProject[], project: string, index = 0) =>
     ingressOf(all, project, index)?.filter(({ rule }) => rule !== "consumer");
@@ -3066,11 +3074,13 @@ ${serving("notes-other").replace("provides: { http: 8080 }", "provides: { store:
       projectNamed(all, "notes").applications[0]?.processes ?? [];
     const store = projectNamed(all, "notes").applications[1]?.processes[0];
     const other = projectNamed(all, "notes").applications[2]?.processes[0];
-    expect(store?.ingress).toStrictEqual([
+    expect(beyondTheGate(store?.ingress)).toStrictEqual([
       consumer("notes-store.store", 7000),
       consumer("notes-store.http", 8080),
     ]);
-    expect(other?.ingress).toStrictEqual([consumer("notes-other.store", 7000)]);
+    expect(beyondTheGate(other?.ingress)).toStrictEqual([
+      consumer("notes-other.store", 7000),
+    ]);
     expect(api?.consumes).toStrictEqual(["notes-store.store"]);
     expect(web?.consumes).toBeUndefined();
   });
@@ -3150,15 +3160,63 @@ ${serving("notes-api")}${serving("notes-web")}`);
       projectNamed(all, "notes").applications[0]?.processes ?? [];
 
     expect(
-      api?.ingress?.flatMap((peer) =>
+      beyondTheGate(api?.ingress)?.flatMap((peer) =>
         peer.rule === "consumer" ? [] : [peer.process],
       ),
     ).toStrictEqual(["traefik-public"]);
     expect(
-      web?.ingress?.flatMap((peer) =>
+      beyondTheGate(web?.ingress)?.flatMap((peer) =>
         peer.rule === "consumer" ? [] : [peer.process],
       ),
     ).toStrictEqual(["traefik-lan"]);
+  });
+});
+
+// deploy-kit#602: the gate's own requests reach a member's new copy, and
+// neither half names the other's Project.
+describe("the Release Gate's own requests", () => {
+  const fromTheGate = (port: number) => ({
+    rule: "release-gate",
+    namespace: "delivery-system",
+    process: "release-gate",
+    port,
+  });
+  const gated = (peers: readonly { readonly rule: string }[] | undefined) =>
+    peers?.filter(({ rule }) => rule === "release-gate");
+
+  it("admits the gate on the first surface of every member, and on no Process that is none", () => {
+    const all = projects(`  - id: notes
+    processes:
+${serving("notes-api").replace("provides: { http: 8080 }", "provides: { web: 3000, http: 8080 }")}${serving("notes-web")}  - id: notes-batch
+    processes:
+${serving("notes-batch").replace("cutover: continuous", "cutover: interrupted")}`);
+    const [api, web] =
+      projectNamed(all, "notes").applications[0]?.processes ?? [];
+    const batch = projectNamed(all, "notes").applications[1]?.processes[0];
+
+    expect(gated(api?.ingress)).toStrictEqual([fromTheGate(3000)]);
+    expect(gated(web?.ingress)).toStrictEqual([fromTheGate(8080)]);
+    // A stop-start Process is no member: Flagger never switches it.
+    expect(batch?.switchover).toBe("stop-start");
+    expect(gated(batch?.ingress)).toStrictEqual([]);
+  });
+
+  it("reaches every member from the gate's own Processes, and from nothing else", () => {
+    const all = projects(`  - id: notes
+    processes:
+${serving("notes-api")}`);
+    const reaches = (project: string, id: string) =>
+      projectNamed(all, project)
+        .applications.find((candidate) => candidate.id === id)
+        ?.processes.flatMap(({ egress }) =>
+          (egress ?? []).filter(({ rule }) => rule === "gate-members"),
+        );
+
+    expect(reaches("delivery", "release-gate")).toStrictEqual([
+      { rule: "gate-members" },
+    ]);
+    expect(reaches("delivery", "flagger")).toStrictEqual([]);
+    expect(reaches("notes", "notes")).toStrictEqual([]);
   });
 });
 

@@ -27,4 +27,4 @@ spec:
           namespace: notes-system
           port: 8080
   tls:
-    certResolver: acme
+    certResolver: public-frankfurt

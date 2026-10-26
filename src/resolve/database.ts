@@ -8,12 +8,12 @@ import type {
   EffectiveProject,
 } from "../model/effective-intent.ts";
 import { ownsDatabases } from "../model/project-intent-queries.ts";
-import type { ResolvedProcess } from "../model/resolved-deployment.ts";
+import type { EgressPeer } from "../model/resolved-deployment.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { homeOf } from "../model/runtime-profiles.ts";
 import { consumedOf } from "../model/consumer-label.ts";
 
-type Egress = NonNullable<ResolvedProcess["egress"]>[number];
+type Egress = EgressPeer;
 
 /** Whether an Application moves its schema with a changelog the platform's runner applies. */
 export const managed = (application: EffectiveApplication): boolean =>
