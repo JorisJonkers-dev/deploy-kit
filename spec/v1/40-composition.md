@@ -294,14 +294,25 @@ its [Stable Address](16-dependencies.md#the-stable-address).
 
 The old Project keeps rendering the source Instance until the Move retires it,
 so it may not stop declaring the Application while the Move is open: a fragment
-of it that does is `E_MOVE_OPEN`, and is isolated like any refused Project
+of it that does, while another Project declares the Application and its source
+still serves from the old Project's namespace, is `E_MOVE_OPEN`, and is isolated
+like any refused Project
 ([A refused Project is isolated](#a-refused-project-is-isolated)), keeping its
-source Instance rendered. Once the source is retired, the old Project's
-declaration renders nothing; the next fragment that Project publishes must have
-removed it, and one that still declares it is `E_DUPLICATE_APPLICATION_ID`.
-Two Projects declaring one Id when neither namespace holds the active Instance,
-or when no Instance is active yet, is the ambiguity the invariant exists to
-refuse.
+source Instance rendered. Its declaration resolves against the union as it
+stood before the Move, marked `departing` in layer 2
+([chapter 20](20-resolved-deployment.md#the-move)), and renders only what keeps
+the source serving: its Processes' workloads, created once so the render never
+rewrites them, their Services, claims, grants and policies. Its routes, Client,
+alerts, dashboards and migration are the target's alone. Every consumer's
+policy reaches the provider in both namespaces until the source retires.
+
+Once the source is retired, the old Project's declaration renders nothing, and
+its next release removes it. A Project left with no other Application keeps its
+namespace, where the retired source's claim stays bound until it is deleted by
+hand. Two Projects declaring one Id when neither namespace holds the active
+Instance, or when no Instance is active yet, is the ambiguity the invariant
+exists to refuse. A refusal of the old Project names its Applications where it
+declares them, the departing one counted.
 
 `E_DUPLICATE_PROCESS_NAME` is scoped to the **project**, not to the Application,
 because the Process name alone is the ServiceAccount and the Vault role name

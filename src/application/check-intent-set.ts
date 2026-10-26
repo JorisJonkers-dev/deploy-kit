@@ -12,11 +12,19 @@ import {
 import { alertRuleDiagnostics } from "../check/alert-rules.ts";
 import { assetDiagnostics } from "../check/assets.ts";
 import { setDiagnostics } from "../check/composition.ts";
+import {
+  departuresOf,
+  moveOpenDiagnostics,
+  restored,
+  type Departing,
+} from "../check/departures.ts";
 import { unionDiagnostics } from "../check/union.ts";
+import type { ClusterStateDocument } from "../model/cluster-state.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { EnvSource } from "../model/env.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
+import { readClusterState } from "../read/pinned-inputs.ts";
 import { readYaml } from "../read/yaml.ts";
 import {
   parsePlatformIntent,
@@ -44,6 +52,7 @@ const PLATFORM = "platform.intent.yml";
 const PROJECT = ".project.yml";
 const YAML = ".yml";
 const ENV = ".env";
+const CLUSTER_STATE = "cluster-state.yml";
 
 /**
  * Whether a file is a project file: named one, or, where `byKind`, any other
@@ -89,7 +98,54 @@ export interface Named<T> {
 /** Every file of a set parsed, and the rules the set answers together, answered. */
 export interface ComposedSet {
   readonly platform: Named<ParsedPlatformIntent> | undefined;
+  /** Every Project, holding each Application moving between two of them once. */
   readonly projects: readonly Named<ParsedProjectIntent>[];
+  /**
+   * Each declaration an Application is moving out of, with its Project as
+   * written, which renders the source until the Move retires it.
+   */
+  readonly departing: readonly (Departing & {
+    readonly value: ParsedProjectIntent;
+  })[];
+}
+
+/**
+ * The pinned ClusterState, where the set holds one that reads: one that does
+ * not is refused where the pinned inputs are read.
+ */
+function clusterStateOf(
+  files: readonly AuthoredFile[],
+): ClusterStateDocument | undefined {
+  const file = files.find(({ name }) => name.endsWith(CLUSTER_STATE));
+  const yaml = file === undefined ? undefined : readYaml(file.text);
+  const read = yaml?.ok === true ? readClusterState(yaml.value) : undefined;
+  return read?.ok === true ? read.value : undefined;
+}
+
+/** A Project as written, without the declarations composition set aside. */
+function without(
+  value: ParsedProjectIntent,
+  name: string,
+  departing: readonly Departing[],
+): ParsedProjectIntent {
+  const aside = departing.filter((each) => each.name === name);
+  if (aside.length === 0) return value;
+  const ids = new Set(aside.map(({ application }) => application));
+  return {
+    ...value,
+    document: {
+      ...value.document,
+      applications: value.document.applications.filter(
+        ({ id }) => !ids.has(id),
+      ),
+    },
+    effective: {
+      ...value.effective,
+      applications: value.effective.applications.filter(
+        ({ id }) => !ids.has(id),
+      ),
+    },
+  };
 }
 
 export function composeIntentSet(
@@ -122,10 +178,29 @@ export function composeIntentSet(
     name,
     value: (result as Parsed<typeof result>).value,
   }));
-  const parsedProjects = projects.map(({ name, result }) => ({
+  const written = projects.map(({ name, result }) => ({
     name,
     value: (result as Parsed<typeof result>).value,
   }));
+  // An Application two Projects declare while it moves between them is held
+  // once, and every rule below reads the union that holds it once.
+  const state = clusterStateOf(files);
+  const declaring = written.map(({ name, value }) => ({
+    name,
+    project: value.document.project,
+    applications: value.document.applications.map(({ id }) => id),
+  }));
+  const settled = parsedPlatforms[0]?.value.document;
+  const departing =
+    state === undefined || settled === undefined
+      ? []
+      : departuresOf(declaring, state, settled);
+  const parsedProjects = written.map(({ name, value }) => ({
+    name,
+    value: without(value, name, departing),
+  }));
+  if (state !== undefined && settled !== undefined)
+    refusals.push(...moveOpenDiagnostics(declaring, state, settled));
 
   // An Asset mounts a file the set holds beside its project file.
   for (const { name, value } of parsedProjects)
@@ -189,9 +264,29 @@ export function composeIntentSet(
         })),
       ),
     );
-  if (refusals.length > 0) return { ok: false, diagnostics: refusals };
+  if (refusals.length > 0)
+    return {
+      ok: false,
+      diagnostics: refusals.map((diagnostic) =>
+        restored(diagnostic, departing),
+      ),
+    };
 
-  return { ok: true, value: { platform, projects: parsedProjects } };
+  return {
+    ok: true,
+    value: {
+      platform,
+      projects: parsedProjects,
+      departing: departing.map((each) => ({
+        ...each,
+        value: (
+          written.find(
+            ({ name }) => name === each.name,
+          ) as Named<ParsedProjectIntent>
+        ).value,
+      })),
+    },
+  };
 }
 
 export function checkIntentSet(

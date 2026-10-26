@@ -544,7 +544,13 @@ export function resolveProcess(
     ...spawnEnvironmentOf(spawns),
   ];
   const dependencies = (process.dependsOn ?? []).map((edge) =>
-    resolveEdge(edge, context.union, context.platform, context.project),
+    resolveEdge(
+      edge,
+      context.union,
+      context.platform,
+      context.project,
+      context.clusterState,
+    ),
   );
   const volumes = resolveVolumes(
     process,

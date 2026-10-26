@@ -36,11 +36,18 @@ import {
 import { resolvePolicyJob } from "../resolve/policy-job.ts";
 import { resolveUnion } from "../resolve/union.ts";
 import type {
+  ResolvedApplicationDocument,
   ResolvedEvents,
   ResolvedCatalogJob,
   ResolvedPolicyJob,
 } from "../model/resolved-deployment.ts";
-import { composeIntentSet, type AuthoredFile } from "./check-intent-set.ts";
+import {
+  composeIntentSet,
+  type AuthoredFile,
+  type ComposedSet,
+} from "./check-intent-set.ts";
+import { departingOf } from "../model/move.ts";
+import { applicationRevision } from "../model/revision.ts";
 
 export interface ResolveOptions {
   readonly hash: Hasher;
@@ -203,6 +210,58 @@ const assetsInPathOrder = (
 ): { readonly from: string; readonly text: string }[] =>
   [...assets].sort(byFrom).map(([from, text]) => ({ from, text }));
 
+/**
+ * Each Project with the Applications it is moving out of put back where it
+ * declares them: each resolved against the union as it stood before the Move,
+ * its own declaration in place of the one it moves to, and marked departing.
+ * It carries no Move of its own, and once retired it is not put back at all.
+ */
+function withDeparting(
+  projects: readonly ResolvedProject[],
+  union: readonly EffectiveProject[],
+  departing: ComposedSet["departing"],
+  resolve: (union: readonly EffectiveProject[]) => ResolvedProject[],
+  hash: Hasher,
+): ResolvedProject[] {
+  return departing
+    .filter(({ retired }) => !retired)
+    .reduce<ResolvedProject[]>(
+      (current, { project, application, index, value }) => {
+        const before = resolve(
+          union.map((effective) =>
+            effective.project === project ? value.effective : effective,
+          ),
+        );
+        // The Project it moves out of declares it, so the union resolves it.
+        const resolved = (
+          before.find(
+            (candidate) => candidate.project === project,
+          ) as ResolvedProject
+        ).applications.find(
+          ({ id }) => id === application,
+        ) as ResolvedApplicationDocument;
+        const element = departingOf(resolved);
+        const placed = {
+          ...element,
+          revision: applicationRevision(element, hash),
+        };
+        return current.map((each) =>
+          each.project === project
+            ? {
+                ...each,
+                applications: [
+                  ...each.applications.slice(0, index),
+                  placed,
+                  ...each.applications.slice(index),
+                ],
+              }
+            : each,
+        );
+      },
+      [...projects],
+    );
+}
+
 export function resolveIntentSet(
   files: readonly AuthoredFile[],
   { hash, schemaPackageIntegrity, imagesLock }: ResolveOptions,
@@ -296,13 +355,21 @@ export function resolveIntentSet(
     platform.name,
   );
   if (refusals.length > 0) return { ok: false, diagnostics: refusals };
+  const resolved = withDeparting(
+    resolveUnion(set, digests, schemaPackageIntegrity, hash),
+    set.projects,
+    composed.value.departing,
+    (projects) =>
+      resolveUnion({ ...set, projects }, digests, schemaPackageIntegrity, hash),
+    hash,
+  );
   const job = resolvePolicyJob(set);
   const { jobs: catalogs, homes } = resolveCatalogJobs(set, job);
   const events = resolveEvents(set);
   return {
     ok: true,
     value: {
-      projects: resolveUnion(set, digests, schemaPackageIntegrity, hash),
+      projects: resolved,
       ...(job === undefined ? {} : { policyJob: job }),
       ...(catalogs.length === 0 ? {} : { catalogJobs: catalogs }),
       catalogHomes: homes,

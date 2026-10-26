@@ -26,6 +26,7 @@ import {
   namespaceSelector,
 } from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
+import { namespaceOf } from "../../model/runtime-profiles.ts";
 
 export const ADAPTER = "networking";
 
@@ -554,8 +555,7 @@ function migrationPoliciesOf(
 }
 
 export function renderNetworking(project: ResolvedProject): Deliverable[] {
-  const [first] = project.applications;
-  const namespace = (first as ResolvedApplicationDocument).namespace;
+  const namespace = namespaceOf(project.project);
   const denyAll: NetworkPolicy = {
     apiVersion: "networking.k8s.io/v1",
     kind: "NetworkPolicy",

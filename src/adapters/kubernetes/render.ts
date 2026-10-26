@@ -77,7 +77,7 @@ import {
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
 import { nodeAffinityOf } from "../shared/placement.ts";
 import { notSupported } from "../../model/internal-failure.ts";
-import { clusterNameOf } from "../../model/runtime-profiles.ts";
+import { clusterNameOf, namespaceOf } from "../../model/runtime-profiles.ts";
 import { CLIENT_API_VERSION } from "../../model/platform-intent.ts";
 import { VPN_DIRECTORY } from "../../model/vpn.ts";
 
@@ -1414,7 +1414,9 @@ function instanceWorkloadsOf(
       workloadOf(instance.process, application),
       instance.name,
     );
-    return instance.frozen
+    // An Application moving to another Project serves from here, untouched,
+    // until its Move retires it.
+    return instance.frozen || application.departing === true
       ? {
           ...workload,
           metadata: { ...workload.metadata, annotations: CREATED_ONCE },
@@ -1456,7 +1458,9 @@ const servingOf = (
 
 export function renderKubernetes(project: ResolvedProject): Deliverable[] {
   const [first] = project.applications;
-  const namespace = (first as ResolvedApplicationDocument).namespace;
+  // A Project whose one Application has moved out of it keeps its namespace,
+  // where the retired source's claim stays bound until it is deleted by hand.
+  const namespace = namespaceOf(project.project);
   const libraries = libraryObjectsOf(project, namespace);
   const aliases = aliasesOf(project, namespace);
   return [
@@ -1471,7 +1475,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
             name: namespace,
             labels: {
               ...managedOnly(),
-              ...meshLabelOf(first as ResolvedApplicationDocument),
+              ...(first === undefined ? {} : meshLabelOf(first)),
             },
           },
         },
