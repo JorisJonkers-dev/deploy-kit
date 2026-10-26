@@ -248,6 +248,11 @@ applications:
           to: internet
           reason: >-
             The browser fetches the pages it bookmarks.
+        # Its assets in the object store: the edge names the bucket, which
+        # derives as `knowledge-platform-assets`, and the project's key to it,
+        # which the env file reads (spec/v1/16-dependencies.md#the-bucket-catalog).
+        dependsOn:
+          - { application: platform-garage, surface: s3, buckets: [assets] }
         # And it fetches them through the platform's VPN, so the sites it
         # archives see the tunnel's exit rather than the estate's address
         # (docs/adr/model/0107-a-vpn-attachment-is-a-derived-sidecar.md). It

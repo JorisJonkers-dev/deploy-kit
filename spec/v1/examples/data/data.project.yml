@@ -512,3 +512,68 @@ applications:
         egress:
           to: internet
           reason: reads the latest release from GitHub and uploads it to the public assets bucket
+
+  # ========================================================= platform-garage
+  # The estate's object store. Its engine is `s3`, so every edge naming
+  # buckets in it derives a bucket catalog: one bucket per name, as
+  # `<project>-<name>`, and one key per consuming project, which the catalog
+  # method mints (spec/v1/16-dependencies.md#the-bucket-catalog). Nothing here
+  # names a bucket or a key.
+  - id: platform-garage
+    processes:
+      - name: garage
+        lifecycle: application
+        image: garage
+        runtime: none
+        engine: s3
+
+        # `s3` is what consumers' edges name; `admin` is the admin API the
+        # catalog method applies the catalog over, as the platform's `s3`
+        # entry names it (spec/v1/14-platform-intent.md#catalog-methods).
+        provides:
+          s3: 3900
+          admin: 3903
+
+        placement:
+          memory: 1Gi
+          cpu: 200m
+          site: frankfurt
+
+        probes:
+          readiness: {path: /health, port: 3903}
+          liveness:  {tcp: 3900}
+
+        startupBudget: 60s
+        cutover: interrupted
+
+        assets:
+          - from: config/garage.toml
+            mountAt: /etc/garage.toml
+
+        # The cluster secret and the admin token Garage reads from its
+        # environment. The token is also the catalog method's login while data
+        # is legacy, which the platform's serving location names.
+        secrets:
+          - path: secret/data/platform/garage
+            keys: [rpc-secret, admin-token]
+            access: read
+            delivery: env
+            rotation: {tolerates: restart}
+
+        # Three volumes, so the backup never reads the live metadata database:
+        # Garage writes a consistent snapshot of it on its own schedule, and the
+        # files method archives the snapshots and the data blocks, which are
+        # never changed in place.
+        volumes:
+          - claim: garage-meta
+            mountAt: /var/lib/garage/meta
+            size: 2Gi
+            durability: reconstructible # restored from the newest snapshot
+          - claim: garage-snapshots
+            mountAt: /var/lib/garage/snapshots
+            size: 4Gi
+            durability: recoverable
+          - claim: garage-data
+            mountAt: /var/lib/garage/data
+            size: 20Gi
+            durability: recoverable

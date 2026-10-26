@@ -147,6 +147,39 @@ export const ownsDatabases = (process: {
   readonly engine?: Engine | undefined;
 }): boolean => DATABASE_OWNING_ENGINES.has(process.engine);
 
+/** Whether a Process's inbound edges derive buckets (spec/v1/16-dependencies.md#the-bucket-catalog). */
+export const ownsBuckets = (process: {
+  readonly engine?: Engine | undefined;
+}): boolean => process.engine === "s3";
+
+/** The name of the Process whose engine owns buckets that an edge reaches, where it reaches one. */
+export const bucketStoreOf = (
+  edge: DependencyEdge,
+  union: readonly {
+    readonly applications: readonly {
+      readonly id: string;
+      readonly processes: readonly {
+        readonly name: string;
+        readonly engine?: Engine | undefined;
+        readonly provides?: Readonly<Record<string, number>> | undefined;
+      }[];
+    }[];
+  }[],
+): string | undefined =>
+  union
+    .flatMap(({ applications }) => applications)
+    .filter(({ id }) => id === edge.application)
+    .flatMap(({ processes }) => processes)
+    .find(
+      (provider) =>
+        ownsBuckets(provider) &&
+        provider.provides?.[edge.surface] !== undefined,
+    )?.name;
+
+/** The bucket a project's edge names, as the object store holds it. */
+export const bucketOf = (project: string, name: string): string =>
+  `${project}-${name}`;
+
 /** The role that may change a project's schema, which only its migration holds. */
 export const ownerRole = (project: string): string => `${project}-owner`;
 

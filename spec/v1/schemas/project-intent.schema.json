@@ -337,6 +337,14 @@
         },
         "credentials": {
           "$ref": "#/$defs/Credentials"
+        },
+        "buckets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$"
+          }
         }
       },
       "required": [
@@ -1105,7 +1113,8 @@
         "rabbitmq",
         "valkey",
         "mongo",
-        "files"
+        "files",
+        "s3"
       ]
     },
     "Sidecar": {

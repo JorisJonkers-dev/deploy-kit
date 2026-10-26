@@ -38,6 +38,20 @@ export const catalogIdentityOf = (process: string): string =>
 export const catalogCredentialOf = (project: string, process: string): string =>
   `secret/data/${project}/${process}/catalog`;
 
+/**
+ * Where a project's key to one object store lives
+ * (spec/v1/16-dependencies.md#the-bucket-catalog): the catalog method writes
+ * it there, and the project's Processes read it.
+ */
+export const bucketKeyOf = (project: string, process: string): string =>
+  `secret/data/${project}/${process}/s3`;
+
+/** The keys of a bucket key's document, by the coordinate that reads each. */
+export const BUCKET_KEY_KEYS = {
+  accessKeyId: "access-key-id",
+  secretAccessKey: "secret-access-key",
+} as const;
+
 /** The identity an Application's migration runs as, apart from every Process's. */
 export const migrationIdentityOf = (application: string): string =>
   `${application}-migration`;

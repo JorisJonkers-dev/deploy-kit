@@ -7,10 +7,12 @@ import type {
   EffectiveProject,
 } from "../model/effective-intent.ts";
 import {
+  bucketStoreOf,
   dataRole,
   ownerRole,
   reachesDatabase,
 } from "../model/project-intent-queries.ts";
+import { BUCKET_KEY_KEYS, bucketKeyOf } from "../model/runtime-profiles.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import { destinationOf, restartOf } from "./secrets.ts";
 
@@ -66,4 +68,31 @@ export function resolveCredentials(
         : {}),
     },
   ];
+}
+
+/**
+ * One grant per object store whose buckets the Process's edges name
+ * (spec/v1/16-dependencies.md#the-bucket-catalog): `read` on its project's
+ * key, synced to the environment its key coordinates read.
+ */
+export function resolveBucketKeys(
+  process: EffectiveProcess,
+  context: Pick<CredentialContext, "project" | "union">,
+): ResolvedGrant[] {
+  // A missing list and an empty one hold no edge alike.
+  // Stryker disable next-line ArrayDeclaration
+  const stores = (process.dependsOn ?? [])
+    .filter(({ buckets }) => buckets !== undefined)
+    .map((edge) => bucketStoreOf(edge, context.union))
+    .filter((store) => store !== undefined);
+  return [...new Set(stores)].map((store) => {
+    const path = bucketKeyOf(context.project, store);
+    return {
+      path,
+      keys: Object.values(BUCKET_KEY_KEYS),
+      access: "read",
+      delivery: "env",
+      destination: destinationOf(process.name, path),
+    };
+  });
 }

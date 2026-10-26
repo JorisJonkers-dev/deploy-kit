@@ -35,6 +35,8 @@ const WORKED = [
   "secrets/secrets.project.yml",
   // The Asset data's Process mounts, read beside its project file.
   "data/config/postgresql.conf",
+  "data/config/garage.toml",
+  "data/env/garage/base.env",
   "data/dashboards/rabbitmq.json",
 ].map(read);
 
@@ -84,6 +86,11 @@ describe("checkIntentSet", () => {
         code: "E_SECRETS_AT_REST_REQUIRED",
         document: "data/data.project.yml",
         path: "/applications/4/processes/0/secrets/0",
+      },
+      {
+        code: "E_SECRETS_AT_REST_REQUIRED",
+        document: "data/data.project.yml",
+        path: "/applications/5/processes/0/secrets/0",
       },
       // The two grants both Applications share sit at the project header,
       // and a header grant is refused where it is written.

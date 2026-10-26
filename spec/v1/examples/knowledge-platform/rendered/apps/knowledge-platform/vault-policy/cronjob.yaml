@@ -86,7 +86,7 @@ spec:
           volumes:
             - name: policies
               configMap:
-                name: vault-policy-577e8d8c57b0
+                name: vault-policy-c7a57a1080df
                 items:
                   - key: knowledge-platform-system-basic-memory.policy.json
                     path: knowledge-platform-system-basic-memory.policy.json

@@ -1,0 +1,36 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: garage-garage-toml-120c7a969e
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: garage
+    app.kubernetes.io/part-of: platform-garage
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  garage.toml: |
+    # Garage's own configuration, an Asset: nothing in it is derived. The RPC
+    # secret and the admin token come from the environment.
+    metadata_dir = "/var/lib/garage/meta"
+    data_dir = "/var/lib/garage/data"
+    db_engine = "lmdb"
+
+    # A consistent copy of the metadata database, which the backup archives in
+    # place of the live one.
+    metadata_snapshots_dir = "/var/lib/garage/snapshots"
+    metadata_auto_snapshot_interval = "6h"
+
+    replication_factor = 1
+    rpc_bind_addr = "[::]:3901"
+
+    [s3_api]
+    s3_region = "garage"
+    api_bind_addr = "[::]:3900"
+
+    [admin]
+    api_bind_addr = "[::]:3903"

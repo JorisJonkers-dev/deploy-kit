@@ -148,6 +148,7 @@ and linted by the same script with `emf` as its root.
 | [0113](model/0113-a-privileged-role-names-the-project-that-holds-it.md) | A privileged role names the Project that holds it, as `<project>/<application>`, and an Application id alone binds no role | open |
 | [0114](model/0114-every-images-lock-entry-records-its-version.md) | Every images lock entry records its version, and a missing one is refused apart from an engine's version of the wrong shape | settled |
 | [0118](model/0118-a-human-grant-is-declared-in-the-platform-document.md) | A human grant is declared in the Platform document: a group, a built-in cluster role and a reason, rendered estate-scoped | open |
+| [0119](model/0119-an-edge-names-its-buckets-and-the-stores-method-mints-each-projects-key.md) | An edge into an object store names its buckets, and the store's catalog method mints each project's key | open |
 
 ## Delivery and release
 

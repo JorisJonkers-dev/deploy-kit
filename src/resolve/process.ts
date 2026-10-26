@@ -36,14 +36,18 @@ import type {
   StartupProbe,
 } from "../model/resolved-deployment.ts";
 import {
+  BUCKET_KEY_KEYS,
+  bucketKeyOf,
   exports,
   namespaceOf,
   vaultNameOf,
 } from "../model/runtime-profiles.ts";
+import { bucketStoreOf } from "../model/project-intent-queries.ts";
 import type { Hasher } from "../model/hasher.ts";
 import {
   credentialPathOf,
   credentialRoleOf,
+  resolveBucketKeys,
   resolveCredentials,
 } from "./credentials.ts";
 import { consumedOf } from "../model/consumer-label.ts";
@@ -258,7 +262,8 @@ function dependencyOf(
   context: ProcessContext,
 ): string {
   // The Process holds one edge to the Application and the coordinate is
-  // `host` or `port`, or E_UNRESOLVED_PLACEHOLDER refused the placeholder.
+  // `host`, `port`, or `endpoint` on an edge naming buckets, or
+  // E_UNRESOLVED_PLACEHOLDER refused the placeholder.
   const cut = source.lastIndexOf(".");
   const application = source.slice(0, cut);
   const edge = (process.dependsOn as readonly DependencyEdge[]).find(
@@ -271,9 +276,25 @@ function dependencyOf(
     context.project,
   );
   const port = address.lastIndexOf(":");
-  return source.slice(cut + 1) === "host"
+  const coordinate = source.slice(cut + 1);
+  if (coordinate === "endpoint") return `http://${address}`;
+  return coordinate === "host"
     ? address.slice(0, port)
     : address.slice(port + 1);
+}
+
+/** The object store a key coordinate's edge names buckets in. */
+function storeOf(
+  source: string,
+  process: EffectiveProcess,
+  context: ProcessContext,
+): string {
+  const application = source.slice(0, source.lastIndexOf("."));
+  const edge = (process.dependsOn as readonly DependencyEdge[]).find(
+    (candidate) => candidate.application === application,
+  ) as DependencyEdge;
+  // E_BUCKETS_WITHOUT_OBJECT_STORE refused buckets on an edge that reaches none.
+  return bucketStoreOf(edge, context.union) as string;
 }
 
 /** `${exposure:<application>.<name>#<field>}`: one field of an exposure the union declares. */
@@ -320,6 +341,16 @@ function entryOf(
         secret: {
           path: credentialPathOf(credentialRoleOf(context)),
           key: coordinate,
+        },
+      };
+    // A key coordinate is read from the project's key to the store the edge
+    // names buckets in, or E_UNRESOLVED_PLACEHOLDER refused it.
+    if (coordinate === "accessKeyId" || coordinate === "secretAccessKey")
+      return {
+        name,
+        secret: {
+          path: bucketKeyOf(context.project, storeOf(value.source, process, context)),
+          key: BUCKET_KEY_KEYS[coordinate],
         },
       };
     return {
@@ -539,6 +570,7 @@ export function resolveProcess(
   const secrets = [
     ...resolveGrants(process),
     ...resolveCredentials(process, context),
+    ...resolveBucketKeys(process, context),
     ...context.clientGrants,
   ];
   const libraries = resolveLibraries(

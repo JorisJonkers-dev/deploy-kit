@@ -80,6 +80,7 @@ other resolves and every policy one asks for the other offers:
 | an exposure's or a route's audience is carried by no tier | `E_NO_TIER_FOR_AUDIENCE` |
 | a Process's `engine` has no entry in `engines` | `E_NO_ENGINE_POLICY` |
 | a Process's `engine` names a `surface` in `engines` that the Process does not provide | `E_BACKUP_SURFACE_NOT_PROVIDED` |
+| a Process's `engine` names a `catalog` and a `catalogSurface` in `engines` that the Process does not provide | `E_CATALOG_SURFACE_NOT_PROVIDED` |
 | a volume's Durability Class has no entry in `durability` | `E_NO_DURABILITY_POLICY` |
 | a Process mounts a library `libraries` does not declare | `E_UNKNOWN_LIBRARY` |
 | an Application's `l4Exposure` names an address `l4Addresses` does not declare | `E_UNKNOWN_L4_ADDRESS` |
@@ -727,13 +728,17 @@ engines:
   rabbitmq: {backup: rabbitmq-backup, surface: management}
   mongo:    {backup: mongo-backup, surface: mongo}
   files:    {backup: file-backup}
+  s3:       {backup: file-backup, catalog: garage-catalog, catalogSurface: admin}
 ```
 
 `surface` is the surface of the Process the method connects to, where it dumps
 over the network: `postgres` is dumped over its own protocol, `rabbitmq` through
 its management API, `mongo` over its wire protocol, because a copy of the files
 of a running `mongod` is not a consistent backup. A method that reads the volume alone, as `files` does, names
-none. The platform says it, because the platform chose the image and only the
+none. An `s3` is backed up by the files method too: its data blocks are never
+changed in place, and the metadata database it keeps open is left on a
+`reconstructible` volume of its own while the store writes consistent snapshots
+of it to another, so no backup reads a database being written. The platform says it, because the platform chose the image and only the
 image knows what it connects to; a project file has no word for it. It is the
 one peer inside the cluster a backup pod is let through to, and the peer the
 Process admits its own backups from
@@ -764,19 +769,29 @@ the newest `BACKUP_RETAIN` before it exits.
 
 ### Catalog methods
 
-An engine whose Processes own databases names how its catalog is applied, in the
-same entry, the same way: as an image
+An engine whose Processes own databases or buckets names how its catalog is
+applied, in the same entry, the same way: as an image
 ([0102](../../docs/adr/model/0102-the-database-catalog-is-applied-by-its-engines-method.md)).
 
 ```yaml
 engines:
   postgres: {backup: postgres-backup, surface: postgres, catalog: postgres-catalog}
+  s3:       {backup: file-backup, catalog: garage-catalog, catalogSurface: admin}
 ```
+
+`catalogSurface` is the surface the method applies the catalog over, where that
+is not `surface`: an object store's buckets and keys are made through its admin
+API, not the S3 surface its consumers reach, and its backup connects to no
+surface at all. A Process whose engine names a `catalogSurface` it does not
+provide is `E_CATALOG_SURFACE_NOT_PROVIDED`. An entry that names neither applies
+no catalog.
 
 `catalog` is an alias the images lock holds, `E_UNLOCKED_IMAGE` otherwise. The
 method creates each database and its two roles the catalog names, adopts a
 database that exists, and writes the Secret Store's database roles that issue
-their credentials ([chapter 16](16-dependencies.md#applying-the-catalog)). An
+their credentials; or, for an object store, creates each bucket and each
+project's key, and writes the key where the project reads it
+([chapter 16](16-dependencies.md#applying-the-catalog)). An
 entry with no `catalog` applies none: the catalog is still derived, and nothing
 renders a job for it.
 
@@ -1277,7 +1292,9 @@ refused, as the ledger's own names are not.
 
 **`admin` says where the old path keeps a datastore's administrative login**,
 for a datastore whose engine owns databases: the KV document's `path`, and the
-keys of its `user` and `password`. While the datastore's Project is `legacy`, its
+keys of its `user` and `password`; or, for an object store, the `path` and the
+key of the one admin `token` its admin API takes. A location whose login is not
+the one its engine's catalog signs in with applies no catalog. While the datastore's Project is `legacy`, its
 catalog is applied with that login
 ([chapter 16](16-dependencies.md#applying-the-catalog)); once the Project moves,
 the location goes, and with it the `admin` the estate path no longer reads.

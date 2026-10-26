@@ -38,3 +38,19 @@ export const dumpedSurfaceOf = (
         ([engine]) => engine === process.engine,
       )?.[1].surface
     : undefined;
+
+/**
+ * The surface a Process's catalog is applied over: the one the Platform
+ * document names for its engine as `catalogSurface`, where its engine names a
+ * catalog method (spec/v1/14-platform-intent.md#catalog-methods). One that
+ * names none applies it over `surface`, which the backup already checks.
+ */
+export const catalogSurfaceOf = (
+  process: Stored,
+  platform: PlatformIntentDocument,
+): string | undefined => {
+  const policy = Object.entries(platform.engines).find(
+    ([engine]) => engine === process.engine,
+  )?.[1];
+  return policy?.catalog === undefined ? undefined : policy.catalogSurface;
+};

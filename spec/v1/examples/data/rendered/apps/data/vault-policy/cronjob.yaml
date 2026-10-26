@@ -86,12 +86,16 @@ spec:
           volumes:
             - name: policies
               configMap:
-                name: vault-policy-0eb6186563ac
+                name: vault-policy-e9176474966e
                 items:
                   - key: data-system-asset-sync.policy.json
                     path: data-system-asset-sync.policy.json
                   - key: data-system-asset-sync.role.json
                     path: data-system-asset-sync.role.json
+                  - key: data-system-garage.policy.json
+                    path: data-system-garage.policy.json
+                  - key: data-system-garage.role.json
+                    path: data-system-garage.role.json
                   - key: data-system-mongo-backup.policy.json
                     path: data-system-mongo-backup.policy.json
                   - key: data-system-mongo-backup.role.json

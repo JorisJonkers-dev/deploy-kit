@@ -9,7 +9,7 @@ import {
   proxyProcessOf,
   tierExposuresOf,
 } from "../model/tier-proxy.ts";
-import { dumpedSurfaceOf } from "../model/backup.ts";
+import { catalogSurfaceOf, dumpedSurfaceOf } from "../model/backup.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
 import {
   holds,
@@ -33,6 +33,7 @@ import type {
 } from "../model/project-intent.ts";
 import {
   effectiveCutover,
+  ownsBuckets,
   ownsDatabases,
 } from "../model/project-intent-queries.ts";
 
@@ -382,6 +383,8 @@ interface Estate {
    * another surface of the same Application, an exporter's, derives none.
    */
   readonly databases: ReadonlyMap<string, ReadonlySet<string>>;
+  /** The surfaces a Process whose engine owns buckets provides, by its Application. */
+  readonly buckets: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 type Edge = NonNullable<Application["dependsOn"]>[number];
@@ -400,7 +403,10 @@ const edgesOf = (
 const derivesDatabase = (edge: Edge, estate: Estate): boolean =>
   estate.databases.get(edge.application)?.has(edge.surface) === true;
 
-/** `credentials` on an edge whose provider was read and owns no database. */
+/**
+ * `credentials` on an edge whose provider was read and owns no database, and
+ * `buckets` on one whose provider was read and owns no buckets.
+ */
 function credentialsRefusals(
   edges: readonly Edge[] | undefined,
   at: string,
@@ -408,20 +414,32 @@ function credentialsRefusals(
 ): Omit<Diagnostic, "document">[] {
   // Stryker disable next-line ArrayDeclaration: an element that is no edge has
   // no `credentials`, so a non-empty fallback refuses nothing either.
-  return (edges ?? []).flatMap((edge, e) =>
-    edge.credentials !== undefined &&
+  return (edges ?? []).flatMap((edge, e) => [
+    ...(edge.credentials !== undefined &&
     estate.declared.has(edge.application) &&
     !derivesDatabase(edge, estate)
       ? [
           {
-            code: "E_CREDENTIALS_WITHOUT_DATABASE",
+            code: "E_CREDENTIALS_WITHOUT_DATABASE" as const,
             path: `${at}/dependsOn/${e}/credentials`,
             message: `${edge.application} owns no database, so this edge derives no credential to rotate`,
             hint: "Delete `credentials`: it only shapes the credential an edge to a database derives.",
           },
         ]
-      : [],
-  );
+      : []),
+    ...(edge.buckets !== undefined &&
+    estate.declared.has(edge.application) &&
+    estate.buckets.get(edge.application)?.has(edge.surface) !== true
+      ? [
+          {
+            code: "E_BUCKETS_WITHOUT_OBJECT_STORE" as const,
+            path: `${at}/dependsOn/${e}/buckets`,
+            message: `${edge.application} serves no object store on ${edge.surface}, so this edge derives no bucket`,
+            hint: "Delete `buckets`, or name the surface of a Process whose engine is `s3`.",
+          },
+        ]
+      : []),
+  ]);
 }
 
 /**
@@ -742,6 +760,19 @@ function projectRefusals(
           message: `the backup of engine ${process.engine as string} dumps the surface ${dumped}, which ${process.name} does not provide`,
           hint: "Provide the surface the Platform document's `engines` names for this engine, under that name.",
         });
+      // A catalog applied over a surface the Process does not provide reaches
+      // nothing, as a backup would.
+      const catalogued = catalogSurfaceOf(process, platform);
+      if (
+        catalogued !== undefined &&
+        process.provides?.[catalogued] === undefined
+      )
+        refusals.push({
+          code: "E_CATALOG_SURFACE_NOT_PROVIDED",
+          path: processAt,
+          message: `the catalog of engine ${process.engine as string} is applied over the surface ${catalogued}, which ${process.name} does not provide`,
+          hint: "Provide the surface the Platform document's `engines` names as `catalogSurface` for this engine, under that name.",
+        });
       // Kubernetes API access is the platform's to admit: a Process that
       // declares it in an Application the Platform document does not name
       // would hold a grant nobody with authority over the cluster gave. The
@@ -827,6 +858,18 @@ export function setDiagnostics(
           new Set(
             processes
               .filter(ownsDatabases)
+              .flatMap(({ provides }) => Object.keys(provides ?? {})),
+          ),
+        ]),
+      ),
+    ),
+    buckets: new Map(
+      projects.flatMap(({ document }) =>
+        document.applications.map(({ id, processes }) => [
+          id,
+          new Set(
+            processes
+              .filter(ownsBuckets)
               .flatMap(({ provides }) => Object.keys(provides ?? {})),
           ),
         ]),

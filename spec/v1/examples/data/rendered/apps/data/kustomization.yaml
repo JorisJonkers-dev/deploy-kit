@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - asset-sync
   - namespace.yaml
+  - platform-garage
   - platform-mongo
   - platform-postgres
   - platform-rabbitmq

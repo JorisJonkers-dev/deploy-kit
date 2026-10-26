@@ -26,6 +26,7 @@ import type { MigrationProofDocument } from "../model/migration-proof.ts";
 import { applicationRevision } from "../model/revision.ts";
 import {
   clientExposure,
+  ownsBuckets,
   ownsDatabases,
   reachesDatabase,
   routeFor,
@@ -285,7 +286,7 @@ function reconcileAfter(
     context.platform.policyJob !== undefined &&
     application.processes.some(
       (process) =>
-        ownsDatabases(process) &&
+        (ownsDatabases(process) || ownsBuckets(process)) &&
         // E_NO_ENGINE_POLICY refused an engine the platform has no entry for.
         (
           context.platform.engines[

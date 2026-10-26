@@ -10,6 +10,16 @@
         "read"
       ]
     },
+    "secret/data/knowledge-platform/garage/s3": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/knowledge-platform/garage/s3": {
+      "capabilities": [
+        "read"
+      ]
+    },
     "secret/data/platform/vpn/knowledge-platform-karakeep": {
       "capabilities": [
         "read"

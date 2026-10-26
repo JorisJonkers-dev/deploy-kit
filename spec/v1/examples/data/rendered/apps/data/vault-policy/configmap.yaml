@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vault-policy-0eb6186563ac
+  name: vault-policy-e9176474966e
   namespace: data-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -17,6 +17,10 @@ data:
     {"path":{"secret/data/platform/garage/web-key":{"capabilities":["read"]},"secret/metadata/platform/garage/web-key":{"capabilities":["read"]}}}
   data-system-asset-sync.role.json: |
     {"bound_service_account_names":["asset-sync"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-asset-sync"]}
+  data-system-garage.policy.json: |
+    {"path":{"secret/data/platform/garage":{"capabilities":["read"]},"secret/metadata/platform/garage":{"capabilities":["read"]}}}
+  data-system-garage.role.json: |
+    {"bound_service_account_names":["garage"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-garage"]}
   data-system-mongo-backup.policy.json: |
     {"path":{"secret/data/data/mongo/backup":{"capabilities":["read"]},"secret/data/platform/backup/off-cluster":{"capabilities":["read"]},"secret/metadata/data/mongo/backup":{"capabilities":["read"]},"secret/metadata/platform/backup/off-cluster":{"capabilities":["read"]}}}
   data-system-mongo-backup.role.json: |

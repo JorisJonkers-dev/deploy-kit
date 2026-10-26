@@ -337,6 +337,12 @@ const COORDINATES: ReadonlySet<string> = new Set(["host", "port"]);
 /** The coordinates an edge whose database credential is delivered to the environment adds. */
 const CREDENTIAL: ReadonlySet<string> = new Set(["username", "password"]);
 
+/** The coordinates an edge naming buckets adds: its project's key (spec/v1/16-dependencies.md#the-bucket-catalog). */
+const BUCKET_KEY: ReadonlySet<string> = new Set([
+  "accessKeyId",
+  "secretAccessKey",
+]);
+
 /** The fields of an exposure a placeholder may read. */
 const FIELDS: ReadonlySet<string> = new Set(["url", "host", "scheme"]);
 
@@ -377,6 +383,18 @@ function unresolved(
       return `the Process holds ${edges.length === 0 ? "no" : "more than one"} edge to ${application}`;
     const coordinate = source.slice(cut + 1);
     if (COORDINATES.has(coordinate)) return undefined;
+    const buckets = (edges[0] as DependencyEdge).buckets !== undefined;
+    if (coordinate === "endpoint")
+      return buckets
+        ? undefined
+        : `the edge to ${application} names no bucket, so it reaches no object store`;
+    if (BUCKET_KEY.has(coordinate)) {
+      if (!buckets)
+        return `the edge to ${application} names no bucket, so it derives no key`;
+      return suffix === undefined
+        ? undefined
+        : `a credential is a whole value, never part of one`;
+    }
     if (!CREDENTIAL.has(coordinate))
       return `an edge hands no coordinate ${coordinate}`;
     if ((edges[0] as DependencyEdge).credentials?.delivery !== "env")
@@ -824,7 +842,7 @@ export const INVARIANTS: readonly Invariant[] = [
                       document: held.document,
                       path: held.path,
                       message: `${name} reads \${${kind}:${source}}, and ${why}`,
-                      hint: "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, or `username` or `password` where that edge delivers its credential `env`; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`; a client placeholder reads `issuer`, `id` or the whole `secret` of its own Application's Client.",
+                      hint: "A dependency placeholder names the Application of one edge the Process holds and `host` or `port`, `username` or `password` where that edge delivers its credential `env`, or `endpoint`, `accessKeyId` or `secretAccessKey` where it names buckets; an exposure placeholder names an exposure the Application declares and `url`, `host` or `scheme`; a client placeholder reads `issuer`, `id` or the whole `secret` of its own Application's Client.",
                     },
                   ];
             },

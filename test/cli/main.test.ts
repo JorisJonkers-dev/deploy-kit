@@ -234,9 +234,11 @@ describe("deploy-kit publish", () => {
     });
     const files = [
       "data.project.yml",
+      "env/garage/base.env",
       "env/postgres/base.env",
       "config/postgresql.conf",
       "dashboards/rabbitmq.json",
+      "config/garage.toml",
     ].map((name) => ({
       name,
       text: readFileSync(example(`data/${name}`), "utf8"),

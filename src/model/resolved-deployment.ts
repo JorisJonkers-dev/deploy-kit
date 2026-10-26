@@ -1094,7 +1094,51 @@ const resolvedPolicyJob = z
   })
   .meta({ id: "ResolvedPolicyJob" });
 
-// The method that applies one datastore's database catalog
+// One datastore's database catalog
+// (spec/v1/16-dependencies.md#applying-the-catalog).
+const resolvedDatabaseCatalog = z
+  .strictObject({
+    host: text,
+    port,
+    connection: text,
+    admin: z
+      .strictObject({ path: text, user: text, password: text })
+      .meta({ id: "CatalogAdmin" }),
+    databases: z
+      .array(
+        z
+          .strictObject({ name: text, owner: text, data: text })
+          .meta({ id: "CatalogDatabase" }),
+      )
+      .min(1),
+  })
+  .meta({ id: "ResolvedCatalog" });
+
+// One object store's bucket catalog
+// (spec/v1/16-dependencies.md#the-bucket-catalog): each consuming project's
+// key, where it is written, and the buckets it may use.
+const resolvedBucketCatalog = z
+  .strictObject({
+    host: text,
+    port,
+    admin: z
+      .strictObject({ path: text, token: text })
+      .meta({ id: "CatalogAdminToken" }),
+    keys: z
+      .array(
+        z
+          .strictObject({
+            name: text,
+            path: text,
+            buckets: z.array(text).min(1),
+          })
+          .meta({ id: "CatalogKey" }),
+      )
+      .min(1),
+  })
+  .meta({ id: "ResolvedBucketCatalog" });
+
+// The method that applies one datastore's catalog
 // (spec/v1/16-dependencies.md#applying-the-catalog): its identity beside the
 // datastore, the login it applies the catalog with, and the catalog itself.
 const resolvedCatalogJob = z
@@ -1115,23 +1159,7 @@ const resolvedCatalogJob = z
     deadline: duration,
     // The policy job's own: the method runs where it may.
     eligibleNodes: z.array(text).min(1),
-    catalog: z
-      .strictObject({
-        host: text,
-        port,
-        connection: text,
-        admin: z
-          .strictObject({ path: text, user: text, password: text })
-          .meta({ id: "CatalogAdmin" }),
-        databases: z
-          .array(
-            z
-              .strictObject({ name: text, owner: text, data: text })
-              .meta({ id: "CatalogDatabase" }),
-          )
-          .min(1),
-      })
-      .meta({ id: "ResolvedCatalog" }),
+    catalog: z.union([resolvedDatabaseCatalog, resolvedBucketCatalog]),
     // The datastore's surface, as the consumer label the method's pods carry
     // names it (spec/v1/16-dependencies.md#the-consumer-label).
     consumes: z.array(text),

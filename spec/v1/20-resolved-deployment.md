@@ -1391,11 +1391,12 @@ own Vault role:
 | `address` | derived | the Secret Store's endpoint, as `policyJob`'s |
 | `memory`, `cpu`, `deadline` | platform-assigned | `policyJob`'s |
 | `eligibleNodes` | pool | `policyJob`'s |
-| `catalog.host`, `catalog.port` | derived | the datastore's Service, on its engine's `surface` |
-| `catalog.connection` | derived | the engine's name, the Secret Store's database connection |
-| `catalog.admin` | platform-assigned | the `serving` location's `admin` while the datastore's Project is `legacy`; else `secret/data/<project>/<process>/catalog`, keys `user` and `password` |
-| `catalog.databases` | derived | for each project on the estate path an edge of which reaches the datastore, in name order: `<project>_db`, `<project>-owner`, `<project>-data` |
-| `consumes` | derived | the datastore's engine `surface`, as the [consumer label](16-dependencies.md#the-consumer-label) the method's pods carry names it, which the datastore's policy admits |
+| `catalog.host`, `catalog.port` | derived | the datastore's Service, on its engine's `catalogSurface`, or its `surface` where it names none |
+| `catalog.connection` | derived | a database catalog's: the engine's name, the Secret Store's database connection |
+| `catalog.admin` | platform-assigned | the `serving` location's `admin` while the datastore's Project is `legacy`; else `secret/data/<project>/<process>/catalog`, keys `user` and `password`, or `token` for an object store |
+| `catalog.databases` | derived | a database catalog's: for each project on the estate path an edge of which reaches the datastore, in name order: `<project>_db`, `<project>-owner`, `<project>-data` |
+| `catalog.keys` | derived | a bucket catalog's: for each project on the estate path an edge of which names buckets in the store, in name order: its `name`, the project; its `path`, `secret/data/<project>/<process>/s3`; and its `buckets`, `<project>-<name>` for each name its edges give, in name order ([chapter 16](16-dependencies.md#the-bucket-catalog)) |
+| `consumes` | derived | the surface the catalog is applied over, as the [consumer label](16-dependencies.md#the-consumer-label) the method's pods carry names it, which the datastore's policy admits |
 | `egress` | derived | the datastore on its surface, the Secret Store on its `http` surface, and the cluster's DNS |
 
 ## Publish back
@@ -1881,6 +1882,19 @@ classDiagram
         +string owner
         +string data
     }
+    class ResolvedBucketCatalog {
+        +string host
+        +int port
+    }
+    class CatalogAdminToken {
+        +string path
+        +string token
+    }
+    class CatalogKey {
+        +string name
+        +string path
+        +string[] buckets
+    }
     class ResolvedEvents {
         +Namespace namespace
         +string address
@@ -2249,6 +2263,9 @@ classDiagram
     ResolvedCatalogJob "1" *-- "1" ResolvedCatalog : catalog
     ResolvedCatalog "1" *-- "1" CatalogAdmin : admin
     ResolvedCatalog "1" *-- "1..*" CatalogDatabase : databases
+    ResolvedCatalogJob "1" *-- "1" ResolvedBucketCatalog : catalog
+    ResolvedBucketCatalog "1" *-- "1" CatalogAdminToken : admin
+    ResolvedBucketCatalog "1" *-- "1..*" CatalogKey : keys
     ResolvedDeployment "1" *-- "0..1" ResolvedEvents : events
     ResolvedDeployment "1" *-- "1..*" ResolvedApplication : applications
     Provenance "1" *-- "1..*" InputDigest : inputDigests

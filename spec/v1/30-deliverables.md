@@ -274,7 +274,7 @@ its index, its documents in `estate/vso-secrets/policies/`, and the
 | file | adapter | holds |
 |---|---|---|
 | `<process>-catalog.yaml` | `kubernetes` | the `ServiceAccount` `<process>-catalog`; the immutable `ConfigMap` `<process>-catalog-<12 hex>`, the catalog as canonical JSON on one line under `catalog.json`; the `Job` of the same name, marked `kustomize.toolkit.fluxcd.io/force: Enabled`, the locked method image, `CATALOG_FILE` where the ConfigMap is mounted read-only, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` `<namespace>-<process>-catalog`, the policy job's requests and deadline, `restartPolicy: OnFailure`, the token mounted because the method logs in with it; and the `CronJob` `<process>-catalog`, the same pod, `@hourly`, `concurrencyPolicy: Forbid`. The twelve hex digits are the first of the SHA-256 of the canonical JSON of the `catalog`, and the `image`, `uid`, `gid`, `memory` and `cpu` it runs with |
-| `<process>-catalog-networkpolicy.yaml` | `networking` | the method's own policy: egress to the datastore's surface, the Secret Store and the cluster's DNS, no ingress; listed by no index |
+| `<process>-catalog-networkpolicy.yaml` | `networking` | the method's own policy: egress to the surface the catalog is applied over, the Secret Store and the cluster's DNS, no ingress; listed by no index |
 
 All of them are in the datastore's namespace: the method runs beside the
 datastore it writes into.
