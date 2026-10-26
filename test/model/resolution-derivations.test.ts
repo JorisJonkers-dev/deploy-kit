@@ -52,6 +52,7 @@ const FOUNDATION = [
   "platform/images.lock.yml",
   "platform/cluster-state.yml",
   "delivery/delivery.project.yml",
+  "agents/agents.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
@@ -4448,6 +4449,177 @@ describe("a replicated Process on a pool", () => {
   });
 });
 
+// REQ-107 (docs/requirements.md): a Process creates pods only from a declared
+// spawn template, which derives their rules, labels and policy.
+describe("a spawn template", () => {
+  // Creating pods in its own namespace is no privileged role.
+  const admitted = (document: string): string =>
+    document.replace(
+      "  namespaceHolders: [",
+      "  namespaceHolders: [notes/notes, ",
+    );
+  const SPAWNS = `        spawns:
+          - name: runner
+            image: notes-api
+            placement: { memory: 256Mi, cpu: 100m }
+            provides: { http: 8090 }
+            dependsOn:
+              - { application: notes-store, surface: store }
+            egress: { to: internet, reason: it clones what it is asked to work on }
+`;
+  const project = `${one(serving("notes-api", SPAWNS))}  - id: notes-store
+    processes:
+${serving("notes-store").replace("provides: { http: 8080 }", "provides: { store: 7000 }")}`;
+  const LOCKED = (() => {
+    const notes = LOCK.images["notes-api"];
+    return `${notes?.repository ?? ""}@${notes?.digest ?? ""}`;
+  })();
+
+  it("hands its Process the template's pinned image and every label its pods carry", () => {
+    const environment = processOf(project, { platform: admitted }).environment;
+
+    expect(
+      environment?.filter(({ name }) => name.startsWith("SPAWN_")),
+    ).toStrictEqual([
+      { name: "SPAWN_RUNNER_IMAGE", value: LOCKED },
+      {
+        name: "SPAWN_RUNNER_LABELS",
+        value:
+          "deploy-kit.jorisjonkers.dev/spawned-from=notes-api-runner,consumes.deploy-kit.jorisjonkers.dev/notes-store.store=true",
+      },
+    ]);
+  });
+
+  it("names a template's variables with every character a variable cannot hold as `_`", () => {
+    const names = processOf(
+      project.replace("- name: runner", "- name: deep-runner.2"),
+      {
+        platform: admitted,
+      },
+    ).environment?.flatMap(({ name }) =>
+      name.startsWith("SPAWN_") ? [name] : [],
+    );
+
+    expect(names).toStrictEqual([
+      "SPAWN_DEEP_RUNNER_2_IMAGE",
+      "SPAWN_DEEP_RUNNER_2_LABELS",
+    ]);
+  });
+
+  it("derives the namespaced rules that create and remove its pods, beside any the Process declares", () => {
+    const api = processOf(project, { platform: admitted }).api;
+
+    // A Process that declares no api of its own holds them for its templates.
+    expect(api?.reason).toBe("it creates the pods its spawn templates declare");
+    expect(api?.rules).toStrictEqual([
+      {
+        group: "core",
+        objects: ["pods"],
+        verbs: ["get", "list", "watch", "create", "delete"],
+        scope: "namespace",
+      },
+      {
+        group: "core",
+        objects: ["pods/log"],
+        verbs: ["get"],
+        scope: "namespace",
+      },
+    ]);
+  });
+
+  it("resolves what its pods run, request, serve and reach", () => {
+    const [spawn] = processOf(project, { platform: admitted }).spawns ?? [];
+
+    expect(spawn).toMatchObject({
+      name: "runner",
+      image: LOCKED,
+      memory: "256Mi",
+      cpu: "100m",
+      selector: "notes-api-runner",
+      surfaces: [{ name: "http", port: 8090 }],
+      consumes: ["notes-store.store"],
+      internetEgress: { reason: "it clones what it is asked to work on" },
+    });
+    expect(spawn?.dependencies?.[0]).toMatchObject({
+      application: "notes-store",
+      surface: "store",
+      peers: [{ process: "notes-store", port: 7000 }],
+    });
+  });
+
+  it("resolves a template that serves, reaches and asks for nothing to its pods alone", () => {
+    const bare = SPAWNS.split("            provides:")[0] ?? "";
+    const process = processOf(one(serving("notes-api", bare)), {
+      platform: admitted,
+    });
+
+    expect(process.identityToken).toBe(true);
+    expect(process.spawns).toStrictEqual([
+      {
+        name: "runner",
+        image: LOCKED,
+        imageVersion: LOCK.images["notes-api"]?.version,
+        uid: 1000,
+        gid: 1000,
+        memory: "256Mi",
+        cpu: "100m",
+        selector: "notes-api-runner",
+        egress: [{ rule: "cluster-dns", namespace: "kube-system", port: 53 }],
+      },
+    ]);
+  });
+
+  it("is refused an image the lock does not hold, at the template", () => {
+    const result = resolve(
+      project.replace(
+        "            image: notes-api",
+        "            image: notes-unlocked",
+      ),
+      { platform: admitted },
+    );
+
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ code, path }) => [code, path]),
+    ).toContainEqual([
+      "E_UNLOCKED_IMAGE",
+      "/applications/0/processes/0/spawns/0/image",
+    ]);
+  });
+
+  it("is refused an edge to an Application nothing declares, at the template", () => {
+    const result = resolve(one(serving("notes-api", SPAWNS)), {
+      platform: admitted,
+    });
+
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ code, path }) => [code, path]),
+    ).toContainEqual([
+      "E_UNRESOLVED_APPLICATION",
+      "/applications/0/processes/0/spawns/0/dependsOn/0",
+    ]);
+  });
+
+  it("is refused where the platform does not admit its Application to hold API access", () => {
+    const result = resolve(project);
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, path, hint }) => ({
+            code,
+            path,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_PROCESS_RBAC_GRANT",
+        path: "/applications/0/processes/0/spawns",
+        hint: "Name the Application in the Platform document's `apiAccess.holders` as `<project>/<application>`, under an id no other Application carries, or drop `spawns`.",
+      },
+    ]);
+  });
+});
+
 // REQ-106 (docs/requirements.md): an api rule reaches the cluster unless it
 // says its Process's namespace.
 describe("a Process's Kubernetes API access", () => {
@@ -4467,8 +4639,8 @@ describe("a Process's Kubernetes API access", () => {
   // Admitted to its own namespace alone: no privileged role.
   const local = (document: string): string =>
     document.replace(
-      "  server:\n",
-      "  namespaceHolders: [notes/notes]\n  server:\n",
+      "  namespaceHolders: [",
+      "  namespaceHolders: [notes/notes, ",
     );
 
   it("holds namespace rules under a platform that admits its Application to its namespace alone", () => {

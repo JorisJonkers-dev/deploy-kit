@@ -335,6 +335,23 @@ const sharedIntent = {
 // (spec/v1/10-project-intent.md#parked-processes), with the reason it does.
 const parked = z.strictObject({ reason: text }).meta({ id: "Parked" });
 
+// What a Process may create at run time (spec/v1/10-project-intent.md#spawn-templates):
+// the pinned image its pods run, what each requests, the surfaces they serve
+// the Process, the edges they reach and whether they reach the internet. The
+// pods are the Process's to create; their rules, labels and policy derive.
+const spawnTemplate = z
+  .strictObject({
+    name: text,
+    image: text,
+    placement: z
+      .strictObject({ memory: text, cpu: text })
+      .meta({ id: "SpawnPlacement" }),
+    provides: z.record(text, port).meta({ entry: "Surface" }).exactOptional(),
+    dependsOn: z.array(dependencyEdge).min(1).exactOptional(),
+    egress: egress.exactOptional(),
+  })
+  .meta({ id: "SpawnTemplate" });
+
 const process = z
   .strictObject({
     name: text,
@@ -353,6 +370,7 @@ const process = z
     api: apiAccess.exactOptional(),
     egress: egress.exactOptional(),
     vpn: vpnAttachment.exactOptional(),
+    spawns: z.array(spawnTemplate).min(1).exactOptional(),
     ...sharedIntent,
   })
   .meta({ id: "Process" });

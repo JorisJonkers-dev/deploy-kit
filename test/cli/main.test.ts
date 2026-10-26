@@ -44,6 +44,7 @@ const SET = [
   "minimal/notes.project.yml",
   "minimal/env/notes-api/base.env",
   "delivery/delivery.project.yml",
+  "agents/agents.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
@@ -109,6 +110,11 @@ function pulled(): string {
       .replace(/\nhumanGrants:\n(?: {2}.*\n)+/, "\n")
       .replace(/\npriority:\n(?: {2}.*\n)+/, "\n")
       .replace(/\nsignIn:\n(?: {2}.*\n)+/, "\n")
+      // No fragment here declares the agents Project the platform admits.
+      .replace(
+        /\n {2}# Admitted to their own namespace alone[^\n]*\n {2}namespaceHolders: \[[^\]]*\]\n/,
+        "\n",
+      )
       .replace(
         /\nhandover:\n(?: {2}.*\n)+/,
         "\nhandover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, delivery, edge, knowledge]\n  estate: [notes, observability, secrets]\n",
@@ -139,7 +145,7 @@ describe("deploy-kit validate", () => {
   it("accepts a set the checks accept", () => {
     expect(run("validate", ...SET)).toEqual({
       code: 0,
-      stdout: "accepted (10 read)\n",
+      stdout: "accepted (11 read)\n",
       stderr: "",
     });
   });

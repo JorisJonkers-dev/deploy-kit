@@ -162,6 +162,12 @@ function processRefusals(
           image,
           path: `${at}/sidecars/${String(s)}/image`,
         })),
+        // A template's pods run its image, under the same posture.
+        // Stryker disable next-line ArrayDeclaration
+        ...(process.spawns ?? []).map(({ image }, t) => ({
+          image,
+          path: `${at}/spawns/${String(t)}/image`,
+        })),
       ];
       return [
         ...images

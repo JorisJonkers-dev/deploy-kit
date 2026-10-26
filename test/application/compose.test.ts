@@ -77,8 +77,14 @@ const SIGN_IN = /\nsignIn:\n(?: {2}.*\n)+/;
 const HUMAN_GRANTS = /\nhumanGrants:\n(?: {2}.*\n)+/;
 /** The worked Platform document's priority classes, which every render holds. */
 const PRIORITY = /\npriority:\n(?: {2}.*\n)+/;
+/** The worked Platform document under `ledger`, admitting no API holder these fragments leave out. */
 const withLedger = (platform: string, ledger: string): string =>
-  platform.replace(/\nhandover:\n(?: {2}.*\n)+/, `\n${ledger}`);
+  platform
+    .replace(/\nhandover:\n(?: {2}.*\n)+/, `\n${ledger}`)
+    .replace(
+      /\n {2}# Admitted to their own namespace alone[^\n]*\n {2}namespaceHolders: \[[^\]]*\]\n/,
+      "\n",
+    );
 
 const hex = (seed: unknown, length: number): string =>
   sha256Hasher(seed).slice("sha256:".length, "sha256:".length + length);

@@ -709,6 +709,43 @@ What an admitted declaration derives, its Role and ClusterRole, its mounted
 token and its policy's egress,
 is [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)'s.
 
+### Spawn templates
+
+Some Processes create pods while they run: agents-api starts one runner pod per
+agent session. A pod nothing in the model declares would run under no policy
+and no posture, so a Process declares what it may create, one **spawn
+template** each, and the render derives the rest
+([chapter 16](16-dependencies.md#spawn-templates)):
+
+```yaml
+spawns:
+  - name: runner
+    image: agent-runner          # a pinned image alias, as a Process's own
+    placement: { memory: 1Gi, cpu: 500m }
+    provides: { http: 8090 }     # what its pods serve the Process
+    dependsOn:
+      - { application: agents-api, surface: http }
+    egress: { to: internet, reason: an agent clones the repositories it works on }
+```
+
+| field | required | notes |
+|---|---|---|
+| `name` | yes | Unique within the Process. With the Process's name it names the label every pod carries, `<process>-<name>`. |
+| `image` | yes | An alias the images lock pins, as a Process's `image`: `E_UNLOCKED_IMAGE` otherwise. |
+| `placement` | yes | `memory` and `cpu`, what each pod requests. Where a pod lands is the Process's to choose when it creates it. |
+| `provides` | no | The surfaces its pods serve, which only the Process that made them reaches. |
+| `dependsOn` | no | Edges, as a Process's: each must resolve, and its pods carry the provider's consumer label. |
+| `egress` | no | `{to: internet, reason}`, as a Process's. |
+
+The Process is handed, for each template, `SPAWN_<NAME>_IMAGE`, the pinned
+image reference, and `SPAWN_<NAME>_LABELS`, every label its pods must carry, as
+`key=value` joined by commas. It creates the pods with both. Creating them is
+Kubernetes API access in its own namespace, so the Application must be admitted
+as a holder ([Kubernetes API access](#kubernetes-api-access)), in either list:
+`E_PROCESS_RBAC_GRANT` otherwise. The pods run under the namespace's posture
+like any other, so a template whose image runs as root is refused as a
+Process's would be.
+
 ### Internet egress
 
 A Process that reaches public addresses no edge names declares
@@ -3267,6 +3304,12 @@ classDiagram
         +string name
         +int port
     }
+    class SpawnTemplate {
+        +string name
+        +ImageAlias image
+        +Quantity memory
+        +Quantity cpu
+    }
     class Sidecar {
         +string name
         +ImageAlias image
@@ -3328,6 +3371,7 @@ classDiagram
     Observability "1" *-- "1" Scrape : scrape
     Process "1" *-- "0..1" Capacity : replicas
     Process "1" *-- "0..1" ApiAccess : api
+    Process "1" *-- "0..*" SpawnTemplate : spawns
     ApiAccess "1" *-- "1..*" ApiRule : rules
 
     Application "1" *-- "0..*" Exposure : exposure

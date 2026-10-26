@@ -840,6 +840,23 @@ declares that one verb.
 The worked [`delivery`](examples/delivery/delivery.project.yml) project holds the
 estate's three holders: Flagger, the Release Gate and the Collector.
 
+### Spawn templates
+
+A Process that declares a spawn template
+([chapter 10](10-project-intent.md#spawn-templates)) derives, for each:
+
+| derived | from |
+|---|---|
+| `namespace` rules to `get`, `list`, `watch`, `create` and `delete` pods and to `get` their logs, beside the Process's own | the template's existence |
+| a label every pod carries, `deploy-kit.jorisjonkers.dev/spawned-from: <process>-<template>`, and the consumer label of each edge | the template's name and `dependsOn` |
+| one `NetworkPolicy`, named `<process>-<template>`, selecting that label: ingress from the Process alone on the surfaces the template provides; egress to its edges' peers, the cluster's DNS and, where declared, the internet | the template |
+| egress in the Process's own policy to those pods, on those surfaces | the template's `provides` |
+| the variables `SPAWN_<NAME>_IMAGE` and `SPAWN_<NAME>_LABELS` | the images lock and the labels above |
+
+The rules are `namespace` rules, so an Application admitted to its own
+namespace alone may hold them. A provider admits the pods by the consumer label
+they carry, as it admits any consumer, so neither names the other.
+
 ### Internet egress
 
 A Process that reaches public addresses no edge names (a crawler, a workflow

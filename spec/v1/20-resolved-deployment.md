@@ -103,7 +103,10 @@ Store's Application that answers on its `http` surface
 the Release Gate, `gate-members`, which names no peer: every pod carrying the
 [member label](16-dependencies.md#the-member-label); and, for a Process that
 declares it, its `internetEgress`, the reason it reaches the public internet
-([chapter 16](16-dependencies.md#internet-egress)). A Process that serves DNS
+([chapter 16](16-dependencies.md#internet-egress)). A Process that declares spawn templates records `spawns`, one per template:
+the pinned image its pods run, what they request, the `selector` their label
+carries, the surfaces they serve, what they consume and reach, and their DNS
+baseline ([chapter 16](16-dependencies.md#spawn-templates)). A Process that serves DNS
 records its `nameservers`, the platform's upstream nameservers it resolves
 through, and holds no `cluster-dns` peer
 ([chapter 10](10-project-intent.md#l4-exposure)). An Application records
@@ -2022,6 +2025,16 @@ classDiagram
         +string[] consumes
         +IPv4[] nameservers
     }
+    class ResolvedSpawn {
+        +string name
+        +ImageRef image
+        +int uid
+        +int gid
+        +Quantity memory
+        +Quantity cpu
+        +string selector
+        +string[] consumes
+    }
     class ResolvedGpu {
         +string resource
         +string runtimeClass
@@ -2298,6 +2311,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
     ResolvedProcess "1" *-- "0..*" ResolvedLibraryMount : libraries
     ResolvedProcess "1" *-- "0..*" ResolvedPoolExposure : l4Exposure
+    ResolvedProcess "1" *-- "0..*" ResolvedSpawn : spawns
     ResolvedProcess "1" *-- "0..*" ResolvedNodeExposure : l4Exposure
     ResolvedPoolExposure "1" *-- "1..*" ResolvedL4Port : ports
     ResolvedNodeExposure "1" *-- "1..*" ResolvedL4Port : ports

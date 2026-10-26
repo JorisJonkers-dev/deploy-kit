@@ -3,6 +3,7 @@
 // allow set and the baseline admit, and per backup identity the policy its
 // backup plan admits, every peer and every port read off the projection.
 import type { ResolvedProject } from "../../model/resolution.ts";
+import { SPAWN_LABEL } from "../../model/spawn-label.ts";
 import type {
   ResolvedApplicationDocument,
   ResolvedCatalogJob,
@@ -172,6 +173,26 @@ function policyOf(
       ports: portsOf(peer.port, mesh),
     })),
   );
+  // The pods it makes from its templates, on the surfaces they serve it.
+  // A Process that makes no pod reaches none.
+  // Stryker disable next-line ArrayDeclaration
+  const spawned = (process.spawns ?? []).flatMap((spawn) =>
+    spawn.surfaces === undefined
+      ? []
+      : [
+          {
+            to: [
+              {
+                namespaceSelector: {
+                  matchLabels: namespaceSelector(application.namespace),
+                },
+                podSelector: { matchLabels: { [SPAWN_LABEL]: spawn.selector } },
+              },
+            ],
+            ports: spawn.surfaces.flatMap(({ port }) => portsOf(port, mesh)),
+          },
+        ],
+  );
   // The baseline admits UDP and TCP alike, since the cluster's DNS answers on
   // both; only its peers other than DNS are reached through the mesh.
   const baseline = (process.egress ?? []).map((peer) =>
@@ -231,7 +252,76 @@ function policyOf(
       podSelector: { matchLabels: instanceOf(process.name) },
       policyTypes: ["Ingress", "Egress"],
       ...(ingress.length === 0 ? {} : { ingress }),
-      egress: [...edges, ...baseline, ...upstream, ...api, ...internet],
+      egress: [
+        ...edges,
+        ...spawned,
+        ...baseline,
+        ...upstream,
+        ...api,
+        ...internet,
+      ],
+    },
+  };
+}
+
+type Spawn = NonNullable<ResolvedProcess["spawns"]>[number];
+
+/**
+ * The policy of the pods a Process makes from one spawn template
+ * (spec/v1/16-dependencies.md#spawn-templates): named for the Process and the
+ * template, it selects them by their label. Only the Process that made them
+ * reaches them, on the surfaces the template serves; they reach their edges,
+ * the cluster's DNS and, where the template says so, the internet.
+ */
+function spawnPolicyOf(
+  process: ResolvedProcess,
+  spawn: Spawn,
+  application: ResolvedApplicationDocument,
+): NetworkPolicy {
+  const mesh = application.mesh;
+  // A template that serves nothing is reached by nothing.
+  // Stryker disable next-line ArrayDeclaration
+  const surfaces = spawn.surfaces ?? [];
+  const ingress =
+    surfaces.length === 0
+      ? []
+      : [
+          {
+            from: [peerOf(application.namespace, process.name)],
+            ports: surfaces.flatMap(({ port }) => portsOf(port, mesh)),
+          },
+        ];
+  // A template with no edge and one with an empty list reach nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  const edges = (spawn.dependencies ?? []).flatMap((edge) =>
+    // An edge to a provider off the cluster has no peer a selector reaches.
+    // Stryker disable next-line ArrayDeclaration
+    (edge.peers ?? []).map((peer) => ({
+      to: [peerOf(peer.namespace, peer.process)],
+      ports: portsOf(peer.port, mesh),
+    })),
+  );
+  const baseline = spawn.egress.map((peer) => ({
+    to: [peerOf(peer.namespace, peer.process)],
+    ports: egressPortsOf(peer, mesh),
+  }));
+  const internet =
+    spawn.internetEgress === undefined
+      ? []
+      : [{ to: [{ ipBlock: { cidr: ANY_IPV4, except: [...NOT_PUBLIC] } }] }];
+  return {
+    apiVersion: "networking.k8s.io/v1",
+    kind: "NetworkPolicy",
+    metadata: {
+      name: spawn.selector,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+    },
+    spec: {
+      podSelector: { matchLabels: { [SPAWN_LABEL]: spawn.selector } },
+      policyTypes: ["Ingress", "Egress"],
+      ...(ingress.length === 0 ? {} : { ingress }),
+      egress: [...edges, ...baseline, ...internet],
     },
   };
 }
@@ -405,6 +495,11 @@ export function renderNetworking(project: ResolvedProject): Deliverable[] {
       objects: [
         ...application.processes.flatMap((process) => [
           policyOf(process, application),
+          // A Process that makes no pod has no template to police.
+          // Stryker disable next-line ArrayDeclaration
+          ...(process.spawns ?? []).map((spawn) =>
+            spawnPolicyOf(process, spawn, application),
+          ),
           ...backupPoliciesOf(process, application),
         ]),
         ...migrationPoliciesOf(application),

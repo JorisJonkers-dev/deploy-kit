@@ -53,6 +53,12 @@ import {
 import { consumedOf } from "../model/consumer-label.ts";
 import { clientSecretPath } from "./client.ts";
 import { resolveEdge } from "./dependencies.ts";
+import {
+  resolveSpawns,
+  SPAWN_REASON,
+  SPAWN_RULES,
+  spawnEnvironmentOf,
+} from "./spawns.ts";
 import { resolveLibraries } from "./libraries.ts";
 import {
   destinationOf,
@@ -560,7 +566,11 @@ export function resolveProcess(
   // E_UNLOCKED_IMAGE.
   const image = context.lock.images[process.image] as LockedImage;
   const switchover = switchoverOf(process, context.machinery);
-  const environment = environmentOf(process, context);
+  const spawns = resolveSpawns(process, context);
+  const environment = [
+    ...environmentOf(process, context),
+    ...spawnEnvironmentOf(spawns),
+  ];
   const dependencies = (process.dependsOn ?? []).map((edge) =>
     resolveEdge(edge, context.union, context.platform, context.project),
   );
@@ -620,17 +630,22 @@ export function resolveProcess(
     // it holds Kubernetes API access.
     identityToken:
       process.api !== undefined ||
+      spawns.length > 0 ||
       secrets.some(({ delivery }) => delivery === "self"),
-    ...(process.api === undefined
+    ...(process.api === undefined && spawns.length === 0
       ? {}
       : {
           api: {
-            ...process.api,
-            // A rule that names no scope reaches the cluster.
-            rules: process.api.rules.map((rule) => ({
-              ...rule,
-              scope: rule.scope ?? "cluster",
-            })),
+            reason: process.api?.reason ?? SPAWN_REASON,
+            rules: [
+              // A rule that names no scope reaches the cluster.
+              ...(process.api?.rules ?? []).map((rule) => ({
+                ...rule,
+                scope: rule.scope ?? "cluster",
+              })),
+              // A template's pods are created in the Process's namespace.
+              ...(spawns.length === 0 ? [] : SPAWN_RULES),
+            ],
             // The platform admits the holder, or E_PROCESS_RBAC_GRANT refused
             // it, so the block that says where the API answers is there.
             server: (
@@ -664,5 +679,6 @@ export function resolveProcess(
         }),
     ...(environment.length === 0 ? {} : { environment }),
     ...(surfaces.length === 0 ? {} : { surfaces }),
+    ...(spawns.length === 0 ? {} : { spawns }),
   };
 }

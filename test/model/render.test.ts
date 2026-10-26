@@ -50,6 +50,7 @@ const SET = [
   "identity/identity.project.yml",
   "mail/mail.project.yml",
   "utility/utility.project.yml",
+  "agents/agents.project.yml",
   "identity/env/grafana/base.env",
   "data/data.project.yml",
   "data/env/postgres/base.env",
@@ -919,6 +920,14 @@ describe("renderIntentSet", () => {
 
   // REQ-105 (docs/requirements.md): a Process that serves DNS resolves
   // through the platform's upstream nameservers, never the cluster's DNS.
+  // REQ-107 (docs/requirements.md): a spawn template derives its pods' rules,
+  // labels and policy, and hands its Process the image and labels.
+  it("renders the agents project's share of the tree to its committed tree, byte for byte", () => {
+    expect(
+      asTree(artifact(render(undefined, ["agents"]), "agents")),
+    ).toStrictEqual(committed("agents/rendered"));
+  });
+
   it("renders the utility project's share of the tree to its committed tree, byte for byte", () => {
     expect(
       asTree(artifact(render(undefined, ["utility"]), "utility")),
@@ -1258,8 +1267,8 @@ describe("the database catalog", () => {
             "legacy: [auth, data, knowledge, knowledge-platform, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-            "estate: [delivery, edge, identity, mail, observability, secrets, utility]",
+            "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [agents, delivery, edge, identity, mail, observability, secrets, utility]",
           ),
     });
 
@@ -1293,8 +1302,8 @@ describe("the database catalog", () => {
           "legacy: [auth, knowledge, notes]",
         )
         .replace(
-          "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-          "estate: [data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+          "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+          "estate: [agents, data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
         )
         .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
   };
@@ -1526,8 +1535,8 @@ describe("the database catalog", () => {
             "legacy: [data, knowledge, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-            "estate: [auth, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [agents, auth, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
           ),
     };
     const tree = estate(both, ["knowledge-platform"], AUTH);
@@ -1585,8 +1594,8 @@ describe("the database catalog", () => {
             "legacy: [auth, data, knowledge, knowledge-platform, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-            "estate: [delivery, edge, identity, mail, observability, secrets, utility]",
+            "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+            "estate: [agents, delivery, edge, identity, mail, observability, secrets, utility]",
           ),
     };
 
@@ -2941,8 +2950,8 @@ describe("the forward-auth Middleware", () => {
             "legacy: [auth, data, identity, knowledge, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, ",
-            "estate: [delivery, edge, ",
+            "estate: [agents, delivery, edge, identity, ",
+            "estate: [agents, delivery, edge, ",
           )
           .replace(
             "  serving:\n",

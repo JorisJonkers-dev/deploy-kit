@@ -152,7 +152,7 @@ TREES = {"10-project-intent": {
     # table and each family's own section.
     # Surface stays last, and Route stays Exposure's first, so the one
     # cross-link lands between neighbours.
-    "Process": ["Capacity", "ApiAccess", "Sidecar", "Probe", "Volume", "LibraryMount", "Surface"],
+    "Process": ["Capacity", "ApiAccess", "SpawnTemplate", "Sidecar", "Probe", "Volume", "LibraryMount", "Surface"],
     "ApiAccess": ["ApiRule"],
     "Exposure": ["Route"],
     "Route": ["RateLimit"],

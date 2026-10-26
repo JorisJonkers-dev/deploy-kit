@@ -103,6 +103,36 @@ interface Held {
   readonly holders: readonly Process[];
 }
 
+/**
+ * Every edge a spawn template declares, held by the Process that creates its
+ * pods. They resolve like any edge, and order no start: the render starts no
+ * template's pod.
+ */
+const spawnEdgesOf = (fragment: Fragment): Placed<Held>[] =>
+  applicationsOf(fragment).flatMap((application) =>
+    application.value.processes.flatMap((process, p) =>
+      // Stryker disable next-line ArrayDeclaration: a Process with no template
+      // and one with an empty list hold no edge alike.
+      (process.spawns ?? []).flatMap((template, t) =>
+        // Stryker disable next-line ArrayDeclaration: a template with no edge
+        // and one with an empty list hold nothing alike.
+        (template.dependsOn ?? []).map((edge, e) => ({
+          document: fragment.name,
+          path: `${application.path}/processes/${String(p)}/spawns/${String(t)}/dependsOn/${String(e)}`,
+          // A template's edge orders no start, so no cycle reads its holder.
+          // Stryker disable next-line ArrayDeclaration
+          value: { edge, holders: [process] },
+        })),
+      ),
+    ),
+  );
+
+/** Every edge that must resolve: each level's, and each spawn template's. */
+const resolvableEdgesOf = (fragment: Fragment): Placed<Held>[] => [
+  ...edgesOf(fragment),
+  ...spawnEdgesOf(fragment),
+];
+
 function edgesOf(fragment: Fragment): Placed<Held>[] {
   const { name, document } = fragment;
   const placed = (
@@ -627,7 +657,7 @@ export const INVARIANTS: readonly Invariant[] = [
     code: "E_UNRESOLVED_APPLICATION",
     needsPlatform: true,
     answer: (union, platform) => [
-      ...union.flatMap(edgesOf).flatMap((placed) => {
+      ...union.flatMap(resolvableEdgesOf).flatMap((placed) => {
         const { application } = placed.value.edge;
         const declared =
           inUnion(union, application) ||
@@ -672,7 +702,7 @@ export const INVARIANTS: readonly Invariant[] = [
     code: "E_UNKNOWN_SURFACE",
     needsPlatform: true,
     answer: (union, platform) =>
-      union.flatMap(edgesOf).flatMap((placed) => {
+      union.flatMap(resolvableEdgesOf).flatMap((placed) => {
         const { edge } = placed.value;
         const declared = union.some(({ document }) =>
           document.applications.some(({ id }) => id === edge.application),
