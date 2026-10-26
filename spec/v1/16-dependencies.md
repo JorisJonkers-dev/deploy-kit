@@ -746,21 +746,26 @@ refuses to guess at. It declares what it asks, in `api`
 document admits its Application by name
 ([chapter 14](14-platform-intent.md#kubernetes-api-access),
 [0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)).
-An admitted declaration derives four things, and nothing else derives any of
-them:
+An admitted declaration derives these, and nothing else derives any of them:
 
 | derived | from |
 |---|---|
-| a `ClusterRole` holding the declared rules, `core` spelled as the unnamed group | the Process's `api.rules` |
-| a `ClusterRoleBinding` of that role to the Process's one ServiceAccount | the Process's identity ([Process identity](#process-identity)) |
+| a `Role` in the Process's namespace holding its `namespace`-scoped rules, `core` spelled as the unnamed group, where it has any | the Process's `api.rules` |
+| a `RoleBinding` of that role to the Process's one ServiceAccount | the Process's identity ([Process identity](#process-identity)) |
+| a `ClusterRole` holding its `cluster`-scoped rules, where it has any | the Process's `api.rules` |
+| a `ClusterRoleBinding` of that role to the same ServiceAccount | the Process's identity |
 | a mounted token | the declaration itself ([above](#the-token-is-mounted-only-where-the-pod-authenticates)) |
 | egress to where the API answers, by address | the Platform document's `apiAccess.server` |
 
-The role and its binding are cluster-scoped, so no namespace holds two apart:
-both are named **`<namespace>-<identity>`**, the name the identity's Vault role
-carries, for the same reason. The role is a `ClusterRole` and never a `Role`:
-every holder the estate has reads across the Projects' namespaces, and one of
-them reads a kind no namespace holds.
+A rule's scope decides its role. A `namespace` rule reaches only the
+Process's own namespace, so it is a `Role` there, named for the identity. A
+`cluster` rule, and a rule that names no scope, reaches every namespace and the
+kinds no namespace holds, so it is a `ClusterRole`. The `ClusterRole` and its
+binding are cluster-scoped, so no namespace holds two apart: both are named
+**`<namespace>-<identity>`**, the name the identity's Vault role carries, for
+the same reason. Writing a rule at the narrower scope is how a holder that
+writes only its own records, as the Release Gate does its release records,
+keeps that write out of every other namespace.
 
 Admission is by id, so it holds only for an id one Application carries. A
 second project that names an Application of its own after an admitted one is

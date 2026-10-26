@@ -42,6 +42,27 @@ export interface ClusterRole {
   }[];
 }
 
+/** A Process's namespace-scoped rules, in its own namespace. */
+export interface Role {
+  readonly apiVersion: "rbac.authorization.k8s.io/v1";
+  readonly kind: "Role";
+  readonly metadata: ObjectMeta;
+  readonly rules: ClusterRole["rules"];
+}
+
+/** A Role bound, in its namespace, to the Process's one ServiceAccount. */
+export interface RoleBinding {
+  readonly apiVersion: "rbac.authorization.k8s.io/v1";
+  readonly kind: "RoleBinding";
+  readonly metadata: ObjectMeta;
+  readonly roleRef: {
+    readonly apiGroup: "rbac.authorization.k8s.io";
+    readonly kind: "Role";
+    readonly name: string;
+  };
+  readonly subjects: readonly BindingSubject[];
+}
+
 /** Who a ClusterRole is bound to: a holder's one ServiceAccount, or a Human Grant's group. */
 export type BindingSubject =
   | {

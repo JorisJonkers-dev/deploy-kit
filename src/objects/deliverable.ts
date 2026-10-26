@@ -27,6 +27,8 @@ import type {
   LoadBalancerService,
   ClusterRole,
   ClusterRoleBinding,
+  Role,
+  RoleBinding,
   PriorityClass,
   ConfigMap,
   CronJob,
@@ -69,6 +71,8 @@ export type RenderedObject =
   | ConfigMap
   | ClusterRole
   | ClusterRoleBinding
+  | Role
+  | RoleBinding
   | PriorityClass
   | GrafanaDashboard
   | PrometheusRule

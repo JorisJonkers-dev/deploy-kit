@@ -102,7 +102,13 @@ applications:
           rules:
             - group: core
               objects: [configmaps]
-              verbs: [get, list, create, update]
+              verbs: [get, list]
+            # Its own release records live in its own namespace, so writing
+            # them needs no reach beyond it: a Role, not a ClusterRole.
+            - group: core
+              objects: [configmaps]
+              verbs: [create, update]
+              scope: namespace
             - group: core
               objects: [pods]
               verbs: [list]

@@ -576,6 +576,7 @@ describe("the metamodel names every class the chapter draws", () => {
       "AccessTier",
       "AdapterName",
       "AnalysisCheck",
+      "ApiScope",
       "ApiVerb",
       "Audience",
       "CertificateSource",

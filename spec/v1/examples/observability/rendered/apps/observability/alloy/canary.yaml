@@ -33,7 +33,7 @@ spec:
         metadata:
           application: alloy
           process: alloy
-          revision: sha256:745fc40288b693a179e72e2bf848ee89667d48772798eccc031b40b0c09a2cd6
+          revision: sha256:85d70bd1e948612d073b7f7cf90001f9bcecdc701d30c544ab7453d485384115
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms
@@ -43,7 +43,7 @@ spec:
         metadata:
           application: alloy
           process: alloy
-          revision: sha256:745fc40288b693a179e72e2bf848ee89667d48772798eccc031b40b0c09a2cd6
+          revision: sha256:85d70bd1e948612d073b7f7cf90001f9bcecdc701d30c544ab7453d485384115
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms
@@ -53,7 +53,7 @@ spec:
         metadata:
           application: alloy
           process: alloy
-          revision: sha256:745fc40288b693a179e72e2bf848ee89667d48772798eccc031b40b0c09a2cd6
+          revision: sha256:85d70bd1e948612d073b7f7cf90001f9bcecdc701d30c544ab7453d485384115
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms

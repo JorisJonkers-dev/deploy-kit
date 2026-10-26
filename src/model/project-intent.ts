@@ -5,6 +5,7 @@
 import { z } from "zod";
 import {
   ACCESS_TIERS,
+  API_SCOPES,
   API_VERBS,
   EGRESS_TARGETS,
   ARCHITECTURES,
@@ -281,6 +282,9 @@ const apiRule = z
     group: text,
     objects: z.array(text).min(1),
     verbs: z.array(apiVerb).min(1),
+    // The Process's own namespace, rendered as a Role, or the cluster, a
+    // ClusterRole. Absent means the cluster, as every rule meant before scopes.
+    scope: z.enum(API_SCOPES).meta({ id: "ApiScope" }).exactOptional(),
   })
   .meta({ id: "ApiRule" });
 

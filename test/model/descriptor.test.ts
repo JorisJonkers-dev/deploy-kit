@@ -97,7 +97,7 @@ describe("the descriptor", () => {
       name: "Cutover",
       literals: ["continuous", "interrupted"],
     });
-    expect(descriptor().vocabularies).toHaveLength(33);
+    expect(descriptor().vocabularies).toHaveLength(34);
   });
 });
 
