@@ -334,3 +334,22 @@ export interface VaultRole {
   readonly bound_service_account_namespaces: readonly string[];
   readonly token_policies: readonly string[];
 }
+
+/** grafana-operator's dashboard: one Grafana dashboard's JSON, for one instance. */
+export interface GrafanaDashboard {
+  readonly apiVersion: "grafana.integreatly.org/v1beta1";
+  readonly kind: "GrafanaDashboard";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly instanceSelector: {
+      readonly matchLabels: Readonly<Record<string, string>>;
+    };
+    readonly allowCrossNamespaceImport: true;
+    readonly folder: string;
+    readonly json: string;
+    readonly datasources?: readonly {
+      readonly inputName: string;
+      readonly datasourceName: string;
+    }[];
+  };
+}

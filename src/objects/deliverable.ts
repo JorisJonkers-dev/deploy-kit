@@ -18,6 +18,7 @@ import type {
   VaultRole,
   VaultDynamicSecret,
   VaultStaticSecret,
+  GrafanaDashboard,
 } from "./custom.ts";
 import type {
   AliasService,
@@ -67,6 +68,7 @@ export type RenderedObject =
   | ClusterRole
   | ClusterRoleBinding
   | PriorityClass
+  | GrafanaDashboard
   | CronJob
   | Job
   | HorizontalPodAutoscaler

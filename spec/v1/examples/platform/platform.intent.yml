@@ -134,6 +134,11 @@ monitors:
 telemetry:
   collector: observability/otel-collector
   metrics: observability/prometheus
+  # The Grafana every Application's dashboards ship to: the labels its
+  # instance carries, and the data source a vendored dashboard's inputs map to.
+  dashboards:
+    instance: {dashboards: grafana}
+    datasource: prometheus
 
 # The Secret Store every grant is read from, on its `http` surface: the
 # Application the worked `secrets` project declares

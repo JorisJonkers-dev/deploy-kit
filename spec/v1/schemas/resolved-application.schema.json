@@ -49,6 +49,9 @@
         "scrape": {
           "$ref": "#/$defs/ResolvedScrape"
         },
+        "dashboards": {
+          "$ref": "#/$defs/ResolvedDashboards"
+        },
         "releaseGate": {
           "$ref": "#/$defs/ReleaseGate"
         },
@@ -230,6 +233,74 @@
         "path",
         "interval",
         "timeout"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedDashboards": {
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instance": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "datasource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "files": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedDashboard"
+          }
+        }
+      },
+      "required": [
+        "folder",
+        "instance",
+        "datasource",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedDashboard": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "uid",
+        "from",
+        "content",
+        "inputs"
       ],
       "additionalProperties": false
     },

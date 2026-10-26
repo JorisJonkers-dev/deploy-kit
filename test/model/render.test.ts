@@ -52,6 +52,7 @@ const SET = [
   "data/data.project.yml",
   "data/env/postgres/base.env",
   "data/config/postgresql.conf",
+  "data/dashboards/rabbitmq.json",
 ];
 
 /** The knowledge platform's project file and one env file per Process. */
@@ -2445,6 +2446,56 @@ describe("replicas spread across too few nodes", () => {
     expect(placed.map(({ path }) => path.split("/").pop())).toStrictEqual([
       "placement",
     ]);
+  });
+});
+
+// REQ-092 (docs/requirements.md): each dashboard file ships as one
+// GrafanaDashboard in its Application's namespace and its Project's folder.
+describe("a shipped dashboard", () => {
+  const FILE = "data/dashboards/rabbitmq.json";
+  const dashboardOf = (edit?: (document: string) => string) => {
+    const tree = asTree(
+      artifact(
+        render(edit === undefined ? {} : { [FILE]: edit }, ["data"]),
+        "data",
+      ),
+    );
+    const [dashboard] = parseAllDocuments(
+      tree["apps/data/platform-rabbitmq/dashboards.yaml"] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    return dashboard as {
+      metadata: { name: string; namespace: string };
+      spec: Record<string, unknown>;
+    };
+  };
+
+  it("selects the Platform's Grafana, in the Project's folder, its inputs mapped", () => {
+    const { metadata, spec } = dashboardOf();
+
+    expect(metadata).toMatchObject({
+      name: "platform-rabbitmq-rabbitmq",
+      namespace: "data-system",
+    });
+    expect({ ...spec, json: undefined }).toStrictEqual({
+      instanceSelector: { matchLabels: { dashboards: "grafana" } },
+      allowCrossNamespaceImport: true,
+      folder: "data",
+      json: undefined,
+      datasources: [
+        { inputName: "DS_PROMETHEUS", datasourceName: "prometheus" },
+      ],
+    });
+  });
+
+  it("maps no data source where the file declares no input, and names itself for its uid", () => {
+    const { metadata, spec } = dashboardOf(
+      () =>
+        '{"__inputs": [{"name": "DS_LOKI", "type": "panel"}, {"name": 7, "type": "datasource"}], "uid": "Broker_Overview", "title": "Broker", "panels": []}\n',
+    );
+
+    expect(metadata.name).toBe("platform-rabbitmq-broker-overview");
+    expect(spec).not.toHaveProperty("datasources");
+    expect(spec["json"]).toContain('"uid": "Broker_Overview"');
   });
 });
 

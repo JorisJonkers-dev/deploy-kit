@@ -466,6 +466,32 @@
           }
         }
       ]
+    },
+    {
+      "name": "a dashboard that names its JSON inline",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/dashboards/0/json",
+          "value": "{}"
+        }
+      ]
+    },
+    {
+      "name": "an empty list of dashboards",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/dashboards",
+          "value": []
+        }
+      ]
     }
   ]
 }

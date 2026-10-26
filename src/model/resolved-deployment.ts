@@ -873,6 +873,28 @@ const resolvedScrape = z
   })
   .meta({ id: "ResolvedScrape" });
 
+// A dashboard an Application ships, as Grafana keys it, with the data source
+// inputs a vendored file declares (spec/v1/10-project-intent.md#dashboards).
+const resolvedDashboard = z
+  .strictObject({
+    uid: text,
+    from: text,
+    content: z.string(),
+    inputs: z.array(text),
+  })
+  .meta({ id: "ResolvedDashboard" });
+
+// An Application's dashboards, in its Project's folder, for the Grafana the
+// Platform document names.
+const resolvedDashboards = z
+  .strictObject({
+    folder: text,
+    instance: z.record(text, text),
+    datasource: text,
+    files: z.array(resolvedDashboard).min(1),
+  })
+  .meta({ id: "ResolvedDashboards" });
+
 const application = {
   id: text,
   // The digest of this element, itself and the provenance excluded
@@ -884,6 +906,7 @@ const application = {
   reconcileAfter: z.array(text).exactOptional(),
   alertClass: alertClass.exactOptional(),
   scrape: resolvedScrape.exactOptional(),
+  dashboards: resolvedDashboards.exactOptional(),
   // Absent on an `interrupted` Application: it stops before it starts, so no
   // switch waits on a gate (docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md).
   releaseGate: releaseGate.exactOptional(),
@@ -1074,6 +1097,7 @@ export const resolvedApplicationDocument = stated(
 
 export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;
 export type ResolvedPolicyJob = z.output<typeof resolvedPolicyJob>;
+export type ResolvedDashboards = z.output<typeof resolvedDashboards>;
 export type ResolvedCatalogJob = z.output<typeof resolvedCatalogJob>;
 export type ResolvedEvents = z.output<typeof resolvedEvents>;
 export type ResolvedApplicationDocument = z.output<

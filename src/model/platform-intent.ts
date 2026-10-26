@@ -375,11 +375,23 @@ export const fluxNamespaceOf = (platform: {
   readonly bootstrap: { readonly flux: { readonly sourceRef: string } };
 }): string => platform.bootstrap.flux.sourceRef.split("/")[0] as string;
 
+// The Grafana every Application's dashboards ship to
+// (spec/v1/14-platform-intent.md#telemetry): the labels its instance carries,
+// which a dashboard selects it by, and the data source a vendored dashboard's
+// inputs map to.
+const dashboardPolicy = z
+  .strictObject({
+    instance: z.record(z.string().min(1), z.string().min(1)),
+    datasource: text,
+  })
+  .meta({ id: "DashboardPolicy" });
+
 const telemetryPolicy = z
   .strictObject({
     collector: holder,
     // The metrics stack every declared scrape surface admits.
     metrics: holder,
+    dashboards: dashboardPolicy.exactOptional(),
   })
   .meta({ id: "TelemetryPolicy" });
 

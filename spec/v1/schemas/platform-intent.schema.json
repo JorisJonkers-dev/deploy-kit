@@ -629,11 +629,39 @@
           "type": "string",
           "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
+        },
+        "dashboards": {
+          "$ref": "#/$defs/DashboardPolicy"
         }
       },
       "required": [
         "collector",
         "metrics"
+      ],
+      "additionalProperties": false
+    },
+    "DashboardPolicy": {
+      "type": "object",
+      "properties": {
+        "instance": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "datasource": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "instance",
+        "datasource"
       ],
       "additionalProperties": false
     },

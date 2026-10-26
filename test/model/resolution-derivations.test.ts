@@ -73,6 +73,7 @@ const DATA = [
   "data/data.project.yml",
   "data/env/postgres/base.env",
   "data/config/postgresql.conf",
+  "data/dashboards/rabbitmq.json",
 ].map((name): AuthoredFile => ({ name, text: text(name) }));
 const LOCK = parseYaml(text("platform/images.lock.yml")) as {
   images: Record<

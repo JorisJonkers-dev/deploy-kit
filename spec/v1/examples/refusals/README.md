@@ -50,6 +50,10 @@ one defect so the refusal has a single cause.
 | [`tier-without-ingress-class/`](tier-without-ingress-class/) | `E_TIER_WITHOUT_INGRESS_CLASS` | an exposure on a tier that names no ingress class, so no proxy would admit its routes ([chapter 14](../../14-platform-intent.md#tiers)) |
 | [`tier-class-unfiltered/`](tier-class-unfiltered/) | `E_TIER_CLASS_UNFILTERED` | two tiers naming one proxy with two ingress classes ([chapter 30](../../30-deliverables.md#the-edge-proxy)) |
 | [`unknown-forward-auth-provider/`](unknown-forward-auth-provider/) | `E_UNKNOWN_FORWARD_AUTH_PROVIDER` | a tier whose forward-auth names an Application its Project does not declare ([chapter 14](../../14-platform-intent.md#tiers)) |
+| [`dashboard-not-found/`](dashboard-not-found/) | `E_DASHBOARD_NOT_FOUND` | a dashboard whose file is not beside the project file ([chapter 10](../../10-project-intent.md#dashboards)) |
+| [`dashboard-without-uid/`](dashboard-without-uid/) | `E_DASHBOARD_WITHOUT_UID` | a dashboard whose JSON names no `uid` ([chapter 10](../../10-project-intent.md#dashboards)) |
+| [`duplicate-dashboard-uid/`](duplicate-dashboard-uid/) | `E_DUPLICATE_DASHBOARD_UID` | two dashboards carrying one `uid` ([chapter 10](../../10-project-intent.md#dashboards)) |
+| [`no-dashboard-policy/`](no-dashboard-policy/) | `E_NO_DASHBOARD_POLICY` | a dashboard on a platform that names no Grafana ([chapter 14](../../14-platform-intent.md#telemetry)) |
 | [`library-not-granted/`](library-not-granted/) | `E_LIBRARY_NOT_GRANTED` | a Process mounting `write` a library that grants its project `read` ([chapter 14](../../14-platform-intent.md#libraries)) |
 | [`unknown-l4-address/`](unknown-l4-address/) | `E_UNKNOWN_L4_ADDRESS` | an Application exposed on an L4 Address the Platform document does not declare ([chapter 14](../../14-platform-intent.md#l4-addresses)) |
 | [`l4-address-exhausted/`](l4-address-exhausted/) | `E_L4_ADDRESS_EXHAUSTED` | two Processes exposed on a pool whose range holds one address ([chapter 14](../../14-platform-intent.md#l4-addresses)) |

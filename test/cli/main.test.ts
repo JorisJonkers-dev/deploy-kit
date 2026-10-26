@@ -235,6 +235,7 @@ describe("deploy-kit publish", () => {
       "data.project.yml",
       "env/postgres/base.env",
       "config/postgresql.conf",
+      "dashboards/rabbitmq.json",
     ].map((name) => ({
       name,
       text: readFileSync(example(`data/${name}`), "utf8"),

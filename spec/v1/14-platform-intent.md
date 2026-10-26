@@ -772,6 +772,9 @@ Each key and value is a Kubernetes label key and value.
 telemetry:
   collector: observability/otel-collector
   metrics: observability/prometheus
+  dashboards:
+    instance: {dashboards: grafana}
+    datasource: prometheus
 ```
 
 Where telemetry goes, in two names, each a [privileged role](#privileged-roles)'s
@@ -786,6 +789,13 @@ holder, named as a tier names its proxy: `<project>/<application>`.
   admits ([chapter 16](16-dependencies.md#the-derived-allow-set)): each of its
   Processes, in its own namespace. `E_UNKNOWN_METRICS_STACK` where its Project
   declares no such Application.
+
+- **`dashboards`**, optional, is the Grafana every Application's dashboards ship
+  to ([chapter 10](10-project-intent.md#dashboards)): `instance`, the labels its
+  Grafana instance carries, which each dashboard selects it by, and
+  `datasource`, the data source a vendored dashboard's inputs map to. An
+  Application that ships a dashboard where the block names none is
+  `E_NO_DASHBOARD_POLICY`.
 
 A Platform document without the block names neither: no profile is handed an
 endpoint, and no scrape surface admits a metrics stack.

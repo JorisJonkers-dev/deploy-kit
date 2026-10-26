@@ -3,6 +3,7 @@
 // A tool that needs to know who produces what reads this and nothing else.
 import type { ResolvedProject } from "../model/resolution.ts";
 import type { Deliverable } from "../objects/deliverable.ts";
+import { ADAPTER as GRAFANA, renderGrafana } from "./grafana/render.ts";
 import {
   ADAPTER as KUBERNETES,
   renderKubernetes,
@@ -45,6 +46,11 @@ export const ADAPTERS: readonly Adapter[] = [
     name: PROMETHEUS,
     defaultPath: "apps/<project>/<application>/podmonitor.yaml",
     render: renderPrometheus,
+  },
+  {
+    name: GRAFANA,
+    defaultPath: "apps/<project>/<application>/dashboards.yaml",
+    render: renderGrafana,
   },
   {
     name: TRAEFIK,

@@ -503,6 +503,13 @@
         "observability": {
           "$ref": "#/$defs/Observability"
         },
+        "dashboards": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Dashboard"
+          }
+        },
         "exposure": {
           "minItems": 1,
           "type": "array",
@@ -641,6 +648,19 @@
         "process",
         "surface",
         "path"
+      ],
+      "additionalProperties": false
+    },
+    "Dashboard": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from"
       ],
       "additionalProperties": false
     },
