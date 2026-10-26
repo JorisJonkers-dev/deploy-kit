@@ -431,6 +431,12 @@ the same wildcard, so a lost claim on either reissues against the allowance of
 both: five losses within seven days, counted across the tiers, exhaust it. The
 claim stays `reconstructible`; losing it costs a reissue, never data.
 
+**A route takes its TLS from its tier**: on an acme tier the resolver named for
+the tier, on a `tls` tier that issues `none` the certificate the proxy already
+holds, and on a `plain` tier none. So a route never names a resolver its tier's
+proxy does not declare, and switching a tier to its own certificate edits no
+route.
+
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
 adapter. A route's audience is the **only** way it reaches a tier, so a `lan`
 exposure can reach the LAN proxy and no other, by construction, not by which

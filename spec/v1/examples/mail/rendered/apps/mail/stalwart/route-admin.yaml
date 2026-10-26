@@ -43,7 +43,7 @@ spec:
           namespace: mail-system
           port: 8080
   tls:
-    certResolver: acme
+    certResolver: public-frankfurt
 ---
 apiVersion: traefik.io/v1alpha1
 kind: Middleware

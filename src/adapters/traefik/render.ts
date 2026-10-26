@@ -6,7 +6,10 @@
 // `acme` certificate source a resolver, a precedence a priority, a rate limit a
 // RateLimit Middleware of the route's own, and a redirect a RedirectRegex one.
 import type { ResolvedProject } from "../../model/resolution.ts";
-import type { ResolvedRoute } from "../../model/resolved-deployment.ts";
+import type {
+  ResolvedExposure,
+  ResolvedRoute,
+} from "../../model/resolved-deployment.ts";
 import type {
   IngressRoute,
   Middleware as RateLimit,
@@ -115,6 +118,24 @@ function serviceOf(
 const matchOf = (host: string, { match, path }: ResolvedRoute): string =>
   `Host(\`${host}\`) && ${match === "exact" ? "Path" : "PathPrefix"}(\`${path}\`)`;
 
+/**
+ * A route's TLS, taken from its tier (spec/v1/14-platform-intent.md#tiers):
+ * an acme tier's resolver, named for the tier; on a tls tier that issues none,
+ * the certificate its proxy already holds; on a plain tier, none.
+ */
+const tlsOf = ({
+  tier,
+  listener,
+  certificates,
+}: Pick<ResolvedExposure, "tier" | "listener" | "certificates">): {
+  tls?: { certResolver?: string };
+} => {
+  if (listener === "plain") return {};
+  return certificates === "acme"
+    ? { tls: { certResolver: tier } }
+    : { tls: {} };
+};
+
 /** The annotation a Traefik and external-dns select a route by. */
 export const INGRESS_CLASS = "kubernetes.io/ingress.class";
 
@@ -189,9 +210,7 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
               services: [service],
             };
           }),
-          ...(exposure.certificates === "acme"
-            ? { tls: { certResolver: "acme" } }
-            : {}),
+          ...tlsOf(exposure),
         },
       };
       return {

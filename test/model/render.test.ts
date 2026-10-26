@@ -2994,6 +2994,54 @@ describe("a tier's proxy", () => {
     });
   });
 });
+
+// REQ-100 (docs/requirements.md): a route takes its TLS from its tier: on an
+// acme tier the resolver named for the tier, on a tls tier that issues none the
+// certificate the proxy already holds, and on a plain tier none at all.
+describe("a route's TLS", () => {
+  const tlsOf = (edit?: (platform: string) => string) => {
+    const tree = asTree(
+      artifact(
+        render(
+          edit === undefined ? {} : { "platform/platform.intent.yml": edit },
+          ["data"],
+        ),
+        "data",
+      ),
+    );
+    return Object.fromEntries(
+      ["route-management", "route-lan"].map((route) => [
+        route,
+        (
+          parseAllDocuments(
+            tree[`apps/data/platform-rabbitmq/${route}.yaml`] ?? "",
+          )[0]?.toJS() as { spec: { tls?: unknown } }
+        ).spec.tls,
+      ]),
+    );
+  };
+
+  it("names its acme tier's own resolver, and none on a plain tier", () => {
+    expect(tlsOf()).toStrictEqual({
+      "route-management": { certResolver: "public-frankfurt" },
+      "route-lan": undefined,
+    });
+  });
+
+  it("terminates TLS with no resolver on a tls tier that issues none", () => {
+    expect(
+      tlsOf((platform) =>
+        platform
+          .replace(
+            "listener: plain\n    certificates: none",
+            "listener: tls\n    certificates: none",
+          )
+          // The LAN proxy provides no websecure, so the tier names no address.
+          .replace(/\n {4}address: lan-edge[^\n]*/, ""),
+      )["route-lan"],
+    ).toStrictEqual({});
+  });
+});
 // REQ-091 (docs/requirements.md): a tier's proxy takes its static
 // configuration from the model: entry points from its surfaces, the CRD
 // provider filtered on its tier's ingress class, ping and metrics on `admin`.

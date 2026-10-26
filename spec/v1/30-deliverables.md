@@ -462,7 +462,7 @@ spells only what the projection holds:
 | `scrape` of a `blue-green` Process | `prometheus` | a `PodMonitor` in the Application's namespace, `jobLabel` the `instance` label, the scrape's surface, path, interval and timeout |
 | `scrape` of a `stop-start` Process | `prometheus` | a `ServiceMonitor` over the Process's own `Service`, with the same selection and endpoint |
 | a tier's `listener` | `traefik` | the entry point: `tls` is `websecure`, `plain` is `web` |
-| a tier's `certificates` | `traefik` | `acme` is the certificate resolver of that name; `none` writes no TLS block |
+| a tier's `listener` and `certificates` | `traefik` | each route's TLS: on an `acme` tier the certificate resolver named for the tier, which the tier's proxy declares; on a `tls` tier that issues `none`, an empty TLS block, so the proxy serves the certificate it already holds; on a `plain` tier no TLS block. No route names a resolver its tier's proxy does not declare |
 | a route's `gate` | `traefik` | the Rule's one service is the `gate`'s Service, in the `gate`'s namespace and on its port, rather than a Process of the Application ([chapter 17](17-sign-in.md#what-the-edge-derives)) |
 | a route's `precedence` | `traefik` | `priority` is 1000 less the precedence, since Traefik tries the higher priority first |
 | a route's `middleware` | `traefik` | a reference into the proxy's namespace: `forward-auth`, and `security-headers` suffixed with the content profile where one is named; the edge project renders the shared ones, `security-headers` and `security-headers-<policy>` for each content policy, once per tier proxy's namespace ([Shared Middlewares](#shared-middlewares)) |
