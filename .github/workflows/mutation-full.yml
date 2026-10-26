@@ -52,9 +52,9 @@
           echo "run=${run}" >> "$GITHUB_OUTPUT"
 
   'shard':
-    'name': 'Mutation (${{ matrix.shard }}/6)'
+    'name': 'Mutation (${{ matrix.shard }}/12)'
     'runs-on': 'ubuntu-latest'
-    # One shard holds a sixth of the mutants; the limit only stops a hung run.
+    # One shard holds a twelfth of the mutants; the limit only stops a hung run.
     'timeout-minutes': 60
     'needs':
       - 'baseline'
@@ -66,7 +66,7 @@
       # Every shard reports, not only the first to find a survivor.
       'fail-fast': false
       'matrix':
-        'shard': [1, 2, 3, 4, 5, 6]
+        'shard': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     'steps':
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
@@ -91,7 +91,7 @@
         # The ranges are taken first, so a shard script that fails stops the
         # step, rather than handing Stryker an empty list.
         'run': |
-          ranges="$(node scripts/mutation-shard.ts "$SHARD" 6 reports/baseline/stryker-incremental.json)"
+          ranges="$(node scripts/mutation-shard.ts "$SHARD" 12 reports/baseline/stryker-incremental.json)"
           npm run test:mutation -- --mutate "$ranges"
       # A shard with a survivor fails, and its report is what names it.
       - 'name': 'Upload mutation report'
