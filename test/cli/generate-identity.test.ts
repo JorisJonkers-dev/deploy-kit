@@ -1,4 +1,4 @@
-// REQ-101 (docs/requirements.md): `deploy-kit generate identity` writes an
+// REQ-103 (docs/requirements.md): `deploy-kit generate identity` writes an
 // Application's App Roles, Client id and Principal contract version in each of
 // its five languages, byte for byte the worked example's committed files, from
 // the project file and the Platform document alone; `--check` fails a stale or

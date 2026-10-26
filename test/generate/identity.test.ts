@@ -1,4 +1,4 @@
-// REQ-101 (docs/requirements.md), at the step: what an identity file cannot
+// REQ-103 (docs/requirements.md), at the step: what an identity file cannot
 // say in a language, and how a long role list is laid out so a formatter
 // leaves it alone.
 import { describe, expect, it } from "vitest";

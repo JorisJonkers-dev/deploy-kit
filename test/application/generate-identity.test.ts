@@ -1,4 +1,4 @@
-// REQ-101 (docs/requirements.md), at the use-case seam: what the generator
+// REQ-103 (docs/requirements.md), at the use-case seam: what the generator
 // answers, by kind, before the CLI renders it.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
