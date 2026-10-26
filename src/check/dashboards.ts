@@ -32,6 +32,8 @@ export function dashboardDiagnostics(
     for (const [d, { from }] of (application.dashboards ?? []).entries()) {
       const path = `/applications/${String(a)}/dashboards/${String(d)}/from`;
       const content = read(from);
+      // A missing file reads no uid either way, and is refused as missing.
+      // Stryker disable next-line ConditionalExpression
       const uid = content === undefined ? undefined : dashboardUidOf(content);
       if (content === undefined)
         refusals.push({

@@ -4281,3 +4281,25 @@ describe("a receiver's credential", () => {
     ]);
   });
 });
+
+// REQ-097: a pool holds as many copies as the Process runs, and a blue/green
+// switch, so neither refusal of a node's own address reaches a pool.
+describe("a replicated Process on a pool", () => {
+  it("is refused neither its replicas nor its continuous cutover", () => {
+    const codes = codesOf(
+      resolve(
+        one(
+          serving(
+            "notes-api",
+            "        replicas: { count: 2, reason: two copies serve while one restarts }\n",
+          ),
+        ).replace(
+          "    processes:\n",
+          "    l4Exposure:\n      - { address: lan-dns, port: 8080, protocol: tcp, process: notes-api, surface: http }\n    processes:\n",
+        ),
+      ),
+    );
+    expect(codes).not.toContain("E_NODE_ADDRESS_REPLICATED");
+    expect(codes).not.toContain("E_CUTOVER_UNHONOURABLE");
+  });
+});

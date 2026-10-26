@@ -168,18 +168,23 @@ function alertingOf(
             ) as unknown[],
           })),
         }),
-    ...(monitoring === undefined || !routesAlerts(application, context)
+    // The Alertmanager is named, so the Platform document has its block.
+    ...(!routesAlerts(application, context)
       ? {}
       : {
           alerting: {
-            receivers: monitoring.receivers.map(({ name, discord }) => ({
+            receivers: (
+              monitoring as NonNullable<PlatformIntentDocument["monitoring"]>
+            ).receivers.map(({ name, discord }) => ({
               name,
               discord: {
                 secret: destinationOf(process, discord.webhook.path),
                 key: discord.webhook.key,
               },
             })),
-            routes: monitoring.routes,
+            routes: (
+              monitoring as NonNullable<PlatformIntentDocument["monitoring"]>
+            ).routes,
           },
         }),
   };
