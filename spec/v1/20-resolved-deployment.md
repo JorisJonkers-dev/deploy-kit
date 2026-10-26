@@ -848,11 +848,22 @@ connects it to the Secret Store, as any grant does. The Process also carries
 
 The middleware chain is derived, and one of its members needs an address: a
 forward-auth Middleware must name the endpoint that performs the check. **The
-tier names it** ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)).
-A tier in the Platform Intent that serves the `authenticated` audience carries
-the address of the endpoint that authenticates for it, beside the audiences it
-serves; a tier that serves no `authenticated` route carries no such field and
-needs none.
+tier names who answers it** ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)):
+a tier in the Platform Intent that serves the `authenticated` audience names
+its forward-auth provider, an Application, the surface one of its Processes
+answers on and the path it answers at; a tier that serves no `authenticated`
+route names none ([chapter 14](14-platform-intent.md#tiers)).
+
+The endpoint is the provider's Process, where it runs:
+`http://<process>.<namespace>.svc.cluster.local:<port><path>`, the namespace
+its Project's, or the handover ledger's `serving` location while that Project
+is legacy. No URL is authored, so the address follows the provider through a
+[Move](#the-move) and through its handover
+([#396](https://github.com/JorisJonkers-dev/deploy-kit/issues/396)); an
+earlier version of this section had the tier write the URL, which then had to
+be edited by hand at every move. A set that holds no file of the provider's
+Project, such as one Project's own check, derives the step without an
+endpoint; the composition, which holds every Project, derives it whole.
 
 The endpoint is the sign-in provider's Gate
 ([chapter 17](17-sign-in.md#what-the-edge-derives)). A route reaches it only
@@ -861,26 +872,13 @@ a native or token Client's routes carry no forward-auth Middleware at all. An
 `authenticated` exposure no Client names keeps forward-auth from its audience
 alone while `E_AUTHENTICATED_WITHOUT_CLIENT` waits
 ([chapter 17](17-sign-in.md#what-the-edge-derives)). A gated Client's exposure
-also gains the `/.auth/` route, whose `gate` is read off this address: the
-Service and namespace of a `<service>.<namespace>.svc.cluster.local` host and its
-port, or the scheme's where it names none. An endpoint outside the cluster
-names no Service, so no gated Client renders beside one.
+also gains the `/.auth/` route, served by the same Process the edge asks: its
+Service, namespace and port.
 
-It is not derived from the authenticating Application's own surface. `auth-api`'s
-estate-wide role *is* this middleware
-([chapter 10](10-project-intent.md#application-identity)), and resolving it as if it
-were a dependency edge would make the edge tree depend on resolving an Application
-and would write one Application's id into a platform derivation. It is a platform
-fact, so it sits where platform facts sit: the Platform Intent, pinned by
-digest ([Pinned inputs](#pinned-inputs)).
-
-The address the tier writes is the authenticating surface's
-[Stable Address](16-dependencies.md#the-stable-address), never its Process's
-own Service: a platform fact stays authored, and a Stable Address is the name of
-that surface which survives a [Move](#the-move) of the Application behind it.
-
-A route declaring `audience: authenticated` on a tier whose declaration carries
-no endpoint is `E_NO_FORWARD_AUTH_ENDPOINT`, checked when the chain is derived
+A route declaring `audience: authenticated` on a tier that names no provider is
+`E_NO_FORWARD_AUTH_ENDPOINT`, and a provider whose Project the set holds but
+which declares no Application with that surface is
+`E_UNKNOWN_FORWARD_AUTH_PROVIDER`, both checked when the chain is derived
 rather than discovered as a 500 at the edge.
 
 ### The mesh

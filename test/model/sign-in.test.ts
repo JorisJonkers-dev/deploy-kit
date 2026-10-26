@@ -20,8 +20,6 @@ const BASE = readFileSync(
   "utf8",
 );
 
-const GATE = "http://identity.signin-system.svc.cluster.local:8080/gate";
-
 const SIGN_IN = `signIn:
   issuer: https://auth.signin.dev
   provider: signin/identity
@@ -46,7 +44,7 @@ const platformOf = (signIn = SIGN_IN, crd = CLIENT_CRD): string =>
     audiences: [anonymous, authenticated, internal]
     listener: tls
     certificates: acme
-    forwardAuth: "${GATE}"
+    forwardAuth: {provider: signin/identity, surface: http, path: /gate}
     traefik: signin/edge-proxy
     ingressClass: edge-proxy
 `,

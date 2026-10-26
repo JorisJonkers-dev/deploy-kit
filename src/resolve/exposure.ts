@@ -11,8 +11,10 @@ import type {
 import type { ApplicationDocument } from "../model/project-intent.ts";
 import {
   applicationOf,
+  type ForwardAuth,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
+import { forwardAuthEndpoint } from "../model/runtime-profiles.ts";
 import type {
   ResolvedExposure,
   ResolvedRoute,
@@ -51,10 +53,29 @@ const baselineOf = (exposure: Exposure): Middleware => ({
     : { contentPolicy: exposure.contentPolicy }),
 });
 
+/**
+ * The forward-auth step of an authenticated route: the endpoint its tier's
+ * provider answers at, where the set holds the provider's Project, or the step
+ * alone where it does not (a tier carrying `authenticated` names a provider, or
+ * E_NO_FORWARD_AUTH_ENDPOINT refused the Platform document).
+ */
+function forwardAuthStep(
+  platform: PlatformIntentDocument,
+  union: readonly EffectiveProject[],
+  forwardAuth: ForwardAuth,
+): Middleware {
+  const endpoint = forwardAuthEndpoint(platform, union, forwardAuth);
+  return {
+    kind: "forward-auth" as const,
+    ...(endpoint === undefined ? {} : { endpoint }),
+  };
+}
+
 function middlewareOf(
   exposure: Exposure,
   route: Route,
   platform: PlatformIntentDocument,
+  union: readonly EffectiveProject[],
   gate: boolean,
 ): Middleware[] {
   const audience = route.audience ?? exposure.audience;
@@ -65,12 +86,7 @@ function middlewareOf(
     // A tier that carries `authenticated` names its endpoint, or
     // E_NO_FORWARD_AUTH_ENDPOINT refused the Platform document.
     ...(audience === "authenticated" && gate
-      ? [
-          {
-            kind: "forward-auth" as const,
-            endpoint: tier.forwardAuth as string,
-          },
-        ]
+      ? [forwardAuthStep(platform, union, tier.forwardAuth as ForwardAuth)]
       : []),
     baselineOf(exposure),
     ...(route.redirectTo === undefined
@@ -134,7 +150,7 @@ function resolveOne(
       surface: route.surface,
       audience: route.audience ?? exposure.audience,
       precedence: precedence(route),
-      middleware: middlewareOf(exposure, route, platform, gate),
+      middleware: middlewareOf(exposure, route, platform, union, gate),
     })),
   };
   if (!gated) return resolved;
@@ -146,7 +162,7 @@ function resolveOne(
       ...resolved.routes,
       {
         ...GATE_ROUTE,
-        gate: gateAddressOf(tier.forwardAuth as string),
+        gate: gateAddressOf(tier.forwardAuth as ForwardAuth, platform, union),
         audience: exposure.audience,
         precedence: precedence(GATE_ROUTE),
         // The Gate answers here itself, so nothing asks it first.

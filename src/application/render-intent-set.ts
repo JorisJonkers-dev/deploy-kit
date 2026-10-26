@@ -364,7 +364,11 @@ export function renderResolvedSet(
     ),
     // The Middlewares every route names, with the routes they serve.
     ...(adapters.some(({ name }) => name === TRAEFIK)
-      ? renderSharedMiddlewares(resolved.tierProxies, options.projects)
+      ? renderSharedMiddlewares(
+          resolved.tierProxies,
+          options.projects,
+          resolved.forwardAuths,
+        )
       : []),
     // A Human Grant is the platform's, so every render holds it.
     ...renderHumanGrants(resolved.humanGrants ?? []),

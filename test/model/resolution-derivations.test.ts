@@ -232,11 +232,9 @@ ${serving("notes-api")}`;
       {
         audience: "authenticated",
         middleware: [
-          {
-            kind: "forward-auth",
-            endpoint:
-              "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
-          },
+          // This set holds no file of the provider's Project, so the step
+          // names no endpoint; the composition, which holds it, does.
+          { kind: "forward-auth" },
           { kind: "security-headers" },
         ],
       },
@@ -1404,68 +1402,15 @@ roles: [writer, admin]`;
       },
     );
 
-    it("serves the Gate's own route on the scheme's port where the forward-auth endpoint names none", () => {
+    it("serves the Gate's own route from the Service of the tier's forward-auth provider", () => {
       const [exposure] =
-        application(signingIn(GATED), {
-          signIn: true,
-          platform: (platform) =>
-            platform.replace(
-              "identity.identity-system.svc.cluster.local:8080/gate/forward",
-              "identity.identity-system.svc.cluster.local/gate/forward",
-            ),
-        }).exposure ?? [];
-
-      expect(gateOf(exposure)).toStrictEqual({
-        name: "identity",
-        namespace: "identity-system",
-        port: 80,
-      });
-    });
-
-    it("reads the Gate's address off an endpoint that names no path", () => {
-      const [exposure] =
-        application(signingIn(GATED), {
-          signIn: true,
-          platform: (platform) =>
-            platform.replace(
-              "identity.identity-system.svc.cluster.local:8080/gate/forward",
-              "identity.identity-system.svc.cluster.local:8080",
-            ),
-        }).exposure ?? [];
+        application(signingIn(GATED), { signIn: true }).exposure ?? [];
 
       expect(gateOf(exposure)).toStrictEqual({
         name: "identity",
         namespace: "identity-system",
         port: 8080,
       });
-    });
-
-    it("stops at an endpoint outside the cluster that only carries an in-cluster address further on", () => {
-      expect(() =>
-        application(signingIn(GATED), {
-          signIn: true,
-          platform: (platform) =>
-            platform.replace(
-              "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
-              "https://gate.jorisjonkers.dev/to/http://identity.identity-system.svc.cluster.local:8080/gate",
-            ),
-        }),
-      ).toThrow("a forward-auth endpoint outside the cluster");
-    });
-
-    it("stops at a gated Client beside a forward-auth endpoint outside the cluster, which names no Service", () => {
-      expect(() =>
-        application(signingIn(GATED), {
-          signIn: true,
-          platform: (platform) =>
-            platform.replace(
-              "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
-              "https://gate.jorisjonkers.dev/forward",
-            ),
-        }),
-      ).toThrow(
-        "https://gate.jorisjonkers.dev/forward: a forward-auth endpoint outside the cluster has no route to serve the Gate's own",
-      );
     });
 
     it("derives the Gate's own route only on the exposure a gated Client names", () => {
@@ -2960,7 +2905,7 @@ ${serving("notes-api")}`,
               .replace(/\n\s+forwardAuth: [^\n]*/, "")
               .replace(
                 "audiences: [lan]",
-                "audiences: [lan, authenticated]\n    forwardAuth: http://lan-auth.lan-system.svc.cluster.local:9000/forward",
+                "audiences: [lan, authenticated]\n    forwardAuth: {provider: notes/notes, surface: http, path: /lan-forward}",
               ),
         },
       ).exposure ?? [];
@@ -2968,7 +2913,8 @@ ${serving("notes-api")}`,
     expect(exposure?.tier).toBe("public-frankfurt");
     expect(exposure?.routes[0]?.middleware?.[0]).toStrictEqual({
       kind: "forward-auth",
-      endpoint: "http://lan-auth.lan-system.svc.cluster.local:9000/forward",
+      endpoint:
+        "http://notes-api.notes-system.svc.cluster.local:8080/lan-forward",
     });
   });
 
@@ -3642,9 +3588,10 @@ describe("the Vault policy job", () => {
         set((platform) => platform.replace("secretStore: secrets/vault\n", "")),
       ),
       // What the set does derive is where Flux's events go, since the worked
-      // platform names a Reporter, the tiers' proxies, and the groups it grants
-      // a cluster role. The catalogs' homes and the Node Agents are always
-      // there, and the homes hold none.
+      // platform names a Reporter, the tiers' proxies, the groups it grants a
+      // cluster role, its priority classes and each tier's forward-auth. The
+      // catalogs' homes and the Node Agents are always there, and the homes
+      // hold none.
     ).toStrictEqual([
       "projects",
       "catalogHomes",
@@ -3653,6 +3600,7 @@ describe("the Vault policy job", () => {
       "nodeAgents",
       "humanGrants",
       "priority",
+      "forwardAuths",
     ]);
   });
 

@@ -99,6 +99,24 @@ interface Declares {
   }[];
 }
 
+/** Where the Process of `application` that provides `surface` serves, and on which port, where one does. */
+export function surfaceHome(
+  platform: Pick<PlatformIntentDocument, "handover">,
+  projects: readonly Declares[],
+  application: string | undefined,
+  surface: string,
+): (Home & { readonly port: number }) | undefined {
+  for (const { project, applications } of projects)
+    for (const { id, processes } of applications)
+      if (holds(application, project, id))
+        for (const process of processes) {
+          const port = process.provides?.[surface];
+          if (port !== undefined)
+            return { ...homeOf(platform, project, id, process.name), port };
+        }
+  return undefined;
+}
+
 /** The address of the Process of `application` that provides `surface`, where one does. */
 export function surfaceAddress(
   platform: Pick<PlatformIntentDocument, "handover">,
@@ -106,16 +124,34 @@ export function surfaceAddress(
   application: string | undefined,
   surface: string,
 ): string | undefined {
-  for (const { project, applications } of projects)
-    for (const { id, processes } of applications)
-      if (holds(application, project, id))
-        for (const process of processes) {
-          const port = process.provides?.[surface];
-          if (port !== undefined)
-            return addressOf(homeOf(platform, project, id, process.name), port);
-        }
-  return undefined;
+  const home = surfaceHome(platform, projects, application, surface);
+  return home === undefined ? undefined : addressOf(home, home.port);
 }
+
+/**
+ * The endpoint the edge asks a tier's forward-auth at
+ * (spec/v1/14-platform-intent.md#tiers): its provider's address and path, or
+ * nothing where the union declares no such provider.
+ */
+export const forwardAuthEndpoint = (
+  platform: Pick<PlatformIntentDocument, "handover">,
+  projects: readonly Declares[],
+  forwardAuth: {
+    readonly provider: string;
+    readonly surface: string;
+    readonly path: string;
+  },
+): string | undefined => {
+  const home = surfaceHome(
+    platform,
+    projects,
+    forwardAuth.provider,
+    forwardAuth.surface,
+  );
+  return home === undefined
+    ? undefined
+    : `http://${addressOf(home, home.port)}${forwardAuth.path}`;
+};
 
 /** The endpoint an `http://` client is handed for `application`'s `surface`. */
 const endpoint = (address: string | undefined): string | undefined =>

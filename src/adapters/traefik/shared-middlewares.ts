@@ -15,6 +15,13 @@ import { managedOnly } from "../shared/labels.ts";
 import { applicationDirectory } from "../shared/paths.ts";
 import { ADAPTER } from "./render.ts";
 
+/** A tier proxy's forward-auth: the endpoint it asks and the headers it hands on. */
+export interface ResolvedForwardAuth {
+  readonly proxy: string;
+  readonly address: string;
+  readonly responseHeaders?: readonly string[];
+}
+
 /** What each content policy lets a page load, beside its own origin. */
 export const CONTENT_SECURITY_POLICIES: Readonly<
   Record<ContentPolicy, string>
@@ -42,6 +49,7 @@ const BASELINE = {
 export function renderSharedMiddlewares(
   proxies: readonly string[],
   projects: readonly string[],
+  forwardAuths: readonly ResolvedForwardAuth[],
 ): Deliverable[] {
   const homes = new Map<string, string>();
   for (const proxy of [...proxies].sort()) {
@@ -74,6 +82,28 @@ export function renderSharedMiddlewares(
         },
       })),
     ];
+    // The forward-auth a tier of this namespace names: the first such tier's,
+    // in the Platform document's order, where two tiers here name one.
+    const asked = forwardAuths.find(
+      ({ proxy }) => proxy.slice(0, proxy.indexOf("/")) === project,
+    );
+    if (asked !== undefined)
+      objects.unshift({
+        apiVersion: "traefik.io/v1alpha1",
+        kind: "Middleware",
+        metadata: metadata("forward-auth"),
+        spec: {
+          forwardAuth: {
+            address: asked.address,
+            trustForwardHeader: true,
+            // No list and an undefined one hand on nothing alike.
+            // Stryker disable next-line ConditionalExpression
+            ...(asked.responseHeaders === undefined
+              ? {}
+              : { authResponseHeaders: asked.responseHeaders }),
+          },
+        },
+      });
     return {
       path: `${applicationDirectory(project, application)}/middlewares.yaml`,
       adapter: ADAPTER,

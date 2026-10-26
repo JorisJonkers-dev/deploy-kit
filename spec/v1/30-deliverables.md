@@ -480,6 +480,12 @@ that policy's `Content-Security-Policy`. All four are rendered whatever the
 routes name, because the vocabulary is closed: no Project's exposure changes the
 edge's share, and no route names a Middleware the edge lacks.
 
+Where a tier of the namespace names a forward-auth provider, the same file holds
+`forward-auth`: a `forwardAuth` Middleware whose `address` is the provider's
+Process, `http://<process>.<namespace>.svc.cluster.local:<port><path>`, with
+`trustForwardHeader` and the tier's `responseHeaders` as `authResponseHeaders`.
+Where two tiers of one namespace name one, the first in the Platform document is used.
+
 | Middleware | headers |
 |---|---|
 | `security-headers` | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Strict-Transport-Security: max-age=31536000; includeSubDomains` |

@@ -2448,6 +2448,82 @@ describe("replicas spread across too few nodes", () => {
   });
 });
 
+// REQ-090 (docs/requirements.md): the edge's forward-auth Middleware asks the
+// Process of the provider its tier names, and hands on the headers it lists.
+describe("the forward-auth Middleware", () => {
+  const forwardAuth = (edit?: (document: string) => string) => {
+    const tree = asTree(
+      artifact(
+        render(
+          edit === undefined ? {} : { "platform/platform.intent.yml": edit },
+          ["edge"],
+        ),
+        "edge",
+      ),
+    );
+    return parseAllDocuments(
+      tree["apps/edge/traefik-lan/middlewares.yaml"] ?? "",
+    )
+      .map((document) => document.toJS() as Record<string, unknown>)
+      .find(
+        (document) =>
+          (document["metadata"] as { name: string }).name === "forward-auth",
+      )?.["spec"];
+  };
+
+  it("asks the provider's Process at the path the tier names", () => {
+    expect(forwardAuth()).toStrictEqual({
+      forwardAuth: {
+        address:
+          "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+        trustForwardHeader: true,
+      },
+    });
+  });
+
+  it("hands on the response headers the tier lists", () => {
+    expect(
+      forwardAuth((document) =>
+        document.replace(
+          "path: /gate/forward}",
+          "path: /gate/forward, responseHeaders: [X-User-Id, X-User-Roles]}",
+        ),
+      ),
+    ).toStrictEqual({
+      forwardAuth: {
+        address:
+          "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+        trustForwardHeader: true,
+        authResponseHeaders: ["X-User-Id", "X-User-Roles"],
+      },
+    });
+  });
+
+  it("follows the provider where the handover ledger says the old path runs it", () => {
+    const address = (
+      forwardAuth((document) =>
+        document
+          .replace(
+            "legacy: [auth, data, knowledge, notes]",
+            "legacy: [auth, data, identity, knowledge, notes]",
+          )
+          .replace(
+            "estate: [delivery, edge, identity, ",
+            "estate: [delivery, edge, ",
+          )
+          .replace(
+            "  serving:\n",
+            "  serving:\n    - application: identity\n      namespace: auth-system\n      instance: auth-api\n",
+          ),
+      ) as { forwardAuth: { address: string } }
+    ).forwardAuth.address;
+
+    expect(address).toBe(
+      "http://auth-api.auth-system.svc.cluster.local:8080/gate/forward",
+    );
+  });
+});
+
 // REQ-096 (docs/requirements.md): a Process's priority class follows from
 // what it is: a datastore's the data class, the foundation's and a critical
 // Application's the critical class, any other none.

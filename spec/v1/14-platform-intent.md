@@ -367,7 +367,7 @@ tiers:
     audiences: [anonymous, authenticated]
     listener: tls                      # tls | plain
     certificates: acme                 # acme | none
-    forwardAuth: http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward
+    forwardAuth: {provider: identity/identity, surface: http, path: /gate/forward}
     proxiedBy: cloudflare              # optional: who forwards clients' requests to this edge
     traefik: edge/traefik-public       # <project>/<application>: the declared Application that is this tier's proxy
     ingressClass: traefik-public       # the class that proxy admits routes of
@@ -385,7 +385,7 @@ tiers:
 | `audiences` | which audiences this tier carries; a route's audience selects its tier, and an audience no tier carries is `E_NO_TIER_FOR_AUDIENCE` |
 | `listener` | whether the edge terminates TLS |
 | `certificates` | how certificates are issued for what it terminates |
-| `forwardAuth` | the endpoint that authenticates for it; required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
+| `forwardAuth` | who authenticates for it: `provider`, a declared Application as `<project>/<application>`; `surface`, the surface one of its Processes answers on; `path`, where it answers; and optional `responseHeaders`, the headers the edge hands on to the route's Process. Never a URL: the edge asks the provider's Process where it runs, which follows the provider through a move and through the handover ledger's `serving` location while its Project is legacy. Required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)); a provider whose Project the set holds and which declares no such Application or surface is `E_UNKNOWN_FORWARD_AUTH_PROVIDER`. The Project that declares the tier's proxy renders the `forward-auth` Middleware ([chapter 30](30-deliverables.md#shared-middlewares)) |
 | `proxiedBy` | `cloudflare`, or absent. Who forwards clients' requests to this edge, which decides the address a route's `rateLimit` counts a client by: absent, the connection's own address; `cloudflare`, the address Cloudflare forwards in `CF-Connecting-IP`, since every connection then comes from a Cloudflare edge. State it only when every request reaches the tier through Cloudflare, since a client that reaches the edge directly writes that header itself ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)) |
 | `traefik` | the platform Application whose proxy this tier is, as `<project>/<application>` ([privileged roles](#privileged-roles)); an Application its Project does not declare is `E_UNKNOWN_TIER_PROXY` |
 | `ingressClass` | the ingress class this tier's proxy admits routes of, a Kubernetes name. Every route rendered for the tier carries it, and external-dns writes a record for a route by the same annotation, so one Traefik never serves another tier's routes. Optional in the document, but an exposure on a tier that names none is `E_TIER_WITHOUT_INGRESS_CLASS`: its routes would be admitted by no proxy |

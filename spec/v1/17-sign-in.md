@@ -101,7 +101,7 @@ Audience **and** the Client:
 
 | exposure audience | Client | forward-auth | added route |
 |---|---|---|---|
-| `authenticated` | `gated` | the tier's `forwardAuth` endpoint, on every route | `/.auth/` (prefix) to the same Stable Address the tier's `forwardAuth` names |
+| `authenticated` | `gated` | the tier's `forwardAuth` endpoint, on every route | `/.auth/` (prefix) to the Process the tier's `forwardAuth` provider names |
 | `authenticated` | `native` | none: the Application enforces sign-in | none |
 | `authenticated` | `token` | none: the Application checks the bearer token | none |
 | `authenticated` | no `client` | refused: `E_AUTHENTICATED_WITHOUT_CLIENT`; until it is enforced, the tier's `forwardAuth` endpoint, from the audience alone | none |
@@ -114,8 +114,8 @@ forward-auth its audience alone derived before this chapter, and so does an
 `authenticated` exposure of an Application whose Client names another of its
 exposures.
 
-The derived `/.auth/` route is served by the Service the tier's `forwardAuth`
-endpoint names, in that Service's namespace and on its port
+The derived `/.auth/` route is served by the Process the tier's `forwardAuth`
+provider names, at its Service, in its namespace and on its port
 ([chapter 20](20-resolved-deployment.md#the-forward-auth-endpoint)), with the
 exposure's security headers and no forward-auth of its own: the Gate answers
 there itself, so nothing asks it first. Its precedence is ranked with the
@@ -219,9 +219,9 @@ The Platform document names who issues sign-ins
 that is the sign-in provider. An Application declaring `client` while the
 Platform document names no sign-in provider is `E_NO_SIGN_IN_PROVIDER`.
 
-The tier's `forwardAuth` endpoint keeps its meaning and its place
+The tier's `forwardAuth` keeps its meaning and its place
 ([chapter 20](20-resolved-deployment.md#the-forward-auth-endpoint)). It names the
-Gate, which is the sign-in provider's surface, and is required where a tier
+Gate: the sign-in provider, its surface and the Gate's path, and is required where a tier
 carries a `gated` Client.
 
 ## What is checked
