@@ -4303,3 +4303,57 @@ describe("a replicated Process on a pool", () => {
     expect(codes).not.toContain("E_CUTOVER_UNHONOURABLE");
   });
 });
+
+// REQ-091: only the Process of a tier's proxy that serves `web`, under a tier
+// that names its class, carries the edge proxy's configuration; and a tier's
+// forward-auth whose provider the set does not hold asks nothing.
+describe("a tier's proxy, read from the set", () => {
+  const resolved = (options: Options = {}) => {
+    const result = resolve(one(serving("notes-api")), options);
+    if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
+    return result.value;
+  };
+  const edgeProcesses = (options: Options = {}) =>
+    projectNamed([...resolved(options).projects], "edge")
+      .applications.find(({ id }) => id === "traefik-public")
+      ?.processes.map(({ name, edgeProxy }) => [name, edgeProxy !== undefined]);
+
+  it("asks no forward-auth provider the set does not hold", () => {
+    expect(resolved().forwardAuths).toStrictEqual([]);
+  });
+
+  it("configures no proxy under a tier that names no class", () => {
+    expect(
+      edgeProcesses({
+        platform: (platform) =>
+          platform.replace(/\n {4}ingressClass: traefik-public[^\n]*/, ""),
+      }),
+    ).toStrictEqual([["traefik-public", false]]);
+  });
+
+  it("configures the proxy's Process that serves web, and no other", () => {
+    expect(
+      edgeProcesses({
+        foundation: (name, text) =>
+          name === "edge/edge.project.yml"
+            ? text.replace(
+                "  - id: traefik-lan\n",
+                `      - name: traefik-public-logs
+        lifecycle: application
+        image: traefik
+        runtime: none
+        placement: { memory: 32Mi, cpu: 10m }
+        probes: none
+        startupBudget: 20s
+        cutover: continuous
+
+  - id: traefik-lan\n`,
+              )
+            : text,
+      }),
+    ).toStrictEqual([
+      ["traefik-public", true],
+      ["traefik-public-logs", false],
+    ]);
+  });
+});
