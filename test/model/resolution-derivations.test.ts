@@ -4488,6 +4488,22 @@ ${serving("notes-store").replace("provides: { http: 8080 }", "provides: { store:
     ]);
   });
 
+  it("names a template's variables with every character a variable cannot hold as `_`", () => {
+    const names = processOf(
+      project.replace("- name: runner", "- name: deep-runner.2"),
+      {
+        platform: admitted,
+      },
+    ).environment?.flatMap(({ name }) =>
+      name.startsWith("SPAWN_") ? [name] : [],
+    );
+
+    expect(names).toStrictEqual([
+      "SPAWN_DEEP_RUNNER_2_IMAGE",
+      "SPAWN_DEEP_RUNNER_2_LABELS",
+    ]);
+  });
+
   it("derives the namespaced rules that create and remove its pods, beside any the Process declares", () => {
     expect(processOf(project, { platform: admitted }).api?.rules).toStrictEqual(
       [
