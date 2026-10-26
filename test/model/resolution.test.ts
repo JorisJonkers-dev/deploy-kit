@@ -38,6 +38,7 @@ const MINIMAL_SET = [
   "minimal/notes.project.yml",
   "minimal/env/notes-api/base.env",
   "delivery/delivery.project.yml",
+  "agents/agents.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
@@ -496,6 +497,7 @@ describe("resolveIntentSet", () => {
     expect(resolved().map(({ project: name }) => name)).toStrictEqual([
       "notes",
       "delivery",
+      "agents",
       "edge",
       "observability",
       "secrets",
@@ -510,6 +512,7 @@ describe("resolveIntentSet", () => {
         ({ input, name }) => `${input} ${name}`,
       ),
     ).toStrictEqual([
+      "intent-fragment agents",
       "intent-fragment delivery",
       "intent-fragment edge",
       "intent-fragment identity",

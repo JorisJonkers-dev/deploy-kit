@@ -722,6 +722,12 @@ Release Gate, the Collector and Gatus, which gathers each Project's external
 checks, are of the first kind
 ([chapter 14](spec/v1/14-platform-intent.md#kubernetes-api-access)).
 
+**Spawn Template**: what a Process may create while it runs: a pinned image, what
+each pod requests, the surfaces it serves the Process, its edges and its
+egress. The render derives the namespace rules that create the pods, the label
+they carry and their policy, and hands the Process the image and labels
+([chapter 10](spec/v1/10-project-intent.md#spawn-templates)).
+
 **API Scope**: how far one of a Process's API rules reaches: `namespace`, its
 own namespace, rendered as a Role there, or `cluster`, every namespace,
 rendered as a ClusterRole. A rule that names none reaches the cluster

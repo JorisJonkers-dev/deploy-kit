@@ -85,6 +85,7 @@ describe("parseProjectIntent", () => {
 
   it("covers every worked example", () => {
     expect(cases).toStrictEqual([
+      "agents",
       "auth",
       "data",
       "delivery",

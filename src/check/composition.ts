@@ -800,14 +800,25 @@ function projectRefusals(
               message: `${process.name} asks the whole cluster for ${rule.objects.join(", ")}, and the platform admits the Application ${application.id} only to its own namespace`,
               hint: "Scope the rule `namespace`, or name the Application in the Platform document's `apiAccess.holders` instead of `namespaceHolders`.",
             });
-      if (process.api !== undefined && !cluster && !local)
+      // A spawn template derives API access to create its pods in its own
+      // namespace, so it is admitted the same way, at either scope.
+      const asks =
+        process.api !== undefined
+          ? "api"
+          : process.spawns !== undefined
+            ? "spawns"
+            : undefined;
+      if (asks !== undefined && !cluster && !local)
         refusals.push({
           code: "E_PROCESS_RBAC_GRANT",
-          path: `${processAt}/api`,
+          path: `${processAt}/${asks}`,
           message: repeated
             ? `${process.name} declares Kubernetes API access, and more than one Application carries the id ${application.id}, so the platform admits none of them`
             : `${process.name} declares Kubernetes API access, and the platform does not admit the Application ${application.id} to hold any`,
-          hint: "Name the Application in the Platform document's `apiAccess.holders` as `<project>/<application>`, under an id no other Application carries, or drop `api`.",
+          hint:
+            "Name the Application in the Platform document's `apiAccess.holders` as `<project>/<application>`, under an id no other Application carries, or drop `" +
+            asks +
+            "`.",
         });
       for (const [v, volume] of volumes.entries())
         if (platform.durability[volume.durability] === undefined)

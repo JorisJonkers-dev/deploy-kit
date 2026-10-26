@@ -452,16 +452,10 @@ describe("the foundation", () => {
   };
 
   it("leaves out an Application admitted to hold API access in its own namespace alone", () => {
-    expect(
-      foundationOf(
-        platformOf(
-          WORKED.replace(
-            "\n  server:\n",
-            "\n  namespaceHolders: [agents/agents-api]\n  server:\n",
-          ),
-        ),
-      ).has("agents/agents-api"),
-    ).toBe(false);
+    // The worked platform admits agents-api to its own namespace alone.
+    expect(foundationOf(platformOf(WORKED)).has("agents/agents-api")).toBe(
+      false,
+    );
   });
 
   it("is every holder of a privileged role the worked platform names", () => {

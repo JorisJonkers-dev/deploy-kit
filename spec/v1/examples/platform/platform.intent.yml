@@ -243,6 +243,8 @@ delivery:
 # Process's egress policy admits: the API server is no pod a selector reaches.
 apiAccess:
   holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter, edge/external-dns, secrets/vault-secrets-operator, observability/prometheus-operator, observability/kube-state-metrics, observability/grafana-operator, observability/gatus, observability/alloy]
+  # Admitted to their own namespace alone: no privileged role, so no foundation.
+  namespaceHolders: [agents/agents-api]
   server:
     - { cidr: 10.43.0.1/32, port: 443 }
 
@@ -283,7 +285,7 @@ policyJob:
 handover:
   retireBy: 2027-03-31
   legacy: [auth, data, knowledge, notes]
-  estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]
+  estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]
   # Where the old path keeps the legacy Postgres's administrative login, which
   # applies the catalog of the estate path's databases until data moves.
   serving:

@@ -60,6 +60,7 @@ function minimal(): ResolvedProject {
       "minimal/notes.project.yml",
       "minimal/env/notes-api/base.env",
       "delivery/delivery.project.yml",
+      "agents/agents.project.yml",
       "edge/edge.project.yml",
       "observability/observability.project.yml",
       "observability/rules/platform.yaml",
@@ -1167,6 +1168,200 @@ describe("the networking adapter", () => {
       ),
     ).toContainEqual(upstream);
     expect(egressOf(edited())).not.toContainEqual(upstream);
+  });
+
+  // REQ-107 (docs/requirements.md): a spawn template's pods get a policy of
+  // their own, selected by the label every one of them carries.
+  it("writes a policy for each spawn template's pods: reached by its Process alone, reaching the DNS, its edges and the internet", () => {
+    const policies = objectsAt(
+      renderNetworking(
+        edited(undefined, () => ({
+          spawns: [
+            {
+              name: "runner",
+              image: "ghcr.io/example/runner@sha256:00",
+              uid: 1000,
+              gid: 1000,
+              memory: "256Mi",
+              cpu: "100m",
+              selector: "notes-api-runner",
+              surfaces: [{ name: "http", port: 8090 }],
+              consumes: ["notes-store.store"],
+              dependencies: [
+                {
+                  application: "notes-store",
+                  surface: "store",
+                  address: "notes-store.notes-system.svc.cluster.local:7000",
+                  peers: [
+                    {
+                      namespace: "notes-system",
+                      process: "notes-store",
+                      port: 7000,
+                    },
+                  ],
+                },
+              ],
+              egress: [
+                { rule: "cluster-dns", namespace: "kube-system", port: 53 },
+              ],
+              internetEgress: { reason: "it clones repositories" },
+            },
+          ],
+        })),
+      ),
+      "notes/notes/networkpolicy.yaml",
+    ) as { metadata: { name: string }; spec: Record<string, unknown> }[];
+    const runner = policies.find(
+      ({ metadata }) => metadata.name === "notes-api-runner",
+    );
+    const own = policies.find(({ metadata }) => metadata.name === "notes-api");
+    // A template that serves nothing is reached by nothing, so the Process's
+    // own policy reaches none of its pods.
+    const silent = objectsAt(
+      renderNetworking(
+        edited(undefined, () => ({
+          spawns: [
+            {
+              name: "runner",
+              image: "ghcr.io/example/runner@sha256:00",
+              uid: 1000,
+              gid: 1000,
+              memory: "256Mi",
+              cpu: "100m",
+              selector: "notes-api-runner",
+              egress: [
+                { rule: "cluster-dns", namespace: "kube-system", port: 53 },
+              ],
+            },
+          ],
+        })),
+      ),
+      "notes/notes/networkpolicy.yaml",
+    ) as { metadata: { name: string }; spec: Record<string, unknown> }[];
+    const plain = objectsAt(
+      renderNetworking(edited()),
+      "notes/notes/networkpolicy.yaml",
+    ) as { metadata: { name: string }; spec: Record<string, unknown> }[];
+    const specOf = (
+      rendered: typeof plain,
+      name: string,
+    ): Record<string, unknown> | undefined =>
+      rendered.find(({ metadata }) => metadata.name === name)?.spec;
+    expect(specOf(silent, "notes-api")?.["egress"]).toStrictEqual(
+      specOf(plain, "notes-api")?.["egress"],
+    );
+    // Its pods are reached by nothing, and reach the DNS alone.
+    expect(specOf(silent, "notes-api-runner")).toStrictEqual({
+      podSelector: {
+        matchLabels: {
+          "deploy-kit.jorisjonkers.dev/spawned-from": "notes-api-runner",
+        },
+      },
+      policyTypes: ["Ingress", "Egress"],
+      egress: [
+        {
+          to: [
+            {
+              namespaceSelector: {
+                matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+              },
+            },
+          ],
+          ports: [
+            { protocol: "UDP", port: 53 },
+            { protocol: "TCP", port: 53 },
+          ],
+        },
+      ],
+    });
+
+    // The Process reaches its template's pods on the surfaces they serve.
+    expect((own?.spec["egress"] as unknown[] | undefined) ?? []).toContainEqual(
+      {
+        to: [
+          {
+            namespaceSelector: {
+              matchLabels: { "kubernetes.io/metadata.name": "notes-system" },
+            },
+            podSelector: {
+              matchLabels: {
+                "deploy-kit.jorisjonkers.dev/spawned-from": "notes-api-runner",
+              },
+            },
+          },
+        ],
+        ports: [{ protocol: "TCP", port: 8090 }],
+      },
+    );
+
+    expect(runner?.spec).toStrictEqual({
+      podSelector: {
+        matchLabels: {
+          "deploy-kit.jorisjonkers.dev/spawned-from": "notes-api-runner",
+        },
+      },
+      policyTypes: ["Ingress", "Egress"],
+      ingress: [
+        {
+          from: [
+            {
+              namespaceSelector: {
+                matchLabels: { "kubernetes.io/metadata.name": "notes-system" },
+              },
+              podSelector: {
+                matchLabels: { "app.kubernetes.io/instance": "notes-api" },
+              },
+            },
+          ],
+          ports: [{ protocol: "TCP", port: 8090 }],
+        },
+      ],
+      egress: [
+        {
+          to: [
+            {
+              namespaceSelector: {
+                matchLabels: { "kubernetes.io/metadata.name": "notes-system" },
+              },
+              podSelector: {
+                matchLabels: { "app.kubernetes.io/instance": "notes-store" },
+              },
+            },
+          ],
+          ports: [{ protocol: "TCP", port: 7000 }],
+        },
+        {
+          to: [
+            {
+              namespaceSelector: {
+                matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+              },
+            },
+          ],
+          ports: [
+            { protocol: "UDP", port: 53 },
+            { protocol: "TCP", port: 53 },
+          ],
+        },
+        {
+          to: [
+            {
+              ipBlock: {
+                cidr: "0.0.0.0/0",
+                except: [
+                  "10.0.0.0/8",
+                  "172.16.0.0/12",
+                  "192.168.0.0/16",
+                  "100.64.0.0/10",
+                  "169.254.0.0/16",
+                  "127.0.0.0/8",
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    });
   });
 
   it("writes only the baseline where the projection admits nothing else", () => {
