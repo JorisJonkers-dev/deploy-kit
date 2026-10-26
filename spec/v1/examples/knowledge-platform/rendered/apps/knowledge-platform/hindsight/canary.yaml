@@ -33,7 +33,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
+          revision: sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67
           paths: /
           readiness: /health
           hostnames: memory-api.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
+          revision: sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67
           paths: /
           readiness: /health
           hostnames: memory-api.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
+          revision: sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67
           paths: /
           readiness: /health
           hostnames: memory-api.jorisjonkers.dev
@@ -97,7 +97,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-control-plane
-          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
+          revision: sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67
           paths: /
           hostnames: memory.jorisjonkers.dev
           errorRate: 1%
@@ -108,7 +108,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-control-plane
-          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
+          revision: sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67
           paths: /
           hostnames: memory.jorisjonkers.dev
           errorRate: 1%
@@ -119,7 +119,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-control-plane
-          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
+          revision: sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67
           paths: /
           hostnames: memory.jorisjonkers.dev
           errorRate: 1%

@@ -1275,12 +1275,13 @@ outlive its provider's move between Projects, and the Human Grants, because
 each is the Platform document's and no Project's
 ([chapter 14](14-platform-intent.md#human-grants)).
 
-Two kinds of unit belong to no Project, because what each applies is
-estate-scoped ([The path plan](#the-path-plan)). The first stays; the second
+Three kinds of unit belong to no Project, because what each applies is
+estate-scoped ([The path plan](#the-path-plan)). The first two stay; the last
 moves where its last column says:
 
 | unit | applies | follows | moves to |
 |---|---|---|---|
+| `estate-stable-addresses`, where a delivered Project resolves a Stable Address | `estate/stable-addresses/`: the `estate-system` Namespace and one `ExternalName` Service per Stable Address ([chapter 16](16-dependencies.md#the-stable-address)) | nothing: an `ExternalName` needs no target to exist | stays |
 | `estate-human-grants`, where the Platform document declares any Human Grant | `estate/human-grants/`: one `ClusterRoleBinding` per grant ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)) | nothing: a built-in cluster role is the cluster's own, and no Project's unit follows it | nowhere: a grant is no Project's |
 | `estate-vso-secrets`, while a datastore the old path runs has a catalog the estate path applies | `estate/vso-secrets/`: that catalog's Jobs and its documents, and the estate-scoped policy job that writes them ([The catalog methods](#the-catalog-methods)); every Project writes its own documents from its own unit ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) | the unit of the project that declares the Secret Store, which the job writes into; no Project's unit follows it, and a reader of that database retries until it exists | the datastore's own Project's unit, once that Project leaves the old path ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)) |
 

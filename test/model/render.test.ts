@@ -2635,7 +2635,7 @@ describe("the forward-auth Middleware", () => {
     expect(forwardAuth()).toStrictEqual({
       forwardAuth: {
         address:
-          "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+          "http://identity-http.estate-system.svc.cluster.local:8080/gate/forward",
         trustForwardHeader: true,
       },
     });
@@ -2652,34 +2652,48 @@ describe("the forward-auth Middleware", () => {
     ).toStrictEqual({
       forwardAuth: {
         address:
-          "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+          "http://identity-http.estate-system.svc.cluster.local:8080/gate/forward",
         trustForwardHeader: true,
         authResponseHeaders: ["X-User-Id", "X-User-Roles"],
       },
     });
   });
 
-  it("follows the provider where the handover ledger says the old path runs it", () => {
+  // REQ-110 (docs/requirements.md): the edge asks the provider's Stable
+  // Address, and only the Stable Address follows where the provider runs.
+  it("asks the provider's Stable Address, which follows the provider where the handover ledger says the old path runs it", () => {
+    const legacy = (document: string) =>
+      document
+        .replace(
+          "legacy: [auth, data, knowledge, notes]",
+          "legacy: [auth, data, identity, knowledge, notes]",
+        )
+        .replace(
+          "estate: [agents, delivery, edge, identity, ",
+          "estate: [agents, delivery, edge, ",
+        )
+        .replace(
+          "  serving:\n",
+          "  serving:\n    - application: identity\n      namespace: auth-system\n      instance: auth-api\n",
+        );
     const address = (
-      forwardAuth((document) =>
-        document
-          .replace(
-            "legacy: [auth, data, knowledge, notes]",
-            "legacy: [auth, data, identity, knowledge, notes]",
-          )
-          .replace(
-            "estate: [agents, delivery, edge, identity, ",
-            "estate: [agents, delivery, edge, ",
-          )
-          .replace(
-            "  serving:\n",
-            "  serving:\n    - application: identity\n      namespace: auth-system\n      instance: auth-api\n",
-          ),
-      ) as { forwardAuth: { address: string } }
+      forwardAuth(legacy) as { forwardAuth: { address: string } }
     ).forwardAuth.address;
+    const estate = asTree(
+      artifact(
+        render({ "platform/platform.intent.yml": legacy }, ["edge"]),
+        "_estate",
+      ),
+    );
 
     expect(address).toBe(
-      "http://auth-api.auth-system.svc.cluster.local:8080/gate/forward",
+      "http://identity-http.estate-system.svc.cluster.local:8080/gate/forward",
+    );
+    expect(estate["estate/stable-addresses/services.yaml"]).toContain(
+      "  name: identity-http\n",
+    );
+    expect(estate["estate/stable-addresses/services.yaml"]).toContain(
+      "externalName: auth-api.auth-system.svc.cluster.local\n",
     );
   });
 });

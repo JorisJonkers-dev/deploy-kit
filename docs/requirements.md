@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **109** rows. The compiler's behaviours join it as they land.
+This ledger holds **110** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -132,3 +132,4 @@ This ledger holds **109** rows. The compiler's behaviours join it as they land.
 | REQ-107 | A Process creates pods only from a spawn template it declares: the template derives the namespace rules that create and remove them, the label every one carries with each edge's consumer label, one policy that the Process alone reaches on the template's surfaces and that reaches its edges, the cluster's DNS and, where declared, the internet, and the variables that hand the Process the pinned image and the labels; spawning is API access, admitted at either scope | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
 | REQ-108 | An admitted `api` block may hold no rules: such a Process renders its egress to where the API answers and nothing else, no role, no binding and no mounted token, because it acts on the API with its users' own tokens | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
 | REQ-109 | The facts a Move is derived from are pinned: an engine's `move` method (its image, which version change breaks, when it reverses) and the delivery policy's `move` timeout and retention in the Platform document, each engine Process's active Instance and an open Move's phase in ClusterState, and a lock entry a Process of an engine that moves runs recorded as `major.minor.patch`, `E_ENGINE_VERSION_MISSING` otherwise, at the Process's `image`; a move method's image must be locked | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
+| REQ-110 | Every surface an edge or a tier's forward-auth names derives a Stable Address, `<application>-<surface>.estate-system.svc.cluster.local`: a consumer's alias and the forward-auth endpoint name it and nothing about where the provider runs, and the estate-scoped artifact delivers, with the Projects that resolve them, one `ExternalName` per Stable Address targeting the active Instance, created once and never updated by Flux, in a unit that follows nothing | [test/model/aliases.test.ts](../test/model/aliases.test.ts) |

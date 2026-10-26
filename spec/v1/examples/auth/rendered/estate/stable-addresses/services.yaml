@@ -1,0 +1,53 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-postgres-postgres
+  namespace: estate-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  type: ExternalName
+  externalName: postgres.data-system.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-rabbitmq-amqp
+  namespace: estate-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  type: ExternalName
+  externalName: rabbitmq.data-system.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-valkey-redis
+  namespace: estate-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  type: ExternalName
+  externalName: valkey.data-system.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stalwart-smtp
+  namespace: estate-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  type: ExternalName
+  externalName: stalwart.mail-system.svc.cluster.local

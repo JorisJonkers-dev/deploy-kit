@@ -84,11 +84,12 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   with a letter or a digit, and nothing below `<repository>/` is the estate's,
   so no Project can ever name it. While the estate is handed
   over, a Project still on the old path is rendered and checked but not
-  published, and the `_estate` artifact holds `estate-human-grants`, the Human
-  Grants' bindings, whatever the ledger hands over, and `estate-vso-secrets`
+  published, and the `_estate` artifact holds `estate-stable-addresses`, the
+  Stable Addresses the delivered Projects resolve, `estate-human-grants`, the
+  Human Grants' bindings, whatever the ledger hands over, and `estate-vso-secrets`
   while a datastore the old path runs has a catalog the estate path applies,
   that catalog's Jobs and the estate-scoped policy job that writes its
-  documents. No Project's unit depends on either. While the edge, a Project
+  documents. No Project's unit depends on any of them. While the edge, a Project
   that declares a tier's proxy, is on the old path, no Project's artifact
   carries a route either, since the old path still serves the edge
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
@@ -218,8 +219,9 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 
 A Project's artifact holds its one unit, its own Vault policy job among what
 it applies, its own routes among them once the edge is on the estate path. The
-estate-scoped artifact holds `estate-human-grants`, which follows nothing,
-where the Platform document declares a Human Grant, and `estate-vso-secrets`
+estate-scoped artifact holds `estate-stable-addresses`, which follows nothing,
+where a delivered Project resolves a Stable Address, `estate-human-grants`,
+which follows nothing, where the Platform document declares a Human Grant, and `estate-vso-secrets`
 where it carries the catalog of a datastore the old path still runs. A unit the artifact gains changes what
 it holds, so its pin moves and the rewritten source applies the new unit, and
 a Project's routes arriving when the edge leaves the old path move its pin
