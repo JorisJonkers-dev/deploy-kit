@@ -197,8 +197,8 @@ catalogue. A reader sees the artifact without running anything, and a change
 to the source cannot land without the artifact that depends on it
 ([0068](adr/architecture/0068-two-implementations-meet-at-the-parity-table.md)).
 
-An oracle file is the opposite. The rendered example trees, `resolved.json`,
-`diagnostics.json` and the descriptor are
+An oracle file is the opposite. The rendered example trees, `intent.json`,
+`resolved.json`, `dependencies.json`, `diagnostics.json` and the descriptor are
 written and reviewed by hand, and no generator in CI writes into an oracle path,
 because an oracle that an implementation regenerates proves only that the
 implementation agrees with itself.
@@ -333,9 +333,12 @@ target metamodel holding both, because a model-to-text template reads one model.
 
 | oracle | where | compared as | binds |
 |---|---|---|---|
+| the parsed Project Intent (validation) | `spec/v1/examples/<case>/expected/intent.json` | canonical JSON, byte for byte | both |
 | the diagnostics of a refused case (errors) | `<input>.diagnostics.json` beside the refused input, or the refused set of documents, in `refusals/` or `negative/` | a set of `(code, document, path)` triples | both |
+| the resolved dependency edges (dependency resolution) | `spec/v1/examples/<case>/expected/dependencies.json` | canonical JSON, byte for byte | both |
 | the Deliverable Set (generated resources) | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte | both |
 | the source metamodel's **authored** structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte | both |
+| the Effective Intent (the lowering) | `spec/v1/examples/<case>/expected/effective.json` | canonical JSON, byte for byte | both |
 | the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte | production only |
 | the diagnostics of a file the reader refuses (code `schema`) | `<input>.diagnostics.json` beside the refused input, in `schema-refusals/` | a set of `(code, document, path)` triples | production only |
 
@@ -347,11 +350,20 @@ two agree on the code and not on the place
 fixes the place). The refused cases a rule answers, in `refusals/` and
 `negative/`, bind both.
 
-**The intermediate models have no oracle of their own.** The parsed document,
-the Effective Intent and the dependency edges are each carried whole into the
-resolved projection and the rendered tree, so an oracle for each would pin the
-same facts a second time, and every change to the model would be reviewed
-three times over.
+**The dependency edges** are, per Application, every dependency edge after
+resolution: the consumer, the provider Application and Surface, the address the
+consumer is given, and the policy peers that allow the connection. It is the
+part of resolution both implementations must agree on before either renders.
+The file is an object with one `applications` entry per Application, each an
+`id` and its `edges`; an Application with no dependency carries an empty list.
+The edge's own fields are fixed by the first case that has one.
+
+**The Effective Intent** is what the lowering writes
+([chapter 10](../spec/v1/10-project-intent.md#the-effective-intent)): the
+authored document and the env files beside it, merged onto the Processes that
+hold them. It is the one oracle that covers the env files at all, because they
+are not part of the document `intent.json` fixes, and it is where the two
+implementations' readers meet.
 
 **The descriptor fixes the authored shape**, which is every class a document
 holds. `env` is the one feature it leaves out of a class: an env file is a

@@ -38,8 +38,8 @@ would be total only where its author remembered to.
 
 **False if:** a Process's effective set needs a value the project file does not
 hold, lowering changes a rendered Deliverable, or a stage downstream of the
-lowering reads an authored level. **Settled by:** the Effective Intent oracles
-the worked examples carried until 1.0, a render of the worked
+lowering reads an authored level. **Settled by:** the Effective Intent oracle
+(`expected/effective.json`) of each worked example, a render of the worked
 estate from the documents as authored and from the same documents with every
 shared declaration hand-copied onto its Processes, diffed byte for byte, and a
 grep: none of the eight family names appears in a derivation's source outside

@@ -31,10 +31,11 @@ function oracleErrors(files: Files): string[] {
 describe("oracle files", () => {
   const committed = oracles(trackedText(REPOSITORY));
 
-  it("include minimal's resolved projection", () => {
+  it("include minimal's parsed intent and dependency edges", () => {
     expect(Object.keys(committed)).toEqual(
       expect.arrayContaining([
-        "spec/v1/examples/minimal/expected/resolved.json",
+        "spec/v1/examples/minimal/expected/intent.json",
+        "spec/v1/examples/minimal/expected/dependencies.json",
       ]),
     );
   });
@@ -42,10 +43,31 @@ describe("oracle files", () => {
   it("are each byte-identical to their own canonical form", () => {
     expect(oracleErrors(committed)).toStrictEqual([]);
   });
+
+  it("carry one entry per Application in a dependencies oracle, each naming its edges", () => {
+    const shaped = (value: unknown): boolean => {
+      const applications = (value as { applications?: unknown }).applications;
+      return (
+        Array.isArray(applications) &&
+        applications.length > 0 &&
+        applications.every((entry: unknown) => {
+          const { id, edges } = entry as { id?: unknown; edges?: unknown };
+          return typeof id === "string" && Array.isArray(edges);
+        })
+      );
+    };
+    const dependencies = Object.entries(committed).filter(([rel]) =>
+      rel.endsWith("/dependencies.json"),
+    );
+
+    expect(dependencies.length).toBeGreaterThan(0);
+    for (const [rel, text] of dependencies)
+      expect(shaped(JSON.parse(text)), rel).toBe(true);
+  });
 });
 
 describe("oracleErrors", () => {
-  const at = "spec/v1/examples/x/expected/resolved.json";
+  const at = "spec/v1/examples/x/expected/intent.json";
 
   it.each([
     ["keys out of order", '{"b":1,"a":2}'],
@@ -66,7 +88,7 @@ describe("oracleErrors", () => {
 
   it("refuses text that is not JSON", () => {
     expect(oracleErrors({ [at]: "{" })[0]).toMatch(
-      /^spec\/v1\/examples\/x\/expected\/resolved\.json: /,
+      /^spec\/v1\/examples\/x\/expected\/intent\.json: /,
     );
   });
 
@@ -77,7 +99,7 @@ describe("oracleErrors", () => {
       oracleErrors({
         [refusal]: '[{"code":"X", "path":"/a"}]',
         "spec/v1/examples/x/notes.json": '{"b":1,"a":2}',
-        "test/expected/resolved.json": '{"b":1,"a":2}',
+        "test/expected/intent.json": '{"b":1,"a":2}',
       }),
     ).toStrictEqual([`${refusal}: not in canonical form`]);
   });

@@ -1,6 +1,7 @@
 // REQ-039 (docs/requirements.md): the composed union and the pinned inputs
 // beside it resolve at the use-case seam to every project's projections, and
-// minimal's equals its committed resolved.json byte for byte; a pinned input the render cannot trust is refused before resolution.
+// minimal's equal its committed resolved.json and dependencies.json byte for
+// byte; a pinned input the render cannot trust is refused before resolution.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -286,6 +287,12 @@ describe("resolveIntentSet", () => {
         text("auth/expected/resolved.json"),
       );
     });
+
+    it("resolves auth's dependency edges to its committed oracle, byte for byte", () => {
+      expect(canonicalJson(auth().dependencies)).toBe(
+        text("auth/expected/dependencies.json"),
+      );
+    });
   });
 
   describe("data, composed with the same foundation and the files beside it", () => {
@@ -344,6 +351,12 @@ describe("resolveIntentSet", () => {
           .filter(({ lifecycle }) => lifecycle !== "scheduled")
           .map(({ schedule, startDeadline }) => [schedule, startDeadline]),
       ).toStrictEqual(processes.slice(0, -1).map(() => [undefined, undefined]));
+    });
+
+    it("resolves data's dependency edges to its committed oracle, byte for byte", () => {
+      expect(canonicalJson(data().dependencies)).toBe(
+        text("data/expected/dependencies.json"),
+      );
     });
   });
 
@@ -419,7 +432,28 @@ describe("resolveIntentSet", () => {
         reason: "The browser fetches the pages it bookmarks.",
       });
     });
+
+    it("resolves the knowledge platform's dependency edges, its in-project ones among them, to its committed oracle, byte for byte", () => {
+      expect(canonicalJson(knowledgePlatform().dependencies)).toBe(
+        text("knowledge-platform/expected/dependencies.json"),
+      );
+    });
   });
+
+  it("resolves minimal's dependency edges to its committed oracle, byte for byte", () => {
+    expect(canonicalJson(project(resolved(), "notes").dependencies)).toBe(
+      text("minimal/expected/dependencies.json"),
+    );
+  });
+
+  it.each(["delivery", "edge", "identity", "observability", "secrets"])(
+    "resolves the foundation's %s dependency edges to its committed oracle, byte for byte",
+    (name) => {
+      expect(canonicalJson(project(resolved(), name).dependencies)).toBe(
+        text(`${name}/expected/dependencies.json`),
+      );
+    },
+  );
 
   // spec/v1/17-sign-in.md: the sign-in provider and the three Clients beside
   // it, one per way chapter 17 works through, each to its committed projection.

@@ -1,9 +1,9 @@
-// REQ-021 (docs/requirements.md): an authored Project Intent file parses and
-// lowers, and YAML or fields outside the language are refused.
+// REQ-021 (docs/requirements.md): an authored Project Intent file parses to its
+// committed intent oracle, and YAML or fields outside the language are refused.
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parseProjectIntent } from "../../src/index.ts";
+import { canonicalJson, parseProjectIntent } from "../../src/index.ts";
 
 const EXAMPLES = join(
   import.meta.dirname,
@@ -15,6 +15,10 @@ const EXAMPLES = join(
 );
 const MINIMAL = readFileSync(
   join(EXAMPLES, "minimal", "notes.project.yml"),
+  "utf8",
+);
+const ORACLE = readFileSync(
+  join(EXAMPLES, "minimal", "expected", "intent.json"),
   "utf8",
 );
 
@@ -49,8 +53,7 @@ function refused(text: string) {
 const cases = readdirSync(EXAMPLES, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
   .map((entry) => entry.name)
-  // The refusal corpora are fixtures, each read on its own elsewhere.
-  .filter((name) => !name.includes("refusals"))
+  .filter((name) => readdirSync(join(EXAMPLES, name)).includes("expected"))
   .filter((name) =>
     readdirSync(join(EXAMPLES, name)).some((file) =>
       file.endsWith(".project.yml"),
@@ -66,23 +69,19 @@ const projectFile = (directory: string): string => {
 };
 
 describe("parseProjectIntent", () => {
-  it.each(cases)("parses and lowers %s with its env files", (directory) => {
-    const result = parseProjectIntent(
-      projectFile(directory),
-      readdirSync(EXAMPLES, { recursive: true, encoding: "utf8" })
-        .filter(
-          (name) =>
-            name.startsWith(`${directory}/env/`) && name.endsWith("/base.env"),
-        )
-        .sort()
-        .map((name) => ({
-          path: name,
-          text: readFileSync(join(EXAMPLES, name), "utf8"),
-        })),
-    );
+  it.each(cases)(
+    "parses %s to its committed intent oracle, byte for byte",
+    (directory) => {
+      const result = parseProjectIntent(projectFile(directory));
 
-    expect(result.ok ? [] : result.diagnostics).toStrictEqual([]);
-  });
+      expect(result.ok && canonicalJson(result.value.document)).toBe(
+        readFileSync(
+          join(EXAMPLES, directory, "expected", "intent.json"),
+          "utf8",
+        ),
+      );
+    },
+  );
 
   it("covers every worked example", () => {
     expect(cases).toStrictEqual([
@@ -98,6 +97,101 @@ describe("parseProjectIntent", () => {
       "observability",
       "secrets",
     ]);
+  });
+
+  it("parses the minimal case to its committed intent oracle, byte for byte", () => {
+    const result = parseProjectIntent(MINIMAL);
+
+    expect(result.ok && canonicalJson(result.value.document)).toBe(ORACLE);
+  });
+
+  it("differs from the oracle when one authored field changes", () => {
+    const result = parseProjectIntent(MINIMAL.replace("cpu: 50m", "cpu: 60m"));
+
+    expect(result.ok && canonicalJson(result.value.document)).not.toBe(ORACLE);
+  });
+
+  it("lowers the minimal case to its committed effective oracle, byte for byte", () => {
+    const result = parseProjectIntent(MINIMAL, [
+      {
+        path: "minimal/env/notes-api/base.env",
+        text: readFileSync(
+          join(EXAMPLES, "minimal", "env", "notes-api", "base.env"),
+          "utf8",
+        ),
+      },
+    ]);
+
+    expect(result.ok && canonicalJson(result.value.effective)).toBe(
+      readFileSync(
+        join(EXAMPLES, "minimal", "expected", "effective.json"),
+        "utf8",
+      ),
+    );
+  });
+
+  it("lowers auth to its committed effective oracle, byte for byte, a placeholder's text after it kept", () => {
+    const result = parseProjectIntent(
+      readFileSync(join(EXAMPLES, "auth", "auth.project.yml"), "utf8"),
+      [
+        {
+          path: "auth/env/auth-api/base.env",
+          text: readFileSync(
+            join(EXAMPLES, "auth", "env", "auth-api", "base.env"),
+            "utf8",
+          ),
+        },
+      ],
+    );
+
+    expect(result.ok && canonicalJson(result.value.effective)).toBe(
+      readFileSync(
+        join(EXAMPLES, "auth", "expected", "effective.json"),
+        "utf8",
+      ),
+    );
+  });
+
+  it("lowers data to its committed effective oracle, byte for byte", () => {
+    const result = parseProjectIntent(
+      readFileSync(join(EXAMPLES, "data", "data.project.yml"), "utf8"),
+      [
+        {
+          path: "data/env/postgres/base.env",
+          text: readFileSync(
+            join(EXAMPLES, "data", "env", "postgres", "base.env"),
+            "utf8",
+          ),
+        },
+      ],
+    );
+
+    expect(result.ok && canonicalJson(result.value.effective)).toBe(
+      readFileSync(
+        join(EXAMPLES, "data", "expected", "effective.json"),
+        "utf8",
+      ),
+    );
+  });
+
+  it("lowers the knowledge platform to its committed effective oracle, byte for byte, the header's cutover and an Application's site held by every Process below them", () => {
+    const directory = join(EXAMPLES, "knowledge-platform");
+    const result = parseProjectIntent(
+      readFileSync(join(directory, "knowledge-platform.project.yml"), "utf8"),
+      readdirSync(join(directory, "env"))
+        .sort()
+        .map((process) => ({
+          path: `knowledge-platform/env/${process}/base.env`,
+          text: readFileSync(
+            join(directory, "env", process, "base.env"),
+            "utf8",
+          ),
+        })),
+    );
+
+    expect(result.ok && canonicalJson(result.value.effective)).toBe(
+      readFileSync(join(directory, "expected", "effective.json"), "utf8"),
+    );
   });
 
   it("names a route's and a scrape's Process and surface as written, each one the lowered Application holds", () => {

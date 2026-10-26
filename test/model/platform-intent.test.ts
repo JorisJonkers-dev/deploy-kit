@@ -1,11 +1,12 @@
-// REQ-030 (docs/requirements.md): the authored Platform document parses, and a
-// tier that carries the authenticated audience
+// REQ-030 (docs/requirements.md): the authored Platform document parses to its
+// committed intent oracle, and a tier that carries the authenticated audience
 // without an endpoint to authenticate it is refused.
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   PLATFORM_JSON_SCHEMA_PATH,
+  canonicalJson,
   parsePlatformIntent,
   platformIntentJsonSchema,
 } from "../../src/index.ts";
@@ -17,6 +18,7 @@ import {
 const REPOSITORY = join(import.meta.dirname, "..", "..");
 const PLATFORM = join(REPOSITORY, "spec", "v1", "examples", "platform");
 const WORKED = readFileSync(join(PLATFORM, "platform.intent.yml"), "utf8");
+const ORACLE = readFileSync(join(PLATFORM, "expected", "intent.json"), "utf8");
 
 function refusalsOf(text: string) {
   const result = parsePlatformIntent(text);
@@ -26,8 +28,10 @@ function refusalsOf(text: string) {
 }
 
 describe("parsePlatformIntent", () => {
-  it("parses the worked Platform document", () => {
-    expect(parsePlatformIntent(WORKED).ok).toBe(true);
+  it("parses the worked Platform document to its committed intent oracle, byte for byte", () => {
+    const result = parsePlatformIntent(WORKED);
+
+    expect(result.ok && canonicalJson(result.value.document)).toBe(ORACLE);
   });
 
   it("refuses text that is not one YAML document, before any schema reads it", () => {
@@ -40,6 +44,14 @@ describe("parsePlatformIntent", () => {
         message: "expected one YAML document, found 2",
       }),
     ]);
+  });
+
+  it("differs from the oracle when one authored field changes", () => {
+    const result = parsePlatformIntent(
+      WORKED.replace("retain: 14", "retain: 15"),
+    );
+
+    expect(result.ok && canonicalJson(result.value.document)).not.toBe(ORACLE);
   });
 
   it("reads the migration policy where it is offered, and leaves it absent where it is not", () => {

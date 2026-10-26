@@ -2,7 +2,8 @@
 // onto the Processes that hold it, and the only layer-1 shape anything
 // downstream reads (spec/v1/10-project-intent.md#the-effective-intent,
 // docs/adr/model/0012-shared-intent-descends-and-is-lowered.md). It keeps the
-// authored vocabulary.
+// authored vocabulary, so its canonical JSON is the `effective.json` oracle both
+// implementations meet at (docs/architecture.md#the-parity-contract).
 //
 // A key no level declares is absent here, as it is in the authored file, and a
 // route or a scrape names its Process and surface as the author wrote them: the

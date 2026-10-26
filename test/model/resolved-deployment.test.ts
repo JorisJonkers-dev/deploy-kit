@@ -500,6 +500,43 @@ describe("the committed oracles", () => {
 
     expect(states(chapter, committed)).toStrictEqual([]);
   });
+
+  it("exports the resolved edges knowledge's dependency oracle carries", () => {
+    const edges = JSON.parse(
+      readFileSync(
+        join(
+          import.meta.dirname,
+          "..",
+          "..",
+          "spec",
+          "v1",
+          "examples",
+          "knowledge",
+          "expected",
+          "dependencies.json",
+        ),
+        "utf8",
+      ),
+    ) as { applications: { id: string; edges: { consumer: string }[] }[] };
+    const processes = (
+      oracle("knowledge") as {
+        processes: { name: string; dependencies?: unknown[] }[];
+      }
+    ).processes;
+
+    // The projection is the `knowledge` Application's; its sibling
+    // `knowledge-ingest` has an entry of its own in the edge oracle.
+    expect(edges.applications.map(({ id }) => id)).toStrictEqual([
+      "knowledge",
+      "knowledge-ingest",
+    ]);
+    expect(edges.applications[0]?.edges).toHaveLength(
+      processes.reduce((total, p) => total + (p.dependencies?.length ?? 0), 0),
+    );
+    expect(
+      new Set(edges.applications[0]?.edges.map((e) => e.consumer)),
+    ).toStrictEqual(new Set(processes.map((p) => p.name)));
+  });
 });
 
 describe("the metamodel names every class the chapter draws", () => {
