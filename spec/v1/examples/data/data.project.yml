@@ -256,6 +256,13 @@ applications:
   # (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md), plus per-Process identity
   # (docs/adr/model/0031-identity-per-process.md).
   - id: platform-rabbitmq
+    # The broker's dashboard, vendored from the live one as JSON beside this
+    # file and shipped with the Application into the data folder of the
+    # Grafana the Platform document names
+    # (spec/v1/10-project-intent.md#dashboards). Its DS_PROMETHEUS input is
+    # mapped to that Grafana's data source; nothing is fetched at run time.
+    dashboards:
+      - {from: dashboards/rabbitmq.json}
     # Its own urgency, not the project's: raising the class to the header would
     # make this file page as loudly as postgres does. rabbitmq exports metrics
     # itself, so no sidecar is involved and the surface is the Process's own.

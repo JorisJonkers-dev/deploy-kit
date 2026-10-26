@@ -33,6 +33,7 @@ const WORKED = [
   "secrets/secrets.project.yml",
   // The Asset data's Process mounts, read beside its project file.
   "data/config/postgresql.conf",
+  "data/dashboards/rabbitmq.json",
 ].map(read);
 
 /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */

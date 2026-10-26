@@ -278,10 +278,14 @@ function packProject(
     : [];
   const parsed = parseProjectIntent(text, env);
   if (!parsed.ok) return parsed.diagnostics;
-  const assets = parsed.value.effective.applications.flatMap(({ processes }) =>
-    processes.flatMap(({ assets: named }) =>
-      (named ?? []).map(({ from }) => from),
-    ),
+  // Every file the project names beside itself: its Assets and its dashboards.
+  const assets = parsed.value.effective.applications.flatMap(
+    ({ processes, dashboards }) => [
+      ...processes.flatMap(({ assets: named }) =>
+        (named ?? []).map(({ from }) => from),
+      ),
+      ...(dashboards ?? []).map(({ from }) => from),
+    ],
   );
   const share =
     imagesLock === undefined

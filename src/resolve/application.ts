@@ -2,6 +2,7 @@
 // (spec/v1/20-resolved-deployment.md#the-model): its Processes, its exposure,
 // its Reconcile Unit, the release-gate inputs a blue/green switch reads, and
 // the revision that names this release of it.
+import { dashboardUidOf } from "../model/dashboards.ts";
 import type {
   EffectiveApplication,
   EffectiveProcess,
@@ -12,6 +13,7 @@ import type { Hasher } from "../model/hasher.ts";
 import type {
   ReleaseGate,
   ResolvedApplicationDocument,
+  ResolvedDashboards,
   ResolvedExposure,
   ResolvedMigration,
   ResolvedProcess,
@@ -45,6 +47,57 @@ export type ResolvedElement = Omit<
   ResolvedApplicationDocument,
   "apiVersion" | "kind" | "provenance"
 >;
+
+/** The data source inputs a vendored dashboard declares, by name. */
+const inputsOf = (content: string): string[] => {
+  const { __inputs: inputs } = JSON.parse(content) as {
+    __inputs?: readonly { name?: unknown; type?: unknown }[];
+  };
+  // A file with no inputs and one with an empty list map nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  return (inputs ?? []).flatMap(({ name, type }) =>
+    type === "datasource" && typeof name === "string" ? [name] : [],
+  );
+};
+
+/**
+ * An Application's dashboards (spec/v1/10-project-intent.md#dashboards): each
+ * file as the set read it, in its Project's folder, for the Grafana the
+ * Platform document names.
+ */
+function dashboardsOf(
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): { readonly dashboards?: ResolvedDashboards } {
+  const { dashboards } = application;
+  // An Application with dashboards reads a Platform document that names its
+  // Grafana, or E_NO_DASHBOARD_POLICY refused the set.
+  if (dashboards === undefined) return {};
+  const telemetry = context.platform.telemetry as NonNullable<
+    PlatformIntentDocument["telemetry"]
+  >;
+  const policy = telemetry.dashboards as NonNullable<
+    (typeof telemetry)["dashboards"]
+  >;
+  return {
+    dashboards: {
+      folder: context.project,
+      instance: policy.instance,
+      datasource: policy.datasource,
+      files: dashboards.map(({ from }) => {
+        // The file is read beside its project, and names a uid, or
+        // E_DASHBOARD_NOT_FOUND or E_DASHBOARD_WITHOUT_UID refused it.
+        const content = context.assets.get(from) as string;
+        return {
+          uid: dashboardUidOf(content) as string,
+          from,
+          content,
+          inputs: inputsOf(content),
+        };
+      }),
+    },
+  };
+}
 
 export interface ApplicationContext extends Omit<
   ProcessContext,
@@ -366,6 +419,7 @@ export function resolveApplication(
     ...(application.observability === undefined
       ? {}
       : { alertClass: application.observability.alertClass }),
+    ...dashboardsOf(application, context),
     ...(scrape === undefined
       ? {}
       : {

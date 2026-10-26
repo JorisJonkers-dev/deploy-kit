@@ -622,6 +622,29 @@
           ]
         }
       ]
+    },
+    {
+      "name": "dashboards for a Grafana with no data source",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/telemetry/dashboards/datasource"
+        }
+      ]
+    },
+    {
+      "name": "a platform that names no Grafana",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/telemetry/dashboards"
+        }
+      ]
     }
   ]
 }

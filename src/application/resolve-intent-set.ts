@@ -124,8 +124,8 @@ const directoryOf = (path: string): string =>
   path.slice(0, path.lastIndexOf("/") + 1);
 
 /**
- * A project's Asset files, by the `from` path it names each by: the file of
- * the set at that path beside the project file, where the set holds one.
+ * A project's Asset and dashboard files, by the `from` path it names each by:
+ * the file of the set at that path beside the project file.
  */
 function assetsOf(
   name: string,
@@ -139,6 +139,10 @@ function assetsOf(
       processes.flatMap(({ assets }) => (assets ?? []).map(({ from }) => from)),
     ),
   );
+  // A dashboard's file is read the same way, by the `from` it names.
+  for (const { dashboards } of project.applications)
+    // Stryker disable next-line ArrayDeclaration: no list ships nothing.
+    for (const { from } of dashboards ?? []) named.add(from);
   const beside = directoryOf(name);
   return new Map(
     // The set holds every Asset's file, or E_ASSET_NOT_FOUND refused it.

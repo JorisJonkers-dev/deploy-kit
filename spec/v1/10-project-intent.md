@@ -445,6 +445,7 @@ plus per-Process identity ([0031](../../docs/adr/model/0031-identity-per-process
 | the eight Shared Intent families | Application | no | The same eight, held by every Process of this Application ([Shared intent](#shared-intent)). The level a family is written at is an author's choice about where the fact belongs, never about what it means. |
 | `exposure` | Application | no | The hostnames this Application serves and how each routes into its Processes. On the Application, not the Process: one hostname fronts two processes in the live `auth` case. An Application nothing reaches from outside declares none. See [Exposure](#exposure). |
 | `l4Exposure` | Application | no | The raw TCP or UDP ports a client off the cluster dials, each on an L4 Address the Platform document declares ([L4 exposure](#l4-exposure)). |
+| `dashboards` | Application | no | The Grafana dashboards the Application ships, each a JSON file beside the project file ([Dashboards](#dashboards)). |
 
 Uniqueness cannot be had by construction, only by check: the id encodes neither
 project nor repository, so nothing structural stops two repositories claiming one
@@ -2127,6 +2128,34 @@ switchover waits on the declared readiness surface
 ([The release gate](20-resolved-deployment.md#the-release-gate)). Moving the
 checks into an out-of-band configuration would make the gate depend on a file the
 model does not read. A Process with no listener continues to say `probes: none`.
+
+## Dashboards
+
+```yaml
+dashboards:
+  - {from: dashboards/rabbitmq.json}
+```
+
+An Application ships its Grafana dashboards as JSON files beside the project
+file, each named by `from`, and they ship with it. A dashboard from grafana.com
+is vendored the same way, as the JSON file: nothing is fetched at run time.
+Each file renders one dashboard object through the `grafana` adapter
+([chapter 30](30-deliverables.md#adapters)), into a folder named for the
+Project; nothing is authored for the folder. A vendored file's data source
+inputs (`__inputs` of type `datasource`) map to the data source the Platform
+document names ([chapter 14](14-platform-intent.md#telemetry)). The model has
+no dashboard language: a service overview is a plain dashboard file like any
+other.
+
+Grafana keys a dashboard by its `uid`, so each file names one, and no two
+dashboards of the estate share one.
+
+| condition | error |
+|---|---|
+| no file at `from` is read beside the project file | `E_DASHBOARD_NOT_FOUND` |
+| the file's JSON names no `uid` | `E_DASHBOARD_WITHOUT_UID` |
+| a second dashboard of the estate carries a `uid` already carried | `E_DUPLICATE_DASHBOARD_UID` |
+| an Application ships a dashboard and the Platform document names no `telemetry.dashboards` | `E_NO_DASHBOARD_POLICY` |
 
 ## Secrets
 

@@ -4,6 +4,11 @@
 // name; a set handed to the checker directly also reads a YAML file whose
 // document says `kind: Project` as a project file. An env file reaches the
 // project its `env/` directory sits beside.
+import {
+  dashboardDiagnostics,
+  duplicateUidDiagnostics,
+  type Placed,
+} from "../check/dashboards.ts";
 import { assetDiagnostics } from "../check/assets.ts";
 import { setDiagnostics } from "../check/composition.ts";
 import { unionDiagnostics } from "../check/union.ts";
@@ -129,7 +134,30 @@ export function composeIntentSet(
         files.some((file) => file.name === directoryOf(name) + from),
       ),
     );
+  // A dashboard ships a file the set holds beside its project file, which
+  // names a uid no other dashboard of the estate carries.
+  const placed: Placed[] = [];
+  for (const { name, value } of parsedProjects) {
+    const shipped = dashboardDiagnostics(
+      value.document,
+      (from) =>
+        files.find((file) => file.name === directoryOf(name) + from)?.text,
+    );
+    tagged(name, shipped.refusals);
+    placed.push(...shipped.placed.map((each) => ({ ...each, document: name })));
+  }
+  refusals.push(...duplicateUidDiagnostics(placed));
   const [platform] = parsedPlatforms;
+  // Dashboards ship to the Grafana the Platform document names.
+  if (platform?.value.document.telemetry?.dashboards === undefined)
+    for (const { document, path } of platform === undefined ? [] : placed)
+      refusals.push({
+        code: "E_NO_DASHBOARD_POLICY",
+        document,
+        path,
+        message: "the platform names no Grafana for a dashboard to ship to",
+        hint: "Declare the Platform document's `telemetry.dashboards`: the Grafana instance's labels and its data source.",
+      });
   refusals.push(
     ...unionDiagnostics(
       parsedProjects.map(({ name, value }) => ({

@@ -169,6 +169,9 @@ proxies them; every route on the tier carries it for the DNS controller.
 tier. Every route rendered for the tier carries it, so a route reaches the one
 proxy its audience selects.
 
+**Dashboard**: a Grafana dashboard's JSON an Application ships beside its
+project file, rendered into its Project's folder; vendored, never fetched.
+
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the
 allowance, and the Tier decides which address counts as one client

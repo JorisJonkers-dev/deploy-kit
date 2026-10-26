@@ -428,10 +428,15 @@ const observability = z
   .strictObject({ alertClass: alertClass, scrape: scrape.exactOptional() })
   .meta({ id: "Observability" });
 
+// A dashboard the Application ships (spec/v1/10-project-intent.md#dashboards):
+// a Grafana dashboard's JSON beside the project file, vendored, never fetched.
+const dashboard = z.strictObject({ from: text }).meta({ id: "Dashboard" });
+
 const application = z
   .strictObject({
     id: text,
     observability: observability.exactOptional(),
+    dashboards: z.array(dashboard).min(1).exactOptional(),
     exposure: z.array(exposure).min(1).exactOptional(),
     l4Exposure: z.array(l4Exposure).min(1).exactOptional(),
     migration: migration.exactOptional(),

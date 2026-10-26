@@ -76,13 +76,14 @@ describe("the adapter contract", () => {
     },
   );
 
-  it("registers the six adapters minimal and data need, each with a default path", () => {
+  it("registers the seven adapters minimal and data need, each with a default path", () => {
     expect(
       ADAPTERS.map(({ name, defaultPath }) => [name, defaultPath.length > 0]),
     ).toStrictEqual([
       ["kubernetes", true],
       ["networking", true],
       ["prometheus", true],
+      ["grafana", true],
       ["traefik", true],
       ["vso", true],
       ["vault-policy", true],

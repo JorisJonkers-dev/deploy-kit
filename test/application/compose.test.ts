@@ -45,7 +45,12 @@ const PROJECTS: Readonly<Record<string, readonly [string, readonly string[]]>> =
     notes: ["minimal", ["notes.project.yml", "env/notes-api/base.env"]],
     data: [
       "data",
-      ["data.project.yml", "env/postgres/base.env", "config/postgresql.conf"],
+      [
+        "data.project.yml",
+        "env/postgres/base.env",
+        "config/postgresql.conf",
+        "dashboards/rabbitmq.json",
+      ],
     ],
     delivery: ["delivery", ["delivery.project.yml"]],
     edge: ["edge", ["edge.project.yml"]],

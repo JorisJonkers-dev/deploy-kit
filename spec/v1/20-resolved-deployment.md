@@ -1904,6 +1904,17 @@ classDiagram
         +Digest testedAgainst
         +bool nonTransactional
     }
+    class ResolvedDashboards {
+        +string folder
+        +map instance
+        +string datasource
+    }
+    class ResolvedDashboard {
+        +string uid
+        +string from
+        +string content
+        +string[] inputs
+    }
     class ResolvedScrape {
         +string process
         +string surface
@@ -2201,6 +2212,8 @@ classDiagram
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
     ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape
+    ResolvedApplication "1" *-- "0..1" ResolvedDashboards : dashboards
+    ResolvedDashboards "1" *-- "1..*" ResolvedDashboard : files
     ResolvedApplication "1" *-- "0..1" ResolvedClient : client
     ResolvedApplication "1" *-- "0..1" ResolvedMesh : mesh
     ResolvedPolicyJob "1" *-- "0..1" ResolvedMesh : mesh
