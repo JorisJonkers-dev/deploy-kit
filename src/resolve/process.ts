@@ -2,7 +2,8 @@
 // (spec/v1/20-resolved-deployment.md#derived-mechanics): what the Application
 // declared, carried through, and every mechanic derived from it and from the
 // pinned platform facts. Nothing here is authored and nothing may be.
-import { foundationOf } from "../model/platform-intent.ts";
+import { ACME_MOUNT } from "../model/tier-proxy.ts";
+import { foundationOf, type AcmePolicy } from "../model/platform-intent.ts";
 import type { L4Hold } from "../model/l4-addresses.ts";
 import type { ClusterStateDocument } from "../model/cluster-state.ts";
 import type {
@@ -89,7 +90,7 @@ function priorityOf(
 function edgeProxyOf(
   process: EffectiveProcess,
   context: ProcessContext,
-): { readonly edgeProxy?: { ingressClass: string; tls: boolean } } {
+): Pick<ResolvedProcess, "edgeProxy"> {
   const tier = context.platform.tiers.find(
     ({ traefik, ingressClass }) =>
       traefik === `${context.project}/${context.application}` &&
@@ -101,6 +102,19 @@ function edgeProxyOf(
         edgeProxy: {
           ingressClass: tier.ingressClass as string,
           tls: tier.listener === "tls",
+          // An acme tier issues through a resolver named for it, with the
+          // platform's account, or E_NO_ACME_POLICY refused it.
+          ...(tier.certificates === "acme"
+            ? {
+                resolver: {
+                  name: tier.name,
+                  email: (context.platform.acme as AcmePolicy).email,
+                  dnsProvider: (context.platform.acme as AcmePolicy)
+                    .dnsProvider,
+                  storage: `${ACME_MOUNT}/${tier.name}.json`,
+                },
+              }
+            : {}),
         },
       };
 }

@@ -122,6 +122,9 @@
         "nodeAgents": {
           "$ref": "#/$defs/NodeAgents"
         },
+        "acme": {
+          "$ref": "#/$defs/AcmePolicy"
+        },
         "humanGrants": {
           "minItems": 1,
           "type": "array",
@@ -382,6 +385,10 @@
         },
         "dns": {
           "$ref": "#/$defs/TierDns"
+        },
+        "address": {
+          "type": "string",
+          "pattern": "^[a-z]([a-z0-9-]{0,30}[a-z0-9])?$"
         }
       },
       "required": [
@@ -1325,6 +1332,34 @@
         "controller"
       ],
       "additionalProperties": false
+    },
+    "AcmePolicy": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"
+        },
+        "dnsProvider": {
+          "$ref": "#/$defs/DnsProvider"
+        },
+        "token": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "email",
+        "dnsProvider",
+        "token"
+      ],
+      "additionalProperties": false
+    },
+    "DnsProvider": {
+      "type": "string",
+      "enum": [
+        "cloudflare"
+      ]
     },
     "HumanGrant": {
       "type": "object",

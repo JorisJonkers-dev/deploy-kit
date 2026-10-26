@@ -16,6 +16,8 @@ export const CERTIFICATE_SOURCES = ["acme", "none"] as const;
 export const HARDENING_CLASSES = ["restricted"] as const;
 /** Who forwards clients' requests to a tier's edge, where anyone does. */
 export const FORWARDERS = ["cloudflare"] as const;
+/** Who answers an ACME DNS challenge for a tier's names. */
+export const DNS_PROVIDERS = ["cloudflare"] as const;
 /** The built-in cluster roles a Human Grant may bind, and no other. */
 export const HUMAN_GRANT_ROLES = [
   "cluster-admin",
@@ -30,6 +32,7 @@ export type Listener = (typeof LISTENERS)[number];
 export type CertificateSource = (typeof CERTIFICATE_SOURCES)[number];
 export type HardeningClass = (typeof HARDENING_CLASSES)[number];
 export type Forwarder = (typeof FORWARDERS)[number];
+export type DnsProvider = (typeof DNS_PROVIDERS)[number];
 export type HumanGrantRole = (typeof HUMAN_GRANT_ROLES)[number];
 
 const text = z.string().min(1);
@@ -39,6 +42,12 @@ export const ERROR_RATE = /^(100|\d{1,2}(\.\d{1,2})?)%$/;
 /** A latency bound: whole milliseconds or seconds. */
 export const LATENCY = /^[1-9]\d*(ms|s)$/;
 const port = z.int().min(1).max(65535);
+/**
+ * An email address, as an ACME account is registered with: one `@` between a
+ * local part and a dotted domain, written out here so the published schema
+ * does not move with the validator's own default.
+ */
+export const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 /** An IPv4 range in CIDR notation, `192.168.0.98/32` for one address. */
 export const IPV4_CIDR =
   /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\/(3[0-2]|[12]?\d)$/;
@@ -171,8 +180,25 @@ const tier = z
       .strictObject({ target: text, proxied: z.boolean() })
       .meta({ id: "TierDns" })
       .exactOptional(),
+    // The L4 Address the proxy listens on, by its name in `l4Addresses`: its
+    // ports follow from `listener`, and no project file writes them.
+    address: z.string().regex(L4_ADDRESS_NAME).exactOptional(),
   })
   .meta({ id: "Tier" });
+
+// How an `acme` tier's proxy registers and proves its names
+// (spec/v1/14-platform-intent.md#tiers): the account's email, the DNS provider
+// that answers the challenge, and the Secret Store path of its token, which
+// the proxy alone reads.
+const acmePolicy = z
+  .strictObject({
+    email: z.string().regex(EMAIL),
+    dnsProvider: z.enum(DNS_PROVIDERS).meta({ id: "DnsProvider" }),
+    token: text,
+  })
+  .meta({ id: "AcmePolicy" });
+
+export type AcmePolicy = z.output<typeof acmePolicy>;
 
 // Where an off-cluster copy's traffic goes, as a network policy can say it: a
 // policy admits an address range and a port, never a hostname
@@ -704,6 +730,7 @@ export const platformIntent = z
       .exactOptional(),
     vpn: vpnPolicy.exactOptional(),
     nodeAgents: nodeAgents.exactOptional(),
+    acme: acmePolicy.exactOptional(),
     humanGrants: z.array(humanGrant).min(1).exactOptional(),
     priority: priorityPolicy.exactOptional(),
     l4Addresses: z

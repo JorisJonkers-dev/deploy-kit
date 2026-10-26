@@ -139,6 +139,14 @@ and never authored. Its privileges are fixed by the closed **Node Agent
 catalog** in the Platform document, which pins only its image and request.
 The agents are the `node` Project, which no project file declares.
 
+**Tier address**: the L4 Address a tier's proxy listens on. The proxy's ports
+follow from the tier's listener: 80 to `web`, and on a `tls` tier 443 to
+`websecure`; no project file writes them.
+
+**ACME account**: the Platform document's `acme`, the email, DNS provider and
+token path every `acme` tier's proxy issues with. Each such tier keeps its own
+ACME state on a `reconstructible` claim on its own proxy.
+
 **L4 exposure**: a raw TCP or UDP port a client off the cluster dials on an L4
 Address, naming the Process and Surface that answer it. The port a client
 dials is its own; the port the container listens on stays the Surface's.

@@ -254,6 +254,60 @@ describe("parsePlatformIntent", () => {
     ]);
   });
 
+  // REQ-099: a tier's address is one the Platform document declares, and an
+  // acme tier's proxy registers with the account the platform names.
+  it("refuses a tier whose address the platform does not declare, at the address", () => {
+    const text = WORKED.replace("address: lan-edge", "address: lan-nowhere");
+    expect(refusalsOf(text)).toStrictEqual([
+      { code: "E_UNKNOWN_L4_ADDRESS", path: "/tiers/1/address" },
+    ]);
+    const result = parsePlatformIntent(text);
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message: "the platform declares no L4 Address lan-nowhere",
+        hint: "Declare the address in `l4Addresses`, or name one it declares.",
+      },
+    ]);
+  });
+
+  it("refuses an acme tier where no Secret Store holds its DNS token, at the tier", () => {
+    const text = WORKED.replace("secretStore: secrets/vault\n", "");
+    const result = parsePlatformIntent(text);
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, path, message, hint }) => ({
+            code,
+            path,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_NO_SECRET_STORE",
+        path: "/tiers/0",
+        message:
+          "tier public-frankfurt issues its certificates through acme, and no Secret Store holds its DNS provider's token",
+        hint: "Name the platform's `secretStore`, or issue the tier's certificates another way.",
+      },
+    ]);
+    // A tier that issues none needs no token.
+    expect(
+      refusalsOf(text.replace("certificates: acme", "certificates: none")),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses an acme tier where the platform names no acme account, at the tier", () => {
+    const text = WORKED.replace(/\nacme:\n( {2}.*\n)+/, "\n");
+    expect(refusalsOf(text)).toStrictEqual([
+      { code: "E_NO_ACME_POLICY", path: "/tiers/0" },
+    ]);
+  });
+
   it("refuses a tier that carries authenticated with no forwardAuth, at the tier", () => {
     const text = WORKED.replace(/\n\s+forwardAuth: [^\n]*/, "");
     const result = parsePlatformIntent(text);

@@ -1563,11 +1563,42 @@
         },
         "tls": {
           "type": "boolean"
+        },
+        "resolver": {
+          "$ref": "#/$defs/ResolvedResolver"
         }
       },
       "required": [
         "ingressClass",
         "tls"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedResolver": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "email": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dnsProvider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storage": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "email",
+        "dnsProvider",
+        "storage"
       ],
       "additionalProperties": false
     },

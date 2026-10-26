@@ -50,7 +50,10 @@ const platformOf = (signIn = SIGN_IN, crd = CLIENT_CRD): string =>
 `,
     )
     .replaceAll("refusals/edge-proxy", "signin/edge-proxy")
-    .replace("hardening:", `${signIn}hardening:`);
+    .replace(
+      "hardening:",
+      `${signIn}acme:\n  email: hostmaster@jorisjonkers.dev\n  dnsProvider: cloudflare\n  token: secret/data/platform/cloudflare\nhardening:`,
+    );
 
 const PROCESSES = (name: string) => `    processes:
       - name: ${name}
@@ -353,10 +356,10 @@ describe("the Client kind", () => {
 });
 
 describe("a Client holding a secret", () => {
-  const storeless = platformOf().replace(
-    "secretStore: signin/edge-proxy\n",
-    "",
-  );
+  // With no Secret Store, the tier issues no certificate through acme either.
+  const storeless = platformOf()
+    .replace("secretStore: signin/edge-proxy\n", "")
+    .replace("certificates: acme", "certificates: none");
 
   it("is refused where the platform names no Secret Store to hold the secret", () => {
     expect(refusals(grafana(NATIVE), { platform: storeless })).toStrictEqual([

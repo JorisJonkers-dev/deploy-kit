@@ -3,6 +3,12 @@
 // one asks for the other offers (spec/v1/14-platform-intent.md). A refusal
 // names the document it points into, because the object at fault can sit in
 // either.
+import {
+  exposuresOf,
+  LISTENER_PORTS,
+  proxyProcessOf,
+  tierExposuresOf,
+} from "../model/tier-proxy.ts";
 import { dumpedSurfaceOf } from "../model/backup.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
 import {
@@ -21,6 +27,7 @@ import { addressesIn, l4AddressOf } from "../model/l4-addresses.ts";
 import { serves } from "../model/vocabularies.ts";
 import { libraryOf } from "../model/libraries.ts";
 import type {
+  L4Exposure,
   LibraryMount,
   ProjectIntentDocument,
 } from "../model/project-intent.ts";
@@ -139,9 +146,7 @@ const nodeAddressRefusals = (
   platform: PlatformIntentDocument,
 ): Omit<Diagnostic, "document">[] => {
   const onNode = new Set(
-    // A missing list and an empty one expose nothing alike.
-    // Stryker disable next-line ArrayDeclaration
-    (application.l4Exposure ?? [])
+    exposuresOf(platform, project.project, application)
       .filter(({ address }) => l4AddressOf(platform, address)?.kind === "node")
       .map(({ process }) => process),
   );
@@ -191,29 +196,64 @@ function nodePortRefusals(
   platform: Named<PlatformIntentDocument>,
   projects: readonly Named<ProjectIntentDocument>[],
 ): Diagnostic[] {
-  const entries = projects.flatMap(({ name, document }) =>
+  const onNode = (
+    entry: L4Exposure,
+    document: string,
+    path: string,
+    owner: string,
+  ) => {
+    const address = l4AddressOf(platform.document, entry.address);
+    return address?.kind === "node"
+      ? [
+          {
+            document,
+            path,
+            key: JSON.stringify([address.node, entry.protocol, entry.port]),
+            owner: JSON.stringify([owner, entry.process, entry.address]),
+            entry,
+            node: address.node,
+          },
+        ]
+      : // A pool's entry shares no node's port: anything here keys nothing
+        // and owns nothing, so no refusal reads it.
+        // Stryker disable next-line ArrayDeclaration
+        [];
+  };
+  const authored = projects.flatMap(({ name, document }) =>
     document.applications.flatMap((application, a) =>
       // Stryker disable next-line ArrayDeclaration
-      (application.l4Exposure ?? []).flatMap((entry, e) => {
-        const address = l4AddressOf(platform.document, entry.address);
-        return address?.kind === "node"
-          ? [
-              {
-                document: name,
-                path: `/applications/${String(a)}/l4Exposure/${String(e)}`,
-                key: JSON.stringify([address.node, entry.protocol, entry.port]),
-                owner: JSON.stringify([name, a, entry.process, entry.address]),
-                entry,
-                node: address.node,
-              },
-            ]
-          : // A pool's entry shares no node's port: anything here keys nothing
-            // and owns nothing, so no refusal reads it.
-            // Stryker disable next-line ArrayDeclaration
-            [];
-      }),
+      (application.l4Exposure ?? []).flatMap((entry, e) =>
+        onNode(
+          entry,
+          name,
+          `/applications/${String(a)}/l4Exposure/${String(e)}`,
+          `${name}/${String(a)}`,
+        ),
+      ),
     ),
   );
+  // A tier's ports are the tier's, refused where the tier names its address.
+  const derived = platform.document.tiers.flatMap((tier, t) =>
+    projects.flatMap(({ document }) =>
+      document.applications
+        .filter(({ id }) => holds(tier.traefik, document.project, id))
+        .flatMap((application) =>
+          tierExposuresOf(
+            { tiers: [tier] },
+            document.project,
+            application,
+          ).flatMap((entry) =>
+            onNode(
+              entry,
+              platform.name,
+              `/tiers/${String(t)}/address`,
+              `${platform.name}/${String(t)}`,
+            ),
+          ),
+        ),
+    ),
+  );
+  const entries = [...authored, ...derived];
   const owners = new Map<string, Set<string>>();
   for (const { key, owner } of entries)
     owners.set(key, (owners.get(key) ?? new Set()).add(owner));
@@ -229,6 +269,63 @@ function nodePortRefusals(
 }
 
 /**
+ * A tier's proxy is reached on the ports its listener derives, so a Process of
+ * it provides the surfaces those ports reach
+ * (spec/v1/14-platform-intent.md#tiers); and an acme tier's proxy holds the
+ * ACME state on one claim, so it runs one copy, or two would issue the same
+ * names against the same allowance.
+ */
+function proxyRefusals(
+  platform: Named<PlatformIntentDocument>,
+  projects: readonly Named<ProjectIntentDocument>[],
+): Diagnostic[] {
+  return platform.document.tiers.flatMap((tier, t) =>
+    projects.flatMap(({ name, document }) =>
+      document.applications.flatMap((application, a): Diagnostic[] => {
+        if (!holds(tier.traefik, document.project, application.id)) return [];
+        const unanswered =
+          tier.address !== undefined &&
+          proxyProcessOf(application, tier.listener) === undefined;
+        return [
+          ...(unanswered
+            ? [
+                {
+                  code: "E_TIER_SURFACE_MISSING" as const,
+                  document: platform.name,
+                  path: `/tiers/${String(t)}`,
+                  message: `no Process of ${tier.traefik} provides ${LISTENER_PORTS[
+                    tier.listener
+                  ]
+                    .map(({ surface }) => surface)
+                    .join(
+                      " and ",
+                    )}, which tier ${tier.name}'s ${tier.listener} listener reaches`,
+                  hint: "Provide the surfaces on the proxy's Process, or name a proxy that provides them.",
+                },
+              ]
+            : []),
+          ...(tier.certificates === "acme"
+            ? application.processes.flatMap((process, p) =>
+                process.replicas === undefined
+                  ? []
+                  : [
+                      {
+                        code: "E_ACME_PROXY_REPLICATED" as const,
+                        document: name,
+                        path: `/applications/${String(a)}/processes/${String(p)}/replicas`,
+                        message: `${process.name} proxies tier ${tier.name}, which issues its certificates through acme, so a second copy would issue the same names`,
+                        hint: "Drop `replicas`: an acme tier's proxy runs one copy.",
+                      },
+                    ],
+              )
+            : []),
+        ];
+      }),
+    ),
+  );
+}
+
+/**
  * A pool gives each Service exposed on it one address of its range, so it
  * holds as many Processes as its range holds addresses: one more would wait
  * for an address that never comes.
@@ -240,8 +337,11 @@ function exhaustedRefusals(
   const exposed = new Map<string, Set<string>>();
   for (const { document } of projects)
     for (const application of document.applications)
-      // Stryker disable next-line ArrayDeclaration: no list exposes nothing.
-      for (const { address, process } of application.l4Exposure ?? [])
+      for (const { address, process } of exposuresOf(
+        platform.document,
+        document.project,
+        application,
+      ))
         exposed.set(
           address,
           (exposed.get(address) ?? new Set()).add(
@@ -1003,6 +1103,7 @@ export function setDiagnostics(
     ...serving,
     ...exhaustedRefusals(platform, projects),
     ...nodePortRefusals(platform, projects),
+    ...proxyRefusals(platform, projects),
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,

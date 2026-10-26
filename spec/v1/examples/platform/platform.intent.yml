@@ -75,12 +75,23 @@ tiers:
     # placed on the public-ingress node
     ingressClass: traefik-public # the class this Traefik admits routes of
     dns: {target: ingress.jorisjonkers.dev, proxied: true} # where every public name points, behind Cloudflare
+    address: edge-frankfurt # the node's own address: ports 80 and 443 derive from `tls`
   - name: lan
     audiences: [lan]
     listener: plain
     certificates: none
     traefik: edge/traefik-lan # placed on a LAN node
     ingressClass: traefik-lan
+    address: lan-edge # an address of the Enschede pool: port 80 derives from `plain`
+
+# How an acme tier's proxy registers and proves its names
+# (spec/v1/14-platform-intent.md#tiers): the account's email, the DNS provider
+# that answers the DNS-01 challenge, and the Secret Store path holding its
+# token, which only the proxy of an acme tier reads.
+acme:
+  email: hostmaster@jorisjonkers.dev
+  dnsProvider: cloudflare
+  token: secret/data/platform/cloudflare
 
 # One policy per Durability Class (docs/adr/model/0018-durability-class-derives-a-backup.md).
 durability:
@@ -309,10 +320,18 @@ l4Addresses:
     kind: pool
     site: enschede
     range: 192.168.0.98/32
+  lan-edge:
+    kind: pool
+    site: enschede
+    range: 192.168.0.99/32
   lan-mqtt:
     kind: pool
     site: enschede
     range: 192.168.0.97/32
+  # The public tier's proxy listens on the Frankfurt node's own address.
+  edge-frankfurt:
+    kind: node
+    node: frankfurt-contabo-1
   # A node's own address, at a site with no pool: an exposure on it is a host
   # port, and holds its Process to the node.
   mail-node:

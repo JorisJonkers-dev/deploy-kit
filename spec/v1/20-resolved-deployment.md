@@ -922,6 +922,18 @@ The node joins the Process's placement as a hard pin, so its one eligible node
 is that node, and its network policy admits any address on each target port, as
 on a pool.
 
+### A tier's proxy
+
+On an acme tier, the Process of the tier's proxy carries a `resolver` in its
+`edgeProxy` ([chapter 30](30-deliverables.md#the-edge-proxy)), which the tier
+derives and no author writes ([chapter 14](14-platform-intent.md#tiers)): named
+for the tier, with the account's `email`, the `dnsProvider` and the `storage`
+file on the claim. The tier also adds to the Process a `reconstructible`
+volume, `acme` at `/acme`, an `env` grant on the token's path whose key arrives
+as the variable the provider's client reads, and egress to the internet where
+none is declared: the certificate authority and the DNS provider are both
+beyond the cluster.
+
 ## The release gate
 
 An Application is the Release Unit, and no member's new version receives traffic
@@ -2061,6 +2073,12 @@ classDiagram
         +string kind
         +string node
     }
+    class ResolvedResolver {
+        +string name
+        +string email
+        +string dnsProvider
+        +string storage
+    }
     class ResolvedL4Port {
         +string name
         +int port
@@ -2253,6 +2271,7 @@ classDiagram
     ResolvedPoolExposure "1" *-- "1..*" ResolvedL4Port : ports
     ResolvedNodeExposure "1" *-- "1..*" ResolvedL4Port : ports
     ResolvedProcess "1" *-- "0..1" ResolvedEdgeProxy : edgeProxy
+    ResolvedEdgeProxy "1" *-- "0..1" ResolvedResolver : resolver
     ResolvedProcess "1" *-- "0..1" ResolvedGpu : gpu
     ResolvedProcess "1" *-- "0..1" ResolvedVpn : vpn
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets

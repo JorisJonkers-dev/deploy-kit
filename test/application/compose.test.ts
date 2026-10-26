@@ -970,10 +970,14 @@ describe("composeEstate", () => {
             ? {
                 ...file,
                 text: withLedger(
-                  file.text.replace(
-                    "traefik: edge/traefik-lan",
-                    "traefik: data/platform-rabbitmq",
-                  ),
+                  file.text
+                    .replace(
+                      "traefik: edge/traefik-lan",
+                      "traefik: data/platform-rabbitmq",
+                    )
+                    // The broker serves no tier's surfaces, so the tier names
+                    // no address.
+                    .replace(/\n {4}address: lan-edge[^\n]*/, ""),
                   "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n",
                 ),
               }

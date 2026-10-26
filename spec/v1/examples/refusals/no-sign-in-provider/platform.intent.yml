@@ -66,3 +66,7 @@ monitors:
 hardening: restricted
 probes: { period: 10s, timeout: 5s, failures: 3 }
 ephemeral: { size: 64Mi }
+acme:
+  email: hostmaster@jorisjonkers.dev
+  dnsProvider: cloudflare
+  token: secret/data/platform/cloudflare

@@ -7,3 +7,5 @@ resources:
   - rollout-events
   - traefik-lan
   - traefik-public
+  - vault-policy
+  - vaultconnection.yaml

@@ -1,0 +1,47 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: traefik-public
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/name: traefik-public
+    app.kubernetes.io/instance: traefik-public
+    app.kubernetes.io/part-of: traefik-public
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: edge-system-traefik-public
+    serviceAccount: traefik-public
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: traefik-public-platform-cloudflare
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/name: traefik-public
+    app.kubernetes.io/instance: traefik-public
+    app.kubernetes.io/part-of: traefik-public
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: traefik-public
+  mount: secret
+  type: kv-v2
+  path: platform/cloudflare
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: traefik-public-platform-cloudflare
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: traefik-public

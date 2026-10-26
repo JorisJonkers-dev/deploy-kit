@@ -1,0 +1,19 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-policy-4397ac2bab13
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/name: vault-policy
+    app.kubernetes.io/instance: vault-policy
+    app.kubernetes.io/part-of: vault-policy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  edge-system-traefik-public.policy.json: |
+    {"path":{"secret/data/platform/cloudflare":{"capabilities":["read"]},"secret/metadata/platform/cloudflare":{"capabilities":["read"]}}}
+  edge-system-traefik-public.role.json: |
+    {"bound_service_account_names":["traefik-public"],"bound_service_account_namespaces":["edge-system"],"token_policies":["edge-system-traefik-public"]}
