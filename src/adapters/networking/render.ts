@@ -19,6 +19,7 @@ import type {
 import {
   consumerLabelsOf,
   instanceOf,
+  MEMBER_LABEL,
   labelsOf,
   managedOnly,
   namespaceSelector,
@@ -64,6 +65,16 @@ const consumerPeerOf = (consumes: string): PolicyPeer => ({
   namespaceSelector: { matchLabels: managedOnly() },
   podSelector: { matchLabels: consumerLabelsOf([consumes]) },
 });
+
+/**
+ * Every gate member's pods, in any namespace deploy-kit manages: the label is
+ * rendered only on a Process the release-gate inputs name
+ * (spec/v1/16-dependencies.md#the-member-label).
+ */
+const membersPeer: PolicyPeer = {
+  namespaceSelector: { matchLabels: managedOnly() },
+  podSelector: { matchLabels: { ...MEMBER_LABEL } },
+};
 
 /**
  * Flux's notification controller is no Process: nothing renders it, and its
@@ -163,16 +174,22 @@ function policyOf(
   );
   // The baseline admits UDP and TCP alike, since the cluster's DNS answers on
   // both; only its peers other than DNS are reached through the mesh.
-  const baseline = (process.egress ?? []).map((peer) => ({
-    to: [peerOf(peer.namespace, peer.process)],
-    ports: [
-      { protocol: "UDP" as const, port: peer.port },
-      tcp(peer.port),
-      ...(mesh === undefined || peer.rule === DNS
-        ? []
-        : [tcp(mesh.tunnelPort)]),
-    ],
-  }));
+  const baseline = (process.egress ?? []).map((peer) =>
+    // The gate's own requests reach every member's pods, on whichever port
+    // the member's own policy admits them.
+    peer.rule === "gate-members"
+      ? { to: [membersPeer] }
+      : {
+          to: [peerOf(peer.namespace, peer.process)],
+          ports: [
+            { protocol: "UDP" as const, port: peer.port },
+            tcp(peer.port),
+            ...(mesh === undefined || peer.rule === DNS
+              ? []
+              : [tcp(mesh.tunnelPort)]),
+          ],
+        },
+  );
   // Where the Kubernetes API answers, for a Process that holds access to it:
   // an address, because the API server is no pod a selector reaches.
   // A missing block and an empty list admit the same nowhere.

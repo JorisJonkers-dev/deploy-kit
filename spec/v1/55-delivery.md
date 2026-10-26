@@ -983,8 +983,9 @@ closes this, because the address is not in the name. A warmup therefore:
 - never follows a redirect: a `3xx` is an answer, and it passes.
 
 A check during analysis asks the member's Canary service, which the gate
-names itself and no project file does. The gate reads everything else from
-the Resolved Deployment.
+names itself and no project file does, and the derived allow set admits that
+request at both ends ([the member label](16-dependencies.md#the-member-label)).
+The gate reads everything else from the Resolved Deployment.
 
 **A member that did not change starts no analysis.** Flagger analyses a Canary
 only when its target's pod template, or a configuration object it tracks,

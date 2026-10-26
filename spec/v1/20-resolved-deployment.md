@@ -92,14 +92,16 @@ adapter reads the Resolved Deployment and nothing else
 are spelled; its `surfaces`, each a name and a port, which a route, a scrape and
 a policy name it by; and the peers its policy admits beyond its own edges: its
 `ingress`, each peer tagged with the allow-set rule that admits it (`tier-proxy`,
-`metrics-stack`, `backup` or `flux-events`, each naming a namespace and a
+`metrics-stack`, `backup`, `flux-events` or `release-gate`, each naming a namespace and a
 Process, or `consumer`, naming instead the surface whose
 [consumer label](16-dependencies.md#the-consumer-label) it admits); the
 surfaces it `consumes`, one per edge to an Application, as that label names
 them; and its `egress`, the `cluster-dns` baseline and,
 for a Process that holds a grant, the `secret-store`: the Process of the Secret
 Store's Application that answers on its `http` surface
-([chapter 16](16-dependencies.md#the-derived-allow-set)), and, for a Process that
+([chapter 16](16-dependencies.md#the-derived-allow-set)), and, for a Process of
+the Release Gate, `gate-members`, which names no peer: every pod carrying the
+[member label](16-dependencies.md#the-member-label); and, for a Process that
 declares it, its `internetEgress`, the reason it reaches the public internet
 ([chapter 16](16-dependencies.md#internet-egress)). An Application records
 its `scrape`, the monitored surface at the Platform document's cadence; an
@@ -2047,6 +2049,9 @@ classDiagram
         +string process
         +int port
     }
+    class GateMembersPeer {
+        +string rule
+    }
     class InternetEgress {
         +string reason
     }
@@ -2285,6 +2290,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" ResolvedSurface : surfaces
     ResolvedProcess "1" *-- "0..*" IngressPeer : ingress
     ResolvedProcess "1" *-- "0..*" EgressPeer : egress
+    ResolvedProcess "1" *-- "0..1" GateMembersPeer : egress
     ResolvedProcess "1" *-- "0..1" InternetEgress : internetEgress
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
     ResolvedProcess "1" *-- "0..1" ResolvedApiAccess : api

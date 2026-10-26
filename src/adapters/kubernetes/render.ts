@@ -57,6 +57,7 @@ import {
 import {
   applicationLabels,
   consumerLabelsOf,
+  MEMBER_LABEL,
   instanceOf,
   labelsOf,
   managedOnly,
@@ -611,6 +612,15 @@ type PodTemplate = Deployment["spec"]["template"];
  * The pod a Process runs in, whatever controller starts it: a run to
  * completion restarts in place on a failure.
  */
+/** Whether the Process is a member of its Application's release gate. */
+const memberOf = (
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): boolean =>
+  application.releaseGate?.members.some(
+    (member) => member.process === process.name,
+  ) === true;
+
 function podTemplateOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
@@ -625,6 +635,7 @@ function podTemplateOf(
         // A missing list and an empty one carry no label alike.
         // Stryker disable next-line ArrayDeclaration
         ...consumerLabelsOf(process.consumes ?? []),
+        ...(memberOf(process, application) ? MEMBER_LABEL : {}),
       },
       [
         [process.name, process.imageVersion],

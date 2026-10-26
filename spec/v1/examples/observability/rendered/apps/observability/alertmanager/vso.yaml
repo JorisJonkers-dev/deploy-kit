@@ -12,7 +12,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
   annotations:
-    estate.jorisjonkers.dev/revision: sha256:cd18d9280f84cf0a015bff0cdbd9f5cb56089945057811df6b9d2d19593780b2
+    estate.jorisjonkers.dev/revision: sha256:d9f557e6af7f39728e3985f209dbcdb62583cae345612e85f262db489819262f
     kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   vaultConnectionRef: secret-store
@@ -34,7 +34,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
   annotations:
-    estate.jorisjonkers.dev/revision: sha256:cd18d9280f84cf0a015bff0cdbd9f5cb56089945057811df6b9d2d19593780b2
+    estate.jorisjonkers.dev/revision: sha256:d9f557e6af7f39728e3985f209dbcdb62583cae345612e85f262db489819262f
     kustomize.toolkit.fluxcd.io/prune: disabled
 spec:
   vaultAuthRef: alertmanager

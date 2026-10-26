@@ -40,6 +40,13 @@ spec:
         - protocol: TCP
           port: 53
     - to:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+    - to:
         - ipBlock:
             cidr: 10.43.0.1/32
       ports:
