@@ -22,6 +22,7 @@ const read = (path: string): AuthoredFile => ({
 const WORKED = [
   "platform/platform.intent.yml",
   "auth/auth.project.yml",
+  "auth/env/auth-api/base.env",
   "data/data.project.yml",
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",

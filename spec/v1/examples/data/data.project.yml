@@ -27,7 +27,7 @@
 #   platform/env/postgres/base.env   -- reproduced as env/postgres/base.env
 
 # The data model's own semver, not the toolkit's
-# (docs/adr/model/0044-artifact-schema-versioning.md).
+# (docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md).
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
 schemaVersion: 1.0.0
@@ -44,7 +44,6 @@ applications:
     # Process, and the block names it the same way a route does: by Process
     # and surface, never by port. `metrics` is declared once, in `provides`.
     observability:
-      alertClass: page      # eight Applications depend on it
       scrape:
         process: postgres
         surface: metrics
@@ -267,7 +266,6 @@ applications:
     # make this file page as loudly as postgres does. rabbitmq exports metrics
     # itself, so no sidecar is involved and the surface is the Process's own.
     observability:
-      alertClass: urgent
       scrape:
         process: rabbitmq
         surface: metrics    # the prometheus plugin's own listener
@@ -378,11 +376,10 @@ applications:
     # No `observability` block, and that is the whole statement. valkey speaks
     # RESP and exports no Prometheus surface, no exporter runs beside it, and a
     # datastore is correctly not exposed, so there is no signal to name. An
-    # omission says it: there is no `none` class to write, because a value
+    # omission says it: there is no `none` value to write, because a value
     # meaning "I wrote the field to say I did not want the field" is ceremony
-    # (docs/adr/model/0025-observability-is-one-optional-block.md). Giving this
-    # Application a class would be E_ALERT_CLASS_WITHOUT_SIGNAL, and the repair is
-    # an exporter sidecar plus a scrape surface, as postgres has above.
+    # (docs/adr/model/0025-observability-is-one-optional-block.md). Observing
+    # it takes an exporter sidecar plus a scrape surface, as postgres has above.
 
     processes:
       - name: valkey

@@ -57,11 +57,10 @@ error that protects seven applications fires. The default is
 therefore **7 days**, about 2.5 observed intervals: long enough to absorb two
 consecutive missed releases (2.5 x the observed 2.8-day interval), short enough
 that a broken publish job is caught in the same week it breaks. A participant may override it with a
-reason. `dormant: true` is the separate exemption, carrying a reason and a
-review date like every other entry under
-[0038](0038-bidirectional-ledgers.md); it exempts a participant from `maxAge`
+reason. `dormant: true` is the separate exemption, carrying an owner and a
+reason; it exempts a participant from `maxAge`
 and from nothing else, a dormant fragment still unions, and still satisfies the
-version range of [0044](0044-artifact-schema-versioning.md).
+version range of [0032](0032-the-resolved-deployment-is-a-versioned-artifact.md).
 
 **The list is the admission, in both directions.** A list that only caught
 absence would let a project join the estate by publishing: its fragment would

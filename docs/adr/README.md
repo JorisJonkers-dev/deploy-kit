@@ -126,7 +126,6 @@ and linted by the same script with `emf` as its root.
 | # | title | claim |
 |---|---|---|
 | [0037](model/0037-six-registered-adapters-satisfy-one-port.md) | The registry is the enumeration of adapters, every adapter satisfies one typed port, and every Deliverable is attributed to exactly one adapter | settled |
-| [0038](model/0038-bidirectional-ledgers.md) | Every accepted hole is a bidirectional ledger: an unlisted gap fails the build, and so does an entry that no longer matches | settled |
 | [0039](model/0039-the-label-set-is-fixed.md) | The object label set is fixed, and two of its labels are immutable | settled |
 | [0040](model/0040-vault-policy-is-a-deliverable.md) | The derived Vault policy and auth role are Deliverables of their own adapter | settled |
 | [0041](model/0041-no-process-rbac-in-v1.md) | v1 renders no RBAC for a Process that declares no API access, and refuses a declaration the platform did not admit | settled |
@@ -137,7 +136,6 @@ and linted by the same script with `emf` as its root.
 |---|---|---|
 | [0042](model/0042-declarations-compose-from-intent-fragments.md) | Declarations compose from Intent Fragments published by digest, because eight properties of the estate need every project at once | open |
 | [0043](model/0043-participants-list-staleness.md) | Participants are listed, bounded by seven days of staleness | settled |
-| [0044](model/0044-artifact-schema-versioning.md) | The artifact schema is semver; composition accepts a range | settled |
 | [0045](model/0045-platform-intent-is-the-second-authored-document.md) | Platform Intent is the second authored document, published as an Intent Fragment | settled |
 | [0046](model/0046-the-foundation-is-declared.md) | The foundation is declared as Applications, nothing hand-written enters the render, and what must exist first is a recorded bootstrap table | open |
 | [0047](model/0047-one-publication-path.md) | A repository publishes its Intent Fragment and nothing else, and every derivation runs once, centrally | settled |
@@ -201,3 +199,10 @@ Decisions about the compiler's own structure, not about the model; see
 |---|---|---|
 | [0069](deferred/0069-co-testing-is-parked.md) | Co-testing is parked: if it is taken up, an Aggregator owns each relationship's system tests and gates the pin commit | open |
 | [0097](deferred/0097-multi-cluster-and-multi-tenancy-are-parked.md) | Multi-cluster and multi-tenant estates are parked: v1 writes its one cluster down as a seam, and records what a second cluster or a second tenant would require | open |
+
+## Retired numbers
+
+| # | was | why |
+|---|---|---|
+| 0038 | Every accepted hole is a bidirectional ledger | the reconciliation ledgers were cut: each Project's handover diff finds what is not yet declared |
+| 0044 | The artifact schema is semver; composition accepts a range | folded into [0032](model/0032-the-resolved-deployment-is-a-versioned-artifact.md) |

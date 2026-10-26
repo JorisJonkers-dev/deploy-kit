@@ -13,7 +13,6 @@ import type { ScopedEnv } from "../model/env.ts";
 import type {
   ApplicationDocument,
   EnvFile,
-  EnvVariable,
   Placement,
   ProcessDocument,
   ProjectIntentDocument,
@@ -61,34 +60,22 @@ function mergeEntries<T>(
   return merged.length === 0 ? undefined : merged;
 }
 
-/** A variable is one declaration within one Cluster Target, and not across two. */
-const entryIdentity =
-  (cluster: string | undefined) =>
-  (entry: EnvVariable): string =>
-    JSON.stringify([cluster, entry.name]);
-
 /**
- * One file per Cluster Target, its entries extended by every scope above. Base
- * and overlay stay apart: which of them holds is a question only a render for a
- * named cluster can answer.
+ * The Process's one file: its own scope's entries extended by every scope
+ * above, or none where no scope has a file.
  */
 function envFor(levels: Levels): readonly EnvFile[] {
-  const clusters = [
-    ...new Set(
-      levels.flatMap((level) => level.env.map(({ cluster }) => cluster)),
-    ),
-  ];
-  return clusters.map((cluster) => ({
-    ...(cluster === undefined ? {} : { cluster }),
-    entries: distinct(
-      levels.flatMap((level) =>
-        level.env
-          .filter((file) => file.cluster === cluster)
-          .flatMap(({ entries }) => entries),
-      ),
-      entryIdentity(cluster),
-    ),
-  }));
+  const files = levels.flatMap((level) => level.env);
+  return files.length === 0
+    ? []
+    : [
+        {
+          entries: distinct(
+            files.flatMap(({ entries }) => entries),
+            ({ name }) => name,
+          ),
+        },
+      ];
 }
 
 /** Each node dimension from the lowest level that set it; the quantities from

@@ -20,7 +20,6 @@ import {
 } from "./platform-intent.ts";
 import {
   ACCESS_TIERS,
-  ALERT_CLASSES,
   API_VERBS,
   AUDIENCES,
   CLIENT_CREDENTIALS,
@@ -124,7 +123,6 @@ const digest = z.string().regex(/^[a-z0-9]+:[a-f0-9]+$/);
 const duration = z.string().regex(/^\d+(ms|s|m|h)$/);
 
 const accessTier = z.enum(ACCESS_TIERS).meta({ id: "AccessTier" });
-const alertClass = z.enum(ALERT_CLASSES).meta({ id: "AlertClass" });
 const audience = z.enum(AUDIENCES).meta({ id: "Audience" });
 const contentPolicy = z.enum(CONTENT_POLICIES).meta({ id: "ContentPolicy" });
 const cutover = z.enum(CUTOVERS).meta({ id: "Cutover" });
@@ -980,7 +978,6 @@ const application = {
   namespace: text,
   reconcileUnit: text,
   reconcileAfter: z.array(text).exactOptional(),
-  alertClass: alertClass.exactOptional(),
   alertRules: z.array(resolvedAlertRules).min(1).exactOptional(),
   alerting: resolvedAlerting.exactOptional(),
   scrape: resolvedScrape.exactOptional(),

@@ -235,17 +235,10 @@ function probesOf(
   };
 }
 
-/** The env file a render for `cluster` reads: the base, overlaid by that cluster's file. */
-function entriesFor(
+/** The variables of the Process's one env file, or none where it has none. */
+const entriesFor = (
   files: readonly EnvFile[] | undefined,
-  cluster: string,
-): readonly EnvVariable[] {
-  const base = files?.find((file) => file.cluster === undefined)?.entries ?? [];
-  const overlay =
-    files?.find((file) => file.cluster === cluster)?.entries ?? [];
-  const overlaid = new Set(overlay.map(({ name }) => name));
-  return [...base.filter(({ name }) => !overlaid.has(name)), ...overlay];
-}
+): readonly EnvVariable[] => files?.[0]?.entries ?? [];
 
 /** `${secret:<path>#<key>}`: one key of a grant the Process holds, delivered `env`. */
 function secretOf(variable: EnvVariable, source: string): EnvEntry {
@@ -408,8 +401,8 @@ function environmentOf(
   // The Process's env files, which a lint reading `process.env` as the ambient
   // environment would mistake for it.
   const { env: files } = process;
-  const authored = entriesFor(files, context.platform.metadata.cluster).map(
-    (variable) => entryOf(variable, process, context),
+  const authored = entriesFor(files).map((variable) =>
+    entryOf(variable, process, context),
   );
   // No env file writes a key the profile injects, or E_PROFILE_KEY_AUTHORED
   // refused it.

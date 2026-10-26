@@ -13,7 +13,6 @@ owner: joris
 applications:
   - id: scrape-unknown-process
     observability:
-      alertClass: urgent
       scrape:
         process: scrape-unknown-process-exporter
         surface: metrics

@@ -694,7 +694,6 @@ describe("the refusal fixtures", () => {
   it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
     expect(fixtures).toStrictEqual([
       "acme-proxy-replicated",
-      "alert-class-without-signal",
       "alert-rules-not-found",
       "alert-rules-outside-monitoring",
       "alert-rules-without-groups",
@@ -768,6 +767,7 @@ describe("the refusal fixtures", () => {
       "scrape-unknown-process",
       "secrets-at-rest-required",
       "secrets-at-rest-required-at-header",
+      "self-without-vault-client",
       "shared-declaration-duplicated",
       "shared-intent-merged",
       "shared-quantity",

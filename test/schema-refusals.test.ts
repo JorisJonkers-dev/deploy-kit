@@ -53,7 +53,6 @@ const filesOf = (stem: string): AuthoredFile[] =>
 describe("the schema refusal fixtures", () => {
   it("cover every kind of refusal the reading chapter names", () => {
     expect(cases).toStrictEqual([
-      "alert-class-unknown",
       "credentials-file-without-mount",
       "egress-outside-vocabulary",
       "egress-with-range",

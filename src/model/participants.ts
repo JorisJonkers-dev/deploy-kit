@@ -9,27 +9,25 @@ import { stated, type ShapeRule } from "./shape-rule.ts";
 const text = z.string().min(1);
 /** How long a participant's newest publish may be, in whole days. */
 const age = z.string().regex(/^\d+d$/);
-const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 /** How old a participant's newest publish may be where its entry says nothing. */
 export const DEFAULT_MAX_AGE = "7d";
 
 /**
  * An override is a decision somebody made, so it says why: a `maxAge` carries
- * its reason, and a dormant participant is a ledger entry, with an owner, a
- * reason and the date it is looked at again.
+ * its reason, and a dormant participant names its owner and why it is
+ * dormant.
  */
 const overridesAreExplained: ShapeRule<{
   readonly maxAge?: string;
   readonly dormant?: true;
   readonly owner?: string;
   readonly reason?: string;
-  readonly reviewBy?: string;
 }> = {
   statement: {
     dependentRequired: {
       maxAge: ["reason"],
-      dormant: ["owner", "reason", "reviewBy"],
+      dormant: ["owner", "reason"],
     },
   },
   breaches: (entry) => [
@@ -43,7 +41,7 @@ const overridesAreExplained: ShapeRule<{
       : []),
     ...(entry.dormant === undefined
       ? []
-      : (["owner", "reason", "reviewBy"] as const)
+      : (["owner", "reason"] as const)
           .filter((field) => entry[field] === undefined)
           .map((field) => ({
             path: [field],
@@ -59,7 +57,6 @@ const participant = stated(
     dormant: z.literal(true).exactOptional(),
     owner: text.exactOptional(),
     reason: text.exactOptional(),
-    reviewBy: day.exactOptional(),
   }),
   "Participant",
   overridesAreExplained,

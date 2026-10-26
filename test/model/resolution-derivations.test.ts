@@ -516,22 +516,20 @@ describe("the environment a Process runs with", () => {
     text: content,
   });
 
-  it("overlays the render's Cluster Target on the base file, and no other cluster's", () => {
+  it("reads every scope's file, the Process's own value where two set one", () => {
     const resolved = processOf(one(serving("notes-api")), {
-      // Another cluster's overlay is read first, then this one's, then the
-      // base, so finding either cannot fall back on order.
       env: [
-        env("notes-api/staging.env", "D=staging\n"),
-        env("notes-api/production.env", "B=production\nC=production\n"),
-        env("notes-api/base.env", "A=base\nB=base\n"),
+        env("_project/base.env", "A=project\nB=project\n"),
+        env("notes-api/base.env", "B=process\nC=process\n"),
       ],
     });
 
     expect(
       resolved.environment
         ?.filter(({ name }) => name.length === 1)
-        .map((entry) => `${entry.name}=${"value" in entry ? entry.value : ""}`),
-    ).toStrictEqual(["A=base", "B=production", "C=production"]);
+        .map((entry) => `${entry.name}=${"value" in entry ? entry.value : ""}`)
+        .sort(),
+    ).toStrictEqual(["A=project", "B=process", "C=process"]);
   });
 
   it("resolves an identity placeholder to the Process's own derived facts", () => {
@@ -1728,9 +1726,11 @@ describe("what a grant derives", () => {
   const bound = (line: string): Options => ({
     env: [{ name: "minimal/env/notes-api/base.env", text: line }],
   });
+  // A self grant needs the Process to wire its own Vault client.
+  const CLIENT = bound("VAULT_ROLE=${identity:vaultRole}\n");
 
   it("reads a self grant in the Process, mounting the token it authenticates with and syncing nothing", () => {
-    const resolved = processOf(granted(SELF));
+    const resolved = processOf(granted(SELF), CLIENT);
 
     expect(resolved.secrets).toStrictEqual([
       {
@@ -1804,7 +1804,7 @@ describe("what a grant derives", () => {
 
   it("admits the Secret Store's http surface to a Process that holds a grant, and to no other", () => {
     const rules = (applications: string) =>
-      processOf(applications).egress?.map((peer) =>
+      processOf(applications, CLIENT).egress?.map((peer) =>
         peer.rule === "gate-members"
           ? peer.rule
           : `${peer.rule} ${peer.namespace} ${peer.process ?? "*"} ${String(peer.port)}`,
@@ -1830,6 +1830,7 @@ describe("what a grant derives", () => {
         ...FOUNDATION.filter(({ name }) => !name.startsWith("secrets/")),
         { name: "secrets/secrets.project.yml", text: secrets },
         { name: "minimal/notes.project.yml", text: HEADER + granted(SELF) },
+        ...(CLIENT.env ?? []),
       ],
       {
         hash: sha256Hasher,
@@ -1849,23 +1850,25 @@ describe("what a grant derives", () => {
   });
 
   it("hands the Secret Store's endpoint to an Application holding a grant, and to no other", () => {
-    expect(application(granted(SELF)).secretStore).toBe(
+    expect(application(granted(SELF), CLIENT).secretStore).toBe(
       "http://vault.secrets-system.svc.cluster.local:8200",
     );
     // One Process holding a grant is enough.
     expect(
-      application(`${granted(SELF)}${serving("notes-worker")}`).secretStore,
+      application(`${granted(SELF)}${serving("notes-worker")}`, CLIENT)
+        .secretStore,
     ).toBe("http://vault.secrets-system.svc.cluster.local:8200");
     expect(application(one(serving("notes-api"))).secretStore).toBeUndefined();
   });
 
   it("orders an Application holding a grant after the unit that materialises its credentials", () => {
-    expect(application(granted(SELF)).reconcileAfter).toStrictEqual([
+    expect(application(granted(SELF), CLIENT).reconcileAfter).toStrictEqual([
       "apps-secrets",
     ]);
     // One Process holding a grant is enough.
     expect(
-      application(`${granted(SELF)}${serving("notes-worker")}`).reconcileAfter,
+      application(`${granted(SELF)}${serving("notes-worker")}`, CLIENT)
+        .reconcileAfter,
     ).toStrictEqual(["apps-secrets"]);
     expect(
       application(one(serving("notes-api"))).reconcileAfter,
@@ -1875,6 +1878,7 @@ describe("what a grant derives", () => {
   it("orders no Application of the Project that runs the Secret Store after its own unit", () => {
     expect(
       application(granted(SELF), {
+        ...CLIENT,
         platform: (document) =>
           document.replace(
             "secretStore: secrets/vault",
@@ -1926,6 +1930,7 @@ describe("what a grant derives", () => {
     expect(
       notesCodesOf(
         resolve(granted(SELF), {
+          ...CLIENT,
           platform: (document) =>
             // With no Secret Store, no tier issues through acme either.
             document
@@ -1966,7 +1971,9 @@ describe("what a grant derives", () => {
       codesOf(
         resolve(
           one(serving("notes-api", block)),
-          bound("TOKEN=${secret:secret/data/notes/token#token}\n"),
+          bound(
+            "VAULT_ROLE=${identity:vaultRole}\nTOKEN=${secret:secret/data/notes/token#token}\n",
+          ),
         ),
       ),
     ).toStrictEqual(["E_UNAUTHORISED_SECRET_REFERENCE"]);
@@ -1977,7 +1984,9 @@ describe("what a grant derives", () => {
       codesOf(
         resolve(
           granted(SELF),
-          bound("TOKEN=${secret:secret/data/notes/token#token}\n"),
+          bound(
+            "VAULT_ROLE=${identity:vaultRole}\nTOKEN=${secret:secret/data/notes/token#token}\n",
+          ),
         ),
       ),
     ).toStrictEqual(["E_UNAUTHORISED_SECRET_REFERENCE"]);
@@ -2111,6 +2120,15 @@ describe("what an engine grant derives", () => {
   const holding = (grant: string) =>
     processOf(
       one(serving("notes-api", `        secrets:\n          - ${grant}\n`)),
+      // A self grant needs the Process to wire its own Vault client.
+      {
+        env: [
+          {
+            name: "minimal/env/notes-api/base.env",
+            text: "VAULT_ROLE=${identity:vaultRole}\n",
+          },
+        ],
+      },
     );
 
   it("covers one path per transit operation, each the one Vault maps it to", () => {
@@ -2895,12 +2913,10 @@ describe("the order edges impose, and a platform with no register", () => {
 });
 
 describe("the edges of the derivations", () => {
-  it("reads an overlay with no base file beside it", () => {
+  it("reads a wider scope's file where the Process has none of its own", () => {
     expect(
       processOf(one(serving("notes-api")), {
-        env: [
-          { name: "minimal/env/notes-api/production.env", text: "ONLY=here\n" },
-        ],
+        env: [{ name: "minimal/env/_project/base.env", text: "ONLY=here\n" }],
       }).environment?.find(({ name }) => name === "ONLY"),
     ).toStrictEqual({ name: "ONLY", value: "here" });
   });
@@ -3088,7 +3104,6 @@ ${serving("notes-other").replace("provides: { http: 8080 }", "provides: { store:
   it("admits the metrics stack only on the scraped Process, and every Process of the stack", () => {
     const all = projects(`  - id: notes
     observability:
-      alertClass: business-hours
       scrape: { process: notes-web, surface: http, path: /metrics }
     processes:
 ${serving("notes-api")}${serving("notes-web")}`);
@@ -3110,7 +3125,6 @@ ${serving("notes-api")}${serving("notes-web")}`);
         projects(
           `  - id: notes
     observability:
-      alertClass: business-hours
       scrape: { process: notes-api, surface: http, path: /metrics }
     processes:
 ${serving("notes-api")}`,

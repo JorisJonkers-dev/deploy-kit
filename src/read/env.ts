@@ -14,6 +14,7 @@ import { PLACEHOLDER_KINDS } from "../model/vocabularies.ts";
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const OPENS = "${";
 const SUFFIX = ".env";
+const BASE = `base${SUFFIX}`;
 const PROJECT_SCOPE = "_project";
 const APPLICATION_SCOPE = "_applications";
 
@@ -89,17 +90,7 @@ export function readEnvFile(source: EnvSource): Result<EnvFile> {
   });
 
   if (diagnostics.length > 0) return { ok: false, diagnostics };
-  const cluster = clusterOf(source.path);
-  return {
-    ok: true,
-    value: { ...(cluster === undefined ? {} : { cluster }), entries },
-  };
-}
-
-/** `base.env` does not vary, so it names no Cluster Target. */
-function clusterOf(path: string): string | undefined {
-  const file = path.slice(path.lastIndexOf("/") + 1, -SUFFIX.length);
-  return file === "base" ? undefined : file;
+  return { ok: true, value: { entries } };
 }
 
 /** Every env file among `sources`, read and scoped, or every line they break. */
@@ -113,6 +104,13 @@ export function readEnv(
     if (scope === undefined) {
       diagnostics.push(
         refusal(source.path, 0, "this path names no env scope directory"),
+      );
+      continue;
+    }
+    // A scope holds one file, and no file varies by cluster.
+    if (!source.path.endsWith(`/${BASE}`)) {
+      diagnostics.push(
+        refusal(source.path, 0, `a scope's one env file is ${BASE}`),
       );
       continue;
     }

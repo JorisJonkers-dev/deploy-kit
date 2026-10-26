@@ -120,7 +120,7 @@ audience nothing carries is the exposure's.
 ## Where a vocabulary lives
 
 A vocabulary is a closed set of literals a field may hold: `Engine`,
-`AlertClass`, `HardeningClass`, `Datastore`, and the rest this specification
+`HardeningClass`, `Datastore`, and the rest this specification
 enumerates. One rule decides which authored document declares a vocabulary's
 literals, applied per vocabulary rather than per document: **fixed in the
 metamodel, in Project Intent, when either a model derivation branches on which
@@ -136,18 +136,6 @@ response differently than `engine: rabbitmq` does
 ([0019](../../docs/adr/model/0019-engine-is-process-vocabulary.md)). What each
 literal *does*, the backup method, is still the platform's to state, in
 `engines` above; only the set of names is Project Intent's.
-
-`AlertClass`'s literals stay fixed by the second branch. No derivation in this
-model reads which of `business-hours`, `urgent` or `page` an Application chose:
-the value is carried into the published projection unread. But an Application
-authors its own `alertClass` exactly as it authors `engine`, and what the
-literal means, the severity and the receiver, is decided by the monitoring
-stack that reads the projection, past this model's edge, not by this metamodel
-([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)).
-0025 keeps the vocabulary in Intent for that reason: once the rule catalog, the
-cadence and the receiver table were deleted from this specification, they
-followed the stack that evaluates them, but the urgency vocabulary stayed,
-because it is the Application's own claim about itself, not the stack's.
 
 Either way, a reference a Project Intent field makes into a platform-defined
 set is checked as an invariant, the same way `Tier.traefik` is checked against
@@ -241,10 +229,10 @@ bootstrap:
 | Vault's unseal | a secret the model must never hold |
 | the CRDs the estate uses | cluster-scoped schema that must exist before any object of that kind can apply; the components that *use* them are declared Applications |
 
-Everything not in this table is a declared Application. The set is a
-[Bidirectional Ledger](30-deliverables.md#ledgers) in shape: an entry nothing
-needs fails the build, and a component that should be declared and is not is
-`E_UNATTRIBUTED_OBJECT`.
+Everything not in this table is a declared Application or a derived Node Agent.
+Growing the table is a decision recorded here, and a component that should be
+declared and is not is found by its Project's handover diff
+([chapter 30](30-deliverables.md#a-projects-handover-diff)).
 
 MetalLB's CRDs ship with a conversion webhook stanza that points at its
 controller's webhook Service. No admission or conversion webhook is rendered,
@@ -889,9 +877,8 @@ The block names the Application and nothing about how it receives: which
 protocol and port are the collector's own `provides`, like any Application's.
 
 That is the whole observability surface of this document. No receiver map, no
-severity mapping, no rule catalog: those belong to the monitoring stack, which
-reads `alertClass` from the published projection
-([chapter 10](10-project-intent.md#observability)).
+severity mapping, no rule catalog here: those belong to the monitoring stack and
+its routing ([Monitoring](#monitoring)).
 
 ## Monitoring
 
@@ -1287,11 +1274,8 @@ providers:
     surfaces: {smtp: 25, http: 8080}
 ```
 
-A hostname nobody deploys and nobody depends on is still a hole, and stays a
-Registered Unmanaged Surface in the ledger
-([chapter 40](40-composition.md#unmanaged-surfaces)) with an owner, a reason and
-a review date. The two were one list until 0045 split them; an edge resolves
-against facts, never against exemptions.
+An edge resolves against facts, never against exemptions: a hostname nobody
+deploys and nobody depends on is outside the model, and nothing records it.
 
 ## There is nothing to override here
 
@@ -1306,7 +1290,6 @@ replicas:
   reason: Capacity retained after the Frankfurt consolidation; the replicas are spread across two nodes.
 ```
 
-There is no `E_UNKNOWN_OVERRIDE`, because there is no key set to be outside.
 What used to sit in a ten-row table resolves three ways:
 
 - **A process-class difference is a derivation bug.** If one rule is wrong for a

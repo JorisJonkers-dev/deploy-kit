@@ -518,7 +518,7 @@ producer.
 
 | rule | derived from | direction |
 |---|---|---|
-| to a provider's surface port | each `dependsOn` edge of the Process; for an edge to a Registered Unmanaged Surface, to the address and port the register carries ([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)) | egress |
+| to a provider's surface port | each `dependsOn` edge of the Process; for an edge to a provider, to the address and port the Platform document gives it ([chapter 14](14-platform-intent.md#providers)) | egress |
 | from every pod carrying the consumer label of a surface | each surface the Process provides, read off the Process alone; the label is on every consumer's pods ([The consumer label](#the-consumer-label)) | ingress |
 | to the Secret Store | any grant in the Process's effective set | egress |
 | from the route tier carrying the audience | a route on the Application's `exposure` naming this Process | ingress |
@@ -563,7 +563,7 @@ label of the surface its Application's edge names
 datastore admits it as it admits every consumer, and names no migration
 identity. So does a catalog method: the pods of its Job and its CronJob carry
 the label of the surface its engine connects on
-([Applying the catalog](#applying-the-catalog)). An edge to a Registered Unmanaged Surface derives no label: it reaches
+([Applying the catalog](#applying-the-catalog)). An edge to a provider derives no label: it reaches
 an address, and the model renders no policy for what answers there.
 
 The label is rendered only from an edge the union resolved, on pods only this
@@ -848,10 +848,9 @@ so an unpicked CNI does not block the render.
 | audit | the set is loaded into the non-enforcing stage; observed flows are diffed against the rendered allow set | **zero undeclared flows over 14 days** |
 | enforce | the set is enforced estate-wide | - |
 
-An edge whose target resolves to neither an Application in the union nor a Registered
-Unmanaged Surface is `E_UNRESOLVED_APPLICATION`, and one resolving to a register
-entry without coordinates for that surface is
-`E_UNMANAGED_SURFACE_WITHOUT_COORDINATES`
+An edge whose target resolves to neither an Application in the union nor a
+provider is `E_UNRESOLVED_APPLICATION`, and one resolving to a provider without
+coordinates for that surface is `E_PROVIDER_WITHOUT_COORDINATES`
 ([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)). Both
 existed as silence before: `{application: stalwart, surface: smtp}` derived no
 coordinates and therefore no egress rule, producing a valid policy with a
@@ -960,9 +959,9 @@ an object is the defect.
 ### 1. Provenance: no Deliverable has in-degree zero
 
 Every rendered object is reachable from at least one declaration or one pinned
-input. An object with no inbound edge is hand-written, and must either become
-derived or be entered in a Bidirectional Ledger with an owner and a reason
-([0038](../../docs/adr/model/0038-bidirectional-ledgers.md)).
+input. An object with no inbound edge is hand-written, and must become derived
+before its Project hands over
+([chapter 30](30-deliverables.md#a-projects-handover-diff)).
 
 This is the property that was violated seven ways over: `reachability.yml`, both
 edge catalogs, both IngressRoutes and the Gatus endpoint each declared
@@ -1069,7 +1068,7 @@ flowchart LR
         d_dom["project"]
         d_own["owner"]
         d_id["id"]
-        d_obs["observability<br/>alertClass + scrape<br/>{process, surface, path}"]
+        d_obs["observability<br/>scrape<br/>{process, surface, path}"]
         d_wl["process name"]
         d_prov["provides<br/>surface: port<br/>on the Process"]
         d_dep["dependsOn"]

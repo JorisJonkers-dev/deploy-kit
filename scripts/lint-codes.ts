@@ -80,14 +80,7 @@ export const PENDING: readonly Pending[] = [
   {
     ticket: "#44",
     reason: "a code the rule registry retires or rehomes: one rule, one code",
-    codes: [
-      "E_CONTRACT_TOO_EARLY",
-      "E_DUPLICATE_APEX",
-      "E_DUPLICATE_ROUTE",
-      "E_ROUTE_AUTH_MODE_NOT_IN_TIER",
-      "E_UNKNOWN_OVERRIDE",
-      "E_UNMANAGED_SURFACE_WITHOUT_COORDINATES",
-    ],
+    codes: ["E_CONTRACT_TOO_EARLY", "E_ROUTE_AUTH_MODE_NOT_IN_TIER"],
   },
   {
     ticket: "#204",
@@ -97,7 +90,6 @@ export const PENDING: readonly Pending[] = [
       "E_PROVIDER_WITHOUT_COORDINATES",
       "E_RAW_SECRET",
       "E_READER_NOT_DECLARED",
-      "E_RELEASE_UNIT_SINGLETON",
       "E_ROLL_AFFECTS_OTHER_READERS",
       "E_SCHEMA_VERSION_MISMATCH",
       "E_UNDECLARED_SECRET_PATH",
@@ -125,20 +117,7 @@ export const PENDING: readonly Pending[] = [
     ticket: "#97",
     reason:
       "a refusal while rendering, which needs the adapters and the serializer",
-    codes: [
-      "E_AMBIENT_INPUT_FORBIDDEN",
-      "E_FLOATING_IMAGE",
-      "E_FORBIDDEN_KIND",
-      "E_FOREIGN_NAMESPACE",
-      "E_INPUT_OUTSIDE_WORKDIR",
-      "E_LEDGER_ENTRY_STALE",
-      "E_RENDER_NONDETERMINISTIC",
-      "E_RENDER_OVERWRITE_REFUSED",
-      "E_UNACCEPTED_DRIFT",
-      "E_UNATTRIBUTED_OBJECT",
-      "E_UNREGISTERED_SURFACE",
-      "E_UNSAFE_OUTPUT_PATH",
-    ],
+    codes: ["E_FLOATING_IMAGE"],
   },
 ];
 

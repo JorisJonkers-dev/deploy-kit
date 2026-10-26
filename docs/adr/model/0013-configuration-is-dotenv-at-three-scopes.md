@@ -11,8 +11,8 @@ rests-on: ["0005"]
 # Configuration is dotenv at three scopes merged onto the Process, a derived value is only ever a named placeholder, and the model derives no framework wiring
 
 Configuration is authored as dotenv in three scopes: project, Application and
-Process. Each scope is a directory holding a `base.env` and one overlay per
-Cluster Target. The lowering merges the three onto the Process
+Process. Each scope is a directory holding one file, `base.env`; Project
+Intent never names a cluster, so no file varies by one. The lowering merges the three onto the Process
 ([0012](0012-shared-intent-descends-and-is-lowered.md)); the narrower value
 holds, and the same variable at the same value in two scopes is refused. A
 scope directory naming no Application or Process is `E_UNKNOWN_ENV_SCOPE`.
@@ -44,8 +44,7 @@ implementations reproduce; the fixture is to be written, owned by joris.
 else. A scope written once reaches every Process below it.
 
 **A scope is a directory, because a dotenv is a file.** A block in the project
-file would be a second format for the same content, with no natural home for
-the overlay per Cluster Target.
+file would be a second format for the same content.
 
 **One merge, joins per Process.** Everything downstream reads the effective
 environment. The joins that catch an unbound grant or an unauthorised

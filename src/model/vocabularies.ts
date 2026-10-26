@@ -23,7 +23,6 @@ export const DURABILITY_CLASSES = [
 ] as const;
 export const ARCHITECTURES = ["amd64", "arm64"] as const;
 export const MEDIA = ["nvme", "ssd", "hdd"] as const;
-export const ALERT_CLASSES = ["business-hours", "urgent", "page"] as const;
 export const AUDIENCES = [
   "anonymous",
   "authenticated",
@@ -115,7 +114,6 @@ export type SignInMode = (typeof SIGN_IN_MODES)[number];
 export type DurabilityClass = (typeof DURABILITY_CLASSES)[number];
 export type Arch = (typeof ARCHITECTURES)[number];
 export type Medium = (typeof MEDIA)[number];
-export type AlertClass = (typeof ALERT_CLASSES)[number];
 export type Audience = (typeof AUDIENCES)[number];
 export type ContentPolicy = (typeof CONTENT_POLICIES)[number];
 export type Match = (typeof MATCHES)[number];

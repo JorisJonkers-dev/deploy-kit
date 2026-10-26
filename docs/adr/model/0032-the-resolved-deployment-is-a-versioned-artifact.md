@@ -58,6 +58,15 @@ retagged by every unrelated release. The revision moves exactly when the
 Application does, and it covers the element, not the published projection,
 whose provenance changes with every render.
 
+**The artifact's version is a range at admission and exact in the lock.** A
+fragment's `schemaVersion` is the package version that validated it
+([0007](0007-schema-version-separable.md)). Composition admits a fragment whose
+major equals the toolkit's and whose minor is no newer, and ignores the patch:
+equality would refuse every participant not yet republished on each release,
+estate-wide, and a newer minor carries vocabulary an older toolkit would drop
+without a word. The lock records the exact versions that ran, so a replay runs
+them rather than the range that admitted them.
+
 ## Alternatives
 
 | option | cost if taken | why rejected |

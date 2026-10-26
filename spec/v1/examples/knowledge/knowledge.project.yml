@@ -24,7 +24,7 @@
 #     -- reproduced as env/knowledge-ingest-worker/base.env
 
 # The data model's own semver, not the toolkit's
-# (docs/adr/model/0044-artifact-schema-versioning.md).
+# (docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md).
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
 schemaVersion: 1.0.0
@@ -91,7 +91,6 @@ applications:
     # Per Application; never raised to the project. The api Process publishes for
     # the Application, and the ingest worker publishes nothing of its own.
     observability:
-      alertClass: business-hours
       scrape:
         process: knowledge-api
         surface: http

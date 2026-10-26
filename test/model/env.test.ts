@@ -122,23 +122,27 @@ describe("the dotenv subset", () => {
     );
   });
 
-  it("names the Cluster Target an overlay carries, and none for base", () => {
-    expect(readEnvFile({ path: "env/w/base.env", text: "" }).ok).toBe(true);
-    const overlay = readEnvFile({
-      path: "env/w/production.env",
-      text: "A=1\n",
-    });
+  it("refuses any env file but base.env: a scope holds one, and none varies by cluster", () => {
+    const read = readEnv([
+      { path: "env/w/base.env", text: "A=1\n" },
+      { path: "env/w/production.env", text: "A=2\n" },
+    ]);
 
-    expect(overlay.ok && overlay.value.cluster).toBe("production");
-  });
-
-  it("names the Cluster Target by the last `.env`, not the first", () => {
-    const overlay = readEnvFile({
-      path: "env/w/staging.env.env",
-      text: "A=1\n",
-    });
-
-    expect(overlay.ok && overlay.value.cluster).toBe("staging.env");
+    expect(
+      read.ok
+        ? []
+        : read.diagnostics.map(({ code, path, message }) => [
+            code,
+            path,
+            message,
+          ]),
+    ).toStrictEqual([
+      [
+        "schema",
+        "env/w/production.env:0",
+        "a scope's one env file is base.env",
+      ],
+    ]);
   });
 
   it("refuses a placeholder that opens and never closes", () => {
@@ -215,11 +219,7 @@ describe("the worked knowledge example", () => {
         )
       : undefined;
     const envOf = (name: string): string[] =>
-      names(
-        processes
-          ?.find((process) => process.name === name)
-          ?.env?.find(({ cluster }) => cluster === undefined),
-      );
+      names(processes?.find((process) => process.name === name)?.env?.[0]);
 
     expect(envOf("knowledge-api")).toStrictEqual([
       "SPRING_PROFILES_ACTIVE",
@@ -353,13 +353,6 @@ describe("the scope a directory names, against the document beside it", () => {
       refused([
         { path: "env/_project/base.env", text: "A=1\n" },
         { path: "env/w/base.env", text: "A=2\n" },
-      ]),
-    ).toStrictEqual([]);
-    // The same name in a different Cluster Target is a different declaration.
-    expect(
-      refused([
-        { path: "env/_project/base.env", text: "A=1\n" },
-        { path: "env/w/production.env", text: "A=1\n" },
       ]),
     ).toStrictEqual([]);
   });
@@ -564,7 +557,7 @@ describe("the dotenv subset, at its edges", () => {
     ]);
   });
 
-  it("names a Cluster Target only where the file is not `base`", () => {
+  it("holds a file's entries and nothing else", () => {
     const base = readEnvFile({ path: "env/w/base.env", text: "A=1\n" });
 
     expect(base.ok && Object.keys(base.value)).toStrictEqual(["entries"]);

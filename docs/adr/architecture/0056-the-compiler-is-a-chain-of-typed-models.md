@@ -45,8 +45,8 @@ proving it. The tree runs the chain as far as the Effective Intent today;
 ## Why
 
 **The chain is the structure the model already has.** Every intermediate model
-is a value a test compares against an oracle: `intent.json`, `effective.json`,
-`resolved.json`, `dependencies.json`, the rendered tree. A directory per step
+is a typed value a test can hold, and the last two, `resolved.json` and the
+rendered tree, are compared against an oracle. A directory per step
 puts one transformation in one place, which is what a reader opening one rule
 needs.
 

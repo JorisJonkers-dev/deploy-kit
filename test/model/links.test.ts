@@ -40,7 +40,7 @@ describe("the linking step", () => {
   const withScrape = (process: string, surface: string): string =>
     DOCUMENT.replace(
       "GRANTS",
-      `    observability:\n      alertClass: urgent\n      scrape: { process: ${process}, surface: ${surface}, path: /metrics }\n`,
+      `    observability:\n      scrape: { process: ${process}, surface: ${surface}, path: /metrics }\n`,
     ).replace(
       "        cutover: interrupted\n",
       "        provides: { http: 8080 }\n        cutover: interrupted\n",

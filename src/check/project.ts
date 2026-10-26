@@ -11,7 +11,6 @@ import type { EnvScope, ScopedEnv } from "../model/env.ts";
 import type {
   ApplicationDocument as Application,
   DependencyEdge,
-  EnvVariable,
   Grant,
   ProcessDocument as Process,
   ProjectIntentDocument,
@@ -499,17 +498,6 @@ function applicationRefusals(
     ...mixedCutoverRefusals(application, project, at),
     ...clientRefusals(application, at),
   ];
-  if (
-    application.observability !== undefined &&
-    application.observability.scrape === undefined
-  )
-    refusals.push({
-      code: "E_ALERT_CLASS_WITHOUT_SIGNAL",
-      path: `${at}/observability`,
-      message:
-        "a class states how loudly to wake someone, and no signal says what about",
-      hint: "Declare the `scrape` that carries the signal, or omit the block.",
-    });
   for (const [index, exposure] of (application.exposure ?? []).entries()) {
     const seen = new Set<string>();
     for (const [
@@ -905,14 +893,7 @@ export function linkDiagnostics(
 // The env files beside the project file.
 // ---------------------------------------------------------------------------
 
-/** A variable is one declaration within one Cluster Target, so this is what a
- * scope below restates rather than replaces. */
-const entryTerms = (
-  cluster: string | undefined,
-  entry: EnvVariable,
-): unknown => [cluster, entry];
-
-/** Whether any of `wider` states the same variable, in the same Cluster Target. */
+/** Whether any of `wider` states the same variable. */
 const restates = (wider: readonly unknown[], one: unknown): boolean =>
   wider.some((above) => sameDeclaration(above, one));
 
@@ -943,21 +924,19 @@ function envDuplicates(
       const above = [
         ...of("application", application.id),
         ...of("project", document.project),
-      ].flatMap(({ file }) =>
-        file.entries.map((entry) => entryTerms(file.cluster, entry)),
-      );
+      ].flatMap(({ file }) => file.entries);
       for (const { path, file } of of("process", process.name))
         for (const entry of file.entries)
-          if (restates(above, entryTerms(file.cluster, entry)))
+          if (restates(above, entry))
             refusals.push(duplicateEnv(path, entry.name));
     }
   // An Application scope against the project header, the same way.
-  const project = of("project", document.project).flatMap(({ file }) =>
-    file.entries.map((entry) => entryTerms(file.cluster, entry)),
+  const project = of("project", document.project).flatMap(
+    ({ file }) => file.entries,
   );
   for (const { path, file } of of("application"))
     for (const entry of file.entries)
-      if (restates(project, entryTerms(file.cluster, entry)))
+      if (restates(project, entry))
         refusals.push(duplicateEnv(path, entry.name));
   return refusals;
 }

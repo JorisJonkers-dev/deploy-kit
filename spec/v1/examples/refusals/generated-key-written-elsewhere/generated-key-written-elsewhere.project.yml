@@ -28,7 +28,8 @@ applications:
           - path: secret/data/refusals-system/app
             keys: [{ name: session_key, generate: {} }]
             access: read
-            delivery: self
+            delivery: file
+            mountAt: /run/secrets/app
             rotation: { tolerates: restart }
   - id: keeper
     processes:

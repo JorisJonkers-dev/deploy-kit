@@ -1602,7 +1602,6 @@ describe("composeEstate, against the participants list", () => {
             dormant: true,
             owner: "joris",
             reason: "stable",
-            reviewBy: "2026-10-02",
           }),
         }),
       ).isolated,
@@ -1779,26 +1778,10 @@ describe("composeEstate, against the participants list", () => {
     ]);
   });
 
-  it("stops the run where a dormant participant is past its review, and not on the day of it", () => {
-    const dormant = (reviewBy: string) =>
-      listing({ dormant: true, owner: "joris", reason: "stable", reviewBy });
-
-    expect(refused(dormant("2026-10-01"))).toStrictEqual([
-      "E_LEDGER_REVIEW_OVERDUE participants.yml /participants/notes/reviewBy notes is dormant until a review on 2026-10-01, which has passed",
-    ]);
-    expect(refused(dormant("2026-10-02"))).toStrictEqual([]);
-  });
-
   it("says how to clear what stops the run", () => {
     const result = composeEstate(
       {
         ...EXPECTED,
-        ...listing({
-          dormant: true,
-          owner: "joris",
-          reason: "stable",
-          reviewBy: "2026-01-01",
-        }),
         platform: undefined,
         fragments: RELEASES,
         held: [],
@@ -1811,7 +1794,6 @@ describe("composeEstate, against the participants list", () => {
     expect(
       result.ok ? [] : result.diagnostics.map(({ hint }) => hint),
     ).toStrictEqual([
-      "Review the participant: set a later date with its reason, or drop `dormant`.",
       "No render is composed without a current, listed Platform document: publish it, or correct its entry.",
     ]);
   });

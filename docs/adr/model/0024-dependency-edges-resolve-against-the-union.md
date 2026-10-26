@@ -16,10 +16,7 @@ against the Platform document's providers, which carry an address and surfaces.
 Never against an exemption. A provider without coordinates is
 `E_PROVIDER_WITHOUT_COORDINATES`; a provider in neither namespace is
 `E_UNRESOLVED_APPLICATION`. A hostname the model does not deploy and nobody
-depends on is a **Registered Unmanaged Surface**, with an owner, a reason and a
-review date, and composition asserts that estate reachability equals the
-derived set plus the registered set exactly
-([chapter 40](../../../spec/v1/40-composition.md#unmanaged-surfaces)).
+depends on is outside the model, and nothing records it.
 
 ## Rests on
 
@@ -36,8 +33,7 @@ neither namespace often enough that recording it is the wrong shape, or a
 hostname is neither derivable nor attributable to one owner. **Settled by:** the
 host:port literals and endpoint-shaped keys of every first-party env file
 matched to a `provides` entry; `auth`'s SMTP edge deriving an egress rule to
-`stalwart`'s recorded address; and `derived ∪ registered` diffed against
-`homelab-inventory/catalog/reachability.yml` with an empty symmetric difference.
+`stalwart`'s recorded address.
 
 ## Why
 
@@ -58,15 +54,13 @@ against recorded providers turns "outside the model" into a lookup.
 
 **A provider is a fact, not an exemption.** What the estate depends on carries an
 address and surfaces in the Platform document
-([0045](0045-platform-intent-is-the-second-authored-document.md)). The register
-keeps only hostnames nobody depends on (`samba`, `wolf`, host-level daemons), so
-an edge never resolves against a hole in the ledger
-([0038](0038-bidirectional-ledgers.md)).
+([0045](0045-platform-intent-is-the-second-authored-document.md)), so an edge
+resolves against facts and never against an exemption. A hostname nobody
+depends on (`samba`, `wolf`, host-level daemons) is outside the model, and
+nothing records it.
 
-**Registration bounds the remainder without modelling it.** Rendering NixOS
-would be an order of magnitude larger v1, so Project Intent stays
-Kubernetes-only. An unbounded remainder is how the seven-way split of one host
-began; set equality against the reachability channel bounds it.
+**The remainder is not modelled.** Rendering NixOS would be an order of
+magnitude larger v1, so Project Intent stays Kubernetes-only.
 
 ## Alternatives
 
@@ -74,9 +68,8 @@ began; set equality against the reachability channel bounds it.
 |---|---|---|
 | An edge names only the provider id | fewer fields | a no-credential dependency gets neither a coordinate nor a policy |
 | The consumer authors the address | direct | a derived value written as a literal |
-| Resolve edges against the unmanaged register | one list | an edge would resolve against an exemption with no coordinates |
 | Model NixOS and host-level applications | one model for everything | an order of magnitude larger v1 |
-| Let unknown hostnames pass | nothing to register | an unbounded remainder is where drift went unchecked |
+| Keep a register of hostnames nobody depends on | every name accounted for | a list with review dates that only a handover diff needs, once per Project |
 
 ## Reversibility
 
@@ -94,5 +87,3 @@ coordinates through `${dependency:…}` placeholders.
   ([0093](0093-a-provider-is-reached-through-its-stable-address.md)).
 - A dependency on a host the estate does not deploy needs a provider record in
   the Platform document, paid by the platform owner.
-- Every registered hostname carries a review date, and an overdue one fails
-  composition, paid by its owner.

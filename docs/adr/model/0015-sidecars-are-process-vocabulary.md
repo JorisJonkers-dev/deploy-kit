@@ -54,7 +54,7 @@ Deliverable.
 |---|---|---|
 | A sidecar is a Process of its own | its own identity, probes and release semantics | it cannot be deployed or scaled apart from its pod; the pod is the unit that shares a lifecycle and a node |
 | A sidecar declares its own hardening | a per-container exception vocabulary | hardening has no exception surface; a container that cannot meet the posture is refused with its Process |
-| Keep using the drift ledger | nothing to write | a ledger is for accepted holes, not missing vocabulary ([0038](0038-bidirectional-ledgers.md)) |
+| Keep using the drift ledger | nothing to write | a missing word is vocabulary to add, not a hole to record |
 
 ## Reversibility
 

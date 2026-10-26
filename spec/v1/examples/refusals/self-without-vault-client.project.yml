@@ -1,0 +1,34 @@
+# REFUSED: E_SELF_WITHOUT_VAULT_CLIENT
+#
+# A grant delivered self renders a Vault policy and a login role, and nothing
+# else: the Process reads the path through its own Vault client. This Process
+# has no env file wiring one, so nothing would ever read what it was granted
+# (spec/v1/10-project-intent.md #delivery).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: reader
+    processes:
+      - name: reader-api
+        lifecycle: application
+        image: reader-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          - path: secret/data/refusals-system/token
+            keys: [token]
+            access: read
+            delivery: self
+            rotation: { tolerates: restart }

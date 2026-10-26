@@ -79,4 +79,3 @@ irreversible once: Processes depend on locally restated values.
   tested against the estate's rollout evidence
   ([chapter 20](../../../spec/v1/20-resolved-deployment.md#why-the-hatch-closed)),
   paid by joris.
-- No `E_UNKNOWN_OVERRIDE`, because there is no key set to fall outside of.
