@@ -72,7 +72,10 @@ else, and a ClusterRole would hand it every namespace's ConfigMaps. A
 `namespace` rule is a Role in the Process's own namespace, so the narrower grant
 is written as narrowly as it is used, and `agents-api`, which creates pods in its
 own namespace alone, holds exactly that. The scope is the author's, under the
-same admission: the platform admits the holder, and the scope only narrows.
+platform's to bound: it admits a holder to the cluster, which is a privileged
+role and the foundation's, or to its own namespace alone, which is not, so a
+tenant Application that only manages objects beside itself is admitted without
+becoming foundation.
 
 **The rules are rendered as declared.** The model does not narrow a rule or
 refuse a resource. A rule on `secrets` is legal for an admitted holder: Flagger

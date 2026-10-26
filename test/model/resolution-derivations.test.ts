@@ -4462,6 +4462,49 @@ describe("a Process's Kubernetes API access", () => {
       { platform: admitted },
     ).api?.rules.map(({ objects, scope }) => [objects.join(","), scope]);
 
+  // Admitted to its own namespace alone: no privileged role.
+  const local = (document: string): string =>
+    document.replace(
+      "  server:\n",
+      "  namespaceHolders: [notes/notes]\n  server:\n",
+    );
+
+  it("holds namespace rules under a platform that admits its Application to its namespace alone", () => {
+    expect(
+      processOf(
+        one(
+          serving(
+            "notes-api",
+            "        api:\n          reason: it keeps its sessions beside itself\n          rules:\n            - { group: core, objects: [configmaps], verbs: [create], scope: namespace }\n",
+          ),
+        ),
+        { platform: local },
+      ).api?.rules.map(({ scope }) => scope),
+    ).toStrictEqual(["namespace"]);
+  });
+
+  it("refuses a rule that reaches the cluster, where the platform admits its Application to its namespace alone", () => {
+    const refused = resolve(
+      one(
+        serving(
+          "notes-api",
+          "        api:\n          reason: it keeps its sessions beside itself\n          rules:\n            - { group: core, objects: [configmaps], verbs: [create], scope: namespace }\n            - { group: core, objects: [nodes], verbs: [get] }\n",
+        ),
+      ),
+      { platform: local },
+    );
+
+    expect(
+      refused.ok
+        ? []
+        : refused.diagnostics
+            .filter(({ document }) => document === "minimal/notes.project.yml")
+            .map(({ code, path }) => [code, path]),
+    ).toStrictEqual([
+      ["E_PROCESS_RBAC_GRANT", "/applications/0/processes/0/api/rules/1"],
+    ]);
+  });
+
   it("reaches the cluster where a rule names no scope, and its namespace where it says so", () => {
     expect(
       holding(

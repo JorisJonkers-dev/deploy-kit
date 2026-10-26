@@ -748,17 +748,29 @@ function projectRefusals(
       // platform admits by id, so an id two Applications carry admits
       // neither: a second project naming its own Application `flagger` is
       // not the one the platform meant, and nothing here can tell which is.
-      if (
-        process.api !== undefined &&
-        (platform.apiAccess?.holders.includes(
-          `${project.project}/${application.id}`,
-        ) !== true ||
-          estate.repeated.has(application.id))
-      )
+      const named = `${project.project}/${application.id}`;
+      const repeated = estate.repeated.has(application.id);
+      const cluster =
+        platform.apiAccess?.holders.includes(named) === true && !repeated;
+      const local =
+        platform.apiAccess?.namespaceHolders?.includes(named) === true &&
+        !repeated;
+      // Admitted to its namespace alone, a rule that reaches the cluster is
+      // one the platform did not give.
+      if (process.api !== undefined && !cluster && local)
+        for (const [r, rule] of process.api.rules.entries())
+          if (rule.scope !== "namespace")
+            refusals.push({
+              code: "E_PROCESS_RBAC_GRANT",
+              path: `${processAt}/api/rules/${String(r)}`,
+              message: `${process.name} asks the whole cluster for ${rule.objects.join(", ")}, and the platform admits the Application ${application.id} only to its own namespace`,
+              hint: "Scope the rule `namespace`, or name the Application in the Platform document's `apiAccess.holders` instead of `namespaceHolders`.",
+            });
+      if (process.api !== undefined && !cluster && !local)
         refusals.push({
           code: "E_PROCESS_RBAC_GRANT",
           path: `${processAt}/api`,
-          message: estate.repeated.has(application.id)
+          message: repeated
             ? `${process.name} declares Kubernetes API access, and more than one Application carries the id ${application.id}, so the platform admits none of them`
             : `${process.name} declares Kubernetes API access, and the platform does not admit the Application ${application.id} to hold any`,
           hint: "Name the Application in the Platform document's `apiAccess.holders` as `<project>/<application>`, under an id no other Application carries, or drop `api`.",
@@ -854,20 +866,28 @@ export function setDiagnostics(
   // A holder of API access names an Application a project file declares, as
   // the machinery does.
   const apiHolders: Diagnostic[] = (
-    platform.document.apiAccess?.holders ?? []
-  ).flatMap((name) =>
-    holders.has(name)
-      ? []
-      : [
-          {
-            code: "E_UNKNOWN_API_HOLDER",
-            document: platform.name,
-            path: "/apiAccess",
-            message: `no project file declares the Application ${name} the platform admits to hold Kubernetes API access`,
-            hint: "Name it as `<project>/<application>`, an Application its Project declares, or drop it from `apiAccess.holders`.",
-          },
-        ],
+    [
+      ["holders", platform.document.apiAccess?.holders ?? []],
+      // Stryker disable next-line ArrayDeclaration: no list and an empty one
+      // admit no one alike.
+      ["namespaceHolders", platform.document.apiAccess?.namespaceHolders ?? []],
+    ] as const
+  ).flatMap(([list, names]) =>
+    names.flatMap((name) =>
+      holders.has(name)
+        ? []
+        : [
+            {
+              code: "E_UNKNOWN_API_HOLDER" as const,
+              document: platform.name,
+              path: "/apiAccess",
+              message: `no project file declares the Application ${name} the platform admits to hold Kubernetes API access`,
+              hint: `Name it as \`<project>/<application>\`, an Application its Project declares, or drop it from \`apiAccess.${list}\`.`,
+            },
+          ],
+    ),
   );
+
   // The collector names an Application a project file declares, and the
   // endpoint every exporting profile is handed is its `otlp` surface.
   const collector = platform.document.telemetry?.collector;

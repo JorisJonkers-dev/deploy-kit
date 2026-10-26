@@ -706,8 +706,10 @@ policy rule to every IPv4 address except a fixed non-public set; no author or
 Platform fact names a range ([chapter 16](spec/v1/16-dependencies.md#internet-egress)).
 
 **API Holder**: an Application the Platform document admits to hold API
-access. Flagger, the Release Gate, the Collector and Gatus, which gathers each
-Project's external checks
+access: in `holders` at either scope, a privileged role and so the foundation's,
+or in `namespaceHolders` to its own namespace alone, which is not. Flagger, the
+Release Gate, the Collector and Gatus, which gathers each Project's external
+checks, are of the first kind
 ([chapter 14](spec/v1/14-platform-intent.md#kubernetes-api-access)).
 
 **API Scope**: how far one of a Process's API rules reaches: `namespace`, its

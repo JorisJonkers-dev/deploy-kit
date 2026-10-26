@@ -1087,9 +1087,9 @@ Who may call the Kubernetes API, and where it answers
 Two facts, both the platform's:
 
 - **`holders`** names the Applications whose Processes may declare `api`
-  ([chapter 10](10-project-intent.md#kubernetes-api-access)), at either scope:
-  admission is of the holder, and a rule's scope only narrows what it holds.
-  A Process says what
+  ([chapter 10](10-project-intent.md#kubernetes-api-access)) at either scope.
+  A rule that reaches the cluster is a privileged role, so these are the
+  foundation's ([Privileged roles](#privileged-roles)). A Process says what
   it asks of the API; the platform says who is allowed to ask at all, because
   what a ServiceAccount may do to the cluster is a decision about the cluster,
   and a shared resource is the platform's to assign
@@ -1100,6 +1100,13 @@ Two facts, both the platform's:
   two Applications of the set carry the id, neither is admitted, and each one's
   declaration is `E_PROCESS_RBAC_GRANT`, whatever else refuses the duplicate
   ([chapter 40](40-composition.md#the-estate-wide-invariants)).
+- **`namespaceHolders`** names the Applications whose Processes may declare
+  `api` rules scoped to their own namespace, and no other. Such a holder holds
+  no privileged role and is not the foundation's, so a tenant Application that
+  only manages objects beside itself, as agents-api does the pods it creates,
+  is admitted here. A rule of theirs that reaches the cluster is
+  `E_PROCESS_RBAC_GRANT`, at the rule. Optional; each name links to an
+  Application as `holders`' do.
 - **`server`** is where the API answers, as address ranges and a port each. A
   holder's egress policy admits them
   ([chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)):
@@ -1447,6 +1454,7 @@ classDiagram
     }
     class ApiAccessPolicy {
         +ApplicationId[] holders
+        +ApplicationId[] namespaceHolders
         +DestinationRange[] server
     }
     class VaultPolicyJob {

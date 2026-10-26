@@ -991,6 +991,15 @@
             "reference": "Application"
           }
         },
+        "namespaceHolders": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[^/\\s]+\\/[^/\\s]+$",
+            "reference": "Application"
+          }
+        },
         "server": {
           "minItems": 1,
           "type": "array",
