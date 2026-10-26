@@ -776,8 +776,12 @@ restores the source as it was at the fence
 ([chapter 10](10-project-intent.md#rollback)).
 
 **What the gate records.** The record the gate keeps per Application
-([The Release Gate](#the-release-gate)) holds, for an open Move, its phase and
-when its flip held. The Collector reads it into ClusterState, which is how a
+([The Release Gate](#the-release-gate)) holds, for an open Move, its phase, its
+target, the name it opened the target under, and when its flip held. It keeps
+the target and the flip on the record after the source retires, until the
+Project the Application moved out of no longer declares it: composition reads
+that record to tell the old declaration, which renders nothing, from the start
+of a new Move. The Collector reads it into ClusterState, which is how a
 composition learns that a Move it derived has finished
 ([chapter 20](20-resolved-deployment.md#cluster-state)).
 

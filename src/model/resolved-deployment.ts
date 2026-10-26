@@ -1079,6 +1079,10 @@ const application = {
   revision: digest,
   project: text,
   namespace: text,
+  // An Application this Project still declares while it moves to another:
+  // it renders its source Instance, frozen, until the Move retires it
+  // (spec/v1/40-composition.md#an-application-moving-between-projects).
+  departing: z.literal(true).exactOptional(),
   reconcileUnit: text,
   reconcileAfter: z.array(text).exactOptional(),
   alertRules: z.array(resolvedAlertRules).min(1).exactOptional(),

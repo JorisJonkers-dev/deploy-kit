@@ -5559,3 +5559,153 @@ describe("a sidecar", () => {
     ]);
   });
 });
+
+// REQ-115 (docs/requirements.md): an Application declared by two Projects
+// composes once, as the target of a Move from the Project holding its active
+// Instance; the old Project renders the source until the Move retires it.
+describe("an Application moving between Projects", () => {
+  const STORE = `apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: store
+owner: joris
+applications:
+  - id: notes
+    processes:
+${serving("notes-api")}`;
+  const consumer = `  - id: notes-reader
+    processes:
+${serving("notes-reader", "        dependsOn:\n          - { application: notes, surface: http }\n")}`;
+  const moving = (
+    record: string | undefined,
+    notes = one(serving("notes-api")),
+    store = STORE,
+    capturedAt?: string,
+  ) =>
+    resolve(notes, {
+      platform: (document) =>
+        document.replace("estate: [agents,", "estate: [agents, store,"),
+      foundation: (name, body) =>
+        name !== "platform/cluster-state.yml"
+          ? body
+          : `${capturedAt === undefined ? body : body.replace(/capturedAt: "[^"]*"/, `capturedAt: "${capturedAt}"`)}${record === undefined ? "" : `instances:\n  - {application: notes, instance: notes-api, version: 1.4.0, ${record}}\n`}`,
+      env: [{ name: "store/store.project.yml", text: store }],
+    });
+  const OLD = "namespace: notes-system, node: enschede-t1000-1";
+  const declared = (result: ReturnType<typeof resolve>, project: string) =>
+    result.ok
+      ? result.value.projects
+          .find((candidate) => candidate.project === project)
+          ?.applications.map(({ id, departing, processes }) => ({
+            id,
+            departing,
+            triggers: processes[0]?.move?.triggers,
+          }))
+      : undefined;
+
+  it("is a duplicate where no Instance settles which declaration it moves out of", () => {
+    expect(codesOf(moving(undefined))).toStrictEqual([
+      "E_DUPLICATE_APPLICATION_ID",
+      "E_DUPLICATE_APPLICATION_ID",
+    ]);
+    expect(
+      codesOf(moving("namespace: elsewhere-system, node: enschede-t1000-1")),
+    ).toStrictEqual([
+      "E_DUPLICATE_APPLICATION_ID",
+      "E_DUPLICATE_APPLICATION_ID",
+    ]);
+  });
+
+  it("composes once, as the target of a Move, while the old Project renders its source where it declares it", () => {
+    const other = `  - id: notes-other
+    processes:
+${serving("notes-web")}`;
+    const first = moving(OLD, `${one(serving("notes-api"))}${other}`);
+    const second = moving(OLD, `${other}${one(serving("notes-api"))}`);
+
+    expect(declared(first, "store")).toStrictEqual([
+      { id: "notes", departing: undefined, triggers: ["namespace"] },
+    ]);
+    expect(declared(first, "notes")).toStrictEqual([
+      { id: "notes", departing: true, triggers: undefined },
+      { id: "notes-other", departing: undefined, triggers: undefined },
+    ]);
+    expect(declared(second, "notes")?.map(({ id }) => id)).toStrictEqual([
+      "notes-other",
+      "notes",
+    ]);
+  });
+
+  it("is reached in both namespaces until the Move retires its source", () => {
+    const result = moving(
+      OLD,
+      one(serving("notes-api")),
+      `${STORE}${consumer}`,
+    );
+    const peers = result.ok
+      ? result.value.projects
+          .find(({ project }) => project === "store")
+          ?.applications.find(({ id }) => id === "notes-reader")
+          ?.processes[0]?.dependencies?.[0]?.peers?.map(
+            ({ namespace }) => namespace,
+          )
+      : undefined;
+
+    expect(peers).toStrictEqual(["store-system", "notes-system"]);
+  });
+
+  it("refuses the old Project that stops declaring it while the Move is open", () => {
+    const result = moving(
+      OLD,
+      `  - id: notes-other
+    processes:
+${serving("notes-api")}`,
+    );
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, document, path }) => [
+            code,
+            document,
+            path,
+          ]),
+    ).toStrictEqual([
+      ["E_MOVE_OPEN", "minimal/notes.project.yml", "/applications"],
+    ]);
+  });
+
+  it("renders nothing of the old declaration once the source has retired", () => {
+    const result = moving(
+      `${OLD}, phase: retire, flippedAt: "2026-09-01T00:00:00Z", target: {name: notes-api, version: 1.4.0, namespace: store-system}`,
+      `${one(serving("notes-api"))}  - id: notes-other
+    processes:
+${serving("notes-web")}`,
+      STORE,
+      "2026-09-30T00:00:00Z",
+    );
+
+    expect(declared(result, "notes")?.map(({ id }) => id)).toStrictEqual([
+      "notes-other",
+    ]);
+    expect(declared(result, "store")).toStrictEqual([
+      { id: "notes", departing: undefined, triggers: undefined },
+    ]);
+  });
+
+  it("points a refusal of the old Project past the declaration it set aside", () => {
+    const result = moving(
+      OLD,
+      `${one(serving("notes-api"))}  - id: notes-other
+    processes:
+${serving("notes-web", "        dependsOn:\n          - { application: nowhere, surface: http }\n")}`,
+    );
+
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ code, path }) => [code, path]),
+    ).toContainEqual([
+      "E_UNRESOLVED_APPLICATION",
+      "/applications/1/processes/0/dependsOn/0",
+    ]);
+  });
+});

@@ -3006,3 +3006,124 @@ describe("composeEstate, for a Rollback", () => {
     ).toStrictEqual([]);
   });
 });
+
+// REQ-115 (docs/requirements.md): an Application declared by two Projects
+// composes once, as the target of a Move from the Project holding its active
+// Instance, in every order the fragments arrive.
+describe("composeEstate, for an Application moving between Projects", () => {
+  const LEDGERED = `handover:
+  retireBy: 2027-03-31
+  legacy: [auth, data, delivery, edge, knowledge]
+  estate: [notes, observability, secrets, store]
+`;
+  const platform: Fragment = {
+    ...PLATFORM,
+    files: PLATFORM.files.map((file) =>
+      file.name === "platform.intent.yml"
+        ? { ...file, text: withLedger(file.text, LEDGERED) }
+        : file,
+    ),
+  };
+  // store declares notes as notes does, in a namespace of its own.
+  const notes = release("notes");
+  const store: Fragment = {
+    ...notes,
+    ref: notes.ref.replace("/notes@", "/store@"),
+    manifest: {
+      ...notes.manifest,
+      metadata: {
+        ...notes.manifest.metadata,
+        repository: "JorisJonkers-dev/store",
+      },
+      spec: { ...notes.manifest.spec, project: "store" },
+    },
+    files: notes.files.map((file, index) =>
+      index === 0
+        ? {
+            name: "store.project.yml",
+            // The library is granted to notes alone.
+            text: file.text
+              .replace("project: notes", "project: store")
+              .replace(/\n {8}libraries:\n(?: {10}.*\n)+/, "\n"),
+          }
+        : file,
+    ),
+  };
+  const recorded = (instance: string, capturedAt?: string) => ({
+    name: "cluster-state.yml",
+    text: `${
+      capturedAt === undefined
+        ? text("platform/cluster-state.yml")
+        : text("platform/cluster-state.yml").replace(
+            /capturedAt: "[^"]*"/,
+            `capturedAt: "${capturedAt}"`,
+          )
+    }instances:\n  - {application: notes, instance: notes-api, version: 1.4.0, namespace: notes-system, node: enschede-t1000-1${instance}}\n`,
+  });
+  const fragments = [...RELEASES, store];
+  const composing = (input: Partial<ComposeInput>) =>
+    compose({
+      platform,
+      fragments,
+      ...expecting(fragments, platform),
+      clusterState: recorded(""),
+      ...input,
+    });
+  const workload = (composition: Composition, project: string) =>
+    composition.artifacts
+      .find(({ name }) => name === project)
+      ?.files.find(({ path }) => path.endsWith("/notes/workload.yaml"))?.text;
+
+  it("composes the new Project's declaration first, as the target, while the old one renders its source frozen", () => {
+    const composition = composing({});
+
+    expect(composition.lock.spec.isolated).toBeUndefined();
+    expect(workload(composition, "notes")).toContain(
+      "kustomize.toolkit.fluxcd.io/ssa: IfNotPresent",
+    );
+    expect(workload(composition, "store")).not.toContain("IfNotPresent");
+  });
+
+  it("isolates the old Project that stops declaring it in the run the new one declares it", () => {
+    const dropped = release("notes", "1.1.0", (body) =>
+      body
+        .replace("  - id: notes\n", "  - id: notes-other\n")
+        .replace(
+          "host: notes.jorisjonkers.dev",
+          "host: other.jorisjonkers.dev",
+        ),
+    );
+    const arriving = [
+      ...RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "notes" ? dropped : fragment,
+      ),
+      store,
+    ];
+    const composition = composing({
+      fragments: arriving,
+      ...expecting(arriving, platform),
+      held: RELEASES,
+      pins: pinned(FIRST),
+      previous: { lock: FIRST.lock, commit: hex("estate-commit", 40) },
+    });
+
+    expect(composition.lock.spec.isolated).toEqual({
+      notes: { refused: dropped.ref, codes: ["E_MOVE_OPEN"] },
+    });
+    expect(composition.lock.spec.fragments["notes"]?.ref).toBe(notes.ref);
+    expect(workload(composition, "notes")).toContain("IfNotPresent");
+  });
+
+  it("renders nothing of the old declaration once the source has retired", () => {
+    const composition = composing({
+      clusterState: recorded(
+        ', phase: retire, flippedAt: "2026-09-01T00:00:00Z", target: {name: notes-api, version: 1.4.0, namespace: store-system}',
+        "2026-09-30T00:00:00Z",
+      ),
+    });
+
+    expect(composition.lock.spec.isolated).toBeUndefined();
+    expect(workload(composition, "notes")).toBeUndefined();
+    expect(workload(composition, "store")).toBeDefined();
+  });
+});

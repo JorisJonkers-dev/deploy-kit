@@ -1127,6 +1127,13 @@ policy selects, and their own Instance's name label, which their workload and
 Service select. Once the flip has held, the Process resolves to the target's
 recorded name, and the Stable Address names the target.
 
+**An Application moving between Projects** resolves twice
+([chapter 40](40-composition.md#an-application-moving-between-projects)): in
+the Project it moves to, as the target, with its Move; and in the Project it
+moves out of, against the union as it stood before, marked `departing`, with no
+Move of its own and none of what the target alone renders, so that Project
+keeps its source serving until the Move retires it.
+
 **One Move at a time.** While a Process's Move is open (its source not yet
 retired), a second change that would derive another is `E_MOVE_OPEN`: the
 target of the first is not yet the Instance a second could start from. The
