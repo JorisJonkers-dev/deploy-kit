@@ -201,6 +201,29 @@
       "file": "examples/delivery/expected/resolved.json"
     },
     {
+      "name": "a spawned pod with no label to select it by",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/minimal/expected/resolved.json",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/processes/0/spawns",
+          "value": [
+            {
+              "name": "runner",
+              "image": "ghcr.io/x/runner@sha256:00",
+              "uid": 1000,
+              "gid": 1000,
+              "memory": "1Gi",
+              "cpu": "500m",
+              "egress": []
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "a held API rule with no scope",
       "verdict": "refuse",
       "breaks": "missing-required",

@@ -37,6 +37,18 @@ images:
     uid: 1000
     gid: 1000
     version: "1.2.0"
+  agents-api:
+    repository: ghcr.io/jorisjonkers-dev/agents/agents-api
+    digest: "sha256:7a1c3e5b9d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e6b8d0f"
+    uid: 1000
+    gid: 1000
+    version: "2.3.0"
+  agent-runner:
+    repository: ghcr.io/jorisjonkers-dev/agents/agent-runner
+    digest: "sha256:8b2d4f6e8a0c2e4b6d8f5a2c4e6b8d0f7a1c3e5b9d2f4a6c8e0b2d4f7e1f3c5a"
+    uid: 1000
+    gid: 1000
+    version: "2.3.0"
   adguard:
     repository: docker.io/adguard/adguardhome
     digest: "sha256:6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e"

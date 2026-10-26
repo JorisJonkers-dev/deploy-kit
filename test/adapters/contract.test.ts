@@ -31,6 +31,7 @@ function minimal(): ResolvedProject {
       "minimal/notes.project.yml",
       "minimal/env/notes-api/base.env",
       "delivery/delivery.project.yml",
+      "agents/agents.project.yml",
       "edge/edge.project.yml",
       "observability/observability.project.yml",
       "observability/rules/platform.yaml",

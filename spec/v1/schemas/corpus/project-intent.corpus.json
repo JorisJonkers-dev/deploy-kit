@@ -132,6 +132,36 @@
       ]
     },
     {
+      "name": "the worked agents project, whose Process spawns pods",
+      "verdict": "accept",
+      "file": "examples/agents/agents.project.yml"
+    },
+    {
+      "name": "a spawn template with no image",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/agents/agents.project.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/applications/0/processes/0/spawns/0/image"
+        }
+      ]
+    },
+    {
+      "name": "a spawn template that places itself on a node",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/agents/agents.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/spawns/0/placement/site",
+          "value": "enschede"
+        }
+      ]
+    },
+    {
       "name": "an API rule scoped to something other than its namespace or the cluster",
       "verdict": "refuse",
       "breaks": "enum",

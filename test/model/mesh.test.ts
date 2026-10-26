@@ -32,6 +32,7 @@ const SET = [
   "platform/images.lock.yml",
   "platform/cluster-state.yml",
   "delivery/delivery.project.yml",
+  "agents/agents.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",

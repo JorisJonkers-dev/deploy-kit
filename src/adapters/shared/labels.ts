@@ -1,7 +1,10 @@
 // The fixed label set (spec/v1/10-project-intent.md#the-label-set): every
 // rendered Process carries it, and every selector but a disruption budget's
 // names `instance`, which Flagger copies unchanged onto the primary.
+import { CONSUMER_LABEL } from "../../model/consumer-label.ts";
 import type { Labels } from "../../objects/kubernetes.ts";
+
+export { CONSUMER_LABEL };
 
 const MANAGED_BY = { "app.kubernetes.io/managed-by": "deploy-kit" } as const;
 
@@ -31,9 +34,6 @@ export const consumerLabelsOf = (consumes: readonly string[]): Labels =>
   Object.fromEntries(
     consumes.map((consumed) => [`${CONSUMER_LABEL}${consumed}`, "true"]),
   );
-
-/** The prefix of every consumer label (spec/v1/16-dependencies.md#the-consumer-label). */
-export const CONSUMER_LABEL = "consumes.deploy-kit.jorisjonkers.dev/";
 
 /** The label every gate member's pods carry, which the Release Gate's policy admits (spec/v1/16-dependencies.md#the-member-label). */
 export const MEMBER_LABEL = {

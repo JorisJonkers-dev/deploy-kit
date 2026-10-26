@@ -457,6 +457,29 @@ const resolvedSurface = z
   .strictObject({ name: text, port })
   .meta({ id: "ResolvedSurface" });
 
+// A pod a Process creates from one of its spawn templates
+// (spec/v1/20-resolved-deployment.md#derived-mechanics): the pinned image it
+// runs, what it requests, the label every such pod carries and its policy
+// selects, the surfaces it serves its Process, and what it reaches.
+const resolvedSpawn = z
+  .strictObject({
+    name: text,
+    image: text,
+    imageVersion: text.exactOptional(),
+    uid: count,
+    gid: count,
+    memory: text,
+    cpu: text,
+    selector: text,
+    surfaces: z.array(resolvedSurface).exactOptional(),
+    consumes: z.array(text).exactOptional(),
+    dependencies: z.array(resolvedEdge).exactOptional(),
+    // The baseline its policy carries: the cluster's DNS.
+    egress: z.array(egressPeer),
+    internetEgress: internetEgress.exactOptional(),
+  })
+  .meta({ id: "ResolvedSpawn" });
+
 // A port a client off the cluster dials on an L4 Address, and the surface's
 // port it reaches (spec/v1/20-resolved-deployment.md#l4-exposure): `name` is
 // the protocol and the client's port, which no two ports of one Service share.
@@ -687,6 +710,7 @@ const resolvedProcess = stated(
     // The resolvers a Process that serves DNS resolves through, in place of
     // the cluster's DNS (spec/v1/20-resolved-deployment.md#derived-mechanics).
     nameservers: z.array(text).min(1).exactOptional(),
+    spawns: z.array(resolvedSpawn).exactOptional(),
     ingress: z.array(ingressPeer).exactOptional(),
     egress: z.array(z.union([egressPeer, gateMembersPeer])).exactOptional(),
   }),

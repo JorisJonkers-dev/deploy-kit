@@ -1,0 +1,49 @@
+# Worked example: agents, the live case of pods a Process creates at run time
+# (spec/v1/10-project-intent.md#spawn-templates).
+#
+# Exercises: a spawn template. agents-api starts one runner pod per agent
+# session. It declares what those pods are, and the render derives the rest:
+# the namespaced rules that let agents-api create and remove them, the label
+# each carries, their policy, and the variables that hand agents-api the
+# pinned image and those labels. Nothing here writes a pod, a Role or a policy.
+#
+# Also exercises: an api rule scoped to its Process's namespace. agents-api
+# reads its own ConfigMaps, and nothing in another namespace.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: agents # the namespace derives: agents-system
+owner: joris
+
+applications:
+  - id: agents-api
+    processes:
+      - name: agents-api
+        lifecycle: application
+        image: agents-api
+        runtime: jvm
+        provides:
+          http: 8082
+        placement:
+          memory: 512Mi
+          cpu: 100m
+        api:
+          reason: it reads the session settings it keeps beside itself
+          rules:
+            - { group: core, objects: [configmaps], verbs: [get, list, watch], scope: namespace }
+        spawns:
+          - name: runner
+            image: agent-runner
+            placement: { memory: 1Gi, cpu: 500m }
+            provides:
+              http: 8090 # agents-api drives the session over it
+            dependsOn:
+              - { application: agents-api, surface: http } # the runner reports back
+            egress: { to: internet, reason: an agent clones and pushes the repositories it works on }
+        probes:
+          readiness: { path: /actuator/health/readiness, port: 8082 }
+          liveness: { path: /actuator/health/liveness, port: 8082 }
+        startupBudget: 60s
+        cutover: continuous

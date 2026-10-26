@@ -52,6 +52,7 @@ const FOUNDATION = [
   "platform/images.lock.yml",
   "platform/cluster-state.yml",
   "delivery/delivery.project.yml",
+  "agents/agents.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
@@ -4446,6 +4447,93 @@ describe("a replicated Process on a pool", () => {
   });
 });
 
+// REQ-107 (docs/requirements.md): a Process creates pods only from a declared
+// spawn template, which derives their rules, labels and policy.
+describe("a spawn template", () => {
+  // Creating pods in its own namespace is no privileged role.
+  const admitted = (document: string): string =>
+    document.replace(
+      "  namespaceHolders: [",
+      "  namespaceHolders: [notes/notes, ",
+    );
+  const SPAWNS = `        spawns:
+          - name: runner
+            image: notes-api
+            placement: { memory: 256Mi, cpu: 100m }
+            provides: { http: 8090 }
+            dependsOn:
+              - { application: notes-store, surface: store }
+            egress: { to: internet, reason: it clones what it is asked to work on }
+`;
+  const project = `${one(serving("notes-api", SPAWNS))}  - id: notes-store
+    processes:
+${serving("notes-store").replace("provides: { http: 8080 }", "provides: { store: 7000 }")}`;
+  const LOCKED = (() => {
+    const notes = LOCK.images["notes-api"];
+    return `${notes?.repository ?? ""}@${notes?.digest ?? ""}`;
+  })();
+
+  it("hands its Process the template's pinned image and every label its pods carry", () => {
+    const environment = processOf(project, { platform: admitted }).environment;
+
+    expect(
+      environment?.filter(({ name }) => name.startsWith("SPAWN_")),
+    ).toStrictEqual([
+      { name: "SPAWN_RUNNER_IMAGE", value: LOCKED },
+      {
+        name: "SPAWN_RUNNER_LABELS",
+        value:
+          "deploy-kit.jorisjonkers.dev/spawned-from=notes-api-runner,consumes.deploy-kit.jorisjonkers.dev/notes-store.store=true",
+      },
+    ]);
+  });
+
+  it("derives the namespaced rules that create and remove its pods, beside any the Process declares", () => {
+    expect(processOf(project, { platform: admitted }).api?.rules).toStrictEqual(
+      [
+        {
+          group: "core",
+          objects: ["pods"],
+          verbs: ["get", "list", "watch", "create", "delete"],
+          scope: "namespace",
+        },
+        {
+          group: "core",
+          objects: ["pods/log"],
+          verbs: ["get"],
+          scope: "namespace",
+        },
+      ],
+    );
+  });
+
+  it("resolves what its pods run, request, serve and reach", () => {
+    const [spawn] = processOf(project, { platform: admitted }).spawns ?? [];
+
+    expect(spawn).toMatchObject({
+      name: "runner",
+      image: LOCKED,
+      memory: "256Mi",
+      cpu: "100m",
+      selector: "notes-api-runner",
+      surfaces: [{ name: "http", port: 8090 }],
+      consumes: ["notes-store.store"],
+      internetEgress: { reason: "it clones what it is asked to work on" },
+    });
+    expect(spawn?.dependencies?.[0]).toMatchObject({
+      application: "notes-store",
+      surface: "store",
+      peers: [{ process: "notes-store", port: 7000 }],
+    });
+  });
+
+  it("is refused where the platform does not admit its Application to hold API access", () => {
+    expect(notesCodesOf(resolve(project))).toStrictEqual([
+      "E_PROCESS_RBAC_GRANT",
+    ]);
+  });
+});
+
 // REQ-106 (docs/requirements.md): an api rule reaches the cluster unless it
 // says its Process's namespace.
 describe("a Process's Kubernetes API access", () => {
@@ -4465,8 +4553,8 @@ describe("a Process's Kubernetes API access", () => {
   // Admitted to its own namespace alone: no privileged role.
   const local = (document: string): string =>
     document.replace(
-      "  server:\n",
-      "  namespaceHolders: [notes/notes]\n  server:\n",
+      "  namespaceHolders: [",
+      "  namespaceHolders: [notes/notes, ",
     );
 
   it("holds namespace rules under a platform that admits its Application to its namespace alone", () => {

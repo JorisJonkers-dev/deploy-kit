@@ -1500,6 +1500,12 @@
             "minLength": 1
           }
         },
+        "spawns": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedSpawn"
+          }
+        },
         "ingress": {
           "type": "array",
           "items": {
@@ -2747,6 +2753,84 @@
         "kind",
         "node",
         "ports"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedSpawn": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "imageVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "uid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "gid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selector": {
+          "type": "string",
+          "minLength": 1
+        },
+        "surfaces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedSurface"
+          }
+        },
+        "consumes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedEdge"
+          }
+        },
+        "egress": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EgressPeer"
+          }
+        },
+        "internetEgress": {
+          "$ref": "#/$defs/InternetEgress"
+        }
+      },
+      "required": [
+        "name",
+        "image",
+        "uid",
+        "gid",
+        "memory",
+        "cpu",
+        "selector",
+        "egress"
       ],
       "additionalProperties": false
     },

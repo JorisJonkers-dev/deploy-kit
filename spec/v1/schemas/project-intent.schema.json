@@ -1008,6 +1008,13 @@
         "vpn": {
           "$ref": "#/$defs/VpnAttachment"
         },
+        "spawns": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SpawnTemplate"
+          }
+        },
         "secrets": {
           "minItems": 1,
           "type": "array",
@@ -1400,6 +1407,69 @@
       },
       "required": [
         "forwardedPort"
+      ],
+      "additionalProperties": false
+    },
+    "SpawnTemplate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "placement": {
+          "$ref": "#/$defs/SpawnPlacement"
+        },
+        "provides": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "entry": "Surface"
+        },
+        "dependsOn": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DependencyEdge"
+          }
+        },
+        "egress": {
+          "$ref": "#/$defs/Egress"
+        }
+      },
+      "required": [
+        "name",
+        "image",
+        "placement"
+      ],
+      "additionalProperties": false
+    },
+    "SpawnPlacement": {
+      "type": "object",
+      "properties": {
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "memory",
+        "cpu"
       ],
       "additionalProperties": false
     }
