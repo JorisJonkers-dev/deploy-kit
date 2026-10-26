@@ -291,6 +291,23 @@ describe("a secret placeholder and the grant it reads", () => {
   });
 });
 
+// REQ-100 (docs/requirements.md): a self grant needs the Process's own Vault client.
+describe("a self grant", () => {
+  const SELF = `        secrets:\n          - { path: secret/data/refusals-system/app, keys: [k], access: read, delivery: self, rotation: { tolerates: restart } }\n`;
+  const codes = (env: string): string[] =>
+    refusals(api(SELF), { env }).map(({ code }) => code);
+
+  it("is refused where the env file wires an identity, but not the Vault role", () => {
+    expect(codes("NS=${identity:namespace}\n")).toStrictEqual([
+      "E_SELF_WITHOUT_VAULT_CLIENT",
+    ]);
+  });
+
+  it("is accepted where the env file wires the Vault role", () => {
+    expect(codes("VAULT_ROLE=${identity:vaultRole}\n")).toStrictEqual([]);
+  });
+});
+
 describe("a generated key", () => {
   const generates = (path: string) =>
     `        secrets:\n          - { path: ${path}, keys: [{ name: session_key, generate: {} }], access: read, delivery: self, rotation: { tolerates: restart } }\n`;
