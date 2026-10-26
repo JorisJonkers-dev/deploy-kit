@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **107** rows. The compiler's behaviours join it as they land.
+This ledger holds **108** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -130,3 +130,4 @@ This ledger holds **107** rows. The compiler's behaviours join it as they land.
 | REQ-105 | A Process with an L4 exposure on port 53 resolves through the Platform document's upstream nameservers: its pod renders `dnsPolicy: None` with those addresses, and its policy admits them on UDP and TCP port 53 in place of the cluster's DNS; one beside a Platform document that names none is `E_NO_UPSTREAM_NAMESERVERS` | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
 | REQ-106 | An `api` rule reaches its Process's namespace where it says `scope: namespace`, and the cluster otherwise: an admitted holder's namespace-scoped rules render a Role and a RoleBinding in its namespace, named for its identity, and its cluster-scoped rules a ClusterRole and a ClusterRoleBinding named `<namespace>-<identity>`, a scope with no rule rendering neither; an Application the Platform admits in `apiAccess.namespaceHolders` holds `namespace` rules only, a rule of it that reaches the cluster is `E_PROCESS_RBAC_GRANT` at the rule, and it is no foundation Application | [test/adapters/spelling.test.ts](../test/adapters/spelling.test.ts) |
 | REQ-107 | A Process creates pods only from a spawn template it declares: the template derives the namespace rules that create and remove them, the label every one carries with each edge's consumer label, one policy that the Process alone reaches on the template's surfaces and that reaches its edges, the cluster's DNS and, where declared, the internet, and the variables that hand the Process the pinned image and the labels; spawning is API access, admitted at either scope | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
+| REQ-108 | An admitted `api` block may hold no rules: such a Process renders its egress to where the API answers and nothing else, no role, no binding and no mounted token, because it acts on the API with its users' own tokens | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |

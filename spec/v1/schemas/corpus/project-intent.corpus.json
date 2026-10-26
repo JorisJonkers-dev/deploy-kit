@@ -187,6 +187,24 @@
       ]
     },
     {
+      "name": "API access that holds no rule",
+      "verdict": "accept",
+      "file": "examples/utility/utility.project.yml"
+    },
+    {
+      "name": "API access with an empty list of rules",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/utility/utility.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/processes/0/api/rules",
+          "value": []
+        }
+      ]
+    },
+    {
       "name": "an API rule spelled with a Kubernetes field",
       "verdict": "refuse",
       "breaks": "unknown-field",

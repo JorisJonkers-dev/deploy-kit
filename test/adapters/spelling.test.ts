@@ -61,6 +61,7 @@ function minimal(): ResolvedProject {
       "minimal/env/notes-api/base.env",
       "delivery/delivery.project.yml",
       "agents/agents.project.yml",
+      "utility/utility.project.yml",
       "edge/edge.project.yml",
       "observability/observability.project.yml",
       "observability/rules/platform.yaml",
@@ -479,6 +480,12 @@ describe("the kubernetes adapter", () => {
       egressOf(edited(undefined, () => ({ api: API }))).at(-1),
     ).toStrictEqual(range);
     expect(egressOf(edited())).not.toContainEqual(range);
+    // A Process that holds no rule still reaches the API, and renders no RBAC.
+    const reaching = edited(undefined, () => ({ api: { ...API, rules: [] } }));
+    expect(egressOf(reaching).at(-1)).toStrictEqual(range);
+    expect(
+      renderKubernetes(reaching).map(({ path }) => path.split("/").at(-1)),
+    ).not.toContain("rbac.yaml");
   });
 
   // REQ-105 (docs/requirements.md): a Process that serves DNS resolves

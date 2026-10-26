@@ -77,6 +77,12 @@ role and the foundation's, or to its own namespace alone, which is not, so a
 tenant Application that only manages objects beside itself is admitted without
 becoming foundation.
 
+**A holder may hold no rule.** Headlamp acts on the API with each signed-in
+user's own token, so its ServiceAccount needs no rule and no token, only the
+way through its policy to the API server. Its `api` declares a reason and no
+rules, and derives that egress alone. It is still admitted: the way to the API
+is the platform's to give, even to a Process that holds nothing.
+
 **The rules are rendered as declared.** The model does not narrow a rule or
 refuse a resource. A rule on `secrets` is legal for an admitted holder: Flagger
 reads the Secret a pod names to learn that it is excluded from configuration

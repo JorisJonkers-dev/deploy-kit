@@ -1318,8 +1318,7 @@
         }
       },
       "required": [
-        "reason",
-        "rules"
+        "reason"
       ],
       "additionalProperties": false
     },

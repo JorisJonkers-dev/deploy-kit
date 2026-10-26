@@ -8,6 +8,11 @@
 # sharing: one node announces it, and the other replica takes over when that
 # node goes.
 #
+# Also exercises: a Process that reaches the Kubernetes API holding no rule of
+# its own. Headlamp acts on the API with each signed-in user's own token, so it
+# needs the way to the API server and nothing else: no Role, no binding, no
+# mounted token (spec/v1/10-project-intent.md#kubernetes-api-access).
+#
 # Also exercises: a Process that serves DNS resolves through the platform's
 # upstream nameservers, never the cluster's own DNS, which may be down in
 # exactly the outage this resolver exists for. Nothing here says so: an
@@ -47,5 +52,30 @@ applications:
         probes:
           readiness: { path: /login.html, port: 3000 }
           liveness: { path: /login.html, port: 3000 }
+        startupBudget: 30s
+        cutover: continuous
+
+  - id: headlamp
+    exposure:
+      - name: lan
+        host: dashboard.lan.jorisjonkers.dev
+        audience: lan
+        routes:
+          - { path: /, match: prefix, process: headlamp, surface: http }
+    processes:
+      - name: headlamp
+        lifecycle: application
+        image: headlamp
+        runtime: none
+        provides:
+          http: 4466
+        placement:
+          memory: 128Mi
+          cpu: 50m
+        api:
+          reason: it acts on the API with each signed-in user's own token, and holds nothing of its own
+        probes:
+          readiness: { path: /, port: 4466 }
+          liveness: { path: /, port: 4466 }
         startupBudget: 30s
         cutover: continuous
