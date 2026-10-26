@@ -29,6 +29,16 @@ spec:
       ports:
         - protocol: TCP
           port: 12345
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: delivery-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: release-gate
+      ports:
+        - protocol: TCP
+          port: 12345
   egress:
     - to:
         - namespaceSelector:
