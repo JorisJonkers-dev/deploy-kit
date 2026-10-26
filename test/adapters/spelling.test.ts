@@ -1198,45 +1198,45 @@ describe("the prometheus adapter", () => {
     ).toStrictEqual([]);
   });
 
-  it("scrapes a stop-start Process through a ServiceMonitor, on the surface the scrape names", () => {
-    const rendered = renderPrometheus(
-      edited(undefined, () => ({ switchover: "stop-start" })),
-    );
+  it.each(["stop-start", "rolling"] as const)(
+    "scrapes a %s Process through a ServiceMonitor, on the surface the scrape names",
+    (switchover) => {
+      const rendered = renderPrometheus(
+        edited(undefined, () => ({ switchover })),
+      );
 
-    expect(rendered.map(({ path }) => path)).toStrictEqual([
-      "apps/notes/notes/servicemonitor.yaml",
-    ]);
-    const [monitor] = (rendered[0]?.objects ?? []) as readonly {
-      apiVersion: string;
-      kind: string;
-    }[];
-    expect([monitor?.apiVersion, monitor?.kind]).toStrictEqual([
-      "monitoring.coreos.com/v1",
-      "ServiceMonitor",
-    ]);
-    expect(
-      (rendered[0]?.objects[0] as { spec: unknown } | undefined)?.spec,
-    ).toStrictEqual({
-      jobLabel: "app.kubernetes.io/instance",
-      selector: { matchLabels: { "app.kubernetes.io/instance": "notes-api" } },
-      namespaceSelector: { matchNames: ["notes-system"] },
-      endpoints: [
-        {
-          port: "http",
-          path: "/metrics",
-          interval: "30s",
-          scrapeTimeout: "10s",
+      expect(rendered.map(({ path }) => path)).toStrictEqual([
+        "apps/notes/notes/servicemonitor.yaml",
+      ]);
+      const [monitor] = (rendered[0]?.objects ?? []) as readonly {
+        apiVersion: string;
+        kind: string;
+      }[];
+      expect([monitor?.apiVersion, monitor?.kind]).toStrictEqual([
+        "monitoring.coreos.com/v1",
+        "ServiceMonitor",
+      ]);
+      expect(
+        (rendered[0]?.objects[0] as { spec: unknown } | undefined)?.spec,
+      ).toStrictEqual({
+        jobLabel: "app.kubernetes.io/instance",
+        selector: {
+          matchLabels: { "app.kubernetes.io/instance": "notes-api" },
         },
-      ],
-    });
-  });
+        namespaceSelector: { matchNames: ["notes-system"] },
+        endpoints: [
+          {
+            port: "http",
+            path: "/metrics",
+            interval: "30s",
+            scrapeTimeout: "10s",
+          },
+        ],
+      });
+    },
+  );
 
-  it("stops at a scraped Process that switches rolling or nothing, whose monitor waits on its slice", () => {
-    expect(() =>
-      renderPrometheus(edited(undefined, () => ({ switchover: "rolling" }))),
-    ).toThrow(
-      "a monitor for a Process that switches rolling is not rendered yet",
-    );
+  it("stops at a scraped Process that switches nothing, whose monitor waits on its slice", () => {
     expect(() =>
       renderPrometheus(edited(undefined, () => ({ switchover: undefined }))),
     ).toThrow("switches nothing is not rendered yet");

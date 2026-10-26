@@ -6,4 +6,5 @@ resources:
   - rbac.yaml
   - service.yaml
   - serviceaccount.yaml
+  - servicemonitor.yaml
   - workload.yaml

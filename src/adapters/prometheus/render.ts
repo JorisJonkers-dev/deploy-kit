@@ -1,8 +1,8 @@
 // The `prometheus` adapter (spec/v1/30-deliverables.md#adapters): one monitor
 // per Application that declares observability. A scraped blue-green Process is
 // scraped by a PodMonitor, because its Services are Flagger's and the
-// canary's pods must be scraped for the Release Gate's checks; a stop-start one
-// by a ServiceMonitor over the Service the render gives it.
+// canary's pods must be scraped for the Release Gate's checks; a stop-start or
+// rolling one by a ServiceMonitor over the Service the render gives it.
 import type { ResolvedProject } from "../../model/resolution.ts";
 import type {
   AlertmanagerConfig,
@@ -118,12 +118,9 @@ function monitorsOf(project: ResolvedProject): Deliverable[] {
     const process = application.processes.find(
       ({ name }) => name === scrape.process,
     ) as (typeof application.processes)[number];
-    if (
-      process.switchover !== "blue-green" &&
-      process.switchover !== "stop-start"
-    )
+    if (process.switchover === undefined)
       throw notSupported(
-        `${process.name}: a monitor for a Process that switches ${process.switchover ?? "nothing"} is not rendered yet`,
+        `${process.name}: a monitor for a Process that switches nothing is not rendered yet`,
       );
     const metadata = {
       name: process.name,
@@ -145,7 +142,7 @@ function monitorsOf(project: ResolvedProject): Deliverable[] {
       namespaceSelector: { matchNames: [application.namespace] },
     };
     const directory = applicationDirectory(project.project, application.id);
-    if (process.switchover === "stop-start")
+    if (process.switchover !== "blue-green")
       return [
         {
           path: `${directory}/servicemonitor.yaml`,

@@ -75,6 +75,11 @@ applications:
         cutover: continuous
 
   - id: release-gate
+    # The gate serves each round of tending at /metrics, to the metrics stack
+    # alone (JorisJonkers-dev/delivery#22): a rolling Process, scraped through
+    # a ServiceMonitor over its own Service.
+    observability:
+      scrape: { process: release-gate, surface: http, path: /metrics }
     processes:
       - name: release-gate
         lifecycle: application
