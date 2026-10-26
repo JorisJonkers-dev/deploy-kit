@@ -6,6 +6,7 @@
   },
   "mutate": ["src/**/*.ts", "!src/cli/boundary.ts"],
   "coverageAnalysis": "perTest",
+  "disableTypeChecks": "{src,test,scripts}/**/*.{js,ts,cts,mts}",
   "ignorePatterns": ["/.claude", "/.agents"],
   "reporters": ["clear-text", "progress", "json", "html"],
   "jsonReporter": {

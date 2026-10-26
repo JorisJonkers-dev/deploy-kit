@@ -33,6 +33,7 @@ below, and `npm run lint:boundaries` fails on a violation.
 | `check/` | step: the constraints, one function per code, named as the Complete OCL invariant | `model/` |
 | `lower/` | step: Project Intent to the Effective Intent | `model/` |
 | `resolve/` | step: the Effective Intent and the pinned inputs to the Resolved Deployment | `model/` |
+| `generate/` | step: an Application's declarations to source text the application compiles against, its App Roles in its language ([chapter 17](../spec/v1/17-sign-in.md#generated-app-roles)) | `model/` |
 | `objects/` | the typed Kubernetes object model the adapters build | nothing |
 | `adapters/` | step: the registered adapters, one directory each, shared code in `adapters/shared/` | `model/`, `objects/`, `adapters/shared/` |
 | `application/` | the use-cases: run the steps in order, pass each model on, perform no IO of their own | every step, `model/` |

@@ -568,6 +568,13 @@ const signIn = z
   .strictObject({
     issuer: z.string().regex(/^https:\/\/[^\s/]+(\/[^\s]*)?$/),
     provider: holder,
+    // The Principal contract version the provider serves, major.minor: what
+    // every generated identity file says its application expects
+    // (spec/v1/17-sign-in.md#generated-app-roles).
+    contract: z
+      .string()
+      .regex(/^(0|[1-9]\d*)\.(0|[1-9]\d*)$/)
+      .exactOptional(),
   })
   .meta({ id: "SignIn" });
 

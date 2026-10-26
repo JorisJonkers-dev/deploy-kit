@@ -177,6 +177,9 @@ secretStore: secrets/vault
 signIn:
   issuer: "https://id.jorisjonkers.dev"
   provider: identity/identity
+  # The Principal contract version identity serves, which every generated
+  # identity file states (spec/v1/17-sign-in.md#generated-app-roles).
+  contract: "1.2"
 
 # NO rule catalog, no receivers, no severity map. Those belong to the monitoring
 # stack, which reads the published projection; this document decides how often

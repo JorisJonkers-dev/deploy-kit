@@ -1,6 +1,7 @@
-// The CLI's three commands (docs/architecture.md#layers): `validate` checks a
-// set of authored files, `publish` writes a project file's Intent Fragment, and
-// `compose` composes the estate from the fragments a workflow pulled. Every
+// The CLI's four commands (docs/architecture.md#layers): `validate` checks a
+// set of authored files, `publish` writes a project file's Intent Fragment,
+// `compose` composes the estate from the fragments a workflow pulled, and
+// `generate identity` writes an Application's App Roles in its language. Every
 // command reads and writes directories and nothing else: the workflow moves
 // fragments and artifacts to and from the registry, never this code. It returns
 // what the process should do, and `boundary.ts` does it.
@@ -27,6 +28,7 @@ import {
   type Fragment,
   type Pin,
 } from "../application/compose-estate.ts";
+import { generateIdentityFile } from "../application/generate-identity.ts";
 import { IMAGES_LOCK, shareOf } from "../application/images-lock-shares.ts";
 import { parseParticipants } from "../application/parse-participants.ts";
 import { parsePlatformIntent } from "../application/parse-platform-intent.ts";
@@ -37,6 +39,7 @@ import { sha256Hasher } from "../infrastructure/sha256-hasher.ts";
 import { compositionLock } from "../model/composition-lock.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
 import { fragmentManifest } from "../model/fragment.ts";
+import { IDENTITY_LANGUAGES } from "../model/vocabularies.ts";
 
 /** What the process does once a command has run. */
 export interface Outcome {
@@ -78,6 +81,8 @@ export const USAGE_TEXT = `usage:
                      --schema-package-integrity <sha256:...> --out <directory>
                      [--platform <directory>] [--held <directory>] [--pins <file>]
                      [--sources <directory>] [--lock <file> --lock-commit <sha>] [--json]
+  deploy-kit generate identity <file|directory>... --lang <${IDENTITY_LANGUAGES.join("|")}>
+                     [--application <id>] [--package <name>] [--out <file> [--check]] [--json]
 `;
 
 /** The options every command reads, by name. */
@@ -99,6 +104,10 @@ const OPTIONS = {
   participants: { type: "string" },
   "images-lock": { type: "string" },
   "schema-package-integrity": { type: "string" },
+  lang: { type: "string" },
+  application: { type: "string" },
+  package: { type: "string" },
+  check: { type: "boolean" },
 } as const;
 
 type Options = Readonly<Record<string, string | boolean | undefined>>;
@@ -528,6 +537,61 @@ function compose(values: Options, json: boolean, world: World): Outcome {
   );
 }
 
+/** An option's value where the call gives it one: a flag with no value gives none. */
+const stringOf = (value: string | boolean | undefined): string | undefined =>
+  typeof value === "string" ? value : undefined;
+
+/**
+ * `generate identity`: the set checked as `validate` checks it, and the one
+ * Application that declares a client written in `--lang`, to `--out` or
+ * stdout. `--check` writes nothing and fails where `--out` is not what it
+ * would write (spec/v1/17-sign-in.md#generated-app-roles).
+ */
+function generate(
+  positionals: readonly string[],
+  values: Options,
+  json: boolean,
+): Outcome {
+  const [subject, ...paths] = positionals;
+  if (subject !== "identity")
+    return usage("generate: the one thing it generates is identity");
+  const lang = IDENTITY_LANGUAGES.find((language) => language === values.lang);
+  if (lang === undefined)
+    return usage(
+      `generate identity: --lang is one of ${IDENTITY_LANGUAGES.join(", ")}`,
+    );
+  if (paths.length === 0)
+    return usage(
+      "generate identity: name the project file and the Platform document",
+    );
+  const out = values.out;
+  if (values.check === true && typeof out !== "string")
+    return usage("generate identity: --check compares against --out");
+  const outcome = generateIdentityFile(paths.flatMap(filesAt), {
+    language: lang,
+    application: stringOf(values.application),
+    package: stringOf(values.package),
+  });
+  if (outcome.kind !== "written")
+    return outcome.kind === "refused"
+      ? refused(outcome.diagnostics, json)
+      : { code: EXIT.refused, stdout: "", stderr: `${outcome.message}\n` };
+  if (typeof out !== "string")
+    return { code: EXIT.accepted, stdout: outcome.text, stderr: "" };
+  if (values.check === true) {
+    const committed = existsSync(out) ? readFileSync(out, "utf8") : undefined;
+    return committed === outcome.text
+      ? accepted(`${out} is current\n`, json)
+      : {
+          code: EXIT.refused,
+          stdout: "",
+          stderr: `${out} is ${committed === undefined ? "missing" : "stale"}: run deploy-kit generate identity without --check to write it\n`,
+        };
+  }
+  write(out, outcome.text);
+  return accepted(`wrote ${out}\n`, json);
+}
+
 /** One command line, run: what the process should print and exit with. */
 export function main(argv: readonly string[], world: World): Outcome {
   const [command, ...rest] = argv;
@@ -551,6 +615,8 @@ export function main(argv: readonly string[], world: World): Outcome {
       return publish(positionals, values, json);
     case "compose":
       return compose(values, json, world);
+    case "generate":
+      return generate(positionals, values, json);
     default:
       return usage(
         command === undefined

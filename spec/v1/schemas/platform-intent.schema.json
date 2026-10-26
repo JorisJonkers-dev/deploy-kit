@@ -798,6 +798,10 @@
           "type": "string",
           "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
+        },
+        "contract": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
         }
       },
       "required": [

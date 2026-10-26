@@ -205,6 +205,12 @@ declared in its `client` block and derived into a `Client` object
 ([chapter 17](spec/v1/17-sign-in.md)). Not a Process's identity, which is what
 it authenticates as to the cluster.
 
+**Identity file**: the source file `deploy-kit generate identity` writes for an
+Application in its own language: its App Roles, its Client id and the Principal
+contract version it expects, as plain strings. The project file is its one
+source, so a renamed role breaks the application's build
+([chapter 17](spec/v1/17-sign-in.md#generated-app-roles)).
+
 **Sign-in Mode**: how a Client signs people in: `native` (the Application
 speaks OIDC), `gated` (the Identity Provider's Gate signs in for it) or `token`
 (bearer tokens only, no browser).

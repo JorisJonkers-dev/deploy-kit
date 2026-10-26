@@ -1,4 +1,4 @@
-// REQ-045 (docs/requirements.md): the CLI's three commands against the worked
+// REQ-045 (docs/requirements.md): the CLI's first three commands against the worked
 // examples, in process: `validate` accepts and refuses a set, `publish` packs a
 // project's and the platform's Intent Fragment, and `compose` composes the
 // estate from pulled fragments and composes it again from its own lock. A
@@ -887,7 +887,7 @@ describe("deploy-kit compose", () => {
 });
 
 describe("deploy-kit", () => {
-  it("prints the usage of all three commands", () => {
+  it("prints the usage of all four commands", () => {
     expect(USAGE_TEXT.split("\n").slice(0, 5)).toEqual([
       "usage:",
       "  deploy-kit --help",
@@ -897,6 +897,9 @@ describe("deploy-kit", () => {
     ]);
     expect(USAGE_TEXT).toContain(
       "  deploy-kit compose --fragments <directory> --participants <file> --cluster-state <file>",
+    );
+    expect(USAGE_TEXT).toContain(
+      "  deploy-kit generate identity <file|directory>... --lang <go|kotlin|typescript|python|rust>",
     );
     expect(USAGE_TEXT).toContain("[--platform <directory>]");
   });
