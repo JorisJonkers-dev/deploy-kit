@@ -49,6 +49,8 @@ import {
 import { consumedOf } from "../model/consumer-label.ts";
 import { clientSecretPath } from "./client.ts";
 import { resolveEdge } from "./dependencies.ts";
+import { boundToOf } from "../model/move.ts";
+import { resolveMove } from "./move.ts";
 import {
   resolveSpawns,
   SPAWN_REASON,
@@ -427,12 +429,7 @@ function placementOf(
   process: EffectiveProcess,
   context: ProcessContext,
 ): ResolvedProcess["placement"] {
-  // A missing list and an empty one hold the Process to no node alike.
-  // Stryker disable next-line ArrayDeclaration
-  const claims = new Set((process.volumes ?? []).map(({ claim }) => claim));
-  const binding = context.clusterState.bindings.find(({ claim }) =>
-    claims.has(claim),
-  );
+  const boundTo = boundToOf(context.clusterState, process);
   return {
     eligibleNodes: eligibleNodes(
       process,
@@ -440,9 +437,9 @@ function placementOf(
       context.platform,
       context.held,
     ),
-    ...(binding === undefined
+    ...(boundTo === undefined
       ? {}
-      : { boundTo: binding.node, from: "cluster-state" as const }),
+      : { boundTo, from: "cluster-state" as const }),
   };
 }
 
@@ -533,6 +530,15 @@ export function resolveProcess(
   const image = context.lock.images[process.image] as LockedImage;
   const switchover = switchoverOf(process, context.machinery);
   const spawns = resolveSpawns(process, context);
+  const placement = placementOf(process, context);
+  const move = resolveMove(process, placement, {
+    platform: context.platform,
+    lock: context.lock,
+    clusterState: context.clusterState,
+    union: context.union,
+    project: context.project,
+    application: context.application,
+  });
   const environment = [
     ...environmentOf(process, context),
     ...spawnEnvironmentOf(spawns),
@@ -627,7 +633,9 @@ export function resolveProcess(
         : { internetEgress: { reason: TUNNEL_REASON } }
       : { internetEgress: { reason: process.egress.reason } }),
     ...probesOf(process, context.platform),
-    placement: placementOf(process, context),
+    placement,
+    // A change the data cannot follow in place derives a Move.
+    ...(move === undefined ? {} : { move }),
     ...(volumes.length === 0 ? {} : { volumes }),
     ...(libraries.length === 0 ? {} : { libraries }),
     ...(secrets.length === 0 ? {} : { secrets }),

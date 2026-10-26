@@ -595,6 +595,8 @@ describe("the metamodel names every class the chapter draws", () => {
       "Listener",
       "Match",
       "MiddlewareKind",
+      "MoveStep",
+      "MoveTrigger",
       "PathScope",
       "PinnedInput",
       "ResolvedHttpProbe",
