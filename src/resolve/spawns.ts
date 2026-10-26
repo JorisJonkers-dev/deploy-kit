@@ -4,8 +4,16 @@
 // Process and what they reach; the namespaced rules that let the Process
 // create and remove them; and the variables that hand it the image and labels.
 import { CONSUMER_LABEL, consumedOf } from "../model/consumer-label.ts";
-import type { EffectiveProcess } from "../model/effective-intent.ts";
-import { versionOf, type LockedImage } from "../model/images-lock.ts";
+import type {
+  EffectiveProcess,
+  EffectiveProject,
+} from "../model/effective-intent.ts";
+import {
+  versionOf,
+  type ImagesLockDocument,
+  type LockedImage,
+} from "../model/images-lock.ts";
+import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { SPAWN_LABEL } from "../model/spawn-label.ts";
 import type {
   EnvEntry,
@@ -13,7 +21,14 @@ import type {
 } from "../model/resolved-deployment.ts";
 import { resolveEdge } from "./dependencies.ts";
 import { DNS_PORT } from "./policy.ts";
-import type { ProcessContext } from "./process.ts";
+
+/** What resolving a template reads: the lock, the union its edges reach, the platform and its Project. */
+interface SpawnContext {
+  readonly lock: ImagesLockDocument;
+  readonly union: readonly EffectiveProject[];
+  readonly platform: PlatformIntentDocument;
+  readonly project: string;
+}
 
 type ResolvedSpawn = NonNullable<ResolvedProcess["spawns"]>[number];
 type ResolvedApiRule = NonNullable<ResolvedProcess["api"]>["rules"][number];
@@ -37,7 +52,7 @@ export const SPAWN_RULES: readonly ResolvedApiRule[] = [
 
 export function resolveSpawns(
   process: EffectiveProcess,
-  context: Pick<ProcessContext, "lock" | "union" | "platform" | "project">,
+  context: SpawnContext,
 ): ResolvedSpawn[] {
   // A Process with no template and one with an empty list create nothing alike.
   // Stryker disable next-line ArrayDeclaration
