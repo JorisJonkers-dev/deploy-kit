@@ -1280,7 +1280,7 @@ describe("the database catalog", () => {
   it("renders nothing where the engine names no catalog method, or the old path names no login", () => {
     const noMethod = estate({
       [PLATFORM]: (document) =>
-        document.replace(", catalog: postgres-catalog }", " }"),
+        document.replace(", catalog: postgres-catalog,", ","),
     });
     const noLogin = estate({
       [PLATFORM]: (document) =>
@@ -2505,7 +2505,14 @@ describe("each container's software version", () => {
 
   it("accepts any version on an engine whose platform entry names no move method", () => {
     const result = renderIntentSet(
-      files({ [LOCK]: versioned("postgres", "14-vectorchord0.4.3") }),
+      files({
+        [LOCK]: versioned("postgres", "14-vectorchord0.4.3"),
+        "platform/platform.intent.yml": (document) =>
+          document.replace(
+            ", move: {image: postgres-move, breaksOn: major, reverse: never}",
+            "",
+          ),
+      }),
       { ...OPTIONS, projects: ["data"] },
     );
 

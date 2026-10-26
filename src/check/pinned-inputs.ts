@@ -134,6 +134,40 @@ function rootRefusals(
       ];
 }
 
+/** A version a Move can read its breaking component off. */
+const SEMVER = /^\d+\.\d+\.\d+$/;
+
+/**
+ * A Process whose engine moves runs an image the lock records as
+ * `major.minor.patch`: the Move reads the component `breaksOn` names off it
+ * (spec/v1/20-resolved-deployment.md#the-images-lock).
+ */
+function versionRefusals(
+  set: PinnedSet,
+  process: { readonly engine?: string; readonly image: string },
+  path: string,
+  document: string,
+): Diagnostic[] {
+  const engines = set.platform.engines as Readonly<
+    Record<string, { readonly move?: unknown } | undefined>
+  >;
+  const locked = set.imagesLock.images[process.image];
+  return process.engine === undefined ||
+    engines[process.engine]?.move === undefined ||
+    locked === undefined ||
+    SEMVER.test(locked.version)
+    ? []
+    : [
+        {
+          code: "E_ENGINE_VERSION_MISSING",
+          document,
+          path,
+          message: `${process.image} records the version ${locked.version}, and a Move of ${process.engine} reads major.minor.patch off it`,
+          hint: "Lock the image from a release tagged major.minor.patch, so the lock records that version.",
+        },
+      ];
+}
+
 function processRefusals(
   set: PinnedSet,
   { document, effective }: Located,
@@ -180,6 +214,7 @@ function processRefusals(
             hint: "Lock the alias, or name one the images lock holds.",
           })),
         ...rootRefusals(set, process.image, `${at}/image`, document),
+        ...versionRefusals(set, process, `${at}/image`, document),
         ...(eligibleNodes(process, set.nodeContract, set.platform, held)
           .length === 0
           ? [
@@ -231,18 +266,18 @@ function spreadRefusals(
       ];
 }
 
-/** Every backup and catalog method the platform names is an image the lock holds. */
+/** Every backup, catalog and move method the platform names is an image the lock holds. */
 const methodRefusals = (set: PinnedSet, platform: string): Diagnostic[] =>
   Object.entries(set.platform.engines).flatMap(([engine, method]) =>
-    (["backup", "catalog"] as const).flatMap((kind): Diagnostic[] => {
-      const image = method[kind];
+    (["backup", "catalog", "move"] as const).flatMap((kind): Diagnostic[] => {
+      const image = kind === "move" ? method.move?.image : method[kind];
       return image === undefined || Object.hasOwn(set.imagesLock.images, image)
         ? []
         : [
             {
               code: "E_UNLOCKED_IMAGE",
               document: platform,
-              path: `/engines/${engine}/${kind}`,
+              path: `/engines/${engine}/${kind === "move" ? "move/image" : kind}`,
               message: `the images lock holds no entry for ${image}`,
               hint: "Lock the alias, or name one the images lock holds.",
             },

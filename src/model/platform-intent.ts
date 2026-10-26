@@ -5,7 +5,12 @@
 // one optional feature per literal, so a missing policy is an absent feature.
 import { z } from "zod";
 import { stated, type ShapeRule } from "./shape-rule.ts";
-import { AUDIENCES, LIBRARY_ACCESS } from "./vocabularies.ts";
+import {
+  AUDIENCES,
+  LIBRARY_ACCESS,
+  MOVE_BREAKS,
+  MOVE_REVERSE,
+} from "./vocabularies.ts";
 
 // The closed vocabularies of spec/v1/14-platform-intent.md, each declared once.
 
@@ -242,6 +247,17 @@ const durabilityPolicies = z
   })
   .meta({ id: "DurabilityPolicies" });
 
+// How an engine's data is carried from one Instance to another
+// (spec/v1/14-platform-intent.md#move-methods): the method's image, which
+// change of the version needs a Move, and when it can replicate back.
+const moveMethod = z
+  .strictObject({
+    image: text,
+    breaksOn: z.enum(MOVE_BREAKS).meta({ id: "MoveBreak" }),
+    reverse: z.enum(MOVE_REVERSE).meta({ id: "MoveReverse" }),
+  })
+  .meta({ id: "MoveMethod" });
+
 // The method image, and the surface of the Process it connects to where it
 // dumps over the network. An engine whose method reads the volume alone names
 // none. An engine whose Processes own databases or buckets may name the method
@@ -253,6 +269,7 @@ const enginePolicy = z
     surface: text.exactOptional(),
     catalog: text.exactOptional(),
     catalogSurface: text.exactOptional(),
+    move: moveMethod.exactOptional(),
   })
   .meta({ id: "EnginePolicy" });
 
@@ -331,6 +348,12 @@ const deliveryPolicy = z
     // to, on its `http` surface (spec/v1/55-delivery.md#rollouts). A platform
     // that names none reports no Rollout past `pinned`.
     reporter: holder.exactOptional(),
+    // How long a Move's write pause may last, and how long its source is
+    // kept once the flip has held (spec/v1/14-platform-intent.md#delivery-policy).
+    move: z
+      .strictObject({ timeout: text, retention: text })
+      .meta({ id: "MovePolicy" })
+      .exactOptional(),
   })
   .meta({ id: "DeliveryPolicy" });
 

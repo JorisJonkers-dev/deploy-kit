@@ -1925,7 +1925,7 @@ describe("what a grant derives", () => {
     expect(
       application(one(store), {
         platform: (document) =>
-          document.replace(", catalog: postgres-catalog }", " }"),
+          document.replace(", catalog: postgres-catalog,", ","),
       }).reconcileAfter,
     ).toBeUndefined();
   });
@@ -3674,6 +3674,57 @@ describe("a volume and what its class derives", () => {
     ).toStrictEqual([
       "E_UNLOCKED_IMAGE /engines/rabbitmq/backup the images lock holds no entry for unlocked. Lock the alias, or name one the images lock holds.",
     ]);
+  });
+
+  // REQ-109 (docs/requirements.md): the facts a Move is derived from.
+  it("refuses a move method the images lock does not hold, at the engine that names it", () => {
+    const result = resolve(one(serving("notes-api")), {
+      platform: (platform) =>
+        platform.replace(
+          "move: {image: postgres-move,",
+          "move: {image: unlocked,",
+        ),
+    });
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, path }) => `${code} ${path}`),
+    ).toStrictEqual(["E_UNLOCKED_IMAGE /engines/postgres/move/image"]);
+  });
+
+  it("refuses a Process of an engine that moves whose image records no major.minor.patch version", () => {
+    const store = (image: string) => `      - name: store
+        lifecycle: application
+        image: ${image}
+        runtime: none
+        engine: postgres
+        provides: { postgres: 5432 }
+        placement: { memory: 64Mi, cpu: 10m }
+        cutover: interrupted
+        volumes: [{ claim: data, mountAt: /data, size: 1Gi, durability: recoverable }]
+`;
+    const versioned = (version: string) => (lock: string) =>
+      lock.replace(
+        /(\n {2}notes-api:\n(?: {4}.*\n)*? {4}version: )"[^"]*"/,
+        `$1"${version}"`,
+      );
+    const refused = (version: string) => {
+      const result = resolve(one(store("notes-api")), {
+        lock: versioned(version),
+      });
+      return result.ok
+        ? []
+        : result.diagnostics
+            .filter(({ code }) => code === "E_ENGINE_VERSION_MISSING")
+            .map(({ document, path }) => `${document} ${path}`);
+    };
+
+    expect(refused("16")).toStrictEqual([
+      "minimal/notes.project.yml /applications/0/processes/0/image",
+    ]);
+    expect(refused("16.4-alpine")).toHaveLength(1);
+    expect(refused("16.4.0")).toStrictEqual([]);
   });
 
   it("refuses a Vault policy job image the images lock does not hold, at the job that names it", () => {

@@ -57,6 +57,19 @@ export const TRANSIT_OPERATIONS = [
   "read",
 ] as const;
 /** What a Process that holds Kubernetes API access may ask of a resource. */
+/** Which change of an engine's version a Move must carry its data across. */
+export const MOVE_BREAKS = ["major", "minor"] as const;
+/** When an engine's move method can replicate back to the old Instance. */
+export const MOVE_REVERSE = ["always", "same-major", "never"] as const;
+/** A Move's steps, in order, and so the phase an open Move is at. */
+export const MOVE_STEPS = [
+  "sync",
+  "lag",
+  "fence",
+  "unfence",
+  "reverse",
+  "retire",
+] as const;
 /** Where a Process's Kubernetes API rule reaches: its own namespace, or the cluster. */
 export const API_SCOPES = ["namespace", "cluster"] as const;
 export const API_VERBS = [
