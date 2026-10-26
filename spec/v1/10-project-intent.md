@@ -667,6 +667,10 @@ api:
     - group: core
       objects: [configmaps]
       verbs: [get]
+    - group: core
+      objects: [configmaps]
+      verbs: [create, update]
+      scope: namespace
     - group: flagger.app
       objects: [canaries]
       verbs: [get]
@@ -679,6 +683,10 @@ api:
   `ApiVerb` list ([The closed vocabularies](#the-closed-vocabularies)). `core`
   names the API's core group, which Kubernetes itself leaves unnamed. An object
   may name a subresource, `canaries/status`.
+- **`scope`** is how far a rule reaches: `namespace`, the Process's own
+  namespace, or `cluster`, every namespace. It is optional, and a rule that
+  names none reaches the cluster. A rule that only touches objects the Process
+  keeps beside itself says `namespace`, so it holds no more than it uses.
 
 The fields are the model's own words. `objects` is what Kubernetes RBAC spells
 `resources`, a field name the model already keeps out of both layers because it
@@ -692,8 +700,11 @@ project inherits is one nobody asked for by name.
 Declaring it is not holding it. The Platform document admits the Applications
 whose Processes may declare `api`
 ([chapter 14](14-platform-intent.md#kubernetes-api-access)), and a declaration
-in any other Application is `E_PROCESS_RBAC_GRANT`. What an admitted
-declaration derives, its ClusterRole, its mounted token and its policy's egress,
+in any other Application is `E_PROCESS_RBAC_GRANT`. An Application the
+platform admits to its own namespace alone holds `namespace` rules only, and a
+rule of it that reaches the cluster is refused the same way.
+What an admitted declaration derives, its Role and ClusterRole, its mounted
+token and its policy's egress,
 is [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)'s.
 
 ### Internet egress
@@ -3058,6 +3069,7 @@ already told them, and the lines reaching them made the model harder to read.
 | `SignInMode` | `Client.signIn` | `native`, `gated`, `token` |
 | `ClientCredential` | `Client.credential` | `secret`, `pkce` |
 | `ApiVerb` | `ApiRule.verbs` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` |
+| `ApiScope` | `ApiRule.scope` | `namespace`, `cluster` |
 
 ### Absent or `none`
 
@@ -3247,6 +3259,7 @@ classDiagram
         +string group
         +string[] objects
         +ApiVerb[] verbs
+        +ApiScope scope
     }
     class Surface {
         +string name

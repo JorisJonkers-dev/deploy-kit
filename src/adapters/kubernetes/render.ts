@@ -19,6 +19,8 @@ import type {
   AliasService,
   ClusterRole,
   ClusterRoleBinding,
+  Role,
+  RoleBinding,
   ConfigMap,
   Container,
   CronJob,
@@ -1097,46 +1099,86 @@ const CORE = "core";
 /**
  * What a Process that holds Kubernetes API access may ask of it
  * (spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted):
- * a ClusterRole of its declared rules, bound to its one ServiceAccount, both
- * under the name its namespace and identity make.
+ * its namespace-scoped rules as a Role in its own namespace, and its
+ * cluster-scoped rules as a ClusterRole under the name its namespace and
+ * identity make, each bound to its one ServiceAccount. A scope with no rule
+ * renders nothing.
  */
 function rbacOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
-): (ClusterRole | ClusterRoleBinding)[] {
+): (Role | RoleBinding | ClusterRole | ClusterRoleBinding)[] {
   if (process.api === undefined) return [];
-  const metadata = {
-    name: clusterNameOf(application.namespace, process.identity),
-    labels: labelsOf(process, application.id),
-  };
-  return [
+  const labels = labelsOf(process, application.id);
+  const subjects = [
     {
-      apiVersion: "rbac.authorization.k8s.io/v1",
-      kind: "ClusterRole",
-      metadata,
-      rules: process.api.rules.map(({ group, objects, verbs }) => ({
+      kind: "ServiceAccount" as const,
+      name: process.identity,
+      namespace: application.namespace,
+    },
+  ];
+  const rulesIn = (scope: "namespace" | "cluster") =>
+    (process.api as NonNullable<ResolvedProcess["api"]>).rules
+      .filter((rule) => rule.scope === scope)
+      .map(({ group, objects, verbs }) => ({
         apiGroups: [group === CORE ? "" : group],
         resources: objects,
         verbs,
-      })),
-    },
-    {
-      apiVersion: "rbac.authorization.k8s.io/v1",
-      kind: "ClusterRoleBinding",
-      metadata,
-      roleRef: {
-        apiGroup: "rbac.authorization.k8s.io",
-        kind: "ClusterRole",
-        name: metadata.name,
-      },
-      subjects: [
-        {
-          kind: "ServiceAccount",
-          name: process.identity,
-          namespace: application.namespace,
-        },
-      ],
-    },
+      }));
+  const namespaced = rulesIn("namespace");
+  const clusterWide = rulesIn("cluster");
+  const local = {
+    name: process.identity,
+    namespace: application.namespace,
+    labels,
+  };
+  const cluster = {
+    name: clusterNameOf(application.namespace, process.identity),
+    labels,
+  };
+  return [
+    ...(namespaced.length === 0
+      ? []
+      : [
+          {
+            apiVersion: "rbac.authorization.k8s.io/v1" as const,
+            kind: "Role" as const,
+            metadata: local,
+            rules: namespaced,
+          },
+          {
+            apiVersion: "rbac.authorization.k8s.io/v1" as const,
+            kind: "RoleBinding" as const,
+            metadata: local,
+            roleRef: {
+              apiGroup: "rbac.authorization.k8s.io" as const,
+              kind: "Role" as const,
+              name: local.name,
+            },
+            subjects,
+          },
+        ]),
+    ...(clusterWide.length === 0
+      ? []
+      : [
+          {
+            apiVersion: "rbac.authorization.k8s.io/v1" as const,
+            kind: "ClusterRole" as const,
+            metadata: cluster,
+            rules: clusterWide,
+          },
+          {
+            apiVersion: "rbac.authorization.k8s.io/v1" as const,
+            kind: "ClusterRoleBinding" as const,
+            metadata: cluster,
+            roleRef: {
+              apiGroup: "rbac.authorization.k8s.io" as const,
+              kind: "ClusterRole" as const,
+              name: cluster.name,
+            },
+            subjects,
+          },
+        ]),
   ];
 }
 

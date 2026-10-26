@@ -1337,6 +1337,9 @@
           "items": {
             "$ref": "#/$defs/ApiVerb"
           }
+        },
+        "scope": {
+          "$ref": "#/$defs/ApiScope"
         }
       },
       "required": [
@@ -1356,6 +1359,13 @@
         "update",
         "patch",
         "delete"
+      ]
+    },
+    "ApiScope": {
+      "type": "string",
+      "enum": [
+        "namespace",
+        "cluster"
       ]
     },
     "Egress": {

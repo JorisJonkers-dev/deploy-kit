@@ -20,6 +20,7 @@ import {
 } from "./platform-intent.ts";
 import {
   ACCESS_TIERS,
+  API_SCOPES,
   API_VERBS,
   AUDIENCES,
   CLIENT_CREDENTIALS,
@@ -345,6 +346,7 @@ const resolvedApiRule = z
     group: text,
     objects: z.array(text).min(1),
     verbs: z.array(z.enum(API_VERBS).meta({ id: "ApiVerb" })).min(1),
+    scope: z.enum(API_SCOPES).meta({ id: "ApiScope" }),
   })
   .meta({ id: "ResolvedApiRule" });
 

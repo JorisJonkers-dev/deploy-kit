@@ -132,6 +132,19 @@
       ]
     },
     {
+      "name": "an API rule scoped to something other than its namespace or the cluster",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/delivery/delivery.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/processes/0/api/rules/1/scope",
+          "value": "pod"
+        }
+      ]
+    },
+    {
       "name": "API access with no reason",
       "verdict": "refuse",
       "breaks": "missing-required",

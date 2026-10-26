@@ -591,6 +591,11 @@ export function resolveProcess(
       : {
           api: {
             ...process.api,
+            // A rule that names no scope reaches the cluster.
+            rules: process.api.rules.map((rule) => ({
+              ...rule,
+              scope: rule.scope ?? "cluster",
+            })),
             // The platform admits the holder, or E_PROCESS_RBAC_GRANT refused
             // it, so the block that says where the API answers is there.
             server: (

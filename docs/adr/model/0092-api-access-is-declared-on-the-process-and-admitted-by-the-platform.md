@@ -11,10 +11,13 @@ rests-on: ["0001", "0004"]
 
 A Process that calls the Kubernetes API declares what it asks of it, as rules
 with a reason, in its own project file. The Platform document names the
-Applications whose Processes may declare any, and where the API answers. An
-admitted declaration derives a ClusterRole of the declared rules, its binding to
-the Process's one ServiceAccount, a mounted token, and egress to the API by
-address. A declaration in an Application the platform does not name is refused.
+Applications whose Processes may declare any, and where the API answers. Each
+rule states its scope, the Process's own namespace or the cluster, and a rule
+that states none reaches the cluster. An admitted declaration derives a Role of
+its namespace-scoped rules and a ClusterRole of its cluster-scoped rules, each
+bound to the Process's one ServiceAccount, a mounted token, and egress to the
+API by address. A declaration in an Application the platform does not name is
+refused.
 
 ## Rests on
 
@@ -61,6 +64,19 @@ not the delivery machinery's. Machinery is what performs a switch and is
 therefore never gated; the Collector switches nothing and still reads the
 cluster, and an edge proxy is machinery that holds no access.
 
+**A rule says how far it reaches.** Most holders read across the Projects'
+namespaces, and one reads a kind no namespace holds, so a rule reaches the
+cluster unless it says otherwise. But a holder that writes only objects it keeps
+beside itself, the Release Gate's release records, needs that write nowhere
+else, and a ClusterRole would hand it every namespace's ConfigMaps. A
+`namespace` rule is a Role in the Process's own namespace, so the narrower grant
+is written as narrowly as it is used, and `agents-api`, which creates pods in its
+own namespace alone, holds exactly that. The scope is the author's, under the
+platform's to bound: it admits a holder to the cluster, which is a privileged
+role and the foundation's, or to its own namespace alone, which is not, so a
+tenant Application that only manages objects beside itself is admitted without
+becoming foundation.
+
 **The rules are rendered as declared.** The model does not narrow a rule or
 refuse a resource. A rule on `secrets` is legal for an admitted holder: Flagger
 reads the Secret a pod names to learn that it is excluded from configuration
@@ -87,13 +103,15 @@ saying where the API is are one block.
 | Keep the grants applied by hand, recorded in a ledger | no model change | the delivery path is the one part of the estate the render would not cover, and Flagger's grant would have no home |
 | Any Process may declare `api`, with no admission | one block fewer in the Platform document | a project grants itself access to a cluster it shares, which is what [0041](0041-no-process-rbac-in-v1.md) exists to refuse |
 | Admit by `delivery.machinery` | no new list | the Collector would have to be called machinery, and an edge proxy would be admitted for nothing |
-| A `Role` per Project namespace instead of a `ClusterRole` | no cluster-wide grant | every holder reads across namespaces, PersistentVolumes have none, and a Role per namespace per holder is the object count 0041 refused |
+| Every rule a `ClusterRole`, as before scopes | one object kind fewer | the Release Gate's writes to its own records, and `agents-api`'s pod creation in its own namespace, would reach every namespace |
+| A `Role` per Project namespace for every rule | no cluster-wide grant | every holder reads across namespaces, PersistentVolumes have none, and a Role per namespace per holder is the object count 0041 refused |
 | Refuse rules on `secrets` | keeps one resource out of reach | Flagger's configuration tracking reads the Secrets a pod names, so the machinery would not run |
 
 ## Reversibility
 
 Undo cost today: one block in each document, one derivation and one object
-file per holder: a day, in both implementations. Becomes expensive once: a
+file per holder: a day. Undoing the scope alone is one field and one branch of
+the render, and widens every namespace rule back to the cluster. Becomes expensive once: a
 tenant Application is admitted, because its fragment then carries rules the
 platform would have to take back.
 
@@ -103,7 +121,8 @@ platform would have to take back.
   files the `delivery` repository applied by hand are deleted when it is
   delivered by the estate path.
 - `ClusterRole` and `ClusterRoleBinding` leave the forbidden list for exactly
-  the objects a held `api` derives; `Role` and `RoleBinding` stay unrendered.
+  the objects a held `api`'s cluster-scoped rules derive, and `Role` and
+  `RoleBinding` for exactly those its namespace-scoped rules derive.
 - Admission is by id, and an id is unique only by check. Where two
   Applications carry an admitted id, neither is admitted: the grant is refused
   rather than given to whichever project chose the name second.

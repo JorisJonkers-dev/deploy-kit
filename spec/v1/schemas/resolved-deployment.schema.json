@@ -1961,12 +1961,16 @@
           "items": {
             "$ref": "#/$defs/ApiVerb"
           }
+        },
+        "scope": {
+          "$ref": "#/$defs/ApiScope"
         }
       },
       "required": [
         "group",
         "objects",
-        "verbs"
+        "verbs",
+        "scope"
       ],
       "additionalProperties": false
     },
@@ -1980,6 +1984,13 @@
         "update",
         "patch",
         "delete"
+      ]
+    },
+    "ApiScope": {
+      "type": "string",
+      "enum": [
+        "namespace",
+        "cluster"
       ]
     },
     "DestinationRange": {

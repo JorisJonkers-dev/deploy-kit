@@ -4446,6 +4446,87 @@ describe("a replicated Process on a pool", () => {
   });
 });
 
+// REQ-106 (docs/requirements.md): an api rule reaches the cluster unless it
+// says its Process's namespace.
+describe("a Process's Kubernetes API access", () => {
+  const admitted = (document: string): string =>
+    document.replace("  holders: [", "  holders: [notes/notes, ");
+  const holding = (rules: string) =>
+    processOf(
+      one(
+        serving(
+          "notes-api",
+          `        api:\n          reason: it reads what the cluster holds\n          rules:\n${rules}`,
+        ),
+      ),
+      { platform: admitted },
+    ).api?.rules.map(({ objects, scope }) => [objects.join(","), scope]);
+
+  // Admitted to its own namespace alone: no privileged role.
+  const local = (document: string): string =>
+    document.replace(
+      "  server:\n",
+      "  namespaceHolders: [notes/notes]\n  server:\n",
+    );
+
+  it("holds namespace rules under a platform that admits its Application to its namespace alone", () => {
+    expect(
+      processOf(
+        one(
+          serving(
+            "notes-api",
+            "        api:\n          reason: it keeps its sessions beside itself\n          rules:\n            - { group: core, objects: [configmaps], verbs: [create], scope: namespace }\n",
+          ),
+        ),
+        { platform: local },
+      ).api?.rules.map(({ scope }) => scope),
+    ).toStrictEqual(["namespace"]);
+  });
+
+  it("refuses a rule that reaches the cluster, where the platform admits its Application to its namespace alone", () => {
+    const refused = resolve(
+      one(
+        serving(
+          "notes-api",
+          "        api:\n          reason: it keeps its sessions beside itself\n          rules:\n            - { group: core, objects: [configmaps], verbs: [create], scope: namespace }\n            - { group: core, objects: [nodes, namespaces], verbs: [get] }\n",
+        ),
+      ),
+      { platform: local },
+    );
+
+    expect(
+      refused.ok
+        ? []
+        : refused.diagnostics
+            .filter(({ document }) => document === "minimal/notes.project.yml")
+            .map(({ code, path, message, hint }) => [
+              code,
+              path,
+              message,
+              hint,
+            ]),
+    ).toStrictEqual([
+      [
+        "E_PROCESS_RBAC_GRANT",
+        "/applications/0/processes/0/api/rules/1",
+        "notes-api asks the whole cluster for nodes, namespaces, and the platform admits the Application notes only to its own namespace",
+        "Scope the rule `namespace`, or name the Application in the Platform document's `apiAccess.holders` instead of `namespaceHolders`.",
+      ],
+    ]);
+  });
+
+  it("reaches the cluster where a rule names no scope, and its namespace where it says so", () => {
+    expect(
+      holding(
+        "            - { group: core, objects: [pods], verbs: [get] }\n            - { group: core, objects: [configmaps], verbs: [create], scope: namespace }\n",
+      ),
+    ).toStrictEqual([
+      ["pods", "cluster"],
+      ["configmaps", "namespace"],
+    ]);
+  });
+});
+
 // REQ-105 (docs/requirements.md): a Process that serves DNS resolves through
 // the platform's upstream nameservers, never the cluster's own DNS.
 describe("a Process that serves DNS", () => {
