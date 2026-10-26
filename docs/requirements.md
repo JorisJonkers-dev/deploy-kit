@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **104** rows. The compiler's behaviours join it as they land.
+This ledger holds **105** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -127,3 +127,4 @@ This ledger holds **104** rows. The compiler's behaviours join it as they land.
 | REQ-102 | A grant delivered `self` is accepted only for a Process that talks to Vault itself, whose env file wires its own client with a `${identity:vaultRole}` placeholder; one that wires none is `E_SELF_WITHOUT_VAULT_CLIENT`, read with or without a Platform document | [test/model/refusals.test.ts](../test/model/refusals.test.ts) |
 | REQ-103 | `deploy-kit generate identity` writes an Application's App Roles, Client id and Principal contract version in Go, Kotlin, TypeScript, Python and Rust, byte for byte the worked example's committed files, from its project file and the Platform document alone; `--check` fails a stale or missing file, and a project with no `client`, a platform with no `contract`, or a call naming no one Application gets no file and a message saying why | [test/cli/generate-identity.test.ts](../test/cli/generate-identity.test.ts) |
 | REQ-104 | An `irreplaceable` volume's off-cluster copy is encrypted to the age public key its class's policy names: a policy with `offCluster` and no `recipient`, or one that is no age public key, is refused with the Platform document; the volume's backup plan carries the destination, the recipient and `<project>/<process>/<claim>`, and its backup pod is handed them as `BACKUP_OFF_CLUSTER`, `BACKUP_OFF_CLUSTER_RECIPIENT` and `BACKUP_OFF_CLUSTER_PATH` | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
+| REQ-105 | A Process with an L4 exposure on port 53 resolves through the Platform document's upstream nameservers: its pod renders `dnsPolicy: None` with those addresses, and its policy admits them on UDP and TCP port 53 in place of the cluster's DNS; one beside a Platform document that names none is `E_NO_UPSTREAM_NAMESERVERS` | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |

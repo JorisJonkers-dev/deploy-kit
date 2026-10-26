@@ -158,6 +158,11 @@ its replicas are failover, not load sharing. A `node` address is one node's
 own address, for a site with no pool: every Process exposed on it is held to
 that node, through a Host port.
 
+**Upstream nameserver**: an address a Process that serves DNS resolves
+through instead of the cluster's DNS, named once in the Platform document's
+substrate facts. An L4 exposure on port 53 derives it; nothing authors it per
+Process. Not a node's resolver, which DHCP and the LAN's resolver own.
+
 **Node address**: an L4 Address of kind `node`, naming a node as the node
 contract does. It takes no address of a range; it shares the node's ports.
 

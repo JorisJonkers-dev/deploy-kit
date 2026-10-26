@@ -1985,6 +1985,15 @@ site pin is derived, and a placement the Process declares that contradicts it
 leaves no node eligible, which is `E_PLACEMENT_UNSATISFIABLE`
 ([chapter 20](20-resolved-deployment.md#derived-mechanics)).
 
+**A Process that serves DNS resolves through the platform's upstream
+nameservers.** A Process with an entry on port 53 answers the LAN's names, so it
+must keep working while the cluster's own DNS is down. It resolves through the
+addresses the Platform document's `substrate.upstreamNameservers` names, never
+the cluster's DNS, and its policy reaches them instead
+([chapter 16](16-dependencies.md#the-baseline)). Nothing is authored for this:
+the port derives it. A set holding such a Process beside a Platform document
+that names none is `E_NO_UPSTREAM_NAMESERVERS`.
+
 Replicas behind a pool address are **failover, not load sharing**. One node
 announces the address, and the `Local` policy hands a connection only to a pod
 on that node, so a second replica on another node receives nothing until the

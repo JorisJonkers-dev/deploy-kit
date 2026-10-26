@@ -682,6 +682,9 @@ const resolvedProcess = stated(
     environment: z.array(envEntry).exactOptional(),
     surfaces: z.array(resolvedSurface).exactOptional(),
     l4Exposure: z.array(resolvedL4Exposure).exactOptional(),
+    // The resolvers a Process that serves DNS resolves through, in place of
+    // the cluster's DNS (spec/v1/20-resolved-deployment.md#derived-mechanics).
+    nameservers: z.array(text).min(1).exactOptional(),
     ingress: z.array(ingressPeer).exactOptional(),
     egress: z.array(z.union([egressPeer, gateMembersPeer])).exactOptional(),
   }),

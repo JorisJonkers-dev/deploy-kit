@@ -45,6 +45,32 @@
       ]
     },
     {
+      "name": "an upstream nameserver that is no IPv4 address",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/substrate/upstreamNameservers/0",
+          "value": "dns10.quad9.net"
+        }
+      ]
+    },
+    {
+      "name": "an empty list of upstream nameservers",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/substrate/upstreamNameservers",
+          "value": []
+        }
+      ]
+    },
+    {
       "name": "a datastore outside the vocabulary",
       "verdict": "refuse",
       "breaks": "enum",

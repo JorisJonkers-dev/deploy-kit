@@ -4446,6 +4446,49 @@ describe("a replicated Process on a pool", () => {
   });
 });
 
+// REQ-105 (docs/requirements.md): a Process that serves DNS resolves through
+// the platform's upstream nameservers, never the cluster's own DNS.
+describe("a Process that serves DNS", () => {
+  const ON_53 =
+    "    l4Exposure:\n      - { address: lan-dns, port: 53, protocol: udp, process: notes-api, surface: dns }\n      - { address: lan-dns, port: 53, protocol: tcp, process: notes-api, surface: dns }\n    processes:\n";
+  const servesDns = one(
+    serving("notes-api").replace(
+      "provides: { http: 8080 }",
+      "provides: { http: 8080, dns: 5353 }",
+    ),
+  ).replace("    processes:\n", ON_53);
+  // The worked Platform document names the upstream nameservers.
+  const without = (document: string): string =>
+    document.replace(
+      /\n {2}upstreamNameservers: [^\n]*\n( {2}#[^\n]*\n)*/,
+      "\n",
+    );
+  const rules = (process: ReturnType<typeof processOf>): string[] =>
+    (process.egress ?? []).map(({ rule }) => rule);
+
+  it("resolves names through the platform's upstream nameservers, and not the cluster's DNS", () => {
+    const resolved = processOf(servesDns);
+
+    expect(resolved.nameservers).toStrictEqual(["9.9.9.10", "149.112.112.10"]);
+    expect(rules(resolved)).not.toContain("cluster-dns");
+  });
+
+  it("leaves a Process exposed on another port with the cluster's DNS", () => {
+    const resolved = processOf(
+      servesDns.replaceAll("port: 53,", "port: 5300,"),
+    );
+
+    expect(resolved).not.toHaveProperty("nameservers");
+    expect(rules(resolved)).toContain("cluster-dns");
+  });
+
+  it("is refused under a platform that names no upstream nameservers", () => {
+    expect(
+      notesCodesOf(resolve(servesDns, { platform: without })),
+    ).toStrictEqual(["E_NO_UPSTREAM_NAMESERVERS"]);
+  });
+});
+
 // REQ-091: only the Process of a tier's proxy that serves `web`, under a tier
 // that names its class, carries the edge proxy's configuration; and a tier's
 // forward-auth whose provider the set does not hold asks nothing.

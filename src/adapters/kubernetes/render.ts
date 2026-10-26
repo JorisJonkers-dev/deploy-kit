@@ -656,6 +656,14 @@ function podTemplateOf(
         ? {}
         : { priorityClassName: process.priorityClass }),
       automountServiceAccountToken: process.identityToken,
+      // A Process that serves DNS resolves through the nameservers it is
+      // handed, never the cluster's DNS it must keep working without.
+      ...(process.nameservers === undefined
+        ? {}
+        : {
+            dnsPolicy: "None" as const,
+            dnsConfig: { nameservers: [...process.nameservers] },
+          }),
       // An absent policy and an undefined one render alike: YAML drops the key.
       // Stryker disable next-line ConditionalExpression
       ...(restartPolicy === undefined ? {} : { restartPolicy }),

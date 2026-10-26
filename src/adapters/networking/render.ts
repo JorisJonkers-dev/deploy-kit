@@ -198,6 +198,22 @@ function policyOf(
     to: [{ ipBlock: { cidr } }],
     ports: [tcp(port)],
   }));
+  // The nameservers a Process that serves DNS resolves through, by address:
+  // they are off the cluster, and answer on UDP and on TCP.
+  const upstream =
+    process.nameservers === undefined
+      ? []
+      : [
+          {
+            to: process.nameservers.map((address) => ({
+              ipBlock: { cidr: `${address}/32` },
+            })),
+            ports: [
+              { protocol: "UDP" as const, port: DNS_PORT },
+              tcp(DNS_PORT),
+            ],
+          },
+        ];
   // Public IPv4 on every port, for a Process that declares internet egress.
   const internet =
     process.internetEgress === undefined
@@ -215,7 +231,7 @@ function policyOf(
       podSelector: { matchLabels: instanceOf(process.name) },
       policyTypes: ["Ingress", "Egress"],
       ...(ingress.length === 0 ? {} : { ingress }),
-      egress: [...edges, ...baseline, ...api, ...internet],
+      egress: [...edges, ...baseline, ...upstream, ...api, ...internet],
     },
   };
 }
@@ -226,6 +242,9 @@ type Backup = NonNullable<
 
 /** The cluster's DNS answers on UDP, and on TCP for a truncated response. */
 const DNS = "cluster-dns";
+
+/** The port every resolver answers on. */
+const DNS_PORT = 53;
 
 /** Each value once, the first time it is met: two backups of one Process share their peers. */
 const distinct = <T>(values: readonly T[]): T[] => {

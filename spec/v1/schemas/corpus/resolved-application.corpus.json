@@ -258,6 +258,34 @@
       ]
     },
     {
+      "name": "a Process that serves DNS, with the nameservers it resolves through",
+      "verdict": "accept",
+      "file": "examples/minimal/expected/resolved.json",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/processes/0/nameservers",
+          "value": [
+            "9.9.9.10",
+            "149.112.112.10"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a Process handed an empty list of nameservers",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/minimal/expected/resolved.json",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/processes/0/nameservers",
+          "value": []
+        }
+      ]
+    },
+    {
       "name": "a scheduled Process with its start deadline",
       "verdict": "accept",
       "file": "examples/data/expected/resolved.asset-sync.json"

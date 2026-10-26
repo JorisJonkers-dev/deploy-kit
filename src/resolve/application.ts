@@ -45,7 +45,13 @@ import { resolveL4Exposure } from "./l4-exposure.ts";
 import { l4ExposuresOf, l4HoldOf } from "../model/l4-addresses.ts";
 import { managed } from "./database.ts";
 import { resolveMigration } from "./migration.ts";
-import { egressOf, gateEgressOf, gateIngressOf, ingressOf } from "./policy.ts";
+import {
+  DNS_PORT,
+  egressOf,
+  gateEgressOf,
+  gateIngressOf,
+  ingressOf,
+} from "./policy.ts";
 import { resolveProcess, type ProcessContext } from "./process.ts";
 
 /** An Application's element: the projection without its document header and provenance. */
@@ -526,6 +532,12 @@ export function resolveApplication(
       process.name,
     );
     const l4Exposure = resolveL4Exposure(exposures, process, context.platform);
+    // A Process that serves DNS must not depend on the cluster's DNS, so it
+    // resolves through the platform's upstream nameservers instead. Without
+    // them it is refused, E_NO_UPSTREAM_NAMESERVERS, and keeps the cluster's.
+    const nameservers = exposures.some(({ port }) => port === DNS_PORT)
+      ? context.platform.substrate.upstreamNameservers
+      : undefined;
     const base = resolveProcess(process, {
       ...context,
       machinery,
@@ -550,10 +562,13 @@ export function resolveApplication(
       resolved: {
         ...base,
         ...(l4Exposure.length === 0 ? {} : { l4Exposure }),
+        ...(nameservers === undefined ? {} : { nameservers: [...nameservers] }),
         ...withEnvironment(base, derived.environment),
         ...(ingress.length === 0 ? {} : { ingress }),
         egress: [
-          ...egressOf(process, context, clientGrants.length > 0),
+          ...egressOf(process, context, clientGrants.length > 0).filter(
+            ({ rule }) => nameservers === undefined || rule !== "cluster-dns",
+          ),
           ...gateEgressOf(application, context),
         ],
       },

@@ -1,0 +1,29 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adguard-lan-dns
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/name: adguard
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/part-of: adguard
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    metallb.io/address-pool: lan-dns
+spec:
+  type: LoadBalancer
+  externalTrafficPolicy: Local
+  selector:
+    app.kubernetes.io/instance: adguard
+  ports:
+    - name: tcp-53
+      port: 53
+      protocol: TCP
+      targetPort: 5353
+    - name: udp-53
+      port: 53
+      protocol: UDP
+      targetPort: 5353

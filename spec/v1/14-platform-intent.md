@@ -174,6 +174,7 @@ substrate:
   cni: flannel
   networkPolicyController: embedded  # none | embedded | cni
   clusterDns: kube-system            # the namespace the cluster's DNS runs in
+  upstreamNameservers: [9.9.9.10, 149.112.112.10] # what a Process serving DNS resolves through
   imagePull: 5m                      # the slowest pull a pod may wait on
 ```
 
@@ -185,6 +186,7 @@ substrate:
 | `cni`, `networkPolicyController` | whether a non-enforcing policy stage exists ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)) |
 | `imagePull` | every derived deadline ([chapter 20](20-resolved-deployment.md#derived-mechanics)): a Process's progress deadline, a `prepare` Process's run deadline and so the Release Gate's, each with this on top, rounded up to a whole second, because each runs from before the image is on the node. It is the longest an image pull takes on the slowest node a pod may land on, measured, not a margin; optional, and a substrate that states none allows nothing for a pull ([0105](../../docs/adr/model/0105-every-derived-deadline-allows-the-substrates-image-pull.md)) |
 | `clusterDns` | the DNS baseline every egress policy carries ([chapter 16](16-dependencies.md#the-baseline)): the substrate runs the cluster's DNS, so where it runs is a fact about the substrate rather than a declared Application |
+| `upstreamNameservers` | a Process that serves DNS ([chapter 10](10-project-intent.md#l4-exposure)): it resolves through these addresses, never the cluster's DNS, which may be down in the outage it serves through. Optional, but a set holding such a Process with none named is `E_NO_UPSTREAM_NAMESERVERS`. A node's own resolver is not this: DHCP and the LAN's resolver own it |
 
 One fact holds on this substrate without a field, because nothing varies it:
 **a pod off the host network binds any port without a capability.** k3s sets
@@ -1359,6 +1361,7 @@ classDiagram
         +string cni
         +PolicyController networkPolicyController
         +Namespace clusterDns
+        +IPv4[] upstreamNameservers
     }
     class Bootstrap {
         +string[] crds

@@ -31,6 +31,8 @@ substrate:
   networkPolicyController: embedded # no non-enforcing stage: default-deny stays
   # render-only (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)
   clusterDns: kube-system # where the cluster's DNS runs: every egress policy admits it
+  upstreamNameservers: [9.9.9.10, 149.112.112.10] # what a Process that serves DNS
+  # resolves through, since it must not depend on the cluster's own DNS
   imagePull: 2m # the slowest pull a pod may wait on: the Pis boot from SD cards, so
   # every derived deadline allows for it (spec/v1/14-platform-intent.md#substrate-facts)
 
@@ -278,7 +280,7 @@ policyJob:
 handover:
   retireBy: 2027-03-31
   legacy: [auth, data, knowledge, notes]
-  estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]
+  estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]
   # Where the old path keeps the legacy Postgres's administrative login, which
   # applies the catalog of the estate path's databases until data moves.
   serving:

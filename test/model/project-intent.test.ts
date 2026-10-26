@@ -96,6 +96,7 @@ describe("parseProjectIntent", () => {
       "minimal",
       "observability",
       "secrets",
+      "utility",
     ]);
   });
 
