@@ -184,7 +184,7 @@
   # Stryker's incremental mode compares the tree with the report of the last
   # green run on main, and tests a mutant again when its module changed or a
   # test file that covered it changed; every other result is taken from that
-  # report. The work is six parallel shards, each mutating a disjoint share of
+  # report. The work is twelve parallel shards, each mutating a disjoint share of
   # every module's top-level statements, balanced by the time each took in
   # that report (scripts/mutation-shard.ts), and
   # `mutation` merges their reports into the one a single run would have
@@ -242,12 +242,12 @@
           echo "run=${run}" >> "$GITHUB_OUTPUT"
 
   'mutation-shard':
-    'name': 'Mutation (${{ matrix.shard }}/6)'
+    'name': 'Mutation (${{ matrix.shard }}/12)'
     'runs-on': 'ubuntu-latest'
     'needs':
       - 'mutation-scope'
     'if': "needs.mutation-scope.outputs.needed == 'true'"
-    # A run that finds no report on main tests a sixth of every mutant here.
+    # A run that finds no report on main tests a twelfth of every mutant here.
     'timeout-minutes': 60
     'permissions':
       'contents': 'read'
@@ -257,7 +257,7 @@
       # Every shard reports, not only the first to find a survivor.
       'fail-fast': false
       'matrix':
-        'shard': [1, 2, 3, 4, 5, 6]
+        'shard': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     'steps':
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
       - 'uses': './.github/actions/setup'
@@ -283,7 +283,7 @@
         'env':
           'SHARD': '${{ matrix.shard }}'
         'run': |
-          ranges="$(node scripts/mutation-shard.ts "$SHARD" 6 reports/stryker-incremental.json)"
+          ranges="$(node scripts/mutation-shard.ts "$SHARD" 12 reports/stryker-incremental.json)"
           mkdir -p reports/mutation
           printf '%s\n' "$ranges" > reports/mutation/ranges.txt
           npm run test:mutation -- --incremental --mutate "$ranges"
@@ -332,7 +332,7 @@
         'run': |
           set -euo pipefail
           gh run download "${RUN_ID}" --repo "${REPO}" --pattern 'mutation-report-*' --dir reports/shards
-          node scripts/mutation-merge.ts reports/shards 6
+          node scripts/mutation-merge.ts reports/shards 12
       # A failing merge is exactly when the report is needed, so the upload
       # runs whether or not the step above passed.
       - 'name': 'Upload mutation report'
