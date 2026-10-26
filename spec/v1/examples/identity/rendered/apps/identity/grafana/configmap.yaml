@@ -10,4 +10,4 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
 data:
   releaseGate.json: |
-    {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"210s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"grafana","readiness":{"path":"/api/health","port":3000}}],"protectedPath":"/api/user"}
+    {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"210s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"grafana","readiness":{"path":"/api/health","port":3000}}],"protectedBy":"grafana","protectedPath":"/api/user"}

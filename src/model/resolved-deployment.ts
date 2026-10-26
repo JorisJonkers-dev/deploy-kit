@@ -819,6 +819,9 @@ const releaseGate = z
     // before it switches: a 2xx is E_CLIENT_OPEN
     // (spec/v1/17-sign-in.md#what-is-checked).
     protectedPath: text.exactOptional(),
+    // The member the gate asks for it: the Process the longest Route of the
+    // Client's exposure takes the path to.
+    protectedBy: text.exactOptional(),
   })
   .meta({ id: "ReleaseGate" });
 

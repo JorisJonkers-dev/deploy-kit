@@ -33,7 +33,7 @@ spec:
         metadata:
           application: grafana
           process: grafana
-          revision: sha256:8cd64f25a1a68f005aec0360fe297741345ebaf5c2b9080ff231dfc3f3df0c9d
+          revision: sha256:0c7a94567ee553561533c8bda9bc05a76698a204fc80cf8848371fa0fde27060
           paths: /
           readiness: /api/health
           hostnames: grafana.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: grafana
           process: grafana
-          revision: sha256:8cd64f25a1a68f005aec0360fe297741345ebaf5c2b9080ff231dfc3f3df0c9d
+          revision: sha256:0c7a94567ee553561533c8bda9bc05a76698a204fc80cf8848371fa0fde27060
           paths: /
           readiness: /api/health
           hostnames: grafana.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: grafana
           process: grafana
-          revision: sha256:8cd64f25a1a68f005aec0360fe297741345ebaf5c2b9080ff231dfc3f3df0c9d
+          revision: sha256:0c7a94567ee553561533c8bda9bc05a76698a204fc80cf8848371fa0fde27060
           paths: /
           readiness: /api/health
           hostnames: grafana.jorisjonkers.dev

@@ -437,6 +437,10 @@
         "protectedPath": {
           "type": "string",
           "minLength": 1
+        },
+        "protectedBy": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [

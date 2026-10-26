@@ -957,6 +957,7 @@ Layer 2 therefore carries, per Application a Process of which switches
 | the gate deadline | `max` over the members of `progressDeadlineSeconds`, itself `startupBudget × 3` and the substrate's `imagePull` |
 | the migration | where the Application moves its schema with a changelog: the migration identity, `testedAgainst` where the proof records one, and `nonTransactional`, each copied from the migration plan ([The migration](#the-migration)) |
 | `protectedPath` | where the Application's Client is `native`: its `protectedPath`, which the gate requests anonymously before it switches, holding the release on a 2xx (`E_CLIENT_OPEN`, [chapter 17](17-sign-in.md#what-is-checked)); absent for any other Client and for an Application with none |
+| `protectedBy` | beside `protectedPath`: the member the gate asks for it, the Process the longest Route of the Client's exposure takes the path to ([chapter 17](17-sign-in.md#what-is-checked)) |
 
 `max` is the reading "held, not partial" requires: the unit waits for its
 slowest legitimate starter. `auth` declares a 600-second budget on `auth-api`

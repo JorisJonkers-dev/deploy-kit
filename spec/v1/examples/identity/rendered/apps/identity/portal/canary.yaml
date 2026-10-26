@@ -33,7 +33,7 @@ spec:
         metadata:
           application: portal
           process: portal
-          revision: sha256:bd4ec7935b72e30287503e1d358b3173cb86badb6b5dd3389cc5d127bd0a660b
+          revision: sha256:597bd7cff98639423725dcbaff55bda323add1d0967af17d4922ea0d99f149e0
           paths: /
           readiness: /
           hostnames: home.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: portal
           process: portal
-          revision: sha256:bd4ec7935b72e30287503e1d358b3173cb86badb6b5dd3389cc5d127bd0a660b
+          revision: sha256:597bd7cff98639423725dcbaff55bda323add1d0967af17d4922ea0d99f149e0
           paths: /
           readiness: /
           hostnames: home.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: portal
           process: portal
-          revision: sha256:bd4ec7935b72e30287503e1d358b3173cb86badb6b5dd3389cc5d127bd0a660b
+          revision: sha256:597bd7cff98639423725dcbaff55bda323add1d0967af17d4922ea0d99f149e0
           paths: /
           readiness: /
           hostnames: home.jorisjonkers.dev
