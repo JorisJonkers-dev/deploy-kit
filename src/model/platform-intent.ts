@@ -48,6 +48,9 @@ const port = z.int().min(1).max(65535);
  * does not move with the validator's own default.
  */
 export const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+/** One IPv4 address, as a resolver is named. */
+export const IPV4 =
+  /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)$/;
 /** An IPv4 range in CIDR notation, `192.168.0.98/32` for one address. */
 export const IPV4_CIDR =
   /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\/(3[0-2]|[12]?\d)$/;
@@ -104,6 +107,10 @@ const substrate = z
     // The namespace the cluster's DNS runs in, which every egress policy
     // admits on port 53 (spec/v1/16-dependencies.md#the-baseline).
     clusterDns: text,
+    // The resolvers a Process that serves DNS resolves through instead of the
+    // cluster's DNS, which it must not depend on
+    // (spec/v1/14-platform-intent.md#substrate-facts).
+    upstreamNameservers: z.array(z.string().regex(IPV4)).min(1).exactOptional(),
     // The longest an image pull takes on the slowest node a pod may land on,
     // which every derived deadline allows on top of the Process's own start
     // (spec/v1/14-platform-intent.md#substrate-facts).

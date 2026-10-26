@@ -389,6 +389,40 @@ describe("the kubernetes adapter", () => {
     expect(egressOf(edited())).not.toContainEqual(range);
   });
 
+  // REQ-105 (docs/requirements.md): a Process that serves DNS resolves
+  // through the nameservers it is handed, never the cluster's DNS.
+  it("resolves a Process through the nameservers it is handed, and any other through the cluster's DNS", () => {
+    const dnsOf = (project: ReturnType<typeof edited>) =>
+      renderKubernetes(project)
+        .flatMap(({ objects }) => objects)
+        .flatMap((object) => {
+          const pod = (
+            object as {
+              spec?: { template?: { spec?: Record<string, unknown> } };
+            }
+          ).spec?.template?.spec;
+          return pod === undefined
+            ? []
+            : [{ policy: pod["dnsPolicy"], config: pod["dnsConfig"] }];
+        });
+
+    expect(
+      dnsOf(
+        edited(undefined, () => ({
+          nameservers: ["9.9.9.10", "149.112.112.10"],
+        })),
+      ),
+    ).toStrictEqual([
+      {
+        policy: "None",
+        config: { nameservers: ["9.9.9.10", "149.112.112.10"] },
+      },
+    ]);
+    expect(dnsOf(edited())).toStrictEqual([
+      { policy: undefined, config: undefined },
+    ]);
+  });
+
   it("claims each volume ReadWriteOnce at its size, and writes no pruning guard on one nothing backs up", () => {
     expect(objectsAt(stopStart(), "pvc.yaml")).toStrictEqual([
       {
@@ -1013,6 +1047,35 @@ describe("the networking adapter", () => {
         ],
       },
     ]);
+  });
+
+  it("admits the nameservers a Process that serves DNS resolves through, on UDP and TCP port 53, and none for any other", () => {
+    const egressOf = (project: ReturnType<typeof edited>) =>
+      (
+        objectsAt(
+          renderNetworking(project),
+          "notes/notes/networkpolicy.yaml",
+        ) as { spec: { egress: unknown[] } }[]
+      )[0]?.spec.egress ?? [];
+    const upstream = {
+      to: [
+        { ipBlock: { cidr: "9.9.9.10/32" } },
+        { ipBlock: { cidr: "149.112.112.10/32" } },
+      ],
+      ports: [
+        { protocol: "UDP", port: 53 },
+        { protocol: "TCP", port: 53 },
+      ],
+    };
+
+    expect(
+      egressOf(
+        edited(undefined, () => ({
+          nameservers: ["9.9.9.10", "149.112.112.10"],
+        })),
+      ),
+    ).toContainEqual(upstream);
+    expect(egressOf(edited())).not.toContainEqual(upstream);
   });
 
   it("writes only the baseline where the projection admits nothing else", () => {

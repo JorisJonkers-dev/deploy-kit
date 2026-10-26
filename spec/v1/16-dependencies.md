@@ -606,6 +606,12 @@ declaration:
 | **egress UDP/53 to the cluster DNS service**, in every policy carrying `Egress` in `policyTypes`, admitted by the namespace the Platform document's `substrate.clusterDns` names ([chapter 14](14-platform-intent.md#substrate-facts)) | once any egress policy selects a pod, all unmatched egress is denied, DNS included. The dead renderer generation shows the failure: `providerPolicy` (`src/deployment/render/networkpolicy.ts:86-102`) emits an egress rule to the provider's pod and nothing else, so the consumer cannot resolve the `svc.cluster.local` name the coordinate derivation just handed it, and fails with a DNS timeout diagnosed as "Postgres is down". TCP/53 rides the same rule, for truncated responses. |
 | **ingress from the metrics stack** to any declared scrape port | the same file omits it; a process that silently loses scrape stops alerting, which is the failure observability exists to prevent |
 
+A Process that serves DNS is the one exception to the DNS rule. It must keep
+answering while the cluster's DNS is down, so it resolves through the Platform
+document's upstream nameservers instead
+([chapter 10](10-project-intent.md#l4-exposure)): its policy carries no rule
+to the cluster's DNS and admits those addresses, on UDP and TCP port 53.
+
 The DNS half is checkable statically: **every rendered NetworkPolicy carrying
 `Egress` in `policyTypes` also matches UDP/53**. A `conftest` rule asserts it
 over the rendered set, and that assertion is the property this baseline exists
