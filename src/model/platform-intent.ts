@@ -16,6 +16,15 @@ export const CERTIFICATE_SOURCES = ["acme", "none"] as const;
 export const HARDENING_CLASSES = ["restricted"] as const;
 /** Who forwards clients' requests to a tier's edge, where anyone does. */
 export const FORWARDERS = ["cloudflare"] as const;
+/** Who answers an ACME DNS challenge for a tier's names. */
+export const DNS_PROVIDERS = ["cloudflare"] as const;
+/** The built-in cluster roles a Human Grant may bind, and no other. */
+export const HUMAN_GRANT_ROLES = [
+  "cluster-admin",
+  "admin",
+  "edit",
+  "view",
+] as const;
 
 export type Datastore = (typeof DATASTORES)[number];
 export type PolicyController = (typeof POLICY_CONTROLLERS)[number];
@@ -23,6 +32,8 @@ export type Listener = (typeof LISTENERS)[number];
 export type CertificateSource = (typeof CERTIFICATE_SOURCES)[number];
 export type HardeningClass = (typeof HARDENING_CLASSES)[number];
 export type Forwarder = (typeof FORWARDERS)[number];
+export type DnsProvider = (typeof DNS_PROVIDERS)[number];
+export type HumanGrantRole = (typeof HUMAN_GRANT_ROLES)[number];
 
 const text = z.string().min(1);
 const count = z.int().min(1);
@@ -31,6 +42,20 @@ export const ERROR_RATE = /^(100|\d{1,2}(\.\d{1,2})?)%$/;
 /** A latency bound: whole milliseconds or seconds. */
 export const LATENCY = /^[1-9]\d*(ms|s)$/;
 const port = z.int().min(1).max(65535);
+/**
+ * An email address, as an ACME account is registered with: one `@` between a
+ * local part and a dotted domain, written out here so the published schema
+ * does not move with the validator's own default.
+ */
+export const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+/** An IPv4 range in CIDR notation, `192.168.0.98/32` for one address. */
+export const IPV4_CIDR =
+  /^((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\/(3[0-2]|[12]?\d)$/;
+/**
+ * An L4 Address's name: a DNS label, since it names the Service an exposure on
+ * it renders and the pool the Service asks its address from.
+ */
+export const L4_ADDRESS_NAME = /^[a-z]([a-z0-9-]{0,30}[a-z0-9])?$/;
 
 /**
  * A privileged role's holder: the Project that may hold it and the Application
@@ -111,20 +136,69 @@ const bootstrap = z
   })
   .meta({ id: "Bootstrap" });
 
+// Who answers a tier's forward-auth (spec/v1/14-platform-intent.md#tiers): a
+// declared Application by reference, the surface it answers on and the path it
+// answers at, never a URL, so the address follows the provider. The response
+// headers are the ones the edge hands on to the route's Process.
+const forwardAuth = z
+  .strictObject({
+    provider: holder,
+    surface: text,
+    path: z.string().regex(/^(\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\/?$/),
+    responseHeaders: z
+      .array(z.string().regex(/^[A-Za-z0-9-]+$/))
+      .min(1)
+      .exactOptional(),
+  })
+  .meta({ id: "ForwardAuth" });
+
+export type ForwardAuth = z.output<typeof forwardAuth>;
+
 const tier = z
   .strictObject({
     name: text,
     audiences: z.array(audience).min(1),
     listener,
     certificates: certificateSource,
-    forwardAuth: text.exactOptional(),
+    forwardAuth: forwardAuth.exactOptional(),
     // Absent where clients connect to the edge themselves.
     proxiedBy: forwarder.exactOptional(),
     // The platform Application whose proxy this tier is, declared in a project
     // file the platform owns: a reference into another document.
     traefik: holder,
+    // The ingress class the tier's proxy admits routes of, and external-dns
+    // filters records on (spec/v1/14-platform-intent.md#tiers): a Kubernetes
+    // name, since it is written as an annotation's value.
+    ingressClass: z
+      .string()
+      .regex(/^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/)
+      .exactOptional(),
+    // Where the tier's public names point, and whether the DNS provider
+    // proxies them (spec/v1/14-platform-intent.md#tiers). Absent where the
+    // tier's names are not published.
+    dns: z
+      .strictObject({ target: text, proxied: z.boolean() })
+      .meta({ id: "TierDns" })
+      .exactOptional(),
+    // The L4 Address the proxy listens on, by its name in `l4Addresses`: its
+    // ports follow from `listener`, and no project file writes them.
+    address: z.string().regex(L4_ADDRESS_NAME).exactOptional(),
   })
   .meta({ id: "Tier" });
+
+// How an `acme` tier's proxy registers and proves its names
+// (spec/v1/14-platform-intent.md#tiers): the account's email, the DNS provider
+// that answers the challenge, and the Secret Store path of its token, which
+// the proxy alone reads.
+const acmePolicy = z
+  .strictObject({
+    email: z.string().regex(EMAIL),
+    dnsProvider: z.enum(DNS_PROVIDERS).meta({ id: "DnsProvider" }),
+    token: text,
+  })
+  .meta({ id: "AcmePolicy" });
+
+export type AcmePolicy = z.output<typeof acmePolicy>;
 
 // Where an off-cluster copy's traffic goes, as a network policy can say it: a
 // policy admits an address range and a port, never a hostname
@@ -179,8 +253,27 @@ const enginePolicies = z
   })
   .meta({ id: "EnginePolicies" });
 
+// A Kubernetes label key and value: the monitoring stack selects its monitors
+// by a label set the platform names, so a render never writes one the API
+// server refuses.
+const labelKey = z
+  .string()
+  .regex(
+    /^([a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?\/)?[A-Za-z0-9]([A-Za-z0-9._-]{0,61}[A-Za-z0-9])?$/,
+  );
+const labelValue = z
+  .string()
+  .regex(/^([A-Za-z0-9]([A-Za-z0-9._-]{0,61}[A-Za-z0-9])?)?$/);
+
+// One cadence for every monitor the estate renders, and the labels the
+// monitoring stack selects every monitor by
+// (spec/v1/14-platform-intent.md#monitor-cadence).
 const monitorCadence = z
-  .strictObject({ interval: text, timeout: text })
+  .strictObject({
+    interval: text,
+    timeout: text,
+    labels: z.record(labelKey, labelValue).exactOptional(),
+  })
   .meta({ id: "MonitorCadence" });
 
 const probeCadence = z
@@ -308,13 +401,61 @@ export const fluxNamespaceOf = (platform: {
   readonly bootstrap: { readonly flux: { readonly sourceRef: string } };
 }): string => platform.bootstrap.flux.sourceRef.split("/")[0] as string;
 
+// The Grafana every Application's dashboards ship to
+// (spec/v1/14-platform-intent.md#telemetry): the labels its instance carries,
+// which a dashboard selects it by, and the data source a vendored dashboard's
+// inputs map to.
+const dashboardPolicy = z
+  .strictObject({
+    instance: z.record(z.string().min(1), z.string().min(1)),
+    datasource: text,
+  })
+  .meta({ id: "DashboardPolicy" });
+
 const telemetryPolicy = z
   .strictObject({
     collector: holder,
     // The metrics stack every declared scrape surface admits.
     metrics: holder,
+    dashboards: dashboardPolicy.exactOptional(),
   })
   .meta({ id: "TelemetryPolicy" });
+
+// Where an alert is delivered (spec/v1/14-platform-intent.md#monitoring): a
+// named receiver of one kind, its credential read from Vault through the one
+// secret delivery, never written here.
+const vaultValue = z
+  .strictObject({ path: text, key: text })
+  .meta({ id: "VaultValue" });
+const receiver = z
+  .strictObject({
+    name: z.string().regex(/^[a-z][a-z0-9-]*$/),
+    discord: z
+      .strictObject({ webhook: vaultValue })
+      .meta({ id: "DiscordReceiver" }),
+  })
+  .meta({ id: "Receiver" });
+
+// Which receiver an alert of one severity reaches, and how often it repeats.
+const severityRoute = z
+  .strictObject({
+    severity: text,
+    receiver: text,
+    repeat: z.string().regex(/^[1-9][0-9]*[mh]$/),
+  })
+  .meta({ id: "SeverityRoute" });
+
+// The monitoring stack by role, each a declared Application, and the one
+// routing of every alert of the estate (spec/v1/14-platform-intent.md#monitoring).
+const monitoring = z
+  .strictObject({
+    grafana: holder,
+    prometheus: holder,
+    alertmanager: holder,
+    receivers: z.array(receiver).min(1),
+    routes: z.array(severityRoute).min(1),
+  })
+  .meta({ id: "Monitoring" });
 
 // A directory on one node the platform grants to projects
 // (spec/v1/14-platform-intent.md#libraries): absolute, with no `.` or `..`
@@ -436,6 +577,111 @@ const mesh = z
   .strictObject({ enrolled: z.array(text).min(1) })
   .meta({ id: "Mesh" });
 
+// A group of people granted a built-in cluster role, cluster-wide
+// (spec/v1/14-platform-intent.md#human-grants). The group is written as the
+// API server sees it, and names the binding, so it holds no character a
+// Kubernetes name refuses: no `/` and no `%`.
+export const HUMAN_GROUP = /^[^/%\s]+$/;
+
+// The priority classes the platform declares and renders
+// (spec/v1/14-platform-intent.md#priority): what a datastore runs at, and what
+// the foundation and the Applications the platform names keep running at.
+// Nothing is authored on a Process.
+const priorityClass = z
+  .strictObject({
+    name: z.string().regex(/^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/),
+    value: z.int().min(1).max(1_000_000_000),
+  })
+  .meta({ id: "PriorityClass" });
+
+const priorityPolicy = z
+  .strictObject({
+    data: priorityClass,
+    critical: priorityClass,
+    criticalApplications: z.array(holder).min(1).exactOptional(),
+  })
+  .meta({ id: "PriorityPolicy" });
+
+/**
+ * Every holder of a privileged role, as `<project>/<application>`
+ * (spec/v1/14-platform-intent.md#privileged-roles): the foundation.
+ */
+export const foundationOf = (platform: PlatformIntentDocument): Set<string> =>
+  new Set([
+    ...platform.tiers.map(({ traefik }) => traefik),
+    ...(platform.delivery?.machinery ?? []),
+    ...(platform.delivery?.gate === undefined ? [] : [platform.delivery.gate]),
+    ...(platform.delivery?.reporter === undefined
+      ? []
+      : [platform.delivery.reporter]),
+    ...(platform.apiAccess?.holders ?? []),
+    ...(platform.telemetry === undefined
+      ? []
+      : [platform.telemetry.collector, platform.telemetry.metrics]),
+    ...(platform.secretStore === undefined ? [] : [platform.secretStore]),
+    ...(platform.signIn === undefined ? [] : [platform.signIn.provider]),
+  ]);
+
+const humanGrant = z
+  .strictObject({
+    group: z.string().regex(HUMAN_GROUP),
+    clusterRole: z.enum(HUMAN_GRANT_ROLES).meta({ id: "HumanGrantRole" }),
+    reason: text,
+  })
+  .meta({ id: "HumanGrant" });
+
+export type HumanGrant = z.output<typeof humanGrant>;
+// An address a client off the cluster reaches a raw surface on
+// (spec/v1/14-platform-intent.md#l4-addresses). A pool is a range of IPv4
+// addresses announced on one site's network segment: it is the pool's site
+// that holds every Process exposed on it, and its range that the address is
+// taken from. `kind` names how the address is reached, so another kind adds a
+// class beside this one rather than a field on it.
+const poolAddress = z
+  .strictObject({
+    kind: z.literal("pool"),
+    site: text,
+    range: z.string().regex(IPV4_CIDR),
+  })
+  .meta({ id: "PoolAddress" });
+
+// A node's own address, for a site with no pool: an exposure on it is a host
+// port on the Process, which is held to that node, since no other node
+// listens there. The node is named as the node contract names it.
+const nodeAddress = z
+  .strictObject({ kind: z.literal("node"), node: text })
+  .meta({ id: "NodeAddress" });
+// What one Node Agent's copy runs and requests
+// (spec/v1/14-platform-intent.md#node-agents): its image alias, and its memory
+// and cpu. Its privileges are the catalog's, so no entry names one.
+const nodeAgentPolicy = z
+  .strictObject({ image: text, memory: text, cpu: text })
+  .meta({ id: "NodeAgentPolicy" });
+
+// The speaker announces the pools from each node of their sites; its
+// controller, which hands each Service its address, runs once.
+const speakerPolicy = z
+  .strictObject({
+    image: text,
+    memory: text,
+    cpu: text,
+    controller: nodeAgentPolicy,
+  })
+  .meta({ id: "SpeakerPolicy" });
+
+// The closed Node Agent catalog: an agent the facts derive needs its entry
+// here, or E_NO_NODE_AGENT_POLICY refuses the set.
+const nodeAgents = z
+  .strictObject({
+    "gpu-device": nodeAgentPolicy.exactOptional(),
+    "gpu-metrics": nodeAgentPolicy.exactOptional(),
+    "node-metrics": nodeAgentPolicy.exactOptional(),
+    "l4-speaker": speakerPolicy.exactOptional(),
+  })
+  .meta({ id: "NodeAgents" });
+
+export type NodeAgentPolicy = z.output<typeof nodeAgentPolicy>;
+
 const provider = z
   .strictObject({
     name: text,
@@ -458,6 +704,7 @@ export const platformIntent = z
     engines: enginePolicies,
     monitors: monitorCadence,
     telemetry: telemetryPolicy.exactOptional(),
+    monitoring: monitoring.exactOptional(),
     // The Secret Store every grant is read from, on its `http` surface: an
     // Application a project file the platform owns declares
     // (spec/v1/14-platform-intent.md#the-secret-store).
@@ -482,6 +729,17 @@ export const platformIntent = z
       .meta({ entry: "GpuVendor" })
       .exactOptional(),
     vpn: vpnPolicy.exactOptional(),
+    nodeAgents: nodeAgents.exactOptional(),
+    acme: acmePolicy.exactOptional(),
+    humanGrants: z.array(humanGrant).min(1).exactOptional(),
+    priority: priorityPolicy.exactOptional(),
+    l4Addresses: z
+      .record(
+        z.string().regex(L4_ADDRESS_NAME),
+        z.union([poolAddress, nodeAddress]),
+      )
+      .meta({ entry: "L4Address" })
+      .exactOptional(),
   })
   .meta({ id: "Platform" });
 

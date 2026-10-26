@@ -30,9 +30,11 @@ const WORKED = [
   "knowledge/knowledge.project.yml",
   "minimal/notes.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   // The Asset data's Process mounts, read beside its project file.
   "data/config/postgresql.conf",
+  "data/dashboards/rabbitmq.json",
 ].map(read);
 
 /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
@@ -76,6 +78,11 @@ describe("checkIntentSet", () => {
         code: "E_SECRETS_AT_REST_REQUIRED",
         document: "data/data.project.yml",
         path: "/applications/0/processes/0/secrets/0",
+      },
+      {
+        code: "E_SECRETS_AT_REST_REQUIRED",
+        document: "data/data.project.yml",
+        path: "/applications/4/processes/0/secrets/0",
       },
       // The two grants both Applications share sit at the project header,
       // and a header grant is refused where it is written.
@@ -133,11 +140,14 @@ describe("checkIntentSet", () => {
         .replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: edge/traefik-public", "traefik: notes/notes")
         .replace("traefik: edge/traefik-lan", "traefik: notes/notes")
+        // notes serves no proxy's surfaces, so neither tier names an address.
+        .replaceAll(/\n {4}address: (edge-frankfurt|lan-edge)[^\n]*/g, "")
+        .replace("ingressClass: traefik-lan", "ingressClass: traefik-public")
         .replace(MACHINERY, "machinery: [notes/notes]")
         .replace("gate: delivery/release-gate", "gate: notes/notes")
         .replace("reporter: delivery/reporter", "reporter: notes/notes")
         .replace("secretStore: secrets/vault", "secretStore: notes/notes")
-        .replace("provider: identity/identity", "provider: notes/notes")
+        .replaceAll("provider: identity/identity", "provider: notes/notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
     };
@@ -161,11 +171,14 @@ describe("checkIntentSet", () => {
         .text.replace("secretsEncryption: false", "secretsEncryption: true")
         .replace("traefik: edge/traefik-public", "traefik: notes/notes")
         .replace("traefik: edge/traefik-lan", "traefik: notes/notes")
+        // notes serves no proxy's surfaces, so neither tier names an address.
+        .replaceAll(/\n {4}address: (edge-frankfurt|lan-edge)[^\n]*/g, "")
+        .replace("ingressClass: traefik-lan", "ingressClass: traefik-public")
         .replace(MACHINERY, "machinery: [notes/notes]")
         .replace("gate: delivery/release-gate", "gate: notes/notes")
         .replace("reporter: delivery/reporter", "reporter: notes/notes")
         .replace("secretStore: secrets/vault", "secretStore: notes/notes")
-        .replace("provider: identity/identity", "provider: notes/notes")
+        .replaceAll("provider: identity/identity", "provider: notes/notes")
         .replace(TELEMETRY, "\n")
         .replace(API_ACCESS, "\n"),
     };

@@ -1,0 +1,36 @@
+# REFUSED: E_REDIRECT_LOOP
+#
+# The route matches every path under `/`, and redirects to /admin/, which it
+# matches again: the client is sent back to the same redirect for ever. The
+# root-to-admin redirect is written on `match: exact` of `/`, with a second
+# route serving the rest (spec/v1/10-project-intent.md #what-is-checked).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: redirect-loop
+    exposure:
+      - name: public
+        host: redirect-loop.jorisjonkers.dev
+        audience: anonymous
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: redirect-loop-api, surface: http, redirectTo: /admin/ }
+    processes:
+      - name: redirect-loop-api
+        lifecycle: application
+        image: redirect-loop-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous

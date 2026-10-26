@@ -30,7 +30,9 @@ import {
   DELIVERIES,
   DURABILITY_CLASSES,
   KEY_ENCODINGS,
+  L4_PROTOCOLS,
   LIBRARY_ACCESS,
+  SPREADS,
   LIFECYCLES,
   MATCHES,
   RUNTIMES,
@@ -450,6 +452,49 @@ const resolvedSurface = z
   .strictObject({ name: text, port })
   .meta({ id: "ResolvedSurface" });
 
+// A port a client off the cluster dials on an L4 Address, and the surface's
+// port it reaches (spec/v1/20-resolved-deployment.md#l4-exposure): `name` is
+// the protocol and the client's port, which no two ports of one Service share.
+const resolvedL4Port = z
+  .strictObject({
+    name: text,
+    port,
+    protocol: z.enum(L4_PROTOCOLS).meta({ id: "L4Protocol" }),
+    surface: text,
+    targetPort: port,
+  })
+  .meta({ id: "ResolvedL4Port" });
+
+// One L4 Address a Process is exposed on, as the Platform declares it. On a
+// pool, the Service that requests it: a load balancer that keeps the client's
+// address and sends a connection only to a pod on the node that announces it.
+const resolvedPoolExposure = z
+  .strictObject({
+    address: text,
+    kind: z.literal("pool"),
+    site: text,
+    range: text,
+    service: text,
+    ports: z.array(resolvedL4Port).min(1),
+  })
+  .meta({ id: "ResolvedPoolExposure" });
+
+// On a node's own address, the node the Process is held to: each port is a
+// host port there, so no Service stands between the client and the pod.
+const resolvedNodeExposure = z
+  .strictObject({
+    address: text,
+    kind: z.literal("node"),
+    node: text,
+    ports: z.array(resolvedL4Port).min(1),
+  })
+  .meta({ id: "ResolvedNodeExposure" });
+
+const resolvedL4Exposure = z.union([
+  resolvedPoolExposure,
+  resolvedNodeExposure,
+]);
+
 const ingressRule = z.enum(INGRESS_RULES).meta({ id: "IngressRule" });
 
 // An inbound peer the Process's policy admits, on one of its own ports: a
@@ -499,6 +544,7 @@ const SWITCHOVERS_OF = {
  * cutover derives, and a Process with no cutover switches nothing.
  */
 const switchoverFollowsCutover: ShapeRule<{
+  readonly parked?: true;
   readonly cutover?: keyof typeof SWITCHOVERS_OF;
   readonly switchover?: string;
 }> = {
@@ -509,13 +555,34 @@ const switchoverFollowsCutover: ShapeRule<{
         if: {
           required: ["cutover"],
           properties: { cutover: { const: cutover } },
+          not: {
+            required: ["parked"],
+            properties: { parked: { const: true } },
+          },
         },
         then: { properties: { switchover: { enum: [...switchovers] } } },
       })),
+      // A parked Process stops and starts, whatever its cutover.
+      {
+        if: {
+          required: ["parked"],
+          properties: { parked: { const: true } },
+        },
+        then: { properties: { switchover: { const: "stop-start" } } },
+      },
     ],
   },
-  breaches: ({ cutover, switchover }) => {
+  breaches: ({ cutover, switchover, parked }) => {
     if (switchover === undefined) return [];
+    if (parked === true)
+      return switchover === "stop-start"
+        ? []
+        : [
+            {
+              path: ["switchover"],
+              message: "a parked Process stops and starts",
+            },
+          ];
     if (cutover === undefined)
       return [
         {
@@ -552,8 +619,39 @@ const resolvedProcess = stated(
     cutover: cutover.exactOptional(),
     // Present on a `lifecycle: application` Process; a job has no switchover.
     switchover: switchover.exactOptional(),
+    // Present on a `lifecycle: scheduled` Process alone: the cron it runs at,
+    // and how late a run may start before it is skipped.
+    schedule: text.exactOptional(),
+    startDeadline: duration.exactOptional(),
     deadline: duration,
-    replicas: z.int().min(1),
+    // None while the Process is parked.
+    replicas: z.int().min(0),
+    // A parked Process runs no pod and keeps everything it owns.
+    parked: z.literal(true).exactOptional(),
+    // The priority class it runs at, where the platform derives one.
+    priorityClass: text.exactOptional(),
+    // No two replicas of one revision share a node.
+    spreadAcross: z.enum(SPREADS).meta({ id: "Spread" }).exactOptional(),
+    // Where the Process is a tier's proxy: the class its routes carry, whether
+    // the tier terminates TLS, and on an acme tier the resolver named for it,
+    // with the account and where its state is kept
+    // (spec/v1/30-deliverables.md#the-edge-proxy).
+    edgeProxy: z
+      .strictObject({
+        ingressClass: text,
+        tls: z.boolean(),
+        resolver: z
+          .strictObject({
+            name: text,
+            email: text,
+            dnsProvider: text,
+            storage: text,
+          })
+          .meta({ id: "ResolvedResolver" })
+          .exactOptional(),
+      })
+      .meta({ id: "ResolvedEdgeProxy" })
+      .exactOptional(),
     memory: text,
     cpu: text,
     gpu: resolvedGpu.exactOptional(),
@@ -580,6 +678,7 @@ const resolvedProcess = stated(
     writablePaths: z.array(writablePath).exactOptional(),
     environment: z.array(envEntry).exactOptional(),
     surfaces: z.array(resolvedSurface).exactOptional(),
+    l4Exposure: z.array(resolvedL4Exposure).exactOptional(),
     ingress: z.array(ingressPeer).exactOptional(),
     egress: z.array(z.union([egressPeer, gateMembersPeer])).exactOptional(),
   }),
@@ -649,6 +748,13 @@ const resolvedExposure = z
     name: text,
     host: text,
     tier: text,
+    // The ingress class the tier's proxy admits its routes by.
+    ingressClass: text,
+    // Where the tier's public names point, where it publishes them.
+    dns: z
+      .strictObject({ target: text, proxied: z.boolean() })
+      .meta({ id: "ResolvedTierDns" })
+      .exactOptional(),
     listener,
     certificates,
     proxy: tierProxy,
@@ -799,7 +905,8 @@ const resolvedMesh = z
   .meta({ id: "ResolvedMesh" });
 
 // The monitor an Application's observability derives: which surface of which
-// Process, at which path, at the platform's cadence.
+// Process, at which path, at the platform's cadence, carrying the labels the
+// monitoring stack selects it by.
 const resolvedScrape = z
   .strictObject({
     process: text,
@@ -807,8 +914,59 @@ const resolvedScrape = z
     path: text,
     interval: duration,
     timeout: duration,
+    // The labels the monitoring stack selects every monitor by, as the
+    // Platform document's `monitors` names them.
+    labels: z.record(text, text).exactOptional(),
   })
   .meta({ id: "ResolvedScrape" });
+
+// A dashboard an Application ships, as Grafana keys it, with the data source
+// inputs a vendored file declares (spec/v1/10-project-intent.md#dashboards).
+const resolvedDashboard = z
+  .strictObject({
+    uid: text,
+    from: text,
+    content: z.string(),
+    inputs: z.array(text),
+  })
+  .meta({ id: "ResolvedDashboard" });
+
+// An Application's dashboards, in its Project's folder, for the Grafana the
+// Platform document names.
+const resolvedDashboards = z
+  .strictObject({
+    folder: text,
+    instance: z.record(text, text),
+    datasource: text,
+    files: z.array(resolvedDashboard).min(1),
+  })
+  .meta({ id: "ResolvedDashboards" });
+// A rule-group file the monitoring stack carries, as its groups
+// (spec/v1/10-project-intent.md#alert-rules).
+const resolvedAlertRules = z
+  .strictObject({ from: text, groups: z.array(z.unknown()).min(1) })
+  .meta({ id: "ResolvedAlertRules" });
+
+// The one routing of every alert, on the Alertmanager's Application
+// (spec/v1/14-platform-intent.md#monitoring): each receiver's webhook in the
+// Secret its grant lands in, and a route per severity.
+const resolvedAlerting = z
+  .strictObject({
+    receivers: z.array(
+      z
+        .strictObject({
+          name: text,
+          discord: z.strictObject({ secret: text, key: text }),
+        })
+        .meta({ id: "ResolvedReceiver" }),
+    ),
+    routes: z.array(
+      z
+        .strictObject({ severity: text, receiver: text, repeat: text })
+        .meta({ id: "ResolvedSeverityRoute" }),
+    ),
+  })
+  .meta({ id: "ResolvedAlerting" });
 
 const application = {
   id: text,
@@ -820,7 +978,10 @@ const application = {
   reconcileUnit: text,
   reconcileAfter: z.array(text).exactOptional(),
   alertClass: alertClass.exactOptional(),
+  alertRules: z.array(resolvedAlertRules).min(1).exactOptional(),
+  alerting: resolvedAlerting.exactOptional(),
   scrape: resolvedScrape.exactOptional(),
+  dashboards: resolvedDashboards.exactOptional(),
   // Absent on an `interrupted` Application: it stops before it starts, so no
   // switch waits on a gate (docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md).
   releaseGate: releaseGate.exactOptional(),
@@ -1011,6 +1172,7 @@ export const resolvedApplicationDocument = stated(
 
 export type ResolvedDeploymentDocument = z.output<typeof resolvedDeployment>;
 export type ResolvedPolicyJob = z.output<typeof resolvedPolicyJob>;
+export type ResolvedDashboards = z.output<typeof resolvedDashboards>;
 export type ResolvedCatalogJob = z.output<typeof resolvedCatalogJob>;
 /** An outbound peer named by namespace, and by Process where one Process is the peer. */
 export type EgressPeer = z.output<typeof egressPeer>;
@@ -1033,3 +1195,6 @@ export type ReleaseGate = NonNullable<
 export type ResolvedProbe = NonNullable<ResolvedProcess["readiness"]>;
 export type StartupProbe = NonNullable<ResolvedProcess["startup"]>;
 export type EnvEntry = NonNullable<ResolvedProcess["environment"]>[number];
+export type ResolvedL4Exposure = NonNullable<
+  ResolvedProcess["l4Exposure"]
+>[number];

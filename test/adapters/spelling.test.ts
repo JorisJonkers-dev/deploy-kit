@@ -62,6 +62,7 @@ function minimal(): ResolvedProject {
       "delivery/delivery.project.yml",
       "edge/edge.project.yml",
       "observability/observability.project.yml",
+      "observability/rules/platform.yaml",
       "secrets/secrets.project.yml",
       "identity/identity.project.yml",
       "identity/env/grafana/base.env",
@@ -107,13 +108,16 @@ function edited(
       {
         ...without(only, application(only)),
         // minimal's library mount and VPN attachment, with the internet
-        // egress the attachment derives, stay out unless an edit puts them
-        // back, so each variant holds one thing to spell.
+        // egress the attachment derives, and its L4 exposure, with the `ssh`
+        // surface it reaches, stay out unless an edit puts them back, so each
+        // variant holds one thing to spell.
         processes: [
           without(first, {
             libraries: undefined,
             vpn: undefined,
             internetEgress: undefined,
+            l4Exposure: undefined,
+            surfaces: first.surfaces?.filter(({ name }) => name !== "ssh"),
             ...process(first),
           }),
         ],
@@ -1286,15 +1290,45 @@ describe("the traefik adapter", () => {
     ]);
   });
 
-  it("stops at a redirect, whose Middleware waits on its slice", () => {
-    expect(() =>
-      exposed(({ routes }) => ({
-        routes: routes.map((route) => ({
-          ...route,
-          middleware: [{ kind: "redirect" as const, redirectTo: "/elsewhere" }],
-        })),
+  // REQ-086 (docs/requirements.md): a route's redirect is a RedirectRegex
+  // Middleware of its own, keeping the request's scheme and host.
+  it("spells a redirect as a Middleware of the route's own, to the path on the same host", () => {
+    const [deliverable] = exposed(({ routes }) => ({
+      routes: routes.map((route) => ({
+        ...route,
+        middleware: [
+          { kind: "security-headers" as const },
+          { kind: "redirect" as const, redirectTo: "/admin/" },
+        ],
       })),
-    ).toThrow("a redirect Middleware is not rendered yet");
+    }));
+    const [route] = routeOf([deliverable] as ReturnType<
+      typeof renderTraefik
+    >)?.["routes"] as Record<string, unknown>[];
+
+    expect(route?.["middlewares"]).toStrictEqual([
+      { name: "security-headers", namespace: "edge-system" },
+      { name: "notes-public-1-redirect", namespace: "notes-system" },
+    ]);
+    expect(deliverable?.objects[1]).toStrictEqual({
+      apiVersion: "traefik.io/v1alpha1",
+      kind: "Middleware",
+      metadata: {
+        name: "notes-public-1-redirect",
+        namespace: "notes-system",
+        labels: {
+          "app.kubernetes.io/part-of": "notes",
+          "app.kubernetes.io/managed-by": "deploy-kit",
+        },
+      },
+      spec: {
+        redirectRegex: {
+          regex: "^(https?://[^/]+)(/.*)?$",
+          replacement: "${1}/admin/",
+          permanent: false,
+        },
+      },
+    });
   });
 
   // REQ-073 (docs/requirements.md): a route's rate limit is a Middleware of

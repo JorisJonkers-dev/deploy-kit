@@ -39,6 +39,7 @@ tiers:
     listener: plain
     certificates: none
     traefik: refusals/lan-proxy
+    ingressClass: lan-proxy
 delivery:
   machinery: [refusals/edge-proxy]
   gate: refusals/edge-proxy

@@ -335,7 +335,12 @@ test("every rendered kind is a column of the deliverables matrix", () => {
   const pinned = new Set(["OCIRepository"]);
   // The route Flux's events take is rendered once per render, into the
   // estate-scoped tree, so the per-Application map carries no column for it.
-  const perRender = new Set(["Alert", "Provider"]);
+  // The priority classes are the cluster's, rendered once into the
+  // estate-scoped tree, so the per-Application map carries no column for them.
+  const perRender = new Set(["Alert", "Provider", "PriorityClass"]);
+  // The Node Agents are derived from node facts and pools, never from an
+  // Application, so the per-Application map carries no column for their kinds.
+  const perNode = new Set(["DaemonSet", "IPAddressPool", "L2Advertisement"]);
   const alias: Readonly<Record<string, string>> = {
     Kustomization: "kustomization",
     VaultDynamicSecret: "VaultDynami",
@@ -348,7 +353,12 @@ test("every rendered kind is a column of the deliverables matrix", () => {
       kinds.add(m[1] ?? "");
   expect(kinds.size, "no rendered fixtures found").toBeGreaterThan(5);
   for (const kind of kinds) {
-    if (perNamespace.has(kind) || pinned.has(kind) || perRender.has(kind))
+    if (
+      perNamespace.has(kind) ||
+      pinned.has(kind) ||
+      perRender.has(kind) ||
+      perNode.has(kind)
+    )
       continue;
     expect(
       xml.includes(alias[kind] ?? kind),
@@ -358,7 +368,9 @@ test("every rendered kind is a column of the deliverables matrix", () => {
 });
 
 test("no rendered fixture carries a kind the model stopped rendering", () => {
-  const gone = ["PrometheusRule"];
+  // PrometheusRule renders again, for the monitoring stack alone
+  // (spec/v1/14-platform-intent.md#monitoring).
+  const gone: string[] = [];
   for (const file of walk(join(spec, "examples")).filter((f) =>
     f.endsWith(".yaml"),
   ))

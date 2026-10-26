@@ -225,7 +225,8 @@ field's placement link to this anchor rather than copying rows.
 | `exposure` `audience`, and a route's `audience` override | Application | no contention | one closed audience vocabulary; the per-route form is the anonymous path inside an authenticated host |
 | `exposure[].contentPolicy` | Application | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
 | `exposure[].routes`: `path`, `match`, `process`, `surface`, `redirectTo` | Application | no contention | which of the Application's own Processes serves which path of the host. The surface must be one that Process `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
-| `probes`, `startupBudget`, `cutover` | Application | no contention | what only the Application knows about its own start, health and cutover; `cutover` is required on every Process but a prepare one and has no default |
+| `probes`, `startupBudget`, `cutover` | Application | no contention | what only the Application knows about its own start, health and cutover; `cutover` is required on every Process but a prepare or scheduled one and has no default |
+| `schedule` | Application | no contention | when a `scheduled` Process runs, five cron fields; on no other Process ([chapter 10](10-project-intent.md#scheduled-processes)) |
 | `hardening` | platform | no contention | one estate-wide posture, `restricted`. A Process authors no hardening at all: it declares the paths it must write, and an image that cannot meet the class is `E_HARDENING_UNMET` ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | `placement.memory`, `placement.cpu` | Application | pool, stated | required on every Process; the Application states the requirement, the platform arbitrates it against node allocatable |
 | `placement.gpu` | Application | pool, stated | `class`, `memory`, `vendor` and `model`, each optional, all matched against one card of the node contract's `gpus[]`; the request is one time-sliced share of that card, with no isolation from its other holders |
@@ -268,6 +269,7 @@ field's placement link to this anchor rather than copying rows.
 | `progressDeadlineSeconds` | derived | - | from `startupBudget`; a `prepare` Process's run deadline is its `startupBudget` itself; either way with the substrate's `imagePull` on top ([chapter 14](14-platform-intent.md#substrate-facts)) |
 | switchover | derived | - | from `cutover` and the delivery machinery: `continuous` derives `blue-green`, or `rolling` on the machinery, and `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
 | object kind | derived | - | from `lifecycle` and `volumes` |
+| `startDeadline` | derived | - | `300s` on every `scheduled` Process: a run that cannot start within it of its slot is skipped, and no two runs of one Process overlap ([chapter 10](10-project-intent.md#scheduled-processes)) |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | - | fixed, from Process name, Application Id and the images lock ([chapter 10](10-project-intent.md#the-label-set)) |
 | Secret and VSO sync objects | derived | - | from grants with `delivery: env` or `file`, each synced to the `destination` named for its Process and its path below the `secret/data/` mount, a `/` spelled `-` (`postgres-platform-postgres-exporter`), plus `rolloutRestartTargets` from `rotation`; a grant with `delivery: self` and `tolerates: reload` derives **no** restart target, which is what makes its rotation zero-downtime ([chapter 10](10-project-intent.md#zero-downtime-rotation)); a restart target is a Process name, and a rotation never starts a switchover ([chapter 55](55-delivery.md#secret-rotation)) |
@@ -276,7 +278,7 @@ field's placement link to this anchor rather than copying rows.
 | dependency coordinates | derived | - | from the edge set and the provider's surfaces, bound to the key the consumer chose |
 | Runtime Profile values | derived | - | from `runtime` |
 | ServiceMonitor, PodMonitor | derived | - | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document |
-| PrometheusRule, severity, receiver route | the monitoring stack | - | not rendered by this model. PromQL is a mechanism and a receiver is a shared channel ([chapter 10](10-project-intent.md#observability)) |
+| PrometheusRule, severity, receiver route | the monitoring stack | - | a PrometheusRule per rule-group file the monitoring stack's Applications carry, and one AlertmanagerConfig on its Alertmanager routing each severity the Platform document routes to its receiver ([chapter 14](14-platform-intent.md#monitoring)); no other Application carries rules |
 | a library's volume and claim | derived | - | one per project and library it mounts: the volume `<namespace>-<library>` onto the library's `path`, held to its `node`, and the claim `library-<library>` bound to it, shared by every Process of the project that mounts the library ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)) |
 | backup job, its identity and its claim | derived | - | from `volumes[].durability`: the job runs as `<process>-backup` and writes to `<claim>-backup`, of the volume's `size`, keeping `retain` copies; `reconstructible` renders none |
 | NetworkPolicy set | derived | - | from the edge set, exposure, grants, plus the baseline ([chapter 16](16-dependencies.md#network-policy)) |
@@ -848,11 +850,22 @@ connects it to the Secret Store, as any grant does. The Process also carries
 
 The middleware chain is derived, and one of its members needs an address: a
 forward-auth Middleware must name the endpoint that performs the check. **The
-tier names it** ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)).
-A tier in the Platform Intent that serves the `authenticated` audience carries
-the address of the endpoint that authenticates for it, beside the audiences it
-serves; a tier that serves no `authenticated` route carries no such field and
-needs none.
+tier names who answers it** ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)):
+a tier in the Platform Intent that serves the `authenticated` audience names
+its forward-auth provider, an Application, the surface one of its Processes
+answers on and the path it answers at; a tier that serves no `authenticated`
+route names none ([chapter 14](14-platform-intent.md#tiers)).
+
+The endpoint is the provider's Process, where it runs:
+`http://<process>.<namespace>.svc.cluster.local:<port><path>`, the namespace
+its Project's, or the handover ledger's `serving` location while that Project
+is legacy. No URL is authored, so the address follows the provider through a
+[Move](#the-move) and through its handover
+([#396](https://github.com/JorisJonkers-dev/deploy-kit/issues/396)); an
+earlier version of this section had the tier write the URL, which then had to
+be edited by hand at every move. A set that holds no file of the provider's
+Project, such as one Project's own check, derives the step without an
+endpoint; the composition, which holds every Project, derives it whole.
 
 The endpoint is the sign-in provider's Gate
 ([chapter 17](17-sign-in.md#what-the-edge-derives)). A route reaches it only
@@ -861,26 +874,13 @@ a native or token Client's routes carry no forward-auth Middleware at all. An
 `authenticated` exposure no Client names keeps forward-auth from its audience
 alone while `E_AUTHENTICATED_WITHOUT_CLIENT` waits
 ([chapter 17](17-sign-in.md#what-the-edge-derives)). A gated Client's exposure
-also gains the `/.auth/` route, whose `gate` is read off this address: the
-Service and namespace of a `<service>.<namespace>.svc.cluster.local` host and its
-port, or the scheme's where it names none. An endpoint outside the cluster
-names no Service, so no gated Client renders beside one.
+also gains the `/.auth/` route, served by the same Process the edge asks: its
+Service, namespace and port.
 
-It is not derived from the authenticating Application's own surface. `auth-api`'s
-estate-wide role *is* this middleware
-([chapter 10](10-project-intent.md#application-identity)), and resolving it as if it
-were a dependency edge would make the edge tree depend on resolving an Application
-and would write one Application's id into a platform derivation. It is a platform
-fact, so it sits where platform facts sit: the Platform Intent, pinned by
-digest ([Pinned inputs](#pinned-inputs)).
-
-The address the tier writes is the authenticating surface's
-[Stable Address](16-dependencies.md#the-stable-address), never its Process's
-own Service: a platform fact stays authored, and a Stable Address is the name of
-that surface which survives a [Move](#the-move) of the Application behind it.
-
-A route declaring `audience: authenticated` on a tier whose declaration carries
-no endpoint is `E_NO_FORWARD_AUTH_ENDPOINT`, checked when the chain is derived
+A route declaring `audience: authenticated` on a tier that names no provider is
+`E_NO_FORWARD_AUTH_ENDPOINT`, and a provider whose Project the set holds but
+which declares no Application with that surface is
+`E_UNKNOWN_FORWARD_AUTH_PROVIDER`, both checked when the chain is derived
 rather than discovered as a 500 at the edge.
 
 ### The mesh
@@ -898,6 +898,43 @@ catalog method rendered in an enrolled Project's namespace record the same
 data plane rather than chosen by the estate, so no document authors them; an
 Application of a Project not enrolled records no `mesh`, and its projection is
 what it was before the mesh existed.
+
+### L4 exposure
+
+A Process's `l4Exposure` holds one entry per L4 Address it is exposed on
+([chapter 10](10-project-intent.md#l4-exposure)), in name order: the address
+as the Platform document declares it, and its `ports`, each the port a client
+dials, its protocol, the surface and that surface's own port (`targetPort`),
+ordered by port and then protocol. A port is named `<protocol>-<port>`, which
+no two ports of one address share. A pool's entry carries its `site` and
+`range`, and the `service` that requests it, named `<process>-<address>`; a
+node address's entry carries its `node`, and no Service.
+
+On a pool the Service is a load balancer that requests the pool by its name and
+keeps the client's address (`Local` traffic policy). The pool's site joins the
+Process's placement as a hard pin, so its eligible nodes are those of that site
+alone, and the Process's network policy admits any address on each target port,
+since a client off the cluster may come from anywhere the pool's segment
+reaches.
+
+On a node address each port is a host port on the Process's container: on the
+surface's own port entry where the client dials that port over TCP, and on an
+entry of its own, named as the port is, where the port or the protocol differs.
+The node joins the Process's placement as a hard pin, so its one eligible node
+is that node, and its network policy admits any address on each target port, as
+on a pool.
+
+### A tier's proxy
+
+On an acme tier, the Process of the tier's proxy carries a `resolver` in its
+`edgeProxy` ([chapter 30](30-deliverables.md#the-edge-proxy)), which the tier
+derives and no author writes ([chapter 14](14-platform-intent.md#tiers)): named
+for the tier, with the account's `email`, the `dnsProvider` and the `storage`
+file on the claim. The tier also adds to the Process a `reconstructible`
+volume, `acme` at `/acme`, an `env` grant on the token's path whose key arrives
+as the variable the provider's client reads, and egress to the internet where
+none is declared: the certificate authority and the DNS provider are both
+beyond the cluster.
 
 ## The release gate
 
@@ -1227,14 +1264,17 @@ holding an Application the Platform document names for a platform role
 Projects share, and a Project's unit follows a Platform Project's unit where
 it needs that role. Only the Stable Addresses stay estate-scoped
 ([chapter 16](16-dependencies.md#the-stable-address)), because each must
-outlive its provider's move between Projects.
+outlive its provider's move between Projects, and the Human Grants, because
+each is the Platform document's and no Project's
+([chapter 14](14-platform-intent.md#human-grants)).
 
-One kind of unit still belongs to no Project, because what it applies is
-estate-scoped ([The path plan](#the-path-plan)), and it moves where its last
-column says:
+Two kinds of unit belong to no Project, because what each applies is
+estate-scoped ([The path plan](#the-path-plan)). The first stays; the second
+moves where its last column says:
 
 | unit | applies | follows | moves to |
 |---|---|---|---|
+| `estate-human-grants`, where the Platform document declares any Human Grant | `estate/human-grants/`: one `ClusterRoleBinding` per grant ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)) | nothing: a built-in cluster role is the cluster's own, and no Project's unit follows it | nowhere: a grant is no Project's |
 | `estate-vso-secrets`, while a datastore the old path runs has a catalog the estate path applies | `estate/vso-secrets/`: that catalog's Jobs and its documents, and the estate-scoped policy job that writes them ([The catalog methods](#the-catalog-methods)); every Project writes its own documents from its own unit ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) | the unit of the project that declares the Secret Store, which the job writes into; no Project's unit follows it, and a reader of that database retries until it exists | the datastore's own Project's unit, once that Project leaves the old path ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)) |
 
 It is the unit the estate-scoped artifact's pin applies
@@ -1480,6 +1520,7 @@ exposure:                            # on the Application: one host, its routes
   - name: public
     host: knowledge.jorisjonkers.dev # authored; carried through untouched
     tier: public-frankfurt           # arbitrated: the tier carrying `authenticated`
+    ingressClass: traefik-public     # the class the tier's proxy admits routes of
     listener: tls                    # the tier's facts, which the traefik adapter spells
     certificates: acme
     proxy: {application: traefik-public, namespace: edge-system}   # the tier's declared proxy
@@ -1877,6 +1918,32 @@ classDiagram
         +Digest testedAgainst
         +bool nonTransactional
     }
+    class ResolvedDashboards {
+        +string folder
+        +map instance
+        +string datasource
+    }
+    class ResolvedDashboard {
+        +string uid
+        +string from
+        +string content
+        +string[] inputs
+    class ResolvedAlertRules {
+        +string from
+        +list groups
+    }
+    class ResolvedAlerting {
+    }
+    class ResolvedReceiver {
+        +string name
+        +string discordSecret
+        +string discordKey
+    }
+    class ResolvedSeverityRoute {
+        +string severity
+        +string receiver
+        +string repeat
+    }
     class ResolvedScrape {
         +string process
         +string surface
@@ -1999,6 +2066,34 @@ classDiagram
         +Quantity size
         +DurabilityClass durability
     }
+    class ResolvedPoolExposure {
+        +string address
+        +string kind
+        +string site
+        +string range
+        +string service
+    }
+    class ResolvedNodeExposure {
+        +string address
+        +string kind
+        +string node
+    }
+    class ResolvedResolver {
+        +string name
+        +string email
+        +string dnsProvider
+        +string storage
+    }
+    class ResolvedL4Port {
+        +string name
+        +int port
+        +L4Protocol protocol
+        +string surface
+        +int targetPort
+    class ResolvedEdgeProxy {
+        +string ingressClass
+        +bool tls
+    }
     class ResolvedLibraryMount {
         +string library
         +string claim
@@ -2098,6 +2193,10 @@ classDiagram
         +VaultPath path
         +string key
     }
+    class ResolvedTierDns {
+        +string target
+        +bool proxied
+    }
     class ResolvedExposure {
         +ExposureName name
         +Fqdn host
@@ -2151,6 +2250,12 @@ classDiagram
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
     ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape
+    ResolvedApplication "1" *-- "0..1" ResolvedDashboards : dashboards
+    ResolvedDashboards "1" *-- "1..*" ResolvedDashboard : files
+    ResolvedApplication "1" *-- "0..*" ResolvedAlertRules : alertRules
+    ResolvedApplication "1" *-- "0..1" ResolvedAlerting : alerting
+    ResolvedAlerting "1" *-- "1..*" ResolvedReceiver : receivers
+    ResolvedAlerting "1" *-- "1..*" ResolvedSeverityRoute : routes
     ResolvedApplication "1" *-- "0..1" ResolvedClient : client
     ResolvedApplication "1" *-- "0..1" ResolvedMesh : mesh
     ResolvedPolicyJob "1" *-- "0..1" ResolvedMesh : mesh
@@ -2166,6 +2271,12 @@ classDiagram
     ResolvedProcess "1" *-- "1" ResolvedPlacement : placement
     ResolvedProcess "1" *-- "0..*" ResolvedVolume : volumes
     ResolvedProcess "1" *-- "0..*" ResolvedLibraryMount : libraries
+    ResolvedProcess "1" *-- "0..*" ResolvedPoolExposure : l4Exposure
+    ResolvedProcess "1" *-- "0..*" ResolvedNodeExposure : l4Exposure
+    ResolvedPoolExposure "1" *-- "1..*" ResolvedL4Port : ports
+    ResolvedNodeExposure "1" *-- "1..*" ResolvedL4Port : ports
+    ResolvedProcess "1" *-- "0..1" ResolvedEdgeProxy : edgeProxy
+    ResolvedEdgeProxy "1" *-- "0..1" ResolvedResolver : resolver
     ResolvedProcess "1" *-- "0..1" ResolvedGpu : gpu
     ResolvedProcess "1" *-- "0..1" ResolvedVpn : vpn
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets
@@ -2193,6 +2304,7 @@ classDiagram
 
     ResolvedExposure "1" *-- "1..*" ResolvedRoute : routes
     ResolvedExposure "1" *-- "1" TierProxy : proxy
+    ResolvedExposure "1" *-- "0..1" ResolvedTierDns : dns
     ResolvedRoute "1" *-- "0..*" MiddlewareStep : middleware
     ResolvedRoute "1" *-- "0..1" GateAddress : gate
 

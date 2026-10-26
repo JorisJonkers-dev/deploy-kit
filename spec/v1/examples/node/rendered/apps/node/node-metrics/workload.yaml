@@ -1,0 +1,94 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-metrics
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/name: node-metrics
+    app.kubernetes.io/part-of: node
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: node-metrics
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/name: node-metrics
+        app.kubernetes.io/part-of: node
+    spec:
+      serviceAccountName: node-metrics
+      automountServiceAccountToken: false
+      priorityClassName: system-node-critical
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      hostNetwork: true
+      hostPID: true
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - enschede-pi-1
+                      - enschede-pi-2
+                      - enschede-pi-3
+                      - frankfurt-contabo-1
+      containers:
+        - name: node-metrics
+          image: quay.io/prometheus/node-exporter@sha256:2303824a4e3dc61fe3195d1a6e978029d4774876cc9aba9d2c60ef85eb96a845
+          args:
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+            - --path.rootfs=/host/root
+            - --web.listen-address=:9100
+          ports:
+            - name: metrics
+              containerPort: 9100
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 20m
+            limits:
+              memory: 64Mi
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+            - name: root
+              mountPath: /host/root
+              readOnly: true
+              mountPropagation: HostToContainer
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: root
+          hostPath:
+            path: /

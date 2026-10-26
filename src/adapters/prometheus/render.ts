@@ -4,14 +4,113 @@
 // canary's pods must be scraped for the Release Gate's checks; a stop-start one
 // by a ServiceMonitor over the Service the render gives it.
 import type { ResolvedProject } from "../../model/resolution.ts";
+import type {
+  AlertmanagerConfig,
+  PrometheusRule,
+} from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
-import { instanceOf, labelsOf } from "../shared/labels.ts";
+import { instanceOf, labelsOf, managedOnly } from "../shared/labels.ts";
 import { applicationDirectory } from "../shared/paths.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "prometheus";
 
+/** A rule file's name as a Kubernetes name: its base name, lower case. */
+export const ruleNameOf = (application: string, from: string): string =>
+  `${application}-${(from.split("/").pop() as string)
+    .replace(/\.ya?ml$/, "")
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9-]/g, "-")}`;
+
+/**
+ * The monitoring stack's rule groups, one PrometheusRule per file, and the one
+ * routing of every alert (spec/v1/14-platform-intent.md#monitoring): alerts
+ * that match no severity route reach the `null` receiver, which delivers
+ * nothing.
+ */
+function alertingOf(project: ResolvedProject): Deliverable[] {
+  return project.applications.flatMap((application): Deliverable[] => {
+    const directory = applicationDirectory(project.project, application.id);
+    const labels = {
+      "app.kubernetes.io/part-of": application.id,
+      ...managedOnly(),
+    };
+    const { alertRules, alerting } = application;
+    return [
+      ...(alertRules === undefined
+        ? []
+        : [
+            {
+              path: `${directory}/alertrules.yaml`,
+              adapter: ADAPTER,
+              objects: alertRules.map(({ from, groups }): PrometheusRule => ({
+                apiVersion: "monitoring.coreos.com/v1",
+                kind: "PrometheusRule",
+                metadata: {
+                  name: ruleNameOf(application.id, from),
+                  namespace: application.namespace,
+                  labels,
+                },
+                spec: { groups },
+              })),
+            },
+          ]),
+      ...(alerting === undefined
+        ? []
+        : [
+            {
+              path: `${directory}/alertmanagerconfig.yaml`,
+              adapter: ADAPTER,
+              objects: [
+                {
+                  apiVersion: "monitoring.coreos.com/v1alpha1",
+                  kind: "AlertmanagerConfig",
+                  metadata: {
+                    name: "estate-alerts",
+                    namespace: application.namespace,
+                    labels,
+                  },
+                  spec: {
+                    route: {
+                      receiver: "null",
+                      groupBy: ["alertname", "namespace"],
+                      groupWait: "1m",
+                      groupInterval: "5m",
+                      repeatInterval: "12h",
+                      routes: alerting.routes.map(
+                        ({ severity, receiver, repeat }) => ({
+                          matchers: [{ name: "severity", value: severity }],
+                          receiver,
+                          repeatInterval: repeat,
+                        }),
+                      ),
+                    },
+                    receivers: [
+                      { name: "null" },
+                      ...alerting.receivers.map(({ name, discord }) => ({
+                        name,
+                        discordConfigs: [
+                          {
+                            apiURL: { name: discord.secret, key: discord.key },
+                            sendResolved: true,
+                          },
+                        ],
+                      })),
+                    ],
+                  },
+                } satisfies AlertmanagerConfig,
+              ],
+            },
+          ]),
+    ];
+  });
+}
+
 export function renderPrometheus(project: ResolvedProject): Deliverable[] {
+  return [...monitorsOf(project), ...alertingOf(project)];
+}
+
+function monitorsOf(project: ResolvedProject): Deliverable[] {
   return project.applications.flatMap((application): Deliverable[] => {
     const { scrape } = application;
     if (scrape === undefined) return [];
@@ -29,7 +128,9 @@ export function renderPrometheus(project: ResolvedProject): Deliverable[] {
     const metadata = {
       name: process.name,
       namespace: application.namespace,
-      labels: labelsOf(process, application.id),
+      // The monitoring stack's selector, which the render's own labels never
+      // give way to.
+      labels: { ...scrape.labels, ...labelsOf(process, application.id) },
     };
     const endpoint = {
       port: scrape.surface,

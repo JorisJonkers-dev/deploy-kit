@@ -4,8 +4,9 @@
 // units it applies are always the ones its artifact holds. One is written
 // when the pin moves, and when the committed one no longer says what
 // composition derives. A Project's artifact holds its one unit; the
-// estate-scoped one holds the unit that provisions secrets and one per tier
-// it carries routes for.
+// estate-scoped one holds the unit that applies the Human Grants, and the
+// unit that provisions secrets while a datastore the old path runs needs it.
+import { NODE_PROJECT } from "../model/node-agents.ts";
 import {
   ESTATE_ARTIFACT,
   ESTATE_SOURCE,
@@ -20,11 +21,20 @@ import {
   holds,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
-import { SECRETS_UNIT, unitOf } from "../model/reconcile-units.ts";
+import {
+  HUMAN_GRANTS_UNIT,
+  PRIORITY_CLASSES_UNIT,
+  SECRETS_UNIT,
+  unitOf,
+} from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
 import { rolloutAnnotations, type Rollout } from "../model/rollout.ts";
 import { readPinSource, samePinSource } from "../read/pin-source.ts";
-import { SECRETS_DIRECTORY } from "../adapters/shared/paths.ts";
+import {
+  HUMAN_GRANTS_DIRECTORY,
+  PRIORITY_CLASSES_DIRECTORY,
+  SECRETS_DIRECTORY,
+} from "../adapters/shared/paths.ts";
 import type { RenderedObject } from "../objects/deliverable.ts";
 import type { RenderedFile, Serializer } from "./render-intent-set.ts";
 
@@ -45,6 +55,7 @@ interface Artifact {
 
 const ESTATE = ESTATE_ARTIFACT;
 const SECRETS = SECRETS_DIRECTORY;
+const HUMAN_GRANTS = HUMAN_GRANTS_DIRECTORY;
 
 // Unit names are distinct within the list they sort, so `<=` would order the
 // same list.
@@ -61,7 +72,7 @@ const units = (names: readonly string[]): string[] =>
  * (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
  */
 function unitsOf(
-  { name }: Artifact,
+  { name, files }: Artifact,
   projects: readonly ResolvedProject[],
   platform: PlatformIntentDocument,
 ): SourceUnit[] {
@@ -71,8 +82,16 @@ function unitsOf(
         applications.some(({ id }) => holds(application, project, id)),
       )
       .map(({ project }) => unitOf(project));
+  // The Node Agents' Project declares nothing, and follows nothing: an agent
+  // needs only its node (spec/v1/14-platform-intent.md#node-agents).
+  if (name === NODE_PROJECT)
+    // A name no unit on the path carries is dropped from `dependsOn`, so any
+    // list of them follows nothing alike.
+    // Stryker disable next-line ArrayDeclaration
+    return [{ name: unitOf(name), path: `apps/${name}`, after: [] }];
   if (name !== ESTATE) {
-    // A delivered artifact that is not the estate's is a resolved Project's.
+    // A delivered artifact that is not the estate's or the Node Agents' is a
+    // resolved Project's.
     const project = projects.find(
       (candidate) => candidate.project === name,
     ) as ResolvedProject;
@@ -90,15 +109,39 @@ function unitsOf(
       },
     ];
   }
-  // The estate's artifact exists only while it holds the catalog of a
-  // datastore the old path runs, with the job that writes its documents: one
-  // unit, which follows the Secret Store's project.
+  // The estate's artifact holds the catalog of a datastore the old path runs,
+  // with the job that writes its documents, in a unit that follows the Secret
+  // Store's project; and the Human Grants' bindings, in a unit that follows
+  // nothing, since a built-in role is the cluster's own.
+  const carries = (directory: string): boolean =>
+    files.some(({ path }) => path.startsWith(`${directory}/`));
   return [
-    {
-      name: SECRETS_UNIT,
-      path: SECRETS,
-      after: declaring(platform.secretStore),
-    },
+    // The priority classes follow nothing: a pod that names one before it
+    // exists is refused at admission and created again once it does.
+    ...(carries(PRIORITY_CLASSES_DIRECTORY)
+      ? [
+          {
+            name: PRIORITY_CLASSES_UNIT,
+            path: PRIORITY_CLASSES_DIRECTORY,
+            after: [] as string[],
+          },
+        ]
+      : []),
+    ...(carries(HUMAN_GRANTS)
+      ? // A name no unit on the path carries is dropped from `dependsOn`, so
+        // any list of them follows nothing alike.
+        // Stryker disable next-line ArrayDeclaration
+        [{ name: HUMAN_GRANTS_UNIT, path: HUMAN_GRANTS, after: [] }]
+      : []),
+    ...(carries(SECRETS)
+      ? [
+          {
+            name: SECRETS_UNIT,
+            path: SECRETS,
+            after: declaring(platform.secretStore),
+          },
+        ]
+      : []),
   ];
 }
 

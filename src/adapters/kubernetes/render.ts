@@ -1,6 +1,7 @@
 // The `kubernetes` adapter (spec/v1/30-deliverables.md#adapters): per project
 // its Namespace and the volume and claim of each library it mounts, per Process
-// its controller, ServiceAccount, claims and Asset ConfigMaps, the backup each backed-up volume derives, the Canary of each
+// its controller, ServiceAccount, claims and Asset ConfigMaps, the Service of
+// each L4 Address it is exposed on, the backup each backed-up volume derives, the Canary of each
 // blue-green Process (#flagger-ready-objects), the ClusterRole and binding of
 // each Process that holds Kubernetes API access, and the kustomize
 // Kustomization of every directory the render writes. It spells what layer 2
@@ -25,7 +26,10 @@ import type {
   EnvVar,
   Kustomization,
   Labels,
+  ContainerPort,
+  LoadBalancerService,
   NodeAffinity,
+  PodAntiAffinity,
   PersistentVolumeClaim,
   PodSpec,
   Probe,
@@ -84,7 +88,10 @@ export const BACKUP_TARGET = "/backup";
 
 /** A family this adapter does not spell yet stops the render rather than leaving it out. */
 function notYet(process: ResolvedProcess): void {
-  if (process.lifecycle !== "application" || process.switchover === undefined)
+  if (
+    process.lifecycle !== "scheduled" &&
+    (process.lifecycle !== "application" || process.switchover === undefined)
+  )
     throw notSupported(
       `${process.name}: a ${process.lifecycle} Process that switches ${process.switchover ?? "nothing"} is not rendered yet`,
     );
@@ -439,20 +446,115 @@ function sidecarOf(
   };
 }
 
+/**
+ * The ports a container listens on, one per surface, and a host port for each
+ * port a client dials on a node's own address
+ * (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection): on the
+ * surface's own entry where the client dials the surface's port over TCP, and
+ * on one of its own, named as the resolved port is, where it does not.
+ */
+function portsOf(
+  surfaces: NonNullable<ResolvedProcess["surfaces"]>,
+  l4Exposure: ResolvedProcess["l4Exposure"],
+): ContainerPort[] {
+  // A missing list and an empty one expose nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  const onNode = (l4Exposure ?? []).flatMap((exposure) =>
+    exposure.kind === "node" ? exposure.ports : [],
+  );
+  // A port's target is its surface's own port, so a TCP port the client
+  // dials at that same number is the surface's entry with a host port.
+  const merges = ({
+    port,
+    protocol,
+    targetPort,
+  }: (typeof onNode)[number]): boolean =>
+    protocol === "tcp" && port === targetPort;
+  return [
+    ...surfaces.map(({ name, port }) => {
+      const dialled = onNode.find(
+        (entry) => entry.surface === name && merges(entry),
+      );
+      return {
+        name,
+        containerPort: port,
+        ...(dialled === undefined ? {} : { hostPort: dialled.port }),
+      };
+    }),
+    ...onNode
+      .filter((entry) => !merges(entry))
+      .map(({ name, port, protocol, targetPort }) => ({
+        name,
+        containerPort: targetPort,
+        hostPort: port,
+        protocol: protocol === "udp" ? ("UDP" as const) : ("TCP" as const),
+      })),
+  ];
+}
+
+/**
+ * A tier proxy's static configuration, as Traefik's arguments
+ * (spec/v1/30-deliverables.md#the-edge-proxy): an entry point per surface it
+ * provides, `web`, `websecure` and `admin`, the CRD provider admitting only
+ * the routes of its tier's class across namespaces, ping and metrics on
+ * `admin`, and logs as JSON.
+ */
+function edgeProxyArgsOf({ edgeProxy, surfaces }: ResolvedProcess): string[] {
+  if (edgeProxy === undefined) return [];
+  // A proxy provides `web`, or it is no tier's proxy.
+  const provided = surfaces as NonNullable<typeof surfaces>;
+  const port = (name: string) =>
+    provided.find((surface) => surface.name === name)?.port;
+  const web = port("web");
+  const websecure = port("websecure");
+  const admin = port("admin");
+  return [
+    `--entryPoints.web.address=:${String(web)}/tcp`,
+    ...(websecure === undefined
+      ? []
+      : [`--entryPoints.websecure.address=:${String(websecure)}/tcp`]),
+    ...(edgeProxy.tls && websecure !== undefined
+      ? ["--entryPoints.websecure.http.tls=true"]
+      : []),
+    ...(admin === undefined
+      ? []
+      : [
+          `--entryPoints.traefik.address=:${String(admin)}/tcp`,
+          "--ping=true",
+          "--ping.entryPoint=traefik",
+          "--metrics.prometheus=true",
+          "--metrics.prometheus.entryPoint=traefik",
+        ]),
+    "--providers.kubernetescrd=true",
+    `--providers.kubernetescrd.ingressClass=${edgeProxy.ingressClass}`,
+    "--providers.kubernetescrd.allowCrossNamespace=true",
+    "--providers.kubernetescrd.allowEmptyServices=true",
+    // An acme tier's resolver, named for the tier, keeping its state on the
+    // claim the tier derives and answering the DNS challenge with its token.
+    ...(edgeProxy.resolver === undefined
+      ? []
+      : [
+          `--certificatesresolvers.${edgeProxy.resolver.name}.acme.email=${edgeProxy.resolver.email}`,
+          `--certificatesresolvers.${edgeProxy.resolver.name}.acme.storage=${edgeProxy.resolver.storage}`,
+          `--certificatesresolvers.${edgeProxy.resolver.name}.acme.dnschallenge.provider=${edgeProxy.resolver.dnsProvider}`,
+        ]),
+    "--log.format=json",
+    "--accesslog=true",
+    "--accesslog.format=json",
+  ];
+}
+
 function containerOf(process: ResolvedProcess): Container {
   const env = envOf(process);
   const mounts = mountsOf(process);
+  const args = edgeProxyArgsOf(process);
   return {
     name: process.name,
     image: process.image,
+    ...(args.length === 0 ? {} : { args }),
     ...(process.surfaces === undefined
       ? {}
-      : {
-          ports: process.surfaces.map(({ name, port }) => ({
-            name,
-            containerPort: port,
-          })),
-        }),
+      : { ports: portsOf(process.surfaces, process.l4Exposure) }),
     ...(env.length === 0 ? {} : { env }),
     resources: gpuShareOf(process, resourcesOf(process.memory, process.cpu)),
     securityContext: RESTRICTED,
@@ -476,13 +578,40 @@ function containerOf(process: ResolvedProcess): Container {
  * eligible for it, each by name. Layer 2 resolved the set from the pinned node
  * contract, so the render names it whole, even where it is every node.
  */
-const affinityOf = ({ placement }: ResolvedProcess): NodeAffinity =>
-  nodeAffinityOf(
+const affinityOf = ({
+  name,
+  placement,
+  spreadAcross,
+}: ResolvedProcess): NodeAffinity & Partial<PodAntiAffinity> => ({
+  ...nodeAffinityOf(
     placement.boundTo === undefined
       ? placement.eligibleNodes
       : [placement.boundTo],
-  );
+  ),
+  // Replicas spread across nodes repel each other within one revision alone:
+  // a rollout's old and new pod may share a node, so the rollout completes
+  // where replicas equal eligible nodes.
+  ...(spreadAcross === undefined
+    ? {}
+    : {
+        podAntiAffinity: {
+          requiredDuringSchedulingIgnoredDuringExecution: [
+            {
+              labelSelector: { matchLabels: instanceOf(name) },
+              matchLabelKeys: ["pod-template-hash"] as const,
+              topologyKey: "kubernetes.io/hostname" as const,
+            },
+          ],
+        },
+      }),
+});
 
+type PodTemplate = Deployment["spec"]["template"];
+
+/**
+ * The pod a Process runs in, whatever controller starts it: a run to
+ * completion restarts in place on a failure.
+ */
 /** Whether the Process is a member of its Application's release gate. */
 const memberOf = (
   process: ResolvedProcess,
@@ -492,16 +621,93 @@ const memberOf = (
     (member) => member.process === process.name,
   ) === true;
 
+function podTemplateOf(
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+  restartPolicy?: PodSpec["restartPolicy"],
+): PodTemplate {
+  const labels = labelsOf(process, application.id);
+  const volumes = volumesOf(process);
+  return {
+    metadata: podMetadataOf(
+      {
+        ...labels,
+        // A missing list and an empty one carry no label alike.
+        // Stryker disable next-line ArrayDeclaration
+        ...consumerLabelsOf(process.consumes ?? []),
+        ...(memberOf(process, application) ? MEMBER_LABEL : {}),
+      },
+      [
+        [process.name, process.imageVersion],
+        // Stryker disable next-line ArrayDeclaration
+        ...(process.sidecars ?? []).map(
+          ({ name, imageVersion }) => [name, imageVersion] as const,
+        ),
+        ...(process.vpn === undefined
+          ? []
+          : [[VPN_CONTAINER, process.vpn.imageVersion] as const]),
+      ],
+    ),
+    spec: {
+      serviceAccountName: process.identity,
+      // No class and an undefined one render alike: YAML drops the key.
+      // Stryker disable next-line ConditionalExpression
+      ...(process.priorityClass === undefined
+        ? {}
+        : { priorityClassName: process.priorityClass }),
+      automountServiceAccountToken: process.identityToken,
+      // An absent policy and an undefined one render alike: YAML drops the key.
+      // Stryker disable next-line ConditionalExpression
+      ...(restartPolicy === undefined ? {} : { restartPolicy }),
+      ...(process.gpu === undefined
+        ? {}
+        : { runtimeClassName: process.gpu.runtimeClass }),
+      securityContext: {
+        runAsNonRoot: true,
+        runAsUser: process.uid,
+        runAsGroup: process.gid,
+        // A volume is written as the image's group, and only a volume is.
+        // A library's group is its own, and an `fsGroup` would re-own the
+        // whole library (spec/v1/10-project-intent.md#libraries).
+        ...(process.volumes === undefined || process.libraries !== undefined
+          ? {}
+          : { fsGroup: process.gid }),
+        ...(process.libraries === undefined
+          ? {}
+          : { supplementalGroups: groupsOf(process) }),
+        seccompProfile: { type: "RuntimeDefault" },
+      },
+      affinity: affinityOf(process),
+      ...(process.vpn === undefined
+        ? {}
+        : { initContainers: [vpnContainerOf(process.vpn)] }),
+      containers: [
+        containerOf(process),
+        // Stryker disable next-line ArrayDeclaration
+        ...(process.sidecars ?? []).map((sidecar) =>
+          sidecarOf(sidecar, envOf(process), [
+            ...writableMountsOf(process),
+            ...fileMountsOf(process),
+          ]),
+        ),
+      ],
+      ...(volumes.length === 0 ? {} : { volumes }),
+    },
+  };
+}
+
 function deploymentOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
 ): Deployment {
-  const labels = labelsOf(process, application.id);
-  const volumes = volumesOf(process);
   return {
     apiVersion: "apps/v1",
     kind: "Deployment",
-    metadata: { name: process.name, namespace: application.namespace, labels },
+    metadata: {
+      name: process.name,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+    },
     spec: {
       ...strategyOf(process),
       progressDeadlineSeconds: wholeSeconds(process.deadline),
@@ -511,67 +717,50 @@ function deploymentOf(
           ...instanceOf(process.name),
         },
       },
-      template: {
-        metadata: podMetadataOf(
-          {
-            ...labels,
-            // A missing list and an empty one carry no label alike.
-            // Stryker disable next-line ArrayDeclaration
-            ...consumerLabelsOf(process.consumes ?? []),
-            ...(memberOf(process, application) ? MEMBER_LABEL : {}),
-          },
-          [
-            [process.name, process.imageVersion],
-            // Stryker disable next-line ArrayDeclaration
-            ...(process.sidecars ?? []).map(
-              ({ name, imageVersion }) => [name, imageVersion] as const,
-            ),
-            ...(process.vpn === undefined
-              ? []
-              : [[VPN_CONTAINER, process.vpn.imageVersion] as const]),
-          ],
-        ),
-        spec: {
-          serviceAccountName: process.identity,
-          automountServiceAccountToken: process.identityToken,
-          ...(process.gpu === undefined
-            ? {}
-            : { runtimeClassName: process.gpu.runtimeClass }),
-          securityContext: {
-            runAsNonRoot: true,
-            runAsUser: process.uid,
-            runAsGroup: process.gid,
-            // A volume is written as the image's group, and only a volume is.
-            // A library's group is its own, and an `fsGroup` would re-own the
-            // whole library (spec/v1/10-project-intent.md#libraries).
-            ...(process.volumes === undefined || process.libraries !== undefined
-              ? {}
-              : { fsGroup: process.gid }),
-            ...(process.libraries === undefined
-              ? {}
-              : { supplementalGroups: groupsOf(process) }),
-            seccompProfile: { type: "RuntimeDefault" },
-          },
-          affinity: affinityOf(process),
-          ...(process.vpn === undefined
-            ? {}
-            : { initContainers: [vpnContainerOf(process.vpn)] }),
-          containers: [
-            containerOf(process),
-            // Stryker disable next-line ArrayDeclaration
-            ...(process.sidecars ?? []).map((sidecar) =>
-              sidecarOf(sidecar, envOf(process), [
-                ...writableMountsOf(process),
-                ...fileMountsOf(process),
-              ]),
-            ),
-          ],
-          ...(volumes.length === 0 ? {} : { volumes }),
-        },
+      template: podTemplateOf(process, application),
+    },
+  };
+}
+
+/**
+ * A scheduled Process's CronJob
+ * (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection): at its
+ * own schedule, never two runs at once, and a run that cannot start within its
+ * start deadline is skipped. A failed run is retried in its pod.
+ */
+function cronJobOf(
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): CronJob {
+  return {
+    apiVersion: "batch/v1",
+    kind: "CronJob",
+    metadata: {
+      name: process.name,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+    },
+    spec: {
+      schedule: process.schedule as string,
+      // A parked schedule starts no run; one in flight finishes.
+      ...(process.parked === true ? { suspend: true } : {}),
+      concurrencyPolicy: "Forbid",
+      startingDeadlineSeconds: wholeSeconds(process.startDeadline as string),
+      jobTemplate: {
+        spec: { template: podTemplateOf(process, application, "OnFailure") },
       },
     },
   };
 }
+
+/** The controller that runs a Process, by its lifecycle. */
+const workloadOf = (
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): Deployment | CronJob =>
+  process.lifecycle === "scheduled"
+    ? cronJobOf(process, application)
+    : deploymentOf(process, application);
 
 /** The Service a Process Flagger does not switch is reached by; Flagger generates a blue-green one's. */
 const serviceOf = (
@@ -592,6 +781,48 @@ const serviceOf = (
     ),
   },
 });
+
+/**
+ * The pool an L4 Address's Service asks its address from. MetalLB holds one
+ * pool per pool-kind L4 Address, under the address's name.
+ */
+export const ADDRESS_POOL = "metallb.io/address-pool";
+
+/**
+ * The Service of each L4 Address a Process is exposed on
+ * (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection): a load
+ * balancer whose `Local` traffic policy keeps the client's address, and so
+ * sends a connection only to a pod on the node that announces it.
+ */
+const l4ServicesOf = (
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): LoadBalancerService[] =>
+  // A missing list and an empty one expose nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  (process.l4Exposure ?? [])
+    .flatMap((exposure) => (exposure.kind === "pool" ? [exposure] : []))
+    .map(({ address, service, ports }) => ({
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: service,
+        namespace: application.namespace,
+        labels: labelsOf(process, application.id),
+        annotations: { [ADDRESS_POOL]: address },
+      },
+      spec: {
+        type: "LoadBalancer",
+        externalTrafficPolicy: "Local",
+        selector: instanceOf(process.name),
+        ports: ports.map(({ name, port, protocol, targetPort }) => ({
+          name,
+          port,
+          protocol: protocol === "udp" ? "UDP" : "TCP",
+          targetPort,
+        })),
+      },
+    }));
 
 /**
  * A claim for each volume, `ReadWriteOnce` as `local-path` provides, and for
@@ -1145,7 +1376,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
       application.processes.forEach(notYet);
       const { processes } = application;
       const files: [string, RenderedObject[]][] = [
-        ["workload.yaml", processes.map((p) => deploymentOf(p, application))],
+        ["workload.yaml", processes.map((p) => workloadOf(p, application))],
         ["client.yaml", clientOf(application)],
         [
           "serviceaccount.yaml",
@@ -1167,9 +1398,12 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
         ["migration.yaml", migrationOf(application)],
         [
           "service.yaml",
-          processes
-            .filter((p) => !blueGreen(p) && p.surfaces !== undefined)
-            .map((p) => serviceOf(p, application)),
+          [
+            ...processes
+              .filter((p) => !blueGreen(p) && p.surfaces !== undefined)
+              .map((p) => serviceOf(p, application)),
+            ...processes.flatMap((p) => l4ServicesOf(p, application)),
+          ],
         ],
         ["pvc.yaml", processes.flatMap((p) => claimsOf(p, application))],
         [

@@ -28,6 +28,13 @@ import {
 import { resolveApplication } from "../../src/resolve/application.ts";
 import { resolveLibraries } from "../../src/resolve/libraries.ts";
 import { mebibytes, millicores } from "../../src/model/quantities.ts";
+import {
+  l4ExposuresOf,
+  l4NodesOf,
+  l4SitesOf,
+} from "../../src/model/l4-addresses.ts";
+import { tierExposuresOf } from "../../src/model/tier-proxy.ts";
+import type { ApplicationDocument } from "../../src/model/project-intent.ts";
 
 const EXAMPLES = join(
   import.meta.dirname,
@@ -47,6 +54,7 @@ const FOUNDATION = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
 ].map((name): AuthoredFile => ({ name, text: text(name) }));
 
@@ -68,6 +76,7 @@ const DATA = [
   "data/data.project.yml",
   "data/env/postgres/base.env",
   "data/config/postgresql.conf",
+  "data/dashboards/rabbitmq.json",
 ].map((name): AuthoredFile => ({ name, text: text(name) }));
 const LOCK = parseYaml(text("platform/images.lock.yml")) as {
   images: Record<
@@ -108,14 +117,25 @@ interface Options {
   readonly platform?: (platform: string) => string;
   /** Whether the set signs people in: the platform names its provider, and the set composes it. */
   readonly signIn?: boolean;
+  /** A change to a foundation file, by its name. */
+  readonly foundation?: (name: string, text: string) => string;
   /** Files read beside the project: its env files, and its Asset files. */
   readonly env?: readonly AuthoredFile[];
   readonly lock?: (lock: string) => string;
+  readonly contract?: (contract: string) => string;
 }
 
 /** The codes a resolution refused with, in the order it reported them. */
 const codesOf = (result: ReturnType<typeof resolve>): string[] =>
   result.ok ? [] : result.diagnostics.map(({ code }) => code);
+
+/** The codes of the refusals the notes project earns, beside the foundation's own. */
+const notesCodesOf = (result: ReturnType<typeof resolve>): string[] =>
+  result.ok
+    ? []
+    : result.diagnostics
+        .filter(({ document }) => document === "minimal/notes.project.yml")
+        .map(({ code }) => code);
 
 function resolve(applications: string, options: Options = {}) {
   return resolveIntentSet(
@@ -129,7 +149,12 @@ function resolve(applications: string, options: Options = {}) {
       ...FOUNDATION.map((file) =>
         file.name === "platform/images.lock.yml" && options.lock !== undefined
           ? { ...file, text: options.lock(file.text) }
-          : file,
+          : file.name === "platform/node-contract.yml" &&
+              options.contract !== undefined
+            ? { ...file, text: options.contract(file.text) }
+            : options.foundation === undefined
+              ? file
+              : { ...file, text: options.foundation(file.name, file.text) },
       ),
       ...(options.signIn === true ? IDENTITY : []),
       { name: "minimal/notes.project.yml", text: HEADER + applications },
@@ -223,11 +248,9 @@ ${serving("notes-api")}`;
       {
         audience: "authenticated",
         middleware: [
-          {
-            kind: "forward-auth",
-            endpoint:
-              "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
-          },
+          // This set holds no file of the provider's Project, so the step
+          // names no endpoint; the composition, which holds it, does.
+          { kind: "forward-auth" },
           { kind: "security-headers" },
         ],
       },
@@ -1183,10 +1206,13 @@ ${serving("notes-api")}  - id: notes-proxy
 ${serving("notes-proxy")}`,
       {
         platform: (platform) =>
-          platform.replace(
-            "traefik: edge/traefik-public",
-            "traefik: notes/notes-proxy",
-          ),
+          platform
+            .replace(
+              "traefik: edge/traefik-public",
+              "traefik: notes/notes-proxy",
+            )
+            // notes-proxy serves no tier's surfaces, so the tier names no address.
+            .replace(/\n {4}address: edge-frankfurt[^\n]*/, ""),
       },
     );
 
@@ -1395,68 +1421,15 @@ roles: [writer, admin]`;
       },
     );
 
-    it("serves the Gate's own route on the scheme's port where the forward-auth endpoint names none", () => {
+    it("serves the Gate's own route from the Service of the tier's forward-auth provider", () => {
       const [exposure] =
-        application(signingIn(GATED), {
-          signIn: true,
-          platform: (platform) =>
-            platform.replace(
-              "identity.identity-system.svc.cluster.local:8080/gate/forward",
-              "identity.identity-system.svc.cluster.local/gate/forward",
-            ),
-        }).exposure ?? [];
-
-      expect(gateOf(exposure)).toStrictEqual({
-        name: "identity",
-        namespace: "identity-system",
-        port: 80,
-      });
-    });
-
-    it("reads the Gate's address off an endpoint that names no path", () => {
-      const [exposure] =
-        application(signingIn(GATED), {
-          signIn: true,
-          platform: (platform) =>
-            platform.replace(
-              "identity.identity-system.svc.cluster.local:8080/gate/forward",
-              "identity.identity-system.svc.cluster.local:8080",
-            ),
-        }).exposure ?? [];
+        application(signingIn(GATED), { signIn: true }).exposure ?? [];
 
       expect(gateOf(exposure)).toStrictEqual({
         name: "identity",
         namespace: "identity-system",
         port: 8080,
       });
-    });
-
-    it("stops at an endpoint outside the cluster that only carries an in-cluster address further on", () => {
-      expect(() =>
-        application(signingIn(GATED), {
-          signIn: true,
-          platform: (platform) =>
-            platform.replace(
-              "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
-              "https://gate.jorisjonkers.dev/to/http://identity.identity-system.svc.cluster.local:8080/gate",
-            ),
-        }),
-      ).toThrow("a forward-auth endpoint outside the cluster");
-    });
-
-    it("stops at a gated Client beside a forward-auth endpoint outside the cluster, which names no Service", () => {
-      expect(() =>
-        application(signingIn(GATED), {
-          signIn: true,
-          platform: (platform) =>
-            platform.replace(
-              "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
-              "https://gate.jorisjonkers.dev/forward",
-            ),
-        }),
-      ).toThrow(
-        "https://gate.jorisjonkers.dev/forward: a forward-auth endpoint outside the cluster has no route to serve the Gate's own",
-      );
     });
 
     it("derives the Gate's own route only on the exposure a gated Client names", () => {
@@ -1906,10 +1879,13 @@ describe("what a grant derives", () => {
 
   it("refuses a grant under a platform that names no Secret Store", () => {
     expect(
-      codesOf(
+      notesCodesOf(
         resolve(granted(SELF), {
           platform: (document) =>
-            document.replace("secretStore: secrets/vault\n", ""),
+            // With no Secret Store, no tier issues through acme either.
+            document
+              .replace("secretStore: secrets/vault\n", "")
+              .replace("certificates: acme", "certificates: none"),
         }),
       ),
     ).toStrictEqual(["E_NO_SECRET_STORE"]);
@@ -2275,8 +2251,11 @@ ${serving("notes-api", "        dependsOn:\n          - { application: platform-
     const refusedNotes = (applications: string) => {
       const result = resolve(applications, {
         env: DATA,
+        // With no Secret Store, no tier issues through acme either.
         platform: (document) =>
-          document.replace("secretStore: secrets/vault\n", ""),
+          document
+            .replace("secretStore: secrets/vault\n", "")
+            .replace("certificates: acme", "certificates: none"),
       });
       return result.ok
         ? []
@@ -2632,6 +2611,10 @@ describe("the profiles that inject, and the collector they are handed", () => {
           text: observability,
         },
         {
+          name: "observability/rules/platform.yaml",
+          text: text("observability/rules/platform.yaml"),
+        },
+        {
           name: "minimal/notes.project.yml",
           text: HEADER + one(serving("notes-api")),
         },
@@ -2858,7 +2841,7 @@ describe("the order edges impose, and a platform with no register", () => {
           ),
           {
             platform: (platform) =>
-              platform.replace(/\nproviders:\n(.*\n?)+$/, "\n"),
+              platform.replace(/\nproviders:\n( {2}.*\n)+/, "\n"),
           },
         ),
       ),
@@ -2952,7 +2935,7 @@ ${serving("notes-api")}`,
               .replace(/\n\s+forwardAuth: [^\n]*/, "")
               .replace(
                 "audiences: [lan]",
-                "audiences: [lan, authenticated]\n    forwardAuth: http://lan-auth.lan-system.svc.cluster.local:9000/forward",
+                "audiences: [lan, authenticated]\n    forwardAuth: {provider: notes/notes, surface: http, path: /lan-forward}",
               ),
         },
       ).exposure ?? [];
@@ -2960,7 +2943,8 @@ ${serving("notes-api")}`,
     expect(exposure?.tier).toBe("public-frankfurt");
     expect(exposure?.routes[0]?.middleware?.[0]).toStrictEqual({
       kind: "forward-auth",
-      endpoint: "http://lan-auth.lan-system.svc.cluster.local:9000/forward",
+      endpoint:
+        "http://notes-api.notes-system.svc.cluster.local:8080/lan-forward",
     });
   });
 
@@ -3255,15 +3239,18 @@ describe("a volume and what its class derives", () => {
 
   it("refuses a backup holding the off-cluster credential under a platform that names no Secret Store", () => {
     expect(
-      codesOf(
+      notesCodesOf(
         resolve(
           holding(
             "          - { claim: keep, mountAt: /k, size: 1Gi, durability: irreplaceable }\n",
             "        engine: files\n",
           ),
           {
+            // With no Secret Store, no tier issues through acme either.
             platform: (document) =>
-              document.replace("secretStore: secrets/vault\n", ""),
+              document
+                .replace("secretStore: secrets/vault\n", "")
+                .replace("certificates: acme", "certificates: none"),
           },
         ),
       ),
@@ -3272,7 +3259,7 @@ describe("a volume and what its class derives", () => {
     // credential the Secret Store holds; one that reads the volume does not.
     // One such Process is enough, beside one that holds nothing.
     const unstored = (engine: string) =>
-      codesOf(
+      notesCodesOf(
         resolve(
           holding(
             "          - { claim: keep, mountAt: /k, size: 1Gi, durability: recoverable }\n",
@@ -3284,7 +3271,9 @@ describe("a volume and what its class derives", () => {
             ),
           {
             platform: (document) =>
-              document.replace("secretStore: secrets/vault\n", ""),
+              document
+                .replace("secretStore: secrets/vault\n", "")
+                .replace("certificates: acme", "certificates: none"),
           },
         ),
       );
@@ -3639,11 +3628,14 @@ describe("a volume and what its class derives", () => {
 // REQ-049 (docs/requirements.md): the Vault policy job is derived where the
 // platform names it and a Secret Store answers.
 describe("the Vault policy job", () => {
-  const set = (platform?: (text: string) => string) => {
-    const result = resolve(
-      one(serving("notes-api")),
-      platform === undefined ? {} : { platform },
-    );
+  const set = (
+    platform?: (text: string) => string,
+    foundation?: (name: string, text: string) => string,
+  ) => {
+    const result = resolve(one(serving("notes-api")), {
+      ...(platform === undefined ? {} : { platform }),
+      ...(foundation === undefined ? {} : { foundation }),
+    });
     if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
     return result.value;
   };
@@ -3688,12 +3680,39 @@ describe("the Vault policy job", () => {
     // Not a job that is undefined: no job at all.
     expect(
       Object.keys(
-        set((platform) => platform.replace("secretStore: secrets/vault\n", "")),
+        set(
+          (platform) =>
+            platform
+              .replace("secretStore: secrets/vault\n", "")
+              .replace(/\nmonitoring:\n( {2}.*\n)+/, "\n")
+              // With no Secret Store, no tier issues through acme either.
+              .replace("certificates: acme", "certificates: none"),
+          // Without the monitoring stack, whose Alertmanager reads its
+          // receivers' webhooks from the Secret Store, and so its rules.
+          (name, text) =>
+            name === "observability/observability.project.yml"
+              ? text.replace(
+                  "    alertRules:\n      - {from: rules/platform.yaml}\n",
+                  "",
+                )
+              : text,
+        ),
       ),
-      // What the set does derive is where Flux's events go: the worked
-      // platform names a Reporter. The catalogs' homes are always there,
-      // and hold none.
-    ).toStrictEqual(["projects", "catalogHomes", "events"]);
+      // What the set does derive is where Flux's events go, since the worked
+      // platform names a Reporter, the tiers' proxies, the groups it grants a
+      // cluster role, its priority classes and each tier's forward-auth. The
+      // catalogs' homes and the Node Agents are always there, and the homes
+      // hold none.
+    ).toStrictEqual([
+      "projects",
+      "catalogHomes",
+      "events",
+      "tierProxies",
+      "nodeAgents",
+      "humanGrants",
+      "priority",
+      "forwardAuths",
+    ]);
   });
 
   it("lands on no node that holds an sdcard medium, and on none too small for what it asks for", () => {
@@ -4098,5 +4117,487 @@ describe("a mongo, the document store", () => {
     expect(
       application(one(serving("notes-api", edge)), { env: DATA }).migration,
     ).toBeUndefined();
+  });
+});
+
+describe("a Process nothing reaches", () => {
+  it("records no ingress at all, not an empty one", () => {
+    const worker = `      - name: notes-worker
+        lifecycle: application
+        image: notes-api
+        runtime: node
+        placement: { memory: 64Mi, cpu: 10m }
+        probes: none
+        startupBudget: 20s
+        cutover: interrupted
+`;
+    expect(processOf(one(worker))).not.toHaveProperty("ingress");
+  });
+});
+// REQ-081 (docs/requirements.md): a Process is exposed by the entries that
+// name it, and held to the site of each pool among them, once.
+describe("a Process's L4 exposures", () => {
+  const entry = (process: string, address: string) => ({
+    address,
+    port: 1883,
+    protocol: "tcp" as const,
+    process,
+    surface: "mqtt",
+  });
+  const application = {
+    l4Exposure: [
+      entry("broker", "lan-mqtt"),
+      entry("management", "lan-mqtt"),
+      entry("broker", "lan-dns"),
+    ],
+  };
+  const platform = {
+    l4Addresses: {
+      "lan-mqtt": {
+        kind: "pool" as const,
+        site: "enschede",
+        range: "192.168.0.97/32",
+      },
+      "lan-dns": {
+        kind: "pool" as const,
+        site: "enschede",
+        range: "192.168.0.98/32",
+      },
+    },
+  };
+
+  it("are the entries that name it, and no other Process's", () => {
+    expect(l4ExposuresOf(application, "broker")).toStrictEqual([
+      entry("broker", "lan-mqtt"),
+      entry("broker", "lan-dns"),
+    ]);
+    expect(l4ExposuresOf({}, "broker")).toStrictEqual([]);
+  });
+
+  it("hold it to each pool's site once", () => {
+    expect(
+      l4SitesOf(l4ExposuresOf(application, "broker"), platform),
+    ).toStrictEqual(["enschede"]);
+  });
+
+  // REQ-097: a node address holds the Process to its node, and to no site.
+  it("hold it to each node address's node once, and a pool's node to none", () => {
+    const onNodes = {
+      l4Addresses: {
+        ...platform.l4Addresses,
+        "mail-smtp": { kind: "node" as const, node: "enschede-1" },
+        "mail-imap": { kind: "node" as const, node: "enschede-1" },
+      },
+    };
+    const exposures = [
+      entry("broker", "mail-smtp"),
+      entry("broker", "mail-imap"),
+      entry("broker", "lan-mqtt"),
+    ];
+    expect(l4NodesOf(exposures, onNodes)).toStrictEqual(["enschede-1"]);
+    expect(l4SitesOf(exposures, onNodes)).toStrictEqual(["enschede"]);
+    expect(
+      l4NodesOf(l4ExposuresOf(application, "broker"), platform),
+    ).toStrictEqual([]);
+    expect(l4SitesOf([entry("broker", "mail-smtp")], onNodes)).toStrictEqual(
+      [],
+    );
+  });
+});
+
+// REQ-098 (docs/requirements.md): an agent the facts derive needs its catalog
+// entry, and its images are ones the lock holds.
+describe("the Node Agent catalog", () => {
+  const notes = (options: Options) =>
+    codesAndPaths(resolve(one(serving("notes-api")), options));
+  const codesAndPaths = (result: ReturnType<typeof resolve>) =>
+    result.ok
+      ? []
+      : result.diagnostics.map(({ code, path }) => ({ code, path }));
+
+  it("refuses an agent the facts derive that the catalog holds no entry for", () => {
+    expect(
+      notes({
+        platform: (platform) =>
+          platform.replace(/\n {2}gpu-device: .*\n/, "\n"),
+      }),
+    ).toStrictEqual([
+      { code: "E_NO_NODE_AGENT_POLICY", path: "/nodeAgents/gpu-device" },
+    ]);
+    expect(
+      notes({
+        platform: (platform) =>
+          platform.replace(/\nnodeAgents:\n( {2}.*\n)+/, "\n"),
+      }).map(({ path }) => path),
+    ).toStrictEqual([
+      "/nodeAgents/gpu-device",
+      "/nodeAgents/gpu-metrics",
+      "/nodeAgents/node-metrics",
+      "/nodeAgents/l4-speaker",
+    ]);
+  });
+
+  it("says which agent runs where, and what is missing", () => {
+    const refused = resolve(one(serving("notes-api")), {
+      platform: (platform) =>
+        platform.replace(/\n {2}node-metrics: .*\n/, "\n"),
+      lock: (lock) => lock.replace(/\n {2}dcgm-exporter:\n( {4}.*\n)+/, "\n"),
+    });
+    expect(
+      refused.ok
+        ? []
+        : refused.diagnostics.map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message:
+          "node-metrics runs on enschede-t1000-1,enschede-rx7900xtx-1,enschede-gtx-960m-1,enschede-pi-1,enschede-pi-2,enschede-pi-3,frankfurt-contabo-1, and the catalog names no image for it",
+        hint: "Declare `nodeAgents.node-metrics` in the Platform document: its image, memory and cpu.",
+      },
+      {
+        message: "the images lock holds no entry for dcgm-exporter",
+        hint: "Lock the alias, or name one the images lock holds.",
+      },
+    ]);
+  });
+
+  it("refuses the GPU agents where the platform names no runtime class for their cards", () => {
+    const ungpued = (platform: string) =>
+      platform.replace(/\ngpus:\n( {2}.*\n)+/, "\n");
+    const refused = resolve(one(serving("notes-api")), { platform: ungpued });
+    expect(
+      refused.ok
+        ? []
+        : refused.diagnostics.map(({ code, path, message, hint }) => ({
+            code,
+            path,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_NO_GPU_POLICY",
+        path: "/gpus",
+        message:
+          "the GPU agents run on nvidia cards, and the platform names no runtime class for them",
+        hint: "Add the vendor to the Platform document's `gpus`.",
+      },
+    ]);
+    // With no nvidia card in the contract, no GPU agent runs, and none needs
+    // it; the Platform document pins the contract it is read with.
+    const amd = (contract: string) =>
+      contract.replaceAll("vendor: nvidia", "vendor: amd");
+    const contract = readNodeContract(
+      parseYaml(amd(text("platform/node-contract.yml"))),
+    );
+    if (!contract.ok) throw new Error("the edited contract did not read");
+    const pinned = sha256Hasher(contract.value);
+    expect(
+      notes({
+        platform: (platform) =>
+          ungpued(platform).replace(
+            /nodeContract: "[^"]*"/,
+            `nodeContract: "${pinned}"`,
+          ),
+        contract: amd,
+      }),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses an agent's image, or its controller's, that the lock does not hold", () => {
+    expect(
+      notes({
+        lock: (lock) =>
+          lock
+            .replace(/\n {2}node-exporter:\n( {4}.*\n)+/, "\n")
+            .replace(/\n {2}metallb-controller:\n( {4}.*\n)+/, "\n"),
+      }),
+    ).toStrictEqual([
+      { code: "E_UNLOCKED_IMAGE", path: "/nodeAgents/node-metrics/image" },
+      {
+        code: "E_UNLOCKED_IMAGE",
+        path: "/nodeAgents/l4-speaker/controller/image",
+      },
+    ]);
+  });
+});
+
+// REQ-093 (docs/requirements.md): a receiver's webhook is granted to the
+// Alertmanager's first Process alone.
+describe("a receiver's credential", () => {
+  it("is granted to the Alertmanager's first Process, and no other", () => {
+    const result = resolve(one(serving("notes-api")), {
+      foundation: (name, text) =>
+        name === "observability/observability.project.yml"
+          ? text +
+            `      - name: alertmanager-sidecar
+        lifecycle: application
+        image: alertmanager
+        runtime: none
+        provides: { admin: 9094 }
+        placement: { memory: 64Mi, cpu: 10m }
+        probes:
+          readiness: { tcp: 9094 }
+        startupBudget: 20s
+        cutover: continuous
+`
+          : text,
+    });
+    if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
+    const alertmanager = result.value.projects
+      .find(({ project }) => project === "observability")
+      ?.applications.find(({ id }) => id === "alertmanager");
+    const paths = alertmanager?.processes.map(({ name, secrets }) => [
+      name,
+      (secrets ?? []).map((grant) => ("path" in grant ? grant.path : "")),
+    ]);
+
+    expect(paths).toStrictEqual([
+      ["alertmanager", ["secret/data/platform/alertmanager-discord"]],
+      ["alertmanager-sidecar", []],
+    ]);
+  });
+});
+
+// REQ-097: a pool holds as many copies as the Process runs, and a blue/green
+// switch, so neither refusal of a node's own address reaches a pool.
+describe("a replicated Process on a pool", () => {
+  it("is refused neither its replicas nor its continuous cutover", () => {
+    const codes = codesOf(
+      resolve(
+        one(
+          serving(
+            "notes-api",
+            "        replicas: { count: 2, reason: two copies serve while one restarts }\n",
+          ),
+        ).replace(
+          "    processes:\n",
+          "    l4Exposure:\n      - { address: lan-dns, port: 8080, protocol: tcp, process: notes-api, surface: http }\n    processes:\n",
+        ),
+      ),
+    );
+    expect(codes).not.toContain("E_NODE_ADDRESS_REPLICATED");
+    expect(codes).not.toContain("E_CUTOVER_UNHONOURABLE");
+  });
+});
+
+// REQ-091: only the Process of a tier's proxy that serves `web`, under a tier
+// that names its class, carries the edge proxy's configuration; and a tier's
+// forward-auth whose provider the set does not hold asks nothing.
+describe("a tier's proxy, read from the set", () => {
+  const resolved = (options: Options = {}) => {
+    const result = resolve(one(serving("notes-api")), options);
+    if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
+    return result.value;
+  };
+  const edgeProcesses = (options: Options = {}) =>
+    projectNamed([...resolved(options).projects], "edge")
+      .applications.find(({ id }) => id === "traefik-public")
+      ?.processes.map(({ name, edgeProxy }) => [name, edgeProxy !== undefined]);
+
+  it("asks no forward-auth provider the set does not hold", () => {
+    expect(resolved().forwardAuths).toStrictEqual([]);
+  });
+
+  it("configures no proxy under a tier that names no class", () => {
+    expect(
+      edgeProcesses({
+        platform: (platform) =>
+          platform.replace(/\n {4}ingressClass: traefik-public[^\n]*/, ""),
+      }),
+    ).toStrictEqual([["traefik-public", false]]);
+  });
+
+  it("configures the proxy's Process that serves web, and no other", () => {
+    expect(
+      edgeProcesses({
+        foundation: (name, text) =>
+          name === "edge/edge.project.yml"
+            ? text.replace(
+                "  - id: traefik-lan\n",
+                `      - name: traefik-public-logs
+        lifecycle: application
+        image: traefik
+        runtime: none
+        placement: { memory: 32Mi, cpu: 10m }
+        probes: none
+        startupBudget: 20s
+        cutover: continuous
+
+  - id: traefik-lan\n`,
+              )
+            : text,
+      }),
+    ).toStrictEqual([
+      ["traefik-public", true],
+      ["traefik-public-logs", false],
+    ]);
+  });
+});
+
+// REQ-099 (docs/requirements.md): a tier names the L4 Address its proxy
+// listens on, and its listener derives the ports: 80 to the proxy's `web`
+// surface, and on a `tls` listener 443 to `websecure` as well.
+describe("a tier's address", () => {
+  const platform = parsePlatformIntent(PLATFORM);
+  const edge = parseProjectIntent(text("edge/edge.project.yml"));
+  if (!platform.ok || !edge.ok)
+    throw new Error("the worked inputs did not read");
+  const applicationNamed = (id: string) =>
+    edge.value.document.applications.find(
+      (application) => application.id === id,
+    ) as ApplicationDocument;
+  const entry = (
+    address: string,
+    port: number,
+    process: string,
+    surface: string,
+  ) => ({
+    address,
+    port,
+    protocol: "tcp" as const,
+    process,
+    surface,
+  });
+
+  it("derives 80 and 443 on a tls tier's proxy, and 80 alone on a plain one's", () => {
+    expect(
+      tierExposuresOf(
+        platform.value.document,
+        "edge",
+        applicationNamed("traefik-public"),
+      ),
+    ).toStrictEqual([
+      entry("edge-frankfurt", 80, "traefik-public", "web"),
+      entry("edge-frankfurt", 443, "traefik-public", "websecure"),
+    ]);
+    expect(
+      tierExposuresOf(
+        platform.value.document,
+        "edge",
+        applicationNamed("traefik-lan"),
+      ),
+    ).toStrictEqual([entry("lan-edge", 80, "traefik-lan", "web")]);
+  });
+
+  it("hands an acme proxy its DNS token beside its own variables, in name order", () => {
+    const proxy = processOf(
+      one(
+        serving("notes-api")
+          .replace(
+            "provides: { http: 8080 }",
+            "provides: { web: 8000, websecure: 8443 }",
+          )
+          .replace(
+            "readiness: { path: /ready, port: 8080 }",
+            "readiness: { path: /ready, port: 8000 }",
+          )
+          .replace(
+            "liveness: { path: /live, port: 8080 }",
+            "liveness: { path: /live, port: 8000 }",
+          ),
+      ),
+      {
+        platform: (document) =>
+          document
+            .replace("traefik: edge/traefik-public", "traefik: notes/notes")
+            .replace(/\n {4}address: edge-frankfurt[^\n]*/, ""),
+      },
+    );
+    expect(proxy.environment?.map(({ name }) => name)).toStrictEqual([
+      "CF_DNS_API_TOKEN",
+      "DEPLOYMENT_ENVIRONMENT",
+      "OTEL_EXPORTER_OTLP_ENDPOINT",
+      "OTEL_SERVICE_NAME",
+    ]);
+  });
+
+  it("derives on an acme tier's proxy its resolver, claim, token and way out", () => {
+    const proxy = projectNamed(
+      projects(one(serving("notes-api"))),
+      "edge",
+    ).applications.find(({ id }) => id === "traefik-public")?.processes[0];
+    expect(proxy?.edgeProxy).toStrictEqual({
+      ingressClass: "traefik-public",
+      tls: true,
+      resolver: {
+        name: "public-frankfurt",
+        email: "hostmaster@jorisjonkers.dev",
+        dnsProvider: "cloudflare",
+        storage: "/acme/public-frankfurt.json",
+      },
+    });
+    expect(proxy?.volumes?.find(({ claim }) => claim === "acme")).toMatchObject(
+      {
+        mountAt: "/acme",
+        size: "16Mi",
+        durability: "reconstructible",
+      },
+    );
+    expect(proxy?.secrets).toContainEqual({
+      path: "secret/data/platform/cloudflare",
+      keys: ["CF_DNS_API_TOKEN"],
+      access: "read",
+      delivery: "env",
+      destination: "traefik-public-platform-cloudflare",
+      restartTargets: ["traefik-public"],
+    });
+    expect(proxy?.internetEgress).toStrictEqual({
+      reason: "ACME issuance and its DNS challenge",
+    });
+  });
+
+  it("refuses a port a tier derives on a node that another exposure dials there, at both", () => {
+    const refused = resolve(
+      one(
+        serving("notes-api").replace(
+          "cutover: continuous",
+          "cutover: interrupted",
+        ),
+      ).replace(
+        "    processes:\n",
+        "    l4Exposure:\n      - { address: mail-node, port: 443, protocol: tcp, process: notes-api, surface: http }\n    processes:\n",
+      ),
+    );
+    expect(
+      refused.ok
+        ? []
+        : refused.diagnostics.map(({ code, document, path }) => ({
+            code,
+            document,
+            path,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_NODE_PORT_TAKEN",
+        document: "minimal/notes.project.yml",
+        path: "/applications/0/l4Exposure/0",
+      },
+      {
+        code: "E_NODE_PORT_TAKEN",
+        document: "platform/platform.intent.yml",
+        path: "/tiers/0/address",
+      },
+    ]);
+  });
+
+  it("derives nothing on an Application no tier names, or a tier with no address", () => {
+    expect(
+      tierExposuresOf(
+        platform.value.document,
+        "notes",
+        applicationNamed("traefik-lan"),
+      ),
+    ).toStrictEqual([]);
+    const unaddressed = parsePlatformIntent(
+      PLATFORM.replace(/\n {4}address: lan-edge.*\n/, "\n"),
+    );
+    if (!unaddressed.ok) throw new Error("the edited platform did not read");
+    expect(
+      tierExposuresOf(
+        unaddressed.value.document,
+        "edge",
+        applicationNamed("traefik-lan"),
+      ),
+    ).toStrictEqual([]);
   });
 });

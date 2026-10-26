@@ -140,6 +140,97 @@ describe("podSecurityFindings", () => {
     ]);
   });
 
+  // A node address derives a host port and a hard pin to its one node
+  // (spec/v1/10-project-intent.md#hardening), so a host port on a pod held
+  // to exactly one node is the derived shape, and any other is not.
+  const onNodes = (...nodes: string[]): Json => ({
+    nodeAffinity: {
+      requiredDuringSchedulingIgnoredDuringExecution: {
+        nodeSelectorTerms: [
+          {
+            matchExpressions: [
+              { key: "kubernetes.io/hostname", operator: "In", values: nodes },
+            ],
+          },
+        ],
+      },
+    },
+  });
+  const hostPorted = (affinity: Json): string[] =>
+    podSecurityFindings(
+      deployment(
+        pod({
+          affinity,
+          containers: [
+            container(
+              "app",
+              {},
+              { ports: [{ containerPort: 25, hostPort: 25 }] },
+            ),
+          ],
+        }),
+      ),
+    );
+
+  it("accepts a host port on a pod held to one node", () => {
+    expect(hostPorted(onNodes("frankfurt-contabo-1"))).toStrictEqual([]);
+  });
+
+  it("refuses a host port on a pod that may land on more than one node", () => {
+    expect(hostPorted(onNodes("a", "b"))).toStrictEqual([
+      'Deployment/web container "app": hostPort 25',
+    ]);
+  });
+
+  it("refuses a host port on a pod held to one node by another key", () => {
+    const affinity = onNodes("frankfurt-contabo-1") as {
+      nodeAffinity: {
+        requiredDuringSchedulingIgnoredDuringExecution: {
+          nodeSelectorTerms: { matchExpressions: Json[] }[];
+        };
+      };
+    };
+    const term = affinity.nodeAffinity
+      .requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0] as {
+      matchExpressions: Json[];
+    };
+    term.matchExpressions = [
+      { key: "topology.kubernetes.io/zone", operator: "In", values: ["x"] },
+    ];
+    expect(hostPorted(affinity)).toStrictEqual([
+      'Deployment/web container "app": hostPort 25',
+    ]);
+  });
+
+  // A Node Agent holds the host privileges its catalog entry fixes
+  // (spec/v1/14-platform-intent.md#node-agents), and only the catalog renders
+  // a DaemonSet, into node-system.
+  const daemonSet = (namespace: string): string =>
+    stringify({
+      apiVersion: "apps/v1",
+      kind: "DaemonSet",
+      metadata: { name: "agent", namespace },
+      spec: {
+        template: {
+          spec: pod({
+            hostNetwork: true,
+            containers: [container("agent", { privileged: true })],
+          }),
+        },
+      },
+    });
+
+  it("leaves a Node Agent to the privileges its catalog entry fixes", () => {
+    expect(podSecurityFindings(daemonSet("node-system"))).toStrictEqual([]);
+  });
+
+  it("holds a DaemonSet anywhere else to the profile", () => {
+    expect(podSecurityFindings(daemonSet("notes-system"))).toStrictEqual([
+      "DaemonSet/agent: hostNetwork",
+      'DaemonSet/agent container "agent": privileged',
+    ]);
+  });
+
   it("checks init and ephemeral containers too", () => {
     const spec = pod({
       initContainers: [container("init", { privileged: true })],

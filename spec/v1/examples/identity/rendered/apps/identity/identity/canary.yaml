@@ -33,7 +33,7 @@ spec:
         metadata:
           application: identity
           process: identity
-          revision: sha256:95b1497778d70241c248922d49f9820c298ba56ec62ddd1a3d21b29db2988689
+          revision: sha256:3b14b1fc52b1e48002fbad4ece53c5885b7f0036594f00869d92ee9037b2b215
           paths: /
           readiness: /health/ready
           hostnames: id.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: identity
           process: identity
-          revision: sha256:95b1497778d70241c248922d49f9820c298ba56ec62ddd1a3d21b29db2988689
+          revision: sha256:3b14b1fc52b1e48002fbad4ece53c5885b7f0036594f00869d92ee9037b2b215
           paths: /
           readiness: /health/ready
           hostnames: id.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: identity
           process: identity
-          revision: sha256:95b1497778d70241c248922d49f9820c298ba56ec62ddd1a3d21b29db2988689
+          revision: sha256:3b14b1fc52b1e48002fbad4ece53c5885b7f0036594f00869d92ee9037b2b215
           paths: /
           readiness: /health/ready
           hostnames: id.jorisjonkers.dev

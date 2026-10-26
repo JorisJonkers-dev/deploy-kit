@@ -34,12 +34,14 @@ const SET = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "identity/env/grafana/base.env",
   "data/data.project.yml",
   "data/env/postgres/base.env",
   "data/config/postgresql.conf",
+  "data/dashboards/rabbitmq.json",
   "auth/auth.project.yml",
   "auth/env/auth-api/base.env",
   "auth/migration-proof.yml",
@@ -129,7 +131,11 @@ function probePorts(objects: readonly Doc[]): Map<string, number[]> {
 function enrolledFrom(policy: Policy, probes: Map<string, number[]>): Policy {
   const viaTunnel = (rule: Rule): Rule => {
     const dns = (rule.ports ?? []).some(({ port }) => port === 53);
-    const range = (rule.to ?? []).some((peer) => "ipBlock" in peer);
+    // A range is reached, or reaches in, without the tunnel: DNS, the
+    // internet, and a client off the cluster on an L4 Address.
+    const range = [...(rule.to ?? []), ...(rule.from ?? [])].some(
+      (peer) => "ipBlock" in peer,
+    );
     return dns || range || rule.ports === undefined
       ? rule
       : { ...rule, ports: [...rule.ports, TUNNEL] };

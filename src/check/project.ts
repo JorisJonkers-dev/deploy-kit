@@ -27,6 +27,7 @@ import {
   sameDeclaration,
 } from "../model/project-intent-queries.ts";
 import { namespaceOf } from "../model/runtime-profiles.ts";
+import { RUNS_TO_COMPLETION, serves } from "../model/vocabularies.ts";
 import { consumedOf, isLabelName } from "../model/consumer-label.ts";
 
 interface Refusal {
@@ -165,7 +166,7 @@ function completenessRefusals(
   const refusals: Refusal[] = [];
   const levels = [process, ...above];
   if (
-    process.lifecycle !== "prepare" &&
+    serves(process.lifecycle) &&
     !levels.some((level) => level.cutover !== undefined)
   )
     refusals.push({
@@ -189,9 +190,16 @@ function completenessRefusals(
   return refusals;
 }
 
-/** What only a Process that serves declares, which a prepare Process does not. */
-function prepareRefusals(process: Process, at: string): Refusal[] {
-  if (process.lifecycle !== "prepare") return [];
+/** What a Process that runs to completion phrases its refusal as. */
+const COMPLETES = {
+  prepare: "a prepare Process runs to completion before the new version starts",
+  scheduled: "a scheduled Process runs to completion at each slot",
+} as const satisfies Record<keyof typeof RUNS_TO_COMPLETION, string>;
+
+/** What only a Process that serves declares, which one that runs to completion does not. */
+function completionRefusals(process: Process, at: string): Refusal[] {
+  if (serves(process.lifecycle)) return [];
+  const lifecycle = process.lifecycle as keyof typeof RUNS_TO_COMPLETION;
   const serving = (
     [
       ["provides", process.provides],
@@ -205,12 +213,36 @@ function prepareRefusals(process: Process, at: string): Refusal[] {
   if (serving.length === 0) return [];
   return [
     {
-      code: "E_PREPARE_PROCESS_SERVES",
+      code: RUNS_TO_COMPLETION[lifecycle],
       path: at,
-      message: `a prepare Process runs to completion before the new version starts, and declares ${serving.join(", ")}, which only a serving Process has`,
-      hint: "Delete them: a prepare Process listens on nothing, has no readiness, runs once and cuts over nothing.",
+      message: `${COMPLETES[lifecycle]}, and declares ${serving.join(", ")}, which only a serving Process has`,
+      hint: `Delete them: a ${lifecycle} Process listens on nothing, has no readiness, runs one copy and cuts over nothing.`,
     },
   ];
+}
+
+/** A schedule is a scheduled Process's, and a scheduled Process has one. */
+function scheduleRefusals(process: Process, at: string): Refusal[] {
+  const scheduled = process.lifecycle === "scheduled";
+  if (scheduled && process.schedule === undefined)
+    return [
+      {
+        code: "E_SCHEDULE_MISSING",
+        path: at,
+        message: "a scheduled Process names no schedule to run at",
+        hint: "Declare `schedule`, five cron fields from minute to weekday.",
+      },
+    ];
+  if (!scheduled && process.schedule !== undefined)
+    return [
+      {
+        code: "E_SCHEDULE_UNSCHEDULED",
+        path: `${at}/schedule`,
+        message: `a ${process.lifecycle} Process is not run on a schedule, so nothing reads this one`,
+        hint: "Declare `lifecycle: scheduled`, or delete the schedule.",
+      },
+    ];
+  return [];
 }
 
 function processRefusals(
@@ -221,15 +253,15 @@ function processRefusals(
   const refusals: Refusal[] = [
     ...duplicateRefusals(process, above, at),
     ...completenessRefusals(process, above, at),
-    ...prepareRefusals(process, at),
+    ...completionRefusals(process, at),
+    ...scheduleRefusals(process, at),
   ];
   const volumes = process.volumes ?? [];
-  // The effective answer: it may come from a level above. A prepare Process
-  // cuts over nothing, so no answer applies to it.
-  const cutover =
-    process.lifecycle === "prepare"
-      ? undefined
-      : effectiveCutover([process, ...above]);
+  // The effective answer: it may come from a level above. A Process that runs
+  // to completion cuts over nothing, so no answer applies to it.
+  const cutover = serves(process.lifecycle)
+    ? effectiveCutover([process, ...above])
+    : undefined;
   if (cutover === "continuous" && volumes.length > 0)
     refusals.push({
       code: "E_CUTOVER_UNHONOURABLE",
@@ -428,7 +460,21 @@ function applicationRefusals(
     });
   for (const [index, exposure] of (application.exposure ?? []).entries()) {
     const seen = new Set<string>();
-    for (const [route, { path, match }] of exposure.routes.entries()) {
+    for (const [
+      route,
+      { path, match, redirectTo },
+    ] of exposure.routes.entries()) {
+      // A redirect its own route matches again sends the client back to it.
+      if (
+        redirectTo !== undefined &&
+        (match === "exact" ? redirectTo === path : redirectTo.startsWith(path))
+      )
+        refusals.push({
+          code: "E_REDIRECT_LOOP",
+          path: `${at}/exposure/${index}/routes/${route}`,
+          message: `the route's ${match} match of ${path} matches ${redirectTo}, the path it redirects to`,
+          hint: "Redirect to a path the route does not match: narrow the route to `match: exact`, or redirect elsewhere.",
+        });
       const pair = `${match} ${path}`;
       if (seen.has(pair))
         refusals.push({
@@ -439,6 +485,25 @@ function applicationRefusals(
         });
       seen.add(pair);
     }
+  }
+  // One Process's exposures on one address are one Service's ports, and a
+  // Service carries a port and a protocol once.
+  const dialled = new Set<string>();
+  for (const [index, entry] of (application.l4Exposure ?? []).entries()) {
+    const key = JSON.stringify([
+      entry.process,
+      entry.address,
+      entry.protocol,
+      entry.port,
+    ]);
+    if (dialled.has(key))
+      refusals.push({
+        code: "E_DUPLICATE_L4_PORT",
+        path: `${at}/l4Exposure/${index}`,
+        message: `${entry.process} is already exposed on ${entry.address} at ${entry.protocol} port ${String(entry.port)}`,
+        hint: "A client dials one port and protocol on an address once: delete one, or give it another port.",
+      });
+    dialled.add(key);
   }
   for (const [index, grant] of (application.secrets ?? []).entries())
     refusals.push(...grantRefusals(grant, `${at}/secrets/${index}`));
@@ -716,9 +781,10 @@ export function ruleDiagnostics(
 }
 
 // ---------------------------------------------------------------------------
-// The names a route or a scrape writes, which must resolve inside the one
-// Application that holds them. A dependency edge names another Application,
-// which only the composed union can resolve, so it is not checked here.
+// The names a route, a scrape or an L4 exposure writes, which must resolve
+// inside the one Application that holds them. A dependency edge names another
+// Application, which only the composed union can resolve, so it is not checked
+// here.
 // ---------------------------------------------------------------------------
 
 interface Written {
@@ -750,7 +816,7 @@ function linkRefusal(
   return undefined;
 }
 
-/** Every route and scrape that names a Process or a surface its Application lacks. */
+/** Every route, scrape and L4 exposure that names a Process or a surface its Application lacks. */
 export function linkDiagnostics(
   document: ProjectIntentDocument,
 ): readonly Diagnostic[] {
@@ -771,6 +837,10 @@ export function linkDiagnostics(
               path: `${at}/observability/scrape`,
             },
           ]),
+      ...(application.l4Exposure ?? []).map((route, l) => ({
+        route,
+        path: `${at}/l4Exposure/${String(l)}`,
+      })),
     ];
     return written.flatMap(({ route, path }) => {
       const refusal = linkRefusal(route, application.processes, path);

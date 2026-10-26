@@ -16,7 +16,7 @@
 # (docs/adr/model/0042-declarations-compose-from-intent-fragments.md). What may not happen is a project
 # spanning two repositories: this file is the whole project.
 #
-# Exercises: four independently released Applications, a third-party image behind
+# Exercises: four independently released Applications, a scheduled Process, a third-party image behind
 # an alias with `runtime: none`, declared writable paths, structured
 # `disk` placement, TCP probes, a static Asset, a sidecar, all three
 # Durability Classes, `provides` consumed by eight Applications, one authored
@@ -256,6 +256,13 @@ applications:
   # (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md), plus per-Process identity
   # (docs/adr/model/0031-identity-per-process.md).
   - id: platform-rabbitmq
+    # The broker's dashboard, vendored from the live one as JSON beside this
+    # file and shipped with the Application into the data folder of the
+    # Grafana the Platform document names
+    # (spec/v1/10-project-intent.md#dashboards). Its DS_PROMETHEUS input is
+    # mapped to that Grafana's data source; nothing is fetched at run time.
+    dashboards:
+      - {from: dashboards/rabbitmq.json}
     # Its own urgency, not the project's: raising the class to the header would
     # make this file page as loudly as postgres does. rabbitmq exports metrics
     # itself, so no sidecar is involved and the surface is the Process's own.
@@ -272,7 +279,7 @@ applications:
     # `<application>.<zone>` rule produces `platform-rabbitmq.jorisjonkers.dev`,
     # which resolves to nothing -- and it would be right for auth, so the
     # derivation would look correct until someone read this line. `host` is
-    # therefore the full FQDN, authored, unique across the estate
+    # therefore the full FQDN, authored, unique on a tier
     # (E_DUPLICATE_HOST at composition) (review/EXPOSURE-MANIFEST.md).
     exposure:
       - name: management        # unique within the Application; names what this
@@ -292,6 +299,24 @@ applications:
         # hostnames auth's CORS list maintains by hand today -- under this model
         # that list derives from edges like this one rather than being retyped
         # (chapter 16). The predicate is still open.
+      - name: lan               # the same host on the LAN tier: split horizon.
+        host: rabbitmq.jorisjonkers.dev
+        audience: lan           # a second tier is a second proxy, so one host
+                                # on two tiers has a winner in each; on one
+                                # tier it would be E_DUPLICATE_HOST
+                                # (spec/v1/10-project-intent.md#what-is-checked)
+        routes:
+          - {path: /, match: prefix, process: rabbitmq, surface: management}
+
+    # The sensors on the LAN publish over MQTT from off the cluster, so the
+    # broker's `mqtt` surface is a raw TCP surface on an L4 Address the
+    # Platform document declares (spec/v1/10-project-intent.md#l4-exposure).
+    # The entry names the address, never an IP or a node; `port` is the one a
+    # sensor dials, and the port the broker listens on stays the surface's.
+    # The address is a pool on the Enschede LAN, so the broker is held to that
+    # site, and a sensor's own address reaches it unchanged.
+    l4Exposure:
+      - {address: lan-mqtt, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}
 
     processes:
       - name: rabbitmq
@@ -305,6 +330,7 @@ applications:
           amqp: 5672        # named by auth and knowledge in `dependsOn`
           management: 15672
           metrics: 15692    # the prometheus plugin's own listener
+          mqtt: 1883        # the MQTT plugin's listener, reached off the cluster
 
         placement:
           memory: 2Gi       # the broker the estate's async work queues behind
@@ -316,8 +342,9 @@ applications:
         # No `exposure` here: it sits on the Application above, and its one route
         # names the `management` surface declared in `provides`. `amqp` and
         # `metrics` are provided and not routed -- providing a port is not
-        # exposing it, and only the route decides which of the three the edge
-        # can reach.
+        # exposing it, and only the route decides which of the four the edge
+        # can reach. `mqtt` is reached through no edge at all, but on the L4
+        # Address the Application's `l4Exposure` names.
 
         probes:
           readiness: {tcp: 5672}
@@ -451,3 +478,40 @@ applications:
             # same class as postgres: a backup job keeping 90 copies and an
             # off-cluster copy.
             durability: irreplaceable
+
+  # ============================================================== asset-sync
+  # Publishes the latest release assets of the agent toolkit to the public
+  # assets bucket, as fleet-infra's `garage-asset-sync` CronJob does today. It
+  # runs to completion at each slot and serves nothing, so it is a scheduled
+  # Process (spec/v1/10-project-intent.md#scheduled-processes): it authors its
+  # own `schedule`, and never a cutover, probes, a port or a copy count. Never
+  # two runs at once, and a run more than 300 seconds late is skipped; neither
+  # is written here. Everything else it declares as any Process does.
+  - id: asset-sync
+    processes:
+      - name: asset-sync
+        lifecycle: scheduled
+        schedule: "*/15 * * * *" # every run is idempotent, so a tight slot costs nothing
+        image: asset-sync
+        runtime: none
+        placement:
+          memory: 64Mi
+          cpu: 25m
+          # Beside the bucket's store, which runs only in Frankfurt, so the
+          # uploads never cross the overlay network between sites.
+          site: frankfurt
+        # The bucket key, as one file: a scheduled Process holds a grant like
+        # any other, and its identity is its own.
+        secrets:
+          - path: secret/data/platform/garage/web-key
+            keys: [credentials]
+            access: read
+            delivery: file
+            mountAt: /run/secrets/garage/credentials
+            fileMode: "0400"
+            rotation: { tolerates: restart }
+        # It reads the release from GitHub and writes the bucket at its public
+        # address: no edge names either.
+        egress:
+          to: internet
+          reason: reads the latest release from GitHub and uploads it to the public assets bucket

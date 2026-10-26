@@ -46,6 +46,7 @@ const SET = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "identity/env/grafana/base.env",
@@ -102,9 +103,11 @@ function pulled(): string {
   writeFileSync(
     document,
     readFileSync(document, "utf8")
-      // No Reporter, so the estate-scoped artifact holds no route to one, and
+      // No Reporter and no Human Grant, so the estate-scoped artifact holds no route to one, and
       // no sign-in provider, since no Project composed here declares a Client.
       .replace("  reporter: delivery/reporter\n", "")
+      .replace(/\nhumanGrants:\n(?: {2}.*\n)+/, "\n")
+      .replace(/\npriority:\n(?: {2}.*\n)+/, "\n")
       .replace(/\nsignIn:\n(?: {2}.*\n)+/, "\n")
       .replace(
         /\nhandover:\n(?: {2}.*\n)+/,
@@ -136,7 +139,7 @@ describe("deploy-kit validate", () => {
   it("accepts a set the checks accept", () => {
     expect(run("validate", ...SET)).toEqual({
       code: 0,
-      stdout: "accepted (9 read)\n",
+      stdout: "accepted (10 read)\n",
       stderr: "",
     });
   });
@@ -233,6 +236,7 @@ describe("deploy-kit publish", () => {
       "data.project.yml",
       "env/postgres/base.env",
       "config/postgresql.conf",
+      "dashboards/rabbitmq.json",
     ].map((name) => ({
       name,
       text: readFileSync(example(`data/${name}`), "utf8"),
@@ -539,10 +543,13 @@ describe("deploy-kit compose", () => {
       readFileSync(join(root, "first", "composition.json"), "utf8"),
     ) as {
       artifacts: { name: string; contentHash: string; moves: boolean }[];
+      removedSources: unknown[];
       rollouts: unknown[];
       statuses: unknown[];
       conditions: unknown[];
     };
+    // No pin source was committed, so none is removed.
+    expect(report.removedSources).toStrictEqual([]);
     expect(report.statuses).toHaveLength(7);
     expect(report.conditions).toEqual([]);
     // REQ-056 (docs/requirements.md): one Rollout per Project whose pin

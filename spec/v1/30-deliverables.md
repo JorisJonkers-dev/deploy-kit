@@ -59,7 +59,10 @@ one of them is a **central** adapter running once over the composed union:
 |---|---|---|
 | `kubernetes` | processes | per Application: the controller, `Service` (none for a `blue-green` Process, whose Services Flagger generates), the `Canary` of each `blue-green` Process with its `HorizontalPodAutoscaler` where it declares `replicas` ([Flagger-ready objects](#flagger-ready-objects)), `ServiceAccount` (and each backup identity's), `ConfigMap` (including every inbound-derived Asset, and each gated Application's `<application>-release-gate`, [chapter 20](20-resolved-deployment.md#the-release-gate)) `PersistentVolumeClaim` (and each backup claim, and each library claim), the cluster-scoped `PersistentVolume` of each library a project mounts, `PodDisruptionBudget` above one replica, the backup `CronJob`, the migration identity with its per-revision migration `Job` and suspended down `Job` ([chapter 55](../../spec/v1/55-delivery.md#failure-and-undo)), `Namespace` per project, the kustomize `Kustomization` per directory, and the cluster-scoped `Client` of each Application that declares `client` ([chapter 17](17-sign-in.md#the-client)) |
 | `networking` | policy | every `NetworkPolicy`: one per Process, one per backup identity ([chapter 16](16-dependencies.md#the-backup-identitys-policy)) and the namespace's default-deny ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)) |
-| `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-project-intent.md#observability)) |
+| `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence, carrying the labels its `monitors` names. No `PrometheusRule`: PromQL is the monitoring stack's ([chapter 10](../../spec/v1/10-project-intent.md#observability)) |
+| `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md), [0047](../../docs/adr/model/0047-one-publication-path.md)), including the derived `/.auth/` route of each gated Client ([chapter 17](17-sign-in.md#what-the-edge-derives)). A route's `redirectTo` is a `RedirectRegex` Middleware of the route's own, `<application>-<exposure>-<n>-redirect`, beside its IngressRoute. Each `IngressRoute` carries its tier's ingress class as the `kubernetes.io/ingress.class` annotation, and, where the tier publishes its names, `external-dns.alpha.kubernetes.io/target` and `…/cloudflare-proxied` from its `dns` |
+| `grafana` | monitoring | one `GrafanaDashboard` per dashboard file an Application ships, in its own namespace and its Project's folder, selecting the Grafana instance the Platform document names (`allowCrossNamespaceImport`), its JSON verbatim, and a vendored file's data source inputs mapped to the Platform's data source |
+| `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence, carrying the labels its `monitors` names. A `PrometheusRule` per rule-group file the monitoring stack's Applications carry, and one `AlertmanagerConfig` on its Alertmanager, from the Platform document's `monitoring` ([chapter 14](14-platform-intent.md#monitoring)) |
 | `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md), [0047](../../docs/adr/model/0047-one-publication-path.md)), including the derived `/.auth/` route of each gated Client ([chapter 17](17-sign-in.md#what-the-edge-derives)) |
 | `vault-policy` | secret store | one policy and one auth role per Process identity, as JSON ([0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)) |
 | `vso` | secret delivery | `VaultConnection` per namespace, `VaultAuth` per identity that holds a synced grant, `VaultStaticSecret`, `VaultDynamicSecret` |
@@ -92,6 +95,28 @@ entry point, imported only by 11 test files, yet inside the `--lines 90` coverag
 gate that guards every pull request. It is deleted in the code pass, and nothing
 it contains is promoted for free: bringing its behaviour back is a port across
 the adapter port and costs what writing a new adapter costs.
+
+### The edge proxy
+
+A tier's proxy is a Traefik the platform declares as an Application like any
+other ([chapter 14](14-platform-intent.md#the-foundation-is-declared)), and its
+static configuration is derived, never authored: the `kubernetes` adapter
+writes it as the container's arguments on the Process of the tier's `traefik`
+Application that provides a `web` surface.
+
+| argument | from |
+|---|---|
+| `--entryPoints.web.address`, `--entryPoints.websecure.address`, `--entryPoints.traefik.address` | the Process's `web`, `websecure` and `admin` surfaces, each where it provides one |
+| `--entryPoints.websecure.http.tls=true` | the tier's `listener: tls`, where the Process provides `websecure` |
+| `--ping`, `--metrics.prometheus`, each on the `traefik` entry point | the `admin` surface, where the Process provides one |
+| `--providers.kubernetescrd.ingressClass` | the tier's `ingressClass` ([chapter 14](14-platform-intent.md#tiers)) |
+| `--certificatesresolvers.<tier>.acme.email`, `.storage`, `.dnschallenge.provider` | an acme tier's resolver, named for the tier: the platform's `acme` account, the state file on the tier's `acme` claim, and its DNS provider, whose token arrives as the provider client's variable ([chapter 14](14-platform-intent.md#tiers)) |
+| `--providers.kubernetescrd.allowCrossNamespace`, `allowEmptyServices` | always: a route names Middlewares in the proxy's namespace, and a route to a Process with no ready pod answers 503 rather than vanishing |
+| `--log.format`, `--accesslog`, `--accesslog.format` | always JSON |
+
+One Traefik filters on one class, so two tiers that name one proxy with two
+classes are `E_TIER_CLASS_UNFILTERED`: the second tier's routes would be
+admitted by no proxy.
 
 ## The adapter port
 
@@ -400,11 +425,13 @@ spells only what the projection holds:
 |---|---|---|
 | a `blue-green` Process | `kubernetes` | a `Deployment` with no `replicas` and a `RollingUpdate` of surge 1, unavailability 0, which Flagger scales and promotes; a `Canary` whose `service` is the Process's first surface and whose three webhooks are the gate's `endpoint` with `/may-start`, `/checks` and `/may-promote`, each carrying the Application, the Process and the Application revision |
 | a `stop-start` Process | `kubernetes` | a `Deployment` of its `replicas` with a `Recreate` strategy, and a `Service` named for the Process that selects its `instance` and serves each of its surfaces by name |
+| a `scheduled` Process | `kubernetes` | a `CronJob` named for the Process at its `schedule`, `concurrencyPolicy: Forbid` and its `startDeadline` as `startingDeadlineSeconds`; its job's pod is the pod a `Deployment` would hold, with `restartPolicy: OnFailure`. No `Service`, no `Canary` and no budget |
 | a `rolling` Process | `kubernetes` | a `Deployment` of its `replicas` with a `RollingUpdate` of surge 0, unavailability 1: pod by pod and never a pod more, because a proxy on a host port and a controller with no leader election cannot run two copies; the same `Service` a `stop-start` Process gets, and no `Canary`, because nothing gates the machinery |
 | a `blue-green` Process of more than one replica | `kubernetes` | a `HorizontalPodAutoscaler` of the Process's name beside its `Canary` in `canary.yaml`, scaling its `Deployment` between a `minReplicas` and a `maxReplicas` that are both the count; the Canary's `autoscalerRef` names it, so Flagger keeps a copy for the primary |
 | any Process of more than one replica | `kubernetes` | a `PodDisruptionBudget` of the Process's name in the Application's `pdb.yaml`, `maxUnavailable: 1`; a `blue-green` Process's selects `app.kubernetes.io/name: <name>-primary`, any other's the Process's `instance` |
 | an Application's `migration` | `kubernetes` | in the Application's `migration.yaml`: the `ServiceAccount` of the plan's `identity`, the `Job` `<identity>-<tag>` and, where the plan holds `testedAgainst`, the `Job` `<identity>-down-<tag>`, the tag the first 12 hex digits of the Application revision. Each is labelled as the identity with `component: none`, so every pod keeps the identity as its `instance`; carries `kustomize.toolkit.fluxcd.io/ssa: IfNotPresent`, so the applier creates it and never updates it; and has `suspend: true`, `backoffLimit: 0`, `restartPolicy: Never` and the plan's `deadline` as `activeDeadlineSeconds`. Its one container, `migration`, runs the `runner` as the plan's `uid` and `gid` with the token mounted, the plan's `memory` as request and limit and its `cpu` as request, an `emptyDir` of the plan's `scratch` at `/tmp`, and the arguments `up <tag>`, or `down` and the tag of `testedAgainst`. Its variables are the runner's contract ([chapter 55](55-delivery.md#failure-and-undo)): the plan's `database`, the Application's `secretStore`, the role `<namespace>-<identity>` and the one path of the plan's `credential` |
 | a migration plan's `egress` | `networking` | one `NetworkPolicy` named for the migration identity, after every Process's in the Application's `networkpolicy.yaml`, selecting the identity's `instance`; `policyTypes` both and no ingress rule; one egress rule per peer as above |
+| a Human Grant | `kubernetes` | one `ClusterRoleBinding` per grant in `estate/human-grants/clusterrolebindings.yaml`, in the order the Platform document lists them, named `human:<group>:<clusterRole>` and labelled `managed-by` alone; its `roleRef` the built-in `ClusterRole` of the grant's `clusterRole`, its one subject the `Group` of the grant's `group`, spelled as written ([chapter 14](14-platform-intent.md#human-grants)) |
 | a held `api` | `kubernetes` | a `ClusterRole` and a `ClusterRoleBinding` in the Application's `rbac.yaml`, both named `<namespace>-<identity>` and labelled as the Process is; one rule per declared rule, `apiGroups` its one `group` with `core` spelled `""`, `resources` its `objects`, `verbs` its `verbs`; the binding's one subject the Process's `ServiceAccount` in its namespace |
 | a Process's `placement` | `kubernetes` | a required node affinity on the Process's pod template, one term matching `kubernetes.io/hostname` `In` the node its volume is `boundTo` where it has one, and otherwise every one of its `eligibleNodes`, in the projection's order. Written whole even where every node is eligible: the set is what layer 2 resolved from the pinned node contract, and a node added to the contract re-renders every Project. Never a preference, which the scheduler may drop ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)) |
 | a volume | `kubernetes` | a `ReadWriteOnce` `PersistentVolumeClaim` named for the claim at the volume's `size`, mounted at its `mountAt`, the pod's `fsGroup` the image's `gid` |
@@ -423,7 +450,7 @@ spells only what the projection holds:
 | an edge's database credential delivered `file` | `kubernetes` | a `secret` volume named `secret-<destination>`, projecting `username` and `password` as files of those names at `fileMode`; the directory `mountAt` mounted from it read-only into the Process's container and every sidecar; no token mounted for it, and nothing of it in the environment |
 | the `secretStore` endpoint | `vso` | a `VaultConnection` named `secret-store` in the project's namespace, at that address, `skipTLSVerify: false` |
 | an edge's database credential delivered `env` or `file` | `vso` | beside the holding Process's `VaultAuth`, a `VaultDynamicSecret` named `<process>-database-creds-<role>`, on the `database` mount at `creds/<role>`, its destination created and `flagger.app/config-tracking: disabled`, each restart target as for a `VaultStaticSecret`; delivered `env`, the Process reads `username` and `password` from it as `secretKeyRef`s |
-| a grant delivered `env` or `file` | `vso` | a `VaultAuth` per holding identity, its `ServiceAccount` that identity and its role `<namespace>-<identity>`, over the `secret-store` connection; a `VaultStaticSecret` named for the `destination`, `kv-v2` on the `secret` mount at the path below `secret/data/`, `refreshAfter: 10m`, derived and never authored, `hmacSecretData: true`, which the restart compares, its destination created and `flagger.app/config-tracking: disabled`, and the holding Process as its restart target whatever the grant's rotation tolerates, a `Deployment`, a `blue-green` Process's `-primary`; for an Application the Release Gate gates, each of these objects carries `kustomize.toolkit.fluxcd.io/prune: disabled` and `estate.jorisjonkers.dev/revision` ([chapter 55](55-delivery.md#a-removed-grant-outlives-its-release)) |
+| a grant delivered `env` or `file` | `vso` | a `VaultAuth` per holding identity, its `ServiceAccount` that identity and its role `<namespace>-<identity>`, over the `secret-store` connection; a `VaultStaticSecret` named for the `destination`, `kv-v2` on the `secret` mount at the path below `secret/data/`, `refreshAfter: 10m`, derived and never authored, `hmacSecretData: true`, which the restart compares, its destination created and `flagger.app/config-tracking: disabled`, and the holding Process as its restart target whatever the grant's rotation tolerates, a `Deployment`, a `blue-green` Process's `-primary`, and none for a `scheduled` Process, whose next run reads the new value; for an Application the Release Gate gates, each of these objects carries `kustomize.toolkit.fluxcd.io/prune: disabled` and `estate.jorisjonkers.dev/revision` ([chapter 55](55-delivery.md#a-removed-grant-outlives-its-release)) |
 | a `read` grant | `vault-policy` | `read` on its path and on the same document's `secret/metadata/` path |
 | a `client` grant | `vault-policy` | each of its `paths` with what it `allows`, `create`, `read` and `update` on a client credential's data path ([chapter 17](17-sign-in.md#credentials-and-placeholders)) |
 | `hardening: restricted` | `kubernetes` | `runAsNonRoot`, the images lock's `uid` and `gid`, seccomp `RuntimeDefault`, a read-only root filesystem, every capability dropped |
@@ -438,12 +465,37 @@ spells only what the projection holds:
 | a tier's `certificates` | `traefik` | `acme` is the certificate resolver of that name; `none` writes no TLS block |
 | a route's `gate` | `traefik` | the Rule's one service is the `gate`'s Service, in the `gate`'s namespace and on its port, rather than a Process of the Application ([chapter 17](17-sign-in.md#what-the-edge-derives)) |
 | a route's `precedence` | `traefik` | `priority` is 1000 less the precedence, since Traefik tries the higher priority first |
-| a route's `middleware` | `traefik` | a reference into the proxy's namespace: `forward-auth`, and `security-headers` suffixed with the content profile where one is named; the edge project renders the Middleware objects themselves |
+| a route's `middleware` | `traefik` | a reference into the proxy's namespace: `forward-auth`, and `security-headers` suffixed with the content profile where one is named; the edge project renders the shared ones, `security-headers` and `security-headers-<policy>` for each content policy, once per tier proxy's namespace ([Shared Middlewares](#shared-middlewares)) |
 | a route's `rate-limit` step | `traefik` | a `RateLimit` Middleware of the route's own, `<application>-<exposure>-<n>-rate-limit` for the route's place in its exposure, in the Application's namespace and in the IngressRoute's file: `average` is the allowance, `period` the period, `burst` the burst, and a `cloudflare` client address is `sourceCriterion.requestHeaderName: CF-Connecting-IP`, while `connection` writes no criterion, which Traefik reads as the connection's address ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)) |
 
 Two adapters (`kubernetes` and `networking`) declare the same `apps` prefix
 and are kept apart by the object segment. That is why `E_PATH_COLLISION` is
 decided on the plan, before any adapter runs, rather than left as a convention.
+
+
+### Shared Middlewares
+
+Every route names the security-headers Middleware its exposure's content policy
+selects, in its tier proxy's namespace. The Project that declares a tier's proxy
+renders those Middlewares, in the proxy's own directory, once per namespace (by
+the first proxy's name where two share one): `security-headers`, the baseline,
+and `security-headers-strict`, `-admin` and `-workflow`, each the baseline plus
+that policy's `Content-Security-Policy`. All four are rendered whatever the
+routes name, because the vocabulary is closed: no Project's exposure changes the
+edge's share, and no route names a Middleware the edge lacks.
+
+Where a tier of the namespace names a forward-auth provider, the same file holds
+`forward-auth`: a `forwardAuth` Middleware whose `address` is the provider's
+Process, `http://<process>.<namespace>.svc.cluster.local:<port><path>`, with
+`trustForwardHeader` and the tier's `responseHeaders` as `authResponseHeaders`.
+Where two tiers of one namespace name one, the first in the Platform document is used.
+
+| Middleware | headers |
+|---|---|
+| `security-headers` | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Strict-Transport-Security: max-age=31536000; includeSubDomains` |
+| `security-headers-strict` | the baseline, and `Content-Security-Policy: default-src 'self'` |
+| `security-headers-admin` | the baseline, and `default-src 'self'; style-src 'self' 'unsafe-inline'` |
+| `security-headers-workflow` | the baseline, and `default-src 'self'; connect-src 'self' https:` |
 
 ## Ledgers
 
@@ -534,10 +586,13 @@ Every kind the 2026-08-31 survey found unrendered now has a decision: `Role` and
 `ClusterRole` and `ClusterRoleBinding` are `kubernetes`'s, for a Process the
 platform admits to hold API access and for no other
 ([0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)),
+and a `ClusterRoleBinding` of a built-in role is also `kubernetes`'s for a
+Human Grant
+([0118](../../docs/adr/model/0118-a-human-grant-is-declared-in-the-platform-document.md)),
 `NetworkPolicy` is `networking`'s ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)),
 `ServiceMonitor` and `PodMonitor` are `prometheus`'s, from the declared
-`observability.scrape` surface, and `PrometheusRule` is rendered by nothing here
-([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)),
+`observability.scrape` surface, and `PrometheusRule` and `AlertmanagerConfig` for the monitoring stack alone
+([chapter 14](14-platform-intent.md#monitoring)),
 and `GitRepository` is a bootstrap fact
 ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)), created by
 `flux bootstrap`, never rendered.
@@ -577,7 +632,7 @@ needs a decision, not an allowlist entry."*
 
 | forbidden | why |
 |---|---|
-| a kind on the forbidden list, `Secret`, `Role`, `RoleBinding`, `CustomResourceDefinition`, and a `ClusterRole` or `ClusterRoleBinding` that a held `api` did not derive | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and the only RBAC rendered is what a Process the platform admits declares ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md), [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted)) |
+| a kind on the forbidden list, `Secret`, `Role`, `RoleBinding`, `CustomResourceDefinition`, a `ClusterRole` that a held `api` did not derive, and a `ClusterRoleBinding` that neither a held `api` nor a Human Grant derived | `E_FORBIDDEN_KIND`; a CRD is a bootstrap fact ([chapter 14](14-platform-intent.md#the-bootstrap-set)), a Secret arrives through VSO, and the only RBAC rendered is what a Process the platform admits declares and what the platform grants a group of people ([0041](../../docs/adr/model/0041-no-process-rbac-in-v1.md), [chapter 16](16-dependencies.md#kubernetes-api-access-is-declared-and-admitted), [chapter 14](14-platform-intent.md#human-grants)) |
 | an object in a namespace the Application does not own | `E_FOREIGN_NAMESPACE` |
 | a floating image tag | `E_FLOATING_IMAGE`; digests only |
 | a path claimed by two adapters | `E_PATH_COLLISION`; attribution becomes ambiguous |

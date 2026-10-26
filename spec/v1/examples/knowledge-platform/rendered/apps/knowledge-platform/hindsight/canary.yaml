@@ -33,7 +33,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:ff109f223f30d9ee31339f4aefbb188cc8b813a07ee0e09cc5551f53461980eb
+          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
           paths: /
           readiness: /health
           hostnames: memory-api.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:ff109f223f30d9ee31339f4aefbb188cc8b813a07ee0e09cc5551f53461980eb
+          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
           paths: /
           readiness: /health
           hostnames: memory-api.jorisjonkers.dev
@@ -57,68 +57,10 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:ff109f223f30d9ee31339f4aefbb188cc8b813a07ee0e09cc5551f53461980eb
+          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
           paths: /
           readiness: /health
           hostnames: memory-api.jorisjonkers.dev
-          errorRate: 1%
-          latency: 500ms
----
-apiVersion: flagger.app/v1beta1
-kind: Canary
-metadata:
-  name: hindsight-worker
-  namespace: knowledge-platform-system
-  labels:
-    app.kubernetes.io/name: hindsight-worker
-    app.kubernetes.io/instance: hindsight-worker
-    app.kubernetes.io/part-of: hindsight
-    app.kubernetes.io/managed-by: deploy-kit
-    app.kubernetes.io/component: python
-spec:
-  provider: kubernetes
-  targetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: hindsight-worker
-  progressDeadlineSeconds: 480
-  service:
-    port: 8889
-    targetPort: worker
-    portName: worker
-  analysis:
-    interval: 30s
-    iterations: 4
-    threshold: 3
-    webhooks:
-      - name: may-start
-        type: confirm-rollout
-        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
-        metadata:
-          application: hindsight
-          process: hindsight-worker
-          revision: sha256:ff109f223f30d9ee31339f4aefbb188cc8b813a07ee0e09cc5551f53461980eb
-          readiness: /health
-          errorRate: 1%
-          latency: 500ms
-      - name: checks
-        type: rollout
-        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
-        metadata:
-          application: hindsight
-          process: hindsight-worker
-          revision: sha256:ff109f223f30d9ee31339f4aefbb188cc8b813a07ee0e09cc5551f53461980eb
-          readiness: /health
-          errorRate: 1%
-          latency: 500ms
-      - name: may-promote
-        type: confirm-promotion
-        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
-        metadata:
-          application: hindsight
-          process: hindsight-worker
-          revision: sha256:ff109f223f30d9ee31339f4aefbb188cc8b813a07ee0e09cc5551f53461980eb
-          readiness: /health
           errorRate: 1%
           latency: 500ms
 ---
@@ -155,7 +97,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-control-plane
-          revision: sha256:ff109f223f30d9ee31339f4aefbb188cc8b813a07ee0e09cc5551f53461980eb
+          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
           paths: /
           hostnames: memory.jorisjonkers.dev
           errorRate: 1%
@@ -166,7 +108,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-control-plane
-          revision: sha256:ff109f223f30d9ee31339f4aefbb188cc8b813a07ee0e09cc5551f53461980eb
+          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
           paths: /
           hostnames: memory.jorisjonkers.dev
           errorRate: 1%
@@ -177,7 +119,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-control-plane
-          revision: sha256:ff109f223f30d9ee31339f4aefbb188cc8b813a07ee0e09cc5551f53461980eb
+          revision: sha256:70f6c35b565efcfb54d51445c337dba88caa6cba6664a0c1ae58bb651534a116
           paths: /
           hostnames: memory.jorisjonkers.dev
           errorRate: 1%

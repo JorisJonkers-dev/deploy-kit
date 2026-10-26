@@ -377,6 +377,154 @@ describe("the access by delivery matrix", () => {
   });
 });
 
+// REQ-097: a node listens on a port and a protocol once, and on as many as
+// its exposures dial.
+describe("two exposures on one node", () => {
+  it("are accepted on different ports", () => {
+    expect(
+      checkIntentSet(
+        filesOf("node-port-taken").map((file) =>
+          file.name === "refusals.project.yml"
+            ? {
+                ...file,
+                text: file.text.replace(
+                  "{address: mail-node, port: 25, protocol: tcp, process: mail-b,",
+                  "{address: mail-node, port: 26, protocol: tcp, process: mail-b,",
+                ),
+              }
+            : file,
+        ),
+      ).ok,
+    ).toBe(true);
+  });
+});
+
+// REQ-097: delivery machinery cuts over rolling, never a pod more, so a host
+// port honours its continuous cutover; only a blue/green switch is refused.
+describe("a continuous cutover on a node address", () => {
+  it("is refused under a platform with no delivery policy, which names no machinery", () => {
+    const result = checkIntentSet(
+      filesOf("node-address-continuous").map((file) =>
+        file.name === "platform.intent.yml"
+          ? {
+              ...file,
+              text: file.text.replace(/\ndelivery:\n( {2}.*\n)+/, "\n"),
+            }
+          : file,
+      ),
+    );
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ code }) => code),
+    ).toContain("E_CUTOVER_UNHONOURABLE");
+  });
+
+  it("is accepted where the Application is delivery machinery", () => {
+    expect(
+      checkIntentSet(
+        filesOf("node-address-continuous").map((file) =>
+          file.name === "platform.intent.yml"
+            ? {
+                ...file,
+                text: file.text.replace(
+                  "machinery: [refusals/edge-proxy]",
+                  "machinery: [refusals/edge-proxy, refusals/mail]",
+                ),
+              }
+            : file,
+        ),
+      ).ok,
+    ).toBe(true);
+  });
+});
+
+// REQ-099: a tier's proxy provides the surfaces its listener reaches.
+describe("a tier whose proxy lacks its surface", () => {
+  it("says which surfaces the listener reaches", () => {
+    const result = checkIntentSet(filesOf("tier-surface-missing"));
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message:
+          "no Process of refusals/edge-proxy provides web, which tier lan's plain listener reaches",
+        hint: "Provide the surfaces on the proxy's Process, or name a proxy that provides them.",
+      },
+    ]);
+  });
+
+  it("names both surfaces of a tls listener", () => {
+    const result = checkIntentSet(
+      filesOf("tier-surface-missing").map((file) =>
+        file.name === "platform.intent.yml"
+          ? {
+              ...file,
+              text: file.text.replace("listener: plain", "listener: tls"),
+            }
+          : file,
+      ),
+    );
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ message }) => message),
+    ).toContain(
+      "no Process of refusals/edge-proxy provides web and websecure, which tier lan's tls listener reaches",
+    );
+  });
+});
+
+// REQ-097: a node's port is taken across Projects as much as within one.
+describe("two Projects on one node port", () => {
+  it("are both refused, though their Processes share a name", () => {
+    const files = filesOf("node-port-taken");
+    const project = files.find(({ name }) => name === "refusals.project.yml");
+    if (project === undefined) throw new Error("no project file");
+    const other = {
+      name: "other.project.yml",
+      text: project.text
+        .replace("project: refusals", "project: other")
+        // Application ids are the estate's; the Process keeps its name.
+        .replace("- id: mail-a", "- id: mail-x")
+        .replace(/\n {2}- id: mail-b\n(.*\n)*?(?= {2}- id: )/, "\n")
+        .replace(/\n {2}- id: edge-proxy\n(.*\n?)*$/, "\n"),
+    };
+    const result = checkIntentSet([
+      ...files.map((file) =>
+        file.name === "refusals.project.yml"
+          ? {
+              ...file,
+              text: file.text.replace(
+                /\n {2}- id: mail-b\n(.*\n)*?(?= {2}- id: )/,
+                "\n",
+              ),
+            }
+          : file,
+      ),
+      other,
+    ]);
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, document, path }) => ({
+            code,
+            document,
+            path,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_NODE_PORT_TAKEN",
+        document: "refusals.project.yml",
+        path: "/applications/0/l4Exposure/0",
+      },
+      {
+        code: "E_NODE_PORT_TAKEN",
+        document: "other.project.yml",
+        path: "/applications/0/l4Exposure/0",
+      },
+    ]);
+  });
+});
+
 describe("a library mount", () => {
   const granted = (edit: (text: string) => string) =>
     checkIntentSet(
@@ -545,7 +693,11 @@ ${volumes
 describe("the refusal fixtures", () => {
   it("are the ones this chapter carries, refused but for the accepted counterpart", () => {
     expect(fixtures).toStrictEqual([
+      "acme-proxy-replicated",
       "alert-class-without-signal",
+      "alert-rules-not-found",
+      "alert-rules-outside-monitoring",
+      "alert-rules-without-groups",
       "asset-not-found",
       "backup-surface-not-provided",
       "client-crd-not-bootstrapped",
@@ -555,8 +707,13 @@ describe("the refusal fixtures", () => {
       "cutover-interrupted-over-rwo",
       "cutover-missing",
       "cutover-mixed",
+      "dashboard-not-found",
+      "dashboard-without-uid",
       "duplicate-backup-claim",
       "duplicate-claim",
+      "duplicate-dashboard-uid",
+      "duplicate-human-grant",
+      "duplicate-l4-port",
       "duplicate-route-match",
       "durability-policy-incomplete",
       "durability-without-engine",
@@ -573,6 +730,7 @@ describe("the refusal fixtures", () => {
       "handover-unlisted",
       "illegal-delivery-for-access",
       "image-runs-as-root",
+      "l4-address-exhausted",
       "library-not-granted",
       "migration-owner-duplicated",
       "migration-undeclared",
@@ -580,6 +738,8 @@ describe("the refusal fixtures", () => {
       "migration-without-database",
       "mongo-credentials-without-database",
       "mongo-without-durability",
+      "no-acme-policy",
+      "no-dashboard-policy",
       "no-delivery-policy",
       "no-durability-policy",
       "no-engine-policy",
@@ -589,6 +749,9 @@ describe("the refusal fixtures", () => {
       "no-sign-in-provider",
       "no-tier-for-audience",
       "no-vpn-policy",
+      "node-address-continuous",
+      "node-address-replicated",
+      "node-port-taken",
       "non-kv-delivery",
       "owner-role-granted",
       "placement-incomplete",
@@ -596,7 +759,11 @@ describe("the refusal fixtures", () => {
       "prepare-process-serves",
       "process-rbac-grant",
       "profile-key-authored",
+      "redirect-loop",
       "release-unit-no-readiness",
+      "schedule-missing",
+      "schedule-unscheduled",
+      "scheduled-process-serves",
       "scrape-unknown-process",
       "secrets-at-rest-required",
       "secrets-at-rest-required-at-header",
@@ -604,18 +771,26 @@ describe("the refusal fixtures", () => {
       "shared-intent-merged",
       "shared-quantity",
       "surface-label-invalid",
+      "tier-class-unfiltered",
+      "tier-surface-missing",
+      "tier-without-ingress-class",
       "unauthorised-secret-reference",
       "unbound-secret-grant",
       "unknown-api-holder",
+      "unknown-critical-application",
       "unknown-enrolled-project",
+      "unknown-forward-auth-provider",
+      "unknown-l4-address",
       "unknown-library",
       "unknown-machinery",
+      "unknown-monitoring-application",
+      "unknown-receiver",
       "unknown-surface",
       "unknown-telemetry-collector",
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(64);
+    expect(refused).toHaveLength(91);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

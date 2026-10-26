@@ -230,6 +230,521 @@
           "value": "overleaf"
         }
       ]
+    },
+    {
+      "name": "a monitor label whose key the API server refuses",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/monitors/labels/not a key",
+          "value": "x"
+        }
+      ]
+    },
+    {
+      "name": "a monitor label whose value the API server refuses",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/monitors/labels/release",
+          "value": "metrics stack"
+        }
+      ]
+    },
+    {
+      "name": "monitors that name no labels",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/monitors/labels"
+        }
+      ]
+    },
+    {
+      "name": "a Platform that grants no human a cluster role",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/humanGrants"
+        }
+      ]
+    },
+    {
+      "name": "a human grant of each built-in role to a group",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants",
+          "value": [
+            {
+              "group": "oidc:k8s-admin",
+              "clusterRole": "cluster-admin",
+              "reason": "administers the cluster"
+            },
+            {
+              "group": "oidc:k8s-operators",
+              "clusterRole": "admin",
+              "reason": "operates every Project"
+            },
+            {
+              "group": "oidc:k8s-editors",
+              "clusterRole": "edit",
+              "reason": "edits every Project"
+            },
+            {
+              "group": "oidc:k8s-viewers",
+              "clusterRole": "view",
+              "reason": "reads every Project"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "a human grant to a user",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants/0",
+          "value": {
+            "user": "joris",
+            "group": "oidc:k8s-admin",
+            "clusterRole": "cluster-admin",
+            "reason": "administers the cluster"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a human grant scoped to a namespace",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/humanGrants/0/namespace",
+          "value": "notes-system"
+        }
+      ]
+    },
+    {
+      "name": "a human grant of a role outside the built-in four",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants/0/clusterRole",
+          "value": "secret-reader"
+        }
+      ]
+    },
+    {
+      "name": "a human grant with no reason",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/humanGrants/0/reason"
+        }
+      ]
+    },
+    {
+      "name": "a human grant to a group no binding can be named for",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants/0/group",
+          "value": "oidc:/k8s-admin"
+        }
+      ]
+    },
+    {
+      "name": "an empty list of human grants",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/humanGrants",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "a priority class whose name is no Kubernetes name",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/priority/data/name",
+          "value": "Platform Data"
+        }
+      ]
+    },
+    {
+      "name": "a priority policy with no critical class",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/priority/critical"
+        }
+      ]
+    },
+    {
+      "name": "a priority policy that names no critical Application",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/priority/criticalApplications"
+        }
+      ]
+    },
+    {
+      "name": "an L4 Address whose range is no IPv4 range",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/l4Addresses/lan-mqtt/range",
+          "value": "192.168.0.97"
+        }
+      ]
+    },
+    {
+      "name": "an L4 Address of a kind the platform offers none of",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/l4Addresses/lan-mqtt/kind",
+          "value": "bgp"
+        }
+      ]
+    },
+    {
+      "name": "an L4 Address with no site",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/l4Addresses/lan-mqtt/site"
+        }
+      ]
+    },
+    {
+      "name": "a node address with no node",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/l4Addresses/mail-node/node"
+        }
+      ]
+    },
+    {
+      "name": "a node address that also names a pool's range",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/l4Addresses/mail-node/range",
+          "value": "192.168.0.99/32"
+        }
+      ]
+    },
+    {
+      "name": "an L4 Address that is neither a pool nor a node address",
+      "verdict": "refuse",
+      "breaks": "union",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/l4Addresses/mail-node",
+          "value": "frankfurt-contabo-1"
+        }
+      ]
+    },
+    {
+      "name": "a tier whose DNS proxying is no boolean",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/tiers/0/dns/proxied",
+          "value": "yes"
+        }
+      ]
+    },
+    {
+      "name": "a tier that publishes no names",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/tiers/0/dns"
+        }
+      ]
+    },
+    {
+      "name": "a Node Agent the catalog does not hold",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/nodeAgents/log-collector",
+          "value": {
+            "image": "alloy",
+            "memory": "64Mi",
+            "cpu": "10m"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a Node Agent entry with no image",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/nodeAgents/node-metrics/image"
+        }
+      ]
+    },
+    {
+      "name": "a Node Agent entry that declares a privilege",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/nodeAgents/node-metrics/privileged",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "a speaker with no controller",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/nodeAgents/l4-speaker/controller"
+        }
+      ]
+    },
+    {
+      "name": "a forward-auth written as a URL, which names no provider",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/tiers/0/forwardAuth",
+          "value": "http://identity.identity-system.svc.cluster.local:8080/gate/forward"
+        }
+      ]
+    },
+    {
+      "name": "a forward-auth that names no surface",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/tiers/0/forwardAuth/surface"
+        }
+      ]
+    },
+    {
+      "name": "a forward-auth that hands headers on to the route",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/tiers/0/forwardAuth/responseHeaders",
+          "value": [
+            "X-User-Id"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dashboards for a Grafana with no data source",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/telemetry/dashboards/datasource"
+        }
+      ]
+    },
+    {
+      "name": "a platform that names no Grafana",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/telemetry/dashboards"
+        }
+      ]
+    },
+    {
+      "name": "a monitoring stack with no Alertmanager",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/monitoring/alertmanager"
+        }
+      ]
+    },
+    {
+      "name": "a receiver whose webhook is written as a URL",
+      "verdict": "refuse",
+      "breaks": "wrong-type",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/monitoring/receivers/0/discord/webhook",
+          "value": "https://discord.example/hook"
+        }
+      ]
+    },
+    {
+      "name": "a severity route that repeats every few seconds",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/monitoring/routes/0/repeat",
+          "value": "30s"
+        }
+      ]
+    },
+    {
+      "name": "a platform with no monitoring stack",
+      "verdict": "accept",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/monitoring"
+        }
+      ]
+    },
+    {
+      "name": "a tier address that is no L4 Address name",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/tiers/1/address",
+          "value": "Lan_Edge"
+        }
+      ]
+    },
+    {
+      "name": "an acme account whose email is none",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/acme/email",
+          "value": "hostmaster"
+        }
+      ]
+    },
+    {
+      "name": "an acme account whose DNS provider the platform offers none of",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/acme/dnsProvider",
+          "value": "route53"
+        }
+      ]
+    },
+    {
+      "name": "an acme account with no token",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/acme/token"
+        }
+      ]
     }
   ]
 }

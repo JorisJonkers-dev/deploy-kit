@@ -1,0 +1,7 @@
+groups:
+  - name: api
+    rules:
+      - alert: ApiDown
+        expr: up == 0
+        labels:
+          severity: warning

@@ -20,8 +20,6 @@ const BASE = readFileSync(
   "utf8",
 );
 
-const GATE = "http://identity.signin-system.svc.cluster.local:8080/gate";
-
 const SIGN_IN = `signIn:
   issuer: https://auth.signin.dev
   provider: signin/identity
@@ -46,12 +44,16 @@ const platformOf = (signIn = SIGN_IN, crd = CLIENT_CRD): string =>
     audiences: [anonymous, authenticated, internal]
     listener: tls
     certificates: acme
-    forwardAuth: "${GATE}"
+    forwardAuth: {provider: signin/identity, surface: http, path: /gate}
     traefik: signin/edge-proxy
+    ingressClass: edge-proxy
 `,
     )
     .replaceAll("refusals/edge-proxy", "signin/edge-proxy")
-    .replace("hardening:", `${signIn}hardening:`);
+    .replace(
+      "hardening:",
+      `${signIn}acme:\n  email: hostmaster@jorisjonkers.dev\n  dnsProvider: cloudflare\n  token: secret/data/platform/cloudflare\nhardening:`,
+    );
 
 const PROCESSES = (name: string) => `    processes:
       - name: ${name}
@@ -354,10 +356,10 @@ describe("the Client kind", () => {
 });
 
 describe("a Client holding a secret", () => {
-  const storeless = platformOf().replace(
-    "secretStore: signin/edge-proxy\n",
-    "",
-  );
+  // With no Secret Store, the tier issues no certificate through acme either.
+  const storeless = platformOf()
+    .replace("secretStore: signin/edge-proxy\n", "")
+    .replace("certificates: acme", "certificates: none");
 
   it("is refused where the platform names no Secret Store to hold the secret", () => {
     expect(refusals(grafana(NATIVE), { platform: storeless })).toStrictEqual([

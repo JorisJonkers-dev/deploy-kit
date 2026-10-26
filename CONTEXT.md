@@ -121,6 +121,77 @@ policy. Holds one or more Routes.
 **Route**: a path within an Exposure, naming the Process and Surface that
 serve it.
 
+**Split horizon**: one host exposed on two tiers, each a different proxy, so
+the LAN and the public reach the same name through their own routes. A host
+is unique on a tier, not across the estate.
+
+**Shared Middleware**: a Middleware every route names by name, the
+security-headers baseline or one per content policy, rendered once in each tier
+proxy's namespace by the Project that declares the proxy.
+
+**Priority class**: the class a Process's pods schedule at, derived: `data` for
+a datastore, `critical` for the foundation and the Applications the platform
+names, none otherwise.
+
+**Node Agent**: a host-privileged agent a node runs (`gpu-device`,
+`gpu-metrics`, `node-metrics`, `l4-speaker`), derived from node facts and pools
+and never authored. Its privileges are fixed by the closed **Node Agent
+catalog** in the Platform document, which pins only its image and request.
+The agents are the `node` Project, which no project file declares.
+
+**Tier address**: the L4 Address a tier's proxy listens on. The proxy's ports
+follow from the tier's listener: 80 to `web`, and on a `tls` tier 443 to
+`websecure`; no project file writes them.
+
+**ACME account**: the Platform document's `acme`, the email, DNS provider and
+token path every `acme` tier's proxy issues with. Each such tier keeps its own
+ACME state on a `reconstructible` claim on its own proxy.
+
+**L4 exposure**: a raw TCP or UDP port a client off the cluster dials on an L4
+Address, naming the Process and Surface that answer it. The port a client
+dials is its own; the port the container listens on stays the Surface's.
+
+**L4 Address**: an address off-cluster clients reach a raw surface on, declared
+by name in the Platform document. A `pool` is an IPv4 range announced on one
+site's network segment: every Process exposed on it is held to that site, and
+its replicas are failover, not load sharing. A `node` address is one node's
+own address, for a site with no pool: every Process exposed on it is held to
+that node, through a Host port.
+
+**Node address**: an L4 Address of kind `node`, naming a node as the node
+contract does. It takes no address of a range; it shares the node's ports.
+
+**Host port**: a node's port that reaches a container's port with no Service
+between, derived for each port a client dials on a Node address and never
+authored. A host port holds one copy of its Process, so a Process on a Node
+address has no replicas and cuts over `interrupted`.
+
+**Edge proxy**: the Process of a tier's `traefik` Application that serves
+`web`, whose static configuration (entry points, the class it admits) is
+derived from its surfaces and its tier.
+
+**Tier DNS**: where a tier's public names point and whether the DNS provider
+proxies them; every route on the tier carries it for the DNS controller.
+
+**Ingress class**: the name a tier's proxy admits routes by, declared on the
+tier. Every route rendered for the tier carries it, so a route reaches the one
+proxy its audience selects.
+
+**Dashboard**: a Grafana dashboard's JSON an Application ships beside its
+project file, rendered into its Project's folder; vendored, never fetched.
+
+**Monitoring stack**: the Grafana, Prometheus and Alertmanager the Platform
+document names by role; the only Applications that carry alert rules.
+
+**Receiver**: a named place an alert is delivered, declared in the Platform
+document, its credential read from Vault.
+
+**Severity route**: which receiver an alert of one `severity` reaches, and how
+often it repeats.
+
+**Parked Process**: a Process that runs no pod and keeps everything it owns,
+with the reason it is parked.
+
 **Rate limit**: how many requests one client may send a Route over a period,
 declared on the Route as `rateLimit: {requests, per}`. The burst equals the
 allowance, and the Tier decides which address counts as one client
@@ -205,6 +276,13 @@ which only the Release Gate may start, and only while nothing new serves
 forward-only setup that runs to completion after the migration and before an
 Application's new version starts. It serves nothing, has no down, and is not a
 migration ([chapter 10](spec/v1/10-project-intent.md#prepare-processes)).
+
+**Scheduled Process**: a Process with `lifecycle: scheduled` and its own
+cron `schedule`, which runs to completion at each slot. It holds grants, edges
+and placement like any other Process, serves nothing, never runs twice at
+once, and skips a run that cannot start within its **Start Deadline**, 300
+seconds of its slot, derived and never authored
+([chapter 10](spec/v1/10-project-intent.md#scheduled-processes)).
 
 **Probe**: a declared readiness or liveness check.
 
@@ -318,6 +396,15 @@ It answers on its `http` surface; a Process that holds a Grant egresses to it,
 and its Application is ordered after the unit that materialises the credentials
 ([chapter 14](spec/v1/14-platform-intent.md#the-secret-store)).
 
+**Human Grant**: a group of people granted one of Kubernetes' built-in cluster
+roles (`cluster-admin`, `admin`, `edit`, `view`), cluster-wide, with a reason,
+in the Platform document. The group is written as the API server sees it, never
+a user; it renders one estate-scoped `ClusterRoleBinding`, so no Application's
+removal drops anyone's access
+([0118](docs/adr/model/0118-a-human-grant-is-declared-in-the-platform-document.md),
+[chapter 14](spec/v1/14-platform-intent.md#human-grants)). Not a Grant, which
+is a Process's access to a Secret Store path.
+
 **Env File**: one authored dotenv file, its Cluster Target and its variables.
 `base.env` names no target, because it is what does not vary; an overlay beside
 it names one. The directory holding it is the scope it reaches: the project, one
@@ -338,6 +425,9 @@ substituted rather than carrying it: `dependency`, `secret`, `exposure` or
 `replicas: {count, reason}`, with the reason required
 ([0022](docs/adr/model/0022-a-derived-value-has-one-declaring-site.md)). There is no
 generic override mechanism.
+
+**Spread**: a Capacity exception's `across: node`, keeping a Process's
+replicas of one revision on different nodes.
 
 ## Composition: many repositories, one estate
 

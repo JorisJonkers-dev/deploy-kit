@@ -20,6 +20,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { parseProjectIntent } from "../src/index.ts";
+import { serves } from "../src/model/vocabularies.ts";
 import type {
   EffectiveApplication,
   EffectiveProcess,
@@ -69,16 +70,18 @@ const declarationsOf = (file: string): string =>
     .map((line) => line.replace(/(^|\s)#.*$/, ""))
     .join("\n");
 
-test("every worked Process declares cutover, and zeroDowntime is gone", () => {
+test("every worked Process that serves declares cutover, one that runs to completion none, and zeroDowntime is gone", () => {
   for (const file of projectFiles) {
     const processes = processesOf(file);
 
     expect(processes.length, `${file}: no processes parsed`).toBeGreaterThan(0);
     for (const process of processes)
-      expect(
-        ["continuous", "interrupted"],
-        `${process.name}: cutover`,
-      ).toContain(process.cutover);
+      if (serves(process.lifecycle))
+        expect(
+          ["continuous", "interrupted"],
+          `${process.name}: cutover`,
+        ).toContain(process.cutover);
+      else expect(process.cutover, `${process.name}: cutover`).toBeUndefined();
     expect(declarationsOf(file), `${file}: zeroDowntime present`).not.toMatch(
       /zeroDowntime/,
     );
@@ -177,9 +180,12 @@ test("no Process restates a scrape port, and no project carries alerting policy"
       text,
       `${file}: a scrape restates a port that provides already declares`,
     ).not.toMatch(/^\s+scrape:\s*\{?\s*port:/m);
-    expect(text, `${file}: receivers map present`).not.toMatch(
-      /^\s*receivers:/m,
-    );
+    // Receivers are the Platform document's alone, in its monitoring block
+    // (spec/v1/14-platform-intent.md#monitoring).
+    if (file !== platform)
+      expect(text, `${file}: receivers map present`).not.toMatch(
+        /^\s*receivers:/m,
+      );
     expect(text, `${file}: rule catalog present`).not.toMatch(
       /^\s*ruleCatalog:/m,
     );

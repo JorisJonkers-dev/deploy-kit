@@ -106,19 +106,45 @@ export interface IngressRoute {
   };
 }
 
-/** Traefik's Middleware, as a `rateLimit` (the one kind the render writes). */
+/** Traefik's Middleware, as a route's own `rateLimit` or `redirectRegex`, or a shared `headers` one. */
 export interface Middleware {
   readonly apiVersion: "traefik.io/v1alpha1";
   readonly kind: "Middleware";
   readonly metadata: ObjectMeta;
-  readonly spec: {
-    readonly rateLimit: {
-      readonly average: number;
-      readonly period: string;
-      readonly burst: number;
-      readonly sourceCriterion?: { readonly requestHeaderName: string };
-    };
-  };
+  readonly spec:
+    | {
+        readonly rateLimit: {
+          readonly average: number;
+          readonly period: string;
+          readonly burst: number;
+          readonly sourceCriterion?: { readonly requestHeaderName: string };
+        };
+      }
+    | {
+        readonly forwardAuth: {
+          readonly address: string;
+          readonly trustForwardHeader: boolean;
+          readonly authResponseHeaders?: readonly string[];
+        };
+      }
+    | {
+        readonly headers: {
+          readonly contentTypeNosniff: boolean;
+          readonly frameDeny: boolean;
+          readonly referrerPolicy: string;
+          readonly permissionsPolicy: string;
+          readonly stsSeconds: number;
+          readonly stsIncludeSubdomains: boolean;
+          readonly contentSecurityPolicy?: string;
+        };
+      }
+    | {
+        readonly redirectRegex: {
+          readonly regex: string;
+          readonly replacement: string;
+          readonly permanent: boolean;
+        };
+      };
 }
 
 export interface ServiceMonitor {
@@ -307,4 +333,62 @@ export interface VaultRole {
   readonly bound_service_account_names: readonly string[];
   readonly bound_service_account_namespaces: readonly string[];
   readonly token_policies: readonly string[];
+}
+
+/** grafana-operator's dashboard: one Grafana dashboard's JSON, for one instance. */
+export interface GrafanaDashboard {
+  readonly apiVersion: "grafana.integreatly.org/v1beta1";
+  readonly kind: "GrafanaDashboard";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly instanceSelector: {
+      readonly matchLabels: Readonly<Record<string, string>>;
+    };
+    readonly allowCrossNamespaceImport: true;
+    readonly folder: string;
+    readonly json: string;
+    readonly datasources?: readonly {
+      readonly inputName: string;
+      readonly datasourceName: string;
+    }[];
+  };
+}
+
+/** The Prometheus operator's rule groups, as a rule-group file holds them. */
+export interface PrometheusRule {
+  readonly apiVersion: "monitoring.coreos.com/v1";
+  readonly kind: "PrometheusRule";
+  readonly metadata: ObjectMeta;
+  readonly spec: { readonly groups: readonly unknown[] };
+}
+
+/** The Prometheus operator's alert routing: one route per severity, and the receivers. */
+export interface AlertmanagerConfig {
+  readonly apiVersion: "monitoring.coreos.com/v1alpha1";
+  readonly kind: "AlertmanagerConfig";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly route: {
+      readonly receiver: string;
+      readonly groupBy: readonly string[];
+      readonly groupWait: string;
+      readonly groupInterval: string;
+      readonly repeatInterval: string;
+      readonly routes: readonly {
+        readonly matchers: readonly {
+          readonly name: string;
+          readonly value: string;
+        }[];
+        readonly receiver: string;
+        readonly repeatInterval: string;
+      }[];
+    };
+    readonly receivers: readonly {
+      readonly name: string;
+      readonly discordConfigs?: readonly {
+        readonly apiURL: { readonly name: string; readonly key: string };
+        readonly sendResolved: boolean;
+      }[];
+    }[];
+  };
 }

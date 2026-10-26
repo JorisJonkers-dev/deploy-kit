@@ -349,6 +349,189 @@
           "value": "mongodb"
         }
       ]
+    },
+    {
+      "name": "a scheduled Process at five cron fields",
+      "verdict": "accept",
+      "file": "examples/minimal/notes.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/0/processes/0/lifecycle",
+          "value": "scheduled"
+        },
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/schedule",
+          "value": "30 2 * * MON-FRI"
+        }
+      ]
+    },
+    {
+      "name": "a schedule written as a cron macro",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/4/processes/0/schedule",
+          "value": "@hourly"
+        }
+      ]
+    },
+    {
+      "name": "a schedule of four fields",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/4/processes/0/schedule",
+          "value": "*/15 * * *"
+        }
+      ]
+    },
+    {
+      "name": "replicas spread across a zone, which the vocabulary does not hold",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/identity/identity.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/3/processes/0/replicas/across",
+          "value": "zone"
+        }
+      ]
+    },
+    {
+      "name": "replicas spread across nodes",
+      "verdict": "accept",
+      "file": "examples/identity/identity.project.yml"
+    },
+    {
+      "name": "an L4 exposure over a protocol outside the vocabulary",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/l4Exposure/0/protocol",
+          "value": "sctp"
+        }
+      ]
+    },
+    {
+      "name": "an L4 exposure that names no address",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/applications/1/l4Exposure/0/address"
+        }
+      ]
+    },
+    {
+      "name": "an L4 exposure that writes the IP address itself",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/l4Exposure/0/ip",
+          "value": "192.168.0.97"
+        }
+      ]
+    },
+    {
+      "name": "an L4 exposure over UDP on the same port",
+      "verdict": "accept",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/l4Exposure/-",
+          "value": {
+            "address": "lan-mqtt",
+            "port": 1883,
+            "protocol": "udp",
+            "process": "rabbitmq",
+            "surface": "mqtt"
+          }
+        }
+      ]
+    },
+    {
+      "name": "a dashboard that names its JSON inline",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/dashboards/0/json",
+          "value": "{}"
+        }
+      ]
+    },
+    {
+      "name": "an empty list of dashboards",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/dashboards",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "alert rules written inline",
+      "verdict": "refuse",
+      "breaks": "unknown-field",
+      "file": "examples/observability/observability.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/1/alertRules/0/groups",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "a Process parked with no reason",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/parked",
+          "value": {}
+        }
+      ]
+    },
+    {
+      "name": "a parked Process",
+      "verdict": "accept",
+      "file": "examples/data/data.project.yml",
+      "patch": [
+        {
+          "op": "add",
+          "path": "/applications/0/processes/0/parked",
+          "value": {
+            "reason": "Paused."
+          }
+        }
+      ]
     }
   ]
 }

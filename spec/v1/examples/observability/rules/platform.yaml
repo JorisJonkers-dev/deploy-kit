@@ -1,0 +1,20 @@
+# The platform's own alert rules, carried by the monitoring stack's Prometheus
+# (spec/v1/10-project-intent.md#alert-rules). A rule's `severity` label picks
+# the route the Platform document's monitoring block declares for it.
+groups:
+  - name: platform
+    rules:
+      - alert: JobFailed
+        expr: kube_job_status_failed > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Job {{ $labels.namespace }}/{{ $labels.job_name }} failed"
+      - alert: TargetDown
+        expr: up == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} on {{ $labels.instance }} is down"

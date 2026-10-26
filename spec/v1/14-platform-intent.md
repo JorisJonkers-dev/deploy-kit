@@ -68,8 +68,9 @@ something a project file claims by publishing a name
 
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
-`forwardAuth` ([Tiers](#tiers)), and the `handover` ledger puts no Project on
-both delivery paths (`E_HANDOVER_BOTH_PATHS`,
+`forwardAuth` ([Tiers](#tiers)), no group is granted one role twice
+(`E_DUPLICATE_HUMAN_GRANT`, [Human grants](#human-grants)), and the `handover`
+ledger puts no Project on both delivery paths (`E_HANDOVER_BOTH_PATHS`,
 [chapter 60](60-setup.md#handing-over-one-project-at-a-time)). Together, every reference one makes into the
 other resolves and every policy one asks for the other offers:
 
@@ -81,8 +82,17 @@ other resolves and every policy one asks for the other offers:
 | a Process's `engine` names a `surface` in `engines` that the Process does not provide | `E_BACKUP_SURFACE_NOT_PROVIDED` |
 | a volume's Durability Class has no entry in `durability` | `E_NO_DURABILITY_POLICY` |
 | a Process mounts a library `libraries` does not declare | `E_UNKNOWN_LIBRARY` |
+| an Application's `l4Exposure` names an address `l4Addresses` does not declare | `E_UNKNOWN_L4_ADDRESS` |
+| more Processes are exposed on a pool than its `range` holds addresses | `E_L4_ADDRESS_EXHAUSTED` |
+| a tier names an `address` `l4Addresses` does not declare | `E_UNKNOWN_L4_ADDRESS` |
+| a tier names an address, and no Process of its proxy provides the surfaces its listener reaches | `E_TIER_SURFACE_MISSING` |
+| a tier issues through `acme`, and `acme` is absent | `E_NO_ACME_POLICY` |
+| a tier issues through `acme`, and `secretStore` is absent | `E_NO_SECRET_STORE` |
+| a Process of an acme tier's proxy declares `replicas` | `E_ACME_PROXY_REPLICATED` |
+| two exposures dial the same port and protocol on one node through its node addresses | `E_NODE_PORT_TAKEN` |
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
+| a Node Agent the node contract or the pools derive has no entry in `nodeAgents` | `E_NO_NODE_AGENT_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names no Application its Project declares | `E_UNKNOWN_MACHINERY` |
 | a name in `apiAccess.holders` names no Application its Project declares | `E_UNKNOWN_API_HOLDER` |
@@ -302,9 +312,57 @@ routes ([0117](../../docs/adr/model/0117-an-external-check-is-rendered-by-its-ow
 A route or exposure change therefore re-renders only its own Project's share.
 No platform Application's Assets, pod template or pin move with it.
 
+## Node Agents
+
+Some of the foundation runs on the hosts themselves: an agent per node that
+needs the host's devices, network or filesystems. A **Node Agent** is one of
+these, and it is never declared. The Platform document holds a closed **Node
+Agent catalog**, in the shape of the engine catalog: each entry pins the image
+alias and what each copy requests, and the catalog fixes the privileges, which
+no author declares. So `E_HARDENING_UNMET` does not apply to an agent, and no
+Process can ask for the host network: no field of a project file names it.
+
+```yaml
+nodeAgents:
+  gpu-device: { image: nvidia-device-plugin, memory: 64Mi, cpu: 10m }
+  gpu-metrics: { image: dcgm-exporter, memory: 256Mi, cpu: 50m }
+  node-metrics: { image: node-exporter, memory: 64Mi, cpu: 20m }
+  l4-speaker:
+    image: metallb-speaker
+    memory: 64Mi
+    cpu: 20m
+    controller: { image: metallb-controller, memory: 64Mi, cpu: 10m }
+```
+
+| agent | runs on | what the catalog fixes |
+|---|---|---|
+| `gpu-device` | every node with an `nvidia` card in the node contract | the device plugin: privileged, the host's PIDs, the kubelet's device-plugin socket and the CDI directory, and time-slicing of **four shares per GPU** |
+| `gpu-metrics` | the same nodes | the card counters: `SYS_ADMIN`, the kubelet's pod-resources socket read-only, and **one share** of the card it reads |
+| `node-metrics` | every node | the host's metrics: the host network and PIDs, and `/proc`, `/sys` and `/` read-only, as a non-root user |
+| `l4-speaker` | the nodes of every site with a pool-kind [L4 Address](#l4-addresses) | the announcer: the host network and `NET_RAW` alone; beside it a **controller**, which runs once with no privilege, and per pool an address pool and an advertisement |
+
+Each agent is a DaemonSet held to exactly the nodes its row names, by name,
+so a node the contract does not list runs none. A pool's address pool hands
+its range out only to a Service that names the pool (`autoAssign: false`),
+and its advertisement selects the nodes of the pool's site, so the address is
+announced on that segment alone. A `gpu` requirement is granted one share of
+a card, with no memory or fault isolation between the shares.
+
+An agent the facts derive needs its entry: a node with an `nvidia` card and no
+`gpu-device` entry, say, is `E_NO_NODE_AGENT_POLICY`. The GPU agents run under the
+runtime class [`gpus`](#gpus) names for `nvidia`, so where it names none they are
+`E_NO_GPU_POLICY`. An agent no node needs is
+derived nowhere, and its entry renders nothing.
+
+The agents are the **`node` Project**, which no project file declares: every
+object it holds is derived from the catalog, the node contract and the pools,
+in `node-system`, under one Reconcile Unit and one pin, and the handover ledger
+hands it to the estate path like any other Project. It follows nothing, since
+an agent needs only its node.
+
 ## Tiers
 
-A tier is where the edge terminates. It declares **five edge facts**, in the
+A tier is where the edge terminates. It declares its **edge facts**, in the
 model's words, and the `traefik` adapter maps them to Traefik's
 ([0011](../../docs/adr/model/0011-authored-values-name-model-concepts.md)):
 
@@ -314,14 +372,24 @@ tiers:
     audiences: [anonymous, authenticated]
     listener: tls                      # tls | plain
     certificates: acme                 # acme | none
-    forwardAuth: http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward
+    forwardAuth: {provider: identity/identity, surface: http, path: /gate/forward}
     proxiedBy: cloudflare              # optional: who forwards clients' requests to this edge
     traefik: edge/traefik-public       # <project>/<application>: the declared Application that is this tier's proxy
+    ingressClass: traefik-public       # the class that proxy admits routes of
+    dns: {target: ingress.jorisjonkers.dev, proxied: true}
+    address: edge-frankfurt            # optional: the L4 Address its proxy listens on
   - name: lan
     audiences: [lan]
     listener: plain
     certificates: none
     traefik: edge/traefik-lan
+    ingressClass: traefik-lan
+    address: lan-edge
+
+acme:                                  # how an acme tier's proxy registers and proves its names
+  email: hostmaster@jorisjonkers.dev
+  dnsProvider: cloudflare
+  token: secret/data/platform/cloudflare
 ```
 
 | fact | meaning |
@@ -329,9 +397,39 @@ tiers:
 | `audiences` | which audiences this tier carries; a route's audience selects its tier, and an audience no tier carries is `E_NO_TIER_FOR_AUDIENCE` |
 | `listener` | whether the edge terminates TLS |
 | `certificates` | how certificates are issued for what it terminates |
-| `forwardAuth` | the endpoint that authenticates for it; required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)) |
+| `forwardAuth` | who authenticates for it: `provider`, a declared Application as `<project>/<application>`; `surface`, the surface one of its Processes answers on; `path`, where it answers; and optional `responseHeaders`, the headers the edge hands on to the route's Process. Never a URL: the edge asks the provider's Process where it runs, which follows the provider through a move and through the handover ledger's `serving` location while its Project is legacy. Required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)); a provider whose Project the set holds and which declares no such Application or surface is `E_UNKNOWN_FORWARD_AUTH_PROVIDER`. The Project that declares the tier's proxy renders the `forward-auth` Middleware ([chapter 30](30-deliverables.md#shared-middlewares)) |
 | `proxiedBy` | `cloudflare`, or absent. Who forwards clients' requests to this edge, which decides the address a route's `rateLimit` counts a client by: absent, the connection's own address; `cloudflare`, the address Cloudflare forwards in `CF-Connecting-IP`, since every connection then comes from a Cloudflare edge. State it only when every request reaches the tier through Cloudflare, since a client that reaches the edge directly writes that header itself ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)) |
 | `traefik` | the platform Application whose proxy this tier is, as `<project>/<application>` ([privileged roles](#privileged-roles)); an Application its Project does not declare is `E_UNKNOWN_TIER_PROXY` |
+| `ingressClass` | the ingress class this tier's proxy admits routes of, a Kubernetes name. Every route rendered for the tier carries it, and external-dns writes a record for a route by the same annotation, so one Traefik never serves another tier's routes. Optional in the document, but an exposure on a tier that names none is `E_TIER_WITHOUT_INGRESS_CLASS`: its routes would be admitted by no proxy |
+| `dns` | optional: where the tier's public names point (`target`) and whether the DNS provider proxies them (`proxied`). Every route rendered for the tier carries both as the annotations the DNS controller writes its record from; a tier without it, such as the LAN's, publishes no record |
+| `address` | the [L4 Address](#l4-addresses) the proxy listens on, by name; one `l4Addresses` does not declare is `E_UNKNOWN_L4_ADDRESS`. Absent, the proxy is exposed on none, and the substrate reaches it however it does |
+
+**The proxy's ports follow from the listener** and are never authored: every
+tier derives port 80 on its proxy, to the surface `web`, and a `tls` tier port
+443 too, to `websecure`. They are L4 exposures of the proxy on the tier's
+address, so they render as any exposure on that address does
+([chapter 10](10-project-intent.md#l4-exposure)): a load balancer on a pool,
+host ports on a node address, with the Process held to the pool's site or the
+node. The proxy provides the surfaces its tier's listener reaches, or the tier
+is `E_TIER_SURFACE_MISSING`. Where every tier a proxy serves is `tls`, a plain
+request is sent to TLS.
+
+**A tier that issues through `acme` owns its certificate.** On its own proxy it
+derives an ACME resolver named for the tier, a `reconstructible` claim that
+keeps the ACME state, and the DNS provider's token, read from the Secret Store
+path `acme.token` through the one secret delivery, as `CF_DNS_API_TOKEN` for
+Cloudflare. Nothing is shared between two proxies, and no `Certificate`, issuer
+or hand-written TLS store is rendered. An acme tier under a document with no
+`acme` is `E_NO_ACME_POLICY`, and under one with no `secretStore`
+`E_NO_SECRET_STORE`. The ACME state sits on one claim, so the proxy runs one
+copy: `replicas` on any of its Processes is `E_ACME_PROXY_REPLICATED`. An edge
+proxy is delivery machinery, whose rolling switchover never runs two copies.
+
+**The issuance allowance is shared.** Tiers that issue the same names draw on
+one allowance at the certificate authority. Both of the estate's tiers issue
+the same wildcard, so a lost claim on either reissues against the allowance of
+both: five losses within seven days, counted across the tiers, exhaust it. The
+claim stays `reconstructible`; losing it costs a reissue, never data.
 
 `entryPoint`, `certResolver` and every other Traefik spelling appear only in the
 adapter. A route's audience is the **only** way it reaches a tier, so a `lan`
@@ -412,6 +510,27 @@ It is stated here, beside the destination it locates, because the platform chose
 that destination and nobody else knows where it is. At least one range is
 required: an off-cluster copy with nowhere to go is not one.
 
+## Priority
+
+```yaml
+priority:
+  data: {name: platform-data, value: 1000000}
+  critical: {name: platform-critical-app, value: 100000}
+  criticalApplications: [auth/auth]
+```
+
+No author claims a priority: it follows from what a Process is. A Process whose
+`engine` derives a backup, a datastore, runs at the `data` class, so it
+schedules before what reads it. The foundation, every holder of a
+[privileged role](#privileged-roles), and the Applications `criticalApplications`
+names run at the `critical` class, so they keep scheduling when a node is short.
+Every other Process runs at none. The render writes both classes as
+`PriorityClass` objects, estate-scoped, preempting lower priorities and default
+to no pod; a pod that names a class before it exists is refused at admission
+and created again once it does. A name in `criticalApplications` whose Project
+the set holds but which declares no such Application is
+`E_UNKNOWN_CRITICAL_APPLICATION`.
+
 ## Libraries
 
 A **Library** is a directory on one node that several projects share: the media
@@ -444,6 +563,46 @@ the volume objects and the group are derived from this declaration and the
 mount. A library has no Durability Class: what it holds is no render's, and
 backing it up is the platform's, outside the render.
 
+## L4 Addresses
+
+An **L4 Address** is an address a client off the cluster reaches a raw TCP or
+UDP surface on ([chapter 10](10-project-intent.md#l4-exposure)). Which addresses
+the estate announces, on which network, are the platform's, so the Platform
+document declares each one, keyed by the name an Application's `l4Exposure`
+writes:
+
+```yaml
+l4Addresses:
+  lan-mqtt:
+    kind: pool
+    site: enschede
+    range: 192.168.0.97/32
+  mail-node:
+    kind: node
+    node: frankfurt-contabo-1
+```
+
+`kind` says how the address is reached, and each kind has its own fields.
+
+| kind | field | required | notes |
+|---|---|---|---|
+| `pool` | `site` | yes | The site whose segment announces the pool: a range of IPv4 addresses on one site's network segment. Every Process exposed on it is held to this site. |
+| `pool` | `range` | yes | The IPv4 range, in CIDR form, the address is taken from. A `/32` is one address. It sits outside the router's DHCP scope. |
+| `node` | `node` | yes | The node, as the node contract names it, whose own address a client dials: for a site with no pool. Every Process exposed on it is held to this node, and each of its ports is a host port there. |
+
+Each Service exposed on a pool takes one address of its range, as a load
+balancer requesting the pool by its name, so the pool's name is also the name
+of the address pool the cluster's load balancer announces from. The load
+balancer is the `l4-speaker` [Node Agent](#node-agents), which declares each
+pool and announces it from the nodes of the pool's site: an entry asserts that
+the range is free on the site's segment.
+
+A node address takes no address of a range, so it is never exhausted. What it
+has to share is the node's ports: a node listens on a port and a protocol once,
+so two exposures dialling the same one there, through any of its node
+addresses, are `E_NODE_PORT_TAKEN`. The entry asserts that the node's address
+reaches the node, and that no firewall of the substrate's drops the ports.
+
 ## GPUs
 
 A Process that requires a GPU requests one share of its card's device resource
@@ -470,7 +629,9 @@ A vendor the platform names nothing for cannot be requested: a Process whose
 eligible cards are that vendor's is `E_NO_GPU_POLICY`
 ([chapter 40](40-composition.md#placement)). An entry asserts that every node
 carrying the vendor's cards has the driver, the container toolkit and the
-device plugin installed; the render installs none of them.
+device plugin can run; the render installs neither the driver nor the toolkit.
+The device plugin is the `gpu-device` [Node Agent](#node-agents), whose share
+count is the catalog's.
 
 ## VPN
 
@@ -630,11 +791,20 @@ document states are the two a derivation needs, and no more.
 monitors:
   interval: 30s
   timeout: 10s
+  labels:
+    release: metrics-stack
 ```
 
 One cadence for every monitor the estate renders, here for the same reason the
 probe cadence below is: it is contended, and no Application knows better
 ([0004](../../docs/adr/model/0004-contention-decides-authority.md)).
+
+`labels` is optional: the label set the monitoring stack selects its monitors
+by. Every ServiceMonitor and PodMonitor the render writes carries it beside its
+own labels, which win where a key is both, so a monitor is never written that
+the stack does not read. Which labels the stack selects by is a fact of how the
+platform installed it, and the same for every Project, so no Project writes it.
+Each key and value is a Kubernetes label key and value.
 
 ## Telemetry
 
@@ -642,6 +812,9 @@ probe cadence below is: it is contended, and no Application knows better
 telemetry:
   collector: observability/otel-collector
   metrics: observability/prometheus
+  dashboards:
+    instance: {dashboards: grafana}
+    datasource: prometheus
 ```
 
 Where telemetry goes, in two names, each a [privileged role](#privileged-roles)'s
@@ -657,6 +830,13 @@ holder, named as a tier names its proxy: `<project>/<application>`.
   Processes, in its own namespace. `E_UNKNOWN_METRICS_STACK` where its Project
   declares no such Application.
 
+- **`dashboards`**, optional, is the Grafana every Application's dashboards ship
+  to ([chapter 10](10-project-intent.md#dashboards)): `instance`, the labels its
+  Grafana instance carries, which each dashboard selects it by, and
+  `datasource`, the data source a vendored dashboard's inputs map to. An
+  Application that ships a dashboard where the block names none is
+  `E_NO_DASHBOARD_POLICY`.
+
 A Platform document without the block names neither: no profile is handed an
 endpoint, and no scrape surface admits a metrics stack.
 
@@ -667,6 +847,40 @@ That is the whole observability surface of this document. No receiver map, no
 severity mapping, no rule catalog: those belong to the monitoring stack, which
 reads `alertClass` from the published projection
 ([chapter 10](10-project-intent.md#observability)).
+
+## Monitoring
+
+```yaml
+monitoring:
+  grafana: identity/grafana
+  prometheus: observability/prometheus
+  alertmanager: observability/alertmanager
+  receivers:
+    - name: discord
+      discord:
+        webhook: {path: secret/data/platform/alertmanager-discord, key: webhook-url}
+  routes:
+    - {severity: critical, receiver: discord, repeat: 4h}
+    - {severity: warning, receiver: discord, repeat: 12h}
+```
+
+The **monitoring stack** is three declared Applications by role, each as
+`<project>/<application>`: `grafana`, `prometheus` and `alertmanager`. Only
+they carry alert rules ([chapter 10](10-project-intent.md#alert-rules)). A role
+whose Project the set holds but which declares no such Application is
+`E_UNKNOWN_MONITORING_APPLICATION`; a set that holds no file of its Project,
+such as one Project's own check, cannot tell, and the composition does.
+
+Alerts have one routing, which renders as one `AlertmanagerConfig` in the
+Alertmanager's namespace and routes the alerts of every namespace. A
+**receiver** is named, and of one kind: `discord`, its webhook read from Vault
+at `path` and `key` through the one secret delivery, as a grant on the
+Alertmanager's Process; the routing names the Secret it lands in, never the
+value. A **severity route** sends the alerts whose `severity` label is
+`severity` to `receiver`, repeated every `repeat`; an alert that matches no
+route reaches a `null` receiver and is not delivered. A route naming a receiver
+the block does not declare is `E_UNKNOWN_RECEIVER`, and the Alertmanager reads
+the Secret Store, so a platform naming none is `E_NO_SECRET_STORE` for it.
 
 ## Hardening policy
 
@@ -852,6 +1066,47 @@ nothing, and an edge proxy is machinery that holds no access.
 
 The block is optional. A Platform document without it admits nobody, and every
 `api` declaration read beside it is refused.
+
+## Human grants
+
+```yaml
+humanGrants:
+  - group: oidc:k8s-admin
+    clusterRole: cluster-admin
+    reason: the platform owner administers the cluster with kubectl and headlamp over OIDC
+```
+
+Who among people may use the cluster, and as what
+([0118](../../docs/adr/model/0118-a-human-grant-is-declared-in-the-platform-document.md)).
+Who may administer the cluster is contended by every Project, so it is the
+platform's ([0004](../../docs/adr/model/0004-contention-decides-authority.md)),
+and a grant hangs off no Application: removing the tool a person uses, headlamp
+or anything else, removes no one's access. Each **Human Grant** is three facts:
+
+| field | required | notes |
+|---|---|---|
+| `group` | yes | The group, written exactly as the API server sees it, prefix included: `oidc:k8s-admin`, never `k8s-admin`. Who is in it is the identity provider's, and the prefix the control plane adds is a bootstrap fact the model does not restate. It names the binding, so it holds no `/`, `%` or whitespace. |
+| `clusterRole` | yes | One of Kubernetes' built-in cluster roles, the `HumanGrantRole` vocabulary: `cluster-admin`, `admin`, `edit` or `view`. |
+| `reason` | yes | Why the group holds the role, for whoever reviews the document. |
+
+The subject is always a group and never a user, so membership stays where it is
+reviewed. The grant is always cluster-wide: it names no namespace, and it
+authors no rules. API access for a Process stays declared on the Process
+([Kubernetes API access](#kubernetes-api-access)). Anything else is refused by
+the schema: a `user`, a `namespace`, a role outside the four, or a grant with
+no reason.
+
+Each grant renders one `ClusterRoleBinding` of its role to its group, named
+`human:<group>:<clusterRole>`
+([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)). A
+grant belongs to no Project, so its binding is estate-scoped and applied by
+the `estate-human-grants` unit, which follows nothing
+([chapter 20](20-resolved-deployment.md#the-reconcile-unit)). A group granted
+one role twice would render two bindings of one name, so the second grant is
+`E_DUPLICATE_HUMAN_GRANT`. One group may hold two roles, each by its own grant.
+
+The block is optional, and a Platform document without it grants no one
+anything.
 
 ## The Vault policy job
 

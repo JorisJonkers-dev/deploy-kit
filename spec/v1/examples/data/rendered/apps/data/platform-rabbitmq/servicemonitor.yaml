@@ -6,6 +6,7 @@ metadata:
   name: rabbitmq
   namespace: data-system
   labels:
+    release: metrics-stack
     app.kubernetes.io/name: rabbitmq
     app.kubernetes.io/instance: rabbitmq
     app.kubernetes.io/part-of: platform-rabbitmq

@@ -18,11 +18,16 @@ import type {
   VaultRole,
   VaultDynamicSecret,
   VaultStaticSecret,
+  GrafanaDashboard,
+  AlertmanagerConfig,
+  PrometheusRule,
 } from "./custom.ts";
 import type {
   AliasService,
+  LoadBalancerService,
   ClusterRole,
   ClusterRoleBinding,
+  PriorityClass,
   ConfigMap,
   CronJob,
   Deployment,
@@ -37,6 +42,12 @@ import type {
   Service,
   ServiceAccount,
 } from "./kubernetes.ts";
+import type {
+  AgentDaemonSet,
+  AgentDeployment,
+  AddressPool,
+  L2Advertisement,
+} from "./node-agents.ts";
 
 export type RenderedObject =
   | Namespace
@@ -46,6 +57,7 @@ export type RenderedObject =
   | NetworkPolicy
   | Service
   | AliasService
+  | LoadBalancerService
   | PersistentVolumeClaim
   | PersistentVolume
   | Canary
@@ -57,6 +69,10 @@ export type RenderedObject =
   | ConfigMap
   | ClusterRole
   | ClusterRoleBinding
+  | PriorityClass
+  | GrafanaDashboard
+  | PrometheusRule
+  | AlertmanagerConfig
   | CronJob
   | Job
   | HorizontalPodAutoscaler
@@ -71,7 +87,11 @@ export type RenderedObject =
   | VaultDynamicSecret
   | VaultPolicy
   | VaultRole
-  | GeneratedKeys;
+  | GeneratedKeys
+  | AgentDaemonSet
+  | AgentDeployment
+  | AddressPool
+  | L2Advertisement;
 
 export interface Deliverable {
   /** Relative to the gitops root, assigned by the path plan. */

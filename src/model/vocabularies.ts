@@ -1,7 +1,12 @@
 // The closed vocabularies of spec/v1/10-project-intent.md#the-closed-vocabularies.
 // Each is declared here once; the wire schema enumerates from these lists.
 
-export const LIFECYCLES = ["application", "job", "prepare"] as const;
+export const LIFECYCLES = [
+  "application",
+  "job",
+  "prepare",
+  "scheduled",
+] as const;
 export const RUNTIMES = ["jvm", "python", "node", "static", "none"] as const;
 export const ENGINES = [
   "postgres",
@@ -61,6 +66,11 @@ export const KEY_ENCODINGS = ["hex", "base64", "base64url"] as const;
 export const TOLERANCES = ["restart", "reload"] as const;
 /** What a library grants a project, and what a Process mounts it for. */
 export const LIBRARY_ACCESS = ["read", "write"] as const;
+
+/** What a Process's replicas are kept apart across (spec/v1/10-project-intent.md#replicas-and-the-disruption-budget). */
+export const SPREADS = ["node"] as const;
+/** The transport an L4 exposure carries: a raw surface, never HTTP's routing. */
+export const L4_PROTOCOLS = ["tcp", "udp"] as const;
 export const PLACEHOLDER_KINDS = [
   "secret",
   "dependency",
@@ -74,6 +84,21 @@ export const SIGN_IN_MODES = ["native", "gated", "token"] as const;
 export const CLIENT_CREDENTIALS = ["secret", "pkce"] as const;
 
 export type Lifecycle = (typeof LIFECYCLES)[number];
+
+/**
+ * The lifecycles whose Process runs to completion and serves nothing
+ * (spec/v1/10-project-intent.md#process): it listens on nothing, has no
+ * readiness, runs one copy and cuts over nothing, so no shared `cutover`
+ * reaches it. Each has its own refusal for what only a serving Process has.
+ */
+export const RUNS_TO_COMPLETION = {
+  prepare: "E_PREPARE_PROCESS_SERVES",
+  scheduled: "E_SCHEDULED_PROCESS_SERVES",
+} as const satisfies Partial<Record<Lifecycle, string>>;
+
+/** Whether a Process of this lifecycle serves, and so answers the cutover question. */
+export const serves = (lifecycle: Lifecycle): boolean =>
+  !(lifecycle in RUNS_TO_COMPLETION);
 export type Runtime = (typeof RUNTIMES)[number];
 export type Engine = (typeof ENGINES)[number];
 export type Cutover = (typeof CUTOVERS)[number];
@@ -94,3 +119,4 @@ export type ApiVerb = (typeof API_VERBS)[number];
 export type Delivery = (typeof DELIVERIES)[number];
 export type Tolerance = (typeof TOLERANCES)[number];
 export type LibraryAccess = (typeof LIBRARY_ACCESS)[number];
+export type L4Protocol = (typeof L4_PROTOCOLS)[number];

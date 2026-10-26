@@ -2,6 +2,10 @@
 // (spec/v1/20-resolved-deployment.md): the set composed as checkIntentSet
 // composes it, the pinned inputs read and checked, and every project's
 // projections written. The hash arrives as a port; nothing here performs IO.
+import type { ResolvedNodeAgent } from "../model/node-agents.ts";
+import { resolveNodeAgents } from "../resolve/node-agents.ts";
+import { forwardAuthEndpoint } from "../model/runtime-profiles.ts";
+import type { ResolvedForwardAuth } from "../adapters/traefik/shared-middlewares.ts";
 import { pinnedDiagnostics } from "../check/pinned-inputs.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { ScopedEnv } from "../model/env.ts";
@@ -10,6 +14,10 @@ import type { Hasher } from "../model/hasher.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { InputDigest, PinnedSet } from "../model/resolution.ts";
 import type { MigrationProofDocument } from "../model/migration-proof.ts";
+import type {
+  HumanGrant,
+  PlatformIntentDocument,
+} from "../model/platform-intent.ts";
 import {
   readClusterState,
   readImagesLock,
@@ -56,6 +64,16 @@ export interface ResolvedSet {
   readonly catalogHomes: ReadonlyMap<ResolvedCatalogJob, CatalogHome>;
   /** Where Flux's events go, where the platform names a Reporter. */
   readonly events?: ResolvedEvents;
+  /** Every tier's proxy, as `<project>/<application>`: where the shared Middlewares live. */
+  readonly tierProxies: readonly string[];
+  /** The groups the platform grants a built-in cluster role. */
+  readonly humanGrants?: readonly HumanGrant[];
+  /** The priority classes the platform declares. */
+  readonly priority?: PlatformIntentDocument["priority"];
+  /** The Node Agents the node contract and the pools derive. */
+  readonly nodeAgents: readonly ResolvedNodeAgent[];
+  /** Each tier proxy whose tier names a forward-auth provider, and where the edge asks it. */
+  readonly forwardAuths: readonly ResolvedForwardAuth[];
 }
 
 const NODE_CONTRACT = "node-contract.yml";
@@ -106,8 +124,8 @@ const directoryOf = (path: string): string =>
   path.slice(0, path.lastIndexOf("/") + 1);
 
 /**
- * A project's Asset files, by the `from` path it names each by: the file of
- * the set at that path beside the project file, where the set holds one.
+ * A project's Asset and dashboard files, by the `from` path it names each by:
+ * the file of the set at that path beside the project file.
  */
 function assetsOf(
   name: string,
@@ -121,6 +139,14 @@ function assetsOf(
       processes.flatMap(({ assets }) => (assets ?? []).map(({ from }) => from)),
     ),
   );
+  // A dashboard's file is read the same way, by the `from` it names.
+  for (const { dashboards } of project.applications)
+    // Stryker disable next-line ArrayDeclaration: no list ships nothing.
+    for (const { from } of dashboards ?? []) named.add(from);
+  // A rule-group file is read the same way, by the `from` it names.
+  for (const { alertRules } of project.applications)
+    // Stryker disable next-line ArrayDeclaration: no list carries nothing.
+    for (const { from } of alertRules ?? []) named.add(from);
   const beside = directoryOf(name);
   return new Map(
     // The set holds every Asset's file, or E_ASSET_NOT_FOUND refused it.
@@ -277,6 +303,48 @@ export function resolveIntentSet(
       ...(catalogs.length === 0 ? {} : { catalogJobs: catalogs }),
       catalogHomes: homes,
       ...(events === undefined ? {} : { events }),
+      tierProxies: set.platform.tiers.map(({ traefik }) => traefik),
+      nodeAgents: resolveNodeAgents(
+        set.platform,
+        set.nodeContract,
+        set.imagesLock,
+      ),
+      // An absent list and an undefined one render no binding alike.
+      // Stryker disable next-line ConditionalExpression
+      ...(set.platform.humanGrants === undefined
+        ? {}
+        : { humanGrants: set.platform.humanGrants }),
+      // No policy and an undefined one render no class alike.
+      // Stryker disable next-line ConditionalExpression
+      ...(set.platform.priority === undefined
+        ? {}
+        : { priority: set.platform.priority }),
+      // A provider the union does not declare is asked by no route, or
+      // E_UNKNOWN_FORWARD_AUTH_PROVIDER refused the set, so its Middleware is
+      // not rendered.
+      forwardAuths: set.platform.tiers.flatMap(
+        ({ traefik, forwardAuth }): ResolvedForwardAuth[] => {
+          if (forwardAuth === undefined) return [];
+          const address = forwardAuthEndpoint(
+            set.platform,
+            set.projects,
+            forwardAuth,
+          );
+          return address === undefined
+            ? []
+            : [
+                {
+                  proxy: traefik,
+                  address,
+                  // No list and an undefined one hand on nothing alike.
+                  // Stryker disable next-line ConditionalExpression
+                  ...(forwardAuth.responseHeaders === undefined
+                    ? {}
+                    : { responseHeaders: forwardAuth.responseHeaders }),
+                },
+              ];
+        },
+      ),
     },
   };
 }

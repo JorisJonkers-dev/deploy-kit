@@ -15,7 +15,7 @@ import {
   type AuthoredFile,
   type RenderedArtifact,
 } from "../../src/index.ts";
-import { ADAPTERS } from "../../src/adapters/registry.ts";
+import { ADAPTERS, type Adapter } from "../../src/adapters/registry.ts";
 import { renderKubernetes } from "../../src/adapters/kubernetes/render.ts";
 import {
   collisions,
@@ -45,12 +45,15 @@ const SET = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
+  "mail/mail.project.yml",
   "identity/env/grafana/base.env",
   "data/data.project.yml",
   "data/env/postgres/base.env",
   "data/config/postgresql.conf",
+  "data/dashboards/rabbitmq.json",
 ];
 
 /** The knowledge platform's project file and one env file per Process. */
@@ -135,10 +138,100 @@ describe("renderIntentSet", () => {
     );
   });
 
-  it("renders nothing estate-scoped for both, each holding its own routes", () => {
+  it("renders nothing estate-scoped for both but the platform's Human Grants, each holding its own routes", () => {
     expect(
-      artifact(render(undefined, ["notes", "data"]), "_estate"),
-    ).toBeUndefined();
+      Object.keys(
+        asTree(artifact(render(undefined, ["notes", "data"]), "_estate")),
+      ),
+    ).toStrictEqual(Object.keys(committed("platform/rendered")));
+  });
+
+  // REQ-080 (docs/requirements.md): each Human Grant the Platform document
+  // declares renders one ClusterRoleBinding of its built-in role to its group,
+  // cluster-wide and estate-scoped, in every render whatever it holds.
+  describe("the Human Grants", () => {
+    it("render, estate-scoped, to the platform's committed tree, byte for byte", () => {
+      expect(asTree(artifact(render(undefined, []), "_estate"))).toStrictEqual(
+        committed("platform/rendered"),
+      );
+    });
+
+    it("render one binding per grant, of its role to its group as the API server sees it", () => {
+      const tree = asTree(
+        artifact(
+          render(
+            {
+              "platform/platform.intent.yml": (document) =>
+                document.replace(
+                  "    reason: the platform owner",
+                  "    reason: readers\n  - group: oidc:k8s-viewers\n    clusterRole: view\n    reason: the platform owner",
+                ),
+            },
+            [],
+          ),
+          "_estate",
+        ),
+      );
+      const bindings = parseAllDocuments(
+        tree["estate/human-grants/clusterrolebindings.yaml"] ?? "",
+      ).map((document) => document.toJS() as Record<string, unknown>);
+
+      expect(bindings).toStrictEqual([
+        expect.objectContaining({
+          metadata: {
+            name: "human:oidc:k8s-admin:cluster-admin",
+            labels: { "app.kubernetes.io/managed-by": "deploy-kit" },
+          },
+          roleRef: {
+            apiGroup: "rbac.authorization.k8s.io",
+            kind: "ClusterRole",
+            name: "cluster-admin",
+          },
+          subjects: [
+            {
+              apiGroup: "rbac.authorization.k8s.io",
+              kind: "Group",
+              name: "oidc:k8s-admin",
+            },
+          ],
+        }),
+        expect.objectContaining({
+          metadata: {
+            name: "human:oidc:k8s-viewers:view",
+            labels: { "app.kubernetes.io/managed-by": "deploy-kit" },
+          },
+          roleRef: {
+            apiGroup: "rbac.authorization.k8s.io",
+            kind: "ClusterRole",
+            name: "view",
+          },
+          subjects: [
+            {
+              apiGroup: "rbac.authorization.k8s.io",
+              kind: "Group",
+              name: "oidc:k8s-viewers",
+            },
+          ],
+        }),
+      ]);
+    });
+
+    it("render nothing where the platform declares none", () => {
+      expect(
+        artifact(
+          render(
+            {
+              "platform/platform.intent.yml": (document) =>
+                document
+                  .replace(/\nhumanGrants:\n( {2}.*\n)+/, "\n")
+                  .replace(/\npriority:\n( {2}.*\n)+/, "\n"),
+            },
+            ["notes"],
+          ),
+          "_estate",
+        ),
+      ).toBeUndefined();
+    });
   });
 
   // REQ-052 (docs/requirements.md): auth's render carries its migration Jobs,
@@ -158,7 +251,10 @@ describe("renderIntentSet", () => {
     expect({
       ...asTree(artifact(artifacts, "auth")),
       ...asTree(artifact(artifacts, "_estate")),
-    }).toStrictEqual(committed("auth/rendered"));
+    }).toStrictEqual({
+      ...committed("auth/rendered"),
+      ...committed("platform/rendered"),
+    });
   });
 
   // documents of the render it belongs to, and is named by their digest.
@@ -237,7 +333,7 @@ describe("renderIntentSet", () => {
 
       expect(jobFiles(paths)).toStrictEqual([]);
       expect(paths.filter((path) => path.includes("/policies/"))).toHaveLength(
-        8,
+        10,
       );
     });
 
@@ -391,6 +487,8 @@ describe("renderIntentSet", () => {
         "uid",
       ]);
       expect(Object.keys(named.documents)).toStrictEqual([
+        "data-system-asset-sync.policy.json",
+        "data-system-asset-sync.role.json",
         "data-system-mongo-backup.policy.json",
         "data-system-mongo-backup.role.json",
         "data-system-postgres-backup.policy.json",
@@ -712,8 +810,10 @@ describe("renderIntentSet", () => {
     });
   });
 
-  it("renders only the projects it is asked for", () => {
-    expect(render(undefined, []).map(({ name }) => name)).toStrictEqual([]);
+  it("renders only the projects it is asked for, and what is estate-scoped", () => {
+    expect(render(undefined, []).map(({ name }) => name)).toStrictEqual([
+      "_estate",
+    ]);
   });
 
   it("refuses the set before rendering where resolution refuses it", () => {
@@ -789,6 +889,22 @@ describe("renderIntentSet", () => {
   // spec/v1/17-sign-in.md: the sign-in provider's share renders every Client
   // object, the gated Client's derived /.auth/ route, the provider's write and
   // the native Client's read on the client secret, and equals its committed tree.
+  // REQ-087 (docs/requirements.md): the edge Project renders the shared
+  // Middlewares every route names, once per tier proxy's namespace.
+  it("renders the edge project's share of the tree to its committed tree, byte for byte", () => {
+    expect(asTree(artifact(render(undefined, ["edge"]), "edge"))).toStrictEqual(
+      committed("edge/rendered"),
+    );
+  });
+
+  // REQ-086 (docs/requirements.md): a route's redirect renders as its own
+  // RedirectRegex Middleware, which the route names.
+  it("renders the mail project's share of the tree to its committed tree, byte for byte", () => {
+    expect(asTree(artifact(render(undefined, ["mail"]), "mail"))).toStrictEqual(
+      committed("mail/rendered"),
+    );
+  });
+
   it("renders the identity project's share of the tree to its committed tree, byte for byte", () => {
     expect(
       asTree(artifact(render(undefined, ["identity"]), "identity")),
@@ -811,7 +927,10 @@ describe("renderIntentSet", () => {
     expect({
       ...asTree(artifact(artifacts, "knowledge-platform")),
       ...asTree(artifact(artifacts, "_estate")),
-    }).toStrictEqual(committed("knowledge-platform/rendered"));
+    }).toStrictEqual({
+      ...committed("knowledge-platform/rendered"),
+      ...committed("platform/rendered"),
+    });
   });
 
   it("orders the tree whatever order the adapters hand it out in", () => {
@@ -830,7 +949,10 @@ describe("renderIntentSet", () => {
     const paths = (name: string) =>
       artifact(artifacts, name)?.files.map(({ path }) => path) ?? [];
 
-    expect(artifacts.map(({ name }) => name)).toStrictEqual(["notes"]);
+    expect(artifacts.map(({ name }) => name)).toStrictEqual([
+      "_estate",
+      "notes",
+    ]);
     expect(paths("notes")).toStrictEqual([
       "apps/notes/kustomization.yaml",
       "apps/notes/libraries.yaml",
@@ -932,7 +1054,14 @@ describe("renderIntentSet", () => {
     ).toStrictEqual([
       [
         "_estate",
-        ["estate/edge/lan/kustomization.yaml", "estate/edge/lan/x.yaml"],
+        [
+          "estate/edge/lan/kustomization.yaml",
+          "estate/edge/lan/x.yaml",
+          "estate/human-grants/clusterrolebindings.yaml",
+          "estate/human-grants/kustomization.yaml",
+          "estate/priority-classes/kustomization.yaml",
+          "estate/priority-classes/priorityclasses.yaml",
+        ],
       ],
       [
         "edge",
@@ -1109,8 +1238,8 @@ describe("the database catalog", () => {
             "legacy: [auth, data, knowledge, knowledge-platform, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, observability, secrets]",
-            "estate: [delivery, edge, identity, observability, secrets]",
+            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
+            "estate: [delivery, edge, identity, mail, observability, secrets]",
           ),
     });
 
@@ -1144,8 +1273,8 @@ describe("the database catalog", () => {
           "legacy: [auth, knowledge, notes]",
         )
         .replace(
-          "estate: [delivery, edge, identity, knowledge-platform, observability, secrets]",
-          "estate: [data, delivery, edge, identity, knowledge-platform, observability, secrets]",
+          "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
+          "estate: [data, delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
         )
         .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
   };
@@ -1373,8 +1502,8 @@ describe("the database catalog", () => {
             "legacy: [data, knowledge, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, observability, secrets]",
-            "estate: [auth, delivery, edge, identity, knowledge-platform, observability, secrets]",
+            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
+            "estate: [auth, delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
           ),
     };
     const tree = estate(both, ["knowledge-platform"], AUTH);
@@ -1428,8 +1557,8 @@ describe("the database catalog", () => {
             "legacy: [auth, data, knowledge, knowledge-platform, notes]",
           )
           .replace(
-            "estate: [delivery, edge, identity, knowledge-platform, observability, secrets]",
-            "estate: [delivery, edge, identity, observability, secrets]",
+            "estate: [delivery, edge, identity, knowledge-platform, mail, observability, secrets]",
+            "estate: [delivery, edge, identity, mail, observability, secrets]",
           ),
     };
 
@@ -1701,6 +1830,114 @@ describe("the Vault Agent injector", () => {
     );
     expect(trees.length).toBeGreaterThan(0);
     expect(annotated).toStrictEqual([]);
+  });
+});
+
+// REQ-078 (docs/requirements.md): a scheduled Process renders a CronJob at its
+// own schedule that never runs twice at once and skips a run more than 300
+// seconds late, around the pod any other Process gets, with its grants, edges
+// and placement; a rotated value restarts nothing, since the next run reads it.
+describe("a scheduled Process", () => {
+  const SYNC = "apps/data/asset-sync";
+  const tree = (
+    edits?: Readonly<Record<string, (text: string) => string>>,
+  ): Record<string, string> =>
+    asTree(artifact(render(edits, ["data"]), "data"));
+  const objects = (body: string | undefined) =>
+    parseAllDocuments(body ?? "").map(
+      (doc) => doc.toJS() as Record<string, unknown>,
+    );
+  const withEdge = (document: string) =>
+    document.replace(
+      "        image: asset-sync\n",
+      "        image: asset-sync\n        dependsOn:\n          - { application: platform-valkey, surface: redis }\n",
+    );
+
+  // REQ-095 (docs/requirements.md): a parked schedule starts no run.
+  it("suspends its CronJob while parked, and only then", () => {
+    const suspendOf = (
+      edits?: Readonly<Record<string, (text: string) => string>>,
+    ) =>
+      (
+        objects(tree(edits)[`${SYNC}/workload.yaml`])[0]?.["spec"] as Record<
+          string,
+          unknown
+        >
+      )["suspend"];
+
+    expect(suspendOf()).toBeUndefined();
+    expect(
+      suspendOf({
+        "data/data.project.yml": (document) =>
+          document.replace(
+            "        image: asset-sync\n",
+            "        image: asset-sync\n        parked: {reason: Paused.}\n",
+          ),
+      }),
+    ).toBe(true);
+  });
+
+  it("renders a CronJob that forbids a second run and skips a late one, and nothing that serves", () => {
+    const rendered = tree();
+    const [cronJob] = objects(rendered[`${SYNC}/workload.yaml`]);
+    const spec = cronJob?.["spec"] as {
+      jobTemplate: { spec: { template: { spec: Record<string, unknown> } } };
+    } & Record<string, unknown>;
+
+    expect(cronJob?.["kind"]).toBe("CronJob");
+    expect(spec["schedule"]).toBe("*/15 * * * *");
+    expect(spec["concurrencyPolicy"]).toBe("Forbid");
+    expect(spec["startingDeadlineSeconds"]).toBe(300);
+    expect(spec.jobTemplate.spec.template.spec["restartPolicy"]).toBe(
+      "OnFailure",
+    );
+    expect(
+      Object.keys(rendered)
+        .filter((path) => path.startsWith(`${SYNC}/`))
+        .sort(),
+    ).toStrictEqual([
+      `${SYNC}/kustomization.yaml`,
+      `${SYNC}/networkpolicy.yaml`,
+      `${SYNC}/serviceaccount.yaml`,
+      `${SYNC}/vso.yaml`,
+      `${SYNC}/workload.yaml`,
+    ]);
+  });
+
+  it("runs the pod any Process gets: its identity, its placement, its posture and its grant's file", () => {
+    const [cronJob] = objects(tree()[`${SYNC}/workload.yaml`]);
+    const pod = (
+      cronJob?.["spec"] as {
+        jobTemplate: { spec: { template: { spec: Record<string, unknown> } } };
+      }
+    ).jobTemplate.spec.template.spec;
+
+    expect(pod["serviceAccountName"]).toBe("asset-sync");
+    expect(JSON.stringify(pod["affinity"])).toContain("frankfurt-contabo-1");
+    expect(pod["securityContext"]).toMatchObject({ runAsNonRoot: true });
+    expect(JSON.stringify(pod["volumes"])).toContain(
+      "asset-sync-platform-garage-web-key",
+    );
+  });
+
+  it("restarts nothing when its grant's value changes", () => {
+    const synced = objects(tree()[`${SYNC}/vso.yaml`]).find(
+      ({ kind }) => kind === "VaultStaticSecret",
+    );
+
+    expect(synced?.["spec"]).not.toHaveProperty("rolloutRestartTargets");
+  });
+
+  it("reaches the provider of an edge it declares, as any Process does", () => {
+    const egressOf = (rendered: Record<string, string>) =>
+      JSON.stringify(
+        objects(rendered[`${SYNC}/networkpolicy.yaml`])[0]?.["spec"],
+      );
+
+    expect(egressOf(tree())).not.toContain("valkey");
+    expect(egressOf(tree({ "data/data.project.yml": withEdge }))).toContain(
+      "valkey",
+    );
   });
 });
 
@@ -2033,5 +2270,1084 @@ describe("a Process that listens below 1024", () => {
       drop: ["ALL"],
     });
     expect(securityContext).not.toHaveProperty("sysctls");
+  });
+});
+
+// REQ-082 (docs/requirements.md): every monitor the render writes carries the
+// label set the Platform document's `monitors` names, beside its own labels,
+// which win where a key is both; a platform that names none adds none.
+describe("the monitoring stack's selector", () => {
+  const PLATFORM = "platform/platform.intent.yml";
+  const LABELS = "  labels:\n    release: metrics-stack\n";
+  const monitorLabels = (
+    edit?: (document: string) => string,
+  ): Record<string, string> => {
+    const tree = asTree(
+      artifact(render(edit === undefined ? {} : { [PLATFORM]: edit }), "notes"),
+    );
+    const [monitor] = parseAllDocuments(
+      tree["apps/notes/notes/podmonitor.yaml"] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    return (monitor?.["metadata"] as { labels: Record<string, string> }).labels;
+  };
+
+  it("is carried by every monitor beside the render's own labels", () => {
+    expect(monitorLabels()).toStrictEqual({
+      release: "metrics-stack",
+      "app.kubernetes.io/name": "notes-api",
+      "app.kubernetes.io/instance": "notes-api",
+      "app.kubernetes.io/part-of": "notes",
+      "app.kubernetes.io/managed-by": "deploy-kit",
+      "app.kubernetes.io/component": "node",
+    });
+  });
+
+  it("never replaces a label the render writes", () => {
+    expect(
+      monitorLabels((document) =>
+        document.replace(
+          LABELS,
+          `${LABELS}    app.kubernetes.io/managed-by: someone-else\n`,
+        ),
+      )["app.kubernetes.io/managed-by"],
+    ).toBe("deploy-kit");
+  });
+
+  it("adds nothing where the platform names no labels", () => {
+    expect(
+      monitorLabels((document) => document.replace(LABELS, "")),
+    ).not.toHaveProperty("release");
+  });
+});
+
+// REQ-087 (docs/requirements.md): the shared Middlewares ship with the routes
+// that name them, so a render without the traefik adapter writes none.
+describe("the shared Middlewares, by adapter", () => {
+  const paths = (adapters: readonly Adapter[]) => {
+    const result = renderIntentSet(files(), {
+      ...OPTIONS,
+      projects: ["edge"],
+      adapters,
+    });
+    return result.ok
+      ? (artifact(result.value, "edge")?.files ?? []).map(({ path }) => path)
+      : [];
+  };
+
+  it("render with the traefik adapter alone", () => {
+    expect(paths(ADAPTERS.filter(({ name }) => name === "traefik"))).toContain(
+      "apps/edge/traefik-lan/middlewares.yaml",
+    );
+  });
+
+  it("render with no traefik adapter not at all", () => {
+    expect(
+      paths(ADAPTERS.filter(({ name }) => name !== "traefik")),
+    ).not.toContain("apps/edge/traefik-lan/middlewares.yaml");
+  });
+});
+
+// REQ-085 (docs/requirements.md): every route rendered for a tier carries the
+// ingress class the tier's proxy admits, so it reaches that proxy alone.
+describe("a route's ingress class", () => {
+  const classOf = (edit?: (document: string) => string): unknown => {
+    const tree = asTree(
+      artifact(
+        render(edit === undefined ? {} : { "minimal/notes.project.yml": edit }),
+        "notes",
+      ),
+    );
+    const [route] = parseAllDocuments(
+      tree["apps/notes/notes/route-public.yaml"] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    return (route?.["metadata"] as { annotations?: Record<string, string> })
+      .annotations?.["kubernetes.io/ingress.class"];
+  };
+
+  // REQ-094 (docs/requirements.md): a route on a tier that publishes its
+  // names carries the DNS controller's annotations; one on the LAN none.
+  it("carries the tier's DNS target and proxying, where the tier publishes", () => {
+    const annotationsOf = (edit?: (document: string) => string) => {
+      const tree = asTree(
+        artifact(
+          render(
+            edit === undefined ? {} : { "minimal/notes.project.yml": edit },
+          ),
+          "notes",
+        ),
+      );
+      const [route] = parseAllDocuments(
+        tree["apps/notes/notes/route-public.yaml"] ?? "",
+      ).map((document) => document.toJS() as Record<string, unknown>);
+      return (route?.["metadata"] as { annotations: Record<string, string> })
+        .annotations;
+    };
+
+    expect(annotationsOf()).toStrictEqual({
+      "kubernetes.io/ingress.class": "traefik-public",
+      "external-dns.alpha.kubernetes.io/target": "ingress.jorisjonkers.dev",
+      "external-dns.alpha.kubernetes.io/cloudflare-proxied": "true",
+    });
+    expect(
+      annotationsOf((document) =>
+        document.replace(
+          "audience: anonymous # selects the tier that carries it",
+          "audience: lan",
+        ),
+      ),
+    ).toStrictEqual({ "kubernetes.io/ingress.class": "traefik-lan" });
+  });
+
+  it("is the tier's that carries the exposure's audience", () => {
+    expect(classOf()).toBe("traefik-public");
+    expect(
+      classOf((document) =>
+        document.replace(
+          "audience: anonymous # selects the tier that carries it",
+          "audience: lan",
+        ),
+      ),
+    ).toBe("traefik-lan");
+  });
+});
+// REQ-089 (docs/requirements.md): replicas spread across nodes repel each
+// other within one revision, and need a node each.
+describe("replicas spread across nodes", () => {
+  const WHOAMI = "identity/identity.project.yml";
+  const workload = (edit?: (document: string) => string) => {
+    const tree = asTree(
+      artifact(
+        render(edit === undefined ? {} : { [WHOAMI]: edit }, ["identity"]),
+        "identity",
+      ),
+    );
+    const [deployment] = parseAllDocuments(
+      tree["apps/identity/whoami/workload.yaml"] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    return JSON.stringify(deployment);
+  };
+
+  it("repel each other on the hostname within one revision", () => {
+    expect(workload()).toContain(
+      '"podAntiAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchLabels":{"app.kubernetes.io/instance":"whoami"}},"matchLabelKeys":["pod-template-hash"],"topologyKey":"kubernetes.io/hostname"}]}',
+    );
+  });
+
+  it("may share a node without `across`", () => {
+    expect(
+      workload((document) => document.replace("          across: node\n", "")),
+    ).not.toContain("podAntiAffinity");
+  });
+
+  it("are refused where fewer nodes can hold them than their count", () => {
+    expect(() =>
+      workload((document) =>
+        document.replace(
+          "replicas:\n          count: 2",
+          "replicas:\n          count: 40",
+        ),
+      ),
+    ).toThrow("E_PLACEMENT_UNSATISFIABLE");
+    expect(() =>
+      workload((document) =>
+        document
+          .replace(
+            "replicas:\n          count: 2",
+            "replicas:\n          count: 40",
+          )
+          .replace("          across: node\n", ""),
+      ),
+    ).not.toThrow();
+  });
+});
+
+describe("replicas spread across too few nodes", () => {
+  const refusals = (edit: (document: string) => string) => {
+    const result = renderIntentSet(
+      files({ "identity/identity.project.yml": edit }),
+      { ...OPTIONS, projects: ["identity"] },
+    );
+    return result.ok
+      ? []
+      : result.diagnostics.map(({ code, path, message, hint }) => ({
+          code,
+          path,
+          message,
+          hint,
+        }));
+  };
+  const counted = (document: string) =>
+    document.replace(
+      "replicas:\n          count: 2",
+      "replicas:\n          count: 40",
+    );
+
+  it("names how many nodes can hold the Process", () => {
+    const [refusal, ...rest] = refusals(counted);
+
+    expect(rest).toStrictEqual([]);
+    expect(refusal?.code).toBe("E_PLACEMENT_UNSATISFIABLE");
+    expect(refusal?.path).toMatch(/\/processes\/0\/replicas$/);
+    expect(refusal?.message).toMatch(
+      /^whoami keeps 40 replicas on different nodes, and \d+ can hold it$/,
+    );
+    expect(refusal?.hint).toBe(
+      "Lower the count, relax a placement dimension, or drop `across`.",
+    );
+  });
+
+  it("holds as many replicas as eligible nodes, and tells how to fit more", () => {
+    const [refusal] = refusals(counted);
+    const nodes = Number(
+      /and (\d+) can hold it/.exec(refusal?.message ?? "")?.[1],
+    );
+    const fitted = (count: number) => (document: string) =>
+      document.replace(
+        "replicas:\n          count: 2",
+        `replicas:\n          count: ${String(count)}`,
+      );
+
+    expect(nodes).toBeGreaterThan(1);
+    expect(refusals(fitted(nodes))).toStrictEqual([]);
+    expect(refusals(fitted(nodes + 1))).toHaveLength(1);
+  });
+
+  it("leaves a Process no node can hold to the placement's own refusal", () => {
+    const placed = refusals((document) =>
+      counted(document).replace(
+        /(name: whoami\n(?:.*\n)*?\s+memory: )\S+/,
+        "$164Gi",
+      ),
+    );
+
+    expect(placed.map(({ path }) => path.split("/").pop())).toStrictEqual([
+      "placement",
+    ]);
+  });
+});
+
+// REQ-092 (docs/requirements.md): each dashboard file ships as one
+// GrafanaDashboard in its Application's namespace and its Project's folder.
+describe("a shipped dashboard", () => {
+  const FILE = "data/dashboards/rabbitmq.json";
+  const dashboardOf = (edit?: (document: string) => string) => {
+    const tree = asTree(
+      artifact(
+        render(edit === undefined ? {} : { [FILE]: edit }, ["data"]),
+        "data",
+      ),
+    );
+    const [dashboard] = parseAllDocuments(
+      tree["apps/data/platform-rabbitmq/dashboards.yaml"] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    return dashboard as {
+      metadata: { name: string; namespace: string };
+      spec: Record<string, unknown>;
+    };
+  };
+
+  it("selects the Platform's Grafana, in the Project's folder, its inputs mapped", () => {
+    const { metadata, spec } = dashboardOf();
+
+    expect(metadata).toMatchObject({
+      name: "platform-rabbitmq-rabbitmq",
+      namespace: "data-system",
+    });
+    expect({ ...spec, json: undefined }).toStrictEqual({
+      instanceSelector: { matchLabels: { dashboards: "grafana" } },
+      allowCrossNamespaceImport: true,
+      folder: "data",
+      json: undefined,
+      datasources: [
+        { inputName: "DS_PROMETHEUS", datasourceName: "prometheus" },
+      ],
+    });
+  });
+
+  it("maps no data source where the file declares no input, and names itself for its uid", () => {
+    const { metadata, spec } = dashboardOf(
+      () =>
+        '{"__inputs": [{"name": "DS_LOKI", "type": "panel"}, {"name": 7, "type": "datasource"}], "uid": "Broker_Overview", "title": "Broker", "panels": []}\n',
+    );
+
+    expect(metadata.name).toBe("platform-rabbitmq-broker-overview");
+    expect(spec).not.toHaveProperty("datasources");
+    expect(spec["json"]).toContain('"uid": "Broker_Overview"');
+  });
+});
+
+// REQ-090 (docs/requirements.md): the edge's forward-auth Middleware asks the
+// Process of the provider its tier names, and hands on the headers it lists.
+describe("the forward-auth Middleware", () => {
+  const forwardAuth = (edit?: (document: string) => string) => {
+    const tree = asTree(
+      artifact(
+        render(
+          edit === undefined ? {} : { "platform/platform.intent.yml": edit },
+          ["edge"],
+        ),
+        "edge",
+      ),
+    );
+    return parseAllDocuments(
+      tree["apps/edge/traefik-lan/middlewares.yaml"] ?? "",
+    )
+      .map((document) => document.toJS() as Record<string, unknown>)
+      .find(
+        (document) =>
+          (document["metadata"] as { name: string }).name === "forward-auth",
+      )?.["spec"];
+  };
+
+  it("asks the provider's Process at the path the tier names", () => {
+    expect(forwardAuth()).toStrictEqual({
+      forwardAuth: {
+        address:
+          "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+        trustForwardHeader: true,
+      },
+    });
+  });
+
+  it("hands on the response headers the tier lists", () => {
+    expect(
+      forwardAuth((document) =>
+        document.replace(
+          "path: /gate/forward}",
+          "path: /gate/forward, responseHeaders: [X-User-Id, X-User-Roles]}",
+        ),
+      ),
+    ).toStrictEqual({
+      forwardAuth: {
+        address:
+          "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+        trustForwardHeader: true,
+        authResponseHeaders: ["X-User-Id", "X-User-Roles"],
+      },
+    });
+  });
+
+  it("follows the provider where the handover ledger says the old path runs it", () => {
+    const address = (
+      forwardAuth((document) =>
+        document
+          .replace(
+            "legacy: [auth, data, knowledge, notes]",
+            "legacy: [auth, data, identity, knowledge, notes]",
+          )
+          .replace(
+            "estate: [delivery, edge, identity, ",
+            "estate: [delivery, edge, ",
+          )
+          .replace(
+            "  serving:\n",
+            "  serving:\n    - application: identity\n      namespace: auth-system\n      instance: auth-api\n",
+          ),
+      ) as { forwardAuth: { address: string } }
+    ).forwardAuth.address;
+
+    expect(address).toBe(
+      "http://auth-api.auth-system.svc.cluster.local:8080/gate/forward",
+    );
+  });
+});
+
+// REQ-096 (docs/requirements.md): a Process's priority class follows from
+// what it is: a datastore's the data class, the foundation's and a critical
+// Application's the critical class, any other none.
+describe("a Process's priority class", () => {
+  const priorityOf = (project: string, path: string) => {
+    const tree = asTree(artifact(render(undefined, [project]), project));
+    const [workload] = parseAllDocuments(tree[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+    return JSON.stringify(workload).match(/"priorityClassName":"([^"]+)"/)?.[1];
+  };
+
+  it("is the data class for a datastore", () => {
+    expect(
+      priorityOf("data", "apps/data/platform-postgres/workload.yaml"),
+    ).toBe("platform-data");
+  });
+
+  it("is the critical class for the foundation", () => {
+    expect(priorityOf("edge", "apps/edge/traefik-public/workload.yaml")).toBe(
+      "platform-critical-app",
+    );
+  });
+
+  it("is none for any other Process", () => {
+    expect(
+      priorityOf("notes", "apps/notes/notes/workload.yaml"),
+    ).toBeUndefined();
+  });
+});
+// REQ-081 (docs/requirements.md): an Application exposed on a pool-kind L4
+// Address renders, per Process and address, one load balancer that requests the
+// pool and keeps the client's address, carrying each port a client dials to the
+// surface's own port; the Process is held to the pool's site, and its policy
+// admits any address on those ports.
+describe("an L4 exposure", () => {
+  const DATA = "data/data.project.yml";
+  const BROKER = "apps/data/platform-rabbitmq";
+  const EXPOSED =
+    "      - {address: lan-mqtt, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}\n";
+  const documents = (body: string | undefined) =>
+    parseAllDocuments(body ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+  const named = (body: string | undefined, name: string) =>
+    documents(body).find(
+      (document) => (document["metadata"] as { name: string }).name === name,
+    );
+  const data = (edit?: (document: string) => string) =>
+    asTree(
+      artifact(
+        render(edit === undefined ? {} : { [DATA]: edit }, ["data"]),
+        "data",
+      ),
+    );
+
+  it("renders a load balancer on the pool that keeps the client's address", () => {
+    expect(
+      named(data()[`${BROKER}/service.yaml`], "rabbitmq-lan-mqtt"),
+    ).toStrictEqual({
+      apiVersion: "v1",
+      kind: "Service",
+      metadata: {
+        name: "rabbitmq-lan-mqtt",
+        namespace: "data-system",
+        labels: {
+          "app.kubernetes.io/name": "rabbitmq",
+          "app.kubernetes.io/instance": "rabbitmq",
+          "app.kubernetes.io/part-of": "platform-rabbitmq",
+          "app.kubernetes.io/managed-by": "deploy-kit",
+          "app.kubernetes.io/component": "none",
+        },
+        annotations: { "metallb.io/address-pool": "lan-mqtt" },
+      },
+      spec: {
+        type: "LoadBalancer",
+        externalTrafficPolicy: "Local",
+        selector: { "app.kubernetes.io/instance": "rabbitmq" },
+        ports: [
+          { name: "tcp-1883", port: 1883, protocol: "TCP", targetPort: 1883 },
+        ],
+      },
+    });
+  });
+
+  it("carries TCP and UDP on one address in one Service, a client's port apart from the container's", () => {
+    const tree = data((document) =>
+      document.replace(
+        EXPOSED,
+        `${EXPOSED}      - {address: lan-mqtt, port: 53, protocol: udp, process: rabbitmq, surface: mqtt}\n`,
+      ),
+    );
+    const service = named(tree[`${BROKER}/service.yaml`], "rabbitmq-lan-mqtt");
+
+    expect((service?.["spec"] as { ports: unknown[] }).ports).toStrictEqual([
+      { name: "udp-53", port: 53, protocol: "UDP", targetPort: 1883 },
+      { name: "tcp-1883", port: 1883, protocol: "TCP", targetPort: 1883 },
+    ]);
+    const policy = named(tree[`${BROKER}/networkpolicy.yaml`], "rabbitmq");
+    expect(
+      (policy?.["spec"] as { ingress: unknown[] }).ingress.filter((rule) =>
+        JSON.stringify(rule).includes("0.0.0.0/0"),
+      ),
+    ).toStrictEqual([
+      {
+        from: [{ ipBlock: { cidr: "0.0.0.0/0" } }],
+        ports: [{ protocol: "UDP", port: 1883 }],
+      },
+      {
+        from: [{ ipBlock: { cidr: "0.0.0.0/0" } }],
+        ports: [{ protocol: "TCP", port: 1883 }],
+      },
+    ]);
+  });
+
+  it("renders one Service per address in name order, and TCP before UDP on one port", () => {
+    const tree = data((document) =>
+      document.replace(
+        EXPOSED,
+        `      - {address: lan-mqtt, port: 1883, protocol: udp, process: rabbitmq, surface: mqtt}\n${EXPOSED}      - {address: lan-dns, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}\n      - {address: lan-dns, port: 1883, protocol: udp, process: rabbitmq, surface: mqtt}\n`,
+      ),
+    );
+    const services = documents(tree[`${BROKER}/service.yaml`]).filter(
+      (document) =>
+        (document["spec"] as { type?: string }).type === "LoadBalancer",
+    );
+
+    expect(
+      services.map((service) => [
+        (service["metadata"] as { name: string }).name,
+        (service["spec"] as { ports: { name: string }[] }).ports.map(
+          ({ name }) => name,
+        ),
+      ]),
+    ).toStrictEqual([
+      ["rabbitmq-lan-dns", ["tcp-1883", "udp-1883"]],
+      ["rabbitmq-lan-mqtt", ["tcp-1883", "udp-1883"]],
+    ]);
+  });
+
+  it("admits any address on the surface's own port, and nothing more", () => {
+    const policy = named(data()[`${BROKER}/networkpolicy.yaml`], "rabbitmq");
+    const ingress = (policy?.["spec"] as { ingress: unknown[] }).ingress;
+
+    expect(
+      ingress.filter((rule) => JSON.stringify(rule).includes("0.0.0.0/0")),
+    ).toStrictEqual([
+      {
+        from: [{ ipBlock: { cidr: "0.0.0.0/0" } }],
+        ports: [{ protocol: "TCP", port: 1883 }],
+      },
+    ]);
+  });
+
+  it("holds the Process to the pool's site", () => {
+    const workload = named(data()[`${BROKER}/workload.yaml`], "rabbitmq");
+
+    expect(JSON.stringify(workload)).toContain("enschede-t1000-1");
+    expect(JSON.stringify(workload)).not.toContain("frankfurt");
+  });
+
+  it("refuses a placement that contradicts the pool's site, naming the site", () => {
+    const result = renderIntentSet(
+      files({
+        [DATA]: (document) =>
+          document.replace(
+            "          memory: 2Gi       # the broker",
+            "          site: frankfurt\n          memory: 2Gi       # the broker",
+          ),
+      }),
+      { ...OPTIONS, projects: ["data"] },
+    );
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, message, hint }) => ({
+            code,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_PLACEMENT_UNSATISFIABLE",
+        message:
+          "no node in the node contract on enschede, the site of each pool rabbitmq is exposed on, can hold it",
+        hint: "Relax a placement dimension, or expose the Process on a pool of the site it is placed on.",
+      },
+    ]);
+  });
+});
+
+// REQ-097 (docs/requirements.md): an exposure on a node-kind L4 Address renders
+// a host port on the Process, the client's port on the node to the surface's
+// own, and holds the Process to that node; it renders no load balancer.
+describe("an exposure on a node address", () => {
+  const MAIL = "mail/mail.project.yml";
+  const SMTP =
+    "      - { address: mail-node, port: 25, protocol: tcp, process: stalwart, surface: smtp }\n";
+  const workloadOf = (edit?: (document: string) => string) =>
+    parseAllDocuments(
+      asTree(
+        artifact(
+          render(edit === undefined ? {} : { [MAIL]: edit }, ["mail"]),
+          "mail",
+        ),
+      )["apps/mail/stalwart/workload.yaml"] ?? "",
+    )
+      .map((document) => document.toJS() as Record<string, unknown>)
+      .find(({ kind }) => kind === "Deployment") as {
+      spec: {
+        template: {
+          spec: {
+            containers: { ports: unknown[] }[];
+            affinity: unknown;
+          };
+        };
+      };
+    };
+
+  it("puts the client's port on the surface's own port as a host port", () => {
+    expect(workloadOf().spec.template.spec.containers[0]?.ports).toStrictEqual([
+      { name: "http", containerPort: 8080 },
+      { name: "smtp", containerPort: 25, hostPort: 25 },
+      { name: "imaps", containerPort: 993, hostPort: 993 },
+    ]);
+  });
+
+  it("adds a port of its own where the client's port or protocol is not the surface's", () => {
+    const ports = workloadOf((document) =>
+      document.replace(
+        SMTP,
+        `${SMTP}      - { address: mail-node, port: 587, protocol: tcp, process: stalwart, surface: smtp }\n      - { address: mail-node, port: 25, protocol: udp, process: stalwart, surface: smtp }\n`,
+      ),
+    ).spec.template.spec.containers[0]?.ports;
+
+    expect(ports).toStrictEqual([
+      { name: "http", containerPort: 8080 },
+      { name: "smtp", containerPort: 25, hostPort: 25 },
+      { name: "imaps", containerPort: 993, hostPort: 993 },
+      { name: "udp-25", containerPort: 25, hostPort: 25, protocol: "UDP" },
+      { name: "tcp-587", containerPort: 25, hostPort: 587, protocol: "TCP" },
+    ]);
+  });
+
+  it("refuses a placement no node of the address can meet, naming the node", () => {
+    const result = renderIntentSet(
+      files({
+        [MAIL]: (document) =>
+          document.replace(
+            "          memory: 512Mi",
+            "          site: enschede\n          memory: 512Mi",
+          ),
+      }),
+      { ...OPTIONS, projects: ["mail"] },
+    );
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, message, hint }) => ({
+            code,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_PLACEMENT_UNSATISFIABLE",
+        message:
+          "no node of frankfurt-contabo-1, the node of each node address stalwart is exposed on, can hold it",
+        hint: "Relax a placement dimension, or expose the Process on the address of a node that can hold it.",
+      },
+    ]);
+  });
+
+  it("holds the Process to the node, and renders no load balancer", () => {
+    expect(workloadOf().spec.template.spec.affinity).toStrictEqual({
+      nodeAffinity: {
+        requiredDuringSchedulingIgnoredDuringExecution: {
+          nodeSelectorTerms: [
+            {
+              matchExpressions: [
+                {
+                  key: "kubernetes.io/hostname",
+                  operator: "In",
+                  values: ["frankfurt-contabo-1"],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    const tree = asTree(artifact(render(undefined, ["mail"]), "mail"));
+    expect(
+      Object.values(tree).some((body) => body.includes("LoadBalancer")),
+    ).toBe(false);
+  });
+});
+
+// REQ-099 (docs/requirements.md): a tier's proxy is exposed on the L4 Address
+// the tier names, on the ports its listener derives, as any exposure on that
+// address renders: host ports on a node address, a load balancer on a pool.
+describe("a tier's proxy", () => {
+  const edge = () => asTree(artifact(render(undefined, ["edge"]), "edge"));
+  const objectsOf = (path: string) =>
+    parseAllDocuments(edge()[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+
+  it("listens on the node address of a tls tier, on 80 and 443", () => {
+    const [workload] = objectsOf("apps/edge/traefik-public/workload.yaml") as {
+      spec: {
+        template: {
+          spec: { containers: { ports: unknown[] }[]; affinity: unknown };
+        };
+      };
+    }[];
+    expect(workload?.spec.template.spec.containers[0]?.ports).toStrictEqual([
+      { name: "web", containerPort: 8000 },
+      { name: "websecure", containerPort: 8443 },
+      { name: "admin", containerPort: 8080 },
+      { name: "tcp-80", containerPort: 8000, hostPort: 80, protocol: "TCP" },
+      { name: "tcp-443", containerPort: 8443, hostPort: 443, protocol: "TCP" },
+    ]);
+    expect(JSON.stringify(workload?.spec.template.spec.affinity)).toContain(
+      '"values":["frankfurt-contabo-1"]',
+    );
+  });
+
+  it("issues an acme tier's certificate through a resolver named for the tier", () => {
+    const [workload] = objectsOf("apps/edge/traefik-public/workload.yaml") as {
+      spec: { template: { spec: { containers: { args: string[] }[] } } };
+    }[];
+    expect(
+      workload?.spec.template.spec.containers[0]?.args.filter((arg) =>
+        arg.startsWith("--certificatesresolvers."),
+      ),
+    ).toStrictEqual([
+      "--certificatesresolvers.public-frankfurt.acme.email=hostmaster@jorisjonkers.dev",
+      "--certificatesresolvers.public-frankfurt.acme.storage=/acme/public-frankfurt.json",
+      "--certificatesresolvers.public-frankfurt.acme.dnschallenge.provider=cloudflare",
+    ]);
+    const [lan] = objectsOf("apps/edge/traefik-lan/workload.yaml") as {
+      spec: { template: { spec: { containers: { args: string[] }[] } } };
+    }[];
+    expect(
+      lan?.spec.template.spec.containers[0]?.args.some((arg) =>
+        arg.startsWith("--certificatesresolvers."),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps an acme tier's state on its own claim, reads the DNS token, and reaches out", () => {
+    const [workload] = objectsOf("apps/edge/traefik-public/workload.yaml") as {
+      spec: {
+        template: {
+          spec: {
+            containers: { volumeMounts: unknown[] }[];
+            volumes: unknown[];
+          };
+        };
+      };
+    }[];
+    const pod = workload?.spec.template.spec;
+    expect(pod?.volumes).toContainEqual({
+      name: "acme",
+      persistentVolumeClaim: { claimName: "acme" },
+    });
+    expect(pod?.containers[0]?.volumeMounts).toContainEqual({
+      name: "acme",
+      mountPath: "/acme",
+    });
+    expect(JSON.stringify(pod?.containers[0])).toContain(
+      '{"name":"CF_DNS_API_TOKEN","valueFrom":{"secretKeyRef":{"name":"traefik-public-platform-cloudflare","key":"CF_DNS_API_TOKEN"}}}',
+    );
+    expect(edge()["apps/edge/traefik-public/networkpolicy.yaml"]).toContain(
+      "0.0.0.0/0",
+    );
+  });
+
+  it("listens on the pool of a plain tier, on 80", () => {
+    const service = objectsOf("apps/edge/traefik-lan/service.yaml").find(
+      ({ metadata }) =>
+        (metadata as { name: string }).name === "traefik-lan-lan-edge",
+    );
+    expect(service?.["spec"]).toStrictEqual({
+      type: "LoadBalancer",
+      externalTrafficPolicy: "Local",
+      selector: { "app.kubernetes.io/instance": "traefik-lan" },
+      ports: [{ name: "tcp-80", port: 80, protocol: "TCP", targetPort: 8000 }],
+    });
+  });
+});
+// REQ-091 (docs/requirements.md): a tier's proxy takes its static
+// configuration from the model: entry points from its surfaces, the CRD
+// provider filtered on its tier's ingress class, ping and metrics on `admin`.
+describe("the edge proxy's static configuration", () => {
+  const argsOf = (
+    application: string,
+    edit?: (document: string) => string,
+    platform?: (document: string) => string,
+  ): unknown => {
+    const tree = asTree(
+      artifact(
+        render(
+          {
+            ...(edit === undefined ? {} : { "edge/edge.project.yml": edit }),
+            ...(platform === undefined
+              ? {}
+              : { "platform/platform.intent.yml": platform }),
+          },
+          ["edge"],
+        ),
+        "edge",
+      ),
+    );
+    const [workload] = parseAllDocuments(
+      tree[`apps/edge/${application}/workload.yaml`] ?? "",
+    ).map((document) => document.toJS() as Record<string, unknown>);
+    const spec = workload?.["spec"] as {
+      template: { spec: { containers: { args?: string[] }[] } };
+    };
+    return spec.template.spec.containers[0]?.args;
+  };
+
+  it("serves TLS on websecure, and admits only its tier's class", () => {
+    expect(argsOf("traefik-public")).toStrictEqual([
+      "--entryPoints.web.address=:8000/tcp",
+      "--entryPoints.websecure.address=:8443/tcp",
+      "--entryPoints.websecure.http.tls=true",
+      "--entryPoints.traefik.address=:8080/tcp",
+      "--ping=true",
+      "--ping.entryPoint=traefik",
+      "--metrics.prometheus=true",
+      "--metrics.prometheus.entryPoint=traefik",
+      "--providers.kubernetescrd=true",
+      "--providers.kubernetescrd.ingressClass=traefik-public",
+      "--providers.kubernetescrd.allowCrossNamespace=true",
+      "--providers.kubernetescrd.allowEmptyServices=true",
+      "--certificatesresolvers.public-frankfurt.acme.email=hostmaster@jorisjonkers.dev",
+      "--certificatesresolvers.public-frankfurt.acme.storage=/acme/public-frankfurt.json",
+      "--certificatesresolvers.public-frankfurt.acme.dnschallenge.provider=cloudflare",
+      "--log.format=json",
+      "--accesslog=true",
+      "--accesslog.format=json",
+    ]);
+  });
+
+  it("opens no websecure entry point where the Process provides none", () => {
+    expect(argsOf("traefik-lan")).toStrictEqual([
+      "--entryPoints.web.address=:8000/tcp",
+      "--entryPoints.traefik.address=:8080/tcp",
+      "--ping=true",
+      "--ping.entryPoint=traefik",
+      "--metrics.prometheus=true",
+      "--metrics.prometheus.entryPoint=traefik",
+      "--providers.kubernetescrd=true",
+      "--providers.kubernetescrd.ingressClass=traefik-lan",
+      "--providers.kubernetescrd.allowCrossNamespace=true",
+      "--providers.kubernetescrd.allowEmptyServices=true",
+      "--log.format=json",
+      "--accesslog=true",
+      "--accesslog.format=json",
+    ]);
+  });
+
+  it("serves TLS only where the tier terminates it and the Process provides websecure", () => {
+    const tlsOn = (args: unknown) =>
+      (args as string[]).includes("--entryPoints.websecure.http.tls=true");
+    // A tls tier whose proxy provides no websecure opens no TLS entry point.
+    expect(
+      tlsOn(
+        argsOf(
+          "traefik-public",
+          (document) => document.replace("          websecure: 8443\n", ""),
+          // A tier whose proxy lacks websecure names no address it listens on.
+          (document) =>
+            document.replace(/\n {4}address: edge-frankfurt[^\n]*/, ""),
+        ),
+      ),
+    ).toBe(false);
+    // A plain tier's proxy that provides websecure serves it without TLS.
+    expect(
+      tlsOn(
+        argsOf("traefik-lan", (document) =>
+          document.replace(
+            "          web: 8000\n          admin: 8080\n",
+            "          web: 8000\n          websecure: 8443\n          admin: 8080\n",
+          ),
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("asks no ping or metrics where the Process provides no admin surface", () => {
+    const args = argsOf("traefik-lan", (document) =>
+      document.replace(
+        "          web: 8000\n          admin: 8080\n",
+        "          web: 8000\n",
+      ),
+    ) as string[];
+
+    expect(args).toStrictEqual([
+      "--entryPoints.web.address=:8000/tcp",
+      "--providers.kubernetescrd=true",
+      "--providers.kubernetescrd.ingressClass=traefik-lan",
+      "--providers.kubernetescrd.allowCrossNamespace=true",
+      "--providers.kubernetescrd.allowEmptyServices=true",
+      "--log.format=json",
+      "--accesslog=true",
+      "--accesslog.format=json",
+    ]);
+  });
+});
+
+// REQ-098 (docs/requirements.md): the Node Agents render to the node artifact,
+// each a DaemonSet held to the nodes its facts name, with the privileges the
+// catalog fixes; the speaker announces each pool from the nodes of its site.
+describe("the Node Agents", () => {
+  const tree = () => asTree(artifact(render(undefined, ["node"]), "node"));
+  const objectsOf = (path: string) =>
+    parseAllDocuments(tree()[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+
+  it("render the node artifact to its committed tree, byte for byte", () => {
+    expect(tree()).toStrictEqual(committed("node/rendered"));
+  });
+
+  it("time-slice each GPU into four shares, of which gpu-metrics holds one", () => {
+    const [config] = objectsOf("apps/node/gpu-device/configmap.yaml") as {
+      data: { "config.yaml": string };
+    }[];
+    expect(
+      parseAllDocuments(config?.data["config.yaml"] ?? "")[0]?.toJS(),
+    ).toStrictEqual({
+      version: "v1",
+      sharing: {
+        timeSlicing: {
+          resources: [{ name: "nvidia.com/gpu", replicas: 4 }],
+        },
+      },
+    });
+    const [metrics] = objectsOf("apps/node/gpu-metrics/workload.yaml") as {
+      spec: { template: { spec: { containers: { resources: unknown }[] } } };
+    }[];
+    expect(metrics?.spec.template.spec.containers[0]?.resources).toStrictEqual({
+      requests: { memory: "256Mi", cpu: "50m" },
+      limits: { memory: "256Mi", "nvidia.com/gpu": "1" },
+    });
+  });
+
+  it("announce each pool from the nodes of its site, and assign none unasked", () => {
+    const pools = objectsOf("apps/node/l4-speaker/pools.yaml");
+    expect(
+      pools.map(({ kind, metadata, spec }) => ({
+        kind,
+        name: (metadata as { name: string }).name,
+        spec,
+      })),
+    ).toStrictEqual([
+      {
+        kind: "IPAddressPool",
+        name: "lan-dns",
+        spec: { addresses: ["192.168.0.98/32"], autoAssign: false },
+      },
+      {
+        kind: "L2Advertisement",
+        name: "lan-dns",
+        spec: {
+          ipAddressPools: ["lan-dns"],
+          nodeSelectors: [
+            {
+              matchExpressions: [
+                {
+                  key: "kubernetes.io/hostname",
+                  operator: "In",
+                  values: [
+                    "enschede-t1000-1",
+                    "enschede-rx7900xtx-1",
+                    "enschede-gtx-960m-1",
+                    "enschede-pi-1",
+                    "enschede-pi-2",
+                    "enschede-pi-3",
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+      expect.objectContaining({ kind: "IPAddressPool", name: "lan-edge" }),
+      expect.objectContaining({ kind: "L2Advertisement", name: "lan-edge" }),
+      expect.objectContaining({ kind: "IPAddressPool", name: "lan-mqtt" }),
+      expect.objectContaining({ kind: "L2Advertisement", name: "lan-mqtt" }),
+    ]);
+  });
+
+  it("run the speaker on the host network with NET_RAW alone", () => {
+    const [speaker] = objectsOf("apps/node/l4-speaker/workload.yaml") as {
+      kind: string;
+      spec: {
+        template: {
+          spec: {
+            hostNetwork?: boolean;
+            containers: { securityContext: unknown }[];
+          };
+        };
+      };
+    }[];
+    expect(speaker?.kind).toBe("DaemonSet");
+    expect(speaker?.spec.template.spec.hostNetwork).toBe(true);
+    expect(
+      speaker?.spec.template.spec.containers[0]?.securityContext,
+    ).toStrictEqual({
+      allowPrivilegeEscalation: false,
+      readOnlyRootFilesystem: true,
+      capabilities: { add: ["NET_RAW"], drop: ["ALL"] },
+    });
+  });
+});
+
+// REQ-093 (docs/requirements.md): the monitoring stack carries the estate's
+// alert rules and its one routing of every alert.
+describe("the monitoring stack's alerting", () => {
+  const tree = () =>
+    asTree(artifact(render(undefined, ["observability"]), "observability"));
+  const objectsAt = (path: string) =>
+    parseAllDocuments(tree()[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+
+  it("renders the observability project's share of the tree to its committed tree, byte for byte", () => {
+    expect(tree()).toStrictEqual(committed("observability/rendered"));
+  });
+
+  it("renders a rule-group file as one PrometheusRule of its groups", () => {
+    const [rule] = objectsAt(
+      "apps/observability/prometheus/alertrules.yaml",
+    ) as {
+      kind: string;
+      metadata: { name: string };
+      spec: { groups: { name: string }[] };
+    }[];
+
+    expect(rule?.kind).toBe("PrometheusRule");
+    expect(rule?.metadata.name).toBe("prometheus-platform");
+    expect(rule?.spec.groups.map(({ name }) => name)).toStrictEqual([
+      "platform",
+    ]);
+  });
+
+  it("routes each severity to its receiver, its webhook read from the Secret its grant lands in", () => {
+    const [config] = objectsAt(
+      "apps/observability/alertmanager/alertmanagerconfig.yaml",
+    ) as { spec: Record<string, unknown> }[];
+
+    expect(config?.spec).toStrictEqual({
+      route: {
+        receiver: "null",
+        groupBy: ["alertname", "namespace"],
+        groupWait: "1m",
+        groupInterval: "5m",
+        repeatInterval: "12h",
+        routes: [
+          {
+            matchers: [{ name: "severity", value: "critical" }],
+            receiver: "discord",
+            repeatInterval: "4h",
+          },
+          {
+            matchers: [{ name: "severity", value: "warning" }],
+            receiver: "discord",
+            repeatInterval: "12h",
+          },
+        ],
+      },
+      receivers: [
+        { name: "null" },
+        {
+          name: "discord",
+          discordConfigs: [
+            {
+              apiURL: {
+                name: "alertmanager-platform-alertmanager-discord",
+                key: "webhook-url",
+              },
+              sendResolved: true,
+            },
+          ],
+        },
+      ],
+    });
+    expect(Object.keys(tree())).toContain(
+      "apps/observability/alertmanager/vso.yaml",
+    );
   });
 });

@@ -444,6 +444,9 @@ plus per-Process identity ([0031](../../docs/adr/model/0031-identity-per-process
 | `processes` | Application | yes | One or more. They switch together. |
 | the eight Shared Intent families | Application | no | The same eight, held by every Process of this Application ([Shared intent](#shared-intent)). The level a family is written at is an author's choice about where the fact belongs, never about what it means. |
 | `exposure` | Application | no | The hostnames this Application serves and how each routes into its Processes. On the Application, not the Process: one hostname fronts two processes in the live `auth` case. An Application nothing reaches from outside declares none. See [Exposure](#exposure). |
+| `l4Exposure` | Application | no | The raw TCP or UDP ports a client off the cluster dials, each on an L4 Address the Platform document declares ([L4 exposure](#l4-exposure)). |
+| `dashboards` | Application | no | The Grafana dashboards the Application ships, each a JSON file beside the project file ([Dashboards](#dashboards)). |
+| `alertRules` | Application | no | Rule-group files, beside the project file, on an Application of the monitoring stack alone ([Alert rules](#alert-rules)). |
 
 Uniqueness cannot be had by construction, only by check: the id encodes neither
 project nor repository, so nothing structural stops two repositories claiming one
@@ -613,10 +616,12 @@ Vault role are called (chapter 16).
 `image` is an alias resolved to a digest through the images lock, never a tag,
 never a digest here.
 
-`lifecycle` is `application`, `job` or `prepare`. Not `deployment` /
+`lifecycle` is `application`, `job`, `prepare` or `scheduled`. Not `deployment` /
 `statefulset` / `job`, because those are mechanisms; the object kind derives from
 `lifecycle` and `volumes`. `prepare` is forward-only setup that runs before the
-Application's new version starts ([Prepare Processes](#prepare-processes)).
+Application's new version starts ([Prepare Processes](#prepare-processes)), and
+`scheduled` runs to completion at each slot of its own `schedule`
+([Scheduled Processes](#scheduled-processes)).
 
 `runtime` selects the Runtime Profile: `jvm`, `python`, `node`, `static`, `none`.
 `none` is correct for a third-party image and injects no profile values at all.
@@ -1100,6 +1105,23 @@ processes on one kernel. A Process that wants more states it as
 `auth-api`'s two replicas always were: a capacity decision on freed budget,
 recorded now instead of inferred.
 
+Replicas may share a node unless the Capacity says `across: node`:
+
+```yaml
+replicas:
+  count: 2
+  reason: Availability of the sign-in probe across a node loss.
+  across: node
+```
+
+Then no two replicas share a node: required pod anti-affinity on the hostname.
+Only pods of one revision repel each other (the anti-affinity matches the
+`pod-template-hash` each revision's pods carry), so a rollout still completes
+where the replicas fill every eligible node. The cost is that while a rollout
+runs, an old and a new pod may share a node. `across` admits `node` only. Fewer
+eligible nodes than `count` is `E_PLACEMENT_UNSATISFIABLE`: a replica would
+never schedule.
+
 A `PodDisruptionBudget` is emitted **only where `replicas` exceeds one**, and as
 `maxUnavailable: 1`:
 
@@ -1314,6 +1336,12 @@ together:
 | no capabilities | `capabilities.drop: [ALL]` |
 | no privilege escalation | `allowPrivilegeEscalation: false`, so a setuid binary in the image cannot regain what the other controls take away |
 | default syscall filter | `seccompProfile.type: RuntimeDefault` |
+
+A host port is no control of the five, and the only one the render writes is
+the rendering of an exposure on a node's own address
+([L4 exposure](#l4-exposure)), which holds the Process to that one node. So
+the posture admits a host port on a pod held to exactly one node, the shape a
+node address derives, and none elsewhere; no Process authors one.
 
 ### Writable paths are declared, not exempted
 
@@ -1675,7 +1703,7 @@ applications:
 | `process` | route | yes | A Process of **this** Application. |
 | `surface` | route | yes | A surface that Process declares in `provides`: a name, never a port integer. |
 | `audience` | route | no | Overrides the exposure's audience, for this path alone. |
-| `redirectTo` | route | no | A path this route redirects to. A path, never a regex. |
+| `redirectTo` | route | no | A path this route redirects to, on the same scheme and host. A path, never a regex. Not permanent, so a client caches no landing path. |
 | `rateLimit` | route | no | `{requests, per}`: how many requests one client may send this route over `per`, a duration in whole seconds, minutes or hours (`30s`, `10m`, `1h`). `requests` is a whole number of at least 1. Who counts as one client is the tier's fact ([chapter 14](14-platform-intent.md#tiers)). |
 
 A route carries three optional fields and no others. It may state its own
@@ -1888,9 +1916,10 @@ gap, not an argument for a field.
 
 | condition | error |
 |---|---|
-| two exposures declare the same `host` | `E_DUPLICATE_HOST` |
+| two exposures declare the same `host` on one tier, the tier that carries each one's `audience` | `E_DUPLICATE_HOST` |
 | two exposures of one Application share a `name` | `E_DUPLICATE_EXPOSURE_NAME` |
 | two routes of one exposure share the same `path` + `match` pair | `E_DUPLICATE_ROUTE_MATCH` |
+| a route's `redirectTo` is a path the route itself matches | `E_REDIRECT_LOOP` |
 | a route names a Process its Application does not have | `E_UNKNOWN_PROCESS` |
 | a route's `{process, surface}` pair names no surface that Process provides | `E_UNKNOWN_SURFACE` |
 
@@ -1898,6 +1927,15 @@ gap, not an argument for a field.
 Unmanaged Surfaces included, because a name the estate already answers on is taken
 whether or not this model deploys what answers (chapter 40). The other four are
 scoped to a single document and are refused as soon as the fragment is read.
+
+A host is unique **on a tier**, not across the estate. Inside one proxy two
+rules for one host have no defined winner, so one host twice on one tier is
+refused. Two tiers are two proxies, so one host on two tiers is the **split
+horizon** the media hosts already use: the same name answered on the LAN by the
+LAN tier and in public by the public one, each exposure with its own routes. The
+tier is the one that carries the exposure's `audience`, so the check reads the
+Platform document; an exposure whose audience no tier carries is
+`E_NO_TIER_FOR_AUDIENCE` and claims its host on no tier.
 
 A route's `process` and `surface` are **references**, not strings: reading the
 document links each to the Process and the surface it names, inside the one
@@ -1910,6 +1948,12 @@ than it has had a definition: nothing said what a name was, or whether an
 exposure had one. It is unique **within the Application**. `jellyfin` may declare
 `public` and `lan`, and no other Application is thereby prevented from having a
 `public` of its own, because a placeholder that reads one names the Application too.
+
+`E_REDIRECT_LOOP` catches a redirect that lands where it started: an `exact`
+route whose target is its own path, or a `prefix` route whose target starts
+with its prefix. The root-to-admin redirect of a web admin is written on
+`match: exact` of `/`, with a second, `prefix` route serving the rest, as the
+[mail](examples/mail/mail.project.yml) example does.
 
 `E_DUPLICATE_ROUTE_MATCH` catches the pair that cannot be ordered rather than
 merely duplicated: two routes with the same path and the same match on one
@@ -1924,6 +1968,86 @@ A hostname the estate serves but does not deploy is a Registered Unmanaged Surfa
 ([0024](../../docs/adr/model/0024-dependency-edges-resolve-against-the-union.md)), declared in the
 composition input rather than here, and it takes part in `E_DUPLICATE_HOST` on
 equal terms with everything authored.
+
+## L4 exposure
+
+Some clients speak no HTTP and live off the cluster: the sensors on the LAN
+publish to the broker over MQTT, and the LAN's devices ask its DNS server for
+names. An Application exposes such a raw surface by naming an **L4 Address** the
+Platform document declares ([chapter 14](14-platform-intent.md#l4-addresses)). It
+never writes an IP address or a node: which addresses the estate announces, and
+where, are the platform's.
+
+```yaml
+l4Exposure:
+  - {address: lan-mqtt, port: 1883, protocol: tcp, process: rabbitmq, surface: mqtt}
+```
+
+| field | required | notes |
+|---|---|---|
+| `address` | yes | The L4 Address, by its name in the Platform document's `l4Addresses`. |
+| `port` | yes | The port a client dials. It is separate from the port the container listens on, which stays the surface's, written once in `provides`. |
+| `protocol` | yes | `tcp` or `udp`. |
+| `process` | yes | The Process that answers, in this Application. |
+| `surface` | yes | The surface of that Process the port reaches. |
+
+One Process's entries on one address are one Service, so TCP and UDP may share
+an address, as DNS needs. On a pool, the address is a load balancer that keeps
+the client's address (`Local` traffic policy), and the Process is held to the
+pool's site, since the pool is announced on that site's network segment: the
+site pin is derived, and a placement the Process declares that contradicts it
+leaves no node eligible, which is `E_PLACEMENT_UNSATISFIABLE`
+([chapter 20](20-resolved-deployment.md#derived-mechanics)).
+
+Replicas behind a pool address are **failover, not load sharing**. One node
+announces the address, and the `Local` policy hands a connection only to a pod
+on that node, so a second replica on another node receives nothing until the
+announcement moves to it. A Process that needs more throughput than one pod gives
+needs a protocol that shares load itself.
+
+On a **node address**, a node's own address for a site with no pool, the
+Application writes the same entry; the address's kind decides the rendering.
+Each port is a **host port** on the Process: the node's port the client dials,
+reaching the surface's own port in the container, with no Service between. The
+Process is held to that node, a derived hard pin like a pool's site pin, so a
+placement that contradicts it is `E_PLACEMENT_UNSATISFIABLE` too. No Application
+names a node, and a host port is never authored.
+
+A node listens on a port and a protocol once, so two entries that dial the same
+one on one node, from any two Processes in the estate, are
+`E_NODE_PORT_TAKEN`. A host port also holds one copy of the Process. Replicas
+on a node address could never all start, which is `E_NODE_ADDRESS_REPLICATED`.
+The second revision a blue/green switch starts beside the old one could not
+bind the port either, so a Process on a node address cuts over `interrupted`:
+`continuous` there is `E_CUTOVER_UNHONOURABLE`, as it is over a volume that
+cannot attach twice ([Cutover is declared, not promised](#cutover-is-declared-not-promised)).
+Delivery machinery is the exception: its `continuous` cutover derives a
+rolling switchover that stops one pod before it starts the next
+([chapter 55](55-delivery.md#switchover)), which a host port honours, so an edge
+proxy on a node address keeps it.
+
+### What is checked
+
+| condition | error |
+|---|---|
+| an entry names an L4 Address the Platform document does not declare | `E_UNKNOWN_L4_ADDRESS` |
+| one Process is exposed twice on one address with the same `port` and `protocol` | `E_DUPLICATE_L4_PORT` |
+| an entry names a Process its Application does not have | `E_UNKNOWN_PROCESS` |
+| an entry's `{process, surface}` pair names no surface that Process provides | `E_UNKNOWN_SURFACE` |
+| a pool holds fewer addresses than the Processes exposed on it | `E_L4_ADDRESS_EXHAUSTED` |
+| two entries dial the same `port` and `protocol` on one node, through its node addresses | `E_NODE_PORT_TAKEN` |
+| a Process exposed on a node address declares `replicas` | `E_NODE_ADDRESS_REPLICATED` |
+| a Process exposed on a node address cuts over `continuous`, and its Application is not delivery machinery | `E_CUTOVER_UNHONOURABLE` |
+
+`E_DUPLICATE_L4_PORT`, `E_UNKNOWN_PROCESS` and `E_UNKNOWN_SURFACE` are scoped to
+the one document and refused as soon as the fragment is read.
+`E_UNKNOWN_L4_ADDRESS` and `E_L4_ADDRESS_EXHAUSTED` need the Platform document,
+and the second needs every Project, so both are refused at composition
+([chapter 40](40-composition.md)): each Service on a pool takes one address of
+its range, and one more Service than the range holds would wait for an address
+that never comes. The three refusals of a node address need the Platform
+document to know the address's kind, and `E_NODE_PORT_TAKEN` needs every
+Project, so they are refused at composition too.
 
 ## Observability
 
@@ -2011,6 +2135,55 @@ switchover waits on the declared readiness surface
 ([The release gate](20-resolved-deployment.md#the-release-gate)). Moving the
 checks into an out-of-band configuration would make the gate depend on a file the
 model does not read. A Process with no listener continues to say `probes: none`.
+
+## Dashboards
+
+```yaml
+dashboards:
+  - {from: dashboards/rabbitmq.json}
+```
+
+An Application ships its Grafana dashboards as JSON files beside the project
+file, each named by `from`, and they ship with it. A dashboard from grafana.com
+is vendored the same way, as the JSON file: nothing is fetched at run time.
+Each file renders one dashboard object through the `grafana` adapter
+([chapter 30](30-deliverables.md#adapters)), into a folder named for the
+Project; nothing is authored for the folder. A vendored file's data source
+inputs (`__inputs` of type `datasource`) map to the data source the Platform
+document names ([chapter 14](14-platform-intent.md#telemetry)). The model has
+no dashboard language: a service overview is a plain dashboard file like any
+other.
+
+Grafana keys a dashboard by its `uid`, so each file names one, and no two
+dashboards of the estate share one.
+
+| condition | error |
+|---|---|
+| no file at `from` is read beside the project file | `E_DASHBOARD_NOT_FOUND` |
+| the file's JSON names no `uid` | `E_DASHBOARD_WITHOUT_UID` |
+| a second dashboard of the estate carries a `uid` already carried | `E_DUPLICATE_DASHBOARD_UID` |
+| an Application ships a dashboard and the Platform document names no `telemetry.dashboards` | `E_NO_DASHBOARD_POLICY` |
+## Alert rules
+
+```yaml
+alertRules:
+  - {from: rules/platform.yaml}
+```
+
+Alert rules have one home: the monitoring stack the Platform document names by
+role ([chapter 14](14-platform-intent.md#monitoring)). An Application of it
+carries its rule groups as files beside the project file, each Prometheus rule
+groups (a `groups` list), and each renders one `PrometheusRule` in the
+Application's namespace. A rule's `severity` label picks the route the Platform
+document declares for it. An Application outside the monitoring stack carries
+none: its signal is its `scrape`, and its urgency its `alertClass`
+([Observability](#observability)).
+
+| condition | error |
+|---|---|
+| no file at `from` is read beside the project file | `E_ALERT_RULES_NOT_FOUND` |
+| the file holds no `groups` list | `E_ALERT_RULES_WITHOUT_GROUPS` |
+| an Application the Platform document's `monitoring` does not name carries alert rules | `E_ALERT_RULES_OUTSIDE_MONITORING` |
 
 ## Secrets
 
@@ -2555,7 +2728,7 @@ boolean nobody reads:
 
 | value | means | validation |
 |---|---|---|
-| `continuous` | the next revision must keep serving throughout its cutover: it starts beside the old one and takes traffic only once every member of its Application has passed analysis, a **blue/green** switchover; on delivery machinery, which cannot gate itself, a **rolling** one ([chapter 55](55-delivery.md#switchover)) | refused over storage that cannot hold a second copy, including an **`ReadWriteOnce`** volume: `E_CUTOVER_UNHONOURABLE`; eligible only on a node that fits two copies of the Process ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)) |
+| `continuous` | the next revision must keep serving throughout its cutover: it starts beside the old one and takes traffic only once every member of its Application has passed analysis, a **blue/green** switchover; on delivery machinery, which cannot gate itself, a **rolling** one ([chapter 55](55-delivery.md#switchover)) | refused over storage that cannot hold a second copy, including an **`ReadWriteOnce`** volume, and on a node address, whose host port holds one, save on delivery machinery: `E_CUTOVER_UNHONOURABLE`; eligible only on a node that fits two copies of the Process ([chapter 20](20-resolved-deployment.md#layer-2-does-not-assign-a-node)) |
 | `interrupted` | the owner accepts a stop-then-start cutover | accepted for any storage; the adapter derives the safe strategy |
 
 The two values name the owner's promise, not a mechanism: the Kubernetes and
@@ -2768,6 +2941,60 @@ them, and nothing undoes it.
   own are `E_PREPARE_PROCESS_SERVES`. A `cutover` shared from above does not
   reach it, and it is not required to have one.
 
+## Parked Processes
+
+```yaml
+parked: {reason: Ingestion paused while the job store is migrated.}
+```
+
+A Process of any lifecycle may be **parked**, with a reason: it stops running,
+and nothing it owns is pruned. A parked Process renders zero replicas, or a
+suspended CronJob where it is scheduled; its claims, grants, Service and network
+policy stay rendered, so unparking is deleting the line. It gets no disruption
+budget, and it is no member of its Application's release gate: a parked Process
+stops and starts whatever its cutover, since it has no release to gate. It is
+checked like any other, eligibility included, and an edge from a running
+Process to a parked provider is allowed.
+
+Parking a scheduled Process lets a run in flight finish; unparking it starts a
+run at once only where a slot fell within the last 300 seconds, the start
+deadline, and otherwise waits for the next slot.
+
+## Scheduled Processes
+
+```yaml
+processes:
+  - name: asset-sync
+    lifecycle: scheduled
+    schedule: "*/15 * * * *"   # minute, hour, day of month, month, weekday
+    image: asset-sync
+    runtime: none
+    placement: {memory: 64Mi, cpu: 25m, site: frankfurt}
+```
+
+A `scheduled` Process **runs to completion at each slot of its own
+`schedule`**: a sync, a sweep, a report. It is a Process like any other: it has
+its own identity, holds grants, declares edges and egress, takes placement and
+runs under the one hardening posture. Only how it runs differs.
+
+- **The schedule** is five cron fields, minute to weekday, one space apart. It
+  is required on a scheduled Process, `E_SCHEDULE_MISSING`, and refused on any
+  other, `E_SCHEDULE_UNSCHEDULED`: nothing else runs on one. No macro and no
+  time zone is read, and the schema refuses a schedule of another shape.
+- **Never twice at once.** A slot that falls while a run is still going is
+  skipped, so a run that overruns its interval never races itself.
+- **A run starts within 300 seconds of its slot or is skipped**, whatever
+  delayed it. 300 seconds rides out a control-plane restart; a shorter deadline
+  would skip runs over one, and a longer one would start a run long after the
+  slot it was for. Neither rule is authored: both are derived
+  ([chapter 20](20-resolved-deployment.md#derived-mechanics)).
+- **What it cannot declare.** It listens on nothing, has no readiness, runs one
+  copy and cuts over nothing, so `provides`, `probes`, `replicas` and a
+  `cutover` of its own are `E_SCHEDULED_PROCESS_SERVES`. A `cutover` shared
+  from above does not reach it, and it is not required to have one.
+- **A rotated value** reaches the next run: each run reads the values it starts
+  with, so a grant derives no restart target for it.
+
 ## Capacity
 
 ```yaml
@@ -2828,12 +3055,14 @@ already told them, and the lines reaching them made the model harder to read.
 
 | vocabulary | named by | values |
 |---|---|---|
-| `Lifecycle` | `Process.lifecycle` | `application`, `job`, `prepare` |
+| `Lifecycle` | `Process.lifecycle` | `application`, `job`, `prepare`, `scheduled` |
 | `Runtime` | `Process.runtime` | `jvm`, `python`, `node`, `static`, `none` |
 | `Engine` | `Process.engine` | `postgres`, `rabbitmq`, `valkey`, `mongo`, `files` |
 | `Cutover` | `Process.cutover` | `continuous`, `interrupted` |
 | `DurabilityClass` | `Volume.durability` | `reconstructible`, `recoverable`, `irreplaceable` |
 | `LibraryAccess` | `LibraryMount.access`, `LibraryDeclaration.grants` | `read`, `write` |
+| `Spread` | `Capacity.across` | `node` |
+| `L4Protocol` | `L4Exposure.protocol` | `tcp`, `udp` |
 | `Arch` | `Placement.arch` | `amd64`, `arm64` |
 | `Media` | `DiskRequest.media` | `nvme`, `ssd`, `hdd` |
 | `AlertClass` | `Observability.alertClass` | `business-hours`, `urgent`, `page` |
@@ -2975,7 +3204,7 @@ way: contention decides who arbitrates, not who authors
 | [`minimal/notes.project.yml`](examples/minimal/notes.project.yml) + [`env`](examples/minimal/env/notes-api/base.env) | **read this first.** One project, one Application, one Process, and no field that is not required: 26 authored lines reaching 10 objects, with no grant, no volume and no gap row. It is also the only set that renders on today's pinned inputs, because it holds nothing the secrets-at-rest gate can refuse: see [`minimal/README.md`](examples/minimal/README.md) |
 | [`knowledge/knowledge.project.yml`](examples/knowledge/knowledge.project.yml) + [`env`](examples/knowledge/env/knowledge-api/base.env) + [`worker env`](examples/knowledge/env/knowledge-ingest-worker/base.env) | two Applications because their cutovers differ (`continuous` and `interrupted`), two runtimes and therefore two identities, `probes: none` and no `provides` on the worker, grants and env shared at the project header and granted on a Process, a split Subtree path, a `0400` file secret, an `irreplaceable` volume |
 | [`auth/auth.project.yml`](examples/auth/auth.project.yml) + [`env`](examples/auth/env/auth-api/base.env) | one Application, two Processes switching atomically; `delivery: self` with `tolerates: reload`, a `self-roll` transit grant taking no placeholder, and the writable paths that retired its hardening exception |
-| [`data/data.project.yml`](examples/data/data.project.yml) + [`env`](examples/data/env/postgres/base.env) | three Applications releasing independently in one project, third-party images, a `disk` dimension, TCP probes, and a surface eight Applications consume |
+| [`data/data.project.yml`](examples/data/data.project.yml) + [`env`](examples/data/env/postgres/base.env) | four Applications releasing independently in one project, a scheduled Process, third-party images, a `disk` dimension, TCP probes, and a surface eight Applications consume |
 
 The env-file-to-`secrets` cross-check runs over the three larger sets; the
 minimal one has no grant and no placeholder, which is the base case. `knowledge-api` has

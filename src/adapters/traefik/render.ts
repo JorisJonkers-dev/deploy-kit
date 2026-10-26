@@ -4,7 +4,7 @@
 // Gate's own route of a gated Client among them. The one
 // place Traefik's vocabulary is spelled: a listener is an entry point, an
 // `acme` certificate source a resolver, a precedence a priority, a rate limit a
-// RateLimit Middleware of the route's own.
+// RateLimit Middleware of the route's own, and a redirect a RedirectRegex one.
 import type { ResolvedProject } from "../../model/resolution.ts";
 import type { ResolvedRoute } from "../../model/resolved-deployment.ts";
 import type {
@@ -14,7 +14,6 @@ import type {
 import type { Deliverable } from "../../objects/deliverable.ts";
 import { managedOnly } from "../shared/labels.ts";
 import { applicationDirectory } from "../shared/paths.ts";
-import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "traefik";
 
@@ -30,8 +29,6 @@ const CLOUDFLARE_CLIENT = "CF-Connecting-IP";
 
 /** The shared Middleware a step names, in the proxy's namespace, where the edge project renders it. */
 function sharedName(step: Middleware): string {
-  if (step.kind === "redirect")
-    throw notSupported("a redirect Middleware is not rendered yet");
   if (step.kind === "forward-auth") return "forward-auth";
   return step.contentPolicy === undefined
     ? "security-headers"
@@ -65,6 +62,32 @@ function rateLimitOf(
 }
 
 /**
+ * A route's redirect as its own Middleware: the scheme and host the request
+ * came on, and the path the route names. Not permanent, so a client caches no
+ * landing path that may change; the route's own match decides which requests
+ * reach it, so the expression takes any path.
+ */
+function redirectOf(
+  redirectTo: string,
+  name: string,
+  namespace: string,
+  labels: Record<string, string>,
+): RateLimit {
+  return {
+    apiVersion: "traefik.io/v1alpha1",
+    kind: "Middleware",
+    metadata: { name, namespace, labels },
+    spec: {
+      redirectRegex: {
+        regex: "^(https?://[^/]+)(/.*)?$",
+        replacement: `\${1}${redirectTo}`,
+        permanent: false,
+      },
+    },
+  };
+}
+
+/**
  * The Service a route is served by: its Process's, in the Application's
  * namespace on the surface it names, or for the Gate's own route the Service
  * the tier's forward-auth endpoint names (spec/v1/17-sign-in.md#what-the-edge-derives).
@@ -92,6 +115,13 @@ function serviceOf(
 const matchOf = (host: string, { match, path }: ResolvedRoute): string =>
   `Host(\`${host}\`) && ${match === "exact" ? "Path" : "PathPrefix"}(\`${path}\`)`;
 
+/** The annotation a Traefik and external-dns select a route by. */
+export const INGRESS_CLASS = "kubernetes.io/ingress.class";
+
+/** The annotations external-dns writes a route's record from. */
+const DNS_TARGET = "external-dns.alpha.kubernetes.io/target";
+const DNS_PROXIED = "external-dns.alpha.kubernetes.io/cloudflare-proxied";
+
 export function renderTraefik(project: ResolvedProject): Deliverable[] {
   return project.applications.flatMap((application) =>
     (application.exposure ?? []).map((exposure): Deliverable => {
@@ -100,7 +130,7 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
         "app.kubernetes.io/part-of": application.id,
         ...managedOnly(),
       };
-      const limits: RateLimit[] = [];
+      const owned: RateLimit[] = [];
       const route: IngressRoute = {
         apiVersion: "traefik.io/v1alpha1",
         kind: "IngressRoute",
@@ -108,6 +138,18 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
           name: `${application.id}-${exposure.name}`,
           namespace: application.namespace,
           labels,
+          // The tier's proxy admits a route of its class, and external-dns
+          // writes a record for one by the same annotation.
+          annotations: {
+            [INGRESS_CLASS]: exposure.ingressClass,
+            // The DNS controller writes the tier's record for the host.
+            ...(exposure.dns === undefined
+              ? {}
+              : {
+                  [DNS_TARGET]: exposure.dns.target,
+                  [DNS_PROXIED]: String(exposure.dns.proxied),
+                }),
+          },
         },
         spec: {
           entryPoints: [ENTRY_POINTS[exposure.listener]],
@@ -121,13 +163,25 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
               middlewares: (
                 served.middleware as NonNullable<typeof served.middleware>
               ).map((step) => {
+                if (step.kind === "redirect") {
+                  const name = `${application.id}-${exposure.name}-${String(index + 1)}-redirect`;
+                  owned.push(
+                    redirectOf(
+                      step.redirectTo as string,
+                      name,
+                      application.namespace,
+                      labels,
+                    ),
+                  );
+                  return { name, namespace: application.namespace };
+                }
                 if (step.kind !== "rate-limit")
                   return {
                     name: sharedName(step),
                     namespace: exposure.proxy.namespace,
                   };
                 const name = `${application.id}-${exposure.name}-${String(index + 1)}-rate-limit`;
-                limits.push(
+                owned.push(
                   rateLimitOf(step, name, application.namespace, labels),
                 );
                 return { name, namespace: application.namespace };
@@ -143,7 +197,7 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
       return {
         path: `${applicationDirectory(project.project, application.id)}/route-${exposure.name}.yaml`,
         adapter: ADAPTER,
-        objects: [route, ...limits],
+        objects: [route, ...owned],
       };
     }),
   );

@@ -861,6 +861,97 @@ describe("a refusal that reads the effective answer, not the written one", () =>
     ]);
   });
 
+  // REQ-0NN (docs/requirements.md): a scheduled Process names its schedule,
+  // serves nothing, and no shared cutover reaches it.
+  describe("a scheduled Process", () => {
+    const sync = (extra = "", lifecycle = "scheduled") =>
+      `      - name: sync\n        lifecycle: ${lifecycle}\n        image: sync\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n${extra}`;
+    const SCHEDULE = `        schedule: "*/15 * * * *"\n`;
+    const project = (process: string, header = "") =>
+      `${HEADER}${header}applications:\n  - id: a\n    processes:\n${process}`;
+    const said = (document: string) => {
+      const result = parseProjectIntent(document);
+      return result.ok
+        ? []
+        : result.diagnostics.map(({ code, path, message }) => [
+            code,
+            path,
+            message,
+          ]);
+    };
+
+    it("is accepted with its schedule and no cutover, and a shared cutover does not reach it", () => {
+      const document = project(sync(SCHEDULE), "cutover: continuous\n");
+      const parsed = parseProjectIntent(document);
+
+      expect(refusals(project(sync(SCHEDULE)))).toStrictEqual([]);
+      expect(
+        parsed.ok &&
+          parsed.value.effective.applications[0]?.processes.map(
+            ({ schedule, cutover }) => [schedule, cutover],
+          ),
+      ).toStrictEqual([["*/15 * * * *", undefined]]);
+    });
+
+    it("refuses one with no schedule, at the Process", () => {
+      expect(said(project(sync()))).toStrictEqual([
+        [
+          "E_SCHEDULE_MISSING",
+          "/applications/0/processes/0",
+          "a scheduled Process names no schedule to run at",
+        ],
+      ]);
+    });
+
+    it("refuses a schedule on a Process of every other lifecycle, at the schedule", () => {
+      for (const [lifecycle, cutover] of [
+        ["application", "        cutover: interrupted\n"],
+        ["job", "        cutover: interrupted\n"],
+        ["prepare", ""],
+      ] as const)
+        expect(
+          said(project(sync(`${SCHEDULE}${cutover}`, lifecycle))),
+        ).toStrictEqual([
+          [
+            "E_SCHEDULE_UNSCHEDULED",
+            "/applications/0/processes/0/schedule",
+            `a ${lifecycle} Process is not run on a schedule, so nothing reads this one`,
+          ],
+        ]);
+    });
+
+    it("names what only a serving Process has when it declares it", () => {
+      expect(
+        said(
+          project(
+            sync(
+              `${SCHEDULE}        provides: {http: 8080}\n        probes: none\n        replicas: {count: 2, reason: r}\n        cutover: continuous\n`,
+            ),
+          ),
+        ),
+      ).toStrictEqual([
+        [
+          "E_SCHEDULED_PROCESS_SERVES",
+          "/applications/0/processes/0",
+          "a scheduled Process runs to completion at each slot, and declares provides, probes, replicas, cutover, which only a serving Process has",
+        ],
+      ]);
+    });
+
+    it("does not hold its volume to a cutover it does not have", () => {
+      expect(
+        refusals(
+          project(
+            sync(
+              `${SCHEDULE}        volumes:\n          - {claim: c, mountAt: /c, size: 1Gi, durability: reconstructible}\n`,
+            ),
+            "cutover: continuous\n",
+          ),
+        ),
+      ).toStrictEqual([]);
+    });
+  });
+
   it("does not hold a prepare Process's volume to a cutover it does not have", () => {
     const document = `${HEADER}cutover: continuous\napplications:\n  - id: a\n    processes:\n      - name: seed\n        lifecycle: prepare\n        image: seed\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        volumes:\n          - {claim: c, mountAt: /c, size: 1Gi, durability: reconstructible}\n`;
 

@@ -1,0 +1,59 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: prometheus
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/instance: prometheus
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: prometheus
+  progressDeadlineSeconds: 300
+  service:
+    port: 9090
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: prometheus
+          process: prometheus
+          revision: sha256:2e8a105e0d86dfd44e582952710d28ea2a651541e4e4334b348b18a40a81925b
+          readiness: /-/ready
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: prometheus
+          process: prometheus
+          revision: sha256:2e8a105e0d86dfd44e582952710d28ea2a651541e4e4334b348b18a40a81925b
+          readiness: /-/ready
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: prometheus
+          process: prometheus
+          revision: sha256:2e8a105e0d86dfd44e582952710d28ea2a651541e4e4334b348b18a40a81925b
+          readiness: /-/ready
+          errorRate: 1%
+          latency: 500ms

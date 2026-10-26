@@ -144,10 +144,26 @@ function policyOf(
     ],
     ports: portsOf(peer.port, mesh),
   }));
+  // A client off the cluster, on each port an L4 Address carries to the
+  // Process: the `Local` policy keeps its address, which may be any.
+  // A missing list and an empty one admit the same nothing.
+  // Stryker disable next-line ArrayDeclaration
+  const l4 = (process.l4Exposure ?? []).flatMap(({ ports }) =>
+    ports.map(({ protocol, targetPort }) => ({
+      from: [{ ipBlock: { cidr: ANY_IPV4 } }],
+      ports: [
+        {
+          protocol: protocol === "udp" ? ("UDP" as const) : ("TCP" as const),
+          port: targetPort,
+        },
+      ],
+    })),
+  );
   // In an enrolled namespace the kubelet's probes arrive from the address the
-  // mesh rewrites them to.
+  // mesh rewrites them to. A client off the cluster never arrives through the
+  // mesh tunnel, so its rule carries none.
   const probes = mesh === undefined ? [] : probeRulesOf(process, mesh);
-  const ingress = [...admitted, ...probes];
+  const ingress = [...admitted, ...l4, ...probes];
   // A missing list and an empty one admit the same nothing.
   // Stryker disable next-line ArrayDeclaration
   const edges = (process.dependencies ?? []).flatMap((edge) =>

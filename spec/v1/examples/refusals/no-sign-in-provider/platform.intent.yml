@@ -35,13 +35,15 @@ tiers:
     audiences: [anonymous, authenticated, internal]
     listener: tls
     certificates: acme
-    forwardAuth: "http://identity.refusals-system.svc.cluster.local:8080/gate"
+    forwardAuth: {provider: refusals/identity, surface: http, path: /gate}
     traefik: refusals/edge-proxy
+    ingressClass: edge-proxy
   - name: lan
     audiences: [lan]
     listener: plain
     certificates: none
     traefik: refusals/edge-proxy
+    ingressClass: edge-proxy
 delivery:
   machinery: [refusals/edge-proxy]
   gate: refusals/edge-proxy
@@ -64,3 +66,7 @@ monitors:
 hardening: restricted
 probes: { period: 10s, timeout: 5s, failures: 3 }
 ephemeral: { size: 64Mi }
+acme:
+  email: hostmaster@jorisjonkers.dev
+  dnsProvider: cloudflare
+  token: secret/data/platform/cloudflare

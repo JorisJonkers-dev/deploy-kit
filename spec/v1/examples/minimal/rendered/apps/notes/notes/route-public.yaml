@@ -8,6 +8,10 @@ metadata:
   labels:
     app.kubernetes.io/part-of: notes
     app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kubernetes.io/ingress.class: traefik-public
+    external-dns.alpha.kubernetes.io/target: ingress.jorisjonkers.dev
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
 spec:
   entryPoints:
     - websecure

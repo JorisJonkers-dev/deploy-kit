@@ -32,6 +32,7 @@ spec:
         image.jorisjonkers.dev/rabbitmq: 4.0.7
     spec:
       serviceAccountName: rabbitmq
+      priorityClassName: platform-data
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
@@ -54,7 +55,6 @@ spec:
                       - enschede-pi-1
                       - enschede-pi-2
                       - enschede-pi-3
-                      - frankfurt-contabo-1
       containers:
         - name: rabbitmq
           image: docker.io/library/rabbitmq@sha256:2d4f6b8a0c2e4d6f8b0a2c4e6d8f0b2a4c6e8d0f2b4a6c8e0d2f4b6a8c0e2d4f
@@ -65,6 +65,8 @@ spec:
               containerPort: 15672
             - name: metrics
               containerPort: 15692
+            - name: mqtt
+              containerPort: 1883
           resources:
             requests:
               memory: 2Gi

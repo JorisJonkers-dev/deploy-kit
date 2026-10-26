@@ -46,8 +46,21 @@
         "alertClass": {
           "$ref": "#/$defs/AlertClass"
         },
+        "alertRules": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedAlertRules"
+          }
+        },
+        "alerting": {
+          "$ref": "#/$defs/ResolvedAlerting"
+        },
         "scrape": {
           "$ref": "#/$defs/ResolvedScrape"
+        },
+        "dashboards": {
+          "$ref": "#/$defs/ResolvedDashboards"
         },
         "releaseGate": {
           "$ref": "#/$defs/ReleaseGate"
@@ -189,6 +202,102 @@
         "page"
       ]
     },
+    "ResolvedAlertRules": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "groups": {
+          "minItems": 1,
+          "type": "array",
+          "items": {}
+        }
+      },
+      "required": [
+        "from",
+        "groups"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedAlerting": {
+      "type": "object",
+      "properties": {
+        "receivers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedReceiver"
+          }
+        },
+        "routes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedSeverityRoute"
+          }
+        }
+      },
+      "required": [
+        "receivers",
+        "routes"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedReceiver": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "discord": {
+          "type": "object",
+          "properties": {
+            "secret": {
+              "type": "string",
+              "minLength": 1
+            },
+            "key": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "secret",
+            "key"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "name",
+        "discord"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedSeverityRoute": {
+      "type": "object",
+      "properties": {
+        "severity": {
+          "type": "string",
+          "minLength": 1
+        },
+        "receiver": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repeat": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "severity",
+        "receiver",
+        "repeat"
+      ],
+      "additionalProperties": false
+    },
     "ResolvedScrape": {
       "type": "object",
       "properties": {
@@ -211,6 +320,17 @@
         "timeout": {
           "type": "string",
           "pattern": "^\\d+(ms|s|m|h)$"
+        },
+        "labels": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       },
       "required": [
@@ -219,6 +339,74 @@
         "path",
         "interval",
         "timeout"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedDashboards": {
+      "type": "object",
+      "properties": {
+        "folder": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instance": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "datasource": {
+          "type": "string",
+          "minLength": 1
+        },
+        "files": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedDashboard"
+          }
+        }
+      },
+      "required": [
+        "folder",
+        "instance",
+        "datasource",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedDashboard": {
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "uid",
+        "from",
+        "content",
+        "inputs"
       ],
       "additionalProperties": false
     },
@@ -643,6 +831,13 @@
           "type": "string",
           "minLength": 1
         },
+        "ingressClass": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dns": {
+          "$ref": "#/$defs/ResolvedTierDns"
+        },
         "listener": {
           "$ref": "#/$defs/Listener"
         },
@@ -664,10 +859,28 @@
         "name",
         "host",
         "tier",
+        "ingressClass",
         "listener",
         "certificates",
         "proxy",
         "routes"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedTierDns": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "proxied": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target",
+        "proxied"
       ],
       "additionalProperties": false
     },
@@ -1028,14 +1241,36 @@
         "switchover": {
           "$ref": "#/$defs/Switchover"
         },
+        "schedule": {
+          "type": "string",
+          "minLength": 1
+        },
+        "startDeadline": {
+          "type": "string",
+          "pattern": "^\\d+(ms|s|m|h)$"
+        },
         "deadline": {
           "type": "string",
           "pattern": "^\\d+(ms|s|m|h)$"
         },
         "replicas": {
           "type": "integer",
-          "minimum": 1,
+          "minimum": 0,
           "maximum": 9007199254740991
+        },
+        "parked": {
+          "type": "boolean",
+          "const": true
+        },
+        "priorityClass": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spreadAcross": {
+          "$ref": "#/$defs/Spread"
+        },
+        "edgeProxy": {
+          "$ref": "#/$defs/ResolvedEdgeProxy"
         },
         "memory": {
           "type": "string",
@@ -1146,6 +1381,19 @@
             "$ref": "#/$defs/ResolvedSurface"
           }
         },
+        "l4Exposure": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/ResolvedPoolExposure"
+              },
+              {
+                "$ref": "#/$defs/ResolvedNodeExposure"
+              }
+            ]
+          }
+        },
         "ingress": {
           "type": "array",
           "items": {
@@ -1198,6 +1446,16 @@
               "cutover": {
                 "const": "continuous"
               }
+            },
+            "not": {
+              "required": [
+                "parked"
+              ],
+              "properties": {
+                "parked": {
+                  "const": true
+                }
+              }
             }
           },
           "then": {
@@ -1220,6 +1478,16 @@
               "cutover": {
                 "const": "interrupted"
               }
+            },
+            "not": {
+              "required": [
+                "parked"
+              ],
+              "properties": {
+                "parked": {
+                  "const": true
+                }
+              }
             }
           },
           "then": {
@@ -1231,6 +1499,25 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "parked"
+            ],
+            "properties": {
+              "parked": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "switchover": {
+                "const": "stop-start"
+              }
+            }
+          }
         }
       ]
     },
@@ -1239,7 +1526,8 @@
       "enum": [
         "application",
         "job",
-        "prepare"
+        "prepare",
+        "scheduled"
       ]
     },
     "Runtime": {
@@ -1266,6 +1554,60 @@
         "rolling",
         "stop-start"
       ]
+    },
+    "Spread": {
+      "type": "string",
+      "enum": [
+        "node"
+      ]
+    },
+    "ResolvedEdgeProxy": {
+      "type": "object",
+      "properties": {
+        "ingressClass": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tls": {
+          "type": "boolean"
+        },
+        "resolver": {
+          "$ref": "#/$defs/ResolvedResolver"
+        }
+      },
+      "required": [
+        "ingressClass",
+        "tls"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedResolver": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "email": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dnsProvider": {
+          "type": "string",
+          "minLength": 1
+        },
+        "storage": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "email",
+        "dnsProvider",
+        "storage"
+      ],
+      "additionalProperties": false
     },
     "ResolvedGpu": {
       "type": "object",
@@ -2153,6 +2495,119 @@
       "required": [
         "name",
         "port"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedPoolExposure": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "pool"
+        },
+        "site": {
+          "type": "string",
+          "minLength": 1
+        },
+        "range": {
+          "type": "string",
+          "minLength": 1
+        },
+        "service": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ports": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedL4Port"
+          }
+        }
+      },
+      "required": [
+        "address",
+        "kind",
+        "site",
+        "range",
+        "service",
+        "ports"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedL4Port": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "protocol": {
+          "$ref": "#/$defs/L4Protocol"
+        },
+        "surface": {
+          "type": "string",
+          "minLength": 1
+        },
+        "targetPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "name",
+        "port",
+        "protocol",
+        "surface",
+        "targetPort"
+      ],
+      "additionalProperties": false
+    },
+    "L4Protocol": {
+      "type": "string",
+      "enum": [
+        "tcp",
+        "udp"
+      ]
+    },
+    "ResolvedNodeExposure": {
+      "type": "object",
+      "properties": {
+        "address": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "const": "node"
+        },
+        "node": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ports": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResolvedL4Port"
+          }
+        }
+      },
+      "required": [
+        "address",
+        "kind",
+        "node",
+        "ports"
       ],
       "additionalProperties": false
     },

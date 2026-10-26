@@ -3,6 +3,7 @@
 // gives it and the JSON Pointer of what it refuses.
 import { BACKED_UP } from "../model/backup.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
+import { l4AddressOf } from "../model/l4-addresses.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 
 /** A tier carrying `authenticated` needs the endpoint that authenticates for it. */
@@ -55,11 +56,105 @@ function durabilityRefusals(document: PlatformIntentDocument): Diagnostic[] {
   );
 }
 
+/**
+ * A group holds a role by one grant: a second would render a second binding
+ * under the first one's name.
+ */
+function humanGrantRefusals(document: PlatformIntentDocument): Diagnostic[] {
+  const seen = new Set<string>();
+  // A missing list and an empty one refuse nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  return (document.humanGrants ?? []).flatMap(
+    ({ group, clusterRole }, index): Diagnostic[] => {
+      const key = `${group} ${clusterRole}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        return [];
+      }
+      return [
+        {
+          code: "E_DUPLICATE_HUMAN_GRANT",
+          path: `/humanGrants/${String(index)}`,
+          message: `the group ${group} is granted ${clusterRole} twice`,
+          hint: "Keep one grant of the role to the group, with the reason it is held.",
+        },
+      ];
+    },
+  );
+}
+
+/**
+ * A severity route names a receiver the Platform document declares
+ * (spec/v1/14-platform-intent.md#monitoring), or an alert it routes reaches no one.
+ */
+function receiverRefusals(document: PlatformIntentDocument): Diagnostic[] {
+  const { monitoring } = document;
+  if (monitoring === undefined) return [];
+  const declared = new Set(monitoring.receivers.map(({ name }) => name));
+  return monitoring.routes.flatMap(({ receiver }, index): Diagnostic[] =>
+    declared.has(receiver)
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_RECEIVER",
+            path: `/monitoring/routes/${String(index)}/receiver`,
+            message: `the platform declares no receiver ${receiver}`,
+            hint: "Name a receiver `monitoring.receivers` declares, or declare it there.",
+          },
+        ],
+  );
+}
+
+/**
+ * A tier's proxy listens on an L4 Address the document declares, and an acme
+ * tier's proxy registers with the account the document names
+ * (spec/v1/14-platform-intent.md#tiers).
+ */
+function tierRefusals(document: PlatformIntentDocument): Diagnostic[] {
+  return document.tiers.flatMap((tier, index): Diagnostic[] => [
+    ...(tier.address === undefined ||
+    l4AddressOf(document, tier.address) !== undefined
+      ? []
+      : [
+          {
+            code: "E_UNKNOWN_L4_ADDRESS" as const,
+            path: `/tiers/${String(index)}/address`,
+            message: `the platform declares no L4 Address ${tier.address}`,
+            hint: "Declare the address in `l4Addresses`, or name one it declares.",
+          },
+        ]),
+    // The DNS provider's token reaches the proxy through the Secret Store.
+    ...(tier.certificates === "acme" && document.secretStore === undefined
+      ? [
+          {
+            code: "E_NO_SECRET_STORE" as const,
+            path: `/tiers/${String(index)}`,
+            message: `tier ${tier.name} issues its certificates through acme, and no Secret Store holds its DNS provider's token`,
+            hint: "Name the platform's `secretStore`, or issue the tier's certificates another way.",
+          },
+        ]
+      : []),
+    ...(tier.certificates === "acme" && document.acme === undefined
+      ? [
+          {
+            code: "E_NO_ACME_POLICY" as const,
+            path: `/tiers/${String(index)}`,
+            message: `tier ${tier.name} issues its certificates through acme, and the platform names no acme account`,
+            hint: "Declare the Platform document's `acme`: the account's email, the DNS provider and its token's path.",
+          },
+        ]
+      : []),
+  ]);
+}
+
 /** Every refusal the Platform document earns on its own. */
 export const platformDiagnostics = (
   document: PlatformIntentDocument,
 ): readonly Diagnostic[] => [
   ...forwardAuthRefusals(document),
+  ...tierRefusals(document),
   ...handoverRefusals(document),
   ...durabilityRefusals(document),
+  ...humanGrantRefusals(document),
+  ...receiverRefusals(document),
 ];

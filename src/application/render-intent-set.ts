@@ -3,12 +3,17 @@
 // kustomizations list what each directory applies, and the one serializer the
 // caller hands in writes the bytes. A path two Deliverables claim is refused
 // before anything is serialized. Nothing here performs IO.
+import { NODE_PROJECT } from "../model/node-agents.ts";
+import { renderNodeAgents } from "../adapters/kubernetes/node-agents.ts";
+import { renderSharedMiddlewares } from "../adapters/traefik/shared-middlewares.ts";
 import {
   ADAPTERS,
   kustomizationsFor,
   type Adapter,
 } from "../adapters/registry.ts";
 import { renderEvents } from "../adapters/kubernetes/events.ts";
+import { renderHumanGrants } from "../adapters/kubernetes/human-grants.ts";
+import { renderPriorityClasses } from "../adapters/kubernetes/priority-classes.ts";
 import { ADAPTER as TRAEFIK } from "../adapters/traefik/render.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
 import {
@@ -58,7 +63,8 @@ export interface RenderOptions extends ResolveOptions {
   readonly projects: readonly string[];
   /**
    * Whether each Project's share carries its routes: not while the old path
-   * still serves the edge (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+   * still serves the edge, until the edge itself is handed over
+   * (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
    */
   readonly routes?: boolean;
 }
@@ -347,7 +353,8 @@ export function renderResolvedSet(
     ...policyJobsOf(
       resolved,
       [...projects, ...catalogs],
-      options.projects,
+      // The Node Agents read no secret, so their Project writes no policy.
+      options.projects.filter((project) => project !== NODE_PROJECT),
       held,
       options.hash,
     ),
@@ -355,6 +362,22 @@ export function renderResolvedSet(
     ...rendering.flatMap(({ project }) =>
       events === undefined ? [] : renderEvents(events, project),
     ),
+    // The Middlewares every route names, with the routes they serve.
+    ...(adapters.some(({ name }) => name === TRAEFIK)
+      ? renderSharedMiddlewares(
+          resolved.tierProxies,
+          options.projects,
+          resolved.forwardAuths,
+        )
+      : []),
+    // A Human Grant is the platform's, so every render holds it.
+    ...renderHumanGrants(resolved.humanGrants ?? []),
+    // The priority classes are the cluster's, so every render holds them.
+    ...renderPriorityClasses(resolved.priority),
+    // The Node Agents are the `node` Project's, rendered where it is asked for.
+    ...(options.projects.includes(NODE_PROJECT)
+      ? renderNodeAgents(resolved.nodeAgents)
+      : []),
   ];
   const deliverables = [
     ...rendered,

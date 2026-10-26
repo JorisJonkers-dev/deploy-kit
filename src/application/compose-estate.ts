@@ -12,7 +12,9 @@
 // (spec/v1/55-delivery.md#pause-and-rollback). What comes out is one artifact
 // per Project and the estate, which pins move, the lock, and what the workflow
 // reports (spec/v1/55-delivery.md#notifications). Nothing here performs IO.
+import { NODE_PROJECT } from "../model/node-agents.ts";
 import {
+  ESTATE_ARTIFACT,
   artifactRepositoryOf,
   versionPatches,
 } from "../adapters/flux/source.ts";
@@ -161,6 +163,13 @@ export interface Composition {
    * pin stays already names the digest it was committed at.
    */
   readonly sources: readonly PinSource[];
+  /**
+   * The committed pin sources the Estate repository removes, by path: the
+   * estate-scoped artifact's, once that artifact holds nothing
+   * (spec/v1/55-delivery.md#what-a-pin-source-holds), since a source that
+   * stays would pin an artifact no composition publishes again.
+   */
+  readonly removedSources: readonly string[];
   /**
    * One Rollout per Project whose pin moves
    * (spec/v1/55-delivery.md#rollouts): what the composition workflow creates
@@ -543,9 +552,10 @@ interface Delivered {
 /**
  * A resolved union rendered for the Projects the ledger hands to the estate
  * path; a legacy one is composed and checked, never published
- * (spec/v1/60-setup.md#handing-over-one-project-at-a-time). While a Project is
- * legacy the old path still serves the edge, so no Project's share carries a
- * route: one would be a second source for it.
+ * (spec/v1/60-setup.md#handing-over-one-project-at-a-time). Routes flip with
+ * the edge's own handover: while a Project that declares a tier's proxy is
+ * legacy, the old path's Traefik serves the edge, so no Project's share carries
+ * a route, which would be a second source for it.
  */
 function deliver(
   input: Composing,
@@ -557,13 +567,21 @@ function deliver(
   const ledger = platform.handover;
   const rendered = renderResolvedSet(resolved, {
     ...options,
-    routes: ledger?.legacy === undefined,
-    projects: resolved.projects
-      .map(({ project }) => project)
-      .filter(
-        (project) =>
-          ledger === undefined || ledger.estate?.includes(project) === true,
-      ),
+    routes: !platform.tiers.some(({ traefik }) =>
+      // A missing legacy list and an empty one hold no edge alike.
+      // Stryker disable next-line ArrayDeclaration
+      (ledger?.legacy ?? []).includes(traefik.slice(0, traefik.indexOf("/"))),
+    ),
+    // The Node Agents' Project declares nothing, so no fragment names it:
+    // every node runs an agent, so it is always the estate's, and the ledger
+    // hands it over like any other.
+    projects: [
+      ...resolved.projects.map(({ project }) => project),
+      NODE_PROJECT,
+    ].filter(
+      (project) =>
+        ledger === undefined || ledger.estate?.includes(project) === true,
+    ),
   });
   return rendered.ok
     ? {
@@ -757,6 +775,11 @@ function composition(
       new Set(Object.keys(input.pins)),
       input.sources,
     ),
+    removedSources:
+      input.sources?.[ESTATE_ARTIFACT] !== undefined &&
+      !rendered.some(({ name }) => name === ESTATE_ARTIFACT)
+        ? [`projects/${ESTATE_ARTIFACT}/source.yaml`]
+        : [],
     rollouts: artifacts.flatMap(({ rollout }) => rollout ?? []),
     lock,
     statuses: statusesOf(input, isolated),

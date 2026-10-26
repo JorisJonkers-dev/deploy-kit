@@ -149,6 +149,7 @@ and linted by the same script with `emf` as its root.
 | [0095](model/0095-each-engine-states-how-its-data-moves.md) | Each engine states how its data moves: a method image, which version change breaks the data in place, and when it can replicate back | open |
 | [0113](model/0113-a-privileged-role-names-the-project-that-holds-it.md) | A privileged role names the Project that holds it, as `<project>/<application>`, and an Application id alone binds no role | open |
 | [0114](model/0114-every-images-lock-entry-records-its-version.md) | Every images lock entry records its version, and a missing one is refused apart from an engine's version of the wrong shape | settled |
+| [0118](model/0118-a-human-grant-is-declared-in-the-platform-document.md) | A human grant is declared in the Platform document: a group, a built-in cluster role and a reason, rendered estate-scoped | open |
 
 ## Delivery and release
 
@@ -156,7 +157,7 @@ and linted by the same script with `emf` as its root.
 |---|---|---|
 | [0050](model/0050-delivery-is-part-of-the-model.md) | Delivery is part of the model: Flux pulls a signed, pinned render, and Flagger switches what must keep serving | open |
 | [0051](model/0051-a-project-is-delivered-as-a-signed-artifact.md) | A Project is delivered as a signed OCI artifact pinned by digest, and a deploy is a pin commit | open |
-| [0116](model/0116-a-project-owns-every-object-it-delivers.md) | A Project owns every object it delivers, depends on another only by name, and only the Stable Addresses stay estate-scoped | open |
+| [0116](model/0116-a-project-owns-every-object-it-delivers.md) | A Project owns every object it delivers, depends on another only by name, and only the Stable Addresses and the Human Grants stay estate-scoped | open |
 | [0052](model/0052-an-application-is-the-release-unit.md) | An Application is the unit of atomic release, and a first-party Release Gate holds its members at a barrier and fails closed | open |
 | [0053](model/0053-rotating-a-secret-is-not-a-release.md) | Rotating a secret is not a release, so it never starts a switchover | open |
 | [0115](model/0115-a-removed-grant-outlives-the-release-that-removes-it.md) | A removed grant's sync objects outlive the release that removes them, and the Release Gate deletes them once the Application serves | open |

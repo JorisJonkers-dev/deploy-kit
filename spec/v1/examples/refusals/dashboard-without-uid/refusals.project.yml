@@ -1,0 +1,29 @@
+# REFUSED: E_DASHBOARD_WITHOUT_UID
+#
+# The dashboard's JSON names no uid. Grafana would key it by a value of its
+# own, so a second render could not find it to replace it
+# (spec/v1/10-project-intent.md #dashboards).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: board-0
+    dashboards:
+      - {from: dashboards/board.json}
+    processes:
+      - name: board-0
+        lifecycle: application
+        image: board
+        runtime: none
+        provides:
+          http: 8080
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 20s
+        cutover: interrupted

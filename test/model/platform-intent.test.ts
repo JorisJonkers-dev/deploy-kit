@@ -10,6 +10,10 @@ import {
   parsePlatformIntent,
   platformIntentJsonSchema,
 } from "../../src/index.ts";
+import {
+  foundationOf,
+  type PlatformIntentDocument,
+} from "../../src/model/platform-intent.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..", "..");
 const PLATFORM = join(REPOSITORY, "spec", "v1", "examples", "platform");
@@ -250,6 +254,60 @@ describe("parsePlatformIntent", () => {
     ]);
   });
 
+  // REQ-099: a tier's address is one the Platform document declares, and an
+  // acme tier's proxy registers with the account the platform names.
+  it("refuses a tier whose address the platform does not declare, at the address", () => {
+    const text = WORKED.replace("address: lan-edge", "address: lan-nowhere");
+    expect(refusalsOf(text)).toStrictEqual([
+      { code: "E_UNKNOWN_L4_ADDRESS", path: "/tiers/1/address" },
+    ]);
+    const result = parsePlatformIntent(text);
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message: "the platform declares no L4 Address lan-nowhere",
+        hint: "Declare the address in `l4Addresses`, or name one it declares.",
+      },
+    ]);
+  });
+
+  it("refuses an acme tier where no Secret Store holds its DNS token, at the tier", () => {
+    const text = WORKED.replace("secretStore: secrets/vault\n", "");
+    const result = parsePlatformIntent(text);
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, path, message, hint }) => ({
+            code,
+            path,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_NO_SECRET_STORE",
+        path: "/tiers/0",
+        message:
+          "tier public-frankfurt issues its certificates through acme, and no Secret Store holds its DNS provider's token",
+        hint: "Name the platform's `secretStore`, or issue the tier's certificates another way.",
+      },
+    ]);
+    // A tier that issues none needs no token.
+    expect(
+      refusalsOf(text.replace("certificates: acme", "certificates: none")),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses an acme tier where the platform names no acme account, at the tier", () => {
+    const text = WORKED.replace(/\nacme:\n( {2}.*\n)+/, "\n");
+    expect(refusalsOf(text)).toStrictEqual([
+      { code: "E_NO_ACME_POLICY", path: "/tiers/0" },
+    ]);
+  });
+
   it("refuses a tier that carries authenticated with no forwardAuth, at the tier", () => {
     const text = WORKED.replace(/\n\s+forwardAuth: [^\n]*/, "");
     const result = parsePlatformIntent(text);
@@ -263,6 +321,78 @@ describe("parsePlatformIntent", () => {
     expect(!result.ok && result.diagnostics[0]?.hint).toBe(
       "Declare the tier's `forwardAuth`, or stop carrying `authenticated` on it.",
     );
+  });
+
+  // REQ-080 (docs/requirements.md): a group holds a role by one grant.
+  it("refuses a group granted one role twice, at the second grant, and accepts it granted two roles", () => {
+    const granted = (grants: string) =>
+      WORKED.replace(
+        /\nhumanGrants:\n( {2}.*\n)+/,
+        `\nhumanGrants:\n${grants}`,
+      );
+    const grant = (group: string, role: string) =>
+      `  - group: ${group}\n    clusterRole: ${role}\n    reason: works on the cluster\n`;
+    const result = parsePlatformIntent(
+      granted(
+        grant("oidc:k8s-admin", "cluster-admin") +
+          grant("oidc:k8s-viewers", "view") +
+          grant("oidc:k8s-admin", "cluster-admin"),
+      ),
+    );
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      {
+        code: "E_DUPLICATE_HUMAN_GRANT",
+        path: "/humanGrants/2",
+        message: "the group oidc:k8s-admin is granted cluster-admin twice",
+        hint: "Keep one grant of the role to the group, with the reason it is held.",
+      },
+    ]);
+    expect(
+      refusalsOf(
+        granted(
+          grant("oidc:k8s-admin", "cluster-admin") +
+            grant("oidc:k8s-admin", "view") +
+            grant("oidc:k8s-viewers", "view"),
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses a human grant to a user, in a namespace, of another role, or to a group no binding can be named for", () => {
+    const grant = (lines: string) =>
+      WORKED.replace(
+        /\nhumanGrants:\n( {2}.*\n)+/,
+        `\nhumanGrants:\n  - ${lines}`,
+      );
+
+    expect(
+      refusalsOf(
+        grant("user: joris\n    clusterRole: view\n    reason: reads\n"),
+      ),
+    ).toStrictEqual([
+      { code: "schema", path: "/humanGrants/0/group" },
+      { code: "schema", path: "/humanGrants/0/user" },
+    ]);
+    expect(
+      refusalsOf(
+        grant(
+          "group: g\n    clusterRole: view\n    namespace: a\n    reason: reads\n",
+        ),
+      ),
+    ).toStrictEqual([{ code: "schema", path: "/humanGrants/0/namespace" }]);
+    expect(
+      refusalsOf(
+        grant("group: g\n    clusterRole: system:node\n    reason: r\n"),
+      ),
+    ).toStrictEqual([{ code: "schema", path: "/humanGrants/0/clusterRole" }]);
+    for (const group of ["a/b", "a%b", "a b"])
+      expect(
+        refusalsOf(
+          grant(`group: "${group}"\n    clusterRole: view\n    reason: r\n`),
+        ),
+        group,
+      ).toStrictEqual([{ code: "schema", path: "/humanGrants/0/group" }]);
   });
 
   it("points a schema failure at the chapter that defines the field", () => {
@@ -282,5 +412,73 @@ describe("parsePlatformIntent", () => {
     expect(platformIntentJsonSchema()).toBe(
       readFileSync(join(REPOSITORY, PLATFORM_JSON_SCHEMA_PATH), "utf8"),
     );
+  });
+});
+
+// REQ-096 (docs/requirements.md): the foundation is every holder of a
+// privileged role, and nothing a Platform document leaves out.
+describe("the foundation", () => {
+  const platformOf = (text: string): PlatformIntentDocument => {
+    const result = parsePlatformIntent(text);
+    if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
+    return result.value.document;
+  };
+
+  it("is every holder of a privileged role the worked platform names", () => {
+    expect([...foundationOf(platformOf(WORKED))].sort()).toStrictEqual([
+      "delivery/collector",
+      "delivery/flagger",
+      "delivery/release-gate",
+      "delivery/reporter",
+      "edge/traefik-lan",
+      "edge/traefik-public",
+      "identity/identity",
+      "observability/otel-collector",
+      "observability/prometheus",
+      "secrets/vault",
+    ]);
+  });
+
+  it("is the tiers' proxies alone where the platform names no other role", () => {
+    const bare = platformOf(WORKED);
+    const {
+      delivery: _d,
+      apiAccess: _a,
+      telemetry: _t,
+      secretStore: _s,
+      signIn: _i,
+      ...rest
+    } = bare;
+
+    expect([...foundationOf(rest)].sort()).toStrictEqual([
+      "edge/traefik-lan",
+      "edge/traefik-public",
+    ]);
+  });
+
+  it("holds the delivery machinery without a gate or a reporter", () => {
+    const worked = platformOf(WORKED);
+    const delivery = worked.delivery as NonNullable<typeof worked.delivery>;
+    const { gate: _g, reporter: _r, ...machinery } = delivery;
+
+    expect(
+      [
+        ...foundationOf({
+          tiers: [],
+          delivery: machinery as typeof delivery,
+        } as unknown as PlatformIntentDocument),
+      ].sort(),
+    ).toStrictEqual([...delivery.machinery].sort());
+  });
+
+  it("holds a gate and a reporter that hold no other role", () => {
+    expect(
+      [
+        ...foundationOf({
+          tiers: [],
+          delivery: { machinery: [], gate: "gate/gate", reporter: "news/news" },
+        } as unknown as PlatformIntentDocument),
+      ].sort(),
+    ).toStrictEqual(["gate/gate", "news/news"]);
   });
 });

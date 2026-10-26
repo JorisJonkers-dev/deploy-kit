@@ -278,10 +278,16 @@ function packProject(
     : [];
   const parsed = parseProjectIntent(text, env);
   if (!parsed.ok) return parsed.diagnostics;
-  const assets = parsed.value.effective.applications.flatMap(({ processes }) =>
-    processes.flatMap(({ assets: named }) =>
-      (named ?? []).map(({ from }) => from),
-    ),
+  // Every file the project names beside itself: its Assets, its dashboards
+  // and its rule groups.
+  const assets = parsed.value.effective.applications.flatMap(
+    ({ processes, dashboards, alertRules }) => [
+      ...processes.flatMap(({ assets: named }) =>
+        (named ?? []).map(({ from }) => from),
+      ),
+      ...(dashboards ?? []).map(({ from }) => from),
+      ...(alertRules ?? []).map(({ from }) => from),
+    ],
   );
   const share =
     imagesLock === undefined
@@ -482,6 +488,7 @@ function compose(values: Options, json: boolean, world: World): Outcome {
   const {
     artifacts,
     sources,
+    removedSources,
     rollouts,
     lock: written,
     statuses,
@@ -504,6 +511,8 @@ function compose(values: Options, json: boolean, world: World): Outcome {
         repository,
         moves,
       })),
+      // The committed pin sources the Estate repository deletes.
+      removedSources,
       rollouts,
       statuses,
       conditions,

@@ -1,0 +1,85 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: forward-auth
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  forwardAuth:
+    address: http://identity.identity-system.svc.cluster.local:8080/gate/forward
+    trustForwardHeader: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  headers:
+    contentTypeNosniff: true
+    frameDeny: true
+    referrerPolicy: strict-origin-when-cross-origin
+    permissionsPolicy: camera=(), microphone=(), geolocation=()
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers-strict
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  headers:
+    contentTypeNosniff: true
+    frameDeny: true
+    referrerPolicy: strict-origin-when-cross-origin
+    permissionsPolicy: camera=(), microphone=(), geolocation=()
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    contentSecurityPolicy: default-src 'self'
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers-admin
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  headers:
+    contentTypeNosniff: true
+    frameDeny: true
+    referrerPolicy: strict-origin-when-cross-origin
+    permissionsPolicy: camera=(), microphone=(), geolocation=()
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    contentSecurityPolicy: default-src 'self'; style-src 'self' 'unsafe-inline'
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers-workflow
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  headers:
+    contentTypeNosniff: true
+    frameDeny: true
+    referrerPolicy: strict-origin-when-cross-origin
+    permissionsPolicy: camera=(), microphone=(), geolocation=()
+    stsSeconds: 31536000
+    stsIncludeSubdomains: true
+    contentSecurityPolicy: "default-src 'self'; connect-src 'self' https:"

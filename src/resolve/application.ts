@@ -2,6 +2,11 @@
 // (spec/v1/20-resolved-deployment.md#the-model): its Processes, its exposure,
 // its Reconcile Unit, the release-gate inputs a blue/green switch reads, and
 // the revision that names this release of it.
+import { dashboardUidOf } from "../model/dashboards.ts";
+import { ruleGroupsOf } from "../model/alert-rules.ts";
+import { destinationOf } from "./secrets.ts";
+import { deriveProxy } from "./tier-proxy.ts";
+import { exposuresOf } from "../model/tier-proxy.ts";
 import type {
   EffectiveApplication,
   EffectiveProcess,
@@ -12,6 +17,7 @@ import type { Hasher } from "../model/hasher.ts";
 import type {
   ReleaseGate,
   ResolvedApplicationDocument,
+  ResolvedDashboards,
   ResolvedExposure,
   ResolvedMigration,
   ResolvedProcess,
@@ -33,6 +39,8 @@ import { exports, namespaceOf } from "../model/runtime-profiles.ts";
 import { resolveExposure } from "./exposure.ts";
 import { clientGrantsOf, resolveClient } from "./client.ts";
 import { resolveMesh } from "./mesh.ts";
+import { resolveL4Exposure } from "./l4-exposure.ts";
+import { l4ExposuresOf, l4HoldOf } from "../model/l4-addresses.ts";
 import { managed } from "./database.ts";
 import { resolveMigration } from "./migration.ts";
 import { egressOf, gateEgressOf, gateIngressOf, ingressOf } from "./policy.ts";
@@ -44,9 +52,149 @@ export type ResolvedElement = Omit<
   "apiVersion" | "kind" | "provenance"
 >;
 
+/** The data source inputs a vendored dashboard declares, by name. */
+const inputsOf = (content: string): string[] => {
+  const { __inputs: inputs } = JSON.parse(content) as {
+    __inputs?: readonly { name?: unknown; type?: unknown }[];
+  };
+  // A file with no inputs and one with an empty list map nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  return (inputs ?? []).flatMap(({ name, type }) =>
+    type === "datasource" && typeof name === "string" ? [name] : [],
+  );
+};
+
+/**
+ * An Application's dashboards (spec/v1/10-project-intent.md#dashboards): each
+ * file as the set read it, in its Project's folder, for the Grafana the
+ * Platform document names.
+ */
+function dashboardsOf(
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): { readonly dashboards?: ResolvedDashboards } {
+  const { dashboards } = application;
+  // An Application with dashboards reads a Platform document that names its
+  // Grafana, or E_NO_DASHBOARD_POLICY refused the set.
+  if (dashboards === undefined) return {};
+  const telemetry = context.platform.telemetry as NonNullable<
+    PlatformIntentDocument["telemetry"]
+  >;
+  const policy = telemetry.dashboards as NonNullable<
+    (typeof telemetry)["dashboards"]
+  >;
+  return {
+    dashboards: {
+      folder: context.project,
+      instance: policy.instance,
+      datasource: policy.datasource,
+      files: dashboards.map(({ from }) => {
+        // The file is read beside its project, and names a uid, or
+        // E_DASHBOARD_NOT_FOUND or E_DASHBOARD_WITHOUT_UID refused it.
+        const content = context.assets.get(from) as string;
+        return {
+          uid: dashboardUidOf(content) as string,
+          from,
+          content,
+          inputs: inputsOf(content),
+        };
+      }),
+    },
+  };
+}
+
+type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
+
+/** Whether the Application is the monitoring stack's Alertmanager. */
+const routesAlerts = (
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): boolean =>
+  context.platform.monitoring?.alertmanager ===
+  `${context.project}/${application.id}`;
+
+/**
+ * Each receiver's credential, read from Vault onto the Alertmanager's first
+ * Process through the one secret delivery
+ * (spec/v1/14-platform-intent.md#monitoring), so the routing object can name
+ * the Secret it lands in.
+ */
+function receiverGrantsOf(
+  process: EffectiveProcess,
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): ResolvedGrant[] {
+  if (
+    !routesAlerts(application, context) ||
+    (application.processes[0] as EffectiveProcess).name !== process.name
+  )
+    return [];
+  // The Alertmanager is named, so the Platform document has its block.
+  const { receivers } = context.platform.monitoring as NonNullable<
+    PlatformIntentDocument["monitoring"]
+  >;
+  return receivers.map(({ discord: { webhook } }) => ({
+    path: webhook.path,
+    keys: [webhook.key],
+    access: "read" as const,
+    delivery: "env" as const,
+    destination: destinationOf(process.name, webhook.path),
+  }));
+}
+
+/**
+ * The monitoring stack's alerting (spec/v1/10-project-intent.md#alert-rules):
+ * every Application of it carries its rule groups, and the Alertmanager the
+ * one routing of every alert, each receiver's webhook in the Secret its grant
+ * lands in.
+ */
+function alertingOf(
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): {
+  readonly alertRules?: NonNullable<ResolvedApplicationDocument["alertRules"]>;
+  readonly alerting?: NonNullable<ResolvedApplicationDocument["alerting"]>;
+} {
+  const monitoring = context.platform.monitoring;
+  const process = application.processes[0]?.name as string;
+  return {
+    ...(application.alertRules === undefined
+      ? {}
+      : {
+          alertRules: application.alertRules.map(({ from }) => ({
+            from,
+            // The file is read beside its project and holds groups, or
+            // E_ALERT_RULES_NOT_FOUND or E_ALERT_RULES_WITHOUT_GROUPS refused it.
+            groups: ruleGroupsOf(
+              context.assets.get(from) as string,
+            ) as unknown[],
+          })),
+        }),
+    // The Alertmanager is named, so the Platform document has its block.
+    ...(!routesAlerts(application, context)
+      ? {}
+      : {
+          alerting: {
+            receivers: (
+              monitoring as NonNullable<PlatformIntentDocument["monitoring"]>
+            ).receivers.map(({ name, discord }) => ({
+              name,
+              discord: {
+                secret: destinationOf(process, discord.webhook.path),
+                key: discord.webhook.key,
+              },
+            })),
+            routes: (
+              monitoring as NonNullable<PlatformIntentDocument["monitoring"]>
+            ).routes,
+          },
+        }),
+  };
+}
+
 export interface ApplicationContext extends Omit<
   ProcessContext,
-  "machinery" | "migratesItself" | "application" | "clientGrants"
+  "machinery" | "migratesItself" | "application" | "clientGrants" | "held"
 > {
   /** The project that declares each Application of the union, by its id. */
   readonly projectOf: ReadonlyMap<string, string>;
@@ -312,6 +460,26 @@ function releaseGateOf(
   };
 }
 
+/**
+ * A Process's variables with the ones a tier derives on it, in name order as
+ * its own are; none derived leaves them as they are.
+ */
+const withEnvironment = (
+  resolved: ResolvedProcess,
+  derived: Readonly<NonNullable<ResolvedProcess["environment"]>>,
+): Pick<ResolvedProcess, "environment"> => {
+  if (derived.length === 0) return {};
+  const merged = [
+    // A missing list and an empty one hold no variable alike.
+    // Stryker disable next-line ArrayDeclaration
+    ...(resolved.environment ?? []),
+    ...derived,
+  ];
+  // No two variables share a name, so `<=` would order the same list.
+  // Stryker disable next-line EqualityOperator
+  return { environment: merged.sort((a, b) => (a.name < b.name ? -1 : 1)) };
+};
+
 export function resolveApplication(
   application: EffectiveApplication,
   context: ApplicationContext,
@@ -320,28 +488,47 @@ export function resolveApplication(
     context.platform.delivery?.machinery.includes(
       `${context.projectOf.get(application.id) as string}/${application.id}`,
     ) === true;
-  const pairs = application.processes.map((process) => {
-    const clientGrants = clientGrantsOf(process, application, context);
-    const resolved = resolveProcess(process, {
+  const pairs = application.processes.map((authored) => {
+    // A tier derives its proxy's configuration, and on an acme tier its
+    // claim, egress and token, before anything reads the Process.
+    const derived = deriveProxy(authored, application, context);
+    const { process } = derived;
+    const clientGrants = [
+      ...clientGrantsOf(process, application, context),
+      ...derived.grants,
+    ];
+    const exposures = l4ExposuresOf(
+      {
+        l4Exposure: exposuresOf(context.platform, context.project, application),
+      },
+      process.name,
+    );
+    const l4Exposure = resolveL4Exposure(exposures, process, context.platform);
+    const base = resolveProcess(process, {
       ...context,
       machinery,
       migratesItself: application.migration === "self",
       application: application.id,
-      clientGrants,
+      clientGrants: [
+        ...clientGrants,
+        ...receiverGrantsOf(process, application, context),
+      ],
+      held: l4HoldOf(exposures, context.platform),
     });
     // A blue-green Process that publishes readiness is a gate member, and
     // admits the gate's own requests.
     const member =
-      resolved.switchover === "blue-green" &&
-      readinessOf(process) !== undefined;
+      base.switchover === "blue-green" && readinessOf(process) !== undefined;
     const ingress = [
       ...ingressOf(process, application, context),
-      ...gateIngressOf(resolved, member, context),
+      ...gateIngressOf(base, member, context),
     ];
     return {
       process,
       resolved: {
-        ...resolved,
+        ...base,
+        ...(l4Exposure.length === 0 ? {} : { l4Exposure }),
+        ...withEnvironment(base, derived.environment),
         ...(ingress.length === 0 ? {} : { ingress }),
         egress: [
           ...egressOf(process, context, clientGrants.length > 0),
@@ -372,6 +559,8 @@ export function resolveApplication(
     ...(application.observability === undefined
       ? {}
       : { alertClass: application.observability.alertClass }),
+    ...dashboardsOf(application, context),
+    ...alertingOf(application, context),
     ...(scrape === undefined
       ? {}
       : {
@@ -381,6 +570,9 @@ export function resolveApplication(
             path: scrape.path,
             interval: context.platform.monitors.interval,
             timeout: context.platform.monitors.timeout,
+            ...(context.platform.monitors.labels === undefined
+              ? {}
+              : { labels: context.platform.monitors.labels }),
           },
         }),
     ...(gate === undefined ? {} : { releaseGate: gate }),

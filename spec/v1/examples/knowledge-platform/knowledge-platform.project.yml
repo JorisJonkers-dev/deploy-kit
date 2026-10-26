@@ -109,6 +109,10 @@ applications:
 
       - name: hindsight-worker
         lifecycle: application
+        # Parked: it runs no pod while ingestion is paused, and keeps its
+        # grants, its edges, its Service and its network policy, so unparking
+        # is deleting these two lines (spec/v1/10-project-intent.md#parked-processes).
+        parked: {reason: Ingestion paused while the job store is migrated.}
         image: hindsight-api # the same image, started as the worker
         runtime: python
         provides:

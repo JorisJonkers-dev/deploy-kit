@@ -64,14 +64,16 @@ tiers:
     audiences: [anonymous, authenticated]
     listener: tls
     certificates: acme
-    forwardAuth: "http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward"
+    forwardAuth: {provider: auth/auth-api, surface: http, path: /api/auth/forward}
     traefik: edge/traefik-public # the declared Application in the platform edge project,
+    ingressClass: traefik-public
     # placed on the public-ingress node
   - name: lan
     audiences: [lan]
     listener: plain
     certificates: none
     traefik: edge/traefik-lan # placed on a LAN node
+    ingressClass: traefik-lan
 
 # One policy per Durability Class (docs/adr/model/0018-durability-class-derives-a-backup.md).
 durability:

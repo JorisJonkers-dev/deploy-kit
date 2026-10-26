@@ -7,11 +7,12 @@ import type {
   EffectiveProcess,
   EffectiveProject,
 } from "../model/effective-intent.ts";
-import { notSupported } from "../model/internal-failure.ts";
 import {
   holds,
+  type ForwardAuth,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
+import { surfaceHome, type Home } from "../model/runtime-profiles.ts";
 import type { ApplicationDocument } from "../model/project-intent.ts";
 import { clientExposure } from "../model/project-intent-queries.ts";
 import type {
@@ -109,43 +110,29 @@ export const gatedBy = (
   );
 };
 
-/** An in-cluster address: a Service, its namespace, and the port it may name. */
-const CLUSTER_ADDRESS =
-  /^(https?):\/\/([a-z0-9-]+)\.([a-z0-9-]+)\.svc\.cluster\.local(?::(\d+))?(?:\/|$)/;
-
-/** A scheme's port, where an address names none. */
-const DEFAULT_PORTS: Readonly<Record<string, number>> = {
-  http: 80,
-  https: 443,
-};
-
 /**
- * The Service the tier's forward-auth endpoint names, which the Gate's own
- * route is served by: the same address the edge asks, so a move of the
+ * The Service the tier's forward-auth provider answers on, which the Gate's own
+ * route is served by: the same Process the edge asks, so a move of the
  * provider repoints both (spec/v1/16-dependencies.md#the-stable-address).
  */
-export function gateAddressOf(endpoint: string): {
+export function gateAddressOf(
+  forwardAuth: ForwardAuth,
+  platform: Pick<PlatformIntentDocument, "handover">,
+  union: readonly EffectiveProject[],
+): {
   readonly name: string;
   readonly namespace: string;
   readonly port: number;
 } {
-  const match = CLUSTER_ADDRESS.exec(endpoint);
-  if (match === null)
-    throw notSupported(
-      `${endpoint}: a forward-auth endpoint outside the cluster has no route to serve the Gate's own`,
-    );
-  const [, scheme, name, namespace, port] = match as unknown as [
-    string,
-    string,
-    string,
-    string,
-    string | undefined,
-  ];
-  return {
-    name,
-    namespace,
-    port: port === undefined ? (DEFAULT_PORTS[scheme] as number) : Number(port),
-  };
+  // The union declares the provider, or E_UNKNOWN_FORWARD_AUTH_PROVIDER
+  // refused the set.
+  const { process, namespace, port } = surfaceHome(
+    platform,
+    union,
+    forwardAuth.provider,
+    forwardAuth.surface,
+  ) as Home & { readonly port: number };
+  return { name: process, namespace, port };
 }
 
 /**
@@ -159,6 +146,9 @@ const readsTheSecret = ({ env }: EffectiveProcess): boolean =>
   (env ?? []).some(({ entries }) =>
     entries.some(
       ({ value }) =>
+        // Only a Client placeholder carries a `source`, so the first two
+        // terms narrow the type and decide nothing a third would not.
+        // Stryker disable next-line ConditionalExpression,LogicalOperator
         "kind" in value && value.kind === "client" && value.source === "secret",
     ),
   );

@@ -38,6 +38,7 @@ const FOUNDATION: AuthoredFile[] = [
   "delivery/delivery.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
+  "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "identity/env/grafana/base.env",
@@ -173,7 +174,6 @@ describe("the invariants, with no Platform document read", () => {
     "duplicate-application-id",
     "duplicate-process-name",
     "duplicate-exposure-name",
-    "duplicate-host",
   ])("still refuse %s: identity needs no platform", (fixture) => {
     expect(canonicalJson(refusalsOf(fragmentsOf(fixture)))).toBe(
       readFileSync(join(NEGATIVE, `${fixture}.diagnostics.json`), "utf8"),
@@ -185,8 +185,9 @@ describe("the invariants, with no Platform document read", () => {
     "unknown-surface",
     "dependency-cycle",
     "alias-collision",
+    "duplicate-host",
   ])(
-    "leave %s unanswered, a reference answered beside the platform's providers",
+    "leave %s unanswered, a reference answered beside the platform's providers, or a host beside the tier its audience selects",
     (fixture) => {
       expect(refusalsOf(fragmentsOf(fixture))).toStrictEqual([]);
     },
@@ -215,8 +216,9 @@ const TOLD: Readonly<Record<string, { message: string; hint: string }>> = {
     hint: "Exposure names are unique within their Application: rename one of them.",
   },
   "duplicate-host": {
-    message: "more than one exposure claims the host notes.jorisjonkers.dev",
-    hint: "A host is unique across the estate: route the paths of one host from one exposure, or choose another host.",
+    message:
+      "more than one exposure claims the host notes.jorisjonkers.dev on the tier public-frankfurt",
+    hint: "A host is unique on a tier: route the paths of one host from one exposure, or put the other on a tier that carries another audience.",
   },
   "duplicate-process-name": {
     message:
@@ -478,5 +480,41 @@ ${process("relay", "{ http: 8082 }")}`,
         ),
       ),
     ).toStrictEqual([]);
+  });
+});
+
+// REQ-084 (docs/requirements.md): one host is unique on a tier, not across
+// the estate: two exposures of one host on two tiers compose, and an
+// exposure whose audience no tier carries claims its host on none.
+describe("one host on two tiers", () => {
+  const onTier = (audience: string): AuthoredFile[] =>
+    fragmentsOf("duplicate-host").map((file) =>
+      file.name === "knowledge.yml"
+        ? {
+            ...file,
+            text: file.text.replace(
+              "audience: anonymous",
+              `audience: ${audience}`,
+            ),
+          }
+        : file,
+    );
+  const hosts = (files: readonly AuthoredFile[]): Triple[] =>
+    refusalsOf([...FOUNDATION, ...files]).filter(
+      ({ code }) => code === "E_DUPLICATE_HOST",
+    );
+
+  it("is refused on one tier", () => {
+    expect(hosts(onTier("anonymous"))).toHaveLength(2);
+    // authenticated is carried by the same tier as anonymous.
+    expect(hosts(onTier("authenticated"))).toHaveLength(2);
+  });
+
+  it("composes on two, the split horizon", () => {
+    expect(hosts(onTier("lan"))).toStrictEqual([]);
+  });
+
+  it("is claimed on no tier where no tier carries the audience", () => {
+    expect(hosts(onTier("internal"))).toStrictEqual([]);
   });
 });

@@ -2,6 +2,9 @@
 // (spec/v1/20-resolved-deployment.md#derived-mechanics): what the Application
 // declared, carried through, and every mechanic derived from it and from the
 // pinned platform facts. Nothing here is authored and nothing may be.
+import { ACME_MOUNT } from "../model/tier-proxy.ts";
+import { foundationOf, type AcmePolicy } from "../model/platform-intent.ts";
+import type { L4Hold } from "../model/l4-addresses.ts";
 import type { ClusterStateDocument } from "../model/cluster-state.ts";
 import type {
   EffectiveApplication,
@@ -55,6 +58,67 @@ import {
 } from "./secrets.ts";
 import { resolveVolumes } from "./volumes.ts";
 
+/**
+ * The priority class a Process runs at (spec/v1/14-platform-intent.md#priority):
+ * the data class for a datastore, whose engine derives a backup; the critical
+ * class for the foundation and the Applications the platform names; none
+ * otherwise. Nothing is authored on a Process.
+ */
+function priorityOf(
+  process: EffectiveProcess,
+  context: ProcessContext,
+): { readonly priorityClass?: string } {
+  const policy = context.platform.priority;
+  if (policy === undefined) return {};
+  if (process.engine !== undefined) return { priorityClass: policy.data.name };
+  const holder = `${context.project}/${context.application}`;
+  return foundationOf(context.platform).has(holder) ||
+    // A missing list and an empty one name no Application alike.
+    // Stryker disable next-line ArrayDeclaration
+    (policy.criticalApplications ?? []).includes(holder)
+    ? { priorityClass: policy.critical.name }
+    : {};
+}
+
+/**
+ * The tier a Process is the proxy of (spec/v1/30-deliverables.md#the-edge-proxy):
+ * the Process of a tier's `traefik` Application that serves `web`. A proxy
+ * named by two tiers carries one class, or E_TIER_CLASS_UNFILTERED refused the
+ * set, and every tier an exposure is on names one, or
+ * E_TIER_WITHOUT_INGRESS_CLASS did.
+ */
+function edgeProxyOf(
+  process: EffectiveProcess,
+  context: ProcessContext,
+): Pick<ResolvedProcess, "edgeProxy"> {
+  const tier = context.platform.tiers.find(
+    ({ traefik, ingressClass }) =>
+      traefik === `${context.project}/${context.application}` &&
+      ingressClass !== undefined,
+  );
+  return tier === undefined || process.provides?.["web"] === undefined
+    ? {}
+    : {
+        edgeProxy: {
+          ingressClass: tier.ingressClass as string,
+          tls: tier.listener === "tls",
+          // An acme tier issues through a resolver named for it, with the
+          // platform's account, or E_NO_ACME_POLICY refused it.
+          ...(tier.certificates === "acme"
+            ? {
+                resolver: {
+                  name: tier.name,
+                  email: (context.platform.acme as AcmePolicy).email,
+                  dnsProvider: (context.platform.acme as AcmePolicy)
+                    .dnsProvider,
+                  storage: `${ACME_MOUNT}/${tier.name}.json`,
+                },
+              }
+            : {}),
+        },
+      };
+}
+
 /** What resolving one Process reads beyond the Process itself. */
 export interface ProcessContext {
   readonly platform: PlatformIntentDocument;
@@ -77,6 +141,8 @@ export interface ProcessContext {
   readonly application: string;
   /** The grants its Application's Client, or the provider's role, derives on the Process. */
   readonly clientGrants: readonly ResolvedGrant[];
+  /** Where the L4 Addresses the Process is exposed on hold it. */
+  readonly held: L4Hold;
 }
 
 type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
@@ -96,9 +162,28 @@ function switchoverOf(
 ): ResolvedProcess["switchover"] {
   // Every serving Process declares a cutover, or E_CUTOVER_MISSING refused it.
   if (process.lifecycle !== "application") return undefined;
-  if (process.cutover === "interrupted") return "stop-start";
+  // A parked Process runs no pod, so it has no release to gate: it stops
+  // and starts like an interrupted one.
+  if (process.cutover === "interrupted" || process.parked !== undefined)
+    return "stop-start";
   return machinery ? "rolling" : "blue-green";
 }
+
+/**
+ * How late a scheduled run may start before it is skipped
+ * (spec/v1/10-project-intent.md#scheduled-processes): long enough to ride out
+ * a control-plane restart, short enough that a run never starts long after
+ * the slot it was for. Nothing authors it.
+ */
+export const START_DEADLINE = 300;
+
+/** A scheduled Process's cron, and the start deadline it derives. */
+const scheduleOf = (
+  process: EffectiveProcess,
+): Pick<ResolvedProcess, "schedule" | "startDeadline"> =>
+  process.schedule === undefined
+    ? {}
+    : { schedule: process.schedule, startDeadline: inSeconds(START_DEADLINE) };
 
 /**
  * `progressDeadlineSeconds`: three budgets, floored to a whole second, or for
@@ -350,7 +435,12 @@ function placementOf(
     claims.has(claim),
   );
   return {
-    eligibleNodes: eligibleNodes(process, context.contract, context.platform),
+    eligibleNodes: eligibleNodes(
+      process,
+      context.contract,
+      context.platform,
+      context.held,
+    ),
     ...(binding === undefined
       ? {}
       : { boundTo: binding.node, from: "cluster-state" as const }),
@@ -367,7 +457,12 @@ function gpuOf(
   context: ProcessContext,
 ): { readonly gpu?: { resource: string; runtimeClass: string } } {
   if (process.placement.gpu === undefined) return {};
-  const [vendor] = gpuVendors(process, context.contract, context.platform);
+  const [vendor] = gpuVendors(
+    process,
+    context.contract,
+    context.platform,
+    context.held,
+  );
   const policy = context.platform.gpus?.[vendor as string] as NonNullable<
     PlatformIntentDocument["gpus"]
   >[string];
@@ -479,8 +574,15 @@ export function resolveProcess(
     gid: image.gid,
     ...(process.cutover === undefined ? {} : { cutover: process.cutover }),
     ...(switchover === undefined ? {} : { switchover }),
+    ...scheduleOf(process),
     deadline: inSeconds(deadlineOf(process, context.platform)),
-    replicas: process.replicas?.count ?? 1,
+    replicas: process.parked === undefined ? (process.replicas?.count ?? 1) : 0,
+    ...(process.parked === undefined ? {} : { parked: true as const }),
+    ...priorityOf(process, context),
+    ...(process.replicas?.across === undefined
+      ? {}
+      : { spreadAcross: process.replicas.across }),
+    ...edgeProxyOf(process, context),
     memory: process.placement.memory,
     cpu: process.placement.cpu,
     ...gpuOf(process, context),

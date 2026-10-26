@@ -42,7 +42,34 @@ export interface ClusterRole {
   }[];
 }
 
-/** The one ServiceAccount a ClusterRole is bound to. */
+/** Who a ClusterRole is bound to: a holder's one ServiceAccount, or a Human Grant's group. */
+export type BindingSubject =
+  | {
+      readonly kind: "ServiceAccount";
+      readonly name: string;
+      readonly namespace: string;
+    }
+  | {
+      readonly apiGroup: "rbac.authorization.k8s.io";
+      readonly kind: "Group";
+      readonly name: string;
+    };
+
+/** A class a pod's priority names, cluster-wide. */
+export interface PriorityClass {
+  readonly apiVersion: "scheduling.k8s.io/v1";
+  readonly kind: "PriorityClass";
+  readonly metadata: {
+    readonly name: string;
+    readonly labels: Readonly<Record<string, string>>;
+  };
+  readonly value: number;
+  readonly globalDefault: false;
+  readonly preemptionPolicy: "PreemptLowerPriority";
+  readonly description: string;
+}
+
+/** A ClusterRole bound, cluster-wide, to its subjects. */
 export interface ClusterRoleBinding {
   readonly apiVersion: "rbac.authorization.k8s.io/v1";
   readonly kind: "ClusterRoleBinding";
@@ -52,11 +79,7 @@ export interface ClusterRoleBinding {
     readonly kind: "ClusterRole";
     readonly name: string;
   };
-  readonly subjects: readonly {
-    readonly kind: "ServiceAccount";
-    readonly name: string;
-    readonly namespace: string;
-  }[];
+  readonly subjects: readonly BindingSubject[];
 }
 
 export type Probe = (
@@ -136,7 +159,8 @@ export interface PodSpec {
     readonly supplementalGroups?: readonly number[];
     readonly seccompProfile: { readonly type: "RuntimeDefault" };
   };
-  readonly affinity?: NodeAffinity;
+  readonly priorityClassName?: string;
+  readonly affinity?: NodeAffinity & Partial<PodAntiAffinity>;
   /** The VPN beside an attached Process, started before it and kept running. */
   readonly initContainers?: readonly VpnContainer[];
   readonly containers: readonly Container[];
@@ -144,6 +168,17 @@ export interface PodSpec {
 }
 
 /** The nodes a pod may be scheduled on, by name: required, never preferred. */
+/** Pods of one revision of a Process kept on different nodes. */
+export interface PodAntiAffinity {
+  readonly podAntiAffinity: {
+    readonly requiredDuringSchedulingIgnoredDuringExecution: readonly {
+      readonly labelSelector: { readonly matchLabels: Labels };
+      readonly matchLabelKeys: readonly ["pod-template-hash"];
+      readonly topologyKey: "kubernetes.io/hostname";
+    }[];
+  };
+}
+
 export interface NodeAffinity {
   readonly nodeAffinity: {
     readonly requiredDuringSchedulingIgnoredDuringExecution: {
@@ -158,14 +193,19 @@ export interface NodeAffinity {
   };
 }
 
+/** A port the container listens on, and the node's port that reaches it where it has one. */
+export interface ContainerPort {
+  readonly name: string;
+  readonly containerPort: number;
+  readonly hostPort?: number;
+  readonly protocol?: "TCP" | "UDP";
+}
+
 export interface Container {
   readonly name: string;
   readonly image: string;
   readonly args?: readonly string[];
-  readonly ports?: readonly {
-    readonly name: string;
-    readonly containerPort: number;
-  }[];
+  readonly ports?: readonly ContainerPort[];
   readonly env?: readonly EnvVar[];
   readonly envFrom?: readonly {
     readonly secretRef: { readonly name: string };
@@ -249,7 +289,10 @@ export interface CronJob {
   readonly metadata: ObjectMeta;
   readonly spec: {
     readonly schedule: string;
+    readonly suspend?: true;
     readonly concurrencyPolicy: "Forbid";
+    /** How late a run may start before it is skipped. */
+    readonly startingDeadlineSeconds?: number;
     readonly jobTemplate: {
       readonly metadata?: { readonly labels: Labels };
       readonly spec: {
@@ -375,6 +418,27 @@ export interface Service {
       readonly name: string;
       readonly port: number;
       readonly targetPort: string;
+    }[];
+  };
+}
+
+/**
+ * A Service a client off the cluster reaches on an address a pool announces:
+ * `Local` keeps the client's address and the connection on the announcing node.
+ */
+export interface LoadBalancerService {
+  readonly apiVersion: "v1";
+  readonly kind: "Service";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly type: "LoadBalancer";
+    readonly externalTrafficPolicy: "Local";
+    readonly selector: Labels;
+    readonly ports: readonly {
+      readonly name: string;
+      readonly port: number;
+      readonly protocol: "TCP" | "UDP";
+      readonly targetPort: number;
     }[];
   };
 }

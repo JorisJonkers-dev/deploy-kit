@@ -17,6 +17,10 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: whoami
+  autoscalerRef:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: whoami
   progressDeadlineSeconds: 720
   service:
     port: 8080
@@ -33,7 +37,7 @@ spec:
         metadata:
           application: whoami
           process: whoami
-          revision: sha256:0cc8c3c12f9f6f623505c3eb07a16f4d6a17786619fe8c4e7ff44de69d2c8ee5
+          revision: sha256:056ec0528c4316481b926e76eeb44272923b7ad379f2c98f22db90474c40aa8d
           paths: / /health
           readiness: /health
           hostnames: whoami.jorisjonkers.dev
@@ -45,7 +49,7 @@ spec:
         metadata:
           application: whoami
           process: whoami
-          revision: sha256:0cc8c3c12f9f6f623505c3eb07a16f4d6a17786619fe8c4e7ff44de69d2c8ee5
+          revision: sha256:056ec0528c4316481b926e76eeb44272923b7ad379f2c98f22db90474c40aa8d
           paths: / /health
           readiness: /health
           hostnames: whoami.jorisjonkers.dev
@@ -57,9 +61,28 @@ spec:
         metadata:
           application: whoami
           process: whoami
-          revision: sha256:0cc8c3c12f9f6f623505c3eb07a16f4d6a17786619fe8c4e7ff44de69d2c8ee5
+          revision: sha256:056ec0528c4316481b926e76eeb44272923b7ad379f2c98f22db90474c40aa8d
           paths: / /health
           readiness: /health
           hostnames: whoami.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: whoami
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/name: whoami
+    app.kubernetes.io/instance: whoami
+    app.kubernetes.io/part-of: whoami
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: whoami
+  minReplicas: 2
+  maxReplicas: 2

@@ -18,7 +18,9 @@ import {
   DURABILITY_CLASSES,
   ENGINES,
   KEY_ENCODINGS,
+  L4_PROTOCOLS,
   LIBRARY_ACCESS,
+  SPREADS,
   LIFECYCLES,
   MATCHES,
   MEDIA,
@@ -262,7 +264,13 @@ const libraryMount = z
   .meta({ id: "LibraryMount" });
 
 const capacity = z
-  .strictObject({ count: z.int().min(2), reason: text })
+  .strictObject({
+    count: z.int().min(2),
+    reason: text,
+    // Where no two replicas may share a node: required anti-affinity on the
+    // hostname. Without it two replicas on one node stay legal.
+    across: z.enum(SPREADS).meta({ id: "Spread" }).exactOptional(),
+  })
   .meta({ id: "Capacity" });
 
 // The Kubernetes API access a Process needs (spec/v1/10-project-intent.md#kubernetes-api-access):
@@ -298,6 +306,11 @@ const vpnAttachment = z
   .strictObject({ forwardedPort: z.boolean() })
   .meta({ id: "VpnAttachment" });
 
+// When a scheduled Process runs (spec/v1/10-project-intent.md#scheduled-processes):
+// five cron fields, minute to weekday, one space apart. A macro or a time zone
+// is not a field, so neither is read.
+const schedule = z.string().regex(/^[0-9A-Za-z*/,?-]+( [0-9A-Za-z*/,?-]+){4}$/);
+
 // Spread into each of the three levels rather than nested under a key: the level
 // a family is written at is not itself a field an author writes.
 const sharedIntent = {
@@ -310,10 +323,16 @@ const sharedIntent = {
   cutover: cutover.exactOptional(),
 };
 
+// A Process that stops running and keeps everything it owns
+// (spec/v1/10-project-intent.md#parked-processes), with the reason it does.
+const parked = z.strictObject({ reason: text }).meta({ id: "Parked" });
+
 const process = z
   .strictObject({
     name: text,
     lifecycle: lifecycle,
+    schedule: schedule.exactOptional(),
+    parked: parked.exactOptional(),
     image: text,
     runtime: runtime,
     engine: engine.exactOptional(),
@@ -384,6 +403,21 @@ const client = z
     roles: z.array(appRole).min(1).max(63).exactOptional(),
   })
   .meta({ id: "Client" });
+// A raw surface reached from off the cluster
+// (spec/v1/10-project-intent.md#l4-exposure): the port a client dials, its
+// protocol, and the L4 Address the Platform declares, by name. The port the
+// container listens on stays the surface's, declared once in `provides`.
+const l4Exposure = z
+  .strictObject({
+    // A name, as a library mount's is: it reaches the Platform document, and
+    // is checked when the two are read together.
+    address: text,
+    port,
+    protocol: z.enum(L4_PROTOCOLS).meta({ id: "L4Protocol" }),
+    process: processReference,
+    surface: surfaceReference,
+  })
+  .meta({ id: "L4Exposure" });
 
 const scrape = z
   .strictObject({
@@ -399,11 +433,21 @@ const observability = z
   .strictObject({ alertClass: alertClass, scrape: scrape.exactOptional() })
   .meta({ id: "Observability" });
 
+// A dashboard the Application ships (spec/v1/10-project-intent.md#dashboards):
+// a Grafana dashboard's JSON beside the project file, vendored, never fetched.
+const dashboard = z.strictObject({ from: text }).meta({ id: "Dashboard" });
+// A rule-group file the monitoring stack's Application carries
+// (spec/v1/10-project-intent.md#alert-rules), beside the project file.
+const alertRules = z.strictObject({ from: text }).meta({ id: "AlertRules" });
+
 const application = z
   .strictObject({
     id: text,
     observability: observability.exactOptional(),
+    dashboards: z.array(dashboard).min(1).exactOptional(),
+    alertRules: z.array(alertRules).min(1).exactOptional(),
     exposure: z.array(exposure).min(1).exactOptional(),
+    l4Exposure: z.array(l4Exposure).min(1).exactOptional(),
     migration: migration.exactOptional(),
     client: client.exactOptional(),
     ...sharedIntent,
@@ -434,6 +478,7 @@ export type Placement = NonNullable<ProcessDocument["placement"]>;
 export type LibraryMount = NonNullable<ProcessDocument["libraries"]>[number];
 export type Exposure = NonNullable<ApplicationDocument["exposure"]>[number];
 export type Client = NonNullable<ApplicationDocument["client"]>;
+export type L4Exposure = NonNullable<ApplicationDocument["l4Exposure"]>[number];
 
 /** The eight families of spec/v1/10-project-intent.md#shared-intent that the
  * project file carries; the eighth, `env`, is the env files beside it. */

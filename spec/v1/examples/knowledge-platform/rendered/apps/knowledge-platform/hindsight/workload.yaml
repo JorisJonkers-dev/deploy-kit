@@ -148,11 +148,9 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: python
 spec:
+  replicas: 0
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+    type: Recreate
   progressDeadlineSeconds: 480
   selector:
     matchLabels:
@@ -168,7 +166,6 @@ spec:
         app.kubernetes.io/component: python
         consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
         consumes.deploy-kit.jorisjonkers.dev/hindsight-embedding.embeddings: "true"
-        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
       annotations:
         image.jorisjonkers.dev/hindsight-worker: 0.4.0
     spec:

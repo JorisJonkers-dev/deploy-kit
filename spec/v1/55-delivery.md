@@ -84,19 +84,23 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   with a letter or a digit, and nothing below `<repository>/` is the estate's,
   so no Project can ever name it. While the estate is handed
   over, a Project still on the old path is rendered and checked but not
-  published, and the `_estate` artifact holds only `estate-vso-secrets` while
-  a datastore the old path runs has a catalog the estate path applies, that
-  catalog's Jobs and the estate-scoped policy job that writes its documents,
-  which no Project's unit depends on. While a Project is on the old path, no
-  Project's artifact carries a route either, since the old path still serves
-  the edge
+  published, and the `_estate` artifact holds `estate-human-grants`, the Human
+  Grants' bindings, whatever the ledger hands over, and `estate-vso-secrets`
+  while a datastore the old path runs has a catalog the estate path applies,
+  that catalog's Jobs and the estate-scoped policy job that writes its
+  documents. No Project's unit depends on either. While the edge, a Project
+  that declares a tier's proxy, is on the old path, no Project's artifact
+  carries a route either, since the old path still serves the edge
   ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
 - **The `_estate` artifact holds only what no Project can own.** A Project
   owns every object it delivers
   ([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)),
-  so the target `_estate` artifact holds the Stable Addresses alone
+  so the target `_estate` artifact holds the Stable Addresses
   ([chapter 16](16-dependencies.md#the-stable-address)), which must outlive a
-  provider's move between Projects. Each unit it holds today moves out in its
+  provider's move between Projects, and the Human Grants, which are the
+  Platform document's and no Project's
+  ([chapter 14](14-platform-intent.md#human-grants)), applied by
+  `estate-human-grants` in every composition. Each other unit it holds today moves out in its
   own change, as [chapter 20](20-resolved-deployment.md#the-reconcile-unit)'s
   table names: the policy job into each Project's artifact
   ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) with its
@@ -213,13 +217,23 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | | `patches` | on a Project's first delivery alone, the one that hands it over ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)), first one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector the old path set differently rather than refuse it. A rewrite that leaves the pin where it is keeps it, since the first delivery may not have been applied yet; the first rewrite that moves the pin drops it, and it is absent from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied. No patch labels a pod with its release: that label travels in the artifact ([Rendered artifacts and pins](#rendered-artifacts-and-pins)) |
 
 A Project's artifact holds its one unit, its own Vault policy job among what
-it applies, its own routes among them once no Project is on the old path. The
-estate-scoped artifact holds `estate-vso-secrets` where it carries the catalog
-of a datastore the old path still runs. A unit the artifact gains changes what
+it applies, its own routes among them once the edge is on the estate path. The
+estate-scoped artifact holds `estate-human-grants`, which follows nothing,
+where the Platform document declares a Human Grant, and `estate-vso-secrets`
+where it carries the catalog of a datastore the old path still runs. A unit the artifact gains changes what
 it holds, so its pin moves and the rewritten source applies the new unit, and
-a Project's routes arriving when the last Project leaves the old path move its
-pin once. The rewrite keeps the annotations a Pause or a Rollback
+a Project's routes arriving when the edge leaves the old path move its pin
+once. The rewrite keeps the annotations a Pause or a Rollback
 recorded on the pin ([Pause and Rollback](#pause-and-rollback)).
+
+Once the estate-scoped artifact holds nothing, composition publishes none and
+writes no source for it, and names its committed source in `removedSources` of
+`composition.json`, which the Estate repository deletes. A source that stayed
+would pin an artifact no composition publishes again, and its units would hold
+whatever they last applied. Deleting it lets Flux prune the source and its
+units, which hold nothing by then. A Project's own source is never removed
+this way: a Project leaves the estate through its handover, not through an
+empty render.
 
 ## Pause and Rollback
 
@@ -325,10 +339,12 @@ Four rules hold the table true:
   follows from a member with no Surface. Its new version consumes
   real work while it is analysed, so a worker that switches continuously must be
   idempotent and must tolerate one version of skew with its siblings.
-- **A job and a prepare step have none.** A `lifecycle: job` or
-  `lifecycle: prepare` Process switches nothing, so it carries no switchover and
-  never waits on a gate; a prepare Process runs before the switch instead
-  ([Release order](#release-order)).
+- **A job, a prepare step and a scheduled Process have none.** A
+  `lifecycle: job`, `lifecycle: prepare` or `lifecycle: scheduled` Process
+  switches nothing, so it carries no switchover and never waits on a gate; a
+  prepare Process runs before the switch instead
+  ([Release order](#release-order)), and a scheduled one's next run is the new
+  version's.
 
 **The barrier, then the promotion.** A `blue-green` Application's members start
 their new versions independently and are analysed independently. None is
