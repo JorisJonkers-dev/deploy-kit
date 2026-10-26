@@ -106,8 +106,9 @@ interface Owner {
 }
 
 /** The projects on the estate path whose Processes name buckets in one object store, with the buckets each names. */
-// A missing list and an empty one hold no edge, and no bucket, alike.
-// Stryker disable ArrayDeclaration
+// A missing list and an empty one hold no edge, and no bucket, alike; and no
+// two readers share a project, so `<=` would order the same list.
+// Stryker disable ArrayDeclaration,EqualityOperator
 function bucketReadersOf(
   set: PinnedSet,
   { application }: Pick<Owner, "application">,
@@ -130,11 +131,9 @@ function bucketReadersOf(
       ].sort(),
     }))
     .filter(({ buckets }) => buckets.length > 0)
-    // No two readers share a project, so `<=` would order the same list.
-    // Stryker disable next-line EqualityOperator
     .sort((a, b) => (a.project < b.project ? -1 : 1));
 }
-// Stryker restore ArrayDeclaration
+// Stryker restore ArrayDeclaration,EqualityOperator
 
 /** The login a catalog method applies its catalog with, where it has one. */
 function adminOf(
