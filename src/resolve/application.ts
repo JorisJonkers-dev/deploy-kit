@@ -230,9 +230,11 @@ function storeFor({ store }: ApplicationContext): string {
 
 const synced = (processes: readonly ResolvedProcess[]): boolean =>
   processes.some(
-    ({ secrets, vpn, volumes }) =>
+    ({ secrets, vpn, volumes, move }) =>
       secrets !== undefined ||
       vpn !== undefined ||
+      // A Move's method logs in with a credential its identity reads.
+      move?.method !== undefined ||
       volumes?.some(
         ({ backup }) =>
           backup?.credential !== undefined || backup?.peer !== undefined,

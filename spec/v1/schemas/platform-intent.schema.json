@@ -1038,11 +1038,21 @@
         "retention": {
           "type": "string",
           "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [
         "timeout",
-        "retention"
+        "retention",
+        "memory",
+        "cpu"
       ],
       "additionalProperties": false
     },

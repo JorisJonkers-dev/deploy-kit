@@ -410,7 +410,11 @@ same rule. A **move identity**, `<process>-move`, exists only while a
 [Move](55-delivery.md#moves) of its Process is open: it holds the engine
 method's credential on both Instances and one Kubernetes permission, to update
 the Stable Addresses that name the source, and it leaves the render with the
-source's retirement.
+source's retirement. That permission is a Role in the Stable Addresses'
+namespace, `estate-system`, narrowed by name to those Stable Addresses and
+named `<namespace>-<process>-move`, as a cluster-wide name is, since that
+namespace holds every Project's; its policy reaches both Instances on the
+engine's surface, the Secret Store, the cluster's DNS and the API server.
 
 | project | Application | Processes | ServiceAccount, in the project's namespace | Vault role and policy |
 |---|---|---|---|---|

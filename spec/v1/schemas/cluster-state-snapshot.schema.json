@@ -78,6 +78,10 @@
             "type": "string",
             "minLength": 1
           },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
           "version": {
             "type": "string",
             "pattern": "^\\d+\\.\\d+\\.\\d+$"
@@ -109,6 +113,10 @@
           "target": {
             "type": "object",
             "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
               "version": {
                 "type": "string",
                 "pattern": "^\\d+\\.\\d+\\.\\d+$"
@@ -123,6 +131,7 @@
               }
             },
             "required": [
+              "name",
               "version",
               "namespace"
             ],

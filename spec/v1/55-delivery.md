@@ -710,6 +710,20 @@ step, run as the move identity with the engine's method image, and the gate
 writes `suspend` and nothing else on it. A step's Job exits zero when the step
 holds.
 
+**What the render writes.** While a Move is open, the Process renders two
+Instances. The source keeps its name and is rendered created once, as a Job is,
+so the render never rewrites what still serves: the Process now resolves to the
+target's version, and applying that to the source would upgrade its data in
+place. The target runs the Process as it now resolves, with claims of its own,
+named `<process>-<tag>` where it shares the source's namespace, by the tag of
+the release that derived the Move, until the gate records the name it opened
+the Move with. In a namespace of its own it keeps the Process's name. Each
+Instance's workload and Service select its pods by its own name, while every
+Instance's pods carry the Process's instance label, so the policies that admit
+the Process admit both. The step Jobs are named `<process>-move-<step>-<tag>`,
+the final lag `final-lag`, and the reverse step is rendered only where layer 2
+records the Move as `reversible`.
+
 | step | what holds when it exits zero | serving meanwhile |
 |---|---|---|
 | **start** | the target Instance runs the new version with a volume of its own, and passes its readiness | the source, alone |

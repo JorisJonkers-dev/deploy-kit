@@ -53,7 +53,7 @@ import {
 import { consumedOf } from "../model/consumer-label.ts";
 import { clientSecretPath } from "./client.ts";
 import { resolveEdge } from "./dependencies.ts";
-import { boundToOf } from "../model/move.ts";
+import { boundToOf, servingOf } from "../model/move.ts";
 import { resolveMove } from "./move.ts";
 import {
   resolveSpawns,
@@ -607,8 +607,17 @@ export function resolveProcess(
   const consumes = dependencies
     .filter(({ peers }) => peers !== undefined)
     .map(({ application, surface }) => consumedOf(application, surface));
+  // The Instance a Move made serves under its own name.
+  const serving = servingOf(
+    context.clusterState,
+    context.application,
+    process.name,
+  )?.name;
   return {
     name: process.name,
+    ...(serving === undefined || serving === process.name
+      ? {}
+      : { instance: serving }),
     lifecycle: process.lifecycle,
     runtime: process.runtime,
     identity: process.name,

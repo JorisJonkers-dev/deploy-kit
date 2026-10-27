@@ -348,10 +348,11 @@ const deliveryPolicy = z
     // to, on its `http` surface (spec/v1/55-delivery.md#rollouts). A platform
     // that names none reports no Rollout past `pinned`.
     reporter: holder.exactOptional(),
-    // How long a Move's write pause may last, and how long its source is
-    // kept once the flip has held (spec/v1/14-platform-intent.md#delivery-policy).
+    // How long a Move's write pause may last, how long its source is kept
+    // once the flip has held, and what each of its step Jobs requests
+    // (spec/v1/14-platform-intent.md#delivery-policy).
     move: z
-      .strictObject({ timeout: text, retention: text })
+      .strictObject({ timeout: text, retention: text, memory: text, cpu: text })
       .meta({ id: "MovePolicy" })
       .exactOptional(),
   })

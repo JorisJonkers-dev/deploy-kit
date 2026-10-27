@@ -481,8 +481,16 @@ const resolvedMove = z
         z.enum(["version", "namespace", "binding"]).meta({ id: "MoveTrigger" }),
       )
       .min(1),
-    source: z.strictObject({ version: text, namespace: text, node: text }),
+    source: z.strictObject({
+      instance: text,
+      version: text,
+      namespace: text,
+      node: text,
+    }),
     target: z.strictObject({
+      // Absent until the gate records it, where the target shares the
+      // source's namespace: the render names it by the release's tag.
+      instance: text.exactOptional(),
       image: text,
       version: text,
       namespace: text,
@@ -490,12 +498,28 @@ const resolvedMove = z
     }),
     // Absent for a Process with no engine: there is no data to carry.
     method: z
-      .strictObject({ image: text, imageVersion: text.exactOptional() })
+      .strictObject({
+        image: text,
+        imageVersion: text.exactOptional(),
+        uid: z.int(),
+        gid: z.int(),
+        // The engine's surface, which the method syncs over.
+        port,
+        credential: resolvedGrant,
+        egress: z.array(egressPeer),
+      })
       .exactOptional(),
     identity: text,
     flips: z.array(text),
     reversible: z.boolean(),
-    bounds: z.strictObject({ timeout: text, retention: text }),
+    bounds: z.strictObject({
+      timeout: text,
+      retention: text,
+      memory: text,
+      cpu: text,
+    }),
+    // Where the Kubernetes API answers, for the flip, where the platform says.
+    server: z.array(destinationRange).min(1).exactOptional(),
     // The step an open Move is at, as ClusterState records it.
     phase: z.enum(MOVE_STEPS).meta({ id: "MoveStep" }).exactOptional(),
   })
@@ -673,6 +697,10 @@ const switchoverFollowsCutover: ShapeRule<{
 const resolvedProcess = stated(
   z.strictObject({
     name: text,
+    // The Instance that serves the Process, where ClusterState records one
+    // under another name than the Process's: what a Move made it
+    // (spec/v1/20-resolved-deployment.md#the-move).
+    instance: text.exactOptional(),
     lifecycle,
     runtime,
     identity: text,

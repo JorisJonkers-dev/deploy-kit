@@ -14,12 +14,14 @@ const placement = z.strictObject({ process: text, node: text });
 
 /**
  * An engine Process's active Instance, as the Release Gate records it serving
- * (spec/v1/55-delivery.md#moves): its version, namespace and node, and for an
- * open Move the step it is at and when its flip held.
+ * (spec/v1/55-delivery.md#moves): its name, where it is not the Process's, its
+ * version, namespace and node, and for an open Move the step it is at, when
+ * its flip held, and the Instance it is moving to.
  */
 const instance = z.strictObject({
   application: text,
   instance: text,
+  name: text.exactOptional(),
   version: z.string().regex(/^\d+\.\d+\.\d+$/),
   namespace: text,
   node: text,
@@ -29,6 +31,7 @@ const instance = z.strictObject({
   // Move: a release that resolves to anything else is a second Move.
   target: z
     .strictObject({
+      name: text,
       version: z.string().regex(/^\d+\.\d+\.\d+$/),
       namespace: text,
       node: text.exactOptional(),
