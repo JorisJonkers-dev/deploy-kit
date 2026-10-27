@@ -361,6 +361,9 @@ const CLIENT_FIELDS: Readonly<
     takes: ["label", "description", "iconPath", "launchPath"],
     requires: ["label"],
   },
+  // A token Client takes no field; a name no Client carries would change
+  // nothing it is refused for.
+  // Stryker disable next-line ArrayDeclaration
   token: { takes: [], requires: [] },
 };
 
