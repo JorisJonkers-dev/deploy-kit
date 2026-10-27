@@ -1,5 +1,38 @@
 # Changelog
 
+## [1.0.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.32.0...v1.0.0) (2026-10-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* **model:** drop the rollback-backup annotation and the snapshot's backups list ([#652](https://github.com/JorisJonkers-dev/deploy-kit/issues/652))
+* **model:** encrypt every off-cluster copy to a recipient the platform names ([#636](https://github.com/JorisJonkers-dev/deploy-kit/issues/636))
+* **model:** `observability.alertClass`, `reviewBy` on a dormant participant and per-cluster env overlays are refused; a `self` grant needs the Process's own Vault client; the schema version is the package version.
+
+### Features
+
+* **cli:** generate an Application's App Roles in its language ([#632](https://github.com/JorisJonkers-dev/deploy-kit/issues/632)) ([f1dd8ae](https://github.com/JorisJonkers-dev/deploy-kit/commit/f1dd8ae6a9f829dd0da50b3b0152653c907e4dab))
+* **model:** admit the Release Gate's own requests to every gate member ([#606](https://github.com/JorisJonkers-dev/deploy-kit/issues/606)) ([928c1f2](https://github.com/JorisJonkers-dev/deploy-kit/commit/928c1f29e209a0059a28f251d759257c210deb58))
+* **model:** cut the model to what 1.0 keeps ([#628](https://github.com/JorisJonkers-dev/deploy-kit/issues/628)) ([660f519](https://github.com/JorisJonkers-dev/deploy-kit/commit/660f519c1c7bcbee7603e6d6a4aeddf1ba559dce)), closes [#379](https://github.com/JorisJonkers-dev/deploy-kit/issues/379)
+* **model:** declare the rest of the foundation and its bootstrap set ([#627](https://github.com/JorisJonkers-dev/deploy-kit/issues/627)) ([73ec006](https://github.com/JorisJonkers-dev/deploy-kit/commit/73ec006e08c06c1f8a5e806a27dcc2d0ec6a3ee0))
+* **model:** derive a bucket catalog from the edges into an object store ([#647](https://github.com/JorisJonkers-dev/deploy-kit/issues/647)) ([3556e65](https://github.com/JorisJonkers-dev/deploy-kit/commit/3556e6550d4e1498c1c7f3cde369cd8da2fdf5f7))
+* **model:** derive a Move from a Process and its active Instance ([#648](https://github.com/JorisJonkers-dev/deploy-kit/issues/648)) ([e81d842](https://github.com/JorisJonkers-dev/deploy-kit/commit/e81d842546c0c94991803f1c5465fc9e1307465f))
+* **model:** derive and render the Stable Address, and point every alias at it ([#646](https://github.com/JorisJonkers-dev/deploy-kit/issues/646)) ([dc4d040](https://github.com/JorisJonkers-dev/deploy-kit/commit/dc4d040731bf4f1a3090f49701ebe69ce2305e7f))
+* **model:** drop the rollback-backup annotation and the snapshot's backups list ([#652](https://github.com/JorisJonkers-dev/deploy-kit/issues/652)) ([e255f84](https://github.com/JorisJonkers-dev/deploy-kit/commit/e255f846e97e969bb329dec5de3e825e572851c8))
+* **model:** encrypt every off-cluster copy to a recipient the platform names ([#636](https://github.com/JorisJonkers-dev/deploy-kit/issues/636)) ([b11de5d](https://github.com/JorisJonkers-dev/deploy-kit/commit/b11de5db30083f86ee6e1769861eb2baaec9ab8b))
+* **model:** let a Process create pods only from a spawn template it declares ([#641](https://github.com/JorisJonkers-dev/deploy-kit/issues/641)) ([5e3684a](https://github.com/JorisJonkers-dev/deploy-kit/commit/5e3684ab21d7183436949c350ab7ff1787f649d4))
+* **model:** let a sidecar mount the Process's volumes it names, and run before it as an init step ([#651](https://github.com/JorisJonkers-dev/deploy-kit/issues/651)) ([79cf13f](https://github.com/JorisJonkers-dev/deploy-kit/commit/79cf13f8df3c5e369d23d6afd912071b1a3d3a2e))
+* **model:** move an Application between Projects by declaring it in the new one first ([#650](https://github.com/JorisJonkers-dev/deploy-kit/issues/650)) ([30bc541](https://github.com/JorisJonkers-dev/deploy-kit/commit/30bc54147d22651198f7d7fa2ea868eba75e963d))
+* **model:** name the member that serves a native Client's protected path ([#630](https://github.com/JorisJonkers-dev/deploy-kit/issues/630)) ([3afe557](https://github.com/JorisJonkers-dev/deploy-kit/commit/3afe55707aed0d14d58cee83f59d134e5386452a))
+* **model:** pin the facts a Move is derived from ([#644](https://github.com/JorisJonkers-dev/deploy-kit/issues/644)) ([1e01c28](https://github.com/JorisJonkers-dev/deploy-kit/commit/1e01c285397f17a7bfe4131d6c3e1a0b0f87d951))
+* **model:** reach the Kubernetes API without holding a rule ([#643](https://github.com/JorisJonkers-dev/deploy-kit/issues/643)) ([3fd3e16](https://github.com/JorisJonkers-dev/deploy-kit/commit/3fd3e169718171a9b3591f976047587f20ea601f))
+* **model:** refuse a fragment written at a model version the toolkit does not read ([#670](https://github.com/JorisJonkers-dev/deploy-kit/issues/670)) ([8568aaf](https://github.com/JorisJonkers-dev/deploy-kit/commit/8568aafc5eae91ef294b6bf85d75f2e1ad2ca6a8)), closes [#665](https://github.com/JorisJonkers-dev/deploy-kit/issues/665)
+* **model:** render an open Move: its Instances, step Jobs and move identity ([#649](https://github.com/JorisJonkers-dev/deploy-kit/issues/649)) ([f00fc54](https://github.com/JorisJonkers-dev/deploy-kit/commit/f00fc54e9c06df95afebe01d272e7816a0556ccd))
+* **model:** resolve a DNS-serving Process through the platform's upstream nameservers ([#639](https://github.com/JorisJonkers-dev/deploy-kit/issues/639)) ([c46b561](https://github.com/JorisJonkers-dev/deploy-kit/commit/c46b561863600cbe8cf29d54d1c4286345c72ab9))
+* **model:** scope an api rule to its Process's namespace or the cluster ([#640](https://github.com/JorisJonkers-dev/deploy-kit/issues/640)) ([7bc3655](https://github.com/JorisJonkers-dev/deploy-kit/commit/7bc3655771a0f4229984fb24e7c67dd4adc5aaf0))
+* **model:** scrape a rolling Process through a ServiceMonitor ([#638](https://github.com/JorisJonkers-dev/deploy-kit/issues/638)) ([0c7ebf8](https://github.com/JorisJonkers-dev/deploy-kit/commit/0c7ebf88c8542c17af35999db18575a5e3759507))
+* **model:** take a route's TLS from its tier ([#625](https://github.com/JorisJonkers-dev/deploy-kit/issues/625)) ([a0cddd3](https://github.com/JorisJonkers-dev/deploy-kit/commit/a0cddd30555d8bb118a0b59f129301b6d8ec28c5)), closes [#582](https://github.com/JorisJonkers-dev/deploy-kit/issues/582)
+
 ## [0.32.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.31.0...v0.32.0) (2026-10-26)
 
 
