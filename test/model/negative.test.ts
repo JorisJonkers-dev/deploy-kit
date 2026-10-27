@@ -518,5 +518,11 @@ describe("one host on two tiers", () => {
 
   it("is claimed on no tier where no tier carries the audience", () => {
     expect(hosts(onTier("internal"))).toStrictEqual([]);
+    // Neither exposure is on a tier, so neither claims the host on one.
+    const neither = onTier("internal").map((file) => ({
+      ...file,
+      text: file.text.replace("audience: anonymous", "audience: internal"),
+    }));
+    expect(hosts(neither)).toStrictEqual([]);
   });
 });
