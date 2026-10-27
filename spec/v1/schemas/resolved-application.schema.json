@@ -32,6 +32,10 @@
           "type": "string",
           "minLength": 1
         },
+        "departing": {
+          "type": "boolean",
+          "const": true
+        },
         "reconcileUnit": {
           "type": "string",
           "minLength": 1

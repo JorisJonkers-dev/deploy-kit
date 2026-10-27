@@ -8,6 +8,8 @@ import { resolveMove } from "../../src/resolve/move.ts";
 import {
   activeInstanceOf,
   boundToOf,
+  departingFromOf,
+  departingOf,
   movePolicyOf,
   moveTriggers,
   moveTriggersOf,
@@ -222,5 +224,58 @@ describe("the Move a Process resolves", () => {
 
     expect(move?.identity).toBe("postgres-move");
     expect(move).not.toHaveProperty("server");
+  });
+});
+
+describe("an Application the Project it moves out of renders", () => {
+  it("renders its source alone: no Move, and none of what the target alone renders", () => {
+    const application = {
+      id: "vault",
+      exposure: [],
+      client: {},
+      alertRules: [],
+      alerting: {},
+      dashboards: {},
+      migration: {},
+      scrape: {},
+      processes: [{ name: "vault", move: {}, replicas: 1 }],
+    } as unknown as Parameters<typeof departingOf>[0];
+
+    expect(departingOf(application)).toStrictEqual({
+      id: "vault",
+      scrape: {},
+      departing: true,
+      processes: [{ name: "vault", replicas: 1 }],
+    });
+  });
+});
+
+describe("where a provider moving out of a namespace still serves", () => {
+  const PLATFORM = {
+    delivery: { move: { retention: "7d" } },
+  } as unknown as PlatformIntentDocument;
+  const at = (instance: object, platform = PLATFORM) =>
+    departingFromOf(
+      {
+        capturedAt: "2026-10-30T00:00:00Z",
+        bindings: [],
+        instances: [instance],
+      } as unknown as ClusterStateDocument,
+      platform,
+      "platform-postgres",
+      "postgres",
+      "storage-system",
+    );
+  const FLIPPED = { ...ACTIVE, flippedAt: "2026-10-01T00:00:00Z" };
+
+  it("is the namespace its source runs in, until the source retires", () => {
+    expect(at(ACTIVE)).toBe("data-system");
+    expect(at(FLIPPED)).toBeUndefined();
+    expect(at(FLIPPED, {} as PlatformIntentDocument)).toBe("data-system");
+  });
+
+  it("is nowhere else where its Instance runs where it now resolves, or is not recorded", () => {
+    expect(at({ ...ACTIVE, namespace: "storage-system" })).toBeUndefined();
+    expect(at({ ...ACTIVE, instance: "other" })).toBeUndefined();
   });
 });

@@ -6,6 +6,10 @@ import { seconds } from "./durations.ts";
 import type { EffectiveProcess, EffectiveProject } from "./effective-intent.ts";
 import type { ImagesLockDocument, LockedImage } from "./images-lock.ts";
 import type { PlatformIntentDocument } from "./platform-intent.ts";
+import type {
+  ResolvedApplicationDocument,
+  ResolvedProcess,
+} from "./resolved-deployment.ts";
 import { namespaceOf } from "./runtime-profiles.ts";
 import type { MOVE_BREAKS, MOVE_REVERSE } from "./vocabularies.ts";
 
@@ -194,3 +198,90 @@ export function moveTriggers(
   );
   return { active, triggers };
 }
+
+/**
+ * What ClusterState says of an Application two Projects declare while it moves
+ * between them (spec/v1/40-composition.md#an-application-moving-between-projects):
+ * the namespace its active Instance runs in, which is the declaration it is
+ * moving out of, and whether that source has retired. None where ClusterState
+ * records no Instance of it in either Project's namespace: then the two
+ * declarations are the ambiguity E_DUPLICATE_APPLICATION_ID refuses.
+ */
+export function departureOf(
+  clusterState: ClusterStateDocument,
+  platform: PlatformIntentDocument,
+  application: string,
+  namespaces: readonly string[],
+): { readonly from: string; readonly retired: boolean } | undefined {
+  const record = clusterState.instances?.find(
+    (instance) => instance.application === application,
+  );
+  if (record === undefined || !namespaces.includes(record.namespace))
+    return undefined;
+  const retention = movePolicyOf(platform)?.retention;
+  return {
+    from: record.namespace,
+    retired:
+      retention !== undefined &&
+      retiredOf(record, retention, clusterState.capturedAt),
+  };
+}
+
+/**
+ * The namespace a provider's source Instance still serves from while its Move
+ * to another namespace is open, which its consumers reach as well as the
+ * target's until the source retires.
+ */
+export function departingFromOf(
+  clusterState: ClusterStateDocument,
+  platform: PlatformIntentDocument,
+  application: string,
+  process: string,
+  namespace: string,
+): string | undefined {
+  const active = activeInstanceOf(clusterState, application, process);
+  if (active === undefined || active.namespace === namespace) return undefined;
+  const retention = movePolicyOf(platform)?.retention;
+  return retention !== undefined &&
+    retiredOf(active, retention, clusterState.capturedAt)
+    ? undefined
+    : active.namespace;
+}
+
+/**
+ * What an Application's target alone renders while it moves between Projects:
+ * its routes and Client, its alerts and dashboards, and its migration.
+ */
+const TARGET_OWNS: ReadonlySet<string> = new Set([
+  "exposure",
+  "client",
+  "alertRules",
+  "alerting",
+  "dashboards",
+  "migration",
+]);
+
+/** An object without the keys `owned` names. */
+const withoutKeys = <T extends object>(
+  object: T,
+  owned: ReadonlySet<string>,
+): T =>
+  Object.fromEntries(
+    Object.entries(object).filter(([key]) => !owned.has(key)),
+  ) as T;
+
+/**
+ * An Application as the Project it moves out of renders it
+ * (spec/v1/40-composition.md#an-application-moving-between-projects): its
+ * source, serving where it is until the Move retires it, with no Move of its
+ * own and none of what the target alone renders.
+ */
+export const departingOf = (
+  application: ResolvedApplicationDocument,
+): ResolvedApplicationDocument => ({
+  ...withoutKeys(application, TARGET_OWNS),
+  departing: true,
+  processes: application.processes.map((process): ResolvedProcess =>
+    withoutKeys(process, new Set(["move"])),
+  ),
+});

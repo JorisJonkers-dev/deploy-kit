@@ -2793,6 +2793,19 @@ describe("a Move, as the adapters spell it", () => {
     ).toStrictEqual(["notes-api"]);
   });
 
+  it("renders the workload of an Application moving out of its Project created once", () => {
+    const [departing] = at(
+      edited(() => ({ departing: true as const })),
+      "workload.yaml",
+    );
+    const [staying] = at(edited(), "workload.yaml");
+
+    expect(departing?.metadata.annotations).toStrictEqual({
+      "kustomize.toolkit.fluxcd.io/ssa": "IfNotPresent",
+    });
+    expect(staying?.metadata).not.toHaveProperty("annotations");
+  });
+
   it("renders a Process under the name ClusterState records its Instance by", () => {
     const named = edited(undefined, () => ({
       switchover: "stop-start" as const,

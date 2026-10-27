@@ -263,13 +263,14 @@ const meshIn = (
   resolved: ResolvedSet,
   project: string,
 ): { mesh?: NonNullable<ResolvedPolicyJob["mesh"]> } => {
-  // A Project this render holds resolved, with at least one Application.
+  // A Project this render holds resolved; one whose one Application moved out
+  // of it holds none, and enrols nothing.
   const [first] = (
     resolved.projects.find(
       (held) => held.project === project,
     ) as ResolvedProject
-  ).applications as [ResolvedProject["applications"][number]];
-  const { mesh } = first;
+  ).applications;
+  const mesh = first?.mesh;
   // `{}` and `{ mesh: undefined }` render the same job, so no test tells them apart.
   // Stryker disable next-line ConditionalExpression
   return mesh === undefined ? {} : { mesh };
