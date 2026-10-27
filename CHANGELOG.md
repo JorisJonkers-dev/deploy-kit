@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.0.0...v1.0.1) (2026-10-27)
+
+
+### Bug Fixes
+
+* **model:** read back a lock that records a schema refusal ([#672](https://github.com/JorisJonkers-dev/deploy-kit/issues/672)) ([4a96373](https://github.com/JorisJonkers-dev/deploy-kit/commit/4a9637329e387230849f7bc8faafa3a9a0bd19a1))
+
 ## [1.0.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v0.32.0...v1.0.0) (2026-10-27)
 
 
