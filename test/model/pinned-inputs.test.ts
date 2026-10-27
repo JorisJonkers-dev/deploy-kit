@@ -159,7 +159,7 @@ describe("the ClusterState snapshot", () => {
     ).toBe(false);
   });
 
-  // REQ-109 (docs/requirements.md): the facts a Move is derived from.
+  // REQ-110 (docs/requirements.md): the facts a Move is derived from.
   it("records each engine Process's active Instance, and an open Move's phase and when its flip held", () => {
     const active = {
       application: "platform-postgres",

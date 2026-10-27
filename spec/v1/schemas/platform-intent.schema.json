@@ -611,12 +611,51 @@
         "catalogSurface": {
           "type": "string",
           "minLength": 1
+        },
+        "move": {
+          "$ref": "#/$defs/MoveMethod"
         }
       },
       "required": [
         "backup"
       ],
       "additionalProperties": false
+    },
+    "MoveMethod": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "breaksOn": {
+          "$ref": "#/$defs/MoveBreak"
+        },
+        "reverse": {
+          "$ref": "#/$defs/MoveReverse"
+        }
+      },
+      "required": [
+        "image",
+        "breaksOn",
+        "reverse"
+      ],
+      "additionalProperties": false
+    },
+    "MoveBreak": {
+      "type": "string",
+      "enum": [
+        "major",
+        "minor"
+      ]
+    },
+    "MoveReverse": {
+      "type": "string",
+      "enum": [
+        "always",
+        "same-major",
+        "never"
+      ]
     },
     "MonitorCadence": {
       "type": "object",
@@ -942,6 +981,9 @@
           "type": "string",
           "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
+        },
+        "move": {
+          "$ref": "#/$defs/MovePolicy"
         }
       },
       "required": [
@@ -983,6 +1025,24 @@
         "threshold",
         "errorRate",
         "latency"
+      ],
+      "additionalProperties": false
+    },
+    "MovePolicy": {
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "type": "string",
+          "minLength": 1
+        },
+        "retention": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "timeout",
+        "retention"
       ],
       "additionalProperties": false
     },

@@ -3676,7 +3676,7 @@ describe("a volume and what its class derives", () => {
     ]);
   });
 
-  // REQ-109 (docs/requirements.md): the facts a Move is derived from.
+  // REQ-110 (docs/requirements.md): the facts a Move is derived from.
   it("refuses a move method the images lock does not hold, at the engine that names it", () => {
     const result = resolve(one(serving("notes-api")), {
       platform: (platform) =>
