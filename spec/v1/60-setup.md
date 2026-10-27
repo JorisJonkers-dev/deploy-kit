@@ -456,8 +456,10 @@ cost of adopting an estate that was hand-written first.
 
 ## The Estate repository
 
-The estate path is read from one private repository,
-`JorisJonkers-dev/estate`. Flux's bootstrap points at it, and it holds what
+The estate path is read from one public repository,
+`JorisJonkers-dev/estate`, which holds no credential: every secret stays in the
+Secret Store, and what the repository records (pins, the lock, the ClusterState
+snapshot) names digests and paths, never values. Flux's bootstrap points at it, and it holds what
 composition reads and what it records, and nothing rendered:
 
 | path | what it is | who writes it |
