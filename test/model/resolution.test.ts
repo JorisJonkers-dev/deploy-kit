@@ -367,12 +367,19 @@ describe("resolveIntentSet", () => {
   });
 
   describe("the knowledge platform, composed with data, the same foundation and the files beside both", () => {
-    const knowledgePlatform = () => {
+    const composed = (
+      edits: Readonly<Record<string, (text: string) => string>> = {},
+    ) => {
       const result = resolveIntentSet(
         [
-          ...files().filter(({ name }) => !name.startsWith("minimal/")),
+          ...files(edits).filter(({ name }) => !name.startsWith("minimal/")),
+          {
+            name: "data/data.project.yml",
+            text: (edits["data/data.project.yml"] ?? ((same: string) => same))(
+              text("data/data.project.yml"),
+            ),
+          },
           ...[
-            "data/data.project.yml",
             "data/env/postgres/base.env",
             "data/config/postgresql.conf",
             "data/config/garage.toml",
@@ -396,8 +403,33 @@ describe("resolveIntentSet", () => {
         throw new Error(
           JSON.stringify(result.diagnostics.map(({ code }) => code)),
         );
-      return project([...result.value.projects], "knowledge-platform");
+      return [...result.value.projects];
     };
+    const knowledgePlatform = () => project(composed(), "knowledge-platform");
+
+    // REQ-112 (docs/requirements.md): platform-postgres moving from 16 to 17,
+    // the worked Move: ClusterState records 16 serving, the lock pins 17, the
+    // Move is acknowledged, since postgres's method cannot reverse, and the
+    // knowledge platform's edge names the surface whose address it flips.
+    it("resolves platform-postgres moving from 16 to 17 to its committed projection, byte for byte", () => {
+      const projects = composed({
+        "platform/cluster-state.yml": (body) =>
+          `${body}instances:\n  - {application: platform-postgres, instance: postgres, version: 16.4.0, namespace: data-system, node: enschede-t1000-1}\n`,
+        "data/data.project.yml": (body) =>
+          body.replace(
+            "      - name: postgres\n",
+            "      - name: postgres\n        rollback: forward-only # the worked Move: 16 to 17, which postgres's method cannot reverse\n",
+          ),
+      });
+
+      expect(
+        canonicalJson(
+          project(projects, "data").applications.find(
+            ({ id }) => id === "platform-postgres",
+          ),
+        ),
+      ).toBe(text("data/expected/resolved.moving.json"));
+    });
 
     it("resolves hindsight, three Processes released together, to its committed projection, byte for byte", () => {
       expect(

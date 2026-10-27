@@ -25,6 +25,15 @@ const instance = z.strictObject({
   node: text,
   phase: z.enum(MOVE_STEPS).exactOptional(),
   flippedAt: z.iso.datetime().exactOptional(),
+  // Where an open Move is going, as the gate recorded it when it opened the
+  // Move: a release that resolves to anything else is a second Move.
+  target: z
+    .strictObject({
+      version: z.string().regex(/^\d+\.\d+\.\d+$/),
+      namespace: text,
+      node: text.exactOptional(),
+    })
+    .exactOptional(),
 });
 
 export const clusterState = z.strictObject({

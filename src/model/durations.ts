@@ -1,13 +1,14 @@
-// Durations the way the model writes them (`500ms`, `20s`, `10m`, `1h`), in
+// Durations the way the model writes them (`500ms`, `20s`, `10m`, `1h`, `7d`), in
 // seconds where a derivation multiplies one.
 import { brokenInvariant } from "./internal-failure.ts";
 
-const DURATION = /^(\d+)(ms|s|m|h)$/;
+const DURATION = /^(\d+)(ms|s|m|h|d)$/;
 const SECONDS: Readonly<Record<string, number>> = {
   ms: 1 / 1000,
   s: 1,
   m: 60,
   h: 3600,
+  d: 86400,
 };
 
 /**

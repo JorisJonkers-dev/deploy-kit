@@ -21,6 +21,7 @@ import {
 import {
   ACCESS_TIERS,
   API_SCOPES,
+  MOVE_STEPS,
   API_VERBS,
   AUDIENCES,
   CLIENT_CREDENTIALS,
@@ -469,6 +470,37 @@ const resolvedSurface = z
 // (spec/v1/20-resolved-deployment.md#derived-mechanics): the pinned image it
 // runs, what it requests, the label every such pod carries and its policy
 // selects, the surfaces it serves its Process, and what it reaches.
+// The Move derived for a Process (spec/v1/20-resolved-deployment.md#the-move):
+// what derived it, the Instance it leaves and the one it makes, the method
+// that carries the data, the identity that runs it, the Stable Addresses it
+// flips, whether a rollback loses nothing, and the platform's bounds.
+const resolvedMove = z
+  .strictObject({
+    triggers: z
+      .array(
+        z.enum(["version", "namespace", "binding"]).meta({ id: "MoveTrigger" }),
+      )
+      .min(1),
+    source: z.strictObject({ version: text, namespace: text, node: text }),
+    target: z.strictObject({
+      image: text,
+      version: text,
+      namespace: text,
+      nodes: z.array(text),
+    }),
+    // Absent for a Process with no engine: there is no data to carry.
+    method: z
+      .strictObject({ image: text, imageVersion: text.exactOptional() })
+      .exactOptional(),
+    identity: text,
+    flips: z.array(text),
+    reversible: z.boolean(),
+    bounds: z.strictObject({ timeout: text, retention: text }),
+    // The step an open Move is at, as ClusterState records it.
+    phase: z.enum(MOVE_STEPS).meta({ id: "MoveStep" }).exactOptional(),
+  })
+  .meta({ id: "ResolvedMove" });
+
 const resolvedSpawn = z
   .strictObject({
     name: text,
@@ -719,6 +751,7 @@ const resolvedProcess = stated(
     // the cluster's DNS (spec/v1/20-resolved-deployment.md#derived-mechanics).
     nameservers: z.array(text).min(1).exactOptional(),
     spawns: z.array(resolvedSpawn).exactOptional(),
+    move: resolvedMove.exactOptional(),
     ingress: z.array(ingressPeer).exactOptional(),
     egress: z.array(z.union([egressPeer, gateMembersPeer])).exactOptional(),
   }),
