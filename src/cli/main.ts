@@ -60,8 +60,8 @@ export interface World {
  */
 export const EXIT = { accepted: 0, refused: 1, usage: 2 } as const;
 
-/** The model version this toolkit writes. */
-const SCHEMA_VERSION = "1.0.0";
+/** The model version this toolkit writes and admits up to: the package's own, set by release-please. */
+export const SCHEMA_VERSION = "1.0.0"; // x-release-please-version
 const MANIFEST = "fragment.yml";
 const PLATFORM_DOCUMENT = "platform.intent.yml";
 const PROOF = "migration-proof.yml";

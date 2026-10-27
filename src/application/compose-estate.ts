@@ -191,6 +191,33 @@ const PROJECT_FILE = ".project.yml";
 interface Isolation {
   readonly refused: Fragment | undefined;
   readonly codes: readonly string[];
+  /** Why its fragment was written at a version the toolkit refuses, where it was. */
+  readonly written?: string | undefined;
+}
+
+/** What holds a participant back before the union composes, and why. */
+interface Standing {
+  readonly code: string;
+  readonly written?: string;
+}
+
+/**
+ * Whether the toolkit reads the model version a fragment was written at: a
+ * range, not equality (spec/v1/40-composition.md#versioning). Another major,
+ * either way, or a newer minor is refused, since an older toolkit would drop
+ * what it cannot read and exit zero; a patch never gates.
+ */
+function versionRefusal(written: string, toolkit: string): string | undefined {
+  const [major, minor] = written.split(".").map(Number) as [number, number];
+  const [ownMajor, ownMinor] = toolkit.split(".").map(Number) as [
+    number,
+    number,
+  ];
+  if (major !== ownMajor)
+    return `written at ${written}, a different major than this toolkit's ${toolkit}`;
+  return minor > ownMinor
+    ? `written at ${written}, a newer minor than this toolkit's ${toolkit}`
+    : undefined;
 }
 
 /** A composition whose Platform document is there to compose with. */
@@ -238,15 +265,21 @@ function declaredBy({ files }: Fragment): string[] {
  */
 function standingOf(
   input: ComposeInput,
-  generatedAt: string,
+  options: Pick<ComposeOptions, "generatedAt" | "schemaVersion">,
   project: string,
   fragment: Fragment | undefined,
-): string | undefined {
+): Standing | undefined {
   const entry = own(input.participants.participants, project);
-  if (entry === undefined) return "E_PARTICIPANT_UNLISTED";
-  if (fragment === undefined) return "E_PARTICIPANT_MISSING";
+  if (entry === undefined) return { code: "E_PARTICIPANT_UNLISTED" };
+  if (fragment === undefined) return { code: "E_PARTICIPANT_MISSING" };
   if (declaredBy(fragment).some((declared) => declared !== project))
-    return "E_PARTICIPANT_UNLISTED";
+    return { code: "E_PARTICIPANT_UNLISTED" };
+  const version = versionRefusal(
+    fragment.manifest.spec.schemaVersion,
+    options.schemaVersion,
+  );
+  if (version !== undefined)
+    return { code: "E_SCHEMA_VERSION_MISMATCH", written: version };
   // Dormant exempts a participant from its age, and from nothing else.
   if (entry.dormant === true) return undefined;
   const at = own(input.published, project);
@@ -255,37 +288,69 @@ function standingOf(
       `${project}: a fragment whose publish time the caller did not supply`,
     );
   const days = Number((entry.maxAge ?? DEFAULT_MAX_AGE).slice(0, -1));
-  return Date.parse(generatedAt) - Date.parse(at) > days * DAY_MS
-    ? "E_PARTICIPANT_STALE"
+  return Date.parse(options.generatedAt) - Date.parse(at) > days * DAY_MS
+    ? { code: "E_PARTICIPANT_STALE" }
     : undefined;
 }
 
 const PARTICIPANTS = "participants.yml";
 
 /** What stops the run before anything composes: the list's own entries, and the platform's standing. */
-function listRefusals(input: ComposeInput, generatedAt: string): Diagnostic[] {
+function listRefusals(
+  input: ComposeInput,
+  options: ComposeOptions,
+): Diagnostic[] {
   const platform = input.platform;
   const project = platform?.manifest.spec.project;
   const standing =
     project === undefined
-      ? "E_PARTICIPANT_MISSING"
-      : standingOf(input, generatedAt, project, platform);
+      ? { code: "E_PARTICIPANT_MISSING" }
+      : standingOf(input, options, project, platform);
   return [
     ...(standing === undefined
       ? []
       : [
           {
-            code: standing,
+            code: standing.code,
             document: PARTICIPANTS,
             path: "/participants",
             message:
               project === undefined
                 ? "the Platform document published no fragment"
-                : `the Platform document's fragment, ${project}, cannot be composed with: ${standing}`,
+                : `the Platform document's fragment, ${project}, cannot be composed with: ${standing.code}${standing.written === undefined ? "" : `: ${(platform as Fragment).ref} was ${standing.written}`}`,
             hint: "No render is composed without a current, listed Platform document: publish it, or correct its entry.",
           } as Diagnostic,
         ]),
   ];
+}
+
+/**
+ * A fragment the union would compose that the toolkit cannot read: the one a
+ * Project is held at, or a Rollback's. Nothing is left to hold it at, and
+ * composing it would drop what the toolkit cannot read, so the run stops
+ * (spec/v1/40-composition.md#versioning).
+ */
+function unreadable(
+  candidates: ReadonlyMap<string, Fragment>,
+  schemaVersion: string,
+): Diagnostic[] {
+  return [...candidates].flatMap(([project, fragment]) => {
+    const written = versionRefusal(
+      fragment.manifest.spec.schemaVersion,
+      schemaVersion,
+    );
+    return written === undefined
+      ? []
+      : [
+          {
+            code: "E_SCHEMA_VERSION_MISMATCH",
+            document: PARTICIPANTS,
+            path: "/participants",
+            message: `${project} can be composed only at ${fragment.ref}, which was ${written}`,
+            hint: "Republish the fragment at a model version this toolkit reads, or compose with a toolkit that reads it.",
+          },
+        ];
+  });
 }
 
 const placed = (directory: string, files: readonly AuthoredFile[]) =>
@@ -389,7 +454,7 @@ export function composeEstate(
 ): Result<Composition> {
   // A Platform document that is missing, stale or unlisted stops the run:
   // there is nothing to isolate.
-  const refusals = listRefusals(input, options.generatedAt);
+  const refusals = listRefusals(input, options);
   return refusals.length > 0
     ? { ok: false, diagnostics: refusals }
     : composed(input as Composing, options);
@@ -437,9 +502,10 @@ function composed(
   );
   for (const project of [...new Set([...expected, ...newest.keys()])]) {
     const fragment = newest.get(project);
-    const code = standingOf(input, options.generatedAt, project, fragment);
-    if (code === undefined) continue;
-    isolated.set(project, { refused: fragment, codes: [code] });
+    const standing = standingOf(input, options, project, fragment);
+    if (standing === undefined) continue;
+    const { code, written } = standing;
+    isolated.set(project, { refused: fragment, codes: [code], written });
     const earlier = previous[project]?.ref;
     if (code === "E_PARTICIPANT_UNLISTED" || earlier === undefined)
       candidates.delete(project);
@@ -452,6 +518,8 @@ function composed(
   }
 
   for (;;) {
+    const stops = unreadable(candidates, options.schemaVersion);
+    if (stops.length > 0) return { ok: false, diagnostics: stops };
     const files = [
       ...placed(PLATFORM, input.platform.files),
       { name: `${PLATFORM}/${CLUSTER_STATE}`, text: input.clusterState.text },
@@ -820,7 +888,7 @@ function conditionsOf(
 ): Condition[] {
   const conditions: Condition[] = [...isolated]
     .sort(([a], [b]) => byText(a, b))
-    .map(([project, { refused, codes }]): Condition => {
+    .map(([project, { refused, codes, written }]): Condition => {
       if (refused === undefined)
         return {
           project,
@@ -834,7 +902,7 @@ function conditionsOf(
         project,
         condition: "isolated",
         title: `${project}: ${version} isolated`,
-        body: `The fragment ${refused.ref} was refused with ${named(codes)}. ${project} stays at the fragment it last composed at, and its pin does not move until a release composes.`,
+        body: `The fragment ${refused.ref} was refused with ${named(codes)}${written === undefined ? "" : `: it was ${written}`}. ${project} stays at the fragment it last composed at, and its pin does not move until a release composes.`,
         discord: `${project} ${version} isolated: ${named(codes)}`,
       };
     });

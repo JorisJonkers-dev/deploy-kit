@@ -226,9 +226,14 @@ composes as if nothing happened.
   participant (`E_PARTICIPANT_MISSING`, `E_PARTICIPANT_STALE`), and one whose
   `schemaVersion` the toolkit does not accept (`E_SCHEMA_VERSION_MISMATCH`), is
   isolated at its last composed fragment even though its digest did not change:
-  the error is about that participant alone, so it is the one held back. A
-  toolkit upgrade that no participant's version accepts therefore holds every
-  Project still and fails nothing, until each republishes.
+  the error is about that participant alone, so it is the one held back. Where
+  the fragment it would be held at, or the one a Rollback names, is itself one
+  the toolkit does not accept, nothing is left to hold it at, and composing it
+  would drop what the toolkit cannot read: the run stops with
+  `E_SCHEMA_VERSION_MISMATCH`, naming the Project and that fragment, until the
+  fragment is republished or the toolkit reads it. A toolkit upgrade a major
+  ahead of the fragments therefore stops the run, which the
+  [version rollout](#version-rollout) avoids by republishing first.
 - **A fragment nobody expected is left out.** A fragment whose project the
   participants list does not name is `E_PARTICIPANT_UNLISTED`: it is isolated
   and not composed at all, whether or not its Project composed before. Nobody
