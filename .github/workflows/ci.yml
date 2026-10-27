@@ -12,6 +12,10 @@
 # resolves to as a trailing comment; Renovate bumps the pin and the comment
 # together.
 #
+# A release pull request (release-please's `release-please--` branch) holds a
+# version and a changelog and nothing else, so it runs no gate: Pipeline
+# Complete passes it, and the push its merge makes runs every gate on main.
+#
 # docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md: a new gate's
 # script and its job land in the same pull request, and
 # test/pipeline-wiring.test.ts is what notices when they do not.
@@ -22,10 +26,15 @@
   'push':
     'branches':
       - 'main'
+  # Nightly on main: the mutation run whose report every pull request's
+  # incremental run reads. A push to main runs every gate but mutation.
+  'schedule':
+    - 'cron': '23 2 * * *'
   'workflow_dispatch':
 
 'concurrency':
-  'group': 'ci-${{ github.workflow }}-${{ github.ref }}'
+  # The nightly run has a group of its own, so a push to main never waits for it.
+  'group': 'ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}'
   'cancel-in-progress': '${{ github.ref != ''refs/heads/main'' }}'
 
 'permissions':
@@ -36,6 +45,7 @@
     'name': 'Typecheck'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 10
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
     'steps':
@@ -48,6 +58,7 @@
     'name': 'Lint'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 10
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
     'steps':
@@ -60,6 +71,7 @@
     'name': 'Format'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 10
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
     'steps':
@@ -72,6 +84,7 @@
     'name': 'Architecture'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 10
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
     'steps':
@@ -88,6 +101,7 @@
     'name': 'Contracts'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 15
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
     'steps':
@@ -169,6 +183,7 @@
     'name': 'Tests'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 15
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
     'steps':
@@ -181,8 +196,8 @@
         'run': 'npm run test:coverage'
 
   # A pull request re-tests the mutants its change reaches, not every mutant.
-  # Stryker's incremental mode compares the tree with the report of the last
-  # green run on main, and tests a mutant again when its module changed or a
+  # Stryker's incremental mode compares the tree with the newest report a
+  # nightly run on main uploaded (a push to main runs no mutation), and tests a mutant again when its module changed or a
   # test file that covered it changed; every other result is taken from that
   # report. The work is twelve parallel shards, each mutating a disjoint share of
   # every module's top-level statements, balanced by the time each took in
@@ -199,6 +214,7 @@
     'name': 'Mutation scope'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 10
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
       # Reads the list of runs on main.
@@ -213,7 +229,8 @@
         'with':
           'fetch-depth': '2'
       - 'uses': './.github/actions/setup'
-      # A push to main always runs: its report is the next run's baseline.
+      # A push to main runs none: the nightly run on main tests every mutant a
+      # change since the last report reaches, and its report is the baseline.
       - 'name': 'Decide whether the change reaches a mutant'
         'id': 'scope'
         'shell': 'bash'
@@ -223,6 +240,8 @@
           set -euo pipefail
           if [ "${EVENT}" = 'pull_request' ]; then
             needed="$(node scripts/mutation-scope.ts HEAD^1)"
+          elif [ "${EVENT}" = 'push' ]; then
+            needed='false'
           else
             needed='true'
           fi
@@ -238,7 +257,7 @@
           'REPO': '${{ github.repository }}'
         'run': |
           set -euo pipefail
-          run="$(gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          run="$(gh api "repos/${REPO}/actions/artifacts?name=mutation-incremental&per_page=30" --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | last | .workflow_run.id // empty')"
           echo "run=${run}" >> "$GITHUB_OUTPUT"
 
   'mutation-shard':
@@ -272,10 +291,17 @@
         'run': |
           set -euo pipefail
           if [ -z "${BASELINE}" ]; then
-            echo "::warning::No green run on main: every mutant is tested."
-          elif ! gh run download "${BASELINE}" --repo "${REPO}" --name mutation-incremental --dir reports; then
-            echo "::warning::Run ${BASELINE} holds no mutation-incremental report: every mutant is tested."
+            echo "::warning::No report on main: every mutant is tested."
+            exit 0
           fi
+          # A shard without the report would split differently from the
+          # others and test every mutant (#673): retry, then fail.
+          for _ in 1 2 3; do
+            gh run download "${BASELINE}" --repo "${REPO}" --name mutation-incremental --dir reports && exit 0
+            sleep 10
+          done
+          echo "::error::Run ${BASELINE}'s mutation-incremental report did not download"
+          exit 1
       # The ranges are taken first, so a shard script that fails stops the
       # step, rather than handing Stryker an empty list. They go beside the
       # report, for the merge to read what this shard really ran.
@@ -307,7 +333,7 @@
     'needs':
       - 'mutation-scope'
       - 'mutation-shard'
-    'if': 'always()'
+    'if': "always() && !startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
       # Reads this run's own artifacts.
@@ -346,7 +372,7 @@
       # in one report. Only a green run on main uploads it, so a report holding
       # a survivor is never the baseline.
       - 'name': 'Upload the report the next run reads'
-        'if': "github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.mutation-shard.result == 'success'"
+        'if': "github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.mutation-shard.result == 'success'"
         'uses': 'actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a' # v7.0.1
         'with':
           'name': 'mutation-incremental'
@@ -364,6 +390,7 @@
     'name': 'Package contents'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 10
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
     'steps':
@@ -385,6 +412,7 @@
     'name': 'Actionlint'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 10
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
     'steps':
@@ -409,6 +437,7 @@
     'name': 'Secret scan'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 10
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'contents': 'read'
     'steps':
@@ -435,6 +464,7 @@
   # merge. The called workflow needs to upload results, hence the permissions.
   'codeql':
     'name': 'Code scanning'
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'permissions':
       'actions': 'read'
       'contents': 'read'
@@ -534,7 +564,7 @@
     'name': 'PR Report'
     'runs-on': 'ubuntu-latest'
     'timeout-minutes': 15
-    'if': "${{ github.event_name == 'pull_request' }}"
+    'if': "${{ github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release-please--') }}"
     'permissions':
       'contents': 'read'
       'pull-requests': 'write'
@@ -580,7 +610,8 @@
     'timeout-minutes': 15
     'if': >-
       ${{ github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository }}
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          !startsWith(github.head_ref, 'release-please--') }}
     'permissions':
       'contents': 'read'
       'packages': 'write'
@@ -633,14 +664,20 @@
       # clean pass instead of leaving the job green with no step run at all.
       - 'name': 'Fail: a gate job failed, was cancelled, or was skipped'
         'if': >-
-          ${{ contains(needs.*.result, 'failure') ||
-              contains(needs.*.result, 'cancelled') ||
-              contains(needs.*.result, 'skipped') }}
+          ${{ !startsWith(github.head_ref, 'release-please--') &&
+              (contains(needs.*.result, 'failure') ||
+               contains(needs.*.result, 'cancelled') ||
+               contains(needs.*.result, 'skipped')) }}
         'run': 'exit 1'
 
       - 'name': 'Every gate job succeeded'
         'if': >-
-          ${{ !(contains(needs.*.result, 'failure') ||
+          ${{ !startsWith(github.head_ref, 'release-please--') &&
+              !(contains(needs.*.result, 'failure') ||
                 contains(needs.*.result, 'cancelled') ||
                 contains(needs.*.result, 'skipped')) }}
         'run': 'echo "Every gate job succeeded."'
+
+      - 'name': 'A release pull request runs no gate'
+        'if': "startsWith(github.head_ref, 'release-please--')"
+        'run': 'echo "A version and a changelog only: the push its merge makes runs every gate on main."'

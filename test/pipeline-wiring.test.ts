@@ -179,7 +179,7 @@ describe("the mutation gate's jobs", () => {
     expect(needs).not.toContain("- 'mutation-shard'");
     expect(needs).not.toContain("- 'mutation-scope'");
     expect(gate).toContain(
-      "'needs':\n      - 'mutation-scope'\n      - 'mutation-shard'\n    'if': 'always()'",
+      `'needs':\n      - 'mutation-scope'\n      - 'mutation-shard'\n    'if': "always() && !startsWith(github.head_ref, 'release-please--')"`,
     );
   });
 
@@ -192,13 +192,41 @@ describe("the mutation gate's jobs", () => {
     expect(shard).toContain("'fail-fast': false");
   });
 
-  it("asks only for a pull request, against its merge commit's first parent, and always runs a push to main", () => {
+  it("asks for a pull request against its merge commit's first parent, runs none on a push to main, and runs the nightly run", () => {
     expect(scope).toContain("'fetch-depth': '2'");
     expect(scope).toContain(`if [ "\${EVENT}" = 'pull_request' ]; then`);
     expect(scope).toContain(
       'needed="$(node scripts/mutation-scope.ts HEAD^1)"',
     );
+    expect(scope).toContain(
+      `elif [ "\${EVENT}" = 'push' ]; then\n            needed='false'`,
+    );
     expect(scope).toContain("needed='true'");
+    expect(ci).toContain("'schedule':\n    - 'cron': '23 2 * * *'");
+  });
+
+  it("runs no gate on a release pull request, and Pipeline Complete passes it", () => {
+    const release = "!startsWith(github.head_ref, 'release-please--')";
+    for (const key of [
+      "typecheck",
+      "lint",
+      "format",
+      "architecture",
+      "contracts",
+      "tests",
+      "mutation-scope",
+      "package-contents",
+      "actionlint",
+      "secret-scan",
+      "codeql",
+    ])
+      expect(job(key)).toContain(`'if': "${release}"`);
+    // Its steps are apart by blank lines, so read it to the end of the file.
+    const complete = ci.split("  'pipeline-complete':\n")[1] ?? "";
+    expect(complete).toContain(`\${{ ${release} &&`);
+    expect(complete).toContain(
+      `'if': "startsWith(github.head_ref, 'release-please--')"`,
+    );
   });
 
   it("passes where nothing it reads changed, and fails where the scope job or any shard did not succeed", () => {

@@ -48,7 +48,7 @@
           'REPO': '${{ github.repository }}'
         'run': |
           set -euo pipefail
-          run="$(gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+          run="$(gh api "repos/${REPO}/actions/artifacts?name=mutation-incremental&per_page=30" --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | last | .workflow_run.id // empty')"
           echo "run=${run}" >> "$GITHUB_OUTPUT"
 
   'shard':
