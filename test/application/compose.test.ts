@@ -1820,6 +1820,175 @@ describe("composeEstate, against the participants list", () => {
     ]);
   });
 
+  describe("by the model version each fragment was written at", () => {
+    // Another manifest is another artifact, so another digest.
+    const writtenAt = (schemaVersion: string, fragment = NOTES): Fragment => ({
+      ...fragment,
+      ref: `${fragment.ref.split("@")[0] as string}@sha256:${hex({ ref: fragment.ref, schemaVersion }, 64)}`,
+      manifest: {
+        ...fragment.manifest,
+        spec: { ...fragment.manifest.spec, schemaVersion },
+      },
+    });
+    const withNotes = (fragment: Fragment) => ({
+      fragments: [fragment, ...others],
+    });
+
+    it("holds a fragment written at a newer minor than the toolkit's, at the one it last composed at", () => {
+      const newer = writtenAt("1.1.0", release("notes", "1.1.0"));
+      const composed = after(withNotes(newer));
+
+      expect(notes(composed)).toStrictEqual({
+        locked: NOTES.ref,
+        isolated: { refused: newer.ref, codes: ["E_SCHEMA_VERSION_MISMATCH"] },
+        moves: false,
+      });
+      expect(
+        composed.conditions.find(({ project }) => project === "notes")?.body,
+      ).toBe(
+        `The fragment ${newer.ref} was refused with E_SCHEMA_VERSION_MISMATCH: it was written at 1.1.0, a newer minor than this toolkit's 1.0.0. notes stays at the fragment it last composed at, and its pin does not move until a release composes.`,
+      );
+      expect(
+        composed.statuses.find(({ repository }) =>
+          repository.endsWith("/notes"),
+        )?.description,
+      ).toBe("notes 1.1.0 isolated: E_SCHEMA_VERSION_MISMATCH");
+    });
+
+    it("holds a fragment written at another major, in either direction", () => {
+      for (const version of ["2.0.0", "0.9.0"]) {
+        const other = writtenAt(version);
+        expect(
+          after(withNotes(other)).conditions.find(
+            ({ project }) => project === "notes",
+          )?.body,
+        ).toBe(
+          `The fragment ${other.ref} was refused with E_SCHEMA_VERSION_MISMATCH: it was written at ${version}, a different major than this toolkit's 1.0.0. notes stays at the fragment it last composed at, and its pin does not move until a release composes.`,
+        );
+      }
+    });
+
+    it("admits a fragment written at an older minor or another patch", () => {
+      const toolkit = { ...OPTIONS, schemaVersion: "1.2.3" };
+      for (const version of ["1.0.0", "1.2.0", "1.2.9"]) {
+        const result = composeEstate(
+          {
+            ...EXPECTED,
+            platform: writtenAt("1.2.3", PLATFORM),
+            fragments: [writtenAt(version), ...others],
+            held: [],
+            pins: {},
+            clusterState: {
+              name: "cluster-state.yml",
+              text: text("platform/cluster-state.yml"),
+            },
+          },
+          toolkit,
+        );
+        expect(result.ok && notes(result.value).isolated).toBeUndefined();
+      }
+    });
+
+    it("holds a dormant participant's fragment too: dormancy exempts its age alone", () => {
+      expect(
+        notes(
+          after({
+            ...withNotes(writtenAt("1.1.0")),
+            ...listing({ dormant: true, reason: "archived" }),
+          }),
+        ).isolated?.codes,
+      ).toStrictEqual(["E_SCHEMA_VERSION_MISMATCH"]);
+    });
+
+    // The fragment a Project would be held at is one the toolkit cannot
+    // read either: composing it would drop what the toolkit cannot read.
+    const unreadable = (newer: Fragment) =>
+      `E_SCHEMA_VERSION_MISMATCH participants.yml /participants notes can be composed only at ${newer.ref}, which was written at 1.1.0, a newer minor than this toolkit's 1.0.0`;
+
+    it("stops the run where the fragment a Project last composed at is one the toolkit cannot read", () => {
+      const newer = writtenAt("1.1.0", release("notes", "1.1.0"));
+      const input = {
+        ...EXPECTED,
+        platform: PLATFORM,
+        fragments: [newer, ...others],
+        held: [...RELEASES, newer],
+        pins: {},
+        clusterState: {
+          name: "cluster-state.yml",
+          text: text("platform/cluster-state.yml"),
+        },
+      };
+      const earlier = composeEstate(input, {
+        ...OPTIONS,
+        schemaVersion: "1.1.0",
+      });
+      if (!earlier.ok) throw new Error("the 1.1.0 toolkit composes");
+
+      expect(
+        refused({
+          ...input,
+          previous: {
+            lock: earlier.value.lock,
+            commit: hex("estate-commit", 40),
+          },
+        }),
+      ).toStrictEqual([unreadable(newer)]);
+    });
+
+    it("stops the run where a Rollback names a held fragment the toolkit cannot read", () => {
+      const newer = writtenAt("1.1.0", release("notes", "1.1.0"));
+      expect(
+        refused({
+          held: [...RELEASES, newer],
+          pins: pinned(FIRST, {
+            notes: {
+              ...PAUSE,
+              [PIN_ANNOTATIONS.rollbackVersion]: "1.1.0",
+              [PIN_ANNOTATIONS.rollbackFragment]: newer.ref,
+            },
+          }),
+          previous: { lock: FIRST.lock, commit: hex("estate-commit", 40) },
+        }),
+      ).toStrictEqual([unreadable(newer)]);
+    });
+
+    it("says how to clear a fragment the toolkit cannot read", () => {
+      const newer = writtenAt("1.1.0", release("notes", "1.1.0"));
+      const result = composeEstate(
+        {
+          ...EXPECTED,
+          platform: PLATFORM,
+          fragments: RELEASES,
+          held: [...RELEASES, newer],
+          pins: pinned(FIRST, {
+            notes: {
+              ...PAUSE,
+              [PIN_ANNOTATIONS.rollbackVersion]: "1.1.0",
+              [PIN_ANNOTATIONS.rollbackFragment]: newer.ref,
+            },
+          }),
+          clusterState: {
+            name: "cluster-state.yml",
+            text: text("platform/cluster-state.yml"),
+          },
+        },
+        OPTIONS,
+      );
+      expect(
+        result.ok ? [] : result.diagnostics.map(({ hint }) => hint),
+      ).toStrictEqual([
+        "Republish the fragment at a model version this toolkit reads, or compose with a toolkit that reads it.",
+      ]);
+    });
+
+    it("stops the run on a Platform document written at a version the toolkit does not accept, naming the rule and the fragment", () => {
+      const platform = writtenAt("1.1.0", PLATFORM);
+      expect(refused({ platform })).toStrictEqual([
+        `E_SCHEMA_VERSION_MISMATCH participants.yml /participants the Platform document's fragment, jorisjonkers.dev, cannot be composed with: E_SCHEMA_VERSION_MISMATCH: ${platform.ref} was written at 1.1.0, a newer minor than this toolkit's 1.0.0`,
+      ]);
+    });
+  });
+
   it("asks for the publish time of every fragment whose age it reads", () => {
     expect(() =>
       compose({

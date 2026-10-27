@@ -85,7 +85,6 @@ export const PENDING: readonly Pending[] = [
       "E_RAW_SECRET",
       "E_READER_NOT_DECLARED",
       "E_ROLL_AFFECTS_OTHER_READERS",
-      "E_SCHEMA_VERSION_MISMATCH",
       "E_UNDECLARED_SECRET_PATH",
     ],
   },

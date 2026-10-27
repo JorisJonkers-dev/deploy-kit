@@ -16,7 +16,12 @@ import {
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { main, USAGE_TEXT, type World } from "../../src/cli/main.ts";
+import {
+  main,
+  SCHEMA_VERSION,
+  USAGE_TEXT,
+  type World,
+} from "../../src/cli/main.ts";
 import { sha256Hasher } from "../../src/index.ts";
 import { temporary } from "../setup.ts";
 
@@ -547,7 +552,7 @@ describe("deploy-kit compose", () => {
     };
     expect(lock.metadata.generatedAt).toBe("2026-10-02T09:00:00.000Z");
     expect(lock.spec.toolkitVersion).toBe("0.2.0");
-    expect(lock.spec.schemaVersion).toBe("1.0.0");
+    expect(lock.spec.schemaVersion).toBe(SCHEMA_VERSION);
     const report = JSON.parse(
       readFileSync(join(root, "first", "composition.json"), "utf8"),
     ) as {
