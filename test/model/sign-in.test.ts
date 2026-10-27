@@ -237,6 +237,26 @@ ${PROCESSES("grafana")}`),
     ]);
   });
 
+  it("admits every field a gated Client takes", () => {
+    expect(
+      explained(
+        grafana(
+          "signIn: gated\nlabel: Sonarr\ndescription: TV\niconPath: /icon.png\nlaunchPath: /",
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses a gated Client with no label to show on its tile", () => {
+    expect(
+      explained(grafana("signIn: gated\ndescription: TV")).map(
+        ({ code, message }) => [code, message],
+      ),
+    ).toStrictEqual([
+      ["E_CLIENT_FIELD_FOR_MODE", "a gated Client requires label"],
+    ]);
+  });
+
   it("refuses a field its mode requires and it leaves out", () => {
     expect(
       explained(grafana("signIn: native\nlabel: Grafana\ncredential: pkce")),
