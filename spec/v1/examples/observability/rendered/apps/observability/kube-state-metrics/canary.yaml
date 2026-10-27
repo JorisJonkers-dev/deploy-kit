@@ -57,3 +57,13 @@ spec:
           readiness: /livez
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: kube-state-metrics
+          process: kube-state-metrics
+          revision: sha256:2193c1c60acedf71736b49fb4c5a7d1cab725c5a383d968c13bc29fa1c28c22a
+          readiness: /livez
+          errorRate: 1%
+          latency: 500ms

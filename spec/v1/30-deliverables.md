@@ -424,7 +424,7 @@ spells only what the projection holds:
 
 | model value | adapter | spelled as |
 |---|---|---|
-| a `blue-green` Process | `kubernetes` | a `Deployment` with no `replicas` and a `RollingUpdate` of surge 1, unavailability 0, which Flagger scales and promotes; a `Canary` whose `service` is the Process's first surface and whose three webhooks are the gate's `endpoint` with `/may-start`, `/checks` and `/may-promote`, each carrying the Application, the Process and the Application revision |
+| a `blue-green` Process | `kubernetes` | a `Deployment` with no `replicas` and a `RollingUpdate` of surge 1, unavailability 0, which Flagger scales and promotes; a `Canary` whose `service` is the Process's first surface and whose four webhooks are the gate's `endpoint` with `/may-start`, `/checks`, `/may-promote` and `/rollback`, each carrying the Application, the Process and the Application revision |
 | a `stop-start` Process | `kubernetes` | a `Deployment` of its `replicas` with a `Recreate` strategy, and a `Service` named for the Process that selects its `instance` and serves each of its surfaces by name |
 | a `scheduled` Process | `kubernetes` | a `CronJob` named for the Process at its `schedule`, `concurrencyPolicy: Forbid` and its `startDeadline` as `startingDeadlineSeconds`; its job's pod is the pod a `Deployment` would hold, with `restartPolicy: OnFailure`. No `Service`, no `Canary` and no budget |
 | a `rolling` Process | `kubernetes` | a `Deployment` of its `replicas` with a `RollingUpdate` of surge 0, unavailability 1: pod by pod and never a pod more, because a proxy on a host port and a controller with no leader election cannot run two copies; the same `Service` a `stop-start` Process gets, and no `Canary`, because nothing gates the machinery |
@@ -576,7 +576,7 @@ adapter renders so that Flux and Flagger never own the same field
 
 | rule | adapter | why |
 |---|---|---|
-| one `Canary` per `blue-green` Process, its cadence the Platform document's `delivery.analysis` and its three webhooks the Release Gate's | `kubernetes` | the Canary is how Flagger is told to switch the Process, and the gate is who decides |
+| one `Canary` per `blue-green` Process, its cadence the Platform document's `delivery.analysis` and its four webhooks the Release Gate's | `kubernetes` | the Canary is how Flagger is told to switch the Process, and the gate is who decides |
 | each webhook's metadata carries what the gate's checks request and must stay under: the Process's Route paths, its readiness path, the hosts the internet reaches it on and the platform's two thresholds ([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)) | `kubernetes` | the gate is configured with nothing about a Project, so a Project that changes a Route changes what is checked in the same render |
 | no `Service` named `<name>`, `<name>-primary` or `<name>-canary` for such a Process | `kubernetes` | Flagger generates all three; a rendered one would have two owners |
 | no `replicas` on its Deployment; a `replicas` declaration becomes a `HorizontalPodAutoscaler` with `minReplicas` equal to `maxReplicas`, named by the Canary | `kubernetes` | Flagger scales the Deployment it watches to zero and owns the primary's count, so a count in the render is a field Flux would reset |

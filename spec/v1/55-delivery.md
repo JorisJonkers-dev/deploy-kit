@@ -359,13 +359,14 @@ between Processes goes through their own Services, and no edge flip moves it.
 ## The Release Gate
 
 The **Release Gate** is the first-party controller that answers the switchover's
-two questions, from the Resolved Deployment and nothing else
+questions, from the Resolved Deployment and nothing else
 ([0052](../../docs/adr/model/0052-an-application-is-the-release-unit.md)):
 
 | question | asked | the gate answers yes when |
 |---|---|---|
 | may this member's new version start? | once per member per revision, before its new version scales up | the Application's migration and every prepare Process for this revision have completed, and every `stop-start` Process the member requires in its own Project has started the version it holds ([Release order](#release-order)); the migration itself was started only once its compatibility proof held ([Migration safety](#migration-safety)) |
 | may this member be promoted? | after the member's own analysis passes | every member of the Application has passed its analysis for this revision, or did not change in it ([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)): the barrier |
+| must this member's new copy be rolled back? | on each of Flagger's ticks while the member is analysed or waits at the barrier, once its new copy is ready | the release can no longer pass: a pod of the member's new copy is crash-looping, or another member of the Application has failed at this revision or has a new copy that is crash-looping |
 
 It reads the Application's release-gate inputs (its members, their readiness,
 their analysis checks, the gate deadline and, where it has one, its migration;
@@ -411,13 +412,49 @@ that did not change in the release is not asked: its image was asked when it
 last did. The path and its member are all the model hands over; the request is
 the gate's own.
 
+**A release that cannot pass rolls back.** Flagger waits on a refused
+promotion with no deadline of its own, so without this question a member that
+passed its analysis while another member failed would keep its new copy
+running beside its primary until the next release, and a member waiting on a
+crash-looping one would wait out that member's progress deadline. The gate
+therefore answers a fourth question, through a `rollback` webhook, and Flagger
+reads a yes as the member failing: it marks the Canary failed and scales the
+new copy to zero. The gate answers yes when either holds:
+
+- **the member's new copy is crash-looping**: one of its pods has restarted
+  three times or more, counting every container of the pod;
+- **another member cannot pass at this revision**: its Canary carries the
+  revision and has failed, or a pod of its new copy is crash-looping by the
+  same count.
+
+Three restarts is where a pod is past every start its release allows: a
+serving Process's progress deadline is three times its startup budget
+([chapter 20](20-resolved-deployment.md#derived-mechanics)), so a pod on its
+fourth start has used all three, and its member can no longer pass. One
+restart is not a crash loop: the startup probe kills a cold start that
+overruns its budget once, and the reason Kubernetes reports while a
+container waits to start again names the back-off, not how many starts
+failed. A failed member's Canary that carries the revision either failed at it,
+or did not change in it and still records the failure of an earlier one; in
+both, the barrier cannot open at this revision, so a waiting member gains
+nothing by waiting. An answer the gate cannot give is no, as every other is:
+nothing rolls back, and the barrier stays shut.
+
+**Flagger asks this only of a copy that is ready.** It asks `rollback` on each
+tick while the member's Canary is `Progressing` or `WaitingPromotion`, after it
+has found the new copy's Deployment available; a copy that never becomes ready
+is never asked, and its own progress deadline is what ends it, as before. So
+the question ends a member's wait on another member's failure, not its own
+crash loop: a member whose new copy never starts holds the others only until
+its third restart, and itself until its deadline.
+
 **After promotion the gate warms up.** It requests the same paths once more
 through each hostname the Canary hands it, the host of every Route the internet
 reaches, so the request crosses the edge to the new primary. A 5xx there fails
 the release's Rollout ([Rollouts](#rollouts)) and rolls nothing back.
 
 **The Canary hands the gate everything those requests need**, as the metadata
-of each of its three webhooks
+of each of its four webhooks
 ([What the render leaves to Flagger](#what-the-render-leaves-to-flagger)).
 Nothing about a Project is configured on the gate itself. The checks a
 member's Runtime Profile derives
@@ -468,7 +505,9 @@ serving while the pin names the new one. It is held before anything runs when
 its compatibility proof names a revision that no longer serves
 ([Migration safety](#migration-safety)). It fails when a member does not pass
 its analysis within the gate deadline, when the barrier does not open within it,
-or when a migration or prepare step fails before any new version starts.
+when the gate rolls a member back because the release can no longer pass
+([The Release Gate](#the-release-gate)), or when a migration
+or prepare step fails before any new version starts.
 
 The Release Gate reports a held Application as the pair (serving revision,
 pinned revision) and alerts until a new pin lands, whether that is a fix forward
@@ -631,7 +670,7 @@ undone:
 |---|---|---|
 | **the migration itself** | the old version; no new version ever started | Liquibase rolls back the failing changeset's own transaction and records nothing for it; the earlier changesets of the release stay, each proven compatible, and are undone by the down if the conditions below hold. A failing non-transactional changeset leaves partial state no rollback can repair, and is never undone automatically |
 | **a prepare Process** | the old version; no new version ever started | undone by the down, if the conditions below hold |
-| **analysis, or the barrier** | the old version; Flagger scales every member's new copy back to zero | undone by the down, if the conditions below hold |
+| **analysis, or the barrier** | the old version; Flagger scales every member's new copy back to zero, a member waiting at the barrier once the gate rolls it back ([The Release Gate](#the-release-gate)) | undone by the down, if the conditions below hold |
 | **promotion** | a mix: some members' primaries run the new version | **never undone automatically**: a promoted member needs the new schema. An urgent alert fires, and the fix is forward |
 
 **The runner's contract.** The platform's runner takes two commands, each with
@@ -967,10 +1006,11 @@ Deployment, and Flagger generates the rest:
 | the label `app.kubernetes.io/name: <name>-primary` on the primary's pods | selects by `app.kubernetes.io/instance` everywhere but the disruption budget, which selects the primary |
 
 The Canary's analysis runs at the Platform document's cadence and asks the
-Release Gate three questions through webhooks: `confirm-rollout` before the new
+Release Gate four questions through webhooks: `confirm-rollout` before the new
 copy starts, `rollout` on each analysis iteration, which the gate answers from
-the member's `checks`, and `confirm-promotion` at the barrier
-([The Release Gate](#the-release-gate)). Each webhook carries the same
+the member's `checks`, `confirm-promotion` at the barrier, and `rollback` on
+each tick until promotion, which the gate answers from the new copies' restarts
+and the other members' Canaries ([The Release Gate](#the-release-gate)). Each webhook carries the same
 metadata, which names the release and hands the gate what its checks request:
 
 | key | what it carries |

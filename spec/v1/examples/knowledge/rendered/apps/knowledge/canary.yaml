@@ -2,7 +2,7 @@
 #
 # One Canary per blue-green Process (spec/v1/55-delivery.md#what-the-render-leaves-to-flagger).
 # Flagger generates the Services and the primary; every decision is the Release
-# Gate's, asked through the three webhooks, and the cadence is the Platform
+# Gate's, asked through the four webhooks, and the cadence is the Platform
 # document's delivery.analysis.
 ---
 apiVersion: flagger.app/v1beta1
@@ -59,6 +59,18 @@ spec:
     - name: may-promote
       type: confirm-promotion
       url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+      metadata:
+        application: knowledge
+        process: knowledge-api
+        revision: "sha256:6325500a2c541ed3970d3003aa61fd3fa1e9f98d673c1a2095323b90dc2363df"
+        paths: / /install-agents.sh /install.sh /mcp /mcp/
+        readiness: /api/actuator/health/readiness
+        hostnames: knowledge.jorisjonkers.dev
+        errorRate: 1%
+        latency: 500ms
+    - name: rollback
+      type: rollback
+      url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
       metadata:
         application: knowledge
         process: knowledge-api

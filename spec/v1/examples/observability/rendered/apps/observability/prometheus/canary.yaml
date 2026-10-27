@@ -57,3 +57,13 @@ spec:
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: prometheus
+          process: prometheus
+          revision: sha256:2e8a105e0d86dfd44e582952710d28ea2a651541e4e4334b348b18a40a81925b
+          readiness: /-/ready
+          errorRate: 1%
+          latency: 500ms

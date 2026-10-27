@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **115** rows. The compiler's behaviours join it as they land.
+This ledger holds **116** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -138,3 +138,4 @@ This ledger holds **115** rows. The compiler's behaviours join it as they land.
 | REQ-113 | A Process with an open Move renders its source frozen, created once so the render never rewrites what serves, beside its target, named `<process>-<tag>` in the source's namespace until the gate records it, with a volume of its own; every Instance's pods carry the Process's instance label and their Instance's name label, which its workload and Service select; a Move with a method renders one suspended Job per step, run as `<process>-move`, whose one Kubernetes permission is to update the Stable Addresses it flips and whose policy reaches both Instances, the store, the cluster's DNS and the API; and once ClusterState records an Instance under another name, the Process renders under it | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-114 | A sidecar mounts the Process's volumes it names, each by its claim at a path of its own, and a claim the Process does not declare is `E_UNKNOWN_SIDECAR_VOLUME`; a sidecar marked `init` renders as an init container, after the VPN and before the Process, and the rest beside it | [test/adapters/spelling.test.ts](../test/adapters/spelling.test.ts) |
 | REQ-115 | An Application two Projects declare composes once, as the target of a Move from the Project whose namespace ClusterState records its active Instance in, in every order the fragments arrive: the old declaration resolves departing, renders its source's workloads created once and none of what the target alone renders, and every consumer reaches both namespaces until the source retires, after which the old declaration renders nothing; the old Project stopping to declare it while its source serves is `E_MOVE_OPEN`, and two declarations no Instance settles are `E_DUPLICATE_APPLICATION_ID` | [test/application/compose.test.ts](../test/application/compose.test.ts) |
+| REQ-117 | Every Canary asks the Release Gate a fourth question, `rollback`, at the gate's `/rollback` with the metadata its other three webhooks carry, so a release that can no longer pass rolls back rather than waits: Flagger reads the gate's yes as the member failing | [test/model/render.test.ts](../test/model/render.test.ts) |

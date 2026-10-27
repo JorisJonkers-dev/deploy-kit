@@ -60,3 +60,14 @@ spec:
           readiness: /
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: headlamp
+          process: headlamp
+          revision: sha256:d93c10f46f5c86ac044b464fefbf746b435b0edd00fae49bd7e41efbe8765c61
+          paths: /
+          readiness: /
+          errorRate: 1%
+          latency: 500ms

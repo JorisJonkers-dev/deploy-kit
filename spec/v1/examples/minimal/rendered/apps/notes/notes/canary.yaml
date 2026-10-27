@@ -63,3 +63,15 @@ spec:
           hostnames: notes.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: notes
+          process: notes-api
+          revision: sha256:2b25f8cbaf62431045cc22614d91a135ce897bc27a977a56a029ead0880c82aa
+          paths: /
+          readiness: /healthz/ready
+          hostnames: notes.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
