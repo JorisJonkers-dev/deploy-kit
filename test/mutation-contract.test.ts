@@ -112,7 +112,7 @@ describe("the mutation gate", () => {
       'npm run test:mutation -- --incremental --mutate "$ranges"',
     );
     expect(scopeJob).toContain(
-      'gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1',
+      'gh api "repos/${REPO}/actions/artifacts?name=mutation-incremental&per_page=30"',
     );
     expect(pullRequestShardJob).toContain(
       'gh run download "${BASELINE}" --repo "${REPO}" --name mutation-incremental --dir reports',
@@ -146,11 +146,11 @@ describe("the mutation gate", () => {
     );
   });
 
-  it("uploads the merged report the next run reads from a green push to main, and from nothing else", () => {
+  it("uploads the merged report the next run reads from a green run on main that is no pull request, and from nothing else", () => {
     const upload = gateJob.split("'name': 'Upload the report")[1] ?? "";
 
     expect(upload).toContain(
-      `'if': "github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.mutation-shard.result == 'success'"`,
+      `'if': "github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.mutation-shard.result == 'success'"`,
     );
     expect(upload).toContain("'name': 'mutation-incremental'");
     // Where Stryker reads it when no other path is named, and where the
@@ -183,7 +183,7 @@ describe("the mutation gate", () => {
     expect(pullRequestShardJob).not.toContain("gh run list");
 
     expect(fullBaselineJob).toContain(
-      'gh run list --repo "${REPO}" --workflow ci.yml --branch main --event push --status success --limit 1',
+      'gh api "repos/${REPO}/actions/artifacts?name=mutation-incremental&per_page=30"',
     );
     expect(shardJob).toContain("'needs':\n      - 'baseline'");
     expect(shardJob).toContain(
