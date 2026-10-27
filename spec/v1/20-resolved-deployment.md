@@ -594,7 +594,9 @@ backups:
 
 `instances` is what the Release Gate records as serving, read by the Collector
 from the gate's own record ([chapter 55](55-delivery.md#moves)); an open Move
-adds its `phase` and, once the flip has held, `flippedAt`.
+adds its `phase`, the [step](14-platform-intent.md#move-methods) it is at
+(`sync`, `lag`, `fence`, `unfence`, `reverse` or `retire`), and, once the flip
+has held, `flippedAt`.
 
 `backups` is optional, and lists each finished Job carrying the label
 `estate.jorisjonkers.dev/rollback-backup`: its value is the `request`, and the

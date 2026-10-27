@@ -170,7 +170,8 @@ TREES = {"10-project-intent": {
     "DurabilityPolicy": ["OffClusterCopy"],
     "OffClusterCopy": ["DestinationRange"],
     "EnginePolicies": ["EnginePolicy"],
-    "DeliveryPolicy": ["AnalysisPolicy"],
+    "EnginePolicy": ["MoveMethod"],
+    "DeliveryPolicy": ["AnalysisPolicy", "MovePolicy"],
     "HandoverLedger": ["ServingLocation"],
 }, "20-resolved-deployment": {
     # Sibling order puts GateMember next to ResolvedProbe, so the one

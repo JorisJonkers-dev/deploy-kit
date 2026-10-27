@@ -45,6 +45,31 @@
       ]
     },
     {
+      "name": "a move method that breaks on a component a version does not have",
+      "verdict": "refuse",
+      "breaks": "enum",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/engines/postgres/move/breaksOn",
+          "value": "patch"
+        }
+      ]
+    },
+    {
+      "name": "a move policy with no retention",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/delivery/move/retention"
+        }
+      ]
+    },
+    {
       "name": "an upstream nameserver that is no IPv4 address",
       "verdict": "refuse",
       "breaks": "rule",
