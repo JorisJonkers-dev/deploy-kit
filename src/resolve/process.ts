@@ -628,8 +628,9 @@ export function resolveProcess(
     hardening: context.platform.hardening,
     // The pod authenticates only where a grant is delivered `self`, or where
     // it holds Kubernetes API access.
+    // A block with no rules authenticates with its users' tokens, not its own.
     identityToken:
-      process.api !== undefined ||
+      (process.api?.rules ?? []).length > 0 ||
       spawns.length > 0 ||
       secrets.some(({ delivery }) => delivery === "self"),
     ...(process.api === undefined && spawns.length === 0

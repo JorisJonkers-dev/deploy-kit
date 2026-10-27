@@ -49,6 +49,12 @@ images:
     uid: 1000
     gid: 1000
     version: "2.3.0"
+  headlamp:
+    repository: ghcr.io/headlamp-k8s/headlamp
+    digest: "sha256:9c3e5a7b1d4f6a8c0e2b4d6f8a1c3e5b7d9f2a4c6e8b0d2f4a6c8e1b3d5f7a9c"
+    uid: 100
+    gid: 101
+    version: "v0.35.0"
   adguard:
     repository: docker.io/adguard/adguardhome
     digest: "sha256:6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e"

@@ -53,6 +53,7 @@ const FOUNDATION = [
   "platform/cluster-state.yml",
   "delivery/delivery.project.yml",
   "agents/agents.project.yml",
+  "utility/utility.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
@@ -4643,6 +4644,26 @@ describe("a Process's Kubernetes API access", () => {
       "  namespaceHolders: [notes/notes, ",
     );
 
+  // REQ-108 (docs/requirements.md): a Process that reaches the API with its
+  // users' own tokens holds nothing of its own.
+  it("reaches the API without holding a rule, and mounts no token of its own", () => {
+    const resolved = processOf(
+      one(
+        serving(
+          "notes-api",
+          "        api:\n          reason: it acts on the API with each signed-in user's own token\n",
+        ),
+      ),
+      { platform: local },
+    );
+
+    expect(resolved.api?.rules).toStrictEqual([]);
+    expect(resolved.api?.server).toStrictEqual([
+      { cidr: "10.43.0.1/32", port: 443 },
+    ]);
+    expect(resolved.identityToken).toBe(false);
+  });
+
   it("holds namespace rules under a platform that admits its Application to its namespace alone", () => {
     expect(
       processOf(
@@ -4705,7 +4726,8 @@ describe("a Process's Kubernetes API access", () => {
 // the platform's upstream nameservers, never the cluster's own DNS.
 describe("a Process that serves DNS", () => {
   const ON_53 =
-    "    l4Exposure:\n      - { address: lan-dns, port: 53, protocol: udp, process: notes-api, surface: dns }\n      - { address: lan-dns, port: 53, protocol: tcp, process: notes-api, surface: dns }\n    processes:\n";
+    // lan-mqtt: the worked utility resolver holds lan-dns.
+    "    l4Exposure:\n      - { address: lan-mqtt, port: 53, protocol: udp, process: notes-api, surface: dns }\n      - { address: lan-mqtt, port: 53, protocol: tcp, process: notes-api, surface: dns }\n    processes:\n";
   const servesDns = one(
     serving("notes-api").replace(
       "provides: { http: 8080 }",
@@ -4764,7 +4786,11 @@ ${serving("notes-api").replace("provides: { http: 8080 }", "provides: { http: 80
       result.ok
         ? []
         : result.diagnostics
-            .filter(({ code }) => code === "E_NO_UPSTREAM_NAMESERVERS")
+            .filter(
+              ({ code, document }) =>
+                code === "E_NO_UPSTREAM_NAMESERVERS" &&
+                document === "minimal/notes.project.yml",
+            )
             .map(({ path }) => path),
     ).toStrictEqual([
       "/applications/0/l4Exposure/0",

@@ -808,8 +808,13 @@ An admitted declaration derives these, and nothing else derives any of them:
 | a `RoleBinding` of that role to the Process's one ServiceAccount | the Process's identity ([Process identity](#process-identity)) |
 | a `ClusterRole` holding its `cluster`-scoped rules, where it has any | the Process's `api.rules` |
 | a `ClusterRoleBinding` of that role to the same ServiceAccount | the Process's identity |
-| a mounted token | the declaration itself ([above](#the-token-is-mounted-only-where-the-pod-authenticates)) |
+| a mounted token, where it holds a rule | the declaration itself ([above](#the-token-is-mounted-only-where-the-pod-authenticates)) |
 | egress to where the API answers, by address | the Platform document's `apiAccess.server` |
+
+A declaration with no rules derives the egress alone: no role, no binding and
+no token, because the Process authenticates to the API with its users' own
+tokens and holds nothing itself. It is admitted all the same, since the way to
+the API server is the platform's to give.
 
 A rule's scope decides its role. A `namespace` rule reaches only the
 Process's own namespace, so it is a `Role` there, named for the identity. A

@@ -1820,7 +1820,6 @@
           "minLength": 1
         },
         "rules": {
-          "minItems": 1,
           "type": "array",
           "items": {
             "$ref": "#/$defs/ResolvedApiRule"

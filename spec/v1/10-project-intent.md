@@ -680,7 +680,10 @@ api:
 
 - **`reason`** is required, and is carried into the projection the Process's
   owner reads back, so the estate can say why each holder holds what it holds.
-- **`rules`** is at least one rule. A rule names one API `group`, the `objects`
+- **`rules`** is optional. A Process that acts on the API with its signed-in
+  users' own tokens, as Headlamp does, holds nothing of its own: it declares
+  `api` with a `reason` and no rules, and is given only the way to the API
+  server. A rule names one API `group`, the `objects`
   of that group it asks for, and the `verbs` it may use on them, from the closed
   `ApiVerb` list ([The closed vocabularies](#the-closed-vocabularies)). `core`
   names the API's core group, which Kubernetes itself leaves unnamed. An object
@@ -3389,7 +3392,7 @@ classDiagram
     Process "1" *-- "0..1" Capacity : replicas
     Process "1" *-- "0..1" ApiAccess : api
     Process "1" *-- "0..*" SpawnTemplate : spawns
-    ApiAccess "1" *-- "1..*" ApiRule : rules
+    ApiAccess "1" *-- "0..*" ApiRule : rules
 
     Application "1" *-- "0..*" Exposure : exposure
     Exposure "1" *-- "1..*" Route : routes
