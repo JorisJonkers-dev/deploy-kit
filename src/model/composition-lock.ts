@@ -30,11 +30,12 @@ const lockedFragment = z
   .meta({ id: "LockedFragment" });
 
 // Why a Project stayed where it was. `refused` is the fragment composition
-// would not take; a participant that published none has none to name.
+// would not take; a participant that published none has none to name. A code
+// is any a refusal carries, `schema` among them (src/model/diagnostic.ts).
 const isolation = z
   .strictObject({
     refused: reference.exactOptional(),
-    codes: z.array(z.string().regex(/^E_[A-Z0-9_]+$/)).min(1),
+    codes: z.array(z.string().regex(/^(?:E_[A-Z0-9_]+|schema)$/)).min(1),
   })
   .meta({ id: "Isolation" });
 
