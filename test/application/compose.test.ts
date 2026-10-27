@@ -1,7 +1,8 @@
 // REQ-044 (docs/requirements.md): composition at its use-case seam, with
 // in-memory fragments built from the worked examples. A clean union composes
 // every Project; a refused fragment isolates its Project at its last composed
-// fragment; a Pause holds a pin; a Rollback composes the held fragment; and an
+// fragment; a Pause holds a pin; a Rollback composes the held fragment; a Retry
+// annotates every gated Deployment's pods and moves the pin once; and an
 // unchanged Project moves no pin (spec/v1/40-composition.md#the-composition-run,
 // spec/v1/55-delivery.md#pause-and-rollback).
 import { readFileSync } from "node:fs";
@@ -18,6 +19,7 @@ import {
 import { pinSources } from "../../src/application/pin-sources.ts";
 import {
   RECREATE_DEPLOYMENTS,
+  retryPatches,
   versionPatches,
 } from "../../src/adapters/flux/source.ts";
 import { PIN_ANNOTATIONS } from "../../src/model/pin-annotations.ts";
@@ -1132,6 +1134,149 @@ describe("composeEstate", () => {
 // delivery among them, composition writes its pin source, from the Platform
 // document and the Reconcile Unit DAG
 // (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+describe("composeEstate, for a Retry", () => {
+  const RETRY = { [PIN_ANNOTATIONS.retriedAt]: "2026-10-27T09:00:00Z" };
+  const INDEX = (project: string): string =>
+    `apps/${project}/kustomization.yaml`;
+  const artifactOf = (composition: Composition, name: string) =>
+    composition.artifacts.find((artifact) => artifact.name === name);
+  const patchesOf = (composition: Composition, project: string): unknown =>
+    (
+      parse(
+        artifactOf(composition, project)?.files.find(
+          ({ path }) => path === INDEX(project),
+        )?.text ?? "",
+      ) as { patches?: unknown }
+    ).patches;
+
+  it("moves a Project's pin though its render did not change, annotating each gated Process's pods before the release labels them", () => {
+    const retried = after({ pins: pinned(FIRST, { notes: RETRY }) });
+
+    expect(artifactOf(retried, "notes")?.moves).toBe(true);
+    expect(artifactOf(retried, "notes")?.rollout?.version).toBe("1.0.0");
+    expect(patchesOf(retried, "notes")).toStrictEqual([
+      ...retryPatches("2026-10-27T09:00:00Z", [
+        { namespace: "notes-system", name: "notes-api" },
+      ]),
+      ...versionPatches("1.0.0"),
+    ]);
+    // Only the unit's own index: every other file is the share as rendered.
+    expect(
+      artifactOf(retried, "notes")
+        ?.files.filter(({ text: body }) => body.includes("retried-at"))
+        .map(({ path }) => path),
+    ).toStrictEqual([INDEX("notes")]);
+  });
+
+  it("annotates every gated Deployment of every Application, in the order the Project declares them, and no stop-start one", () => {
+    const retried = after({ pins: pinned(FIRST, { observability: RETRY }) });
+    const patches = (patchesOf(retried, "observability") ?? []) as {
+      target: unknown;
+    }[];
+
+    expect(artifactOf(retried, "observability")?.moves).toBe(true);
+    expect(
+      patches.flatMap(({ target }) =>
+        (target as { kind: string }).kind === "Deployment" &&
+        "name" in (target as object)
+          ? [target]
+          : [],
+      ),
+    ).toStrictEqual(
+      [
+        "otel-collector",
+        "prometheus",
+        "kube-state-metrics",
+        "alloy",
+        "alertmanager",
+      ].map((name) => ({
+        kind: "Deployment",
+        namespace: "observability-system",
+        name,
+      })),
+    );
+  });
+
+  it("covers the Retry in the content hash, so a pin that keeps it moves for nothing else", () => {
+    const retried = after({ pins: pinned(FIRST, { notes: RETRY }) });
+    const kept = after({ pins: pinned(retried, { notes: RETRY }) });
+    const again = after({
+      pins: pinned(retried, {
+        notes: { [PIN_ANNOTATIONS.retriedAt]: "2026-10-28T09:00:00Z" },
+      }),
+    });
+
+    expect(artifactOf(retried, "notes")?.contentHash).not.toBe(
+      artifactOf(FIRST, "notes")?.contentHash,
+    );
+    expect(artifactOf(kept, "notes")?.moves).toBe(false);
+    expect(artifactOf(again, "notes")?.moves).toBe(true);
+  });
+
+  it("moves no pin of a Project with no gated Process, whose render a Retry leaves as it is", () => {
+    const retried = after({ pins: pinned(FIRST, { secrets: RETRY }) });
+
+    expect(artifactOf(retried, "secrets")?.moves).toBe(false);
+    expect(artifactOf(retried, "secrets")?.contentHash).toBe(
+      artifactOf(FIRST, "secrets")?.contentHash,
+    );
+  });
+
+  it("renders nothing for a Retry on the estate-scoped artifact, which is no Project's release", () => {
+    const pins = pinned(withLegacyCatalog());
+    const again = withLegacyCatalog({
+      pins: {
+        ...pins,
+        _estate: { ...(pins["_estate"] as Pin), annotations: RETRY },
+      },
+    });
+
+    expect(artifactOf(again, "_estate")?.moves).toBe(false);
+  });
+
+  it("moves no pin of a paused Project", () => {
+    const paused = after({
+      pins: pinned(FIRST, { notes: { ...PAUSE, ...RETRY } }),
+    });
+
+    expect(artifactOf(paused, "notes")?.moves).toBe(false);
+  });
+
+  it("keeps the Retry on the pin source it writes, beside nothing else", () => {
+    const retried = after({ pins: pinned(FIRST, { notes: RETRY }) });
+    const source = retried.sources.find(({ name }) => name === "notes")?.text;
+    const [repository] = parseAllDocuments(source ?? "")
+      .map(
+        (document) =>
+          document.toJS() as {
+            kind: string;
+            metadata: { annotations?: unknown };
+          },
+      )
+      .filter(({ kind }) => kind === "OCIRepository");
+
+    expect(repository?.metadata.annotations).toStrictEqual(RETRY);
+  });
+
+  it("annotates the release a Rollback composed, and moves the pin there", () => {
+    const rollback = {
+      ...PAUSE,
+      ...RETRY,
+      [PIN_ANNOTATIONS.rollbackVersion]: "1.0.0",
+      [PIN_ANNOTATIONS.rollbackFragment]: RELEASES[0]?.ref as string,
+    };
+    const retried = after({ pins: pinned(FIRST, { notes: rollback }) });
+
+    expect(artifactOf(retried, "notes")?.moves).toBe(true);
+    expect(patchesOf(retried, "notes")).toStrictEqual([
+      ...retryPatches("2026-10-27T09:00:00Z", [
+        { namespace: "notes-system", name: "notes-api" },
+      ]),
+      ...versionPatches("1.0.0"),
+    ]);
+  });
+});
+
 describe("composeEstate, for an artifact whose pin moves", () => {
   /** Every Project delivered: the worked Platform document with no handover ledger. */
   const delivered = (input: Partial<ComposeInput> = {}) =>

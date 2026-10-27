@@ -5,7 +5,10 @@
 // unit's path inside it, after the units it follows. Composition writes the
 // file whenever the artifact's pin moves, the first delivery among them, and
 // a Project's first delivery recreates a Deployment it cannot update in place.
-import { FORCE_ANNOTATION } from "../../model/pin-annotations.ts";
+import {
+  FORCE_ANNOTATION,
+  PIN_ANNOTATIONS,
+} from "../../model/pin-annotations.ts";
 import type { FluxKustomization, OciRepository } from "../../objects/custom.ts";
 import type { RenderedObject } from "../../objects/deliverable.ts";
 import { managedOnly } from "../shared/labels.ts";
@@ -134,6 +137,39 @@ export const versionPatches = (version: string) => {
   ] as const;
 };
 
+/** A Deployment a Canary targets: a gated Process's, where it is applied. */
+export interface GatedDeployment {
+  readonly namespace: string;
+  readonly name: string;
+}
+
+/**
+ * Annotate the pod template of every Deployment a Canary targets with when a
+ * Retry last ran, so Flagger sees one new revision and analyses the release
+ * again, and Flux, applying it as desired state, never reverts it
+ * (spec/v1/55-delivery.md#pause-and-rollback). Composition writes these into
+ * a Project's index, in the artifact itself, before it hashes the share.
+ */
+export const retryPatches = (
+  retriedAt: string,
+  gated: readonly GatedDeployment[],
+) =>
+  gated.map(({ namespace, name }) => ({
+    patch: [
+      "apiVersion: apps/v1",
+      "kind: Deployment",
+      "metadata:",
+      `  name: ${name}`,
+      "spec:",
+      "  template:",
+      "    metadata:",
+      "      annotations:",
+      `        ${PIN_ANNOTATIONS.retriedAt}: ${JSON.stringify(retriedAt)}`,
+      "",
+    ].join("\n"),
+    target: { kind: "Deployment", namespace, name },
+  }));
+
 /** The name a Project's source carries; the estate's own is {@link ESTATE_SOURCE}. */
 export const sourceOf = (project: string): string => `project-${project}`;
 
@@ -174,7 +210,7 @@ export function renderPinSource(
       name: source,
       namespace: flux.namespace,
       labels: managedOnly(),
-      // A Pause or a Rollback recorded on the pin
+      // A Pause, a Rollback or a Retry recorded on the pin
       // (spec/v1/55-delivery.md#pause-and-rollback): a rewrite keeps it.
       ...(Object.keys(annotations).length === 0 ? {} : { annotations }),
     },
