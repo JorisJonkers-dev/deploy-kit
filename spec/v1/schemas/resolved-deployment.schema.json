@@ -2483,6 +2483,32 @@
         "cpu": {
           "type": "string",
           "minLength": 1
+        },
+        "volumes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "claim": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mountAt": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "claim",
+              "mountAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "init": {
+          "type": "boolean",
+          "const": true
         }
       },
       "required": [

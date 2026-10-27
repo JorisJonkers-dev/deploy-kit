@@ -195,8 +195,23 @@ const placement = z
   })
   .meta({ id: "Placement" });
 
+// A volume of the Process a sidecar mounts, by its claim, at a path of its own
+// (spec/v1/10-project-intent.md#sidecars).
+const sidecarMount = z
+  .strictObject({ claim: text, mountAt: text })
+  .meta({ id: "SidecarMount" });
+
+// A container beside the Process, or before it where it is `init`: one that
+// runs to completion before the Process starts.
 const sidecar = z
-  .strictObject({ name: text, image: text, memory: text, cpu: text })
+  .strictObject({
+    name: text,
+    image: text,
+    memory: text,
+    cpu: text,
+    volumes: z.array(sidecarMount).min(1).exactOptional(),
+    init: z.literal(true).exactOptional(),
+  })
   .meta({ id: "Sidecar" });
 
 // How the credential an edge to a database derives is rotated, where the

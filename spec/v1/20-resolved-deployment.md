@@ -2205,6 +2205,7 @@ classDiagram
         +ImageRef image
         +Quantity memory
         +Quantity cpu
+        +bool init
     }
     class ResolvedEdge {
         +ApplicationId application

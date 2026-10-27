@@ -814,6 +814,8 @@ this estate. `sidecars` names the others
 | `image` | yes | an alias | Resolved to a digest through the images lock, exactly as a Process's is. A tag would put a mutable reference in a Deliverable, which `E_FLOATING_IMAGE` (chapter 30) refuses. |
 | `memory` | yes | one quantity | This container's request. Shape rules are the Process's ([Placement](#placement)). |
 | `cpu` | yes | one quantity | The same. |
+| `volumes` | no | a list of `{claim, mountAt}` | The Process's volumes this container mounts, each by its `claim` and at a path of its own. A claim the Process does not declare in its own `volumes` is `E_UNKNOWN_SIDECAR_VOLUME`. Absent, it mounts none. |
+| `init` | no | `true` | The container runs to completion before the Process starts, as an init container, rather than beside it. |
 
 The split follows Kubernetes rather than a rule of the model's own: `nodeSelector`
 and affinity are **pod**-level, `resources` and `securityContext` are
@@ -829,6 +831,21 @@ pod holds: it mounts the Process's `writablePaths`, each one `emptyDir` every
 container of the pod writes, as it mounts the Process's file grants, because
 every container of the pod is the Process. A browser beside its Process writes
 its `/tmp` there.
+
+**A sidecar names the volumes it mounts.** The Process's volumes are its data,
+and a sidecar reaches one only where it says so: git-sync beside basic-memory
+mounts the vault it pushes, and meilisearch beside karakeep the index it
+writes, while the browser beside karakeep mounts no data at all. A volume is
+still the Process's, declared once on it, so a sidecar names a claim and the
+path it works in, and nothing else about the volume.
+
+**An init step runs before the Process.** A sidecar marked `init: true` runs to
+completion before the Process starts, with everything a sidecar gets: the
+Process's variables, file grants, writable paths and the volumes it names. It
+is how the vault is cloned before the server that serves it starts. A VPN the
+Process attaches to starts before every init step, so one already reaches out
+through it. Eligibility counts an init step as it counts a sidecar, which
+overstates the pod by at most that step's own request.
 
 **Eligibility sums.** A node must fit the pod's containers together, so the
 placement check adds every sidecar's `memory` and `cpu` to the Process's before

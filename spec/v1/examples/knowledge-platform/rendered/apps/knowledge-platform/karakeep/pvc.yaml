@@ -43,6 +43,24 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
+  name: karakeep-meili
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: karakeep
+    app.kubernetes.io/instance: karakeep
+    app.kubernetes.io/part-of: karakeep
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
   name: meilisearch-data
   namespace: knowledge-platform-system
   labels:

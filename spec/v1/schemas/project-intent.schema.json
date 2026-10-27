@@ -1142,6 +1142,17 @@
         "cpu": {
           "type": "string",
           "minLength": 1
+        },
+        "volumes": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SidecarMount"
+          }
+        },
+        "init": {
+          "type": "boolean",
+          "const": true
         }
       },
       "required": [
@@ -1149,6 +1160,24 @@
         "image",
         "memory",
         "cpu"
+      ],
+      "additionalProperties": false
+    },
+    "SidecarMount": {
+      "type": "object",
+      "properties": {
+        "claim": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "claim",
+        "mountAt"
       ],
       "additionalProperties": false
     },

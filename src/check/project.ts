@@ -294,6 +294,18 @@ function processRefusals(
         });
   for (const [index, grant] of (process.secrets ?? []).entries())
     refusals.push(...grantRefusals(grant, `${at}/secrets/${index}`));
+  // A sidecar mounts the Process's own volumes, and no other.
+  // Stryker disable next-line ArrayDeclaration
+  for (const [s, sidecar] of (process.sidecars ?? []).entries())
+    // Stryker disable next-line ArrayDeclaration
+    for (const [m, { claim }] of (sidecar.volumes ?? []).entries())
+      if (!volumes.some((volume) => volume.claim === claim))
+        refusals.push({
+          code: "E_UNKNOWN_SIDECAR_VOLUME",
+          path: `${at}/sidecars/${String(s)}/volumes/${String(m)}`,
+          message: `sidecar ${sidecar.name} mounts ${claim}, and this Process declares no volume of that claim`,
+          hint: "Mount a claim the Process declares in its own `volumes`, or declare the volume on the Process.",
+        });
   return refusals;
 }
 

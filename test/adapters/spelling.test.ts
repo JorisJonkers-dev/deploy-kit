@@ -2549,3 +2549,74 @@ describe("what a migration plan and a count above one render", () => {
     ).toStrictEqual([]);
   });
 });
+
+// REQ-114 (docs/requirements.md): a sidecar mounts the Process's volumes it
+// names, and an init step runs after the VPN starts and before the Process.
+describe("a sidecar, as the kubernetes adapter spells it", () => {
+  const SIDE = {
+    image: "ghcr.io/example/side@sha256:00",
+    memory: "32Mi",
+    cpu: "10m",
+  };
+  const pod = () => {
+    const [workload] = objectsAt(
+      renderKubernetes(
+        edited(undefined, () => ({
+          vpn: VPN,
+          volumes: [
+            {
+              claim: "notes-data",
+              mountAt: "/data",
+              size: "1Gi",
+              durability: "reconstructible" as const,
+            },
+          ],
+          sidecars: [
+            {
+              name: "clone",
+              ...SIDE,
+              init: true as const,
+              volumes: [{ claim: "notes-data", mountAt: "/work" }],
+            },
+            { name: "sync", ...SIDE },
+          ],
+        })),
+      ),
+      "notes/workload.yaml",
+    ) as {
+      spec: {
+        template: {
+          spec: {
+            initContainers: { name: string; volumeMounts?: unknown[] }[];
+            containers: { name: string; volumeMounts?: unknown[] }[];
+          };
+        };
+      };
+    }[];
+    return workload?.spec.template.spec;
+  };
+
+  it("runs an init step after the VPN starts and before the Process, and the rest beside it", () => {
+    expect(pod()?.initContainers.map(({ name }) => name)).toStrictEqual([
+      "vpn",
+      "clone",
+    ]);
+    expect(pod()?.containers.map(({ name }) => name)).toStrictEqual([
+      "notes-api",
+      "sync",
+    ]);
+  });
+
+  it("mounts the volumes a sidecar names where it says, and none it does not", () => {
+    const [, clone] = pod()?.initContainers ?? [];
+    const [, sync] = pod()?.containers ?? [];
+
+    expect(clone?.volumeMounts?.[0]).toStrictEqual({
+      name: "notes-data",
+      mountPath: "/work",
+    });
+    expect(JSON.stringify(sync?.volumeMounts ?? [])).not.toContain(
+      "notes-data",
+    );
+  });
+});

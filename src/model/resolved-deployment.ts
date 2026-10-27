@@ -432,6 +432,13 @@ const resolvedSidecar = z
     imageVersion: text.exactOptional(),
     memory: text,
     cpu: text,
+    // The Process's volumes it mounts, each at its own path.
+    volumes: z
+      .array(z.strictObject({ claim: text, mountAt: text }))
+      .min(1)
+      .exactOptional(),
+    // Runs to completion before the Process starts.
+    init: z.literal(true).exactOptional(),
   })
   .meta({ id: "ResolvedSidecar" });
 
