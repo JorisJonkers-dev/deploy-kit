@@ -190,11 +190,13 @@ Process that provides a surface, and the `-primary` and `-canary` copies Flagger
 names after a blue-green one) is refused, and so is a name two Applications'
 aliases would both take: `E_ALIAS_COLLISION`.
 
-Until the Stable Address renders, an alias's `externalName` is the provider's
-own address: its Service in its Project's namespace, or a provider's address the
-Platform document records. A consumer's render then still moves when its
-provider moves, but only its alias does: what the consumer dials stays the
-provider's name.
+An alias's `externalName` is the provider's Stable Address, so a provider's
+move changes no consumer's render: only the Stable Address, which the
+estate-scoped artifact delivers with the Projects that resolve it. Flux creates
+each Stable Address once and never updates it, because a [Move](55-delivery.md#moves)
+flips its target and a reconcile must not flip it back; its unit,
+`estate-stable-addresses`, follows nothing, since an `ExternalName` needs no
+target to exist and a consumer resolves it again until its target answers.
 
 ### The database catalog
 

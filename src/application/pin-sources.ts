@@ -24,6 +24,7 @@ import {
 import {
   HUMAN_GRANTS_UNIT,
   PRIORITY_CLASSES_UNIT,
+  STABLE_ADDRESSES_UNIT,
   SECRETS_UNIT,
   unitOf,
 } from "../model/reconcile-units.ts";
@@ -34,6 +35,7 @@ import {
   HUMAN_GRANTS_DIRECTORY,
   PRIORITY_CLASSES_DIRECTORY,
   SECRETS_DIRECTORY,
+  STABLE_ADDRESSES_DIRECTORY,
 } from "../adapters/shared/paths.ts";
 import type { RenderedObject } from "../objects/deliverable.ts";
 import type { RenderedFile, Serializer } from "./render-intent-set.ts";
@@ -132,6 +134,17 @@ function unitsOf(
         // any list of them follows nothing alike.
         // Stryker disable next-line ArrayDeclaration
         [{ name: HUMAN_GRANTS_UNIT, path: HUMAN_GRANTS, after: [] }]
+      : []),
+    // The Stable Addresses follow nothing: an ExternalName needs no target to
+    // exist, and a consumer resolves it again until its target answers.
+    ...(carries(STABLE_ADDRESSES_DIRECTORY)
+      ? [
+          {
+            name: STABLE_ADDRESSES_UNIT,
+            path: STABLE_ADDRESSES_DIRECTORY,
+            after: [] as string[],
+          },
+        ]
       : []),
     ...(carries(SECRETS)
       ? [

@@ -13,6 +13,7 @@ import {
 } from "../adapters/registry.ts";
 import { renderEvents } from "../adapters/kubernetes/events.ts";
 import { renderHumanGrants } from "../adapters/kubernetes/human-grants.ts";
+import { renderStableAddresses } from "../adapters/kubernetes/stable-addresses.ts";
 import { renderPriorityClasses } from "../adapters/kubernetes/priority-classes.ts";
 import { ADAPTER as TRAEFIK } from "../adapters/traefik/render.ts";
 import { renderPolicyJobPolicy } from "../adapters/networking/render.ts";
@@ -372,6 +373,13 @@ export function renderResolvedSet(
           resolved.forwardAuths,
         )
       : []),
+    // The Stable Addresses are the estate's, delivered with the Projects that
+    // resolve them: a render holding none of them has nothing to resolve.
+    ...renderStableAddresses(
+      resolved.stableAddresses.filter(({ consumers }) =>
+        consumers.some((project) => options.projects.includes(project)),
+      ),
+    ),
     // A Human Grant is the platform's, so every render holds it.
     ...renderHumanGrants(resolved.humanGrants ?? []),
     // The priority classes are the cluster's, so every render holds them.

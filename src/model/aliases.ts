@@ -3,6 +3,7 @@
 // that names wherever the provider serves.
 import type { PlatformIntentDocument } from "./platform-intent.ts";
 import { homeOf, namespaceOf } from "./runtime-profiles.ts";
+import { stableHostOf } from "./stable-address.ts";
 
 /** One edge as far as an alias reads it. */
 export interface Named {
@@ -35,6 +36,7 @@ export interface Reach {
 }
 
 const CLUSTER_DOMAIN = "svc.cluster.local";
+
 const IP = /^[\d.]+$|:/;
 
 /** Where the provider an edge names serves, in the union or in the platform's register. */
@@ -97,8 +99,10 @@ export function reachOf(
   if (served.host.endsWith(local))
     return { address: `${served.host.slice(0, -local.length)}:${port}` };
   if (IP.test(served.host)) return { address: `${served.host}:${port}` };
+  // The alias points at the Stable Address, so a provider that moves
+  // changes the Stable Address alone, never a consumer's render.
   return {
     address: `${aliasNameOf(edge, named)}:${port}`,
-    target: served.host,
+    target: stableHostOf(edge),
   };
 }

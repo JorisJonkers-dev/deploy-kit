@@ -2,6 +2,7 @@
 // and when a consumer dials a provider without one.
 import { describe, expect, it } from "vitest";
 import { aliasNameOf, reachOf } from "../../src/model/aliases.ts";
+import { stableHostOf } from "../../src/model/stable-address.ts";
 
 const SMTP = { application: "stalwart", surface: "smtp" };
 const IMAP = { application: "stalwart", surface: "imap" };
@@ -20,7 +21,9 @@ describe("an alias's name", () => {
 });
 
 describe("what a consumer dials", () => {
-  it("is the alias for a provider in another namespace, pointing at where it serves", () => {
+  // REQ-111 (docs/requirements.md): a consumer's alias points at its
+  // provider's Stable Address, never at where the provider runs.
+  it("is the alias for a provider in another namespace, pointing at its Stable Address", () => {
     expect(
       reachOf(
         SMTP,
@@ -30,7 +33,7 @@ describe("what a consumer dials", () => {
       ),
     ).toStrictEqual({
       address: "stalwart:25",
-      target: "stalwart.mail-system.svc.cluster.local",
+      target: "stalwart-smtp.estate-system.svc.cluster.local",
     });
   });
 
@@ -59,8 +62,16 @@ describe("what a consumer dials", () => {
     (host) => {
       expect(reachOf(SMTP, { host, port: 25 }, "auth", [SMTP])).toStrictEqual({
         address: "stalwart:25",
-        target: host,
+        target: "stalwart-smtp.estate-system.svc.cluster.local",
       });
     },
   );
+});
+
+describe("a Stable Address", () => {
+  it("is named for the Application and the surface, in the one estate namespace", () => {
+    expect(stableHostOf(SMTP)).toBe(
+      "stalwart-smtp.estate-system.svc.cluster.local",
+    );
+  });
 });

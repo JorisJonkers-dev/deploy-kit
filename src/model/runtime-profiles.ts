@@ -1,6 +1,7 @@
 // Runtime Profiles (spec/v1/10-project-intent.md#runtime-profiles): what a
 // Process's `runtime` injects, so no project writes it. Only the profiles that
 // export telemetry and HTTP server metrics inject anything.
+import { stableHostOf } from "./stable-address.ts";
 import {
   GATE_SURFACE,
   REPORTER_SURFACE,
@@ -162,9 +163,17 @@ export const forwardAuthEndpoint = (
     forwardAuth.provider,
     forwardAuth.surface,
   );
+  // The edge asks the provider's Stable Address, so a move of the provider
+  // repoints the middleware with everything else
+  // (spec/v1/16-dependencies.md#the-stable-address).
   return home === undefined
     ? undefined
-    : `http://${addressOf(home, home.port)}${forwardAuth.path}`;
+    : `http://${stableHostOf({
+        application: forwardAuth.provider.slice(
+          forwardAuth.provider.indexOf("/") + 1,
+        ),
+        surface: forwardAuth.surface,
+      })}:${String(home.port)}${forwardAuth.path}`;
 };
 
 /** The endpoint an `http://` client is handed for `application`'s `surface`. */

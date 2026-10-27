@@ -1155,7 +1155,7 @@ ${serving("notes-worker").replace("provides: { http: 8080 }", "provides: { jobs:
         application: "otel-collector",
         surface: "otlp",
         address: "otel-collector:4317",
-        target: "otel-collector.observability-system.svc.cluster.local",
+        target: "otel-collector-otlp.estate-system.svc.cluster.local",
         peers: [
           {
             namespace: "observability-system",
@@ -1336,7 +1336,7 @@ roles: [writer, admin]`;
   const FORWARD_AUTH = {
     kind: "forward-auth",
     endpoint:
-      "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+      "http://identity-http.estate-system.svc.cluster.local:8080/gate/forward",
   };
   const BASELINE = { kind: "security-headers", contentPolicy: "admin" };
   const SECRET_PATH = "secret/data/notes-system/notes/client";
@@ -3009,7 +3009,7 @@ ${serving("notes-api")}`,
     expect(exposure?.routes[0]?.middleware?.[0]).toStrictEqual({
       kind: "forward-auth",
       endpoint:
-        "http://notes-api.notes-system.svc.cluster.local:8080/lan-forward",
+        "http://notes-http.estate-system.svc.cluster.local:8080/lan-forward",
     });
   });
 
@@ -3841,6 +3841,7 @@ describe("the Vault policy job", () => {
       "catalogHomes",
       "events",
       "tierProxies",
+      "stableAddresses",
       "nodeAgents",
       "humanGrants",
       "priority",
@@ -3936,7 +3937,7 @@ describe("an edge resolved against the union and the register", () => {
       application: "stalwart",
       surface: "smtp",
       address: "stalwart:587",
-      target: "mail.example",
+      target: "stalwart-smtp.estate-system.svc.cluster.local",
     });
   });
 
@@ -4510,6 +4511,41 @@ describe("a replicated Process on a pool", () => {
     );
     expect(codes).not.toContain("E_NODE_ADDRESS_REPLICATED");
     expect(codes).not.toContain("E_CUTOVER_UNHONOURABLE");
+  });
+});
+
+// REQ-111 (docs/requirements.md): every surface an edge or a tier's
+// forward-auth names derives a Stable Address targeting its active Instance.
+describe("a Stable Address", () => {
+  const consumer = `${one(
+    serving(
+      "notes-api",
+      "        dependsOn:\n          - { application: notes-store, surface: store }\n",
+    ),
+  )}  - id: notes-store
+    processes:
+${serving("notes-store").replace("provides: { http: 8080 }", "provides: { store: 7000 }")}`;
+
+  it("is derived for each surface an edge names, targeting where its Instance serves", () => {
+    const result = resolve(consumer);
+    const addresses = result.ok ? result.value.stableAddresses : [];
+
+    expect(
+      addresses.find(({ name }) => name === "notes-store-store"),
+    ).toStrictEqual({
+      name: "notes-store-store",
+      target: "notes-store.notes-system.svc.cluster.local",
+      port: 7000,
+      consumers: ["notes"],
+    });
+  });
+
+  it("is not derived for a surface nothing names", () => {
+    const result = resolve(consumer);
+
+    expect(
+      (result.ok ? result.value.stableAddresses : []).map(({ name }) => name),
+    ).not.toContain("notes-api-http");
   });
 });
 

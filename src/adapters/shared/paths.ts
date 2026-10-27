@@ -15,6 +15,8 @@ export const SECRETS_DIRECTORY = `${ESTATE_DIRECTORY}/vso-secrets`;
 
 /** Where the Human Grants' bindings land: the platform's, and no Project's. */
 export const HUMAN_GRANTS_DIRECTORY = `${ESTATE_DIRECTORY}/human-grants`;
+/** Where the Stable Addresses live (spec/v1/16-dependencies.md#the-stable-address). */
+export const STABLE_ADDRESSES_DIRECTORY = `${ESTATE_DIRECTORY}/stable-addresses`;
 export const PRIORITY_CLASSES_DIRECTORY = `${ESTATE_DIRECTORY}/priority-classes`;
 
 export const projectDirectory = (project: string): string => `apps/${project}`;

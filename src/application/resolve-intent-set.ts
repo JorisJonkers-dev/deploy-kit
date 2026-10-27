@@ -2,6 +2,8 @@
 // (spec/v1/20-resolved-deployment.md): the set composed as checkIntentSet
 // composes it, the pinned inputs read and checked, and every project's
 // projections written. The hash arrives as a port; nothing here performs IO.
+import { resolveStableAddresses } from "../resolve/stable-addresses.ts";
+import type { ResolvedStableAddress } from "../model/stable-address.ts";
 import type { ResolvedNodeAgent } from "../model/node-agents.ts";
 import { resolveNodeAgents } from "../resolve/node-agents.ts";
 import { forwardAuthEndpoint } from "../model/runtime-profiles.ts";
@@ -74,6 +76,8 @@ export interface ResolvedSet {
   readonly nodeAgents: readonly ResolvedNodeAgent[];
   /** Each tier proxy whose tier names a forward-auth provider, and where the edge asks it. */
   readonly forwardAuths: readonly ResolvedForwardAuth[];
+  /** One Stable Address per surface an edge or a tier's forward-auth names. */
+  readonly stableAddresses: readonly ResolvedStableAddress[];
 }
 
 const NODE_CONTRACT = "node-contract.yml";
@@ -304,6 +308,7 @@ export function resolveIntentSet(
       catalogHomes: homes,
       ...(events === undefined ? {} : { events }),
       tierProxies: set.platform.tiers.map(({ traefik }) => traefik),
+      stableAddresses: resolveStableAddresses(set.projects, set.platform),
       nodeAgents: resolveNodeAgents(
         set.platform,
         set.nodeContract,
