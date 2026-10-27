@@ -186,6 +186,8 @@ spec:
           volumeMounts:
             - name: karakeep-data
               mountPath: /data
+            - name: karakeep-meili
+              mountPath: /meili_data
             - name: meilisearch-data
               mountPath: /meili_data
           readinessProbe:
@@ -287,6 +289,9 @@ spec:
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: karakeep-meili
+              mountPath: /meili_data
         - name: chrome
           image: ghcr.io/karakeep-app/karakeep-chrome@sha256:5b19bbb160e9ff60681a3abd97e1c4ec9f64212301410de658c3900ab7ef31e7
           env:
@@ -367,6 +372,9 @@ spec:
         - name: karakeep-data
           persistentVolumeClaim:
             claimName: karakeep-data
+        - name: karakeep-meili
+          persistentVolumeClaim:
+            claimName: karakeep-meili
         - name: meilisearch-data
           persistentVolumeClaim:
             claimName: meilisearch-data

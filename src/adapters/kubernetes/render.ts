@@ -429,22 +429,33 @@ function volumesOf(process: ResolvedProcess): Volume[] {
 }
 
 /**
- * A container beside the Process, under the same posture, the same variables
- * and the same file grants: a grant is the Process's, and every container of
- * its pod is the Process.
+ * A container beside the Process, or before it, under the same posture, the
+ * same variables and the same file grants: a grant is the Process's, and every
+ * container of its pod is the Process. It mounts the Process's volumes it
+ * names, each where it says, and the Process's writable paths.
  */
 function sidecarOf(
   sidecar: NonNullable<ResolvedProcess["sidecars"]>[number],
-  env: readonly EnvVar[],
-  files: readonly VolumeMount[],
+  process: ResolvedProcess,
 ): Container {
+  const env = envOf(process);
+  const mounts = [
+    // A sidecar that names no volume and one with an empty list mount none alike.
+    // Stryker disable next-line ArrayDeclaration
+    ...(sidecar.volumes ?? []).map(({ claim, mountAt }) => ({
+      name: claim,
+      mountPath: mountAt,
+    })),
+    ...writableMountsOf(process),
+    ...fileMountsOf(process),
+  ];
   return {
     name: sidecar.name,
     image: sidecar.image,
     ...(env.length === 0 ? {} : { env }),
     resources: resourcesOf(sidecar.memory, sidecar.cpu),
     securityContext: RESTRICTED,
-    ...(files.length === 0 ? {} : { volumeMounts: files }),
+    ...(mounts.length === 0 ? {} : { volumeMounts: mounts }),
   };
 }
 
@@ -630,6 +641,15 @@ function podTemplateOf(
 ): PodTemplate {
   const labels = labelsOf(process, application.id);
   const volumes = volumesOf(process);
+  // A missing list and an empty one hold no sidecar alike.
+  // Stryker disable next-line ArrayDeclaration
+  const sidecars = process.sidecars ?? [];
+  const initContainers = [
+    ...(process.vpn === undefined ? [] : [vpnContainerOf(process.vpn)]),
+    ...sidecars
+      .filter(({ init }) => init === true)
+      .map((sidecar) => sidecarOf(sidecar, process)),
+  ];
   return {
     metadata: podMetadataOf(
       {
@@ -688,18 +708,14 @@ function podTemplateOf(
         seccompProfile: { type: "RuntimeDefault" },
       },
       affinity: affinityOf(process),
-      ...(process.vpn === undefined
-        ? {}
-        : { initContainers: [vpnContainerOf(process.vpn)] }),
+      // The VPN starts first and stays, so a step before the Process already
+      // reaches out through it.
+      ...(initContainers.length === 0 ? {} : { initContainers }),
       containers: [
         containerOf(process),
-        // Stryker disable next-line ArrayDeclaration
-        ...(process.sidecars ?? []).map((sidecar) =>
-          sidecarOf(sidecar, envOf(process), [
-            ...writableMountsOf(process),
-            ...fileMountsOf(process),
-          ]),
-        ),
+        ...sidecars
+          .filter(({ init }) => init === undefined)
+          .map((sidecar) => sidecarOf(sidecar, process)),
       ],
       ...(volumes.length === 0 ? {} : { volumes }),
     },

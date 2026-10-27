@@ -5000,3 +5000,69 @@ describe("a tier's address", () => {
     ).toStrictEqual([]);
   });
 });
+
+// REQ-114 (docs/requirements.md): a sidecar mounts the Process's volumes it
+// names, and one marked init runs to completion before the Process starts.
+describe("a sidecar", () => {
+  const STORING = `        cutover: interrupted
+        volumes:
+          - { claim: notes-data, mountAt: /data, size: 1Gi, durability: reconstructible }
+        sidecars:
+          - name: clone
+            image: notes-api
+            memory: 32Mi
+            cpu: 10m
+            init: true
+            volumes: [{ claim: notes-data, mountAt: /work }]
+          - name: sync
+            image: notes-api
+            memory: 32Mi
+            cpu: 10m
+`;
+  const storing = (sidecars = STORING) =>
+    one(
+      serving("notes-api").replace("        cutover: continuous\n", sidecars),
+    );
+
+  it("carries the volumes it names, and whether it runs before the Process", () => {
+    const [clone, sync] = processOf(storing()).sidecars ?? [];
+
+    expect(clone).toMatchObject({
+      name: "clone",
+      init: true,
+      volumes: [{ claim: "notes-data", mountAt: "/work" }],
+    });
+    expect(sync).not.toHaveProperty("init");
+    expect(sync).not.toHaveProperty("volumes");
+  });
+
+  it("is refused a volume its Process does not declare", () => {
+    const result = resolve(
+      storing(
+        STORING.replace(
+          "claim: notes-data, mountAt: /work",
+          "claim: elsewhere, mountAt: /work",
+        ),
+      ),
+    );
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, path, message, hint }) => ({
+            code,
+            path,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_UNKNOWN_SIDECAR_VOLUME",
+        path: "/applications/0/processes/0/sidecars/0/volumes/0",
+        message:
+          "sidecar clone mounts elsewhere, and this Process declares no volume of that claim",
+        hint: "Mount a claim the Process declares in its own `volumes`, or declare the volume on the Process.",
+      },
+    ]);
+  });
+});

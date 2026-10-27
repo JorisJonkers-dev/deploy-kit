@@ -186,7 +186,8 @@ export interface PodSpec {
   readonly priorityClassName?: string;
   readonly affinity?: NodeAffinity & Partial<PodAntiAffinity>;
   /** The VPN beside an attached Process, started before it and kept running. */
-  readonly initContainers?: readonly VpnContainer[];
+  /** The VPN, which runs beside the pod, and each step that runs to completion before it. */
+  readonly initContainers?: readonly (VpnContainer | Container)[];
   readonly containers: readonly Container[];
   readonly volumes?: readonly Volume[];
 }

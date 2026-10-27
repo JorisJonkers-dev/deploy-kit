@@ -179,11 +179,20 @@ applications:
           memory: 1Gi
           cpu: 500m
           site: frankfurt
+        # git-sync clones the vault before the server starts, then pushes
+        # what the server writes; each mounts the vault it works in.
         sidecars:
+          - name: git-clone
+            image: basic-memory-git-sync
+            memory: 64Mi
+            cpu: 50m
+            init: true
+            volumes: [{ claim: basic-memory-vault, mountAt: /vault }]
           - name: git-sync
             image: basic-memory-git-sync
             memory: 64Mi
             cpu: 50m
+            volumes: [{ claim: basic-memory-vault, mountAt: /vault }]
         secrets:
           # The deploy key git-sync pushes with, as a file SSH accepts. A file
           # grant is mounted into every container of the pod. SSH reads the
@@ -235,10 +244,12 @@ applications:
           cpu: 200m
           site: frankfurt
         sidecars:
+          # The search index, which meilisearch alone writes.
           - name: meilisearch
             image: meilisearch
             memory: 256Mi
             cpu: 100m
+            volumes: [{ claim: karakeep-meili, mountAt: /meili_data }]
           - name: chrome
             image: karakeep-chrome
             memory: 512Mi
@@ -273,6 +284,11 @@ applications:
             mountAt: /data
             size: 50Gi
             durability: recoverable
+          # The search index rebuilds from the bookmarks.
+          - claim: karakeep-meili
+            mountAt: /meili_data
+            size: 5Gi
+            durability: reconstructible
           - claim: meilisearch-data
             mountAt: /meili_data
             size: 20Gi
