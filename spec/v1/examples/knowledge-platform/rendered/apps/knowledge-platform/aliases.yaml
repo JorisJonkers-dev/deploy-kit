@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
 spec:
   type: ExternalName
-  externalName: garage.data-system.svc.cluster.local
+  externalName: platform-garage-s3.estate-system.svc.cluster.local
 ---
 apiVersion: v1
 kind: Service

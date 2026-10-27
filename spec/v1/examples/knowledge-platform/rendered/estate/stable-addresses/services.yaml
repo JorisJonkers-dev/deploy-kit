@@ -29,6 +29,19 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: platform-garage-s3
+  namespace: estate-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  type: ExternalName
+  externalName: garage.data-system.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: platform-postgres-postgres
   namespace: estate-system
   labels:
