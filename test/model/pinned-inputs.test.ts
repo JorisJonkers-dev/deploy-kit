@@ -195,7 +195,7 @@ describe("the ClusterState snapshot", () => {
     ).toBe(false);
   });
 
-  it("records how each Rollback's backup Job ended, and only that it succeeded or failed", () => {
+  it("refuses a Rollback's backup, which a Rollback no longer takes", () => {
     const ended = {
       request: "38526643693",
       project: "data",
@@ -205,19 +205,7 @@ describe("the ClusterState snapshot", () => {
     };
 
     expect(clusterState.safeParse({ ...STATE, backups: [ended] }).success).toBe(
-      true,
+      false,
     );
-    expect(
-      clusterState.safeParse({
-        ...STATE,
-        backups: [{ ...ended, outcome: "running" }],
-      }).success,
-    ).toBe(false);
-    expect(
-      clusterState.safeParse({
-        ...STATE,
-        backups: [{ ...ended, finishedAt: undefined }],
-      }).success,
-    ).toBe(false);
   });
 });

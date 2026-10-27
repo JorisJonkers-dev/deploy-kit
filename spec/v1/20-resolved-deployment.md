@@ -545,7 +545,6 @@ the snapshot. Nothing reads the live cluster.
 | PersistentVolume bindings, with the node holding each | recording where a Process's data already sits; `E_DISK_BINDING_CONFLICT` where a declared `disk` dimension contradicts the binding and the Process's engine has no move method |
 | current placements | detecting a move before it is rendered |
 | each engine Process's active Instance: its version, namespace and node, and for an open Move, its phase and when its flip held | deriving a [Move](#the-move), and retiring its source |
-| each Rollback's one-shot backup `Job`: the request it ran for, its Project, and whether it succeeded or failed, and when | the rollback workflow, which moves a pin only once every Job of its request succeeded ([chapter 55](55-delivery.md#pause-and-rollback)) |
 
 **What a node can hold is not on that list.** `allocatable`, `site`, `arch`,
 `gpus[]` and `disks[]` are *declared* platform facts: authored once per node and
@@ -588,8 +587,6 @@ bindings:   [{claim: postgres-data, node: enschede-t1000-1}]
 placements: [{process: postgres, node: enschede-t1000-1}]
 instances:
   - {application: platform-postgres, instance: postgres, version: 17.2.0, namespace: data-system, node: enschede-t1000-1}
-backups:
-  - {request: "38526643693", project: data, job: postgres-data-backup-38526643693, outcome: succeeded, finishedAt: "2026-09-30T00:20:00Z"}
 ```
 
 `instances` is what the Release Gate records as serving, read by the Collector
@@ -597,13 +594,6 @@ from the gate's own record ([chapter 55](55-delivery.md#moves)); an open Move
 adds its `phase`, the [step](14-platform-intent.md#move-methods) it is at
 (`sync`, `lag`, `fence`, `unfence`, `reverse` or `retire`), and, once the flip
 has held, `flippedAt`.
-
-`backups` is optional, and lists each finished Job carrying the label
-`estate.jorisjonkers.dev/rollback-backup`: its value is the `request`, and the
-Job's namespace names its `project`. A Rollback takes no backup of its own any
-longer ([chapter 55](55-delivery.md#pause-and-rollback)), so nothing renders such
-a Job and nothing reads the list. The schema accepts it until the Collector
-stops writing it.
 
 `capturedAt` is written quoted, as every value carrying a colon is in the
 documents the model reads. It is when the Collector first captured these facts, not when it last

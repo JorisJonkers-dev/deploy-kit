@@ -97,9 +97,9 @@ Becomes expensive once the dashboard and notifications read the annotations.
   `testedAgainst`, paid by whoever wants an older one: they fix forward.
 - A Rollback can lose the writes since its Project's last scheduled backup,
   paid by whoever rolls back; a stricter Durability Class narrows the gap.
-- The pin annotation `rollback-backup` and the cluster state's `backups` are
-  still accepted, and read by nothing, until the estate's Rollback workflow and
-  the Collector stop writing them; dropping them is the maintainer's
-  follow-up, with that workflow change.
+- A pin still carrying `rollback-backup`, or a snapshot still listing
+  `backups`, is refused by its schema, paid by whoever wrote it: the Rollback
+  workflow and the Collector stopped writing both before their schemas dropped
+  them.
 - A rolled-back Project stays paused until a human resumes it, so a forgotten
   Pause holds the Project back; the Pause's notification is the reminder.
