@@ -359,7 +359,8 @@ const internetEgress = z
 const resolvedApiAccess = z
   .strictObject({
     reason: text,
-    rules: z.array(resolvedApiRule).min(1),
+    // Empty where the Process holds nothing of its own and only reaches the API.
+    rules: z.array(resolvedApiRule),
     server: z.array(destinationRange).min(1),
   })
   .meta({ id: "ResolvedApiAccess" });

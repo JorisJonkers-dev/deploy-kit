@@ -244,7 +244,7 @@ delivery:
 apiAccess:
   holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter, edge/external-dns, secrets/vault-secrets-operator, observability/prometheus-operator, observability/kube-state-metrics, observability/grafana-operator, observability/gatus, observability/alloy]
   # Admitted to their own namespace alone: no privileged role, so no foundation.
-  namespaceHolders: [agents/agents-api]
+  namespaceHolders: [agents/agents-api, utility/headlamp]
   server:
     - { cidr: 10.43.0.1/32, port: 443 }
 

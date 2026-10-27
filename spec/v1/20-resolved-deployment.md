@@ -2335,7 +2335,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..1" InternetEgress : internetEgress
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
     ResolvedProcess "1" *-- "0..1" ResolvedApiAccess : api
-    ResolvedApiAccess "1" *-- "1..*" ResolvedApiRule : rules
+    ResolvedApiAccess "1" *-- "0..*" ResolvedApiRule : rules
     BackupPlan "1" *-- "0..1" OffClusterPlan : offCluster
     BackupPlan "1" *-- "0..1" BackupPeer : peer
     BackupPlan "1" *-- "0..*" DestinationRange : destinations

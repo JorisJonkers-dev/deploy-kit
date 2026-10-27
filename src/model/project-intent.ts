@@ -310,7 +310,12 @@ const apiRule = z
   .meta({ id: "ApiRule" });
 
 const apiAccess = z
-  .strictObject({ reason: text, rules: z.array(apiRule).min(1) })
+  // No rules is a Process that reaches the API with its users' own tokens:
+  // it needs the way there and nothing of its own to hold.
+  .strictObject({
+    reason: text,
+    rules: z.array(apiRule).min(1).exactOptional(),
+  })
   .meta({ id: "ApiAccess" });
 
 // Where a Process reaches beyond its edges (spec/v1/16-dependencies.md#internet-egress):

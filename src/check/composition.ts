@@ -792,7 +792,9 @@ function projectRefusals(
       // Admitted to its namespace alone, a rule that reaches the cluster is
       // one the platform did not give.
       if (process.api !== undefined && !cluster && local)
-        for (const [r, rule] of process.api.rules.entries())
+        // Stryker disable next-line ArrayDeclaration: no rules and an empty
+        // list reach the cluster for nothing alike.
+        for (const [r, rule] of (process.api.rules ?? []).entries())
           if (rule.scope !== "namespace")
             refusals.push({
               code: "E_PROCESS_RBAC_GRANT",
