@@ -3717,13 +3717,25 @@ describe("a volume and what its class derives", () => {
         ? []
         : result.diagnostics
             .filter(({ code }) => code === "E_ENGINE_VERSION_MISSING")
-            .map(({ document, path }) => `${document} ${path}`);
+            .map(
+              ({ document, path, message, hint }) =>
+                `${document} ${path}: ${message} ${hint}`,
+            );
     };
 
     expect(refused("16")).toStrictEqual([
-      "minimal/notes.project.yml /applications/0/processes/0/image",
+      "minimal/notes.project.yml /applications/0/processes/0/image: notes-api records the version 16, and a Move of postgres reads major.minor.patch off it Lock the image from a release tagged major.minor.patch, so the lock records that version.",
     ]);
     expect(refused("16.4-alpine")).toHaveLength(1);
+    // The whole version is major.minor.patch, each part any number of digits.
+    expect(refused("16.4.0-alpine")).toHaveLength(1);
+    expect(refused("v16.4.0")).toHaveLength(1);
+    expect(refused("16.14.0")).toStrictEqual([]);
+    expect(refused("16.4.10")).toStrictEqual([]);
+    // An unlocked image reads no version: it is refused on its own.
+    expect(
+      codesOf(resolve(one(store("notes-unlocked")), { lock: versioned("16") })),
+    ).not.toContain("E_ENGINE_VERSION_MISSING");
     expect(refused("16.4.0")).toStrictEqual([]);
   });
 

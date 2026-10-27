@@ -152,8 +152,12 @@ function versionRefusals(
     Record<string, { readonly move?: unknown } | undefined>
   >;
   const locked = set.imagesLock.images[process.image];
+  // No engine names no entry, as an absent key does: the guard says so.
+  // Stryker disable next-line ConditionalExpression
   return process.engine === undefined ||
-    engines[process.engine]?.move === undefined ||
+    // E_NO_ENGINE_POLICY refused an engine the platform has no entry for.
+    (engines[process.engine] as { readonly move?: unknown }).move ===
+      undefined ||
     locked === undefined ||
     SEMVER.test(locked.version)
     ? []
