@@ -305,9 +305,7 @@ Their JSON Schema is
 Composition reads the annotations as an input: a Project carrying
 `paused-by` moves no pin, save that one carrying `rollback-fragment` is
 composed at that fragment and its pin moves to that render wherever it holds
-another. An earlier Rollback asked for a backup of its own with
-`estate.jorisjonkers.dev/rollback-backup`; the schema still accepts it, and
-composition reads nothing from it.
+another.
 A rewritten pin source keeps all of them. Resuming removes them all.
 
 ## Switchover

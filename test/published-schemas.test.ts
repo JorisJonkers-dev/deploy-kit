@@ -367,10 +367,6 @@ describe("the pin annotations", () => {
     ["a Project that is not paused", {}],
     ["a Pause", PAUSE],
     ["a Rollback, which is also a Pause", ROLLBACK],
-    [
-      "a Rollback's backup asked for, which is also a Pause",
-      { ...PAUSE, [PIN_ANNOTATIONS.rollbackBackup]: "38526643693" },
-    ],
   ])("hold %s", (_, annotations) => {
     expect(pinAnnotations.parse(annotations)).toStrictEqual(annotations);
     expect(valid(annotations)).toBe(true);
@@ -406,34 +402,21 @@ describe("the pin annotations", () => {
     ],
     ["an annotation of someone else's", { ...PAUSE, "example.com/x": "y" }],
     [
-      "a backup asked for without a Pause",
-      { [PIN_ANNOTATIONS.rollbackBackup]: "38526643693" },
-    ],
-    [
-      "a backup asked for beside the Rollback it precedes",
-      { ...ROLLBACK, [PIN_ANNOTATIONS.rollbackBackup]: "38526643693" },
-    ],
-    [
-      "a backup request no label value could carry",
-      { ...PAUSE, [PIN_ANNOTATIONS.rollbackBackup]: "run/38526643693" },
-    ],
-    [
-      "a backup request too long for the Job it names",
-      { ...PAUSE, [PIN_ANNOTATIONS.rollbackBackup]: "a".repeat(21) },
+      "a Rollback's own backup, which a Rollback no longer takes",
+      { ...PAUSE, "estate.jorisjonkers.dev/rollback-backup": "38526643693" },
     ],
   ])("refuse %s", (_, annotations) => {
     expect(pinAnnotations.safeParse(annotations).success).toBe(false);
     expect(valid(annotations)).toBe(false);
   });
 
-  it("are the six keys the spec names, under the estate's prefix", () => {
+  it("are the five keys the spec names, under the estate's prefix", () => {
     expect(Object.values(PIN_ANNOTATIONS)).toStrictEqual([
       "estate.jorisjonkers.dev/paused-by",
       "estate.jorisjonkers.dev/paused-at",
       "estate.jorisjonkers.dev/paused-reason",
       "estate.jorisjonkers.dev/rollback-version",
       "estate.jorisjonkers.dev/rollback-fragment",
-      "estate.jorisjonkers.dev/rollback-backup",
     ]);
   });
 });

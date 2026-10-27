@@ -13,19 +13,6 @@ const binding = z.strictObject({ claim: text, node: text });
 const placement = z.strictObject({ process: text, node: text });
 
 /**
- * A Rollback's one-shot backup Job, and how it ended
- * (spec/v1/55-delivery.md#pause-and-rollback): what the rollback workflow
- * waits on before it moves a pin.
- */
-const backup = z.strictObject({
-  request: text,
-  project: text,
-  job: text,
-  outcome: z.enum(["succeeded", "failed"]),
-  finishedAt: z.iso.datetime(),
-});
-
-/**
  * An engine Process's active Instance, as the Release Gate records it serving
  * (spec/v1/55-delivery.md#moves): its version, namespace and node, and for an
  * open Move the step it is at and when its flip held.
@@ -48,7 +35,6 @@ export const clusterState = z.strictObject({
   capturedAt: z.iso.datetime(),
   bindings: z.array(binding),
   placements: z.array(placement),
-  backups: z.array(backup).exactOptional(),
   instances: z.array(instance).exactOptional(),
 });
 

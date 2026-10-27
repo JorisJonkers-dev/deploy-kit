@@ -2940,7 +2940,7 @@ describe("composeEstate, for a Rollback", () => {
     ),
   };
 
-  it("renders no backup of its own, and nothing estate-scoped, for a pin that still asks for one", () => {
+  it("renders no backup of its own, and nothing estate-scoped, for a Project paused to roll back", () => {
     const first = compose({ platform: PLATFORM_HANDED_OVER });
     const asked = compose({
       platform: PLATFORM_HANDED_OVER,
@@ -2951,7 +2951,7 @@ describe("composeEstate, for a Rollback", () => {
       ),
       held: RELEASES,
       pins: pinned(first, {
-        data: { ...PAUSE, [PIN_ANNOTATIONS.rollbackBackup]: "38526643693" },
+        data: PAUSE,
       }),
       previous: { lock: first.lock, commit: hex("estate-commit", 40) },
     });
@@ -2961,7 +2961,7 @@ describe("composeEstate, for a Rollback", () => {
         .flatMap(({ files }) => files.map(({ path }) => path))
         .filter(
           (path) =>
-            path.includes("backup-38526643693") ||
+            path.includes("rollback-backup") ||
             path.startsWith("estate/rollback-backups/"),
         ),
     ).toStrictEqual([]);
