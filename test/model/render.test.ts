@@ -261,6 +261,26 @@ describe("renderIntentSet", () => {
     });
   });
 
+  // REQ-111 (docs/requirements.md): a Stable Address is delivered with every
+  // Project that resolves it, even where another one rendered elsewhere does too.
+  it("delivers a Stable Address one rendered Project resolves, though another Project resolves it as well", () => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        "auth/auth.project.yml",
+        "auth/env/auth-api/base.env",
+        "auth/migration-proof.yml",
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({ name, text: text(name) })),
+      { ...OPTIONS, projects: ["auth"] },
+    );
+    const estate = asTree(artifact(result.ok ? result.value : [], "_estate"));
+
+    expect(estate["estate/stable-addresses/services.yaml"]).toContain(
+      "name: platform-postgres-postgres",
+    );
+  });
+
   // documents of the render it belongs to, and is named by their digest.
   describe("the Vault policy job", () => {
     // A self grant needs its Process to wire its own Vault client.
@@ -2924,7 +2944,7 @@ describe("the forward-auth Middleware", () => {
     expect(forwardAuth()).toStrictEqual({
       forwardAuth: {
         address:
-          "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+          "http://identity-http.estate-system.svc.cluster.local:8080/gate/forward",
         trustForwardHeader: true,
       },
     });
@@ -2941,34 +2961,48 @@ describe("the forward-auth Middleware", () => {
     ).toStrictEqual({
       forwardAuth: {
         address:
-          "http://identity.identity-system.svc.cluster.local:8080/gate/forward",
+          "http://identity-http.estate-system.svc.cluster.local:8080/gate/forward",
         trustForwardHeader: true,
         authResponseHeaders: ["X-User-Id", "X-User-Roles"],
       },
     });
   });
 
-  it("follows the provider where the handover ledger says the old path runs it", () => {
+  // REQ-111 (docs/requirements.md): the edge asks the provider's Stable
+  // Address, and only the Stable Address follows where the provider runs.
+  it("asks the provider's Stable Address, which follows the provider where the handover ledger says the old path runs it", () => {
+    const legacy = (document: string) =>
+      document
+        .replace(
+          "legacy: [auth, data, knowledge, notes]",
+          "legacy: [auth, data, identity, knowledge, notes]",
+        )
+        .replace(
+          "estate: [agents, delivery, edge, identity, ",
+          "estate: [agents, delivery, edge, ",
+        )
+        .replace(
+          "  serving:\n",
+          "  serving:\n    - application: identity\n      namespace: auth-system\n      instance: auth-api\n",
+        );
     const address = (
-      forwardAuth((document) =>
-        document
-          .replace(
-            "legacy: [auth, data, knowledge, notes]",
-            "legacy: [auth, data, identity, knowledge, notes]",
-          )
-          .replace(
-            "estate: [agents, delivery, edge, identity, ",
-            "estate: [agents, delivery, edge, ",
-          )
-          .replace(
-            "  serving:\n",
-            "  serving:\n    - application: identity\n      namespace: auth-system\n      instance: auth-api\n",
-          ),
-      ) as { forwardAuth: { address: string } }
+      forwardAuth(legacy) as { forwardAuth: { address: string } }
     ).forwardAuth.address;
+    const estate = asTree(
+      artifact(
+        render({ "platform/platform.intent.yml": legacy }, ["edge"]),
+        "_estate",
+      ),
+    );
 
     expect(address).toBe(
-      "http://auth-api.auth-system.svc.cluster.local:8080/gate/forward",
+      "http://identity-http.estate-system.svc.cluster.local:8080/gate/forward",
+    );
+    expect(estate["estate/stable-addresses/services.yaml"]).toContain(
+      "  name: identity-http\n",
+    );
+    expect(estate["estate/stable-addresses/services.yaml"]).toContain(
+      "externalName: auth-api.auth-system.svc.cluster.local\n",
     );
   });
 });

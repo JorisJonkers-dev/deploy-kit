@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
 spec:
   forwardAuth:
-    address: http://identity.identity-system.svc.cluster.local:8080/gate/forward
+    address: http://identity-http.estate-system.svc.cluster.local:8080/gate/forward
     trustForwardHeader: true
 ---
 apiVersion: traefik.io/v1alpha1

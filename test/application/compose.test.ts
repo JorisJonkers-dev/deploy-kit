@@ -1005,11 +1005,16 @@ describe("composeEstate", () => {
     expect(data).not.toContain("estate-");
     expect(data).not.toContain("apps-secrets");
     expect(data).not.toContain("apps-edge");
-    // Where no Project's render holds anything estate-scoped, there is no
-    // estate-scoped artifact at all.
+    // Where no Project's render holds anything else estate-scoped, the
+    // estate-scoped artifact holds only the Stable Addresses its Projects
+    // resolve.
     expect(
-      handingOver.artifacts.find(({ name }) => name === "_estate"),
-    ).toBeUndefined();
+      handingOver.artifacts
+        .find(({ name }) => name === "_estate")
+        ?.files.every(({ path }) =>
+          path.startsWith("estate/stable-addresses/"),
+        ),
+    ).toBe(true);
   });
 
   it("reaches a legacy Application where the handover ledger states it serves", () => {
@@ -1069,7 +1074,7 @@ describe("composeEstate", () => {
       }),
     ).toThrow("a held fragment the caller did not supply");
     // With no ledger, every Project is delivered, the delivery machinery too,
-    // and no estate-scoped artifact: every Project owns what it delivers.
+    // and the estate-scoped artifact holds the Stable Addresses they resolve.
     expect(
       compose({
         platform: {
@@ -1082,6 +1087,7 @@ describe("composeEstate", () => {
         },
       }).artifacts.map(({ name }) => name),
     ).toEqual([
+      "_estate",
       "data",
       "delivery",
       "edge",
@@ -1117,6 +1123,7 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     const { sources } = delivered();
 
     expect(sources.map(({ name, path }) => [name, path])).toStrictEqual([
+      ["_estate", "projects/_estate/source.yaml"],
       ["data", "projects/data/source.yaml"],
       ["delivery", "projects/delivery/source.yaml"],
       ["edge", "projects/edge/source.yaml"],
@@ -1125,8 +1132,13 @@ describe("composeEstate, for an artifact whose pin moves", () => {
       ["observability", "projects/observability/source.yaml"],
       ["secrets", "projects/secrets/source.yaml"],
     ]);
-    for (const { path, text: body } of sources)
-      expect(body, path).toBe(committed(path));
+    // The estate's source is committed for the Human Grants, which these
+    // releases render none of: here it holds the Stable Addresses' unit alone.
+    for (const { name, path, text: body } of sources)
+      if (name !== "_estate") expect(body, path).toBe(committed(path));
+    const estate = sources.find(({ name }) => name === "_estate")?.text ?? "";
+    expect(estate).toContain("  name: estate-stable-addresses\n");
+    expect(estate).toContain("  path: ./estate/stable-addresses\n");
     // Each is published where its source points: the estate's beside the
     // Projects' repository, since an OCI name cannot start with an underscore.
     expect(
@@ -1209,11 +1221,12 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     const amqp = at(release("notes", "1.1.0", consuming("amqp")));
     const management = at(release("notes", "1.2.0", consuming("management")));
 
-    // A consumer added, changed and removed moves itself alone, and leaves
-    // the provider's share byte for byte.
-    expect(moving(without, amqp)).toStrictEqual(["notes"]);
-    expect(moving(amqp, management)).toStrictEqual(["notes"]);
+    // A consumer added, changed and removed moves itself and the Stable
+    // Address it names, and leaves the provider's share byte for byte.
+    expect(moving(without, amqp)).toStrictEqual(["_estate", "notes"]);
+    expect(moving(amqp, management)).toStrictEqual(["_estate", "notes"]);
     expect(moving(amqp, at(release("notes", "1.3.0")))).toStrictEqual([
+      "_estate",
       "notes",
     ]);
     // A provider change that keeps its Surfaces moves no consumer.
@@ -1328,6 +1341,7 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     // No pin yet: every Project's source is a first delivery, the handover's.
     expect(recreating(withLegacyCatalog())).toContainEqual(["_estate", false]);
     expect(recreating(first)).toStrictEqual([
+      ["_estate", false],
       ["data", true],
       ["delivery", true],
       ["edge", true],
@@ -2254,20 +2268,18 @@ describe("composeEstate, for an artifact whose pin stays", () => {
   // removed once the estate-scoped artifact holds nothing, and kept while it
   // holds something.
   it("removes the estate-scoped source once the estate-scoped artifact holds nothing", () => {
-    const estate = withLegacyCatalog().sources.find(
-      ({ name }) => name === "_estate",
+    // The Projects resolve Stable Addresses, so the estate holds them.
+    expect(NAMES).toContain("_estate");
+
+    // Every Project handed back to the old path: no render holds anything,
+    // the estate's included, and its committed source goes with the rest.
+    const emptied = withPlatform(
+      (platform) =>
+        `${platform}handover:\n  retireBy: 2027-03-31\n  legacy: [${NAMES.filter((name) => name !== "_estate").join(", ")}]\n`,
+      settled,
     );
-    expect(estate).toBeDefined();
-    expect(NAMES).not.toContain("_estate");
 
-    const emptied = withPlatform((same) => same, {
-      ...settled,
-      sources: { ...settled.sources, _estate: estate?.text ?? "" },
-    });
-
-    expect(emptied.removedSources).toStrictEqual([
-      "projects/_estate/source.yaml",
-    ]);
+    expect(emptied.removedSources).toContain("projects/_estate/source.yaml");
     expect(emptied.sources).toStrictEqual([]);
   });
 
@@ -2826,7 +2838,12 @@ describe("composeEstate, for the route Flux's events take", () => {
     const handingOver = composed(LEGACY, true);
 
     expect(events(handingOver, "data")).not.toStrictEqual([]);
-    expect(filesOf(handingOver, "_estate")).toStrictEqual([]);
+    // Nothing estate-scoped but the Stable Addresses its Projects resolve.
+    expect(
+      filesOf(handingOver, "_estate").filter(
+        ({ path }) => !path.startsWith("estate/stable-addresses/"),
+      ),
+    ).toStrictEqual([]);
   });
 });
 
@@ -2841,8 +2858,13 @@ describe("composeEstate, for the catalog of a datastore the old path runs", () =
     expect(estate?.files.map(({ path }) => path)).toContain(
       "estate/vso-secrets/postgres-catalog.yaml",
     );
+    // The catalog alone, beside the Stable Addresses its Projects resolve.
     expect(
-      estate?.files.every(({ path }) => path.startsWith("estate/vso-secrets/")),
+      estate?.files.every(
+        ({ path }) =>
+          path.startsWith("estate/vso-secrets/") ||
+          path.startsWith("estate/stable-addresses/"),
+      ),
     ).toBe(true);
     expect(
       composed.sources.find(({ name }) => name === "_estate")?.text,
@@ -2873,7 +2895,11 @@ describe("composeEstate, for the Human Grants", () => {
     const composed = compose({ platform: granting(PLATFORM) });
     const estate = composed.artifacts.find(({ name }) => name === "_estate");
 
-    expect(estate?.files.map(({ path }) => path)).toStrictEqual([
+    expect(
+      estate?.files
+        .map(({ path }) => path)
+        .filter((path) => !path.startsWith("estate/stable-addresses/")),
+    ).toStrictEqual([
       "estate/human-grants/clusterrolebindings.yaml",
       "estate/human-grants/kustomization.yaml",
     ]);
