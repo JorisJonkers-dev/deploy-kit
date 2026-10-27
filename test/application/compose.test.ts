@@ -27,6 +27,7 @@ import {
   type Rollout,
 } from "../../src/model/rollout.ts";
 import { serialize, sha256Hasher } from "../../src/index.ts";
+import { compositionLock } from "../../src/model/composition-lock.ts";
 
 const EXAMPLES = join(
   import.meta.dirname,
@@ -520,6 +521,34 @@ describe("composeEstate", () => {
         discord: "notes 1.1.0 isolated: E_UNKNOWN_SURFACE",
       },
     ]);
+  });
+
+  // deploy-kit#671: a lock that recorded a schema refusal stopped every
+  // composition after it, which could not read it back.
+  it("writes a lock the next composition reads, though a fragment it isolated was refused by its schema", () => {
+    const unreadable = release(
+      "notes",
+      "1.1.0",
+      (body) => `${body}unknown: field\n`,
+    );
+    const composed = after({
+      fragments: RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "notes" ? unreadable : fragment,
+      ),
+    });
+    expect(composed.lock.spec.isolated).toEqual({
+      notes: { refused: unreadable.ref, codes: ["schema"] },
+    });
+
+    // What the composition workflow writes and the next run reads.
+    const written = JSON.parse(JSON.stringify(composed.lock)) as unknown;
+    const read = compositionLock.parse(written);
+    const next = compose({
+      held: [...RELEASES, unreadable],
+      pins: pinned(composed),
+      previous: { lock: read, commit: hex("estate-commit-2", 40) },
+    });
+    expect(next.lock.spec.previousLockDigest).toBe(sha256Hasher(read));
   });
 
   // deploy-kit#559: a Project released on its own never fails the run for

@@ -5492,6 +5492,19 @@ describe("a tier's address", () => {
       ),
     ).toStrictEqual([]);
   });
+
+  it("derives nothing on a proxy whose Processes provide no surface its listener answers", () => {
+    const proxy = applicationNamed("traefik-lan");
+    expect(
+      tierExposuresOf(platform.value.document, "edge", {
+        ...proxy,
+        processes: proxy.processes.map((process) => ({
+          ...process,
+          provides: { http: 8080 },
+        })),
+      }),
+    ).toStrictEqual([]);
+  });
 });
 
 // REQ-114 (docs/requirements.md): a sidecar mounts the Process's volumes it
