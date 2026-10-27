@@ -2281,6 +2281,19 @@ describe("composeEstate, for an artifact whose pin stays", () => {
 
     expect(emptied.removedSources).toContain("projects/_estate/source.yaml");
     expect(emptied.sources).toStrictEqual([]);
+
+    // A Project still delivered that resolves no Stable Address leaves the
+    // estate-scoped artifact empty, and its source goes all the same.
+    const alone = withPlatform(
+      (platform) =>
+        `${platform}handover:\n  retireBy: 2027-03-31\n  legacy: [${NAMES.filter((name) => name !== "_estate" && name !== "secrets").join(", ")}]\n  estate: [secrets]\n`,
+      settled,
+    );
+
+    expect(alone.artifacts.map(({ name }) => name)).toContain("secrets");
+    expect(alone.removedSources).toStrictEqual([
+      "projects/_estate/source.yaml",
+    ]);
   });
 
   it("removes no source while every committed one names an artifact that holds something", () => {
