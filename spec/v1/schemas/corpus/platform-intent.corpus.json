@@ -7,6 +7,31 @@
       "file": "examples/platform/platform.intent.yml"
     },
     {
+      "name": "Flux's metrics on a port no socket has",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/bootstrap/flux/metrics/port",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "Flux's metrics with no path",
+      "verdict": "refuse",
+      "breaks": "missing-required",
+      "file": "examples/platform/platform.intent.yml",
+      "patch": [
+        {
+          "op": "remove",
+          "path": "/bootstrap/flux/metrics/path"
+        }
+      ]
+    },
+    {
       "name": "a field the model does not have",
       "verdict": "refuse",
       "breaks": "unknown-field",

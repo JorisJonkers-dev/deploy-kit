@@ -3896,3 +3896,140 @@ describe("the declared foundation", () => {
     expect(JSON.stringify(objects)).not.toContain("hostNetwork");
   });
 });
+
+// REQ-118 (docs/requirements.md): the metrics stack scrapes Flux's
+// controllers where the Platform document records their metrics, and reaches
+// every scrape port, and nothing more, through its own policy.
+describe("the metrics stack's scrapes", () => {
+  const METRICS = "    metrics: {port: 8080, path: /metrics}\n";
+  const tree = (
+    edits?: Readonly<Record<string, (text: string) => string>>,
+  ): Record<string, string> =>
+    asTree(artifact(render(edits, ["observability"]), "observability"));
+  const objectsAt = (files: Record<string, string>, path: string) =>
+    parseAllDocuments(files[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+  type Policy = {
+    metadata: { name: string };
+    spec: {
+      egress?: {
+        to: { namespaceSelector?: unknown; podSelector?: unknown }[];
+        ports: { protocol: string; port: number }[];
+      }[];
+    };
+  };
+  const egressOf = (files: Record<string, string>, application: string) =>
+    (
+      objectsAt(
+        files,
+        `apps/observability/${application}/networkpolicy.yaml`,
+      ) as Policy[]
+    ).find(({ metadata }) => metadata.name === application)?.spec.egress ?? [];
+  const peers = (files: Record<string, string>, application: string) =>
+    egressOf(files, application).map(({ to }) => to[0]);
+
+  it("renders one PodMonitor of Flux's controllers in the metrics stack's own namespace, by their label and port number, at the platform's cadence", () => {
+    expect(
+      objectsAt(tree(), "apps/observability/prometheus/flux-podmonitor.yaml"),
+    ).toStrictEqual([
+      {
+        apiVersion: "monitoring.coreos.com/v1",
+        kind: "PodMonitor",
+        metadata: {
+          name: "flux-controllers",
+          namespace: "observability-system",
+          labels: {
+            release: "metrics-stack",
+            "app.kubernetes.io/part-of": "prometheus",
+            "app.kubernetes.io/managed-by": "deploy-kit",
+          },
+        },
+        spec: {
+          jobLabel: "app",
+          selector: { matchLabels: { "app.kubernetes.io/part-of": "flux" } },
+          namespaceSelector: { matchNames: ["flux-system"] },
+          podMetricsEndpoints: [
+            {
+              portNumber: 8080,
+              path: "/metrics",
+              interval: "30s",
+              scrapeTimeout: "10s",
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  it("admits the metrics stack to every scrape port where its Process runs, and to Flux's controllers on the recorded port alone", () => {
+    const egress = egressOf(tree(), "prometheus");
+
+    expect(
+      egress.map(({ to, ports }) => [to[0], ports.map(({ port }) => port)]),
+    ).toStrictEqual([
+      [
+        {
+          namespaceSelector: {
+            matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+          },
+        },
+        [53, 53],
+      ],
+      ...[
+        ["data-system", "postgres", 9187],
+        ["data-system", "rabbitmq", 15692],
+        ["delivery-system", "release-gate", 8080],
+        ["notes-system", "notes-api", 8080],
+      ].map(([namespace, instance, port]) => [
+        {
+          namespaceSelector: {
+            matchLabels: { "kubernetes.io/metadata.name": namespace },
+          },
+          podSelector: {
+            matchLabels: { "app.kubernetes.io/instance": instance },
+          },
+        },
+        [port, port],
+      ]),
+      [
+        {
+          namespaceSelector: {
+            matchLabels: { "kubernetes.io/metadata.name": "flux-system" },
+          },
+          podSelector: {
+            matchLabels: { "app.kubernetes.io/part-of": "flux" },
+          },
+        },
+        [8080, 8080],
+      ],
+    ]);
+  });
+
+  it("gives no other Process of the observability project a scrape's egress", () => {
+    for (const application of ["alertmanager", "otel-collector", "loki"])
+      expect(peers(tree(), application)).toStrictEqual([
+        {
+          namespaceSelector: {
+            matchLabels: { "kubernetes.io/metadata.name": "kube-system" },
+          },
+        },
+      ]);
+  });
+
+  it("renders no Flux monitor and admits no Flux controller where the Platform document records no metrics", () => {
+    const unrecorded = tree({
+      "platform/platform.intent.yml": (platform) =>
+        platform.replace(METRICS, ""),
+    });
+
+    expect(
+      Object.keys(unrecorded).filter((path) => path.includes("flux")),
+    ).toStrictEqual([]);
+    expect(
+      peers(unrecorded, "prometheus").filter((peer) =>
+        JSON.stringify(peer).includes("flux"),
+      ),
+    ).toStrictEqual([]);
+  });
+});

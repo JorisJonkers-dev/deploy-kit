@@ -33,7 +33,7 @@ spec:
         metadata:
           application: prometheus
           process: prometheus
-          revision: sha256:2e8a105e0d86dfd44e582952710d28ea2a651541e4e4334b348b18a40a81925b
+          revision: sha256:904cb3774e827615ec478ef7a96afd6585072222d4b9264d02477217341d7c32
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms
@@ -43,7 +43,7 @@ spec:
         metadata:
           application: prometheus
           process: prometheus
-          revision: sha256:2e8a105e0d86dfd44e582952710d28ea2a651541e4e4334b348b18a40a81925b
+          revision: sha256:904cb3774e827615ec478ef7a96afd6585072222d4b9264d02477217341d7c32
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms
@@ -53,7 +53,7 @@ spec:
         metadata:
           application: prometheus
           process: prometheus
-          revision: sha256:2e8a105e0d86dfd44e582952710d28ea2a651541e4e4334b348b18a40a81925b
+          revision: sha256:904cb3774e827615ec478ef7a96afd6585072222d4b9264d02477217341d7c32
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms
@@ -63,7 +63,7 @@ spec:
         metadata:
           application: prometheus
           process: prometheus
-          revision: sha256:2e8a105e0d86dfd44e582952710d28ea2a651541e4e4334b348b18a40a81925b
+          revision: sha256:904cb3774e827615ec478ef7a96afd6585072222d4b9264d02477217341d7c32
           readiness: /-/ready
           errorRate: 1%
           latency: 500ms

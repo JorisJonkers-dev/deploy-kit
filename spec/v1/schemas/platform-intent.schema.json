@@ -297,6 +297,9 @@
         },
         "artifacts": {
           "$ref": "#/$defs/RenderedArtifacts"
+        },
+        "metrics": {
+          "$ref": "#/$defs/FluxMetrics"
         }
       },
       "required": [
@@ -341,6 +344,25 @@
       "required": [
         "issuer",
         "subject"
+      ],
+      "additionalProperties": false
+    },
+    "FluxMetrics": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "port",
+        "path"
       ],
       "additionalProperties": false
     },

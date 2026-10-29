@@ -60,6 +60,9 @@
         "scrape": {
           "$ref": "#/$defs/ResolvedScrape"
         },
+        "fluxScrape": {
+          "$ref": "#/$defs/ResolvedFluxScrape"
+        },
         "dashboards": {
           "$ref": "#/$defs/ResolvedDashboards"
         },
@@ -329,6 +332,51 @@
       "required": [
         "process",
         "surface",
+        "path",
+        "interval",
+        "timeout"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedFluxScrape": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "interval": {
+          "type": "string",
+          "pattern": "^\\d+(ms|s|m|h)$"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^\\d+(ms|s|m|h)$"
+        },
+        "labels": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "minLength": 1
+          },
+          "additionalProperties": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "namespace",
+        "port",
         "path",
         "interval",
         "timeout"
@@ -810,7 +858,9 @@
       "enum": [
         "cluster-dns",
         "secret-store",
-        "datastore"
+        "datastore",
+        "scrape-target",
+        "flux-metrics"
       ]
     },
     "ResolvedExposure": {

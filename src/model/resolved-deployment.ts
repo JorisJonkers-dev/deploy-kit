@@ -74,11 +74,17 @@ export const INGRESS_RULES = [
   "release-gate",
 ] as const;
 
-/** Which rule admits an outbound peer beyond an edge: the baseline, or a grant. */
+/**
+ * Which rule admits an outbound peer beyond an edge: the baseline, a grant,
+ * or the metrics stack's scrape of a declared Process or of Flux's
+ * controllers, which a Flux peer selects by their label rather than a Process.
+ */
 export const EGRESS_RULES = [
   "cluster-dns",
   "secret-store",
   "datastore",
+  "scrape-target",
+  "flux-metrics",
 ] as const;
 
 /** What a gate member is analysed on beyond readiness, from its Runtime Profile. */
@@ -1024,6 +1030,20 @@ const resolvedScrape = z
   })
   .meta({ id: "ResolvedScrape" });
 
+// Flux's controllers, scraped by the metrics stack where the Platform document
+// records their metrics (spec/v1/14-platform-intent.md#fluxs-metrics): in
+// Flux's namespace, on that port and path, at the platform's cadence.
+const resolvedFluxScrape = z
+  .strictObject({
+    namespace: text,
+    port,
+    path: text,
+    interval: duration,
+    timeout: duration,
+    labels: z.record(text, text).exactOptional(),
+  })
+  .meta({ id: "ResolvedFluxScrape" });
+
 // A dashboard an Application ships, as Grafana keys it, with the data source
 // inputs a vendored file declares (spec/v1/10-project-intent.md#dashboards).
 const resolvedDashboard = z
@@ -1088,6 +1108,7 @@ const application = {
   alertRules: z.array(resolvedAlertRules).min(1).exactOptional(),
   alerting: resolvedAlerting.exactOptional(),
   scrape: resolvedScrape.exactOptional(),
+  fluxScrape: resolvedFluxScrape.exactOptional(),
   dashboards: resolvedDashboards.exactOptional(),
   // Absent on an `interrupted` Application: it stops before it starts, so no
   // switch waits on a gate (docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md).

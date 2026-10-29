@@ -4,6 +4,7 @@
 // backup plan admits, every peer and every port read off the projection.
 import type { ResolvedProject } from "../../model/resolution.ts";
 import { SPAWN_LABEL } from "../../model/spawn-label.ts";
+import { FLUX_CONTROLLERS } from "../../model/platform-intent.ts";
 import type {
   ResolvedApplicationDocument,
   ResolvedCatalogJob,
@@ -86,6 +87,12 @@ const membersPeer: PolicyPeer = {
 const fluxPeerOf = (namespace: string, controller: string): PolicyPeer => ({
   namespaceSelector: { matchLabels: namespaceSelector(namespace) },
   podSelector: { matchLabels: { app: controller } },
+});
+
+/** Every one of Flux's controllers, by the label Flux's own install gives them all. */
+const fluxControllersOf = (namespace: string): PolicyPeer => ({
+  namespaceSelector: { matchLabels: namespaceSelector(namespace) },
+  podSelector: { matchLabels: { ...FLUX_CONTROLLERS } },
 });
 
 type Mesh = ResolvedApplicationDocument["mesh"];
@@ -203,7 +210,11 @@ function policyOf(
     peer.rule === "gate-members"
       ? { to: [membersPeer] }
       : {
-          to: [peerOf(peer.namespace, peer.process)],
+          to: [
+            peer.rule === "flux-metrics"
+              ? fluxControllersOf(peer.namespace)
+              : peerOf(peer.namespace, peer.process),
+          ],
           ports: [
             { protocol: "UDP" as const, port: peer.port },
             tcp(peer.port),

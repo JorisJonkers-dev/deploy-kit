@@ -583,6 +583,8 @@ producer.
 | to the Secret Store | any grant in the Process's effective set | egress |
 | from the route tier carrying the audience | a route on the Application's `exposure` naming this Process | ingress |
 | from the metrics stack, to the scrape port | the Process's `scrape` surface | ingress |
+| to every scrape port | each Process of the metrics stack the Platform document's `telemetry.metrics` names: the Process every Application of the set names in its `scrape`, where it runs, on its scrape surface's port, the other side of the rule above | egress |
+| to Flux's controllers, on their metrics port | each Process of the metrics stack, where the Platform document records `bootstrap.flux.metrics` ([chapter 14](14-platform-intent.md#fluxs-metrics)): the pods the `app.kubernetes.io/part-of: flux` label Flux's install gives its controllers selects, in the namespace `bootstrap.flux.sourceRef` names, on that port alone | egress |
 | from the Process's own backup identity, to the surface its backups dump | the surface the Platform document's `engines` names for the Process's `engine` | ingress |
 | from the Release Gate, to a gate member's first surface | the Process being a member of its Application's release-gate inputs ([chapter 20](20-resolved-deployment.md#the-release-gate)), and the Platform document's `delivery.gate` naming the gate: every Process of the gate, on the port the member's Canary service targets, where the gate's own requests arrive ([chapter 55](55-delivery.md#the-release-gate)) | ingress |
 | to every pod carrying the member label, on any port | every Process of the Application the Platform document's `delivery.gate` names ([The member label](#the-member-label)) | egress |
@@ -664,7 +666,7 @@ declaration:
 | baseline rule | why it cannot be optional |
 |---|---|
 | **egress UDP/53 to the cluster DNS service**, in every policy carrying `Egress` in `policyTypes`, admitted by the namespace the Platform document's `substrate.clusterDns` names ([chapter 14](14-platform-intent.md#substrate-facts)) | once any egress policy selects a pod, all unmatched egress is denied, DNS included. The dead renderer generation shows the failure: `providerPolicy` (`src/deployment/render/networkpolicy.ts:86-102`) emits an egress rule to the provider's pod and nothing else, so the consumer cannot resolve the `svc.cluster.local` name the coordinate derivation just handed it, and fails with a DNS timeout diagnosed as "Postgres is down". TCP/53 rides the same rule, for truncated responses. |
-| **ingress from the metrics stack** to any declared scrape port | the same file omits it; a process that silently loses scrape stops alerting, which is the failure observability exists to prevent |
+| **ingress from the metrics stack** to any declared scrape port, and the metrics stack's **egress** to it | the same file omits it; a process that silently loses scrape stops alerting, which is the failure observability exists to prevent. Either side alone loses it: the metrics stack's own policy denies what the target's admits |
 
 A Process that serves DNS is the one exception to the DNS rule. It must keep
 answering while the cluster's DNS is down, so it resolves through the Platform

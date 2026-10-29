@@ -214,6 +214,7 @@ bootstrap:
         issuer: "https://token.actions.githubusercontent.com"
         subject: "https://github.com/JorisJonkers-dev/estate/.github/workflows/compose.yml@refs/heads/main"
       pullSecret: render-pull                # optional: the Secret a private repository is pulled with
+    metrics: {port: 8080, path: /metrics}    # optional: where Flux's controllers serve their metrics
   vault:
     unsealed: true                           # unseal is out of band
   crds:                                      # cluster-scoped schema, pinned
@@ -247,6 +248,26 @@ One entry is checked against what renders today: a `Client`
 ([chapter 17](17-sign-in.md#the-client)) applies only on a cluster that holds its
 kind, so an Application declaring `client` beside a set that does not list
 `identity.jorisjonkers.dev/v1` is `E_CLIENT_CRD_NOT_BOOTSTRAPPED` at composition.
+
+### Flux's metrics
+
+Flux is in the set, so no Process declares a scrape surface for it, and a
+scrape names a declared Process
+([chapter 10](10-project-intent.md#observability)). `flux.metrics` records
+instead the port and path Flux's controllers serve their metrics on, as Flux's
+own install sets them
+([0121](../../docs/adr/model/0121-flux-is-scraped-where-the-bootstrap-set-records-its-metrics.md)).
+Optional: absent, Flux is not scraped.
+
+Where it is set and the Platform document names a metrics stack
+([Telemetry](#telemetry)), the metrics stack's Project renders one
+`PodMonitor` in its own namespace. It selects Flux's controllers in the
+namespace `flux.sourceRef` names, by the `app.kubernetes.io/part-of: flux`
+label Flux's install gives them, on that port and path, at the platform's
+[monitor cadence](#monitor-cadence) and with its labels. The metrics stack's
+egress admits that port in that namespace and nothing wider
+([chapter 16](16-dependencies.md#the-derived-allow-set)). Flux's own install
+admits the scrape on its side, so nothing is rendered into Flux's namespace.
 
 ## The foundation is declared
 

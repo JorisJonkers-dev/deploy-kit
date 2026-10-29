@@ -6,5 +6,6 @@ resources:
   - alertrules.yaml
   - canary.yaml
   - configmap.yaml
+  - flux-podmonitor.yaml
   - serviceaccount.yaml
   - workload.yaml
