@@ -144,7 +144,8 @@ for line in body.split("\n"):
 # `resolves by name` edges and `Route -> Audience` all land between neighbours.
 TREES = {"10-project-intent": {
     "Project": ["Application"],
-    "Application": ["Migration", "Observability", "Process", "Exposure"],
+    "Application": ["Dashboard", "AlertRules", "Client", "Migration", "Observability", "Process",
+                    "Exposure", "L4Exposure"],
     "Observability": ["Scrape"],
     # No Shared Intent family is drawn. Eight of them at three levels each is
     # more relations than a reader can hold, and drawing them at one level

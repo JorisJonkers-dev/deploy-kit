@@ -3376,6 +3376,31 @@ classDiagram
         +string surface
         +Path path
     }
+    class L4Exposure {
+        +string address
+        +int port
+        +L4Protocol protocol
+        +string process
+        +string surface
+    }
+    class Dashboard {
+        +Path from
+    }
+    class AlertRules {
+        +Path from
+    }
+    class Client {
+        +SignInMode signIn
+        +ExposureName exposure
+        +string label
+        +string description
+        +Path iconPath
+        +Path launchPath
+        +Path[] redirectPaths
+        +Path protectedPath
+        +ClientCredential credential
+        +string[] roles
+    }
 
     Project "1" *-- "1..*" Application : applications
     Application "1" *-- "1..*" Process : processes
@@ -3395,6 +3420,10 @@ classDiagram
     ApiAccess "1" *-- "0..*" ApiRule : rules
 
     Application "1" *-- "0..*" Exposure : exposure
+    Application "1" *-- "0..*" L4Exposure : l4Exposure
+    Application "1" *-- "0..*" Dashboard : dashboards
+    Application "1" *-- "0..*" AlertRules : alertRules
+    Application "1" *-- "0..1" Client : client
     Exposure "1" *-- "1..*" Route : routes
     Route "1" *-- "0..1" RateLimit : rateLimit
     Route --> Surface : surface
