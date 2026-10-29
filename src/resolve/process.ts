@@ -250,7 +250,10 @@ function probesOf(
 /** The variables of the Process's one env file, or none where it has none. */
 const entriesFor = (
   files: readonly EnvFile[] | undefined,
-): readonly EnvVariable[] => files?.[0]?.entries ?? [];
+): readonly EnvVariable[] =>
+  // The lowering drops an empty list, so a list it keeps holds a file.
+  // Stryker disable next-line OptionalChaining
+  files?.[0]?.entries ?? [];
 
 /** `${secret:<path>#<key>}`: one key of a grant the Process holds, delivered `env`. */
 function secretOf(variable: EnvVariable, source: string): EnvEntry {

@@ -519,4 +519,12 @@ describe("one host on two tiers", () => {
   it("is claimed on no tier where no tier carries the audience", () => {
     expect(hosts(onTier("internal"))).toStrictEqual([]);
   });
+
+  it("is claimed on no tier by two exposures whose audience no tier carries", () => {
+    const nowhere = fragmentsOf("duplicate-host").map((file) => ({
+      ...file,
+      text: file.text.replace("audience: anonymous", "audience: internal"),
+    }));
+    expect(hosts(nowhere)).toStrictEqual([]);
+  });
 });

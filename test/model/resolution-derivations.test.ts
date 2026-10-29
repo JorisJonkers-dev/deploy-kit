@@ -3105,6 +3105,19 @@ ${serving("notes-other").replace("provides: { http: 8080 }", "provides: { store:
     expect(web?.consumes).toBeUndefined();
   });
 
+  it("labels a consumer by no edge to a Registered Unmanaged Surface, which reaches an address rather than a pod", () => {
+    expect(
+      processOf(
+        one(
+          serving(
+            "notes-api",
+            "        dependsOn:\n          - { application: stalwart, surface: smtp }\n",
+          ),
+        ),
+      ).consumes,
+    ).toBeUndefined();
+  });
+
   it("admits the metrics stack only on the scraped Process, and every Process of the stack", () => {
     const all = projects(`  - id: notes
     observability:

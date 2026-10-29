@@ -544,6 +544,9 @@ function applicationRefusals(
   // One Process's exposures on one address are one Service's ports, and a
   // Service carries a port and a protocol once.
   const dialled = new Set<string>();
+  // One entry is dialled once, so a lone stand-in for a missing list collides
+  // with nothing, as a missing list does not.
+  // Stryker disable next-line ArrayDeclaration
   for (const [index, entry] of (application.l4Exposure ?? []).entries()) {
     const key = JSON.stringify([
       entry.process,
