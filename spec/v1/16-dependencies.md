@@ -1329,15 +1329,14 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    X["exposure, on the Application:<br/>name: kb<br/>host: kb.jorisjonkers.dev<br/>audience: authenticated<br/>routes: 5"]
+    X["exposure, on the Application knowledge:<br/>name: kb<br/>host: kb.jorisjonkers.dev<br/>audience: authenticated<br/>routes: 5"]
 
     X --> H["host, carried through<br/>kb.jorisjonkers.dev"]
     X --> T["tier public-frankfurt<br/>+ forward-auth middleware<br/>derived from audience + tier"]
 
-    H --> A1["IngressRoute (host)"]
-    H --> A2["IngressRoute (mcp routes)"]
-    H --> A3["reachability channel entry"]
-    H --> A6["external checks ConfigMap, in the Project's own share"]
-    T --> A1
-    T --> A2
+    H --> A1["external checks ConfigMap (kubernetes)<br/>one check per route, in the Project's own share"]
+    H --> A2["Canary webhook metadata (kubernetes)<br/>the hosts the Release Gate requests through"]
+    H --> A3["IngressRoute set (traefik)<br/>route-kb.yaml, one rule per route"]
+    T --> A3
+    T --> A4["NetworkPolicy ingress (networking)<br/>from the tier's proxy, to each routed Process"]
 ```
