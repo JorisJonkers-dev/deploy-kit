@@ -657,6 +657,24 @@ required.
 on; which hostname reaches it, and on what path, is stated once on the Application
 ([Exposure](#exposure)).
 
+### Command and arguments
+
+```yaml
+- name: kubernetes-mcp-server
+  image: kubernetes-mcp-server
+  args: [--port=8080, --read-only]
+```
+
+A Process runs its image's own entrypoint with the image's own arguments,
+unless it says otherwise
+([0122](../../docs/adr/model/0122-a-process-may-name-its-command-and-arguments.md)).
+`args` replaces the image's arguments and `command` its entrypoint, each a
+list of literal words; a sidecar may declare both too. A word holds no
+placeholder, so nothing a grant holds or an edge derives reaches a process's
+arguments, which any reader of the process list sees: a value the image needs
+from those goes through its environment. Where the Process is a tier's proxy,
+the arguments its proxy configuration derives follow the authored ones.
+
 ### Kubernetes API access
 
 A Process that calls the Kubernetes API says what it asks of it, and why
@@ -1430,6 +1448,20 @@ and therefore contended
 Platform Intent carries one default that covers every case the estate has. There
 is no per-path restatement: a value reachable two ways has no single declaring
 site.
+
+**A path held in memory sizes itself**, because its size is memory, which is
+the Process's own and not contended node disk
+([0123](../../docs/adr/model/0123-a-writable-path-may-be-held-in-memory.md)):
+
+```yaml
+writablePaths: [/run, /tmp, {path: /dev/shm, memory: 1Gi}]
+```
+
+It derives an `emptyDir` in memory of that size, and the memory counts toward
+the Process: its request and limit include it, and so does eligibility, as a
+sidecar's memory does ([Eligibility sums](#sidecars)). A browser's shared
+memory at `/dev/shm` is the case it serves: the runtime's default is 64MB, and
+Chrome needs far more.
 
 Nothing is implicit. `/tmp` is not supplied unless it is declared (a mount
 nobody asked for would appear in every static image that never writes) and the

@@ -152,7 +152,10 @@ export type Volume =
     }
   | {
       readonly name: string;
-      readonly emptyDir: { readonly sizeLimit: string };
+      readonly emptyDir: {
+        readonly medium?: "Memory";
+        readonly sizeLimit: string;
+      };
     }
   | {
       readonly name: string;
@@ -231,6 +234,7 @@ export interface ContainerPort {
 export interface Container {
   readonly name: string;
   readonly image: string;
+  readonly command?: readonly string[];
   readonly args?: readonly string[];
   readonly ports?: readonly ContainerPort[];
   readonly env?: readonly EnvVar[];

@@ -60,8 +60,15 @@
           "minItems": 1,
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/MemoryPath"
+              }
+            ]
           }
         },
         "placement": {
@@ -394,6 +401,24 @@
       ],
       "additionalProperties": false
     },
+    "MemoryPath": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "path",
+        "memory"
+      ],
+      "additionalProperties": false
+    },
     "Placement": {
       "type": "object",
       "properties": {
@@ -590,8 +615,15 @@
           "minItems": 1,
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/MemoryPath"
+              }
+            ]
           }
         },
         "placement": {
@@ -954,6 +986,21 @@
           "type": "string",
           "minLength": 1
         },
+        "command": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "args": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "runtime": {
           "$ref": "#/$defs/Runtime"
         },
@@ -1061,8 +1108,15 @@
           "minItems": 1,
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "$ref": "#/$defs/MemoryPath"
+              }
+            ]
           }
         },
         "placement": {
@@ -1137,6 +1191,21 @@
         "image": {
           "type": "string",
           "minLength": 1
+        },
+        "command": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "args": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "memory": {
           "type": "string",

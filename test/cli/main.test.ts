@@ -50,6 +50,7 @@ const SET = [
   "minimal/env/notes-api/base.env",
   "delivery/delivery.project.yml",
   "agents/agents.project.yml",
+  "agents/env/hermes/base.env",
   "utility/utility.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
@@ -175,7 +176,7 @@ describe("deploy-kit validate", () => {
   it("accepts a set the checks accept", () => {
     expect(run("validate", ...SET)).toEqual({
       code: 0,
-      stdout: "accepted (12 read)\n",
+      stdout: "accepted (13 read)\n",
       stderr: "",
     });
   });

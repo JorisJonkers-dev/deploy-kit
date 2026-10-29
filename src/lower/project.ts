@@ -27,6 +27,7 @@ import {
   withoutShared,
 } from "../model/project-intent-queries.ts";
 import { serves } from "../model/vocabularies.ts";
+import { writablePathOf } from "../model/project-intent.ts";
 
 /** One level of the project file, with the env files its scope directory holds. */
 interface Level extends SharedIntent {
@@ -116,10 +117,11 @@ function lowerShared(
     levels.map((level) => level.assets),
     assetIdentity,
   );
-  // A path is its own whole value, so the union is the merge.
+  // A path is its own identity, so the union is the merge, and a lower level's
+  // declaration of a path is the one that holds.
   const writablePaths = mergeEntries(
     levels.map((level) => level.writablePaths),
-    (path) => path,
+    writablePathOf,
   );
   const env = envFor(levels);
   const startupBudget = lowest(levels.map((level) => level.startupBudget));

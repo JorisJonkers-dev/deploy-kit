@@ -59,15 +59,74 @@ spec:
       containers:
         - name: hermes
           image: docker.io/nousresearch/hermes-agent@sha256:64923faeae267792bf9bf87fe3b4c4869e35004e360c7df01730ad801b74d524
+          args:
+            - gateway
+            - run
           ports:
             - name: dashboard
               containerPort: 9119
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agents-hermes
+                  key: anthropic-api-key
+            - name: API_SERVER_ENABLED
+              value: "false"
+            - name: GITHUB_PAT
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agents-hermes
+                  key: github-pat
+            - name: HERMES_DASHBOARD
+              value: "1"
+            - name: HERMES_DASHBOARD_HOST
+              value: 0.0.0.0
+            - name: HERMES_DASHBOARD_OIDC_CLIENT_ID
+              value: hermes
+            - name: HERMES_DASHBOARD_OIDC_ISSUER
+              value: https://id.jorisjonkers.dev
+            - name: HERMES_DASHBOARD_OIDC_SCOPES
+              value: openid profile email
+            - name: HERMES_DASHBOARD_PORT
+              value: "9119"
+            - name: HERMES_DASHBOARD_PUBLIC_URL
+              value: https://hermes.jorisjonkers.dev
+            - name: HERMES_SKIP_CONFIG_MIGRATION
+              value: "false"
+            - name: HINDSIGHT_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agents-hermes
+                  key: hindsight-api-token
+            - name: MEMORY_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agents-hermes
+                  key: memory-api-key
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agents-hermes
+                  key: openai-api-key
+            - name: OPENROUTER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agents-hermes
+                  key: openrouter-api-key
+            - name: OVERLEAF_SESSION
+              valueFrom:
+                secretKeyRef:
+                  name: hermes-agents-hermes
+                  key: overleaf-session
+            - name: S6_YES_I_WANT_A_WORLD_WRITABLE_RUN_BECAUSE_KUBERNETES
+              value: "1"
           resources:
             requests:
-              memory: 2Gi
+              memory: 3Gi
               cpu: 250m
             limits:
-              memory: 2Gi
+              memory: 3Gi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -77,6 +136,12 @@ spec:
           volumeMounts:
             - name: hermes-data
               mountPath: /opt/data
+            - name: writable-run
+              mountPath: /run
+            - name: writable-tmp
+              mountPath: /tmp
+            - name: writable-dev-shm
+              mountPath: /dev/shm
           readinessProbe:
             httpGet:
               path: /api/status
@@ -104,3 +169,13 @@ spec:
         - name: hermes-data
           persistentVolumeClaim:
             claimName: hermes-data
+        - name: writable-run
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: writable-tmp
+          emptyDir:
+            sizeLimit: 64Mi
+        - name: writable-dev-shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi

@@ -27,6 +27,7 @@ import {
   sameDeclaration,
 } from "../model/project-intent-queries.ts";
 import { namespaceOf } from "../model/runtime-profiles.ts";
+import { writablePathOf } from "../model/project-intent.ts";
 import { RUNS_TO_COMPLETION, serves } from "../model/vocabularies.ts";
 import { consumedOf, isLabelName } from "../model/consumer-label.ts";
 
@@ -114,9 +115,11 @@ function duplicateRefusals(
   // The families with no object of their own share one refusal, at their level:
   // it is the object an invariant takes as its context, so a refusal each would
   // be several diagnostics at one pointer.
-  const paths = new Set(from((one) => one.writablePaths));
+  const paths = new Set(from((one) => one.writablePaths).map(writablePathOf));
   const restated = [
-    ...declared(level.writablePaths).filter((written) => paths.has(written)),
+    ...declared(level.writablePaths)
+      .map(writablePathOf)
+      .filter((written) => paths.has(written)),
     ...(level.startupBudget !== undefined &&
     above.some((one) => one.startupBudget === level.startupBudget)
       ? ["startupBudget"]

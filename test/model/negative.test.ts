@@ -37,6 +37,7 @@ const FOUNDATION: AuthoredFile[] = [
   "platform/cluster-state.yml",
   "delivery/delivery.project.yml",
   "agents/agents.project.yml",
+  "agents/env/hermes/base.env",
   "utility/utility.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",

@@ -12,6 +12,7 @@ import { libraryOf } from "./libraries.ts";
 import type { NodeContractDocument } from "./node-contract.ts";
 import type { PlatformIntentDocument } from "./platform-intent.ts";
 import { mebibytes, millicores } from "./quantities.ts";
+import { memoryPathsOf } from "./project-intent.ts";
 
 type Node = NodeContractDocument["nodes"][number];
 
@@ -39,7 +40,9 @@ function request(
       : [platform.vpn as NonNullable<PlatformIntentDocument["vpn"]>]),
   ];
   return {
-    memory: containers.reduce((sum, { memory }) => sum + mebibytes(memory), 0),
+    memory:
+      containers.reduce((sum, { memory }) => sum + mebibytes(memory), 0) +
+      memoryPathsOf(process.writablePaths, mebibytes),
     cpu: containers.reduce((sum, { cpu }) => sum + millicores(cpu), 0),
   };
 }

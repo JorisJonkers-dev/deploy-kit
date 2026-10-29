@@ -5794,3 +5794,96 @@ ${serving("notes-web", "        dependsOn:\n          - { application: nowhere, 
     ]);
   });
 });
+
+// REQ-119 (docs/requirements.md): a Process and a sidecar carry the command
+// and arguments they name, as written, and nothing in their place where they
+// name none.
+describe("what a Process runs", () => {
+  it("carries the command and arguments a Process and its sidecar name, as written", () => {
+    const process = processOf(
+      one(
+        serving(
+          "notes-api",
+          `        command: [/bin/notes]
+        args: [serve, --port=8080, ""]
+        sidecars:
+          - name: exporter
+            image: notes-api
+            command: [/bin/export]
+            args: [--listen=:9100]
+            memory: 16Mi
+            cpu: 5m
+`,
+        ),
+      ),
+    );
+
+    expect([process.command, process.args]).toStrictEqual([
+      ["/bin/notes"],
+      ["serve", "--port=8080", ""],
+    ]);
+    expect(
+      process.sidecars?.map(({ command, args }) => [command, args]),
+    ).toStrictEqual([[["/bin/export"], ["--listen=:9100"]]]);
+  });
+
+  it("carries no command and no arguments where a Process names neither", () => {
+    const process = processOf(one(serving("notes-api")));
+
+    expect("command" in process || "args" in process).toBe(false);
+  });
+
+  it("refuses an empty list and an empty command word, by the schema", () => {
+    for (const extra of [
+      "        args: []\n",
+      "        command: []\n",
+      '        command: [""]\n',
+    ])
+      expect(
+        codesOf(resolve(one(serving("notes-api", extra)))),
+      ).not.toStrictEqual([]);
+  });
+});
+
+// REQ-120 (docs/requirements.md): a writable path held in memory renders at its
+// own size and counts toward the Process's memory and the node it needs.
+describe("a writable path held in memory", () => {
+  const held = (memory: string, placement = "64Mi") =>
+    one(
+      serving(
+        "notes-api",
+        `        writablePaths: [/tmp, { path: /dev/shm, memory: ${memory} }]\n`,
+      ).replace("{ memory: 64Mi,", `{ memory: ${placement},`),
+    );
+
+  it("is sized by itself, and a path on disk at the platform's size", () => {
+    expect(processOf(held("1Gi")).writablePaths).toStrictEqual([
+      { path: "/tmp", size: "64Mi" },
+      { path: "/dev/shm", size: "1Gi", medium: "memory" },
+    ]);
+  });
+
+  it("adds its size to the Process's memory, in whole GiB where the sum is one", () => {
+    expect(processOf(held("1Gi", "2Gi")).memory).toBe("3Gi");
+    expect(processOf(held("512Mi")).memory).toBe("576Mi");
+    expect(processOf(one(serving("notes-api"))).memory).toBe("64Mi");
+  });
+
+  it("counts toward eligibility, so a path no node can hold beside the Process places it nowhere", () => {
+    expect(codesOf(resolve(held("1Ti")))).toContain(
+      "E_PLACEMENT_UNSATISFIABLE",
+    );
+    expect(codesOf(resolve(held("1Gi")))).toStrictEqual([]);
+  });
+
+  it("is one declaration of its path, whichever form each level writes it in", () => {
+    expect(
+      codesOf(
+        resolve(`  - id: notes
+    writablePaths: [/dev/shm]
+    processes:
+${serving("notes-api", "        writablePaths: [{ path: /dev/shm, memory: 1Gi }]\n")}`),
+      ),
+    ).toContain("E_SHARED_DECLARATION_DUPLICATED");
+  });
+});

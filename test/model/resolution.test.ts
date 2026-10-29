@@ -39,6 +39,7 @@ const MINIMAL_SET = [
   "minimal/env/notes-api/base.env",
   "delivery/delivery.project.yml",
   "agents/agents.project.yml",
+  "agents/env/hermes/base.env",
   "utility/utility.project.yml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
