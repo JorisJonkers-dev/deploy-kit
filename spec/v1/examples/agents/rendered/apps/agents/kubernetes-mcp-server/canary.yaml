@@ -1,0 +1,69 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: kubernetes-mcp-server
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/name: kubernetes-mcp-server
+    app.kubernetes.io/instance: kubernetes-mcp-server
+    app.kubernetes.io/part-of: kubernetes-mcp-server
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kubernetes-mcp-server
+  progressDeadlineSeconds: 180
+  service:
+    port: 8080
+    targetPort: mcp
+    portName: mcp
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: kubernetes-mcp-server
+          process: kubernetes-mcp-server
+          revision: sha256:c0c62bb065aa246801a2bde834660033cf92b63de5329a79b4caa0c435409d2a
+          readiness: /healthz
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: kubernetes-mcp-server
+          process: kubernetes-mcp-server
+          revision: sha256:c0c62bb065aa246801a2bde834660033cf92b63de5329a79b4caa0c435409d2a
+          readiness: /healthz
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: kubernetes-mcp-server
+          process: kubernetes-mcp-server
+          revision: sha256:c0c62bb065aa246801a2bde834660033cf92b63de5329a79b4caa0c435409d2a
+          readiness: /healthz
+          errorRate: 1%
+          latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: kubernetes-mcp-server
+          process: kubernetes-mcp-server
+          revision: sha256:c0c62bb065aa246801a2bde834660033cf92b63de5329a79b4caa0c435409d2a
+          readiness: /healthz
+          errorRate: 1%
+          latency: 500ms

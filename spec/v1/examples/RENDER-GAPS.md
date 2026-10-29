@@ -82,6 +82,26 @@ file.
 | K8 | **Left out: what is not one Process.** The ingest worker is parked at zero replicas and its copy Job is one-off; a Process has no zero and a one-off migration is no Process. LightRAG still runs in `knowledge-system`, so it stays with the `knowledge` example. Tracked as JorisJonkers-dev/deploy-kit#272. | knowledge-platform |
 | K9 | **A grant reaches every container of the pod.** A sidecar gets the Process's variables and file grants, so the vault deploy key is mounted into the MCP server as well as git-sync, and karakeep's three secrets reach meilisearch and the page-loading chrome sidecar. Live, each container gets only what it uses; no field scopes a grant to one container. Tracked as JorisJonkers-dev/deploy-kit#274. | basic-memory, karakeep |
 
+## The agents project
+
+[`agents/`](agents/agents.project.yml) is what runs live in fleet-infra's
+`agents-system` (`cluster/flux/apps/agents/` and `apps/stateless/agents-*` in
+JorisJonkers-dev/fleet-infra, at `64f25b0e`): hermes and kubernetes-mcp-server,
+with agents-api and agents-ui parked. It is declared as intent and rendered
+into [`agents/rendered/`](agents/rendered/). Every row is something the live
+manifests do that the declaration cannot say yet, and none of it is guessed at
+in the project file.
+
+| # | gap | seen in |
+|---|---|---|
+| A1 | **A Process takes no arguments.** hermes runs `gateway run`; kubernetes-mcp-server runs `--port=8080 --read-only`, without which it serves stdio and offers its write tools, refused then by its ClusterRole's verbs alone. Tracked as JorisJonkers-dev/deploy-kit#691. | hermes, kubernetes-mcp-server |
+| A2 | **An image that starts as root.** hermes starts as root with a writable root filesystem and five capabilities to fix its data directory's ownership, then drops to uid 10000, and its skills step runs as root; the posture runs it as 10000 from the start, which it has not been shown to run as (as K5 and K6). Tracked as JorisJonkers-dev/deploy-kit#692. | hermes |
+| A3 | **A config seeded onto the volume.** Two init steps copy `config.yaml` into hermes's data volume with the grant's values substituted, and install its skills, from three ConfigMaps, one of them executable scripts. An Asset is mounted read-only and may not be executable, so the steps and their files are left out; their contents are fleet-infra's. The grant's keys are read through the env file meanwhile. Tracked as JorisJonkers-dev/deploy-kit#693. | hermes |
+| A4 | **A host the DNS provider must not proxy.** hermes's public host is grey-cloud, resolving straight to the Frankfurt edge, because Cloudflare closes the dashboard's idle WebSocket; the render gives it the tier's `proxied: true`. Tracked as JorisJonkers-dev/deploy-kit#694. | hermes |
+| A5 | **A memory-backed `/dev/shm`.** hermes mounts 1Gi of memory at `/dev/shm` for the browser its tools drive; a writable path is disk at the platform's one ephemeral size, so it is not declared. Tracked as JorisJonkers-dev/deploy-kit#695. | hermes |
+| A6 | **Optional keys.** Each of hermes's seven keys is optional live, where a missing one disables one tool; the render reads every key as required, so one missing key keeps hermes from starting. Tracked as JorisJonkers-dev/deploy-kit#696. | hermes |
+| A7 | **One host split by path between two Applications.** `agents.jorisjonkers.dev` serves agents-ui but for `/api/`, which is agents-api's; a host on a tier is one exposure's (`E_DUPLICATE_HOST`), so agents-api's routes are left out while both are parked. Tracked as JorisJonkers-dev/deploy-kit#697. | agents-api, agents-ui |
+
 ## Missing inputs, not missing derivations
 
 **Discharged on 2026-09-08**: every input this section lists is a block of the

@@ -1,0 +1,51 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agents-ui
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/name: agents-ui
+    app.kubernetes.io/instance: agents-ui
+    app.kubernetes.io/part-of: agents-ui
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: static
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: agents-ui
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: edge-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: traefik-public
+      ports:
+        - protocol: TCP
+          port: 80
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/agents-ui.http: "true"
+      ports:
+        - protocol: TCP
+          port: 80
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

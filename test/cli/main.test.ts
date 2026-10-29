@@ -144,6 +144,7 @@ function pulled(): string {
         /\n {2}# Admitted to their own namespace alone[^\n]*\n {2}namespaceHolders: \[[^\]]*\]\n/,
         "\n",
       )
+      .replace(", agents/kubernetes-mcp-server]", "]")
       .replace(
         /\nhandover:\n(?: {2}.*\n)+/,
         "\nhandover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, delivery, edge, knowledge]\n  estate: [notes, observability, secrets]\n",

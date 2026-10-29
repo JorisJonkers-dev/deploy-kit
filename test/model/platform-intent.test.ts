@@ -461,6 +461,7 @@ describe("the foundation", () => {
 
   it("is every holder of a privileged role the worked platform names", () => {
     expect([...foundationOf(platformOf(WORKED))].sort()).toStrictEqual([
+      "agents/kubernetes-mcp-server",
       "delivery/collector",
       "delivery/flagger",
       "delivery/release-gate",
