@@ -43,7 +43,7 @@ const FOUNDATION: AuthoredFile[] = [
   "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
-  "identity/env/grafana/base.env",
+  "observability/env/grafana/base.env",
 ].map((name) => ({ name, text: readFileSync(join(EXAMPLES, name), "utf8") }));
 
 const fixtures = readdirSync(NEGATIVE)

@@ -5,15 +5,15 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { generateIdentityFile } from "../../src/application/generate-identity.ts";
 
-const IDENTITY = join(
+const OBSERVABILITY = join(
   import.meta.dirname,
   "..",
   "..",
   "spec",
   "v1",
   "examples",
-  "identity",
-  "identity.project.yml",
+  "observability",
+  "observability.project.yml",
 );
 
 describe("generateIdentityFile", () => {
@@ -22,8 +22,8 @@ describe("generateIdentityFile", () => {
       generateIdentityFile(
         [
           {
-            name: "identity.project.yml",
-            text: readFileSync(IDENTITY, "utf8"),
+            name: "observability.project.yml",
+            text: readFileSync(OBSERVABILITY, "utf8"),
           },
         ],
         { language: "go", application: "grafana" },

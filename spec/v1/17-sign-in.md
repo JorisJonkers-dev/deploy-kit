@@ -272,9 +272,10 @@ application's CI fails on a stale file. A project file that declares no
 `client`, a Platform document that names no `contract`, and a set in which
 several Applications declare one and `--application` names none each get no
 file and a message saying why; a document that does not check is refused with
-its diagnostics. The worked [identity](examples/identity/identity.project.yml)
-example's `grafana` is written in every language under
-[`examples/identity/generated/`](examples/identity/generated/).
+its diagnostics. The worked
+[observability](examples/observability/observability.project.yml) example's
+`grafana` is written in every language under
+[`examples/observability/generated/`](examples/observability/generated/).
 
 ## What is checked
 

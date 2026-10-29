@@ -27,7 +27,8 @@ const run = (...argv: string[]) => main(argv, WORLD);
 
 const PLATFORM = example("platform/platform.intent.yml");
 const IDENTITY = example("identity/identity.project.yml");
-const GRAFANA = ["--application", "grafana", PLATFORM, IDENTITY] as const;
+const OBSERVABILITY = example("observability/observability.project.yml");
+const GRAFANA = ["--application", "grafana", PLATFORM, OBSERVABILITY] as const;
 
 /** A scratch directory of the test's own. */
 const scratch = (): string => mkdtempSync(join(temporary(), "identity-"));
@@ -62,7 +63,7 @@ describe("deploy-kit generate identity", () => {
       expect(outcome).toStrictEqual({
         code: 0,
         stdout: readFileSync(
-          example(`identity/generated/grafana.${ext}`),
+          example(`observability/generated/grafana.${ext}`),
           "utf8",
         ),
         stderr: "",
@@ -81,7 +82,7 @@ describe("deploy-kit generate identity", () => {
       stderr: "",
     });
     expect(readFileSync(out, "utf8")).toBe(
-      readFileSync(example("identity/generated/grafana.go"), "utf8"),
+      readFileSync(example("observability/generated/grafana.go"), "utf8"),
     );
     expect(
       run(
@@ -157,9 +158,9 @@ describe("deploy-kit generate identity", () => {
       return outcome.stderr;
     };
 
-    // The identity example declares three Clients.
+    // The identity example declares two Clients.
     expect(unwritable(PLATFORM, IDENTITY)).toBe(
-      "grafana, portal, whoami each declare a client: name one with --application\n",
+      "portal, whoami each declare a client: name one with --application\n",
     );
     expect(unwritable("--application", "identity", PLATFORM, IDENTITY)).toBe(
       "identity declares no client, so there are no App Roles to generate\n",
@@ -174,18 +175,22 @@ describe("deploy-kit generate identity", () => {
       "platform.intent.yml",
       readFileSync(PLATFORM, "utf8").replace(/\n {2}contract: "1\.2"\n/, "\n"),
     );
-    expect(unwritable("--application", "grafana", uncontracted, IDENTITY)).toBe(
+    expect(
+      unwritable("--application", "grafana", uncontracted, OBSERVABILITY),
+    ).toBe(
       "the Platform document's sign-in provider names no contract version: set signIn.contract\n",
     );
     const signless = file(
       "platform.intent.yml",
       readFileSync(PLATFORM, "utf8").replace(/\nsignIn:\n( {2}.*\n)+/, "\n"),
     );
-    expect(unwritable("--application", "grafana", signless, IDENTITY)).toBe(
+    expect(
+      unwritable("--application", "grafana", signless, OBSERVABILITY),
+    ).toBe(
       "the Platform document's sign-in provider names no contract version: set signIn.contract\n",
     );
     expect(
-      unwritable("--application", "grafana", PLATFORM, PLATFORM, IDENTITY),
+      unwritable("--application", "grafana", PLATFORM, PLATFORM, OBSERVABILITY),
     ).toBe(
       "generate identity reads one Platform document, and was given several\n",
     );
@@ -225,7 +230,7 @@ describe("deploy-kit generate identity", () => {
         "--application",
       ).stderr,
     ).toBe(
-      "grafana, portal, whoami each declare a client: name one with --application\n",
+      "portal, whoami each declare a client: name one with --application\n",
     );
     expect(
       run(
@@ -236,7 +241,7 @@ describe("deploy-kit generate identity", () => {
         "--application",
         "grafana",
         PLATFORM,
-        IDENTITY,
+        OBSERVABILITY,
         "--package",
       ).stderr,
     ).toBe("a Kotlin identity file needs --package\n");
@@ -245,8 +250,8 @@ describe("deploy-kit generate identity", () => {
 
   it("refuses a document that does not check, as validate does, and names it", () => {
     const broken = file(
-      "identity.project.yml",
-      readFileSync(IDENTITY, "utf8").replace(
+      "observability.project.yml",
+      readFileSync(OBSERVABILITY, "utf8").replace(
         "roles: [viewer, editor, admin]",
         "roles: [viewer, viewer]",
       ),
@@ -286,7 +291,7 @@ describe("deploy-kit generate identity", () => {
       "--application",
       "grafana",
       malformed,
-      IDENTITY,
+      OBSERVABILITY,
     );
     expect(platformRefused.code).toBe(1);
     // Each refusal names the document it is in: here the Platform document.

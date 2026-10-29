@@ -164,7 +164,7 @@ telemetry:
 # routing of every alert (spec/v1/14-platform-intent.md#monitoring). A
 # receiver's webhook is read from Vault, never written here.
 monitoring:
-  grafana: identity/grafana
+  grafana: observability/grafana
   prometheus: observability/prometheus
   alertmanager: observability/alertmanager
   receivers:

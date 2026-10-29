@@ -917,7 +917,7 @@ its routing ([Monitoring](#monitoring)).
 
 ```yaml
 monitoring:
-  grafana: identity/grafana
+  grafana: observability/grafana
   prometheus: observability/prometheus
   alertmanager: observability/alertmanager
   receivers:

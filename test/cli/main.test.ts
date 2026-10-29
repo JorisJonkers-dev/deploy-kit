@@ -13,7 +13,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "yaml";
 import {
@@ -56,7 +56,7 @@ const SET = [
   "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
-  "identity/env/grafana/base.env",
+  "observability/env/grafana/base.env",
 ].map(example);
 
 /** Each project file of the union, and the repository that publishes it. */
@@ -96,6 +96,23 @@ function published(document: string, name: string, out: string): string {
   return out;
 }
 
+/**
+ * The observability project as this union publishes it. Its Grafana signs in
+ * through a provider no Project composed here declares, so it goes without its
+ * Client and the env file that reads the Client's secret.
+ */
+function unsigned(document: string): string {
+  const directory = mkdtempSync(join(temporary(), "unsigned-"));
+  cpSync(dirname(document), directory, { recursive: true });
+  rmSync(join(directory, "env"), { recursive: true, force: true });
+  const copy = join(directory, basename(document));
+  writeFileSync(
+    copy,
+    readFileSync(copy, "utf8").replace(/\n {4}client:\n(?: {6}.*\n)+/, "\n"),
+  );
+  return copy;
+}
+
 /** A participants list that expects every project of the union, and the Platform document. */
 const LISTED = `participants:\n${["jorisjonkers.dev", ...PROJECTS.map(([, name]) => name)].map((name) => `  ${name}: {}\n`).join("")}`;
 
@@ -103,7 +120,13 @@ const LISTED = `participants:\n${["jorisjonkers.dev", ...PROJECTS.map(([, name])
 function pulled(): string {
   const root = mkdtempSync(join(temporary(), "compose-"));
   for (const [document, name] of PROJECTS)
-    published(example(document), name, join(root, "fragments", name));
+    published(
+      name === "observability"
+        ? unsigned(example(document))
+        : example(document),
+      name,
+      join(root, "fragments", name),
+    );
   const platform = join(root, "authored");
   cpSync(example("platform"), platform, { recursive: true });
   const document = join(platform, "platform.intent.yml");
@@ -111,7 +134,7 @@ function pulled(): string {
     document,
     readFileSync(document, "utf8")
       // No Reporter and no Human Grant, so the estate-scoped artifact holds no route to one, and
-      // no sign-in provider, since no Project composed here declares a Client.
+      // no sign-in provider, since no Project composed here declares a Client (unsigned).
       .replace("  reporter: delivery/reporter\n", "")
       .replace(/\nhumanGrants:\n(?: {2}.*\n)+/, "\n")
       .replace(/\npriority:\n(?: {2}.*\n)+/, "\n")
@@ -575,10 +598,11 @@ describe("deploy-kit compose", () => {
         sha: hex(project, 40),
         environment: "production",
         version: "1.0.0",
-        // Where the release is reachable, for the one with an exposure.
-        ...(project === "notes"
-          ? { url: "https://notes.jorisjonkers.dev" }
-          : {}),
+        // Where the release is reachable, for each with an exposure.
+        ...({
+          notes: { url: "https://notes.jorisjonkers.dev" },
+          observability: { url: "https://grafana.jorisjonkers.dev" },
+        }[project] ?? {}),
       })),
     );
     // REQ-051 (docs/requirements.md): an artifact with no pin yet has its pin

@@ -277,7 +277,8 @@ images:
     gid: 1000
     version: "124.0.6367.78"
   # The worked sign-in (spec/v1/examples/identity): the Identity Provider and
-  # the three Applications that sign people in through it.
+  # the Applications that sign people in through it, grafana among them, which
+  # the observability example declares.
   identity:
     repository: ghcr.io/jorisjonkers-dev/identity/identity
     digest: "sha256:1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c"

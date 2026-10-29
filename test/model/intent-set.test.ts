@@ -29,7 +29,7 @@ const WORKED = [
   "utility/utility.project.yml",
   "edge/edge.project.yml",
   "identity/identity.project.yml",
-  "identity/env/grafana/base.env",
+  "observability/env/grafana/base.env",
   "knowledge/knowledge.project.yml",
   "minimal/notes.project.yml",
   "observability/observability.project.yml",
@@ -525,7 +525,7 @@ describe("checkIntentSet", () => {
         )
         .replace(
           "metrics: observability/prometheus",
-          "metrics: observability/grafana",
+          "metrics: observability/thanos",
         ),
     };
 

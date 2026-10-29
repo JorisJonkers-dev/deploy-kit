@@ -4,7 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
-  namespace: identity-system
+  namespace: observability-system
   labels:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/instance: grafana
@@ -75,7 +75,7 @@ spec:
             - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: grafana-identity-system-grafana-client
+                  name: grafana-observability-system-grafana-client
                   key: secret
             - name: GF_AUTH_GENERIC_OAUTH_ENABLED
               value: "true"

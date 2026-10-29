@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vault-policy-34e31aba0cc9
+  name: vault-policy-9a0717fe1106
   namespace: observability-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -77,9 +77,13 @@ spec:
       volumes:
         - name: policies
           configMap:
-            name: vault-policy-34e31aba0cc9
+            name: vault-policy-9a0717fe1106
             items:
               - key: observability-system-alertmanager.policy.json
                 path: observability-system-alertmanager.policy.json
               - key: observability-system-alertmanager.role.json
                 path: observability-system-alertmanager.role.json
+              - key: observability-system-grafana.policy.json
+                path: observability-system-grafana.policy.json
+              - key: observability-system-grafana.role.json
+                path: observability-system-grafana.role.json

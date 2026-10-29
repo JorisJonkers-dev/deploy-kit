@@ -86,12 +86,8 @@ spec:
           volumes:
             - name: policies
               configMap:
-                name: vault-policy-c77852ca3222
+                name: vault-policy-32b517bea9bc
                 items:
-                  - key: identity-system-grafana.policy.json
-                    path: identity-system-grafana.policy.json
-                  - key: identity-system-grafana.role.json
-                    path: identity-system-grafana.role.json
                   - key: identity-system-identity.policy.json
                     path: identity-system-identity.policy.json
                   - key: identity-system-identity.role.json

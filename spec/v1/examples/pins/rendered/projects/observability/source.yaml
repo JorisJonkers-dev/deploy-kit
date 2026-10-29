@@ -30,6 +30,7 @@ metadata:
     event.toolkit.fluxcd.io/sha: 138df822137d4bef66e2456320647060ea59819f
     event.toolkit.fluxcd.io/environment: production
     event.toolkit.fluxcd.io/version: 1.0.0
+    event.toolkit.fluxcd.io/url: https://grafana.jorisjonkers.dev
 spec:
   interval: 10m
   prune: true
@@ -42,6 +43,8 @@ spec:
     kind: OCIRepository
     name: project-observability
   path: ./apps/observability
+  dependsOn:
+    - name: apps-edge
   patches:
     - patch: |
         apiVersion: apps/v1

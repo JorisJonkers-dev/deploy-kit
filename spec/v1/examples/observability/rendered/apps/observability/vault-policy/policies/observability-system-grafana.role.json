@@ -3,9 +3,9 @@
     "grafana"
   ],
   "bound_service_account_namespaces": [
-    "identity-system"
+    "observability-system"
   ],
   "token_policies": [
-    "identity-system-grafana"
+    "observability-system-grafana"
   ]
 }

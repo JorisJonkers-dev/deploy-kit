@@ -4,7 +4,7 @@ apiVersion: flagger.app/v1beta1
 kind: Canary
 metadata:
   name: grafana
-  namespace: identity-system
+  namespace: observability-system
   labels:
     app.kubernetes.io/name: grafana
     app.kubernetes.io/instance: grafana
@@ -33,7 +33,7 @@ spec:
         metadata:
           application: grafana
           process: grafana
-          revision: sha256:24ea08efe8b9d3470694a2dc61f8a97ee2ba90a2908546efcb4d9ff028b636c4
+          revision: sha256:56bee3c4b9eefa3c0a97963bd462e86ccad197208e277fb4ab60f138660548f7
           paths: /
           readiness: /api/health
           hostnames: grafana.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: grafana
           process: grafana
-          revision: sha256:24ea08efe8b9d3470694a2dc61f8a97ee2ba90a2908546efcb4d9ff028b636c4
+          revision: sha256:56bee3c4b9eefa3c0a97963bd462e86ccad197208e277fb4ab60f138660548f7
           paths: /
           readiness: /api/health
           hostnames: grafana.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: grafana
           process: grafana
-          revision: sha256:24ea08efe8b9d3470694a2dc61f8a97ee2ba90a2908546efcb4d9ff028b636c4
+          revision: sha256:56bee3c4b9eefa3c0a97963bd462e86ccad197208e277fb4ab60f138660548f7
           paths: /
           readiness: /api/health
           hostnames: grafana.jorisjonkers.dev
@@ -69,7 +69,7 @@ spec:
         metadata:
           application: grafana
           process: grafana
-          revision: sha256:24ea08efe8b9d3470694a2dc61f8a97ee2ba90a2908546efcb4d9ff028b636c4
+          revision: sha256:56bee3c4b9eefa3c0a97963bd462e86ccad197208e277fb4ab60f138660548f7
           paths: /
           readiness: /api/health
           hostnames: grafana.jorisjonkers.dev

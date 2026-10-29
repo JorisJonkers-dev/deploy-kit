@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vault-policy-34e31aba0cc9
+  name: vault-policy-9a0717fe1106
   namespace: observability-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -17,3 +17,7 @@ data:
     {"path":{"secret/data/platform/alertmanager-discord":{"capabilities":["read"]},"secret/metadata/platform/alertmanager-discord":{"capabilities":["read"]}}}
   observability-system-alertmanager.role.json: |
     {"bound_service_account_names":["alertmanager"],"bound_service_account_namespaces":["observability-system"],"token_policies":["observability-system-alertmanager"]}
+  observability-system-grafana.policy.json: |
+    {"path":{"secret/data/observability-system/grafana/client":{"capabilities":["read"]},"secret/metadata/observability-system/grafana/client":{"capabilities":["read"]}}}
+  observability-system-grafana.role.json: |
+    {"bound_service_account_names":["grafana"],"bound_service_account_namespaces":["observability-system"],"token_policies":["observability-system-grafana"]}

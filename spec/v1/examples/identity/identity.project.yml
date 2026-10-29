@@ -1,18 +1,20 @@
 # Sign-in as Project Intent: the Identity Provider the worked Platform
-# document's `signIn` names, and three Applications that sign people in through
-# it, one per way chapter 17 works through (spec/v1/17-sign-in.md).
+# document's `signIn` names, and two Applications that sign people in through
+# it, beside the third way chapter 17 works through (spec/v1/17-sign-in.md).
 #
-#   grafana   a native Client holding a secret: its own OIDC, a derived
-#             credential path the provider writes and grafana reads
 #   portal    a native Client signing in with PKCE: a public client, no secret
 #   whoami    a gated Client: no OIDC in the image, so the Gate signs a person
 #             in at the edge and the route set gains the derived /.auth/ route
 #
+# The third, a native Client holding a secret, is grafana: its own OIDC, and a
+# derived credential path the provider writes and grafana reads. It belongs to
+# the observability project, beside the operator that ships its dashboards
+# (observability/observability.project.yml).
+#
 # The Identity Provider is a platform Application, named by the Platform
 # document as the secret store and the tier proxies are, so this project is
-# part of the worked foundation every case composes with. The three Clients sit
-# beside it so that one rendered tree shows the provider's write on the secret
-# and the reader's grant on it together.
+# part of the worked foundation every case composes with. Its process is
+# granted write on every Client's credential path, in this project or another.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -46,41 +48,6 @@ applications:
         probes:
           readiness: { path: /health/ready, port: 8080 }
           liveness: { path: /health/live, port: 8080 }
-        startupBudget: 30s
-        cutover: continuous
-
-  # Native, with a secret. Every path is on the exposure's host, which is
-  # authored once, there. The env file reads the credential through
-  # ${client:secret}, which derives the Process's read grant on the path.
-  - id: grafana
-    exposure:
-      - name: public
-        host: grafana.jorisjonkers.dev
-        audience: authenticated
-        routes:
-          - { path: /, match: prefix, process: grafana, surface: http }
-    client:
-      signIn: native
-      label: Grafana
-      description: Metrics and dashboards
-      iconPath: /public/img/grafana_icon.svg
-      redirectPaths: [/login/generic_oauth]
-      protectedPath: /api/user
-      credential: secret
-      roles: [viewer, editor, admin]
-    processes:
-      - name: grafana
-        lifecycle: application
-        image: grafana
-        runtime: none
-        provides:
-          http: 3000
-        placement:
-          memory: 256Mi
-          cpu: 50m
-        writablePaths: [/var/lib/grafana]
-        probes:
-          readiness: { path: /api/health, port: 3000 }
         startupBudget: 30s
         cutover: continuous
 
