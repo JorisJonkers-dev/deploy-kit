@@ -128,7 +128,7 @@ export function collisions(deliverables: readonly Deliverable[]): Diagnostic[] {
         code: "E_PATH_COLLISION" as const,
         path: "",
         message: `${path} is claimed by ${adapters.join(" and ")}`,
-        hint: "Every path has one owner: the plan assigns each adapter's paths from its default path.",
+        hint: "Every path has one owner: an adapter writes only below the directories the shared path helpers give it.",
       })),
     ...[...accounts.entries()]
       .filter(([, paths]) => paths.length > 1)

@@ -98,7 +98,7 @@ export type RenderedObject =
   | L2Advertisement;
 
 export interface Deliverable {
-  /** Relative to the gitops root, assigned by the path plan. */
+  /** Relative to the gitops root, spelled through the shared directory helpers. */
   readonly path: string;
   readonly adapter: string;
   readonly objects: readonly RenderedObject[];

@@ -101,26 +101,11 @@ export const MIDDLEWARE_KINDS = [
 /** Which address a rate limit counts a client by: the connection's, or the one Cloudflare forwards. */
 export const CLIENT_ADDRESSES = ["connection", "cloudflare"] as const;
 
-/** Whose directory a path assignment belongs to. */
-export const PATH_SCOPES = ["estate", "project", "application"] as const;
-
-/** The registered Adapters, one per subsystem (spec/v1/30-deliverables.md#adapters). */
-export const ADAPTERS = [
-  "kubernetes",
-  "networking",
-  "prometheus",
-  "traefik",
-  "vault-policy",
-  "vso",
-] as const;
-
 export type PinnedInput = (typeof PINNED_INPUTS)[number];
 export type Switchover = (typeof SWITCHOVERS)[number];
 export type AnalysisCheck = (typeof ANALYSIS_CHECKS)[number];
 export type MiddlewareKind = (typeof MIDDLEWARE_KINDS)[number];
 export type ClientAddress = (typeof CLIENT_ADDRESSES)[number];
-export type PathScope = (typeof PATH_SCOPES)[number];
-export type AdapterName = (typeof ADAPTERS)[number];
 
 const text = z.string().min(1);
 const count = z.int().min(0);
@@ -141,10 +126,8 @@ const durabilityClass = z
 const hardeningClass = z.enum(HARDENING_CLASSES).meta({ id: "HardeningClass" });
 const match = z.enum(MATCHES).meta({ id: "Match" });
 
-const adapterName = z.enum(ADAPTERS).meta({ id: "AdapterName" });
 const middlewareKind = z.enum(MIDDLEWARE_KINDS).meta({ id: "MiddlewareKind" });
 const clientAddress = z.enum(CLIENT_ADDRESSES).meta({ id: "ClientAddress" });
-const pathScope = z.enum(PATH_SCOPES).meta({ id: "PathScope" });
 const pinnedInput = z.enum(PINNED_INPUTS).meta({ id: "PinnedInput" });
 const switchover = z.enum(SWITCHOVERS).meta({ id: "Switchover" });
 
@@ -1222,10 +1205,6 @@ const reconcileUnit = z
   .strictObject({ name: text, after: z.array(text).exactOptional() })
   .meta({ id: "ReconcileUnit" });
 
-const pathAssignment = z
-  .strictObject({ path: text, adapter: adapterName, scope: pathScope })
-  .meta({ id: "PathAssignment" });
-
 const API_VERSION = "resolved.jorisjonkers.dev/v1";
 
 /** The estate-wide document: every assignment, in one place. */
@@ -1344,7 +1323,6 @@ export const resolvedDeployment = z
     apiVersion: z.literal(API_VERSION),
     kind: z.literal("ResolvedDeployment"),
     provenance,
-    pathPlan: z.array(pathAssignment).min(1),
     reconcileUnits: z.array(reconcileUnit).min(1),
     applications: z.array(resolvedApplication).min(1),
     policyJob: resolvedPolicyJob.exactOptional(),

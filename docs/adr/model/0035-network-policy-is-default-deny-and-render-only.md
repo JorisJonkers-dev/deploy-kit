@@ -55,9 +55,9 @@ diagnosed as "Postgres is down". One producer makes the DNS rule a property of
 one adapter.
 
 **One producer per kind.** The default-deny is one object per project, not per
-Application, so it fits no Application-keyed adapter; with path authority in
-layer 2 ([0036](0036-path-authority-is-layer-2.md)) it has one owner and one
-path.
+Application, so it fits no Application-keyed adapter; written once in its
+Project's directory ([0036](0036-path-authority-is-layer-2.md)), it has one
+owner and one path.
 
 **Audit is a dependency, not a mitigation.** `networking.k8s.io/v1` has no audit,
 dry-run or log-only mode, and k3s's bundled kube-router controller has none; a

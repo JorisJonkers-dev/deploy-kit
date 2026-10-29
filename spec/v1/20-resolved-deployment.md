@@ -68,15 +68,13 @@ a rollout strategy, and the `hardening` posture with the paths it must write,
 not a security context. Each Adapter is the one place its own target vocabulary
 is spelled ([chapter 30](30-deliverables.md#adapters)).
 
-Two relations the drawing does not carry are stated here instead, because a line
+One relation the drawing does not carry is stated here instead, because a line
 that long is what makes the drawing unreadable
 ([the diagram conventions](diagrams/README.md)). A `ResolvedRoute` names the
 Process and the surface it serves, resolved against that Application's own
 Processes, except the `/.auth/` route a `gated` Client derives, which names the
 `gate` instead: the Service, namespace and port of the address the tier's
-forward-auth endpoint names ([The forward-auth endpoint](#the-forward-auth-endpoint)). A `PathAssignment` names the Adapter that owns the path and, where
-the path is an Application's or a project's rather than the estate's, the
-element it belongs to.
+forward-auth endpoint names ([The forward-auth endpoint](#the-forward-auth-endpoint)).
 
 A `ResolvedApplication` is both the element the estate-wide document contains
 and the document published back to one repository
@@ -278,7 +276,7 @@ field's placement link to this anchor rather than copying rows.
 | container probe timings | derived | - | the startup probe's target from the **liveness** declaration and its period from `startupBudget`; readiness and liveness cadence from the Platform Intent's probe policy ([0016](../../docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md)) |
 | `progressDeadlineSeconds` | derived | - | from `startupBudget`; a `prepare` Process's run deadline is its `startupBudget` itself; either way with the substrate's `imagePull` on top ([chapter 14](14-platform-intent.md#substrate-facts)) |
 | switchover | derived | - | from `cutover` and the delivery machinery: `continuous` derives `blue-green`, or `rolling` on the machinery, and `interrupted` derives `stop-start` ([chapter 55](55-delivery.md#switchover)), which the adapters spell; `cutover: continuous` over an RWO volume is `E_CUTOVER_UNHONOURABLE`, not a silent downgrade |
-| object kind | derived | - | from `lifecycle` and `volumes` |
+| object kind | derived | - | from `lifecycle` alone: an `application` Process is a `Deployment` and a `scheduled` one a `CronJob`; a volume never changes the kind, so no Process is a `StatefulSet` ([chapter 10](10-project-intent.md#process)) |
 | `startDeadline` | derived | - | `300s` on every `scheduled` Process: a run that cannot start within it of its slot is skipped, and no two runs of one Process overlap ([chapter 10](10-project-intent.md#scheduled-processes)) |
 | the Application's release-gate deadline | derived | - | `max` over the Application's Processes of `progressDeadlineSeconds` ([The release gate](#the-release-gate)) |
 | the object label set | derived | - | fixed, from Process name, Application Id and `runtime` ([chapter 10](10-project-intent.md#the-label-set)); each container's version from the images lock is a pod-template annotation, not a label |
@@ -1170,37 +1168,6 @@ carries the prune-disabled mark every backed-up claim does
 leaving the render does not delete it: it stays bound, with data the Move has
 already carried and kept replicated back, until it is deleted by hand.
 
-## The path plan
-
-Layer 2 assigns **every output path**
-([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md)). The Resolved
-Deployment carries, for each object to be rendered, the Adapter that owns it and
-the path it is written to. Layer 3 serialises what it is handed and chooses
-nothing.
-
-The rule follows from the layer rule rather than adding to it. A path is a
-decision: it says which directory owns an object, and therefore which
-kustomization includes it, which Reconcile Unit applies it, and who is
-answerable for the field. A decision taken while serialising appears in no
-schema, is recorded in no lock, and is invisible in the projection its owner
-reads back.
-
-Two live cases show that the alternative does not work. A per-project object (
-`namespace.yaml`, and the namespace-wide default-deny) is one object per
-project, while an Adapter keyed off the Application emits one directory per Application:
-`auth` has one Application and nothing collides, `data` has three and produces three
-identical Namespace objects at three paths. And in the tree this replaces, an
-estate-scoped Deliverable, the Gatus endpoints ConfigMap, landed in
-`utility-system` rather than in the namespace of the Application that motivated
-it. Under an adapter-computed path both
-are accidents of who ran last; under a path plan both are assignments, with one
-owner and a recorded reason.
-
-The consequence for the build is a check that arrives earlier. `E_PATH_COLLISION`
-is decidable when the plan is assembled, before any Adapter runs, because the
-complete set of paths is known at that point. Two Adapters claiming one path is
-a defect in the plan.
-
 ## No overrides
 
 **There is no override mechanism.** A derived value has exactly one declaring
@@ -1309,7 +1276,7 @@ each is the Platform document's and no Project's
 ([chapter 14](14-platform-intent.md#human-grants)).
 
 Three kinds of unit belong to no Project, because what each applies is
-estate-scoped ([The path plan](#the-path-plan)). The first two stay; the last
+estate-scoped ([chapter 30](30-deliverables.md#path-allocation)). The first two stay; the last
 moves where its last column says:
 
 | unit | applies | follows | moves to |
@@ -1869,11 +1836,6 @@ classDiagram
         +string name
         +Digest digest
     }
-    class PathAssignment {
-        +Path path
-        +AdapterName adapter
-        +PathScope scope
-    }
     class ReconcileUnit {
         +UnitName name
         +UnitName[] after
@@ -2329,7 +2291,6 @@ classDiagram
     }
 
     ResolvedDeployment "1" *-- "1" Provenance : provenance
-    ResolvedDeployment "1" *-- "1..*" PathAssignment : pathPlan
     ResolvedDeployment "1" *-- "1..*" ReconcileUnit : reconcileUnits
     ResolvedDeployment "1" *-- "0..1" ResolvedPolicyJob : policyJob
     ResolvedDeployment "1" *-- "0..*" ResolvedCatalogJob : catalogJobs

@@ -639,7 +639,9 @@ never a digest here.
 
 `lifecycle` is `application`, `job`, `prepare` or `scheduled`. Not `deployment` /
 `statefulset` / `job`, because those are mechanisms; the object kind derives from
-`lifecycle` and `volumes`. `prepare` is forward-only setup that runs before the
+`lifecycle` alone, a `Deployment` for an `application` Process and a `CronJob`
+for a `scheduled` one. A volume never changes the kind: a Process that holds one
+is a `Deployment` like any other, and no Process is a `StatefulSet`. `prepare` is forward-only setup that runs before the
 Application's new version starts ([Prepare Processes](#prepare-processes)), and
 `scheduled` runs to completion at each slot of its own `schedule`
 ([Scheduled Processes](#scheduled-processes)).
@@ -3044,7 +3046,11 @@ what an author writes.
 
 The path is relative to the **repository root**, because the changelog lives
 where the application keeps it, and a project with several Applications keeps
-several. It must exist and parse when the Intent Fragment is published.
+several. **The path is the runner's**: the migration image's build copies that
+file in beside the runner, and the render never reads it. That the Application
+declares a `changelog` derives everything this section names; which file it
+names derives nothing. It must exist and parse when the Intent Fragment is
+published.
 
 **The rules**, each at the object an author changes:
 
@@ -3340,7 +3346,7 @@ declaring site is fixed:
 | a `ports` list, or a port as a string | an integer at its point of use |
 | a migration image, a migration Job, an owner or data role name | derived from `migration`, the project and the Platform document's migration policy |
 | `RollingUpdate`, `maxSurge`, a Canary, `progressDeadlineSeconds` | the adapters' spelling of the switchover and deadline derived from `cutover`, `startupBudget` and the declared volumes |
-| `statefulset` / `deployment` | derived from `lifecycle` + volumes |
+| `statefulset` / `deployment` | derived from `lifecycle` alone; a volume never makes a `StatefulSet` |
 | a liveness probe with no path | state it, or use `tcp`, or `probes: none` |
 | a Dependency Coordinate as a literal | `${dependency:…}` |
 | a Runtime Profile key in an env file | `runtime`: the model injects them, and an exceptional value is not a layer-1 concept |
