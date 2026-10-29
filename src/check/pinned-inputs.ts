@@ -36,6 +36,8 @@ import {
 } from "../model/images-lock.ts";
 import { l4ExposuresOf, l4HoldOf, type L4Hold } from "../model/l4-addresses.ts";
 import { migrationImage } from "../model/migration-proof.ts";
+import type { NodeContractDocument } from "../model/node-contract.ts";
+import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { PinnedSet } from "../model/resolution.ts";
 
 interface Located {
@@ -441,12 +443,18 @@ const seederRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
 
 /**
  * Each Node Agent the node contract and the pools derive has its catalog entry,
- * and every image the catalog names is one the lock holds
- * (spec/v1/14-platform-intent.md#node-agents).
+ * and the GPU agents a runtime class (spec/v1/14-platform-intent.md#node-agents):
+ * what the Platform document and the node contract alone decide, so `validate`
+ * runs it wherever its set holds both.
  */
-const nodeAgentRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
-  const catalog = set.platform.nodeAgents ?? {};
-  const missing = nodeAgentsOf(set.platform, set.nodeContract)
+export const nodeAgentPolicyRefusals = (
+  document: Pick<PlatformIntentDocument, "l4Addresses" | "nodeAgents" | "gpus">,
+  contract: NodeContractDocument,
+  platform: string,
+): Diagnostic[] => {
+  const catalog = document.nodeAgents ?? {};
+  const derived = nodeAgentsOf(document, contract);
+  const missing = derived
     .filter(({ agent }) => catalog[agent] === undefined)
     .map(({ agent, nodes }): Diagnostic => ({
       code: "E_NO_NODE_AGENT_POLICY",
@@ -455,6 +463,30 @@ const nodeAgentRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
       message: `${agent} runs on ${String(nodes)}, and the catalog names no image for it`,
       hint: `Declare \`nodeAgents.${agent}\` in the Platform document: its image, memory and cpu.`,
     }));
+  // The GPU agents run under the runtime class the platform names for their
+  // cards' vendor, so a vendor it names nothing for leaves them blind.
+  const gpuAgents = derived.some(({ agent }) => agent === "gpu-device");
+  const unnamed: Diagnostic[] =
+    gpuAgents && document.gpus?.[GPU_AGENT_VENDOR] === undefined
+      ? [
+          {
+            code: "E_NO_GPU_POLICY",
+            document: platform,
+            path: "/gpus",
+            message: `the GPU agents run on ${GPU_AGENT_VENDOR} cards, and the platform names no runtime class for them`,
+            hint: "Add the vendor to the Platform document's `gpus`.",
+          },
+        ]
+      : [];
+  return [...missing, ...unnamed];
+};
+
+/**
+ * The Node Agents' policy refusals, and every image the catalog names is one
+ * the lock holds.
+ */
+const nodeAgentRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
+  const catalog = set.platform.nodeAgents ?? {};
   const images = NODE_AGENTS.flatMap((agent) => {
     const entry = catalog[agent];
     if (entry === undefined) return [];
@@ -470,26 +502,8 @@ const nodeAgentRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
         : []),
     ];
   });
-  // The GPU agents run under the runtime class the platform names for their
-  // cards' vendor, so a vendor it names nothing for leaves them blind.
-  const gpuAgents = nodeAgentsOf(set.platform, set.nodeContract).some(
-    ({ agent }) => agent === "gpu-device",
-  );
-  const unnamed: Diagnostic[] =
-    gpuAgents && set.platform.gpus?.[GPU_AGENT_VENDOR] === undefined
-      ? [
-          {
-            code: "E_NO_GPU_POLICY",
-            document: platform,
-            path: "/gpus",
-            message: `the GPU agents run on ${GPU_AGENT_VENDOR} cards, and the platform names no runtime class for them`,
-            hint: "Add the vendor to the Platform document's `gpus`.",
-          },
-        ]
-      : [];
   return [
-    ...missing,
-    ...unnamed,
+    ...nodeAgentPolicyRefusals(set.platform, set.nodeContract, platform),
     ...images
       .filter(({ image }) => !Object.hasOwn(set.imagesLock.images, image))
       .map(({ path, image }): Diagnostic => ({
