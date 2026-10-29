@@ -10,20 +10,13 @@ exercise a hard case.
 
 | | |
 |---|---|
-| authored | [`notes.project.yml`](notes.project.yml): 32 lines of declaration, and [`env/notes-api/base.env`](env/notes-api/base.env): 2 keys |
-| rendered | [`rendered/`](rendered/): 11 files, 12 objects, 5 of the 6 adapters |
+| authored | [`notes.project.yml`](notes.project.yml): 40 lines of declaration, and [`env/notes-api/base.env`](env/notes-api/base.env): 2 keys |
+| rendered | [`rendered/`](rendered/): 15 files, 13 objects, 5 of the 8 adapters |
 | gaps | none. Every value in the tree derives from a declaration, a pinned fact, or a policy in [Platform Intent](../platform/platform.intent.yml) |
-
-It is also the **only** worked example that renders on today's pinned inputs.
-The other three all hold a `delivery: env` or `delivery: file` grant, and
-`secretsEncryption` is `false`, so every one of them fails
-`E_SECRETS_AT_REST_REQUIRED` ([0030](../../../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md))
-until that flag lands. This Application holds no grant at all, so the gate has
-nothing to refuse.
 
 ## What the declaration buys
 
-Thirty-one authored lines reach twelve objects. Nothing in the middle column was
+Forty-two authored lines reach thirteen objects. Nothing in the middle column was
 written by anyone:
 
 | authored | derived | rendered |

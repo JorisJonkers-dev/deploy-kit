@@ -24,7 +24,7 @@ this file stays a pointer. Everything below is repository-specific.
 
 `deploy-kit` holds the deployment model (`spec/v1`), its decision record
 (`docs/adr/`), and the compiler that renders it: a TypeScript production
-implementation under `src/` (not yet landed) and, for the length of a
+implementation under `src/` and, for the length of a
 university course, a model-driven implementation under `emf/`. Start at
 [`README.md`](README.md) for the shape of the model, or
 [`docs/adr/README.md`](docs/adr/README.md) for why each rule is what it is.
