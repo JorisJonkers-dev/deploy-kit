@@ -3,6 +3,19 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: hermes-external-checks
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/part-of: hermes
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  hermes-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"agents","name":"hermes-public-1","url":"https://hermes.jorisjonkers.dev/"},{"conditions":["[STATUS] < 500"],"group":"agents","name":"hermes-lan-1","url":"http://hermes.jorisjonkers.dev/"}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: hermes-config-yaml-118d92ae7c
   namespace: agents-system
   labels:

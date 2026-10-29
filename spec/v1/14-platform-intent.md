@@ -342,8 +342,9 @@ routes ([0117](../../docs/adr/model/0117-an-external-check-is-rendered-by-its-ow
   `estate.jorisjonkers.dev/external-checks: "true"`
   ([chapter 10](10-project-intent.md#the-label-set)), holding the checks its
   exposure derives
-  ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)) under
-  `endpoints` and nothing else. Gatus refuses a scalar setting two of its files
+  ([chapter 16](16-dependencies.md#what-an-edge-derives-read-inbound)), one
+  per route, under `endpoints` and nothing else
+  ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)). Gatus refuses a scalar setting two of its files
   define, so a Project's file may only add endpoints.
 - **Gatus gathers them.** Its Application declares a checks sidecar that
   watches every ConfigMap carrying that label, in every namespace that carries

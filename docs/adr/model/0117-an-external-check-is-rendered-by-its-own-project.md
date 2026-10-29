@@ -87,6 +87,11 @@ again, and dropping the sidecar and its API access.
 - Each Application with an exposure carries one more ConfigMap, in its own
   namespace, holding only `endpoints`, since Gatus refuses a scalar setting
   that two files define.
+- A check fails on a 5xx or on no answer and on nothing else, the rule the
+  Release Gate's own request already follows
+  ([chapter 55](../../../spec/v1/55-delivery.md#the-release-gate)): a check
+  carries no credentials, so a route behind sign-in answers it with a
+  redirect or a `401`, which is the route working.
 - The checker's Application declares the checks sidecar, and its Process holds
   API access to `list` and `watch` ConfigMaps, which the Platform document
   admits like any API Holder's.

@@ -835,9 +835,10 @@ describe("the kubernetes adapter", () => {
 
   it("writes no Service for a stop-start Process that serves nothing, and no file with nothing in it", () => {
     // An Application none of whose Processes switches blue-green carries no gate.
+    // With no exposure it has no external checks either.
     const rendered = renderKubernetes(
       edited(
-        () => ({ releaseGate: undefined }),
+        () => ({ releaseGate: undefined, exposure: undefined }),
         () => ({ switchover: "stop-start", surfaces: undefined }),
       ),
     );
@@ -852,22 +853,20 @@ describe("the kubernetes adapter", () => {
     const [application] = project.applications;
 
     expect(
-      objectsAt(renderKubernetes(project), "notes/configmap.yaml"),
-    ).toStrictEqual([
-      {
-        apiVersion: "v1",
-        kind: "ConfigMap",
-        metadata: {
-          name: "notes-release-gate",
-          namespace: "notes-system",
-          labels: {
-            "app.kubernetes.io/part-of": "notes",
-            "app.kubernetes.io/managed-by": "deploy-kit",
-          },
+      objectsAt(renderKubernetes(project), "notes/configmap.yaml")[0],
+    ).toStrictEqual({
+      apiVersion: "v1",
+      kind: "ConfigMap",
+      metadata: {
+        name: "notes-release-gate",
+        namespace: "notes-system",
+        labels: {
+          "app.kubernetes.io/part-of": "notes",
+          "app.kubernetes.io/managed-by": "deploy-kit",
         },
-        data: { "releaseGate.json": { json: application?.releaseGate } },
       },
-    ]);
+      data: { "releaseGate.json": { json: application?.releaseGate } },
+    });
   });
 
   it("writes the gate's inputs before the Assets of the Application's Processes", () => {
@@ -893,8 +892,117 @@ describe("the kubernetes adapter", () => {
       ).map(({ metadata, immutable }) => [metadata.name, immutable]),
     ).toStrictEqual([
       ["notes-release-gate", undefined],
+      ["notes-external-checks", undefined],
       ["notes-api-settings-0a1b2c3d", true],
     ]);
+  });
+
+  // REQ-150 (docs/requirements.md): an Application's external checks, one per
+  // route, in a ConfigMap of its own namespace that the checker gathers by
+  // its sixth label (spec/v1/14-platform-intent.md#the-foundation-is-declared).
+  describe("an Application's external checks", () => {
+    const checksOf = (project: ResolvedProject): unknown[] =>
+      (
+        objectsAt(renderKubernetes(project), "notes/configmap.yaml") as {
+          metadata: { name: string };
+        }[]
+      ).filter(({ metadata }) => metadata.name === "notes-external-checks");
+
+    it("checks each route on its host and path, failing on a 5xx or no answer", () => {
+      expect(checksOf(minimal())).toStrictEqual([
+        {
+          apiVersion: "v1",
+          kind: "ConfigMap",
+          metadata: {
+            name: "notes-external-checks",
+            namespace: "notes-system",
+            labels: {
+              "app.kubernetes.io/part-of": "notes",
+              "app.kubernetes.io/managed-by": "deploy-kit",
+              "estate.jorisjonkers.dev/external-checks": "true",
+            },
+          },
+          data: {
+            "notes-external-checks.yaml": {
+              json: {
+                endpoints: [
+                  {
+                    name: "notes-public-1",
+                    group: "notes",
+                    url: "https://notes.jorisjonkers.dev/",
+                    conditions: ["[STATUS] < 500"],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      ]);
+    });
+
+    it("numbers the checks per exposure in route order, over http on a plain listener", () => {
+      const project = edited((only) => {
+        const [public_] = only.exposure ?? [];
+        if (public_ === undefined) throw new Error("minimal has no exposure");
+        const [route] = public_.routes;
+        if (route === undefined) throw new Error("minimal has no route");
+        return {
+          exposure: [
+            public_,
+            {
+              ...public_,
+              name: "lan",
+              host: "notes.lan",
+              listener: "plain",
+              routes: [route, { ...route, path: "/api", match: "exact" }],
+            },
+          ],
+        };
+      });
+
+      expect(
+        (
+          checksOf(project) as {
+            data: Record<string, { json: { endpoints: unknown[] } }>;
+          }[]
+        )[0]?.data["notes-external-checks.yaml"]?.json.endpoints,
+      ).toStrictEqual([
+        {
+          name: "notes-public-1",
+          group: "notes",
+          url: "https://notes.jorisjonkers.dev/",
+          conditions: ["[STATUS] < 500"],
+        },
+        {
+          name: "notes-lan-1",
+          group: "notes",
+          url: "http://notes.lan/",
+          conditions: ["[STATUS] < 500"],
+        },
+        {
+          name: "notes-lan-2",
+          group: "notes",
+          url: "http://notes.lan/api",
+          conditions: ["[STATUS] < 500"],
+        },
+      ]);
+    });
+
+    it("renders none for an Application with no exposure, and the label on no other object", () => {
+      expect(checksOf(edited(() => ({ exposure: undefined })))).toStrictEqual(
+        [],
+      );
+      const labelled = renderKubernetes(minimal())
+        .flatMap(({ objects }) => objects)
+        .filter(
+          (object) =>
+            "metadata" in object &&
+            "estate.jorisjonkers.dev/external-checks" in object.metadata.labels,
+        )
+        .map((object) => ("metadata" in object ? object.metadata.name : ""));
+
+      expect(labelled).toStrictEqual(["notes-external-checks"]);
+    });
   });
 
   // spec/v1/17-sign-in.md#the-client: one cluster-scoped Client per

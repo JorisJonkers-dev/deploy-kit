@@ -1,0 +1,14 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: karakeep-external-checks
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/part-of: karakeep
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  karakeep-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"knowledge-platform","name":"karakeep-public-1","url":"https://karakeep.jorisjonkers.dev/"}]}
