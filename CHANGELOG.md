@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.1.0...v1.2.0) (2026-10-29)
+
+
+### Features
+
+* **model:** let a sidecar mount its Process's Assets ([#716](https://github.com/JorisJonkers-dev/deploy-kit/issues/716)) ([572c79a](https://github.com/JorisJonkers-dev/deploy-kit/commit/572c79ab9468f9cb6504d09165c25767c4a271c4)), closes [#707](https://github.com/JorisJonkers-dev/deploy-kit/issues/707)
+
+
+### Bug Fixes
+
+* **check:** validate refuses a Node Agent with no catalog entry where the set holds the node contract ([#714](https://github.com/JorisJonkers-dev/deploy-kit/issues/714)) ([180954a](https://github.com/JorisJonkers-dev/deploy-kit/commit/180954a2332bd3192ff38ea3380673bb685ea3db)), closes [#710](https://github.com/JorisJonkers-dev/deploy-kit/issues/710)
+
 ## [1.1.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.0.1...v1.1.0) (2026-10-29)
 
 
