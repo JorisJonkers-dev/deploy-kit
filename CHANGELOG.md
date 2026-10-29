@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.2.0...v1.3.0) (2026-10-29)
+
+
+### Features
+
+* **model:** let a native Client name a back-channel logout path ([#720](https://github.com/JorisJonkers-dev/deploy-kit/issues/720)) ([dbf7623](https://github.com/JorisJonkers-dev/deploy-kit/commit/dbf7623a60f0721c21af46aa5953f71f7df9b9cf))
+* **model:** render each Application's external checks, one per route, for Gatus to gather ([#719](https://github.com/JorisJonkers-dev/deploy-kit/issues/719)) ([98660ad](https://github.com/JorisJonkers-dev/deploy-kit/commit/98660ad8b311d1672d056b67d7821d417d341520))
+
+
+### Bug Fixes
+
+* **model:** drop the path plan nothing computes, and align four spec passages with the compiler ([#717](https://github.com/JorisJonkers-dev/deploy-kit/issues/717)) ([188e714](https://github.com/JorisJonkers-dev/deploy-kit/commit/188e7148744ae515c1d35b893df720293f8293f3))
+
 ## [1.2.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.1.0...v1.2.0) (2026-10-29)
 
 
