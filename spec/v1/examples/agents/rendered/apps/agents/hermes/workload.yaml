@@ -71,6 +71,7 @@ spec:
                 secretKeyRef:
                   name: hermes-agents-hermes
                   key: anthropic-api-key
+                  optional: true
             - name: API_SERVER_ENABLED
               value: "false"
             - name: GITHUB_PAT
@@ -78,6 +79,7 @@ spec:
                 secretKeyRef:
                   name: hermes-agents-hermes
                   key: github-pat
+                  optional: true
             - name: HERMES_DASHBOARD
               value: "1"
             - name: HERMES_DASHBOARD_HOST
@@ -99,26 +101,31 @@ spec:
                 secretKeyRef:
                   name: hermes-agents-hermes
                   key: hindsight-api-token
+                  optional: true
             - name: MEMORY_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: hermes-agents-hermes
                   key: memory-api-key
+                  optional: true
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: hermes-agents-hermes
                   key: openai-api-key
+                  optional: true
             - name: OPENROUTER_API_KEY
               valueFrom:
                 secretKeyRef:
                   name: hermes-agents-hermes
                   key: openrouter-api-key
+                  optional: true
             - name: OVERLEAF_SESSION
               valueFrom:
                 secretKeyRef:
                   name: hermes-agents-hermes
                   key: overleaf-session
+                  optional: true
             - name: S6_YES_I_WANT_A_WORLD_WRITABLE_RUN_BECAUSE_KUBERNETES
               value: "1"
           resources:

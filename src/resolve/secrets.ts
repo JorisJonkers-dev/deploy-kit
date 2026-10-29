@@ -13,6 +13,8 @@ import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import { notSupported } from "../model/internal-failure.ts";
 import {
   GENERATED_DEFAULTS,
+  isGenerated,
+  isOptional,
   keyName,
 } from "../model/project-intent-queries.ts";
 
@@ -85,7 +87,7 @@ export function resolveGrants(process: EffectiveProcess): ResolvedGrant[] {
         ...restart,
       };
     const generated = grant.keys.flatMap((key) => {
-      if (typeof key === "string") return [];
+      if (!isGenerated(key)) return [];
       const { adopt, ...made } = key.generate;
       // The schema refused a location that is not one path and one key.
       const [path, adopted] = (adopt?.split("#") ?? []) as [string, string];
@@ -98,10 +100,12 @@ export function resolveGrants(process: EffectiveProcess): ResolvedGrant[] {
         },
       ];
     });
+    const optional = grant.keys.filter(isOptional).map(keyName);
     return {
       path: grant.path,
       keys: grant.keys.map(keyName),
       ...(generated.length === 0 ? {} : { generated }),
+      ...(optional.length === 0 ? {} : { optional }),
       access: grant.access,
       delivery: grant.delivery,
       ...(grant.delivery === "self"

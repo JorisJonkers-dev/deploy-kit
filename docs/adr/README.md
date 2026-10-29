@@ -79,6 +79,7 @@ and linted by the same script with `emf` as its root.
 | [0096](model/0096-availability-is-declared-on-an-engine.md) | Availability is declared on an engine Process as the owner's promise, and `replicated` is refused until an engine offers a mechanism for it | open |
 | [0122](model/0122-a-process-may-name-its-command-and-arguments.md) | A Process may name its command and its arguments, as literal words | open |
 | [0123](model/0123-a-writable-path-may-be-held-in-memory.md) | A writable path may be held in memory, at its own size, counted toward the Process's memory | open |
+| [0126](model/0126-a-grant-key-may-be-optional.md) | A grant's key may be optional, and every reference the render makes to it is then optional | open |
 
 ## Exposure, dependencies, observability and migration
 

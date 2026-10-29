@@ -121,7 +121,12 @@ export type EnvVar =
   | {
       readonly name: string;
       readonly valueFrom: {
-        readonly secretKeyRef: { readonly name: string; readonly key: string };
+        readonly secretKeyRef: {
+          readonly name: string;
+          readonly key: string;
+          /** The Process starts without the key, or without the Secret. */
+          readonly optional?: true;
+        };
       };
     };
 
@@ -166,6 +171,8 @@ export type Volume =
           readonly path: string;
         }[];
         readonly defaultMode: number;
+        /** The Process starts without the key, or without the Secret. */
+        readonly optional?: true;
       };
     };
 

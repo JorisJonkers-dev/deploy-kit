@@ -154,6 +154,19 @@ const placeOf = (grant: FileGrant): string => grant.mountAt as string;
 const directoryOf = (place: string): string =>
   place.slice(0, place.lastIndexOf("/"));
 
+/** A kv file grant's one key; notYet refused a file grant of other than one key. */
+const fileKeyOf = (grant: KvGrant): string =>
+  (grant.keys as readonly string[])[0] as string;
+
+/**
+ * A reference to a key the Process starts without is optional
+ * (spec/v1/10-project-intent.md#optional-keys); required is unsaid.
+ */
+const optionalOf = (grant: Grant, key: string): { readonly optional?: true } =>
+  "path" in grant && grant.optional?.includes(key) === true
+    ? { optional: true }
+    : {};
+
 /** A file grant's volume, named for the Secret it projects. */
 const secretVolumeOf = (grant: FileGrant): string =>
   `secret-${grant.destination}`;
@@ -272,6 +285,7 @@ function envOf(process: ResolvedProcess): EnvVar[] {
         secretKeyRef: {
           name: grant.destination,
           key: entry.secret.key,
+          ...optionalOf(grant, entry.secret.key),
         },
       },
     };
@@ -426,13 +440,13 @@ function volumesOf(process: ResolvedProcess): Volume[] {
         items: isKv(grant)
           ? [
               {
-                // notYet refused a file grant of other than one key, or no mode.
-                key: (grant.keys as readonly string[])[0] as string,
+                key: fileKeyOf(grant),
                 path: placeOf(grant).slice(placeOf(grant).lastIndexOf("/") + 1),
               },
             ]
           : CREDENTIAL_FILES.map((key) => ({ key, path: key })),
         defaultMode: Number.parseInt(grant.fileMode as string, 8),
+        ...(isKv(grant) ? optionalOf(grant, fileKeyOf(grant)) : {}),
       },
     })),
     ...(process.vpn === undefined

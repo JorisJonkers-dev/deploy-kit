@@ -400,6 +400,11 @@ whichever level shares it
 Vault policy job writes once, under its own Project's prefix, and never changes
 ([chapter 10](spec/v1/10-project-intent.md#generated-keys)).
 
+**Optional key**: a key of a `kv` Grant that declares `optional: true`, which
+the Process starts without: every reference the render makes to it is
+optional. A generated key is never one
+([chapter 10](spec/v1/10-project-intent.md#optional-keys)).
+
 **Static secret**: a `kv` Grant delivered `env` or `file`, which the Vault
 Secrets Operator syncs into a Secret, re-reads every ten minutes, and restarts
 its consumer for once the value changes, whatever its rotation tolerates. Its

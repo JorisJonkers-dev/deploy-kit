@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **120** rows. The compiler's behaviours join it as they land.
+This ledger holds **121** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -143,3 +143,4 @@ This ledger holds **120** rows. The compiler's behaviours join it as they land.
 | REQ-118 | Where the Platform document records `bootstrap.flux.metrics`, the metrics stack's Project renders one `PodMonitor` in its own namespace selecting Flux's controllers in Flux's namespace by the label Flux's install gives them, on that port by number and that path, at the platform's cadence and labels; the metrics stack's Processes, and no other, are admitted on egress to every scrape port where its Process runs and to Flux's controllers on that port alone, and without the record neither the monitor nor the Flux egress renders | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-119 | A Process and a sidecar carry the `command` and `args` they name, literal words as written, and the kubernetes adapter writes them on the container, a tier proxy's authored arguments ahead of those its proxy derives; a Process that names neither carries neither, and an empty list or an empty command word is refused | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
 | REQ-120 | A writable path declared `{path, memory}` renders as an in-memory `emptyDir` at that size, a plain path on disk at the platform's ephemeral size, and its size is added to the Process's memory request, limit and eligibility, so a path no node can hold beside the Process is `E_PLACEMENT_UNSATISFIABLE`; one path declared at two levels, in either form, is `E_SHARED_DECLARATION_DUPLICATED` | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
+| REQ-123 | A key of a `kv` grant written `{name, optional: true}` makes every reference the kubernetes adapter renders to it optional, a `secretKeyRef` and a file grant's `secret` projection alike, while a key written as its name alone renders required; `optional` beside `generate`, `optional: false` and a key object with neither are refused by the schema | [test/model/render.test.ts](../test/model/render.test.ts) |

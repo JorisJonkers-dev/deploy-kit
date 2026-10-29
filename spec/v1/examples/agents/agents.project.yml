@@ -21,7 +21,8 @@
 #
 # Also exercises: an api rule scoped to its Process's namespace (agents-api
 # reads its own ConfigMaps, and nothing in another namespace), and a
-# cluster-wide read held by a running Process (kubernetes-mcp-server).
+# cluster-wide read held by a running Process (kubernetes-mcp-server), and a
+# grant of optional keys (hermes, spec/v1/10-project-intent.md#optional-keys).
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -83,16 +84,18 @@ applications:
             Hermes calls its model providers and remote MCP servers, and installs the skills it is given.
         dependsOn:
           - { application: kubernetes-mcp-server, surface: mcp }
+        # Every key is optional, as live: a missing one disables only the tool
+        # it feeds, and the Process starts without it.
         secrets:
           - path: secret/data/agents/hermes
             keys:
-              - memory-api-key
-              - overleaf-session
-              - github-pat
-              - hindsight-api-token
-              - openrouter-api-key
-              - anthropic-api-key
-              - openai-api-key
+              - { name: memory-api-key, optional: true }
+              - { name: overleaf-session, optional: true }
+              - { name: github-pat, optional: true }
+              - { name: hindsight-api-token, optional: true }
+              - { name: openrouter-api-key, optional: true }
+              - { name: anthropic-api-key, optional: true }
+              - { name: openai-api-key, optional: true }
             access: read
             delivery: env
             rotation: { tolerates: restart }
