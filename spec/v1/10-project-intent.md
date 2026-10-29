@@ -722,7 +722,8 @@ api:
 - **`rules`** is optional. A Process that acts on the API with its signed-in
   users' own tokens, as Headlamp does, holds nothing of its own: it declares
   `api` with a `reason` and no rules, and is given only the way to the API
-  server. A rule names one API `group`, the `objects`
+  server: the egress there, and the mounted token and CA an in-cluster client
+  finds the server by, which no role binds to anything. A rule names one API `group`, the `objects`
   of that group it asks for, and the `verbs` it may use on them, from the closed
   `ApiVerb` list ([The closed vocabularies](#the-closed-vocabularies)). `core`
   names the API's core group, which Kubernetes itself leaves unnamed. An object

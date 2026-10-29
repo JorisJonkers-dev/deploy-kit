@@ -78,10 +78,14 @@ tenant Application that only manages objects beside itself is admitted without
 becoming foundation.
 
 **A holder may hold no rule.** Headlamp acts on the API with each signed-in
-user's own token, so its ServiceAccount needs no rule and no token, only the
-way through its policy to the API server. Its `api` declares a reason and no
-rules, and derives that egress alone. It is still admitted: the way to the API
-is the platform's to give, even to a Process that holds nothing.
+user's own token, so its ServiceAccount needs no rule, only the way to the API
+server. Its `api` declares a reason and no rules, and derives the egress and a
+mounted token, and no role. The token is part of the way there: an in-cluster
+client finds the server by the CA and token the mount projects, and will not
+start without them, so a holder with no token has no cluster to sign anyone
+into. An account no role binds is granted nothing by its token, so the mount
+widens nothing. It is still admitted: the way to the API is the platform's to
+give, even to a Process that holds nothing.
 
 **The rules are rendered as declared.** The model does not narrow a rule or
 refuse a resource. A rule on `secrets` is legal for an admitted holder: Flagger
@@ -111,6 +115,7 @@ saying where the API is are one block.
 | Admit by `delivery.machinery` | no new list | the Collector would have to be called machinery, and an edge proxy would be admitted for nothing |
 | Every rule a `ClusterRole`, as before scopes | one object kind fewer | the Release Gate's writes to its own records, and `agents-api`'s pod creation in its own namespace, would reach every namespace |
 | A `Role` per Project namespace for every rule | no cluster-wide grant | every holder reads across namespaces, PersistentVolumes have none, and a Role per namespace per holder is the object count 0041 refused |
+| A holder with no rules mounts no token | no credential in a container that never presents its own | an in-cluster client reads the server's CA and the token from the mount and refuses to start without them, and an unbound account's token grants nothing to withhold |
 | Refuse rules on `secrets` | keeps one resource out of reach | Flagger's configuration tracking reads the Secrets a pod names, so the machinery would not run |
 
 ## Reversibility

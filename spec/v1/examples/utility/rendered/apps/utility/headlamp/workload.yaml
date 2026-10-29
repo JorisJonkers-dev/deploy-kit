@@ -35,7 +35,7 @@ spec:
         image.jorisjonkers.dev/headlamp: v0.35.0
     spec:
       serviceAccountName: headlamp
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 100

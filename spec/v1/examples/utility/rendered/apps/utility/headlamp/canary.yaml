@@ -33,7 +33,7 @@ spec:
         metadata:
           application: headlamp
           process: headlamp
-          revision: sha256:d93c10f46f5c86ac044b464fefbf746b435b0edd00fae49bd7e41efbe8765c61
+          revision: sha256:00e9e8ce5e4c29f9b673031edc8e35bc40b8a6e31c53bc12984c3740ed856312
           paths: /
           readiness: /
           errorRate: 1%
@@ -44,7 +44,7 @@ spec:
         metadata:
           application: headlamp
           process: headlamp
-          revision: sha256:d93c10f46f5c86ac044b464fefbf746b435b0edd00fae49bd7e41efbe8765c61
+          revision: sha256:00e9e8ce5e4c29f9b673031edc8e35bc40b8a6e31c53bc12984c3740ed856312
           paths: /
           readiness: /
           errorRate: 1%
@@ -55,7 +55,7 @@ spec:
         metadata:
           application: headlamp
           process: headlamp
-          revision: sha256:d93c10f46f5c86ac044b464fefbf746b435b0edd00fae49bd7e41efbe8765c61
+          revision: sha256:00e9e8ce5e4c29f9b673031edc8e35bc40b8a6e31c53bc12984c3740ed856312
           paths: /
           readiness: /
           errorRate: 1%
@@ -66,7 +66,7 @@ spec:
         metadata:
           application: headlamp
           process: headlamp
-          revision: sha256:d93c10f46f5c86ac044b464fefbf746b435b0edd00fae49bd7e41efbe8765c61
+          revision: sha256:00e9e8ce5e4c29f9b673031edc8e35bc40b8a6e31c53bc12984c3740ed856312
           paths: /
           readiness: /
           errorRate: 1%
