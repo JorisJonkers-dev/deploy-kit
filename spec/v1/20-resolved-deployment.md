@@ -2415,12 +2415,16 @@ flowchart LR
 ### The Reconcile Unit DAG
 
 ```mermaid
-flowchart LR
-    core["apps-core"] --> vso["apps-secrets"]
-    core --> data["apps-data"]
-    core --> sl["apps-stateless"]
+flowchart TB
+    vso["apps-secrets<br/>the Secret Store's Platform Project"] --> data["apps-data"]
+    edge["apps-edge<br/>the proxy's Platform Project"] --> data
     data --> know["apps-knowledge"]
     vso --> know
+    edge --> know
     know --> agents["apps-agents"]
     vso --> agents
+    subgraph estate["estate-scoped: the _estate artifact"]
+      sa["estate-stable-addresses"]
+      hg["estate-human-grants"]
+    end
 ```
