@@ -11,3 +11,16 @@ metadata:
 data:
   releaseGate.json: |
     {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"720s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"portal","readiness":{"path":"/","port":8080}}],"protectedBy":"portal","protectedPath":"/api/me"}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: portal-external-checks
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/part-of: portal
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  portal-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"identity","name":"portal-public-1","url":"https://home.jorisjonkers.dev/"}]}

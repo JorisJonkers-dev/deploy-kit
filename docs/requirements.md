@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **127** rows. The compiler's behaviours join it as they land.
+This ledger holds **128** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -150,3 +150,4 @@ This ledger holds **127** rows. The compiler's behaviours join it as they land.
 | REQ-127 | An exposure that declares `proxied: false` renders its host's record at its tier's `dns.direct` with `cloudflare-proxied` `"false"`, and a rate limit on any of its routes counts a client by the connection's address, not `CF-Connecting-IP`, whatever the tier's `proxiedBy`; the same host without it keeps the tier's target, proxying and client reading, and one on a tier naming no direct address is `E_NO_DIRECT_TARGET` | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-130 | Where the set `validate` reads holds the node contract beside the Platform document, a Node Agent the two derive with no catalog entry is `E_NO_NODE_AGENT_POLICY`, as composition refuses it, a pool on a site with no node derives no announcer, and a node contract that does not read is refused at the contract; a set without the contract derives no agent and refuses none | [test/model/intent-set.test.ts](../test/model/intent-set.test.ts) |
 | REQ-140 | A sidecar mounts the Process's Assets it names, each by the `from` it is read from and at a path of its own, read-only from the Process's one ConfigMap of that Asset; an Asset shared down to the Process counts as the Process's, and a `from` no Asset of the Process arrives from, including one a lower level replaced at its path, is `E_UNKNOWN_SIDECAR_ASSET` | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
+| REQ-150 | Every Application with a route renders one `<application>-external-checks` ConfigMap in its own namespace, carrying `estate.jorisjonkers.dev/external-checks: "true"` beside `part-of` and `managed-by`, with one Gatus endpoint per route of each exposure: named `<application>-<exposure>-<n>`, grouped by its Project, requesting the tier's scheme, the host and the route's path, and failing only on a 5xx or no answer; an Application with no route renders none, and no other object carries the label | [test/adapters/spelling.test.ts](../test/adapters/spelling.test.ts) |

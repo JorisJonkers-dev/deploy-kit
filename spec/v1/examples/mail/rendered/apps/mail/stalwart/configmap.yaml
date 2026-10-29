@@ -3,6 +3,19 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: stalwart-external-checks
+  namespace: mail-system
+  labels:
+    app.kubernetes.io/part-of: stalwart
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  stalwart-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"mail","name":"stalwart-admin-1","url":"https://mail.jorisjonkers.dev/"},{"conditions":["[STATUS] < 500"],"group":"mail","name":"stalwart-admin-2","url":"https://mail.jorisjonkers.dev/"}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: stalwart-manifest-json-f1813d8cee
   namespace: mail-system
   labels:

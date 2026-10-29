@@ -1,6 +1,7 @@
 // The `kubernetes` adapter (spec/v1/30-deliverables.md#adapters): per project
 // its Namespace and the volume and claim of each library it mounts, per Process
-// its controller, ServiceAccount, claims and Asset ConfigMaps, the Service of
+// its controller, ServiceAccount, claims and Asset ConfigMaps, per Application
+// its release-gate and external-checks ConfigMaps, the Service of
 // each L4 Address it is exposed on, the backup each backed-up volume derives, the Canary of each
 // blue-green Process (#flagger-ready-objects), the ClusterRole and binding of
 // each Process that holds Kubernetes API access, and the kustomize
@@ -1067,6 +1068,55 @@ const gateConfigMapOf = (
         },
       ];
 
+/** The label the checker's sidecar gathers external checks by (spec/v1/10-project-intent.md#the-label-set). */
+export const EXTERNAL_CHECKS_LABEL = {
+  "estate.jorisjonkers.dev/external-checks": "true",
+} as const;
+
+/** The scheme a check requests a route on: its tier's listener. */
+const SCHEMES = { tls: "https", plain: "http" } as const;
+
+/**
+ * An Application's external checks
+ * (spec/v1/14-platform-intent.md#the-foundation-is-declared): one Gatus
+ * endpoint per route of each exposure, in a ConfigMap of its own namespace
+ * that the checker's sidecar gathers by its sixth label. A check fails on a
+ * 5xx or on no answer, as the Release Gate's own request does
+ * (spec/v1/55-delivery.md#the-release-gate), so a route that answers a
+ * stranger with a sign-in or a 404 still passes.
+ */
+const externalChecksOf = (
+  application: ResolvedApplicationDocument,
+  project: string,
+): ConfigMap[] => {
+  const endpoints = (application.exposure ?? []).flatMap((exposure) =>
+    exposure.routes.map((route, index) => ({
+      name: `${application.id}-${exposure.name}-${String(index + 1)}`,
+      group: project,
+      url: `${SCHEMES[exposure.listener]}://${exposure.host}${route.path}`,
+      conditions: ["[STATUS] < 500"],
+    })),
+  );
+  const name = `${application.id}-external-checks`;
+  return endpoints.length === 0
+    ? []
+    : [
+        {
+          apiVersion: "v1",
+          kind: "ConfigMap",
+          metadata: {
+            name,
+            namespace: application.namespace,
+            labels: {
+              ...applicationLabels(application.id),
+              ...EXTERNAL_CHECKS_LABEL,
+            },
+          },
+          data: { [`${name}.yaml`]: { json: { endpoints } } },
+        },
+      ];
+};
+
 /**
  * The Client an Application declares (spec/v1/17-sign-in.md#the-client):
  * cluster-scoped, so it names no namespace, and named by the Application Id,
@@ -1694,6 +1744,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
           "configmap.yaml",
           [
             ...gateConfigMapOf(application),
+            ...externalChecksOf(application, project.project),
             ...processes.flatMap((p) => configMapsOf(p, application)),
           ],
         ],

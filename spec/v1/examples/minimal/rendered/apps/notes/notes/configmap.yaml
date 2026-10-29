@@ -11,3 +11,16 @@ metadata:
 data:
   releaseGate.json: |
     {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"180s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"checks":["error-rate","latency"],"process":"notes-api","readiness":{"path":"/healthz/ready","port":8080}}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: notes-external-checks
+  namespace: notes-system
+  labels:
+    app.kubernetes.io/part-of: notes
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  notes-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"notes","name":"notes-public-1","url":"https://notes.jorisjonkers.dev/"}]}
