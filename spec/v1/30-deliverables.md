@@ -639,24 +639,32 @@ an ADR.
 ### The render, end to end
 
 ```mermaid
-flowchart LR
+flowchart TB
     subgraph pub["every repository, publish"]
       IF["Intent Fragment<br/>(project file, or the Platform document)<br/>pushed by digest"]
     end
-    subgraph agg["central render, over the ComposedIntent"]
-      RD["Resolved Deployment<br/>+ path plan + clusterStateDigest"]
+    subgraph agg["central render, once, over the composed union"]
+      EI["lower: the Effective Intent<br/>every shared declaration onto its Processes"]
+      CI["compose: the ComposedIntent<br/>+ the composition lock (chapter 40)"]
+      PIN["pinned inputs, each by digest<br/>Platform document, node contract,<br/>images lock, ClusterState snapshot"]
+      H["renderHash<br/>over the recorded input digests"]
+      RD["resolve: the Resolved Deployment<br/>+ path plan, one owner per path<br/>+ clusterStateDigest"]
+      EI --> CI --> RD
+      PIN --> RD
+      PIN --> H
       RD --> A1["kubernetes"]
       RD --> A2["networking"]
       RD --> A3["prometheus"]
-      RD --> A4["traefik"]
-      RD --> A5["vault-policy"]
-      RD --> A6["vso"]
-      A1 & A2 & A3 & A4 & A5 & A6 --> DL["Deliverables<br/>{path, object, adapter}"]
-      DL --> COL["E_PATH_COLLISION on the plan<br/>one owner per path"]
-      COL --> H["renderHash over the pinned inputs"]
-      COL --> T["Deliverable Set<br/>file tree"]
-      COL --> L["coverage assertion<br/>vs bootstrap set + ledgers"]
+      RD --> A4["grafana"]
+      RD --> A5["traefik"]
+      RD --> A6["vault-policy"]
+      RD --> A7["vso"]
+      A1 & A2 & A3 & A4 & A5 & A6 & A7 --> DL["Deliverables<br/>{path, object, adapter}"]
+      DL -.-> COL["E_PATH_COLLISION<br/>two Deliverables claim one path"]
+      DL --> SER["one serializer<br/>typed objects to bytes"]
+      SER --> T["Deliverable Set<br/>the file tree"]
+      T -.-> L["coverage assertion<br/>adapters + Node Agents + bootstrap set"]
     end
-    IF --> RD
-    T --> X["Rendered artifacts<br/>one per Project, signed, pinned by digest<br/>(chapter 55)"]
+    IF --> EI
+    T --> X["Rendered artifacts<br/>one per Project, and _estate,<br/>signed, pinned by digest (chapter 55)"]
 ```
