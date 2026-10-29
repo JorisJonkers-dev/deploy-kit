@@ -1,0 +1,41 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hermes-data
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/name: hermes
+    app.kubernetes.io/instance: hermes
+    app.kubernetes.io/part-of: hermes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hermes-data-backup
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/name: hermes
+    app.kubernetes.io/instance: hermes
+    app.kubernetes.io/part-of: hermes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

@@ -49,6 +49,26 @@ images:
     uid: 1000
     gid: 1000
     version: "2.3.0"
+  # agents as it runs live: hermes starts as root and drops to 10000, which is
+  # the user its data is owned by; the posture runs it as 10000 from the start.
+  hermes:
+    repository: docker.io/nousresearch/hermes-agent
+    digest: "sha256:64923faeae267792bf9bf87fe3b4c4869e35004e360c7df01730ad801b74d524"
+    uid: 10000
+    gid: 10000
+    version: "2026.8.31"
+  kubernetes-mcp-server:
+    repository: quay.io/containers/kubernetes_mcp_server
+    digest: "sha256:6d650f4bd6ac303ad82713c997e73a2d001602f9bf17392c9b9a0e30e29c6423"
+    uid: 1000
+    gid: 1000
+    version: "0.0.66"
+  agents-ui:
+    repository: ghcr.io/jorisjonkers-dev/agents-ui
+    digest: "sha256:5b41e0ab23e60fbb3f14f42fe5138e6c266aa1bf1289967bfc8a7f9f820bcbc6"
+    uid: 101
+    gid: 101
+    version: "0.19.1"
   headlamp:
     repository: ghcr.io/headlamp-k8s/headlamp
     digest: "sha256:9c3e5a7b1d4f6a8c0e2b4d6f8a1c3e5b7d9f2a4c6e8b0d2f4a6c8e1b3d5f7a9c"

@@ -93,7 +93,8 @@ const withLedger = (platform: string, ledger: string): string =>
     .replace(
       /\n {2}# Admitted to their own namespace alone[^\n]*\n {2}namespaceHolders: \[[^\]]*\]\n/,
       "\n",
-    );
+    )
+    .replace(", agents/kubernetes-mcp-server]", "]");
 
 const hex = (seed: unknown, length: number): string =>
   sha256Hasher(seed).slice("sha256:".length, "sha256:".length + length);

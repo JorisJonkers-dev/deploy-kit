@@ -9,7 +9,7 @@ import { backedUp, dumpedSurfaceOf } from "../../src/model/backup.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { parse as parseYaml } from "yaml";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import {
   parsePlatformIntent,
   parseProjectIntent,
@@ -49,6 +49,24 @@ const text = (path: string): string =>
 
 /** The observability project, whose Grafana is a Client of the sign-in provider. */
 const OBSERVABILITY = "observability/observability.project.yml";
+/** The agents project, of which the foundation needs what the platform admits. */
+const AGENTS = "agents/agents.project.yml";
+/**
+ * The agents project as far as the Platform document names it: the
+ * Applications it admits to the API, without hermes and agents-ui, whose
+ * exposures, Client and grant no test here is about.
+ */
+const admitted = (project: string): string => {
+  const document = parseYaml(project) as {
+    applications: { id: string }[];
+  };
+  return stringifyYaml({
+    ...document,
+    applications: document.applications.filter(
+      ({ id }) => id !== "hermes" && id !== "agents-ui",
+    ),
+  });
+};
 /** An Application's client block, which only a set that composes the provider holds. */
 const CLIENT_BLOCK = /\n {4}client:\n(?: {6}.*\n)+/;
 /** The observability project with no Client, for a set that signs nobody in. */
@@ -61,7 +79,7 @@ const FOUNDATION = [
   "platform/images.lock.yml",
   "platform/cluster-state.yml",
   "delivery/delivery.project.yml",
-  "agents/agents.project.yml",
+  AGENTS,
   "utility/utility.project.yml",
   "edge/edge.project.yml",
   OBSERVABILITY,
@@ -69,7 +87,12 @@ const FOUNDATION = [
   "secrets/secrets.project.yml",
 ].map((name): AuthoredFile => ({
   name,
-  text: name === OBSERVABILITY ? unsigned(text(name)) : text(name),
+  text:
+    name === OBSERVABILITY
+      ? unsigned(text(name))
+      : name === AGENTS
+        ? admitted(text(name))
+        : text(name),
 }));
 
 /**

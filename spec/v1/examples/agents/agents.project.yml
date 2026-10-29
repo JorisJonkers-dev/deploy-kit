@@ -1,14 +1,27 @@
-# Worked example: agents, the live case of pods a Process creates at run time
-# (spec/v1/10-project-intent.md#spawn-templates).
+# Worked example: agents, as it runs live (JorisJonkers-dev/fleet-infra
+# cluster/flux/apps/agents/ and apps/stateless/agents-*, at 64f25b0e).
 #
-# Exercises: a spawn template. agents-api starts one runner pod per agent
-# session. It declares what those pods are, and the render derives the rest:
-# the namespaced rules that let agents-api create and remove them, the label
-# each carries, their policy, and the variables that hand agents-api the
-# pinned image and those labels. Nothing here writes a pod, a Role or a policy.
+#   hermes                 the agent gateway and its dashboard, which signs
+#                          people in itself as a public Client of the provider
+#   kubernetes-mcp-server  read-only cluster diagnostics hermes calls, through
+#                          a cluster-wide read of what it reports on
+#   agents-api, agents-ui  parked since 2026-09-01: no pod runs, and their
+#                          grants, Services and policies stay, so unparking is
+#                          deleting a line (spec/v1/10-project-intent.md#parked-processes)
 #
-# Also exercises: an api rule scoped to its Process's namespace. agents-api
-# reads its own ConfigMaps, and nothing in another namespace.
+# What the live manifests do that this file cannot say yet is a row of
+# RENDER-GAPS.md's agents section, each with its own issue. None of it is
+# guessed at here.
+#
+# Exercises: a spawn template, on a parked Process. agents-api starts one runner
+# pod per agent session. It declares what those pods are, and the render derives
+# the rest: the namespaced rules that let agents-api create and remove them, the
+# label each carries, their policy, and the variables that hand agents-api the
+# pinned image and those labels (spec/v1/10-project-intent.md#spawn-templates).
+#
+# Also exercises: an api rule scoped to its Process's namespace (agents-api
+# reads its own ConfigMaps, and nothing in another namespace), and a
+# cluster-wide read held by a running Process (kubernetes-mcp-server).
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -18,10 +31,130 @@ project: agents # the namespace derives: agents-system
 owner: joris
 
 applications:
+  # The agent gateway. Its dashboard is a public PKCE Client: there is no
+  # secret to hold, and the route takes no forward-auth, which would intercept
+  # the dashboard's own callback. The host is on both edges, so the LAN reaches
+  # it without leaving the house.
+  - id: hermes
+    exposure:
+      - name: public
+        host: hermes.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: hermes, surface: dashboard }
+      - name: lan
+        host: hermes.jorisjonkers.dev
+        audience: lan
+        routes:
+          - { path: /, match: prefix, process: hermes, surface: dashboard }
+    client:
+      signIn: native
+      exposure: public
+      label: Hermes
+      description: The agent gateway
+      redirectPaths: [/auth/callback]
+      protectedPath: /api/status
+      credential: pkce
+    processes:
+      - name: hermes
+        lifecycle: application
+        image: hermes
+        runtime: none # no telemetry to wire: hermes exports none
+        engine: files # its data is plain files, backed up as files
+        provides:
+          dashboard: 9119
+        # Its claim is bound to the node the agents share live, so the
+        # ClusterState snapshot holds it there; no node is named here. Live it
+        # works at about 1.1Gi and peaked at 1.4Gi over two weeks (2026-10-29).
+        placement:
+          memory: 2Gi
+          cpu: 250m
+          site: enschede
+        # The memory, sessions and installed skills: hermes writes them and
+        # nothing rebuilds them.
+        volumes:
+          - { claim: hermes-data, mountAt: /opt/data, size: 10Gi, durability: recoverable }
+        # Model providers, the GitHub MCP server, context7, and the skills it
+        # installs: every call leaves the cluster on 443.
+        egress:
+          to: internet
+          reason: >-
+            Hermes calls its model providers and remote MCP servers, and installs the skills it is given.
+        dependsOn:
+          - { application: kubernetes-mcp-server, surface: mcp }
+        secrets:
+          - path: secret/data/agents/hermes
+            keys:
+              - memory-api-key
+              - overleaf-session
+              - github-pat
+              - hindsight-api-token
+              - openrouter-api-key
+              - anthropic-api-key
+              - openai-api-key
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        probes:
+          readiness: { path: /api/status, port: 9119 }
+          liveness: { path: /api/status, port: 9119 }
+        startupBudget: 120s
+        cutover: interrupted
+
+  # Read-only cluster diagnostics for hermes. It reads what it reports on
+  # across the cluster and writes nothing.
+  - id: kubernetes-mcp-server
+    processes:
+      - name: kubernetes-mcp-server
+        lifecycle: application
+        image: kubernetes-mcp-server
+        runtime: none
+        provides:
+          mcp: 8080
+        placement:
+          memory: 256Mi # it peaked at 216Mi over two weeks (2026-10-29)
+          cpu: 50m
+        probes:
+          readiness: { path: /healthz, port: 8080 }
+          liveness: { path: /healthz, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        api:
+          reason: >-
+            the MCP server answers an agent's questions about workloads, logs, routes and Flux, cluster-wide, and changes nothing
+          rules:
+            - group: core
+              objects: [pods, pods/log, events, services, endpoints, nodes, namespaces]
+              verbs: [get, list, watch]
+            - group: apps
+              objects: [deployments, statefulsets, daemonsets, replicasets]
+              verbs: [get, list, watch]
+            - group: batch
+              objects: [jobs, cronjobs]
+              verbs: [get, list, watch]
+            - group: networking.k8s.io
+              objects: [ingresses, networkpolicies]
+              verbs: [get, list, watch]
+            - group: traefik.io
+              objects: [ingressroutes, middlewares]
+              verbs: [get, list, watch]
+            - group: kustomize.toolkit.fluxcd.io
+              objects: [kustomizations]
+              verbs: [get, list, watch]
+            - group: helm.toolkit.fluxcd.io
+              objects: [helmreleases]
+              verbs: [get, list, watch]
+            - group: source.toolkit.fluxcd.io
+              objects: [gitrepositories, helmrepositories, ocirepositories]
+              verbs: [get, list, watch]
+
+  # The agent sessions' API, parked with the UI. Its routes are left out: live
+  # it shares the UI's host by path, and a host is one Application's.
   - id: agents-api
     processes:
       - name: agents-api
         lifecycle: application
+        parked: { reason: Agent sessions run through hermes since 2026-09-01. }
         image: agents-api
         runtime: jvm
         provides:
@@ -46,4 +179,30 @@ applications:
           readiness: { path: /actuator/health/readiness, port: 8082 }
           liveness: { path: /actuator/health/liveness, port: 8082 }
         startupBudget: 60s
+        cutover: continuous
+
+  # The sessions' UI, parked with its API: nginx serving a built bundle. Live,
+  # the edge asks nothing of its route.
+  - id: agents-ui
+    exposure:
+      - name: public
+        host: agents.jorisjonkers.dev
+        audience: anonymous
+        routes:
+          - { path: /, match: prefix, process: agents-ui, surface: http }
+    processes:
+      - name: agents-ui
+        lifecycle: application
+        parked: { reason: Agent sessions run through hermes since 2026-09-01. }
+        image: agents-ui
+        runtime: static
+        provides:
+          http: 80
+        placement:
+          memory: 96Mi
+          cpu: 100m
+        writablePaths: [/var/cache/nginx, /var/run]
+        probes:
+          readiness: { path: /, port: 80 }
+          liveness: { path: /, port: 80 }
         cutover: continuous

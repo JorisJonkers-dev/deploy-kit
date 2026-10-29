@@ -1,0 +1,14 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - backup.yaml
+  - client.yaml
+  - pvc.yaml
+  - route-lan.yaml
+  - route-public.yaml
+  - service.yaml
+  - serviceaccount.yaml
+  - vso.yaml
+  - workload.yaml

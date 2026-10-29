@@ -144,7 +144,7 @@
       "patch": [
         {
           "op": "remove",
-          "path": "/applications/0/processes/0/spawns/0/image"
+          "path": "/applications/2/processes/0/spawns/0/image"
         }
       ]
     },
@@ -156,7 +156,7 @@
       "patch": [
         {
           "op": "add",
-          "path": "/applications/0/processes/0/spawns/0/placement/site",
+          "path": "/applications/2/processes/0/spawns/0/placement/site",
           "value": "enschede"
         }
       ]
