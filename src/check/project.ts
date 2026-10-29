@@ -28,7 +28,7 @@ import {
   sameDeclaration,
 } from "../model/project-intent-queries.ts";
 import { namespaceOf } from "../model/runtime-profiles.ts";
-import { writablePathOf } from "../model/project-intent.ts";
+import { assetPathOf, writablePathOf } from "../model/project-intent.ts";
 import { RUNS_TO_COMPLETION, serves } from "../model/vocabularies.ts";
 import { consumedOf, isLabelName } from "../model/consumer-label.ts";
 
@@ -41,6 +41,20 @@ interface Refusal {
 
 /** The durability classes the platform derives a backup for, which need an engine. */
 const BACKED_UP = new Set(["recoverable", "irreplaceable"]);
+
+/**
+ * The files a Process's effective Assets are read from: at each path, the
+ * lowest level's Asset is the one that arrives there, so a level above that
+ * a lower one replaced at the same path contributes nothing.
+ */
+function effectiveAssetSources(levels: readonly Level[]): Set<string> {
+  const arriving = new Map<string, string>();
+  for (const level of levels)
+    for (const asset of declared(level.assets))
+      if (!arriving.has(assetPathOf(asset)))
+        arriving.set(assetPathOf(asset), asset.from);
+  return new Set(arriving.values());
+}
 
 /** The access and delivery pairs chapter 10's matrix refuses. */
 const ILLEGAL_DELIVERY = new Set([
@@ -309,6 +323,20 @@ function processRefusals(
           path: `${at}/sidecars/${String(s)}/volumes/${String(m)}`,
           message: `sidecar ${sidecar.name} mounts ${claim}, and this Process declares no volume of that claim`,
           hint: "Mount a claim the Process declares in its own `volumes`, or declare the volume on the Process.",
+        });
+  // A sidecar mounts the Process's own Assets, and no other: those the Process
+  // declares, and those a level above it shares down to it.
+  const assets = effectiveAssetSources([process, ...above]);
+  // Stryker disable next-line ArrayDeclaration
+  for (const [s, sidecar] of (process.sidecars ?? []).entries())
+    // Stryker disable next-line ArrayDeclaration
+    for (const [m, { from }] of (sidecar.assets ?? []).entries())
+      if (!assets.has(from))
+        refusals.push({
+          code: "E_UNKNOWN_SIDECAR_ASSET",
+          path: `${at}/sidecars/${String(s)}/assets/${String(m)}`,
+          message: `sidecar ${sidecar.name} mounts ${from}, and this Process holds no Asset read from it`,
+          hint: "Mount an Asset the Process holds, by its `from`, or declare the Asset on the Process.",
         });
   return refusals;
 }

@@ -49,6 +49,7 @@ const MINIMAL_SET = [
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "mail/mail.project.yml",
+  "mail/config/manifest.json",
   "observability/env/grafana/base.env",
 ];
 

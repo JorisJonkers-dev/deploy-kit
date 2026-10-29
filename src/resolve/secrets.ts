@@ -166,7 +166,7 @@ export const resolveSidecars = (
   // A missing list and an empty one hold no sidecar alike.
   // Stryker disable next-line ArrayDeclaration
   (process.sidecars ?? []).map(
-    ({ name, image, command, args, memory, cpu, volumes, init }) => {
+    ({ name, image, command, args, memory, cpu, volumes, assets, init }) => {
       // Every sidecar's alias is checked against the lock: E_UNLOCKED_IMAGE.
       const locked = lock.images[image] as LockedImage;
       return {
@@ -178,6 +178,7 @@ export const resolveSidecars = (
         memory,
         cpu,
         ...(volumes === undefined ? {} : { volumes }),
+        ...(assets === undefined ? {} : { assets }),
         ...(init === undefined ? {} : { init }),
       };
     },

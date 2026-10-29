@@ -2665,6 +2665,28 @@
             "additionalProperties": false
           }
         },
+        "assets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "from": {
+                "type": "string",
+                "minLength": 1
+              },
+              "mountAt": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "from",
+              "mountAt"
+            ],
+            "additionalProperties": false
+          }
+        },
         "init": {
           "type": "boolean",
           "const": true

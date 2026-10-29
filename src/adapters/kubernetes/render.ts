@@ -187,6 +187,7 @@ function fileMountsOf(process: ResolvedProcess): VolumeMount[] {
 }
 
 type Library = NonNullable<ResolvedProcess["libraries"]>[number];
+type Asset = NonNullable<ResolvedProcess["assets"]>[number];
 
 export type Backed = NonNullable<ResolvedProcess["volumes"]>[number] & {
   readonly backup: NonNullable<
@@ -544,8 +545,8 @@ function volumesOf(process: ResolvedProcess): Volume[] {
 /**
  * A container beside the Process, or before it, under the same posture, the
  * same variables and the same file grants: a grant is the Process's, and every
- * container of its pod is the Process. It mounts the Process's volumes it
- * names, each where it says, and the Process's writable paths.
+ * container of its pod is the Process. It mounts the Process's volumes and
+ * Assets it names, each where it says, and the Process's writable paths.
  */
 function sidecarOf(
   sidecar: NonNullable<ResolvedProcess["sidecars"]>[number],
@@ -558,6 +559,16 @@ function sidecarOf(
     ...(sidecar.volumes ?? []).map(({ claim, mountAt }) => ({
       name: claim,
       mountPath: mountAt,
+    })),
+    // The Process's one ConfigMap of that Asset, or E_UNKNOWN_SIDECAR_ASSET
+    // refused it.
+    // Stryker disable next-line ArrayDeclaration
+    ...(sidecar.assets ?? []).map(({ from, mountAt }) => ({
+      name: (process.assets?.find((asset) => asset.from === from) as Asset)
+        .name,
+      mountPath: mountAt,
+      subPath: fileOf(from),
+      readOnly: true as const,
     })),
     ...writableMountsOf(process),
     ...fileMountsOf(process),

@@ -82,6 +82,7 @@ and linted by the same script with `emf` as its root.
 | [0124](model/0124-a-seeded-asset-is-copied-onto-a-volume-before-each-start.md) | A seeded Asset is copied onto a Process's volume before each start, and its secrets reach the application through the environment | open |
 | [0125](model/0125-an-application-and-a-process-describe-themselves-in-one-sentence.md) | An Application and a Process describe themselves in one sentence, which renders nothing | open |
 | [0126](model/0126-a-grant-key-may-be-optional.md) | A grant's key may be optional, and every reference the render makes to it is then optional | open |
+| [0135](model/0135-a-sidecar-names-the-process-assets-it-mounts.md) | A sidecar names the Process's Assets it mounts, by the file each is read from, at a path of its own | open |
 
 ## Exposure, dependencies, observability and migration
 

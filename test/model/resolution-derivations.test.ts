@@ -5872,6 +5872,112 @@ describe("a sidecar", () => {
   });
 });
 
+// REQ-140 (docs/requirements.md): a sidecar mounts the Process's Assets it
+// names, by the file each is read from, at a path of its own.
+describe("a sidecar's Assets", () => {
+  const MANIFEST = { name: "minimal/config/manifest.json", text: "{}\n" };
+  const SHARED = { name: "minimal/config/ca.pem", text: "ca\n" };
+  const SIDECAR = `        sidecars:
+          - name: apply
+            image: notes-api
+            memory: 32Mi
+            cpu: 10m
+            assets:
+              - { from: config/manifest.json, mountAt: /etc/apply/manifest.json }
+`;
+  const declaring = (assets: string, sidecar = SIDECAR) =>
+    `  - id: notes
+${assets}    processes:
+${serving("notes-api", sidecar)}`;
+  const holding = (assets: string, sidecar = SIDECAR) =>
+    resolve(declaring(assets, sidecar), { env: [MANIFEST, SHARED] });
+  const OWN = `    assets:
+      - { from: config/ca.pem, mountAt: /etc/ssl/ca.pem }
+`;
+  const processHolding = (assets: string, sidecar?: string) =>
+    processOf(declaring(assets, sidecar), { env: [MANIFEST, SHARED] });
+
+  it("carries the Assets it names, beside the Process's own one ConfigMap of each", () => {
+    const process = processHolding(
+      "",
+      `        assets:
+          - { from: config/manifest.json, mountAt: /etc/apply/manifest.json }
+${SIDECAR}`,
+    );
+
+    expect(process).toMatchObject({
+      assets: [{ from: "config/manifest.json" }],
+      sidecars: [
+        {
+          name: "apply",
+          assets: [
+            {
+              from: "config/manifest.json",
+              mountAt: "/etc/apply/manifest.json",
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("mounts an Asset a level above the Process shares down to it", () => {
+    const process = processHolding(
+      OWN,
+      SIDECAR.replace(
+        "config/manifest.json, mountAt: /etc/apply/manifest.json",
+        "config/ca.pem, mountAt: /etc/apply/ca.pem",
+      ),
+    );
+
+    expect(process).toMatchObject({
+      sidecars: [{ assets: [{ from: "config/ca.pem" }] }],
+    });
+  });
+
+  it("is refused an Asset its Process does not hold, and one a lower level replaced at its path", () => {
+    expect(
+      [
+        holding(OWN),
+        holding(
+          OWN,
+          `        assets:
+          - { from: config/manifest.json, mountAt: /etc/ssl/ca.pem }
+${SIDECAR.replace("config/manifest.json, mountAt: /etc/apply/manifest.json", "config/ca.pem, mountAt: /etc/apply/ca.pem")}`,
+        ),
+      ].map((result) =>
+        result.ok
+          ? []
+          : result.diagnostics.map(({ code, path, message, hint }) => ({
+              code,
+              path,
+              message,
+              hint,
+            })),
+      ),
+    ).toStrictEqual([
+      [
+        {
+          code: "E_UNKNOWN_SIDECAR_ASSET",
+          path: "/applications/0/processes/0/sidecars/0/assets/0",
+          message:
+            "sidecar apply mounts config/manifest.json, and this Process holds no Asset read from it",
+          hint: "Mount an Asset the Process holds, by its `from`, or declare the Asset on the Process.",
+        },
+      ],
+      [
+        {
+          code: "E_UNKNOWN_SIDECAR_ASSET",
+          path: "/applications/0/processes/0/sidecars/0/assets/0",
+          message:
+            "sidecar apply mounts config/ca.pem, and this Process holds no Asset read from it",
+          hint: "Mount an Asset the Process holds, by its `from`, or declare the Asset on the Process.",
+        },
+      ],
+    ]);
+  });
+});
+
 // REQ-115 (docs/requirements.md): an Application declared by two Projects
 // composes once, as the target of a Move from the Project holding its active
 // Instance; the old Project renders the source until the Move retires it.

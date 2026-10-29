@@ -858,6 +858,7 @@ this estate. `sidecars` names the others
 | `memory` | yes | one quantity | This container's request. Shape rules are the Process's ([Placement](#placement)). |
 | `cpu` | yes | one quantity | The same. |
 | `volumes` | no | a list of `{claim, mountAt}` | The Process's volumes this container mounts, each by its `claim` and at a path of its own. A claim the Process does not declare in its own `volumes` is `E_UNKNOWN_SIDECAR_VOLUME`. Absent, it mounts none. |
+| `assets` | no | a list of `{from, mountAt}` | The Process's [Assets](#assets) this container mounts, each by the `from` it is read from and at a path of its own, read-only ([0135](../../docs/adr/model/0135-a-sidecar-names-the-process-assets-it-mounts.md)). A `from` no Asset of the Process arrives from, its own or one a level above shares down to it, is `E_UNKNOWN_SIDECAR_ASSET`. Absent, it mounts none. |
 | `init` | no | `true` | The container runs to completion before the Process starts, as an init container, rather than beside it. |
 
 The split follows Kubernetes rather than a rule of the model's own: `nodeSelector`
@@ -881,6 +882,15 @@ mounts the vault it pushes, and meilisearch beside karakeep the index it
 writes, while the browser beside karakeep mounts no data at all. A volume is
 still the Process's, declared once on it, so a sidecar names a claim and the
 path it works in, and nothing else about the volume.
+
+**A sidecar names the Assets it mounts, the same way.** An Asset is one
+program's configuration, at a path in that program's image, so a sidecar
+reaches one only where it says so: the provisioner beside Stalwart mounts the
+manifest it applies against the server's admin API. The Asset is still the
+Process's, declared once and rendered as its one content-hashed ConfigMap, so
+an edit restarts the pod as any Asset edit does, and the sidecar names the
+`from` it is read from and the path it reads it at. It mounts the file as
+committed, whether the Process mounts the Asset or seeds it.
 
 **An init step runs before the Process.** A sidecar marked `init: true` runs to
 completion before the Process starts, with everything a sidecar gets: the

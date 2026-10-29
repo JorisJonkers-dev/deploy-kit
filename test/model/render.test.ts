@@ -51,6 +51,7 @@ const SET = [
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "mail/mail.project.yml",
+  "mail/config/manifest.json",
   "utility/utility.project.yml",
   "utility/config/adguard/AdGuardHome.yaml",
   "agents/agents.project.yml",

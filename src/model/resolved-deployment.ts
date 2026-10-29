@@ -475,6 +475,11 @@ const resolvedSidecar = z
       .array(z.strictObject({ claim: text, mountAt: text }))
       .min(1)
       .exactOptional(),
+    // The Process's Assets it mounts, each at its own path.
+    assets: z
+      .array(z.strictObject({ from: text, mountAt: text }))
+      .min(1)
+      .exactOptional(),
     // Runs to completion before the Process starts.
     init: z.literal(true).exactOptional(),
   })
