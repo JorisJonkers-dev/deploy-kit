@@ -2,7 +2,7 @@
 //
 // "All parse" was the old bar, and it is what let R8 through: a PVC with
 // `storage: null` parses and cannot apply. This checks shape and required
-// fields against the schemas for the k3s version the Cluster Context records,
+// fields against the schemas for the Kubernetes version production runs,
 // plus the CRDs the estate actually uses: Traefik, VSO, Prometheus, Flux, and
 // the Identity Provider's Client, whose schema is this repository's own.
 //
@@ -26,11 +26,12 @@ import { podSecurityFindings } from "./lib/pod-security.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 
-// The version the worked Cluster Context records
-// (spec/v1/examples/context/cluster-context.yml).
-const KUBERNETES_VERSION = "1.31.4";
+// The version the production control plane runs (k3s v1.36.5+k3s1).
+const KUBERNETES_VERSION = "1.36.5";
+// The catalog at one commit, so an upstream change cannot alter what passes.
+const CRD_CATALOG_REVISION = "3eb90d47aba8d61919d4419dd38301536e32a94b";
 const CRD_CATALOG =
-  "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/" +
+  `https://raw.githubusercontent.com/datreeio/CRDs-catalog/${CRD_CATALOG_REVISION}/` +
   "{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json";
 // The kinds no public catalog carries, the Identity Provider's Client among
 // them (spec/v1/17-sign-in.md#the-client): this repository's own schemas, laid
