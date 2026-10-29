@@ -499,6 +499,8 @@ const client = z
     launchPath: requestPath.exactOptional(),
     redirectPaths: z.array(requestPath).min(1).max(16).exactOptional(),
     protectedPath: requestPath.exactOptional(),
+    // Where a native Client takes an OpenID Connect back-channel logout token.
+    backChannelLogoutPath: requestPath.exactOptional(),
     credential: z
       .enum(CLIENT_CREDENTIALS)
       .meta({ id: "ClientCredential" })

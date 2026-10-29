@@ -1139,6 +1139,7 @@ const clientOf = (application: ResolvedApplicationDocument): Client[] =>
             ...pick(application.client, "launchUrl"),
             ...pick(application.client, "iconUrl"),
             ...pick(application.client, "redirectUris"),
+            ...pick(application.client, "backChannelLogoutUri"),
             ...pick(application.client, "credential"),
             ...pick(application.client, "secretPath"),
             roles: application.client.roles,

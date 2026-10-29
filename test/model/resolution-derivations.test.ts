@@ -1549,6 +1549,19 @@ roles: [writer, admin]`;
       });
     });
 
+    // REQ-151 (docs/requirements.md).
+    it("names a native Client's back-channel logout path on its exposure's host, and none where it declares none", () => {
+      expect(
+        application(
+          signingIn(`${NATIVE}\nbackChannelLogoutPath: /auth/backchannel`),
+          CLIENT_SECRET,
+        ).client?.backChannelLogoutUri,
+      ).toBe("https://notes.jorisjonkers.dev/auth/backchannel");
+      expect(
+        application(signingIn(NATIVE), CLIENT_SECRET).client,
+      ).not.toHaveProperty("backChannelLogoutUri");
+    });
+
     it("launches a gated Client at the path it names, and a PKCE Client holds no secret path", () => {
       expect(
         application(signingIn(`${GATED}\nlaunchPath: /home`), SIGNED_IN).client,

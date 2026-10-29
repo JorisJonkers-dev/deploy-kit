@@ -116,8 +116,8 @@ exposure its tier's `listener`, `certificates` and `proxy`, the Application that
 serves the tier and the namespace it runs in; and the release gate the `endpoint`
 every Canary asks. An Application that declares `client` records the `client`
 its Client object is spelled from: the Sign-in Mode, the `host` of the exposure
-it names, its `launchUrl`, `iconUrl` and `redirectUris` on that host, its
-`credential` and, holding a secret, the `secretPath` it is kept at, the `roles`
+it names, its `launchUrl`, `iconUrl`, `redirectUris` and
+`backChannelLogoutUri` on that host, its `credential` and, holding a secret, the `secretPath` it is kept at, the `roles`
 with `user` first, and the `label` and `description` a person sees
 ([chapter 17](17-sign-in.md#the-client)). A Process's `secrets` hold, beside
 its own grants, the ones its Application's Client derives: `read` on the client
@@ -1925,6 +1925,7 @@ classDiagram
         +Url launchUrl
         +Url iconUrl
         +Url[] redirectUris
+        +Url backChannelLogoutUri
         +ClientCredential credential
         +VaultPath secretPath
         +string[] roles

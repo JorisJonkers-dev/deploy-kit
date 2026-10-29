@@ -385,6 +385,7 @@ const CLIENT_FIELDS: Readonly<
       "launchPath",
       "redirectPaths",
       "protectedPath",
+      "backChannelLogoutPath",
       "credential",
     ],
     requires: ["label", "redirectPaths", "protectedPath", "credential"],

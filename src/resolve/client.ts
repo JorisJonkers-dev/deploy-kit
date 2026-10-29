@@ -65,6 +65,9 @@ export function resolveClient(
     ...(client.redirectPaths === undefined
       ? {}
       : { redirectUris: client.redirectPaths.map(url) }),
+    ...(client.backChannelLogoutPath === undefined
+      ? {}
+      : { backChannelLogoutUri: url(client.backChannelLogoutPath) }),
     ...(client.credential === undefined
       ? {}
       : { credential: client.credential }),

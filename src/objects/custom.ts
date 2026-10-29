@@ -58,6 +58,7 @@ export interface Client {
     readonly launchUrl?: string;
     readonly iconUrl?: string;
     readonly redirectUris?: readonly string[];
+    readonly backChannelLogoutUri?: string;
     readonly credential?: "secret" | "pkce";
     readonly secretPath?: string;
     readonly roles: readonly string[];

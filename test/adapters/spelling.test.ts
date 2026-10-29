@@ -1006,7 +1006,8 @@ describe("the kubernetes adapter", () => {
   });
 
   // spec/v1/17-sign-in.md#the-client: one cluster-scoped Client per
-  // Application that declares one, named by the Application Id.
+  // Application that declares one, named by the Application Id. REQ-151
+  // (docs/requirements.md): its back-channel logout URI after its redirects.
   it("writes an Application's Client, cluster-scoped and named for it, every field in the chapter's order", () => {
     const rendered = renderKubernetes(
       edited(() => ({
@@ -1016,6 +1017,7 @@ describe("the kubernetes adapter", () => {
           launchUrl: "https://notes.jorisjonkers.dev/",
           iconUrl: "https://notes.jorisjonkers.dev/favicon.svg",
           redirectUris: ["https://notes.jorisjonkers.dev/callback"],
+          backChannelLogoutUri: "https://notes.jorisjonkers.dev/logout",
           credential: "secret" as const,
           secretPath: "secret/data/notes-system/notes/client",
           roles: ["user", "writer"],
@@ -1043,6 +1045,7 @@ describe("the kubernetes adapter", () => {
           launchUrl: "https://notes.jorisjonkers.dev/",
           iconUrl: "https://notes.jorisjonkers.dev/favicon.svg",
           redirectUris: ["https://notes.jorisjonkers.dev/callback"],
+          backChannelLogoutUri: "https://notes.jorisjonkers.dev/logout",
           credential: "secret",
           secretPath: "secret/data/notes-system/notes/client",
           roles: ["user", "writer"],
