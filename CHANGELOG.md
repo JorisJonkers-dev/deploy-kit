@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.1.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.0.1...v1.1.0) (2026-10-29)
+
+
+### Features
+
+* **model:** a Process names its command and arguments, and a writable path may be held in memory ([#700](https://github.com/JorisJonkers-dev/deploy-kit/issues/700)) ([3152b95](https://github.com/JorisJonkers-dev/deploy-kit/commit/3152b95e32365d53fa7f0ccb381c566697d618dd))
+* **model:** ask the Release Gate whether to roll back a release that can no longer pass ([#678](https://github.com/JorisJonkers-dev/deploy-kit/issues/678)) ([c123e20](https://github.com/JorisJonkers-dev/deploy-kit/commit/c123e20a7199f50d6cd5e0ffa4a6c28c7fce660d))
+* **model:** let a grant's key be optional, and render every reference to it optional ([#701](https://github.com/JorisJonkers-dev/deploy-kit/issues/701)) ([a37f826](https://github.com/JorisJonkers-dev/deploy-kit/commit/a37f82607ed2d67ec2ffbe092fa66632b09ac507)), closes [#696](https://github.com/JorisJonkers-dev/deploy-kit/issues/696)
+* **model:** let an Application and a Process describe themselves ([#703](https://github.com/JorisJonkers-dev/deploy-kit/issues/703)) ([27a0406](https://github.com/JorisJonkers-dev/deploy-kit/commit/27a04069c1947d0b9bc2d2d48d9e094c3eb612bd)), closes [#432](https://github.com/JorisJonkers-dev/deploy-kit/issues/432)
+* **model:** let an exposure bypass the DNS provider's proxy, pointing at the tier's direct address ([#704](https://github.com/JorisJonkers-dev/deploy-kit/issues/704)) ([a61ac03](https://github.com/JorisJonkers-dev/deploy-kit/commit/a61ac03ea704eb56b2f7a6f7d94b1bb7d9cb763f)), closes [#694](https://github.com/JorisJonkers-dev/deploy-kit/issues/694)
+* **model:** mount the ServiceAccount token for an api holder with no rules ([#713](https://github.com/JorisJonkers-dev/deploy-kit/issues/713)) ([7bae339](https://github.com/JorisJonkers-dev/deploy-kit/commit/7bae339df021c9a45a42bb84cdd8f1413e087888)), closes [#708](https://github.com/JorisJonkers-dev/deploy-kit/issues/708)
+* **model:** retry a failed release from its pin, rendered onto every gated pod template ([#677](https://github.com/JorisJonkers-dev/deploy-kit/issues/677)) ([9ec50ab](https://github.com/JorisJonkers-dev/deploy-kit/commit/9ec50ab0b0f64afbb97ceb34229322f65de300e2))
+* **model:** scrape Flux where the bootstrap set records its metrics, and derive the metrics stack's egress ([#699](https://github.com/JorisJonkers-dev/deploy-kit/issues/699)) ([bb4c741](https://github.com/JorisJonkers-dev/deploy-kit/commit/bb4c7415c685f9f43cb76dbd560345c9dd24c3b3))
+* **model:** seed an Asset onto a Process's volume before each start ([#712](https://github.com/JorisJonkers-dev/deploy-kit/issues/712)) ([38e6764](https://github.com/JorisJonkers-dev/deploy-kit/commit/38e67648af0a0d5aa5e67b0cf07050a0097d64bf)), closes [#693](https://github.com/JorisJonkers-dev/deploy-kit/issues/693) [#709](https://github.com/JorisJonkers-dev/deploy-kit/issues/709)
+
+
+### Bug Fixes
+
+* **ci:** validate manifests against production's Kubernetes and a pinned CRD catalog ([#685](https://github.com/JorisJonkers-dev/deploy-kit/issues/685)) ([d8b24dd](https://github.com/JorisJonkers-dev/deploy-kit/commit/d8b24dd7ea2ada1aee90126836808cf2f3cb820d))
+
 ## [1.0.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.0.0...v1.0.1) (2026-10-27)
 
 
