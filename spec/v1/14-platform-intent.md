@@ -1417,9 +1417,10 @@ classDiagram
         +Audience[] audiences
         +Listener listener
         +CertificateSource certificates
-        +Url forwardAuth
         +ProxiedBy proxiedBy
         +ApplicationId traefik
+        +string ingressClass
+        +string address
     }
     class DurabilityPolicies {
         +DurabilityPolicy reconstructible
@@ -1469,16 +1470,6 @@ classDiagram
     class EphemeralPolicy {
         +Quantity size
     }
-    class HandoverLedger {
-        +Date retireBy
-        +ProjectName[] legacy
-        +ProjectName[] estate
-    }
-    class ServingLocation {
-        +string application
-        +string namespace
-        +string instance
-    }
     class ApiAccessPolicy {
         +ApplicationId[] holders
         +ApplicationId[] namespaceHolders
@@ -1494,6 +1485,7 @@ classDiagram
     class DeliveryPolicy {
         +ApplicationId[] machinery
         +ApplicationId gate
+        +ApplicationId reporter
     }
     class MoveMethod {
         +ImageAlias image
@@ -1534,6 +1526,71 @@ classDiagram
         +string resource
         +string runtimeClass
     }
+    class ForwardAuth {
+        +ApplicationId provider
+        +SurfaceName surface
+        +Path path
+    }
+    class TierDns {
+        +string target
+        +bool proxied
+    }
+    class Acme {
+        +string email
+        +string dnsProvider
+        +VaultPath token
+    }
+    class DashboardPolicy {
+        +map instance
+        +string datasource
+    }
+    class Monitoring {
+        +ApplicationId grafana
+        +ApplicationId prometheus
+        +ApplicationId alertmanager
+    }
+    class Receiver {
+        +string name
+        +VaultPath webhook
+    }
+    class SeverityRoute {
+        +Severity severity
+        +string receiver
+        +Duration repeat
+    }
+    class HumanGrant {
+        +string group
+        +ClusterRole clusterRole
+        +string reason
+    }
+    class L4Address {
+        +string name
+        +L4AddressKind kind
+        +string site
+        +Cidr range
+        +string node
+    }
+    class PriorityPolicy {
+        +ApplicationId[] criticalApplications
+    }
+    class PriorityClass {
+        +string name
+        +int value
+    }
+    class MeshPolicy {
+        +ApplicationId[] enrolled
+    }
+    class SignIn {
+        +Url issuer
+        +ApplicationId provider
+        +string contract
+    }
+    class NodeAgent {
+        +string name
+        +ImageAlias image
+        +Quantity memory
+        +Quantity cpu
+    }
     class VpnPolicy {
         +ImageAlias image
         +VaultPath credential
@@ -1558,12 +1615,25 @@ classDiagram
     Platform "1" *-- "0..1" VaultPolicyJob : policyJob
     DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
     DeliveryPolicy "1" *-- "0..1" MovePolicy : move
-    Platform "1" *-- "0..1" HandoverLedger : handover
-    HandoverLedger "1" *-- "0..*" ServingLocation : serving
     Platform "1" *-- "0..*" Provider : providers
     Platform "1" *-- "0..*" Library : libraries
     Platform "1" *-- "0..*" GpuVendor : gpus
     Platform "1" *-- "0..1" VpnPolicy : vpn
+    Platform "1" *-- "0..1" Acme : acme
+    Platform "1" *-- "0..1" Monitoring : monitoring
+    Platform "1" *-- "0..*" HumanGrant : humanGrants
+    Platform "1" *-- "0..*" L4Address : l4Addresses
+    Platform "1" *-- "0..1" PriorityPolicy : priority
+    Platform "1" *-- "0..1" MeshPolicy : mesh
+    Platform "1" *-- "0..1" SignIn : signIn
+    Platform "1" *-- "0..*" NodeAgent : nodeAgents
+    Tier "1" *-- "0..1" ForwardAuth : forwardAuth
+    Tier "1" *-- "0..1" TierDns : dns
+    TelemetryPolicy "1" *-- "0..1" DashboardPolicy : dashboards
+    Monitoring "1" *-- "1..*" Receiver : receivers
+    Monitoring "1" *-- "1..*" SeverityRoute : routes
+    PriorityPolicy "1" *-- "1" PriorityClass : data
+    PriorityPolicy "1" *-- "1" PriorityClass : critical
     Bootstrap "1" *-- "1" FluxSource : flux
     FluxSource "1" *-- "1" RenderedArtifacts : artifacts
     RenderedArtifacts "1" *-- "1" ArtifactSigner : signer

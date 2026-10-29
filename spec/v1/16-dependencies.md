@@ -1143,17 +1143,21 @@ an ADR.
 ### What a dependency edge derives
 
 ```mermaid
-flowchart LR
-    E["dependsOn<br/>{application, surface, required}"]
+flowchart TB
+    E["dependsOn, on knowledge-api<br/>{application: platform-postgres, surface: postgres, required}"]
 
-    E --> O1["Reconcile Unit ordering<br/>apps-knowledge after apps-data"]
-    E --> O2["dependency coordinates<br/>${dependency:platform-postgres.host}"]
-    E --> O3["NetworkPolicy egress<br/>allow postgres:5432"]
+    E --> O1["ordering<br/>another Project: its Reconcile Unit after the provider's;<br/>its own: the Release Gate"]
+    E --> O2["dependency coordinates<br/>${dependency:platform-postgres.host}<br/>the name the consumer dials"]
+    E --> O3["the alias (kubernetes)<br/>ExternalName platform-postgres<br/>in the consumer's namespace"]
+    E --> O4["NetworkPolicy egress (networking)<br/>to the provider's pods on postgres:5432"]
+    E --> O5["the consumer label (kubernetes)<br/>on the consumer's pods"]
 
     E -.->|"required: false"| N1["allow rule only,<br/>orders nothing"]
 
-    O3 --> B["+ baseline<br/>UDP/53 to cluster DNS"]
+    O3 -->|"externalName"| SA["Stable Address, estate-scoped<br/>platform-postgres-postgres.estate-system<br/>naming the active Instance"]
+    O4 --> B["+ baseline<br/>UDP/53 to cluster DNS"]
     B -.->|"only when the edge set is complete"| D["default-deny posture"]
+    O5 -.-> PI["the provider's own ingress<br/>admits every pod carrying the label"]
 ```
 
 ### The derivation map
@@ -1329,15 +1333,14 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    X["exposure, on the Application:<br/>name: kb<br/>host: kb.jorisjonkers.dev<br/>audience: authenticated<br/>routes: 5"]
+    X["exposure, on the Application knowledge:<br/>name: kb<br/>host: kb.jorisjonkers.dev<br/>audience: authenticated<br/>routes: 5"]
 
     X --> H["host, carried through<br/>kb.jorisjonkers.dev"]
     X --> T["tier public-frankfurt<br/>+ forward-auth middleware<br/>derived from audience + tier"]
 
-    H --> A1["IngressRoute (host)"]
-    H --> A2["IngressRoute (mcp routes)"]
-    H --> A3["reachability channel entry"]
-    H --> A6["external checks ConfigMap, in the Project's own share"]
-    T --> A1
-    T --> A2
+    H --> A1["external checks ConfigMap (kubernetes)<br/>one check per route, in the Project's own share"]
+    H --> A2["Canary webhook metadata (kubernetes)<br/>the hosts the Release Gate requests through"]
+    H --> A3["IngressRoute set (traefik)<br/>route-kb.yaml, one rule per route"]
+    T --> A3
+    T --> A4["NetworkPolicy ingress (networking)<br/>from the tier's proxy, to each routed Process"]
 ```

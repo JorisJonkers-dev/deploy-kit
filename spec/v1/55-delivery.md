@@ -1111,7 +1111,7 @@ the diagram and the mermaid is what gets fixed.**
 
 ```mermaid
 flowchart TB
-    S1["a change merges in the application repository<br/>its images build and are pushed"] --> D1{"a changelog? then the<br/>compatibility proof passes?"}
+    S1["a release is tagged in the application repository<br/>its images build and are pushed"] --> D1{"a changelog? then the<br/>compatibility proof passes?"}
     D1 -->|yes| S2["the Intent Fragment publishes<br/>every image by digest, the proof recorded"]
     D1 -->|no| F1["no fragment publishes<br/>nothing changed anywhere"]
     S2 --> D2{"composition: every<br/>estate-wide invariant holds?"}
@@ -1122,7 +1122,7 @@ flowchart TB
     D3 -->|no| F3["not applied: its source reports it<br/>what was running keeps running"]
     D4 -->|yes| D5{"migration up, then every<br/>prepare Process: complete?"}
     D4 -->|no| F4["held before anything runs<br/>the schema is untouched"]
-    D5 -->|yes| D6{"each changed member passes its<br/>analysis, and the barrier opens in time?"}
+    D5 -->|yes| D6{"each changed member passes, none is rolled<br/>back, and the barrier opens in time?"}
     D5 -->|no| F5["held: the old version serves;<br/>the down runs if nothing new serves"]
     D6 -->|no| F5
     D6 -->|yes| D7{"every member<br/>promotes?"}

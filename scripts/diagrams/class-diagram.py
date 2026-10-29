@@ -144,7 +144,8 @@ for line in body.split("\n"):
 # `resolves by name` edges and `Route -> Audience` all land between neighbours.
 TREES = {"10-project-intent": {
     "Project": ["Application"],
-    "Application": ["Migration", "Observability", "Process", "Exposure"],
+    "Application": ["Dashboard", "AlertRules", "Client", "Migration", "Observability", "Process",
+                    "Exposure", "L4Exposure"],
     "Observability": ["Scrape"],
     # No Shared Intent family is drawn. Eight of them at three levels each is
     # more relations than a reader can hold, and drawing them at one level
@@ -161,7 +162,8 @@ TREES = {"10-project-intent": {
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
         "EnginePolicies", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
         "EphemeralPolicy", "MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy",
-        "VaultPolicyJob", "HandoverLedger", "Provider", "Library", "GpuVendor", "VpnPolicy",
+        "VaultPolicyJob", "Provider", "Library", "GpuVendor", "VpnPolicy", "Acme", "Monitoring",
+        "HumanGrant", "L4Address", "PriorityPolicy", "MeshPolicy", "SignIn", "NodeAgent",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "FluxSource": ["RenderedArtifacts"],
@@ -172,7 +174,10 @@ TREES = {"10-project-intent": {
     "EnginePolicies": ["EnginePolicy"],
     "EnginePolicy": ["MoveMethod"],
     "DeliveryPolicy": ["AnalysisPolicy", "MovePolicy"],
-    "HandoverLedger": ["ServingLocation"],
+    "Tier": ["ForwardAuth", "TierDns"],
+    "TelemetryPolicy": ["DashboardPolicy"],
+    "Monitoring": ["Receiver", "SeverityRoute"],
+    "PriorityPolicy": ["PriorityClass"],
 }, "20-resolved-deployment": {
     # Sibling order puts GateMember next to ResolvedProbe, so the one
     # cross-link on the drawing joins two neighbours: the migration, whose
@@ -183,10 +188,12 @@ TREES = {"10-project-intent": {
         "ResolvedApplication",
     ],
     "Provenance": ["InputDigest"],
-    "ResolvedCatalogJob": ["ResolvedCatalog"],
+    "ResolvedCatalogJob": ["ResolvedCatalog", "ResolvedBucketCatalog"],
+    "ResolvedBucketCatalog": ["CatalogAdminToken", "CatalogKey"],
     "ResolvedCatalog": ["CatalogAdmin", "CatalogDatabase"],
     "ResolvedApplication": [
-        "ResolvedMigration", "ReleaseGate", "ResolvedScrape", "ResolvedProcess",
+        "ResolvedDashboards", "ResolvedAlertRules", "ResolvedAlerting", "ResolvedClient",
+        "ResolvedMesh", "ResolvedMigration", "ReleaseGate", "ResolvedScrape", "ResolvedProcess",
         "ResolvedExposure",
     ],
     "ReleaseGate": ["GateMigration", "GateAnalysis", "GateMember"],
@@ -198,16 +205,22 @@ TREES = {"10-project-intent": {
         "ResolvedGrant", "ResolvedEngineGrant", "ResolvedAsset",
         "ResolvedSidecar", "ResolvedEdge",
         "WritablePath", "EnvEntry", "ResolvedSurface", "IngressPeer",
-        "EgressPeer", "InternetEgress",
+        "EgressPeer", "InternetEgress", "GateMembersPeer", "ResolvedClientGrant",
+        "ResolvedSpawn", "ResolvedMove", "ResolvedPoolExposure", "ResolvedNodeExposure",
+        "ResolvedEdgeProxy",
     ],
+    "ResolvedDashboards": ["ResolvedDashboard"],
+    "ResolvedAlerting": ["ResolvedReceiver", "ResolvedSeverityRoute"],
+    "ResolvedPoolExposure": ["ResolvedL4Port"],
+    "ResolvedEdgeProxy": ["ResolvedResolver"],
     "ResolvedApiAccess": ["ResolvedApiRule"],
     "ResolvedVolume": ["BackupPlan"],
-    "BackupPlan": ["BackupPeer", "DestinationRange"],
+    "BackupPlan": ["BackupPeer", "DestinationRange", "OffClusterPlan"],
     "EnvEntry": ["SecretReference"],
     "ResolvedEngineGrant": ["PolicyPath"],
     "ResolvedEdge": ["PolicyPeer"],
-    "ResolvedExposure": ["ResolvedRoute", "TierProxy"],
-    "ResolvedRoute": ["MiddlewareStep"],
+    "ResolvedExposure": ["ResolvedRoute", "TierProxy", "ResolvedTierDns"],
+    "ResolvedRoute": ["MiddlewareStep", "GateAddress"],
 }}
 NAMES = {"10-project-intent": "Project Intent - the layer-1 model",
          "14-platform-intent": "Platform Intent - the model",
@@ -258,8 +271,7 @@ REPORT_LAYOUTS = {"10-project-intent": {
             ["PlatformMetadata", "Substrate", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
              "EphemeralPolicy"],
             ["Bootstrap"], ["Tier", "Provider"], ["DurabilityPolicies", "EnginePolicies"],
-            ["MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy", "VaultPolicyJob",
-             "HandoverLedger"],
+            ["MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy", "VaultPolicyJob"],
         ],
         "Bootstrap": [["FluxSource", "VaultState"]],
         "FluxSource": [["RenderedArtifacts"]],
@@ -986,6 +998,9 @@ E_ASSOC = E_ENUM.replace("dashed=1;dashPattern=8 4;", "")
 cross = [(E_COMP, a, b, f"{m}  {l}") for a, b, m, l in comp if (a, b) not in tree]
 cross += [(E_ASSOC, a, b, l) for a, b, l in assoc]
 cross += [(E_ENUM, a, b, f"«{l}»") for a, b, l in dep if (a, b) not in tree]
+# a second owner of a box already placed under its first is a relation across
+# layers, which the README's rule leaves to the chapter's prose
+cross = [c for c in cross if depth[c[1]] == depth[c[2]]]
 def neighbours(a, b):
     """True when nothing on their row sits between the two boxes."""
     lo, hi = sorted((cx(a), cx(b)))

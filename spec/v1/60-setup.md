@@ -749,12 +749,12 @@ flowchart TB
     A["1. node facts<br/>one YAML per node, site, allocatable cpu and memory,<br/>structured gpus and disks, capabilities;<br/>contract generated, nix imports the labels"]
     B["2. the bootstrap set applied<br/>k3s, the Flux source, Vault unsealed,<br/>the CRDs, recorded in the Platform document"]
     C["3. Platform document published<br/>substrate facts, tiers, policies, engines,<br/>providers, an Intent Fragment by digest"]
-    D["4. platform projects published<br/>edge, secrets, observability,<br/>the foundation, as Applications"]
+    D["4. platform projects published<br/>edge, secrets, observability, delivery:<br/>the foundation, as Applications"]
     E["5. ClusterState collector<br/>snapshot plus clusterStateDigest"]
     F["6. participants.yml<br/>the platform and every project, plus maxAge"]
     G["7. one tenant project publishes<br/>one Intent Fragment, holding its Applications"]
     H["8. composition runs<br/>estate-wide invariants over the union"]
-    I["9. render<br/>six adapters, into the tree the Flux source pulls"]
+    I["9. render<br/>the registered adapters, into the tree the Flux source pulls"]
 
     A --> B --> C --> D --> E --> F --> G --> H --> I
     A -.->|"the capability list validates<br/>against the node contract"| C
