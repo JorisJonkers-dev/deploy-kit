@@ -58,6 +58,6 @@ The pipeline this example walks through is
 shape of the authored file is
 [chapter 10's model](../../diagrams/10-project-intent-model.drawio.svg); and the
 route from a declaration to an object is
-[chapter 16's derivation map](../../diagrams/16-derivation-map-deliverables.drawio.svg).
+[chapter 16's derivation map](../../diagrams/16-derivation-map-deliverables-workload.drawio.svg).
 This Application uses one path through each of them, which is what makes it the
 example to start from.
