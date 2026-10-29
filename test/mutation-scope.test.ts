@@ -35,6 +35,7 @@ describe("whether a change reaches the mutation gate", () => {
       ".github/workflows/ci.yml",
       ".github/actions/setup/action.yml",
       "scripts/mutation-shard.ts",
+      "scripts/mutation-baseline.ts",
       "scripts/mutation-merge.ts",
       "scripts/mutation-scope.ts",
       "scripts/lib/mutation-report.ts",

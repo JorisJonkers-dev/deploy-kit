@@ -104,8 +104,8 @@ describe("the mutation gate", () => {
     expect(gateJob).toContain("'path': 'reports/mutation'");
   });
 
-  // RULE-064. Stryker tests a mutant again when its module changed or a test
-  // file that covered it changed, and takes every other result from the
+  // RULE-064. Stryker tests a mutant again when its module changed or the
+  // test that killed it changed, and takes every other result from the
   // report it is handed, so the score is still over every mutant.
   it("re-tests on a pull request what the change reaches, against the last green run on main, npm run test:mutation -- --incremental", () => {
     expect(pullRequestShardJob).toContain(
@@ -118,6 +118,20 @@ describe("the mutation gate", () => {
       'gh run download "${BASELINE}" --repo "${REPO}" --name mutation-incremental --dir reports',
     );
     expect(ci).toMatch(/'pipeline-complete':[\s\S]*?- 'mutation'\n/);
+  });
+
+  // test/mutation-baseline.test.ts holds which tests keep their identity.
+  it("keeps every test that did not change in the report, after it downloads and before any shard reads it", () => {
+    const rebase =
+      "'run': 'node scripts/mutation-baseline.ts reports/stryker-incremental.json'";
+    const download = pullRequestShardJob.indexOf(
+      "--name mutation-incremental --dir reports &&",
+    );
+    const shard = pullRequestShardJob.indexOf("node scripts/mutation-shard.ts");
+
+    expect(download).toBeGreaterThan(-1);
+    expect(pullRequestShardJob.indexOf(rebase)).toBeGreaterThan(download);
+    expect(pullRequestShardJob.indexOf(rebase)).toBeLessThan(shard);
   });
 
   // test/mutation-shard.test.ts holds the split, and

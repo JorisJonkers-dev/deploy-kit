@@ -516,8 +516,12 @@ sandbox, which two defect classes keep several of them from yet.
 
 The mutation gate does not test every mutant. It runs Stryker incrementally
 against the report of the last green run on `main`: a mutant is tested again
-when its module changed, or when a test file that covered it changed, and
-every other result is taken from that report. The run is twelve shards, each
+when its module changed, or when the test that killed it changed, and every
+other result is taken from that report. Stryker places no Vitest test in its
+file, so `scripts/mutation-baseline.ts` first rewrites that report to keep
+every test whose own code, the declarations it names and the `describe`
+around it are unchanged; without it one edit to a test file would re-test
+everything that file's tests killed. The run is twelve shards, each
 mutating a disjoint share of every module's top-level statements, balanced by
 the tests those statements' mutants ran in that report
 (`scripts/mutation-shard.ts`), and the `mutation` job merges their reports into

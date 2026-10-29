@@ -197,9 +197,9 @@
 
   # A pull request re-tests the mutants its change reaches, not every mutant.
   # Stryker's incremental mode compares the tree with the newest report a
-  # nightly run on main uploaded (a push to main runs no mutation), and tests a mutant again when its module changed or a
-  # test file that covered it changed; every other result is taken from that
-  # report. The work is twelve parallel shards, each mutating a disjoint share of
+  # nightly run on main uploaded (a push to main runs no mutation), and tests a mutant again when its module changed or the
+  # test that killed it changed (scripts/mutation-baseline.ts); every other
+  # result is taken from that report. The work is twelve parallel shards, each mutating a disjoint share of
   # every module's top-level statements, balanced by the time each took in
   # that report (scripts/mutation-shard.ts), and
   # `mutation` merges their reports into the one a single run would have
@@ -302,6 +302,12 @@
           done
           echo "::error::Run ${BASELINE}'s mutation-incremental report did not download"
           exit 1
+      # Stryker places no Vitest test in its file, so one edit to a test file
+      # reads as every test in it changed. This keeps each test whose own code
+      # and what it names did not change, so a mutant is re-tested when the
+      # test that killed it changed (scripts/mutation-baseline.ts).
+      - 'name': 'Keep every test that did not change'
+        'run': 'node scripts/mutation-baseline.ts reports/stryker-incremental.json'
       # The ranges are taken first, so a shard script that fails stops the
       # step, rather than handing Stryker an empty list. They go beside the
       # report, for the merge to read what this shard really ran.
