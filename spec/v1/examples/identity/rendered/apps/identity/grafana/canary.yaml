@@ -63,3 +63,15 @@ spec:
           hostnames: grafana.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: grafana
+          process: grafana
+          revision: sha256:24ea08efe8b9d3470694a2dc61f8a97ee2ba90a2908546efcb4d9ff028b636c4
+          paths: /
+          readiness: /api/health
+          hostnames: grafana.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms

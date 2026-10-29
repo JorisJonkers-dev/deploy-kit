@@ -1044,7 +1044,7 @@ facts, all the platform's:
   as a tier's proxy does: `E_UNKNOWN_MACHINERY` otherwise. Flux is not among
   them: it is in the bootstrap set, not an Application.
 - **`gate`** names which of the machinery is the Release Gate: the Application
-  every Canary's three webhooks ask, on its `http` surface. It links as a
+  every Canary's four webhooks ask, on its `http` surface. It links as a
   collector does, to an Application whose Process provides that surface:
   `E_UNKNOWN_RELEASE_GATE` otherwise.
 - **`reporter`** names the Reporter: the Application Flux's events about every

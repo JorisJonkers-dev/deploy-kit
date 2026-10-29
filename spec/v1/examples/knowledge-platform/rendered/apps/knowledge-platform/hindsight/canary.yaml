@@ -63,6 +63,18 @@ spec:
           hostnames: memory-api.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: hindsight
+          process: hindsight-api
+          revision: sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67
+          paths: /
+          readiness: /health
+          hostnames: memory-api.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
 ---
 apiVersion: flagger.app/v1beta1
 kind: Canary
@@ -116,6 +128,17 @@ spec:
       - name: may-promote
         type: confirm-promotion
         url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: hindsight
+          process: hindsight-control-plane
+          revision: sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67
+          paths: /
+          hostnames: memory.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
         metadata:
           application: hindsight
           process: hindsight-control-plane

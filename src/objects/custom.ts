@@ -5,7 +5,8 @@ import type { Labels, ObjectMeta } from "./kubernetes.ts";
 
 export interface Webhook {
   readonly name: string;
-  readonly type: "confirm-rollout" | "rollout" | "confirm-promotion";
+  readonly type:
+    "confirm-rollout" | "rollout" | "confirm-promotion" | "rollback";
   readonly url: string;
   readonly metadata: Readonly<Record<string, string>>;
 }

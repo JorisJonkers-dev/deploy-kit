@@ -57,3 +57,13 @@ spec:
           readiness: /
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: otel-collector
+          process: otel-collector
+          revision: sha256:4bcdab7f158cf8d299aa2970116d870a1dd481e1a861082d99409a4d43d4fe29
+          readiness: /
+          errorRate: 1%
+          latency: 500ms

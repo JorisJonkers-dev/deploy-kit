@@ -83,11 +83,12 @@ import { VPN_DIRECTORY } from "../../model/vpn.ts";
 
 export const ADAPTER = "kubernetes";
 
-/** The three questions a Canary asks the Release Gate (spec/v1/55-delivery.md#the-release-gate). */
+/** The four questions a Canary asks the Release Gate (spec/v1/55-delivery.md#the-release-gate). */
 const WEBHOOKS = [
   ["may-start", "confirm-rollout"],
   ["checks", "rollout"],
   ["may-promote", "confirm-promotion"],
+  ["rollback", "rollback"],
 ] as const;
 
 /** The mark that keeps the applier from ever deleting a claim (spec/v1/30-deliverables.md#flagger-ready-objects). */

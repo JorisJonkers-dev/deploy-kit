@@ -57,3 +57,13 @@ spec:
           readiness: /actuator/health/readiness
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: agents-api
+          process: agents-api
+          revision: sha256:904aac9d8a972fa55d2bbde8c33a818ca38aca33789ab7ac4d51edb3c0a73f3f
+          readiness: /actuator/health/readiness
+          errorRate: 1%
+          latency: 500ms

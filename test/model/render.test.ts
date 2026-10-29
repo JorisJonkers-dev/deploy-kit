@@ -641,7 +641,9 @@ describe("renderIntentSet", () => {
               kind: string;
               spec: {
                 analysis: Record<string, unknown> & {
-                  webhooks: { metadata: Record<string, string> }[];
+                  webhooks: (Record<string, string> & {
+                    metadata: Record<string, string>;
+                  })[];
                 };
               };
             },
@@ -649,22 +651,51 @@ describe("renderIntentSet", () => {
         .find(({ kind }) => kind === "Canary") as {
         spec: {
           analysis: Record<string, unknown> & {
-            webhooks: { metadata: Record<string, string> }[];
+            webhooks: (Record<string, string> & {
+              metadata: Record<string, string>;
+            })[];
           };
         };
       };
       return {
         analysis: spec.analysis,
+        asks: spec.analysis.webhooks.map(({ name, type, url }) => ({
+          name,
+          type,
+          url,
+        })),
         metadata: spec.analysis.webhooks.map(({ metadata }) => metadata),
       };
     };
     const route =
       "{ path: /, match: prefix, process: notes-api, surface: http }";
 
-    it("carry every Route's path, the readiness path, the public hostname and the platform's thresholds, the same on all three", () => {
+    // REQ-117 (docs/requirements.md): the fourth question, `rollback`, is
+    // asked at the gate's own path, so a release that can no longer pass
+    // rolls back rather than waits.
+    it("ask the gate its four questions, each at its own path, the last whether to roll back", () => {
+      const gate = "http://release-gate.delivery-system.svc.cluster.local:8080";
+
+      expect(canary().asks).toStrictEqual([
+        {
+          name: "may-start",
+          type: "confirm-rollout",
+          url: `${gate}/may-start`,
+        },
+        { name: "checks", type: "rollout", url: `${gate}/checks` },
+        {
+          name: "may-promote",
+          type: "confirm-promotion",
+          url: `${gate}/may-promote`,
+        },
+        { name: "rollback", type: "rollback", url: `${gate}/rollback` },
+      ]);
+    });
+
+    it("carry every Route's path, the readiness path, the public hostname and the platform's thresholds, the same on all four", () => {
       const { analysis, metadata } = canary();
 
-      expect(metadata).toHaveLength(3);
+      expect(metadata).toHaveLength(4);
       for (const carried of metadata)
         expect(carried).toStrictEqual({
           application: "notes",
@@ -768,7 +799,7 @@ describe("renderIntentSet", () => {
       it("hold every key for a member with a Route the internet reaches", () => {
         const metadata = metadataOf(resolvedNotes());
 
-        expect(metadata).toHaveLength(3);
+        expect(metadata).toHaveLength(4);
         for (const carried of metadata)
           expect(Object.keys(carried)).toStrictEqual(KEYS);
       });

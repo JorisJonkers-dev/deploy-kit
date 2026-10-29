@@ -680,7 +680,7 @@ promoted into by Flagger once the barrier opens; the render never writes it
 
 **Release Gate**: the first-party controller that answers a switchover's
 questions from the Resolved Deployment, per member: may this member's new
-version start, and may it be promoted
+version start, may it be promoted, and must its new copy be rolled back
 ([chapter 55](spec/v1/55-delivery.md#the-release-gate)). Not the Kubernetes
 readiness gate.
 

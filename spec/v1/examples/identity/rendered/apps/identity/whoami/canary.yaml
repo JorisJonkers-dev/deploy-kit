@@ -67,6 +67,18 @@ spec:
           hostnames: whoami.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: whoami
+          process: whoami
+          revision: sha256:4bd7748a66e3d3e1e858c651aee85898bfa851f2677711385cec86360e573960
+          paths: / /health
+          readiness: /health
+          hostnames: whoami.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

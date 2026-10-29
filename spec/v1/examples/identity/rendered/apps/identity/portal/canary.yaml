@@ -63,3 +63,15 @@ spec:
           hostnames: home.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: portal
+          process: portal
+          revision: sha256:64c8b50827e7d3454a00eab6bcaa99051bd59849546fdb68a99e77c1e0730752
+          paths: /
+          readiness: /
+          hostnames: home.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms

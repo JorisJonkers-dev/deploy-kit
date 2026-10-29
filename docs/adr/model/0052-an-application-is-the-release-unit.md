@@ -15,10 +15,11 @@ mechanism to couple two Applications. No member's new version receives traffic
 until every member has passed its analysis, and one member failing holds the
 whole Application on its old versions. The switch of a `blue-green` Application
 is performed by Flagger and decided by a first-party **Release Gate**, which
-answers the two questions a Canary asks (may this member's new version start,
-may it be promoted) from the Application's release-gate inputs in the Resolved
-Deployment. It holds every member at a barrier until all have passed, and answers
-no whenever it cannot answer. The delivery machinery (Flagger, the gate, the edge
+answers the questions a Canary asks (may this member's new version start, may
+it be promoted, must its new copy be rolled back) from the Application's
+release-gate inputs in the Resolved Deployment. It holds every member at a
+barrier until all have passed, rolls every member back once the release can no
+longer pass, and answers no whenever it cannot answer. The delivery machinery (Flagger, the gate, the edge
 proxies) is listed in the Platform document and never gated. Analysis cadence is
 the platform's; each member's checks derive from its Runtime Profile.
 
@@ -34,12 +35,14 @@ than a service mesh.
 
 **False if:** a pair must release together and both names must be referencable
 from outside their project, a member receives new-version traffic before every
-member has passed, or a release proceeds while the gate is unreachable.
+member has passed, a release proceeds while the gate is unreachable, or a member
+keeps its new copy running at a barrier another member's failure has closed.
 **Settled by:** every `dependsOn` target in the composed union
 (`platform-postgres`, `platform-rabbitmq`, `stalwart`, `platform-valkey`, none of
 them a merged pair); `auth` released with `auth-ui`'s analysis forced to fail and
-`auth-api` never promoted; and the gate stopped mid-release with every Canary
-waiting.
+`auth-api` never promoted; the gate stopped mid-release with every Canary
+waiting; and an `auth` release whose `auth-api` crash-looped, with `auth-ui`
+rolled back rather than left waiting.
 
 ## Why
 
@@ -57,7 +60,20 @@ graph cannot see.
 
 **Flagger switches; nothing in it holds a unit.** Its blue/green runs one Canary
 per Deployment with no dependency between Canaries. Its `confirm-rollout` and
-`confirm-promotion` webhooks are where a barrier plugs in.
+`confirm-promotion` webhooks are where a barrier plugs in, and its `rollback`
+webhook is where a barrier that can no longer open lets go.
+
+**A barrier that cannot open lets go.** Flagger waits on a refused promotion
+with no deadline, so a member that passed while another failed would keep its
+new copy beside its primary until the next release, and the down, which waits
+for every new copy to be at zero, would never run. The gate answers `rollback`
+yes once the release can no longer pass: a member's new copy crash-looping, or
+another member failed at the revision. A crash loop is three restarts of one
+pod, because the progress deadline is three startup budgets: a pod on its fourth
+start has spent what its release allows, where one restart is a cold start the
+startup probe cut short once. Flagger asks `rollback` only of a copy that is
+ready, so the question ends a member's wait on another, never its own crash
+loop; that stays its progress deadline's.
 
 **From data, not scripts.** A loadtester running rendered `kubectl` and `jq`
 would be executable code in a Deliverable
@@ -95,6 +111,9 @@ bound to a host port cannot run two copies, so the machinery rolls in place
 | The gate remembers what serves in memory alone | no write access for the gate | a restart loses it, and every migration is then held until someone states the serving revision by hand |
 | The serving revision as an annotation on the rendered gate inputs | one object fewer | the render and the gate would both write one object, where every other object here has one writer |
 | Fail open | releases continue during an outage | the barrier lapses exactly then |
+| A member waits at a barrier that cannot open | one webhook fewer | its new copy runs until the next release, and the down never runs |
+| Roll back on a member's first restart | a crash loop ends one start sooner | a cold start the startup probe cuts short once is one the progress deadline is sized to survive |
+| A shorter progress deadline ends a crash-looping copy | the member itself ends sooner | Flagger asks no webhook before a copy is ready, so only the deadline can end one that never is, and it is the one bound on a slow start |
 | Checks read the member's own request metrics | no traffic of the gate's | a copy that receives no request reports none, so the check passes on silence, and a static runtime has no metrics to read |
 | Thresholds per Application | each team tunes its own | a threshold an Application sets is one it can set to pass; the platform's two numbers hold every release to the same bar |
 | The gate's check inputs in its own configuration | nothing in the Canary | a second list of every Project's paths, which a Route change would have to reach by hand |
@@ -108,6 +127,9 @@ merged Application's id, or releases depend on the gate.
 
 ## Consequences
 
+- A Canary carries a fourth webhook, `rollback`. A gate that does not serve it
+  answers `404`, which Flagger reads as "do not roll back", so the render can
+  name it before the gate answers it.
 - A Process is not independently referencable; an edge to a merged Process means
   undoing the merge and restoring its id.
 - A lockstep pair that cannot merge is evidence the boundary is drawn wrong,
