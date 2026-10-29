@@ -69,9 +69,9 @@ Each claim has an id so the notes below the tables can refer to it.
 
 | id | claim | decision | verdict | condition or correction | primary source |
 |---|---|---|---|---|---|
-| C7 | A `VaultDynamicSecret` can read a credential from the `rabbitmq` engine as it does from `database` | [Decide how the model meets the live needs no chapter covers](https://github.com/JorisJonkers-dev/deploy-kit/issues/351) | holds | The resource takes any `mount` and `path`; the documentation says all Vault secret engines are supported and calls its engine list non-exhaustive. No `VaultDynamicSecret` reads `rabbitmq` live, so this is not exercised | [VSO 1.5.1 `vaultdynamicsecret_types.go`](https://github.com/hashicorp/vault-secrets-operator/blob/v1.5.1/api/v1beta1/vaultdynamicsecret_types.go); [VSO, Vault as a secret source](https://developer.hashicorp.com/vault/docs/deploy/kubernetes/vso/sources/vault) |
+| C7 | A `VaultDynamicSecret` can read a credential from the `rabbitmq` engine as it does from `database` | [Decide how the model meets the live needs no chapter covers](https://github.com/JorisJonkers-dev/deploy-kit/issues/351) | holds | The resource takes any `mount` and `path`; the documentation says all Vault secret engines are supported and calls its engine list non-exhaustive. No `VaultDynamicSecret` reads `rabbitmq` live; the drill on JorisJonkers-dev/deploy-kit#369 exercised it in a throwaway namespace, where VSO 1.5.1 read, renewed and replaced the credential | [the drill's results](https://github.com/JorisJonkers-dev/deploy-kit/issues/369#issuecomment-6496683043); [VSO 1.5.1 `vaultdynamicsecret_types.go`](https://github.com/hashicorp/vault-secrets-operator/blob/v1.5.1/api/v1beta1/vaultdynamicsecret_types.go); [VSO, Vault as a secret source](https://developer.hashicorp.com/vault/docs/deploy/kubernetes/vso/sources/vault) |
 | C8 | agents-api reads a RabbitMQ dynamic credential today | same | fails | The annotation still names `rabbitmq/creds/app-consumer`, but the template under it reads the static `secret/data/platform/rabbitmq`. The dynamic credential was dropped after Vault revoked the user under a running pod. No live workload uses a RabbitMQ dynamic credential. See [note](#c7-to-c9-the-rabbitmq-grant) | fleet-infra `cluster/flux/apps/stateless/agents-api/deployment.yaml`, `cluster/flux/apps/data/vault/bootstrap-auth.sh` |
-| C9 | The `rabbitmq` engine gives each consumer its own role with its own lifetime | same | holds with a condition | A role carries `tags`, `vhosts` and `vhost_topics` only. The lease lifetime is one setting for the whole mount (`config/lease`), not per role, and the estate's bootstrap passes `default_ttl` and `max_ttl` to a role, where the API defines no such parameters. See [note](#c7-to-c9-the-rabbitmq-grant) | [Vault, RabbitMQ secrets engine API](https://developer.hashicorp.com/vault/api-docs/secret/rabbitmq); [Vault, RabbitMQ secrets engine](https://developer.hashicorp.com/vault/docs/secrets/rabbitmq) |
+| C9 | The `rabbitmq` engine gives each consumer its own role with its own lifetime | same | holds with a condition | A role carries `tags`, `vhosts` and `vhost_topics` only. The lease lifetime is one setting for the whole mount (`config/lease`), not per role, and the estate's bootstrap passes `default_ttl` and `max_ttl` to a role, where the API defines no such parameters. Read from Vault on 2026-10-29: the live mount has no `config/lease`, so it leases for the system's 32 days. When a lease ends, RabbitMQ force-closes the user's open connections. See [note](#c7-to-c9-the-rabbitmq-grant) | [the drill's results](https://github.com/JorisJonkers-dev/deploy-kit/issues/369#issuecomment-6495945400); [Vault, RabbitMQ secrets engine API](https://developer.hashicorp.com/vault/api-docs/secret/rabbitmq); [Vault, RabbitMQ secrets engine](https://developer.hashicorp.com/vault/docs/secrets/rabbitmq) |
 | C10 | A rotated secret restarts its workload through `rolloutRestartTargets`, so nothing else is needed for restarts | [Decide how the foundation's HelmReleases are rendered and owned](https://github.com/JorisJonkers-dev/deploy-kit/issues/356) | holds with a condition | Targets are `Deployment`, `DaemonSet`, `StatefulSet` and `argo.Rollout`. A static secret changes only when VSO polls it (`refreshAfter`, 1 hour on most live objects), because instant updates need Vault Enterprise; a restart is skipped when `hmacSecretData` is off; a paused Deployment is refused. See [note](#c10-to-c12-what-retiring-reloader-and-the-injector-rests-on) | [VSO 1.5.1 `vaultstaticsecret_types.go`](https://github.com/hashicorp/vault-secrets-operator/blob/v1.5.1/api/v1beta1/vaultstaticsecret_types.go); [`rollout_restart.go`](https://github.com/hashicorp/vault-secrets-operator/blob/v1.5.1/helpers/rollout_restart.go); [`vaultdynamicsecret_controller.go`](https://github.com/hashicorp/vault-secrets-operator/blob/v1.5.1/controllers/vaultdynamicsecret_controller.go); [VSO, Vault as a secret source](https://developer.hashicorp.com/vault/docs/deploy/kubernetes/vso/sources/vault) |
 | C11 | Reloader has one user, hermes, which can move to VSO's restart targets | same | holds | hermes's Secret already restarts it through VSO. Reloader's remaining job is three ConfigMaps, and a Deployment rolls whenever its pod template changes, which a content hash in the template provides | fleet-infra `cluster/flux/apps/agents/hermes/deployment.yaml`, `credentials-vss.yaml`; [Reloader README](https://github.com/stakater/Reloader/blob/master/README.md); [Kubernetes, Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#updating-a-deployment) |
 | C12 | VSO covers every delivery shape the Vault Agent injector serves today | [Decide how the model meets the live needs no chapter covers](https://github.com/JorisJonkers-dev/deploy-kit/issues/351) | holds with a condition | All 19 injected pods run the agent once (`agent-pre-populate-only`), so none relies on a sidecar that renews. Fourteen also ask for the Vault token itself (`agent-inject-token`). VSO defines no resource that delivers a token; no manifest reads the token file, but the images were not inspected. See [note](#c10-to-c12-what-retiring-reloader-and-the-injector-rests-on) | fleet-infra, 19 files under `cluster/flux/apps/` carrying `vault.hashicorp.com/agent-inject`; [VSO API reference](https://developer.hashicorp.com/vault/docs/deploy/kubernetes/vso/api-reference) |
@@ -85,7 +85,7 @@ Each claim has an id so the notes below the tables can refer to it.
 | C15 | A LoadBalancer Service with the `Local` traffic policy keeps the client address | same | holds | none | [Kubernetes, Using Source IP](https://kubernetes.io/docs/tutorials/services/source-ip/); [MetalLB, Usage, Layer2](https://metallb.io/usage/) |
 | C16 | One L4 exposure can carry TCP and UDP on one address, taken from a declared pool | same | holds | The address is requested with the `metallb.io/loadBalancerIPs` annotation. Both AdGuard Services already do this | [Kubernetes, Load balancers with mixed protocol types](https://kubernetes.io/docs/concepts/services-networking/service/#load-balancers-with-mixed-protocol-types); [MetalLB, Usage](https://metallb.io/usage/); fleet-infra `cluster/flux/apps/utility-system/adguard-ha/service-a.yaml` |
 | C17 | The LoadBalancer Service is the one L4 mechanism, so stalwart moves from `hostPort` to it | same | fails | stalwart runs on the Frankfurt node, where no address pool exists and the only public address is the node's own. MetalLB states that it is in general not compatible with cloud providers. The public Traefik's LoadBalancer Service is `<pending>` and serves through `hostPort` for this reason. See [note](#c17-l4-exposure-on-the-frankfurt-node) | [MetalLB, Cloud compatibility](https://metallb.io/installation/clouds/); fleet-infra `cluster/flux/apps/mail/stalwart/deployment.yaml`, `core/ingress-controller/release.yaml`; `kubectl get svc -A` |
-| C18 | With two replicas behind one VIP, MetalLB re-announces the VIP from the surviving replica's node | [Decide how the model meets soft scheduling, spread, anti-affinity and parked replicas](https://github.com/JorisJonkers-dev/deploy-kit/issues/355) | holds with a condition | Only one replica serves at a time: in layer 2 mode all traffic for an address goes to one node, and under `Local` pods off that node receive none. Failover after a node failure is documented as "within a few seconds", and clients that cache the old hardware address wait longer. See [note](#c18-one-vip-in-front-of-two-replicas) | [MetalLB, Layer 2 concepts](https://metallb.io/concepts/layer2/); [MetalLB, Usage, Layer2](https://metallb.io/usage/) |
+| C18 | With two replicas behind one VIP, MetalLB re-announces the VIP from the surviving replica's node | [Decide how the model meets soft scheduling, spread, anti-affinity and parked replicas](https://github.com/JorisJonkers-dev/deploy-kit/issues/355) | holds with a condition | Only one replica serves at a time: in layer 2 mode all traffic for an address goes to one node, and under `Local` pods off that node receive none. Failover after a node failure is documented as "within a few seconds", and clients that cache the old hardware address wait longer. Drilled on 2026-10-29: 5.3 s unanswered when the announcing node's pod was deleted, 6.6 s when that node went off the network. See [note](#c18-one-vip-in-front-of-two-replicas) | [the drill's results](https://github.com/JorisJonkers-dev/deploy-kit/issues/372#issuecomment-6495716893); [MetalLB, Layer 2 concepts](https://metallb.io/concepts/layer2/); [MetalLB, Usage, Layer2](https://metallb.io/usage/) |
 | C19 | The speaker can be derived from a non-empty address pool alone | [Decide how the foundation's HelmReleases are rendered and owned](https://github.com/JorisJonkers-dev/deploy-kit/issues/356) | holds with a condition | A pool is reachable only from the nodes on its network segment. The pool must name those nodes (or their site), the advertisement must select them, and a Process with an exposure in that pool must be placed on them. Live, the speaker runs on all six nodes with no selector, and it works only because every such workload is pinned to Enschede. See [note](#c19-and-c25-to-c29-node-agents-from-node-facts) | [MetalLB, Advanced L2 configuration](https://metallb.io/configuration/_advanced_l2_configuration/); `kubectl get ipaddresspool,l2advertisement,servicel2status -A` |
 
 ### Spread and parked
@@ -93,7 +93,7 @@ Each claim has an id so the notes below the tables can refer to it.
 | id | claim | decision | verdict | condition or correction | primary source |
 |---|---|---|---|---|---|
 | C20 | Required pod anti-affinity on the hostname gives a hard one-per-node guarantee | [Decide how the model meets soft scheduling, spread, anti-affinity and parked replicas](https://github.com/JorisJonkers-dev/deploy-kit/issues/355) | holds | It is checked when a pod is scheduled and not afterwards. A topology spread constraint with `DoNotSchedule` is the weaker construct: it bounds a skew, and its documentation says the constraint is not guaranteed to hold once pods are removed | [Kubernetes, Inter-pod affinity and anti-affinity](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#inter-pod-affinity-and-anti-affinity); [Kubernetes, Topology spread, Known limitations](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/#known-limitations) |
-| C21 | A Process with `across: node` rolls out whenever the eligible nodes are at least as many as its replicas, the only case the build refuses being fewer | same | holds with a condition | When replicas equal eligible nodes, a rolling update that surges cannot place the new pod: every eligible node already holds a matching pod. The default strategy surges for small replica counts. It holds with more eligible nodes than replicas, with `maxSurge: 0`, or with `matchLabelKeys: [pod-template-hash]`. Derived from the documented behaviour, not drilled. See [note](#c21-rollout-when-replicas-equal-eligible-nodes) | [Kubernetes, Deployments, Rolling update](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment); [Kubernetes, matchLabelKeys](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#matchlabelkeys); [Kubernetes v1.35.2 feature gates](https://github.com/kubernetes/kubernetes/blob/v1.35.2/pkg/features/kube_features.go) |
+| C21 | A Process with `across: node` rolls out whenever the eligible nodes are at least as many as its replicas, the only case the build refuses being fewer | same | holds with a condition | When replicas equal eligible nodes, a rolling update that surges cannot place the new pod: every eligible node already holds a matching pod. The default strategy surges for small replica counts. It holds with more eligible nodes than replicas, with `maxSurge: 0`, or with `matchLabelKeys: [pod-template-hash]`. Drilled on 2026-10-29: Flagger's `-primary` copy keeps the key, and its promotion placed the new pod beside the old one. See [note](#c21-rollout-when-replicas-equal-eligible-nodes) | [the drill's results](https://github.com/JorisJonkers-dev/deploy-kit/issues/371#issuecomment-6495590762); [Kubernetes, Deployments, Rolling update](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-update-deployment); [Kubernetes, matchLabelKeys](https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#matchlabelkeys); [Kubernetes v1.35.2 feature gates](https://github.com/kubernetes/kubernetes/blob/v1.35.2/pkg/features/kube_features.go) |
 | C22 | `suspend: true` parks a scheduled Process | same | holds with a condition | It stops new Jobs and leaves a running Job running. On resume, a CronJob without `startingDeadlineSeconds` starts the most recent missed run at once. None of the nine live CronJobs sets a deadline. See [note](#c22-what-suspending-a-cronjob-does) | [Kubernetes, CronJob, Schedule suspension](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#schedule-suspension); [Kubernetes v1.35.2 `cronjob_controllerv2.go`](https://github.com/kubernetes/kubernetes/blob/v1.35.2/pkg/controller/cronjob/cronjob_controllerv2.go) |
 | C23 | A `scheduled` Process renders a CronJob that never runs twice at once | [Decide how the model meets the live needs no chapter covers](https://github.com/JorisJonkers-dev/deploy-kit/issues/351) | holds | `concurrencyPolicy: Forbid` skips a run while the previous one is unfinished. It applies within one CronJob only | [Kubernetes, CronJob, Concurrency policy](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/#concurrency-policy) |
 
@@ -230,16 +230,39 @@ engine are not in the resolution:
 - The lease lifetime is set once per mount, at `rabbitmq/config/lease` (`ttl`,
   `max_ttl`). The bootstrap script passes `default_ttl="72h"` and
   `max_ttl="768h"` to the role, which the role endpoint does not define, and
-  writes no `config/lease`. What lifetime the live mount issues was not read
-  from Vault.
+  writes no `config/lease`. Read from Vault on 2026-10-29, the mount has
+  none: `rabbitmq/config/lease` answers "No value found", and the mount's
+  tune is the system's 2,764,800 s (32 days) for both lifetimes.
 - When a lease ends, Vault deletes the RabbitMQ user. With VSO the lease is
   renewed until its maximum and the credential is then replaced, which
   restarts every consumer (C10). The estate already runs this cycle for
   Postgres: `database/roles/tribelt` has a 24-hour maximum, so tribelt rolls
   daily.
 
-What a RabbitMQ client holding an open connection sees when its user is
-deleted is Unverified beyond the estate's own incident note.
+The drill on JorisJonkers-dev/deploy-kit#369 ran that cycle on 2026-10-29,
+on an engine of its own (`rabbitmq-drill`, leasing 60 s up to 240 s) against
+the live broker, with a pika consumer holding one connection:
+
+- **A deleted user's connection is cut.** RabbitMQ closes it with
+  `320 CONNECTION_FORCED - user '…' is deleted`, and every reconnect with the
+  old password is refused with `403 ACCESS_REFUSED`.
+- **At VSO's default `renewalPercent: 67` the replacement races the
+  deletion.** VSO replaced the credential about 14 s before the old lease
+  ended. The restarted consumer connected in the same second the broker cut
+  the old connection, and the old pod's SIGTERM came a second later. A
+  consumer that takes longer to start loses its connection first.
+- **At `renewalPercent: 33` it does not.** The replacement came 57 s before
+  the old user's deletion, and a consumer that waits 30 s before it connects
+  was on the new user 16 s before it. The old connection ended on SIGTERM;
+  nothing was refused or force-closed.
+- **A new `VaultDynamicSecret` churns once.** On creation VSO issued two
+  credentials within seconds and restarted the consumer twice before it
+  settled.
+
+So C7 holds as exercised, and the cycle holds with a condition the
+resolution does not state: the renewal comes early enough in each lease that
+the replacement, and the consumers' restart, finish before Vault deletes the
+old user.
 
 ### C10 to C12: what retiring Reloader and the injector rests on
 
@@ -323,6 +346,17 @@ in the router, and a resolver that asks the second when the first is silent
 (fleet-infra `cluster/flux/apps/utility-system/adguard-ha/deployment-b.yaml`).
 The resolution replaces that with the cluster-side failover described here.
 
+The drill on JorisJonkers-dev/deploy-kit#372 measured the gap on 2026-10-29:
+two CoreDNS replicas on two Enschede Pis behind one address with the `Local`
+policy, asked ten times a second from a LAN client. Deleting the pod on the
+announcing node left the address unanswered for 5.3 s (6.6 s on an earlier
+run) before the other node answered. Taking the announcing node's link down
+left it unanswered for 6.6 s, and Kubernetes marked the node NotReady after
+the address had already moved. The maintainer judged the gap acceptable for
+the LAN's DNS. The Pis also run a watchdog, `pi-net-recovery`, that resets the
+NIC every minute while the gateway is unreachable, so a lost link recovers on
+its own and a pulled cable does not.
+
 ### C19 and C25 to C29: node agents from node facts
 
 The resolution derives five agents from "facts already authored". Checked one
@@ -393,9 +427,15 @@ is a separate case: Flagger rewrites the anti-affinity selector of the primary
 Deployment with a `-primary` suffix, so the canary and the primary do not
 exclude each other ([Flagger, FAQ](https://docs.flagger.app/faq)).
 
-This entry is reasoned from the documented behaviour of the scheduler and the
-Deployment controller. **Settle by drill**: a two-replica Deployment with the
-required term on a two-node selector, then a template change.
+Two drills on 2026-10-29 confirm it. A two-replica Deployment with the
+required term and no revision key, held to two nodes, never rolled a changed
+template: the new pod stayed Pending with "didn't match pod anti-affinity
+rules" until the strategy was `Recreate`. The same shape with
+`matchLabelKeys: [pod-template-hash]`, under a blue-green Canary
+(JorisJonkers-dev/deploy-kit#371), promoted cleanly: Flagger's `-primary`
+copy keeps the key, rewrites only the selector's `app` label, and the
+promotion placed the new primary pod beside the old one, with no pod ever
+unschedulable.
 
 ### C22: what suspending a CronJob does
 
@@ -494,13 +534,10 @@ of the release in place for the render to take over. Which charts among the
   an installation guide that was not read.
 - **A backup image for Garage** (C39).
 - **Which live charts, other than MetalLB, template their CRDs** (C48).
-- **What a RabbitMQ client sees when its user is deleted** (C9).
 
 ## Settle by drill
 
 | claim | drill |
 |---|---|
-| C21: a surging rollout stalls when replicas equal eligible nodes under required anti-affinity | a two-replica Deployment with the term, selected onto two nodes; change the template and watch for a Pending pod |
 | C22: unparking runs one missed Job at once | suspend a CronJob across at least one schedule time, resume it, and list its Jobs |
 | C33: a non-root process binds a port below 1024 in a k3s pod | a pod with `runAsUser: 1000` and `capabilities.drop: [ALL]` listening on port 80 |
-| C18: how long DNS is unanswered when the announcing node fails | two replicas behind one VIP; stop the announcing node's pod, then the node, and time the gap from a LAN client |
