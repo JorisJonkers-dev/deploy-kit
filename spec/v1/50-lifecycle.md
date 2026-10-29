@@ -284,31 +284,29 @@ an ADR.
 
 ```mermaid
 flowchart LR
-    N["a new pin lands<br/>every member of the Application"] --> A1["auth-api<br/>its canary starts beside the primary"]
-    N --> A2["auth-ui<br/>its canary starts beside the primary"]
-    A1 --> P1{"analysis passes<br/>within the gate deadline?"}
-    A2 --> P2{"analysis passes<br/>within the gate deadline?"}
-    P1 -->|yes| K{"the barrier:<br/>every member passed?"}
-    P2 -->|yes| K
-    P1 -->|no| H["hold the Application<br/>the primaries keep serving"]
-    P2 -->|no| H
-    K -->|yes| SW["promote every member into its primary"]
-    H --> RB["fix forward, or revert the Application<br/>in its own repository"]
+    N["a new pin lands<br/>every member of the Application"] --> A1["auth-api<br/>its new copy starts beside the primary,<br/>and is analysed"]
+    N --> A2["auth-ui<br/>its new copy starts beside the primary,<br/>and is analysed"]
+    A1 --> K{"the barrier: every member<br/>passed, within the gate deadline?"}
+    A2 --> K
+    K -->|yes| SW["promote each member on its own,<br/>seconds apart"]
+    K -->|no| H["hold the Application<br/>every new copy back to zero;<br/>the primaries keep serving"]
+    H --> RB["a new pin: a fix forward or a revert,<br/>released from its own repository;<br/>or a Rollback, or a Retry"]
 ```
 
 ### The change, end to end
 
 ```mermaid
-flowchart TB
-    I["Intent change merged<br/>one Project repository; its images build"] --> F["Intent Fragment republished<br/>after the build, every image by digest"]
+flowchart LR
+    T["a release is tagged in one Project repository;<br/>its images build"] --> F["Intent Fragment republished<br/>after the build, every image by digest"]
     X["Platform document republished<br/>tiers, policies, providers"] --> C
     F --> C["composition<br/>union + estate-wide invariants"]
-    S["ClusterState snapshot changes<br/>PV rebinds, node joins or leaves"] --> C
-    C --> L["new lock<br/>fragments + context + images + clusterStateDigest"]
-    L --> R["render and publish<br/>one signed artifact per Project,<br/>the pin moved [ci skip]"]
-    R --> G{"cutover<br/>continuous?"}
-    G -->|"no: stop-start"| D["Flux has applied the pin<br/>the new revision serves, or the<br/>Application is held"]
-    G -->|"yes"| U["blue/green: Flagger + the Release Gate<br/>every member behind one barrier"]
+    NC["node contract republished<br/>a reserve retuned, RAM added"] --> C
+    S["ClusterState snapshot changes<br/>a PV rebinds, a node joins or leaves"] --> C
+    C --> L["a new lock<br/>fragments + the Platform document + node contract<br/>+ images lock + clusterStateDigest"]
+    L --> R["render and publish<br/>one signed artifact per changed Project;<br/>the pin moves [ci skip]"]
+    R --> G{"switchover<br/>blue-green?"}
+    G -->|"no: stop-start or rolling"| D["Flux has applied the pin<br/>the new revision serves, or a<br/>blue-green Application is held"]
+    G -->|"yes"| U["Flagger + the Release Gate<br/>every member behind one barrier"]
     U --> D
-    C -.->|"E_CONTRACT_TOO_EARLY"| B["isolated: its pin stays.<br/>The rest compose."]
+    C -.->|"a refusal, e.g. E_CONTRACT_TOO_EARLY"| B["isolated: its pin stays.<br/>The rest compose."]
 ```
