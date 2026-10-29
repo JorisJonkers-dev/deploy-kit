@@ -399,6 +399,22 @@ describe("the command", () => {
       });
   });
 
+  it("passes over only a file that is not there, and throws what else stops a read", () => {
+    const root = mkdtempSync(join(tmpdir(), "mutation-baseline-"));
+    mkdirSync(join(root, "test", "render.test.ts"), { recursive: true });
+    const path = join(root, "report.json");
+    writeFileSync(
+      path,
+      JSON.stringify({
+        files: {},
+        testFiles: { "test/render.test.ts": { source: SUITE, tests: [] } },
+      }),
+    );
+
+    expect(() => run([root], root)).toThrow(/EISDIR/);
+    expect(() => run([path], root)).toThrow(/EISDIR/);
+  });
+
   it("runs when Node starts this module", async () => {
     const originalArgv = process.argv;
     const originalExitCode = process.exitCode;

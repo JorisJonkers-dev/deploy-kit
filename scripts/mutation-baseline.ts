@@ -39,7 +39,7 @@
 // `node scripts/mutation-baseline.ts <report>`, which rewrites the report in
 // place; a report that does not exist is not a failure, since a run without
 // one tests every mutant.
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
 import { isEntrypoint } from "./lib/entrypoint.ts";
@@ -428,6 +428,19 @@ export interface Result {
   readonly stderr: string;
 }
 
+/**
+ * A file's text, or undefined where none is there: read rather than checked
+ * first, so the file cannot change between a check and a read.
+ */
+function readIfPresent(path: string): string | undefined {
+  try {
+    return readFileSync(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
 export function run(argv: readonly string[], root: string): Result {
   const [path] = argv;
   if (argv.length !== 1 || path === undefined)
@@ -436,18 +449,15 @@ export function run(argv: readonly string[], root: string): Result {
       stdout: "",
       stderr: "usage: node scripts/mutation-baseline.ts <report>\n",
     };
-  if (!existsSync(path))
+  const text = readIfPresent(path);
+  if (text === undefined)
     return {
       code: 0,
       stdout: `No report at ${path}: nothing to rebase.\n`,
       stderr: "",
     };
-  const { report, outcomes } = rebased(
-    JSON.parse(readFileSync(path, "utf8")) as Report,
-    (file) => {
-      const absolute = join(root, file);
-      return existsSync(absolute) ? readFileSync(absolute, "utf8") : undefined;
-    },
+  const { report, outcomes } = rebased(JSON.parse(text) as Report, (file) =>
+    readIfPresent(join(root, file)),
   );
   writeFileSync(path, JSON.stringify(report));
   return {
