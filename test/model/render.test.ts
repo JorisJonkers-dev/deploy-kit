@@ -24,6 +24,7 @@ import {
 } from "../../src/application/render-intent-set.ts";
 import type { ResolvedProject } from "../../src/model/resolution.ts";
 import type { Canary } from "../../src/objects/custom.ts";
+import { DESCRIPTION_LENGTH } from "../../src/model/project-intent.ts";
 
 const EXAMPLES = join(
   import.meta.dirname,
@@ -4275,5 +4276,54 @@ describe("a grant's optional keys", () => {
         ),
       ).ok,
     ).toBe(true);
+  });
+});
+
+// REQ-121 (docs/requirements.md): a description is the author's sentence for a
+// reader, carried in the project file and so in its fragment, and nothing a
+// render reads.
+describe("a description", () => {
+  const described = (application: string, process: string) => ({
+    "minimal/notes.project.yml": (file: string) =>
+      file
+        .replace(
+          "  - id: notes\n",
+          `  - id: notes\n    description: ${application}\n`,
+        )
+        .replace(
+          "      - name: notes-api\n",
+          `      - name: notes-api\n        description: ${process}\n`,
+        ),
+  });
+
+  it("renders nothing, on an Application or a Process", () => {
+    expect(
+      render(described("Keeps notes.", "Serves the notes over HTTP.")),
+    ).toStrictEqual(render());
+  });
+
+  it("is one short sentence: the longest renders, one character more or none at all is refused at the value", () => {
+    const longest = "a".repeat(DESCRIPTION_LENGTH);
+    const minimal = text("minimal/notes.project.yml");
+    const refusedAt = (application: string, process: string) => {
+      const result = parseProjectIntent(
+        described(application, process)["minimal/notes.project.yml"](minimal),
+      );
+      return result.ok
+        ? []
+        : result.diagnostics.map(({ code, path }) => ({ code, path }));
+    };
+
+    expect(render(described(longest, longest))).toStrictEqual(render());
+    expect(refusedAt(`${longest}a`, `${longest}a`)).toStrictEqual([
+      { code: "schema", path: "/applications/0/description" },
+      { code: "schema", path: "/applications/0/processes/0/description" },
+    ]);
+    expect(refusedAt(longest, `${longest}a`)).toStrictEqual([
+      { code: "schema", path: "/applications/0/processes/0/description" },
+    ]);
+    expect(refusedAt('""', longest)).toStrictEqual([
+      { code: "schema", path: "/applications/0/description" },
+    ]);
   });
 });

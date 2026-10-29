@@ -264,8 +264,12 @@ applications:
     # moves that schema: `knowledge` does, so this one declares that it moves
     # none. A second changelog here would be E_MIGRATION_OWNER_DUPLICATED.
     migration: none
+    # One plain sentence each, for a reader who sees only the name. It derives
+    # nothing and renders nothing (spec/v1/10-project-intent.md#describing-an-application-and-a-process).
+    description: Turns the notes dropped into the vault into searchable knowledge.
     processes:
       - name: knowledge-ingest-worker
+        description: Takes one note at a time off the queue and indexes it.
         lifecycle: application
         image: knowledge-ingest-worker
         runtime: python         # a different profile: 5 OTEL keys plus
