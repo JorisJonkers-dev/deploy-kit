@@ -71,16 +71,23 @@ Conventions that hold across every drawing:
   exported SVG real text rather than a rasterised image; it stays searchable,
   selectable and small.
 
-## The derivation map is two drawings
+## The derivation map is four drawings
 
 [Chapter 16](../16-dependencies.md#the-derivation-map)'s map is split in half:
 declarations and pinned facts reaching **assignments**, then declarations and
-assignments reaching **Deliverables**. As one drawing it is roughly ninety edges
-in one frame, which no layout makes readable. The split is also where the two
+assignments reaching **Deliverables**. The split is also where the two
 properties live: provenance is a statement about the first half, and
 in-degree-at-least-one about the second.
 
-Both halves are **matrices, not graphs**. Arrows were tried twice and failed
+Each half is split again by concern, **workload** and **wiring**, because read
+off the compiler the map is some four hundred and fifty edges over fifty-two
+assignments and forty-two Deliverable columns. One matrix per half would hold
+fifty columns, which either runs off the page or shrinks its text below reading size.
+A split by concern keeps every row label and column header at the size the other
+drawings use; a row's out-degree is then its sum over the four drawings, and a
+column's in-degree is read off the one drawing that holds it.
+
+Every drawing is a **matrix, not a graph**. Arrows were tried twice and failed
 twice: between two columns of twenty-five rows, ninety connectors are
 indistinguishable however they are routed, and routing them around each other
 put lines across boxes. A mark at a row-column intersection carries the same
@@ -92,3 +99,7 @@ colour, so a Deliverable's column shows at a glance how much of it is declared
 and how much is decided. The `in` and `out` counts are rendered from the same
 edge list as the marks, which is what makes provenance and in-degree-at-least-one
 readable rather than asserted.
+
+The four are drawn from one edge list, and the mermaid block under chapter 16's
+`## Diagram sources` is that list in text, one line per column. A change to what
+the compiler derives changes the drawings and the mermaid together.

@@ -965,57 +965,100 @@ exists to find.
 
 ## The derivation map
 
-The normative set of derivations, as two matrices. A **mark is one
-derivation**: read a row to the right for everything that input decides, and a
-column down for everything an output rests on. Ninety arrows between two tall
-columns is a hairball no layout fixes (which line ends where stops being
-answerable), so the relation is carried by position instead.
+The normative set of derivations, as four matrices: two halves, each split by
+concern. A **mark is one derivation**: read a row to the right for everything
+that input decides, and a column down for everything an output rests on.
+Two hundred arrows between two tall columns is a hairball no layout fixes
+(which line ends where stops being answerable), so the relation is carried by
+position instead.
 
-The first matrix has the fields of Project Intent and the pinned input set of
+The first half has the fields of Project Intent and the pinned input set of
 [chapter 20](20-resolved-deployment.md#pinned-inputs) as rows, and the layer-2
 assignments as columns. The second has those assignments **and** the declared
-fields as rows, and the Deliverables as columns. The `in` row under each grid is
-the in-degree of that column and the `out` column is the out-degree of that row,
-so both properties below are countable off the drawing.
+fields and pinned facts an adapter reads directly as rows, and the Deliverables
+as columns. Each half is split by concern: **workload**, what a pod runs and the
+objects that run it, and **wiring**, the identity, secrets, network, edge,
+monitoring and ordering around it, with the estate-scoped objects. The `in` row
+under each grid is the in-degree of that column and the `out` column the
+out-degree of that row within that drawing, so both properties below are
+countable off the drawings: a column's in-degree is read off the one drawing
+that holds it, and a row's out-degree is its sum over all four.
 
-![The derivation map, assignments, every declared field and pinned fact, and the assignment it decides](diagrams/16-derivation-map-assignments.drawio.svg)
+The marks are the derivations the production compiler performs, in
+`src/resolve/` and in the renderers under `src/adapters/`. A derivation the
+compiler does not perform is not drawn, whatever another chapter says it
+renders.
 
-*Assignments, every declared field and pinned fact, and the assignment it decides. No column
-reads zero: that is provenance.*
+![The derivation map, workload assignments: every declared field and pinned fact, and the workload assignment it decides](diagrams/16-derivation-map-assignments-workload.drawio.svg)
 
-![The derivation map, Deliverables, every declaration and assignment, and the object it reaches](diagrams/16-derivation-map-deliverables.drawio.svg)
+*Workload assignments: every declared field and pinned fact, and the assignment
+of what a pod runs that it decides. No column reads zero: that is provenance.*
 
-*Deliverables, every declaration and assignment, and the object it reaches. No column reads
-zero: that is in-degree at least one. A blue mark is a declared value that reaches the object with
-no assignment in between.*
+![The derivation map, wiring assignments: every declared field and pinned fact, and the wiring assignment it decides](diagrams/16-derivation-map-assignments-wiring.drawio.svg)
+
+*Wiring assignments: every declared field and pinned fact, and the identity,
+network, edge, monitoring and ordering assignment it decides. No column reads
+zero.*
+
+![The derivation map, workload Deliverables: every declaration and assignment, and the workload object it reaches](diagrams/16-derivation-map-deliverables-workload.drawio.svg)
+
+*Workload Deliverables: every declaration and assignment, and the object that
+runs a pod it reaches. No column reads zero: that is in-degree at least one. A
+blue mark is a declared value that reaches the object with no assignment in
+between.*
+
+![The derivation map, wiring Deliverables: every declaration and assignment, and the wiring object it reaches](diagrams/16-derivation-map-deliverables-wiring.drawio.svg)
+
+*Wiring Deliverables: every declaration and assignment, and the policy, secret,
+edge, monitoring or estate-scoped object it reaches. No column reads zero.*
 
 <sub>[Diagram source](#the-derivation-map) · edit by opening the SVG in draw.io</sub>
 
 Two edges carry the amendment. `namespace` hangs off `project`, not off `id`, so
 ten live namespaces come out unchanged and no Application can name its own
 ([0009](../../docs/adr/model/0009-intent-is-authored-one-file-per-project.md)). And `placement`
-feeds both `nodeSelector` and `requests + limits`, so the numbers a Process
-asks for and the nodes it may land on are one declaration compared against one
-pinned input: the node contract's `allocatable`, never a live read
-([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). No node
-satisfying every declared dimension is `E_PLACEMENT_UNSATISFIABLE` at build,
-before an object is rendered. Eligibility is not bin-packing: three Processes
-asking `memory: 2Gi` each pass against a 4096Mi node, and the scheduler refuses
-the third at apply.
+feeds both the eligible-node set and, read directly by the adapter, the
+controller's requests and limits, so the numbers a Process asks for and the
+nodes it may land on are one declaration compared against one pinned input: the
+node contract's `allocatable`, never a live read
+([0017](../../docs/adr/model/0017-placement-is-hard-dimensions.md)). The request
+it is compared as is the Process's own with its sidecars and its VPN container
+beside it, twice over for a `continuous` cutover, which needs room for both
+versions at once; a library holds it to the library's node, and an L4 exposure
+to its address's site or node. No node satisfying every declared dimension is
+`E_PLACEMENT_UNSATISFIABLE` at build, before an object is rendered. Eligibility
+is not bin-packing: three Processes asking `memory: 2Gi` each pass against a
+4096Mi node, and the scheduler refuses the third at apply.
 
-A node left the map altogether, and with it four edges. There is no derived
-`hostname (FQDN)` any more: `exposure` hangs off the **Application**, and the `host`
-it carries is a full authored FQDN
-([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)), so the
-IngressRoute, the reachability entry, both edge catalogs, the Gatus endpoint and
-the published `resolved.yml` all hang off the declaration itself rather than off
-a value layer 2 assembled from a label, a tier policy and a cluster domain. The
-Platform Intent no longer contributes to a hostname at all. What layer 2 still
-decides on that path is `r_tier` (the tier carrying the audience and the
-middleware chain that comes with it), which is why the exposure node keeps an
-arrow into it. `provides` stays on the Process, so the two ends of a route are
-declared in the same document without a port ever being restated: the Application
-says which host and path, the Process says which port.
+There is no derived hostname. `exposure` hangs off the **Application**, and the
+`host` it carries is a full authored FQDN
+([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)), so every
+object that names the host reads the declaration itself rather than a value
+layer 2 assembled from a label, a tier policy and a cluster domain: the
+IngressRoute, the Canary's webhook metadata, the Client's URLs, and every
+`${exposure:…}` placeholder that names it. The Platform Intent contributes to no
+hostname. What layer 2 still decides on that path is the route tier (its ingress
+class, DNS publication, listener and certificates) and each route's precedence
+and middleware chain, which is why the exposure row keeps a mark in both
+columns. `provides` stays on the Process, so the two ends of a route are
+declared in the same document without a port ever being restated: the
+Application says which host and path, the Process says which port.
+
+Two derived values are not columns. The **Application revision** is a digest
+over the resolved element, so it rests on every other assignment of its
+Application at once; it reaches the Canary's webhook metadata, the annotation on
+a gated Application's VSO objects, the migration Jobs' names and an open Move's
+target Instance ([chapter 20](20-resolved-deployment.md#the-application-revision)).
+And every Deliverable's **path** is written by its adapter from `project` and
+`id`, which is what the `Kustomization` column records: no step derives a path
+plan ahead of the adapters.
+
+Three rows read zero in all four drawings. `owner` is carried into the
+Effective Intent and read by nothing that renders. `rollback` is read by a check
+alone, which refuses an irreversible Move it does not acknowledge, and derives
+no value. And the `hardening` assignment is recorded in the projection, while
+the `kubernetes` adapter writes the one `restricted` posture as a constant.
+Each is [open below](#open-in-this-chapter) rather than hidden by the drawing.
 
 The map is dense on purpose and is not meant to be read by eye. Its value is
 that the three properties below are **checkable by a script** over the
@@ -1029,14 +1072,14 @@ carry.
 
 <sub>[Diagram source](#worked-trace-one-exposure-declaration) · edit by opening the SVG in draw.io</sub>
 
-One declaration, six artefacts, plus the two conformance tests that existed only
-to detect when those six disagreed (`route-auth-conformance.test.js`,
-`gatus-route-coverage.test.js`). Under property 1 those tests have nothing left
-to check, because the six cannot disagree: they share one upstream. That
-upstream is an **Application** field: one host fronting two Processes,
-`auth.jorisjonkers.dev/api` to `auth-api` and `/` to `auth-ui`, is a single
-exposure with two routes, and it is unexpressible while `exposure` sits on a
-Process.
+Before this model the estate kept that host in six places, with two conformance
+tests (`route-auth-conformance.test.js`, `gatus-route-coverage.test.js`)
+existing only to detect when the six disagreed. Under property 1 those tests
+have nothing left to check: every object on the path reads the one declaration,
+so nothing downstream restates the host. That upstream is an **Application**
+field: one host fronting two Processes, `auth.jorisjonkers.dev/api` to
+`auth-api` and `/` to `auth-ui`, is a single exposure with two routes, and it is
+unexpressible while `exposure` sits on a Process.
 
 The hostname is no longer assembled. `host` is the full FQDN as authored and is
 carried through untouched; what layer 2 decides on this path is the tier that
@@ -1130,6 +1173,17 @@ gates a deploy is co-testing, and stays parked in
    exit criterion is [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)'s lab
    evaluation. That evaluation is 0035's own settling test and is recorded
    there, not here.
+3. **Three rows with out-degree zero.** [The derivation map](#the-derivation-map)
+   draws `owner`, `rollback` and the `hardening` assignment reaching nothing,
+   which [property 3](#3-no-dead-declarations-no-declaration-has-out-degree-zero)
+   forbids. `owner` is documented as who is notified, and nothing renders a
+   notification target; `rollback` acknowledges an irreversible Move, which is
+   admission rather than a derived value; `hardening` has one value, which the
+   `kubernetes` adapter writes without reading it.
+   **Owner:** joris.
+   **Settled by:** for each row, either a derivation the compiler performs, or
+   a rule in this chapter that exempts an acknowledgement from property 3.
+   **Blocks:** property 3 holding over the map as drawn.
 
 ## Diagram sources
 
@@ -1165,168 +1219,266 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph DEC["Declared, Project Intent (layer 1)"]
-        d_dom["project"]
-        d_own["owner"]
+        d_project["project"]
+        d_owner["owner"]
         d_id["id"]
-        d_obs["observability<br/>scrape<br/>{process, surface, path}"]
-        d_wl["process name"]
-        d_prov["provides<br/>surface: port<br/>on the Process"]
-        d_dep["dependsOn"]
-        d_img["image"]
-        d_run["runtime"]
-        d_env["env files<br/>per Process"]
-        d_sec["secrets<br/>path, access, delivery"]
-        d_ast["assets"]
-        d_exp["exposure, on the Application<br/>name, host (authored FQDN),<br/>audience, contentPolicy,<br/>routes: path, match,<br/>process, surface"]
-        d_prb["probes<br/>readiness + liveness"]
-        d_bud["startupBudget"]
-        d_cut["cutover<br/>continuous | interrupted"]
+        d_obs["observability<br/>scrape"]
+        d_dash["dashboards"]
+        d_rules["alertRules"]
+        d_exp["exposure<br/>host, audience, routes, …"]
+        d_l4["l4Exposure"]
+        d_mig["migration"]
+        d_client["client"]
+        d_name["process name"]
         d_life["lifecycle"]
-        d_sf["stateful"]
-        d_vol["volumes + durability"]
-        d_plc["placement<br/>hard dimensions:<br/>memory, cpu, arch,<br/>site, disk, gpu,<br/>capabilities"]
-        d_rep["replicas<br/>count + reason"]
+        d_sched["schedule"]
+        d_parked["parked"]
+        d_image["image"]
+        d_runtime["runtime"]
+        d_engine["engine"]
+        d_prov["provides<br/>surface: port"]
+        d_side["sidecars"]
+        d_probes["probes<br/>readiness + liveness"]
+        d_vol["volumes<br/>size + durability"]
+        d_lib["libraries"]
+        d_rep["replicas<br/>count, across"]
         d_api["api<br/>rules + reason"]
+        d_egress["egress"]
+        d_vpn["vpn"]
+        d_spawns["spawns"]
+        d_rollback["rollback"]
+        d_sec["secrets<br/>path, access, delivery"]
+        d_dep["dependsOn<br/>+ credentials, buckets"]
+        d_env["env files"]
+        d_assets["assets"]
+        d_writ["writablePaths"]
+        d_place["placement<br/>memory, cpu, arch, gpu, …"]
+        d_budget["startupBudget"]
+        d_cut["cutover"]
     end
 
     subgraph PIN["Pinned inputs, each carried by digest (chapter 20)"]
-        p_ctx["Platform Intent, authored in layer 1<br/>+ node contract<br/>(allocatable)"]
+        p_plat["Platform Intent"]
+        p_node["node contract"]
+        p_lock["images lock"]
         p_cs["ClusterState snapshot"]
-        p_img["images lock"]
+        p_proof["migration proof"]
     end
 
-    subgraph DER["Derived, assignments and Deliverables (layers 2 and 3)"]
-        r_ns["namespace<br/>project-system"]
-        r_tier["route tier + middleware"]
-        r_ru["Reconcile Unit + DAG"]
-        r_sw["switch gate<br/>per Application"]
-        r_sa["identity name<br/>the process name"]
-        r_vp["Secret Store path grant"]
-        r_dig["image digest"]
-        r_rep["replicas"]
-        r_res["requests + limits"]
-        r_sc["securityContext"]
-        r_strat["rollout strategy + surge"]
-        r_prb["container probe timings"]
-        r_dl["progressDeadlineSeconds"]
-        r_plc["nodeSelector + affinity"]
-        r_bind["recorded PV binding"]
-
-        k_dep["Deployment / StatefulSet / Job"]
-        k_svc["Service"]
-        k_sa["ServiceAccount"]
-        k_cm["ConfigMap<br/>+ derived catalogs"]
-        k_sec["VaultStaticSecret / Secret"]
-        k_pol["Vault policy + auth role"]
-        k_ir["IngressRoute"]
-        k_np["NetworkPolicy"]
-        k_gat["Gatus endpoint"]
-        k_bkp["backup CronJob + backup claim"]
-        k_res["resolved.yml"]
-
-        k_sm["ServiceMonitor / PodMonitor"]
-        k_can["Canary"]
-        k_hpa["HorizontalPodAutoscaler"]
-        k_rbac["ClusterRole + ClusterRoleBinding"]
+    subgraph ASW["Assignments, workload (layer 2)"]
+        a_ns["namespace<br/>project-system"]
+        a_ident["identity name<br/>the process name"]
+        a_img["image digest<br/>Process, sidecars"]
+        a_uid["runAsUser, runAsGroup"]
+        a_switch["switchover"]
+        a_start["start deadline<br/>scheduled"]
+        a_dl["progress deadline"]
+        a_rep["replicas"]
+        a_spread["anti-affinity spread"]
+        a_prio["priority class"]
+        a_nodes["eligible nodes"]
+        a_bind["recorded PV binding"]
+        a_gpu["GPU share<br/>resource, runtimeClass"]
+        a_vpn["VPN container<br/>+ its credential"]
+        a_hard["hardening"]
+        a_token["identity token"]
+        a_probe["probe timings<br/>+ startup probe"]
+        a_writ["writable emptyDir size"]
+        a_asset["Asset object name"]
+        a_lib["library mount<br/>volume, node, gid"]
+        a_backup["backup plan<br/>method, identity, …"]
+        a_proxy["edge-proxy configuration"]
+        a_envr["environment<br/>placeholders resolved"]
+        a_spawn["spawn templates<br/>image, selector"]
+        a_l4["L4 address + ports"]
+        a_ns53["upstream nameservers"]
+        a_move["the Move<br/>source, target, method"]
+        a_inst["serving Instance"]
     end
 
-    d_dom --> r_ns
-    d_dom --> r_ru
-    d_dom --> r_vp
-    d_id --> r_sw
-    d_obs --> k_sm
-    d_obs --> k_np
-    d_wl --> r_sa
-    d_wl --> k_svc
+    subgraph ASR["Assignments, wiring (layer 2)"]
+        a_grants["Secret Store grants<br/>+ destinations"]
+        a_store["Secret Store endpoint"]
+        a_addr["dependency address<br/>+ alias, peers"]
+        a_stable["Stable Address"]
+        a_cons["consumer label"]
+        a_in["ingress peers"]
+        a_out["egress peers<br/>DNS, store, gate"]
+        a_apir["API access<br/>rules + server"]
+        a_inet["internet egress"]
+        a_mesh["mesh enrolment"]
+        a_unit["Reconcile Unit + after"]
+        a_gate["release gate<br/>members, deadline, …"]
+        a_tier["route tier<br/>class, DNS, listener"]
+        a_route["route precedence + middleware"]
+        a_cli["Client<br/>URLs, roles, secret path"]
+        a_mon["monitor cadence + labels"]
+        a_dsh["dashboard folder, instance, uid"]
+        a_alert["alert routing<br/>receivers, routes"]
+        a_migp["migration plan<br/>runner, database"]
+        a_cat["catalog method<br/>catalog, role"]
+        a_pjob["Vault policy job"]
+        a_events["rollout-event route"]
+        a_agents["node agents"]
+        a_fauth["forward-auth endpoint"]
+    end
 
-    d_prov --> k_svc
-    d_prov --> k_np
-    d_prov --> k_gat
+    subgraph DLW["Deliverables, workload (layer 3)"]
+        k_ns["Namespace<br/>per Project<br/>kubernetes"]
+        k_work["Deployment / CronJob<br/>kubernetes"]
+        k_svc["Service<br/>per Process<br/>kubernetes"]
+        k_lb["Service<br/>LoadBalancer, L4<br/>kubernetes"]
+        k_pvc["PersistentVolumeClaim<br/>+ backup<br/>kubernetes"]
+        k_cm["ConfigMap<br/>an Asset<br/>kubernetes"]
+        k_gcm["ConfigMap<br/>the release gate<br/>kubernetes"]
+        k_can["Canary<br/>kubernetes"]
+        k_hpa["HorizontalPodAutoscaler<br/>kubernetes"]
+        k_pdb["PodDisruptionBudget<br/>kubernetes"]
+        k_bkp["backup CronJob<br/>kubernetes"]
+        k_sa["ServiceAccount<br/>Process, backup<br/>kubernetes"]
+        k_role["Role + RoleBinding<br/>kubernetes"]
+        k_crole["ClusterRole + ClusterRoleBinding<br/>kubernetes"]
+        k_libpv["library PersistentVolume + claim<br/>kubernetes"]
+        k_alias["alias<br/>ExternalName Service<br/>kubernetes"]
+        k_mig["migration Jobs + ServiceAccount<br/>kubernetes"]
+        k_movej["Move step Jobs<br/>+ identity, Role<br/>kubernetes"]
+        k_stable["Stable Address<br/>ExternalName<br/>kubernetes"]
+        k_kust["Kustomization<br/>per directory<br/>kubernetes"]
+    end
 
-    d_dep --> r_ru
-    d_dep --> k_np
-    d_dep --> k_cm
+    subgraph DLR["Deliverables, wiring (layer 3)"]
+        n_proc["NetworkPolicy<br/>per Process<br/>networking"]
+        n_spawn["NetworkPolicy<br/>spawned pods<br/>networking"]
+        n_ident["NetworkPolicy<br/>backup, migration, …<br/>networking"]
+        n_deny["NetworkPolicy<br/>default-deny<br/>networking"]
+        v_conn["VaultConnection<br/>vso"]
+        v_auth["VaultAuth<br/>vso"]
+        v_sec["VaultStaticSecret / VaultDynamicSecret<br/>vso"]
+        v_pol["Vault policy + auth role<br/>vault-policy"]
+        v_gen["generated-keys document<br/>vault-policy"]
+        t_ir["IngressRoute<br/>+ its Middlewares<br/>traefik"]
+        t_mw["shared Middlewares<br/>per proxy<br/>traefik"]
+        k_client["Client<br/>kubernetes"]
+        m_mon["ServiceMonitor / PodMonitor<br/>prometheus"]
+        m_rule["PrometheusRule<br/>prometheus"]
+        m_amc["AlertmanagerConfig<br/>prometheus"]
+        g_dash["GrafanaDashboard<br/>grafana"]
+        k_ev["rollout events<br/>Provider + Alert<br/>kubernetes"]
+        k_hg["human grants<br/>ClusterRoleBinding<br/>kubernetes"]
+        k_pc["PriorityClass<br/>kubernetes"]
+        k_agent["node agents<br/>DaemonSet, pools, …<br/>kubernetes"]
+        k_pjob["Vault policy job<br/>Job, CronJob, …<br/>vault-policy"]
+        k_cat["catalog method<br/>Job, ConfigMap, …<br/>kubernetes"]
+    end
 
-    d_img --> r_dig
-    p_img --> r_dig
-    d_run --> k_dep
-    d_env --> k_dep
-    d_env --> k_sec
-
-    d_sec --> k_sec
-    d_sec --> r_vp
-    d_sec --> k_np
-    d_sec --> k_dep
-
-    d_ast --> k_cm
-    d_ast --> k_dep
-
-    d_exp --> r_tier
-    d_exp --> k_ir
-    d_exp --> k_cm
-    d_exp --> k_gat
-    d_exp --> k_np
-    d_exp --> k_res
-
-    d_prb --> r_prb
-    d_prb --> k_gat
-    d_prb --> r_sw
-    d_bud --> r_prb
-    d_bud --> r_dl
-    d_cut --> r_strat
-
-    d_rep --> r_rep
-
-    d_life --> k_dep
-    d_sf --> k_dep
-    d_vol --> k_dep
-    d_vol --> r_strat
-    d_vol --> k_bkp
-    d_vol --> r_bind
-
-    d_plc --> r_plc
-    d_plc --> r_res
-    p_ctx --> r_sc
-
-
-    p_ctx --> r_plc
-    p_cs --> r_rep
-    p_cs --> r_bind
-    p_cs --> r_plc
-
-    r_sa --> k_sa
-    r_sa --> k_pol
-    r_sa --> k_dep
-    r_vp --> k_pol
-    r_prb --> k_dep
-    r_strat --> k_dep
-    r_dl --> k_dep
-    r_rep --> k_dep
-    r_res --> k_dep
-    r_sc --> k_dep
-    r_ns --> k_dep
-    r_dig --> k_dep
-    r_plc --> k_dep
-    r_bind --> k_dep
-    r_tier --> k_ir
-
-    r_ns --> k_res
-    r_sa --> k_res
-    r_vp --> k_res
-    r_bind --> k_res
-
-    d_wl --> k_can
-    d_id --> k_can
-    d_prov --> k_can
-    r_sw --> k_can
-    r_dl --> k_can
-    r_rep --> k_can
-    d_wl --> k_hpa
-    r_rep --> k_hpa
-    d_api --> k_rbac
-    d_api --> k_np
-    d_api --> k_dep
-    r_sa --> k_rbac
+    d_project --> a_ns
+    d_name --> a_ident
+    d_image & d_side & p_lock --> a_img
+    d_image & p_lock --> a_uid
+    d_project & d_id & d_life & d_parked & d_cut & p_plat --> a_switch
+    d_sched --> a_start
+    d_life & d_budget & p_plat --> a_dl
+    d_parked & d_rep --> a_rep
+    d_rep --> a_spread
+    d_project & d_id & d_engine & p_plat --> a_prio
+    d_l4 & d_side & d_lib & d_vpn & d_place & d_cut & p_plat & p_node --> a_nodes
+    d_vol & p_cs --> a_bind
+    d_place & p_plat & p_node --> a_gpu
+    d_project & d_name & d_prov & d_vpn & p_plat & p_lock --> a_vpn
+    p_plat --> a_hard
+    d_client & d_api & d_spawns & d_sec & d_dep --> a_token
+    d_probes & d_budget & p_plat --> a_probe
+    d_writ & p_plat --> a_writ
+    d_name & d_assets --> a_asset
+    d_project & d_lib & p_plat --> a_lib
+    d_project & d_name & d_image & d_engine & d_prov & d_vol & p_plat & p_lock --> a_backup
+    d_project & d_id & d_prov & p_plat --> a_proxy
+    d_project & d_id & d_exp & d_mig & d_client & d_name & d_runtime & d_prov --> a_envr
+    d_spawns & d_dep & d_env & p_plat --> a_envr
+    d_name & d_spawns & p_plat & p_lock --> a_spawn
+    d_l4 & d_name & d_prov & p_plat --> a_l4
+    d_l4 & p_plat --> a_ns53
+    d_project & d_id & d_name & d_image & d_engine & d_prov & d_vol & d_dep --> a_move
+    d_place & p_plat & p_node & p_lock & p_cs --> a_move
+    d_id & d_name & p_cs --> a_inst
+    d_project & d_id & d_mig & d_client & d_name & d_life & d_sec & d_dep --> a_grants
+    d_env & p_plat --> a_grants
+    d_mig & d_client & d_vol & d_vpn & d_sec & d_dep & p_plat --> a_store
+    d_project & d_prov & d_spawns & d_dep & p_plat & p_cs --> a_addr
+    d_prov & d_spawns & d_dep & p_plat & p_cs --> a_stable
+    d_spawns & d_dep --> a_cons
+    d_id & d_obs & d_exp & d_name & d_engine & d_prov & d_probes & d_cut --> a_in
+    p_plat --> a_in
+    d_id & d_l4 & d_client & d_sec & p_plat --> a_out
+    d_api & d_spawns & p_plat --> a_apir
+    d_egress & d_vpn & p_plat --> a_inet
+    d_project & p_plat --> a_mesh
+    d_project & d_exp & d_mig & d_client & d_engine & d_vpn & d_sec & d_dep --> a_unit
+    p_plat --> a_unit
+    d_exp & d_mig & d_client & d_name & d_life & d_parked & d_runtime & d_probes --> a_gate
+    d_dep & d_budget & d_cut & p_plat --> a_gate
+    d_exp & p_plat --> a_tier
+    d_exp & d_client & p_plat --> a_route
+    d_project & d_id & d_exp & d_client --> a_cli
+    d_obs & p_plat --> a_mon
+    d_project & d_dash & p_plat --> a_dsh
+    d_project & d_id & d_name & p_plat --> a_alert
+    d_project & d_id & d_mig & d_dep & p_plat & p_lock & p_proof --> a_migp
+    d_project & d_name & d_engine & d_dep & p_plat & p_node & p_lock --> a_cat
+    d_prov & p_plat & p_node & p_lock --> a_pjob
+    d_prov & p_plat --> a_events
+    p_plat & p_node & p_lock --> a_agents
+    d_prov & p_plat --> a_fauth
+    d_project & a_mesh --> k_ns
+    d_id & d_name & d_life & d_sched & d_parked & d_runtime & d_prov & d_side --> k_work
+    d_vol & d_place & a_ns & a_ident & a_img & a_uid & a_switch & a_start --> k_work
+    a_dl & a_rep & a_spread & a_prio & a_nodes & a_bind & a_gpu & a_vpn --> k_work
+    a_token & a_probe & a_writ & a_asset & a_lib & a_proxy & a_envr & a_l4 --> k_work
+    a_ns53 & a_move & a_inst & a_grants & a_cons & a_gate --> k_work
+    d_id & d_name & d_runtime & d_prov & a_ns & a_switch & a_move & a_inst --> k_svc
+    d_id & d_name & d_runtime & a_ns & a_l4 --> k_lb
+    d_id & d_name & d_runtime & d_vol & a_ns & a_backup & a_move & a_inst --> k_pvc
+    d_id & d_name & d_runtime & d_assets & a_ns & a_asset --> k_cm
+    d_id & a_ns & a_gate --> k_gcm
+    d_id & d_exp & d_name & d_runtime & d_prov & a_ns & a_switch & a_dl --> k_can
+    a_rep & a_gate --> k_can
+    d_id & d_name & d_runtime & a_ns & a_switch & a_rep --> k_hpa
+    d_id & d_name & d_runtime & a_ns & a_switch & a_rep --> k_pdb
+    d_id & d_vol & a_ns & a_backup --> k_bkp
+    d_id & d_name & d_runtime & a_ns & a_ident & a_backup --> k_sa
+    d_id & d_name & d_runtime & a_ns & a_ident & a_apir --> k_role
+    d_id & d_name & d_runtime & a_ns & a_ident & a_apir --> k_crole
+    a_ns & a_lib --> k_libpv
+    a_ns & a_addr --> k_alias
+    d_id & a_ns & a_migp --> k_mig
+    d_id & d_name & a_ns & a_move --> k_movej
+    a_stable --> k_stable
+    d_project & d_id --> k_kust
+    d_id & d_name & d_runtime & a_ns & a_probe & a_spawn & a_l4 & a_ns53 --> n_proc
+    a_move & a_addr & a_in & a_out & a_apir & a_inet & a_mesh --> n_proc
+    d_id & a_ns & a_spawn & a_mesh --> n_spawn
+    d_id & a_ns & a_backup & a_move & a_mesh & a_migp & a_cat & a_pjob --> n_ident
+    d_project --> n_deny
+    a_ns & a_store --> v_conn
+    d_id & d_name & d_runtime & a_ns & a_ident & a_vpn & a_backup & a_move --> v_auth
+    a_grants --> v_auth
+    d_id & d_name & d_runtime & a_ns & a_switch & a_vpn & a_backup & a_grants --> v_sec
+    a_gate --> v_sec
+    a_ns & a_ident & a_vpn & a_backup & a_move & a_grants & a_migp & a_cat --> v_pol
+    a_ns & a_grants --> v_gen
+    d_id & d_exp & d_prov & a_ns & a_tier & a_route --> t_ir
+    p_plat & a_fauth --> t_mw
+    d_id & a_cli --> k_client
+    d_id & d_name & d_runtime & a_ns & a_switch & a_mon --> m_mon
+    d_id & d_rules & a_ns --> m_rule
+    d_id & a_ns & a_alert --> m_amc
+    d_id & a_ns & a_dsh --> g_dash
+    d_project & a_unit & a_events --> k_ev
+    p_plat --> k_hg
+    p_plat --> k_pc
+    a_agents --> k_agent
+    a_ns & a_grants & a_mesh & a_pjob --> k_pjob
+    a_cat --> k_cat
 ```
 
 ### Worked trace: one exposure declaration

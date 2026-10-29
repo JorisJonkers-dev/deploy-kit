@@ -326,25 +326,20 @@ test("a worked example authors no key the model does not carry", () => {
 });
 
 test("every rendered kind is a column of the deliverables matrix", () => {
-  const { xml } = svgModel("16-derivation-map-deliverables.drawio.svg");
-  // Namespace-scoped operator objects are rendered once per namespace, not per
-  // Application, so the per-Application map does not carry a column for them.
-  const perNamespace = new Set(["VaultAuth", "VaultConnection", "Namespace"]);
+  // The Deliverables half is two drawings, split by concern
+  // (spec/v1/diagrams/README.md#the-derivation-map-is-four-drawings).
+  const xml = [
+    "16-derivation-map-deliverables-workload.drawio.svg",
+    "16-derivation-map-deliverables-wiring.drawio.svg",
+  ]
+    .map((name) => svgModel(name).xml)
+    .join("\n");
   // A pin source is committed to the Estate repository, not rendered into an
   // artifact, so it is no Deliverable and the map carries no column for it.
   const pinned = new Set(["OCIRepository"]);
-  // The route Flux's events take is rendered once per render, into the
-  // estate-scoped tree, so the per-Application map carries no column for it.
-  // The priority classes are the cluster's, rendered once into the
-  // estate-scoped tree, so the per-Application map carries no column for them.
-  const perRender = new Set(["Alert", "Provider", "PriorityClass"]);
-  // The Node Agents are derived from node facts and pools, never from an
-  // Application, so the per-Application map carries no column for their kinds.
-  const perNode = new Set(["DaemonSet", "IPAddressPool", "L2Advertisement"]);
-  const alias: Readonly<Record<string, string>> = {
-    Kustomization: "kustomization",
-    VaultDynamicSecret: "VaultDynami",
-  };
+  // The Node Agents' kinds share one column, named for the DaemonSet and the
+  // address pools it stands for.
+  const perNode = new Set(["IPAddressPool", "L2Advertisement"]);
   const kinds = new Set<string>();
   for (const file of walk(join(spec, "examples")).filter((f) =>
     f.endsWith(".yaml"),
@@ -353,17 +348,10 @@ test("every rendered kind is a column of the deliverables matrix", () => {
       kinds.add(m[1] ?? "");
   expect(kinds.size, "no rendered fixtures found").toBeGreaterThan(5);
   for (const kind of kinds) {
-    if (
-      perNamespace.has(kind) ||
-      pinned.has(kind) ||
-      perRender.has(kind) ||
-      perNode.has(kind)
-    )
-      continue;
-    expect(
-      xml.includes(alias[kind] ?? kind),
-      `rendered kind ${kind} has no column`,
-    ).toBe(true);
+    if (pinned.has(kind) || perNode.has(kind)) continue;
+    expect(xml.includes(kind), `rendered kind ${kind} has no column`).toBe(
+      true,
+    );
   }
 });
 
