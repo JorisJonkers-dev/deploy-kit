@@ -188,10 +188,12 @@ TREES = {"10-project-intent": {
         "ResolvedApplication",
     ],
     "Provenance": ["InputDigest"],
-    "ResolvedCatalogJob": ["ResolvedCatalog"],
+    "ResolvedCatalogJob": ["ResolvedCatalog", "ResolvedBucketCatalog"],
+    "ResolvedBucketCatalog": ["CatalogAdminToken", "CatalogKey"],
     "ResolvedCatalog": ["CatalogAdmin", "CatalogDatabase"],
     "ResolvedApplication": [
-        "ResolvedMigration", "ReleaseGate", "ResolvedScrape", "ResolvedProcess",
+        "ResolvedDashboards", "ResolvedAlertRules", "ResolvedAlerting", "ResolvedClient",
+        "ResolvedMesh", "ResolvedMigration", "ReleaseGate", "ResolvedScrape", "ResolvedProcess",
         "ResolvedExposure",
     ],
     "ReleaseGate": ["GateMigration", "GateAnalysis", "GateMember"],
@@ -203,16 +205,22 @@ TREES = {"10-project-intent": {
         "ResolvedGrant", "ResolvedEngineGrant", "ResolvedAsset",
         "ResolvedSidecar", "ResolvedEdge",
         "WritablePath", "EnvEntry", "ResolvedSurface", "IngressPeer",
-        "EgressPeer", "InternetEgress",
+        "EgressPeer", "InternetEgress", "GateMembersPeer", "ResolvedClientGrant",
+        "ResolvedSpawn", "ResolvedMove", "ResolvedPoolExposure", "ResolvedNodeExposure",
+        "ResolvedEdgeProxy",
     ],
+    "ResolvedDashboards": ["ResolvedDashboard"],
+    "ResolvedAlerting": ["ResolvedReceiver", "ResolvedSeverityRoute"],
+    "ResolvedPoolExposure": ["ResolvedL4Port"],
+    "ResolvedEdgeProxy": ["ResolvedResolver"],
     "ResolvedApiAccess": ["ResolvedApiRule"],
     "ResolvedVolume": ["BackupPlan"],
-    "BackupPlan": ["BackupPeer", "DestinationRange"],
+    "BackupPlan": ["BackupPeer", "DestinationRange", "OffClusterPlan"],
     "EnvEntry": ["SecretReference"],
     "ResolvedEngineGrant": ["PolicyPath"],
     "ResolvedEdge": ["PolicyPeer"],
-    "ResolvedExposure": ["ResolvedRoute", "TierProxy"],
-    "ResolvedRoute": ["MiddlewareStep"],
+    "ResolvedExposure": ["ResolvedRoute", "TierProxy", "ResolvedTierDns"],
+    "ResolvedRoute": ["MiddlewareStep", "GateAddress"],
 }}
 NAMES = {"10-project-intent": "Project Intent - the layer-1 model",
          "14-platform-intent": "Platform Intent - the model",
@@ -990,6 +998,9 @@ E_ASSOC = E_ENUM.replace("dashed=1;dashPattern=8 4;", "")
 cross = [(E_COMP, a, b, f"{m}  {l}") for a, b, m, l in comp if (a, b) not in tree]
 cross += [(E_ASSOC, a, b, l) for a, b, l in assoc]
 cross += [(E_ENUM, a, b, f"«{l}»") for a, b, l in dep if (a, b) not in tree]
+# a second owner of a box already placed under its first is a relation across
+# layers, which the README's rule leaves to the chapter's prose
+cross = [c for c in cross if depth[c[1]] == depth[c[2]]]
 def neighbours(a, b):
     """True when nothing on their row sits between the two boxes."""
     lo, hi = sorted((cx(a), cx(b)))

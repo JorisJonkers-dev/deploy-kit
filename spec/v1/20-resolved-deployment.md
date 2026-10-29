@@ -1964,6 +1964,7 @@ classDiagram
         +string from
         +string content
         +string[] inputs
+    }
     class ResolvedAlertRules {
         +string from
         +list groups
@@ -2145,6 +2146,7 @@ classDiagram
         +L4Protocol protocol
         +string surface
         +int targetPort
+    }
     class ResolvedEdgeProxy {
         +string ingressClass
         +bool tls
