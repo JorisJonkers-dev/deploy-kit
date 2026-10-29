@@ -9,6 +9,7 @@ import {
   FORCE_ANNOTATION,
   RECREATE_DEPLOYMENTS,
   renderPinSource,
+  retryPatches,
   sourceOf,
   UNPUBLISHED,
   VERSION_LABEL,
@@ -248,6 +249,37 @@ describe("a pin source", () => {
       },
     });
     expect(VERSION_LABEL).toBe("app.kubernetes.io/version");
+  });
+
+  it("annotates the pod template of each gated Deployment a Retry names, by name and namespace, and touches nothing else", () => {
+    const patches = retryPatches("2026-10-27T09:00:00Z", [
+      { namespace: "notes-system", name: "notes-api" },
+      { namespace: "observability-system", name: "prometheus" },
+    ]);
+
+    expect(patches.map(({ target }) => target)).toStrictEqual([
+      { kind: "Deployment", namespace: "notes-system", name: "notes-api" },
+      {
+        kind: "Deployment",
+        namespace: "observability-system",
+        name: "prometheus",
+      },
+    ]);
+    expect(parse(patches[0]?.patch ?? "")).toStrictEqual({
+      apiVersion: "apps/v1",
+      kind: "Deployment",
+      metadata: { name: "notes-api" },
+      spec: {
+        template: {
+          metadata: {
+            annotations: {
+              "estate.jorisjonkers.dev/retried-at": "2026-10-27T09:00:00Z",
+            },
+          },
+        },
+      },
+    });
+    expect(retryPatches("2026-10-27T09:00:00Z", [])).toStrictEqual([]);
   });
 
   it("pulls a private repository with the Secret the Platform document names, and a public one with none", () => {

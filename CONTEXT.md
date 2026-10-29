@@ -637,6 +637,12 @@ checks it and Flux still reconciles the pinned render; a paused Project is
 resumed by a human, and a **Rollback** leaves its Project paused
 ([chapter 55](spec/v1/55-delivery.md#pause-and-rollback)).
 
+**Retry**: analysing a failed release again, asked for by a human: the time it
+ran, recorded on the Project's pin, which composition renders onto the pod
+template of every gated Deployment, so Flagger sees one new revision and Flux
+never reverts it. Not a **Rollback**: the release the pin names stays, and is
+tried again ([chapter 55](spec/v1/55-delivery.md#pause-and-rollback)).
+
 **Isolated**: a Project whose newest fragment composition refused, composed
 instead at the fragment the previous lock recorded for it, while every other
 Project composes as usual. Not a **Pause**: nobody asked for it, and it ends

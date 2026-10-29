@@ -93,6 +93,8 @@ const ROLLBACK = {
   [PIN_ANNOTATIONS.rollbackFragment]: REF,
 };
 
+const RETRY = { [PIN_ANNOTATIONS.retriedAt]: "2026-10-27T09:00:00Z" };
+
 describe("the published JSON Schemas", () => {
   it.each(PUBLISHED_SCHEMAS.map((published) => [published.path, published]))(
     "%s regenerates without a diff",
@@ -367,6 +369,9 @@ describe("the pin annotations", () => {
     ["a Project that is not paused", {}],
     ["a Pause", PAUSE],
     ["a Rollback, which is also a Pause", ROLLBACK],
+    ["a Retry alone", RETRY],
+    ["a Retry beside a Pause", { ...PAUSE, ...RETRY }],
+    ["a Retry beside a Rollback", { ...ROLLBACK, ...RETRY }],
   ])("hold %s", (_, annotations) => {
     expect(pinAnnotations.parse(annotations)).toStrictEqual(annotations);
     expect(valid(annotations)).toBe(true);
@@ -401,6 +406,8 @@ describe("the pin annotations", () => {
       { ...ROLLBACK, [PIN_ANNOTATIONS.rollbackFragment]: "intent-data:2.1.2" },
     ],
     ["an annotation of someone else's", { ...PAUSE, "example.com/x": "y" }],
+    ["a Retry at no time", { [PIN_ANNOTATIONS.retriedAt]: "now" }],
+    ["a Retry counted", { [PIN_ANNOTATIONS.retriedAt]: "3" }],
     [
       "a Rollback's own backup, which a Rollback no longer takes",
       { ...PAUSE, "estate.jorisjonkers.dev/rollback-backup": "38526643693" },
@@ -410,13 +417,14 @@ describe("the pin annotations", () => {
     expect(valid(annotations)).toBe(false);
   });
 
-  it("are the five keys the spec names, under the estate's prefix", () => {
+  it("are the six keys the spec names, under the estate's prefix", () => {
     expect(Object.values(PIN_ANNOTATIONS)).toStrictEqual([
       "estate.jorisjonkers.dev/paused-by",
       "estate.jorisjonkers.dev/paused-at",
       "estate.jorisjonkers.dev/paused-reason",
       "estate.jorisjonkers.dev/rollback-version",
       "estate.jorisjonkers.dev/rollback-fragment",
+      "estate.jorisjonkers.dev/retried-at",
     ]);
   });
 });
