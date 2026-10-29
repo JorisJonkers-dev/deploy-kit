@@ -1832,6 +1832,14 @@
             "additionalProperties": false
           }
         },
+        "optional": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "access": {
           "$ref": "#/$defs/AccessTier"
         },

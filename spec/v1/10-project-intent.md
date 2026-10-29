@@ -2303,7 +2303,7 @@ defaults to `kv`, so every grant written before this rule stays valid.
 |---|---|---|---|
 | `engine` | all | no | `kv` \| `database` \| `transit`; defaults to `kv` |
 | `path` | `kv` | yes | The full KV path. This is the grant unit ([0028](../../docs/adr/model/0028-grant-unit-is-the-path.md)). |
-| `keys` | `kv` | yes | The keys the Process expects there. Documentation and a validation input, **not** an access boundary. No wildcard exists. A key is its name, or its name and `generate` ([Generated keys](#generated-keys)). |
+| `keys` | `kv` | yes | The keys the Process expects there. Documentation and a validation input, **not** an access boundary. No wildcard exists. A key is its name, its name and `generate` ([Generated keys](#generated-keys)), or its name and `optional: true` ([Optional keys](#optional-keys)). |
 | `access` | `kv` | yes | `read` \| `self-renew` \| `self-roll` \| `custody`. A KV intent, and only a KV intent. |
 | `role` | `database` | yes | The database role that issues the credential. The read path derives as `database/creds/<role>`. |
 | `key` | `transit` | yes | The transit key name. |
@@ -2419,6 +2419,45 @@ A generated key has one owner:
   lists it plainly is not generated.
 - Nothing else writes its path: a `self-roll` grant on the path, or a
   `custody` grant on it or above it, is `E_GENERATED_KEY_WRITTEN_ELSEWHERE`.
+
+### Optional keys
+
+A key is required unless it says otherwise: a Process whose key is missing
+from the document it reads does not start. A key the Process can run without
+says so:
+
+```yaml
+secrets:
+  - path: secret/data/agents/hermes
+    keys:
+      - name: anthropic-api-key
+        optional: true
+      - name: github-pat
+        optional: true
+    access: read
+    delivery: env
+    rotation: { tolerates: restart }
+```
+
+`optional` is `true` or unsaid; a required key is written as its name alone,
+so it has one spelling. The render carries it onto every reference it makes to
+the key: a secret reference to it is an optional `secretKeyRef`, and a file
+grant of it an optional projection
+([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)). A
+Process holding it starts whether the key, or the whole document, is there or
+not, and the operator's restart brings the value in once it is.
+
+A generated key is never optional: the Vault policy job writes it before any
+Process holding its grant starts, so it is always there to read. A key written
+with both `generate` and `optional` is not in the grammar, and fails schema
+validation. A grant that only reads a key another grant generates may still
+list it as optional, which changes nothing it reads.
+
+Like `keys` itself, `optional` confers nothing and narrows nothing
+([Grant unit](#grant-unit)): it says how a missing key is met, not who may read
+it. The checks read an optional key by its name, exactly as a required one: a
+secret reference to it is authorised (`E_UNAUTHORISED_SECRET_REFERENCE`), and
+an `env` grant no reference reads is still unbound (`E_UNBOUND_SECRET_GRANT`).
 
 ## Grant unit
 

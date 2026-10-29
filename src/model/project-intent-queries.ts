@@ -9,6 +9,7 @@ import {
   type Asset,
   type ApplicationDocument,
   type DependencyEdge,
+  type GeneratedKey,
   type Grant,
   type KvKey,
   type SharedIntent,
@@ -69,9 +70,17 @@ export function routeFor(
   return found;
 }
 
-/** A key's name, whether or not it is generated. */
+/** A key's name, whether or not it is generated or optional. */
 export const keyName = (key: KvKey): string =>
   typeof key === "string" ? key : key.name;
+
+/** Whether the Vault policy job generates a key. */
+export const isGenerated = (key: KvKey): key is GeneratedKey =>
+  typeof key !== "string" && "generate" in key;
+
+/** Whether a Process starts without a key (spec/v1/10-project-intent.md#optional-keys). */
+export const isOptional = (key: KvKey): boolean =>
+  typeof key !== "string" && "optional" in key;
 
 /** What a generated key is when its `generate` leaves a field unsaid. */
 export const GENERATED_DEFAULTS = { bytes: 32, encoding: "hex" } as const;

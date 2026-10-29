@@ -132,10 +132,18 @@ const generate = z
   })
   .meta({ id: "Generate" });
 
-/** A key of a kv grant: its name, or its name and how the Vault policy job generates it. */
+/**
+ * A key of a kv grant: its name, its name and how the Vault policy job
+ * generates it, or its name and that the Process starts without it. A
+ * generated key always exists, so it is never optional
+ * (spec/v1/10-project-intent.md#optional-keys).
+ */
 const kvKey = z.union([
   text,
   z.strictObject({ name: text, generate }).meta({ id: "GeneratedKey" }),
+  z
+    .strictObject({ name: text, optional: z.literal(true) })
+    .meta({ id: "OptionalKey" }),
 ]);
 
 const kvGrant = z
@@ -540,6 +548,7 @@ export type ApplicationDocument = ProjectIntentDocument["applications"][number];
 export type ProcessDocument = ApplicationDocument["processes"][number];
 export type Grant = NonNullable<ProcessDocument["secrets"]>[number];
 export type KvKey = Extract<Grant, { readonly path: string }>["keys"][number];
+export type GeneratedKey = Extract<KvKey, { readonly generate: unknown }>;
 export type DependencyEdge = NonNullable<ProcessDocument["dependsOn"]>[number];
 export type Asset = NonNullable<ProcessDocument["assets"]>[number];
 export type Placement = NonNullable<ProcessDocument["placement"]>;

@@ -21,6 +21,7 @@ import {
   routeFor,
   declared,
   effectiveCutover,
+  isGenerated,
   NODE_DIMENSIONS,
   ownsDatabases,
   ownerRole,
@@ -667,7 +668,7 @@ function generatedKeyRefusals(
   return (grants ?? []).flatMap((grant, g) =>
     "keys" in grant
       ? grant.keys.flatMap((key, k): Refusal[] => {
-          if (typeof key === "string") return [];
+          if (!isGenerated(key)) return [];
           const adopted = key.generate.adopt?.split("#")[0];
           return [
             ...(inside(grant.path)

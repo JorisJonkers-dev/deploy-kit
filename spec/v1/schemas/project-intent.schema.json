@@ -117,6 +117,9 @@
               },
               {
                 "$ref": "#/$defs/GeneratedKey"
+              },
+              {
+                "$ref": "#/$defs/OptionalKey"
               }
             ]
           }
@@ -190,6 +193,24 @@
         "base64",
         "base64url"
       ]
+    },
+    "OptionalKey": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "optional": {
+          "type": "boolean",
+          "const": true
+        }
+      },
+      "required": [
+        "name",
+        "optional"
+      ],
+      "additionalProperties": false
     },
     "AccessTier": {
       "type": "string",

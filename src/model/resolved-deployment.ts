@@ -224,6 +224,8 @@ const resolvedGrant = z
       )
       .min(1)
       .exactOptional(),
+    // The keys the Process starts without: each reference to one is optional.
+    optional: z.array(text).min(1).exactOptional(),
     access: accessTier,
     delivery,
     // The Secret the store's value is synced to, for a grant delivered `env`

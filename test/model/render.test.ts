@@ -7,6 +7,7 @@ import { join, relative } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { parseAllDocuments } from "yaml";
 import {
+  parseProjectIntent,
   renderIntentSet,
   resolveIntentSet,
   serialize,
@@ -4098,5 +4099,116 @@ describe("what a container runs, and what it holds in memory", () => {
     });
     expect(hermes.containers[0]?.resources.requests.memory).toBe("3Gi");
     expect(hermes.containers[0]?.args).toStrictEqual(["gateway", "run"]);
+  });
+});
+
+// REQ-123 (docs/requirements.md): an optional key's every reference is
+// optional, and nothing else's is.
+describe("a grant's optional keys", () => {
+  type Spec = {
+    containers: {
+      env?: {
+        name: string;
+        valueFrom?: { secretKeyRef: { key: string; optional?: true } };
+      }[];
+    }[];
+    volumes?: { name: string; secret?: { optional?: true } }[];
+  };
+  /** The pod a Process's workload runs, a Deployment's or a CronJob's. */
+  const podOf = (tree: Record<string, string>, path: string): Spec => {
+    const workload = parseAllDocuments(tree[path] ?? "")
+      .map((document) => document.toJS() as Record<string, unknown>)
+      .find(({ kind }) => kind === "Deployment" || kind === "CronJob") as {
+      spec: {
+        template?: { spec: Spec };
+        jobTemplate?: { spec: { template: { spec: Spec } } };
+      };
+    };
+    const template =
+      workload.spec.template ?? workload.spec.jobTemplate?.spec.template;
+    return template?.spec as Spec;
+  };
+  const references = (spec: Spec) =>
+    Object.fromEntries(
+      (spec.containers[0]?.env ?? []).flatMap(({ name, valueFrom }) =>
+        valueFrom === undefined
+          ? []
+          : [[name, valueFrom.secretKeyRef.optional === true]],
+      ),
+    );
+
+  it("makes each secret reference to an optional key optional, and leaves a required one's required", () => {
+    const tree = asTree(
+      artifact(
+        render(
+          {
+            "agents/agents.project.yml": (body) =>
+              body.replace(
+                "- { name: github-pat, optional: true }",
+                "- github-pat",
+              ),
+          },
+          ["agents"],
+        ),
+        "agents",
+      ),
+    );
+
+    expect(
+      references(podOf(tree, "apps/agents/hermes/workload.yaml")),
+    ).toStrictEqual({
+      ANTHROPIC_API_KEY: true,
+      GITHUB_PAT: false,
+      HINDSIGHT_API_TOKEN: true,
+      MEMORY_API_KEY: true,
+      OPENAI_API_KEY: true,
+      OPENROUTER_API_KEY: true,
+      OVERLEAF_SESSION: true,
+    });
+  });
+
+  it("makes a file grant's projection of an optional key optional, and leaves a required one's required", () => {
+    const projection = (keys: string) =>
+      podOf(
+        asTree(
+          artifact(
+            render(
+              {
+                "data/data.project.yml": (body) =>
+                  body.replace("keys: [credentials]", keys),
+              },
+              ["data"],
+            ),
+            "data",
+          ),
+        ),
+        "apps/data/asset-sync/workload.yaml",
+      ).volumes?.find(({ secret }) => secret !== undefined)?.secret;
+
+    expect(
+      projection("keys: [{ name: credentials, optional: true }]")?.optional,
+    ).toBe(true);
+    expect(projection("keys: [credentials]")).not.toHaveProperty("optional");
+  });
+
+  it.each([
+    ["with generate", "{ name: session_key, generate: {}, optional: true }"],
+    ["as false", "{ name: session_key, optional: false }"],
+    ["unsaid, with nothing else", "{ name: session_key }"],
+  ])("refuses a key written optional %s", (_, key) => {
+    const document = text("agents/agents.project.yml").replace(
+      "- { name: github-pat, optional: true }",
+      `- ${key}`,
+    );
+
+    expect(parseProjectIntent(document).ok).toBe(false);
+    expect(
+      parseProjectIntent(
+        text("agents/agents.project.yml").replace(
+          "- { name: github-pat, optional: true }",
+          "- github-pat",
+        ),
+      ).ok,
+    ).toBe(true);
   });
 });

@@ -22,7 +22,11 @@ import type {
   Grant,
   ProjectIntentDocument,
 } from "../model/project-intent.ts";
-import { keyName, reachesDatabase } from "../model/project-intent-queries.ts";
+import {
+  isGenerated,
+  keyName,
+  reachesDatabase,
+} from "../model/project-intent-queries.ts";
 import { collectorEndpoint, exports } from "../model/runtime-profiles.ts";
 import { dumpedSurfaceOf } from "../model/backup.ts";
 import { reachOf, servedOf } from "../model/aliases.ts";
@@ -329,7 +333,7 @@ const generatedKeys = (union: readonly Fragment[]) =>
   union.flatMap(authoredGrants).flatMap(({ document, path, value }) =>
     "path" in value
       ? value.keys.flatMap((key, k) =>
-          typeof key === "string"
+          !isGenerated(key)
             ? []
             : [
                 {
