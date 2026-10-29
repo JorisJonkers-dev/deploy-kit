@@ -110,7 +110,10 @@ baseline ([chapter 16](16-dependencies.md#spawn-templates)). A Process that serv
 records its `nameservers`, the platform's upstream nameservers it resolves
 through, and holds no `cluster-dns` peer
 ([chapter 10](10-project-intent.md#l4-exposure)). An Application records
-its `scrape`, the monitored surface at the Platform document's cadence; an
+its `scrape`, the monitored surface at the Platform document's cadence, and
+the metrics stack its `fluxScrape`, Flux's controllers where the Platform
+document records their metrics
+([chapter 14](14-platform-intent.md#fluxs-metrics)); an
 exposure its tier's `listener`, `certificates` and `proxy`, the Application that
 serves the tier and the namespace it runs in; and the release gate the `endpoint`
 every Canary asks. An Application that declares `client` records the `client`
@@ -283,7 +286,7 @@ field's placement link to this anchor rather than copying rows.
 | env entries and `envFrom` refs | derived | - | from env files, after placeholder resolution, including `${identity:…}`, the Process's own derived facts, and `${secret:…}`, recorded as the grant's path and key rather than a value ([0013](../../docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md)) |
 | dependency coordinates | derived | - | from the edge set and the provider's surfaces, bound to the key the consumer chose |
 | Runtime Profile values | derived | - | from `runtime` |
-| ServiceMonitor, PodMonitor | derived | - | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document |
+| ServiceMonitor, PodMonitor | derived | - | target and port name from `observability.scrape` and the named surface in `provides`; cadence from the Platform document. Flux's controllers' PodMonitor from `bootstrap.flux.metrics`, on the metrics stack ([chapter 14](14-platform-intent.md#fluxs-metrics)) |
 | PrometheusRule, severity, receiver route | the monitoring stack | - | a PrometheusRule per rule-group file the monitoring stack's Applications carry, and one AlertmanagerConfig on its Alertmanager routing each severity the Platform document routes to its receiver ([chapter 14](14-platform-intent.md#monitoring)); no other Application carries rules |
 | a library's volume and claim | derived | - | one per project and library it mounts: the volume `<namespace>-<library>` onto the library's `path`, held to its `node`, and the claim `library-<library>` bound to it, shared by every Process of the project that mounts the library ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)) |
 | backup job, its identity and its claim | derived | - | from `volumes[].durability`: the job runs as `<process>-backup` and writes to `<claim>-backup`, of the volume's `size`, keeping `retain` copies; `reconstructible` renders none |
@@ -1988,6 +1991,13 @@ classDiagram
         +Duration interval
         +Duration timeout
     }
+    class ResolvedFluxScrape {
+        +string namespace
+        +int port
+        +Path path
+        +Duration interval
+        +Duration timeout
+    }
     class ResolvedMigration {
         +ImageRef runner
         +int uid
@@ -2316,6 +2326,7 @@ classDiagram
     ResolvedApplication "1" *-- "1..*" ResolvedProcess : processes
     ResolvedApplication "1" *-- "0..*" ResolvedExposure : exposure
     ResolvedApplication "1" *-- "0..1" ResolvedScrape : scrape
+    ResolvedApplication "1" *-- "0..1" ResolvedFluxScrape : fluxScrape
     ResolvedApplication "1" *-- "0..1" ResolvedDashboards : dashboards
     ResolvedDashboards "1" *-- "1..*" ResolvedDashboard : files
     ResolvedApplication "1" *-- "0..*" ResolvedAlertRules : alertRules

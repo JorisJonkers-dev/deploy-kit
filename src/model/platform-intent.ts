@@ -138,10 +138,21 @@ const renderedArtifacts = z
   })
   .meta({ id: "RenderedArtifacts" });
 
+// Where Flux's controllers serve their metrics, as Flux's own install sets
+// them (spec/v1/14-platform-intent.md#fluxs-metrics): Flux is no Process, so
+// no scrape surface can name it.
+const fluxMetrics = z
+  .strictObject({ port, path: text })
+  .meta({ id: "FluxMetrics" });
+
 const bootstrap = z
   .strictObject({
     flux: z
-      .strictObject({ sourceRef: text, artifacts: renderedArtifacts })
+      .strictObject({
+        sourceRef: text,
+        artifacts: renderedArtifacts,
+        metrics: fluxMetrics.exactOptional(),
+      })
       .meta({ id: "FluxSource" }),
     vault: z.strictObject({ unsealed: z.boolean() }).meta({ id: "VaultState" }),
     crds: z.array(text).min(1),
@@ -442,6 +453,9 @@ export const REPORTER_SURFACE = "http";
  * one that calls an Application.
  */
 export const FLUX_NOTIFIER = "notification-controller";
+
+/** The label Flux's own install gives every one of its controllers' pods. */
+export const FLUX_CONTROLLERS = { "app.kubernetes.io/part-of": "flux" };
 
 /** The namespace Flux's own objects live in: `sourceRef` names its source as `<namespace>/<name>`. */
 export const fluxNamespaceOf = (platform: {

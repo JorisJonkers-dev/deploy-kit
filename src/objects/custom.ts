@@ -74,12 +74,15 @@ export interface PodMonitor {
     readonly jobLabel: string;
     readonly selector: { readonly matchLabels: Labels };
     readonly namespaceSelector: { readonly matchNames: readonly string[] };
-    readonly podMetricsEndpoints: readonly {
-      readonly port: string;
+    // A port by its name where the model names it, and by number for a pod
+    // the render does not write, such as Flux's.
+    readonly podMetricsEndpoints: readonly ((
+      { readonly port: string } | { readonly portNumber: number }
+    ) & {
       readonly path: string;
       readonly interval: string;
       readonly scrapeTimeout: string;
-    }[];
+    })[];
   };
 }
 

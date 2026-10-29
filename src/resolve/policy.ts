@@ -59,7 +59,9 @@ export const peersOf = (
   );
 
 /** A peer once per rule, namespace, process and port, in the order derived. */
-function distinct(peers: readonly Ingress[]): Ingress[] {
+function distinct<Peer extends Ingress | Egress>(
+  peers: readonly Peer[],
+): Peer[] {
   const held = new Set<string>();
   return peers.filter((peer) => {
     const key = JSON.stringify(peer);
@@ -254,3 +256,56 @@ export const egressOf = (
     ? []
     : [storeOf(context)]),
 ];
+
+/**
+ * What the metrics stack scrapes (spec/v1/16-dependencies.md#the-derived-allow-set):
+ * the Process every Application of the set names in its `scrape`, where it
+ * runs, on its scrape surface's port, and Flux's controllers on the port the
+ * bootstrap set records. Every Process of the metrics stack, and no other.
+ */
+export function scrapeEgressOf(
+  application: Pick<EffectiveApplication, "id">,
+  context: PolicyContext,
+): Egress[] {
+  const { platform } = context;
+  if (!holds(platform.telemetry?.metrics, context.project, application.id))
+    return [];
+  const targets = context.union.flatMap(({ project, applications }) =>
+    applications.flatMap(({ id, observability, processes }): Egress[] => {
+      const scrape = observability?.scrape;
+      if (scrape === undefined) return [];
+      // A scrape names a surface its Process provides, or E_UNKNOWN_PROCESS
+      // and E_UNKNOWN_SURFACE refused it.
+      const target = processes.find(
+        ({ name }) => name === scrape.process,
+      ) as EffectiveProcess;
+      return [
+        {
+          rule: "scrape-target",
+          ...homeOf(platform, project, id, scrape.process),
+          port: target.provides?.[scrape.surface] as number,
+        },
+      ];
+    }),
+  );
+  const flux = platform.bootstrap.flux.metrics;
+  // In one order whatever order the union arrived in, so a composition is the
+  // same however its fragments were pulled.
+  const ordered = targets.toSorted((left, right) =>
+    JSON.stringify([left.namespace, left.process, left.port]).localeCompare(
+      JSON.stringify([right.namespace, right.process, right.port]),
+    ),
+  );
+  return distinct([
+    ...ordered,
+    ...(flux === undefined
+      ? []
+      : [
+          {
+            rule: "flux-metrics" as const,
+            namespace: fluxNamespaceOf(platform),
+            port: flux.port,
+          },
+        ]),
+  ]);
+}

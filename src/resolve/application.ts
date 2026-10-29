@@ -33,6 +33,7 @@ import {
 } from "../model/project-intent-queries.ts";
 import { unitOf } from "../model/reconcile-units.ts";
 import {
+  fluxNamespaceOf,
   holds,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
@@ -52,6 +53,7 @@ import {
   gateEgressOf,
   gateIngressOf,
   ingressOf,
+  scrapeEgressOf,
 } from "./policy.ts";
 import { resolveProcess, type ProcessContext } from "./process.ts";
 
@@ -149,6 +151,37 @@ function receiverGrantsOf(
     delivery: "env" as const,
     destination: destinationOf(process.name, webhook.path),
   }));
+}
+
+/**
+ * Flux's controllers, on the metrics stack the Platform document names, where
+ * it records their metrics (spec/v1/14-platform-intent.md#fluxs-metrics).
+ */
+function fluxScrapeOf(
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): {
+  readonly fluxScrape?: NonNullable<ResolvedApplicationDocument["fluxScrape"]>;
+} {
+  const { platform } = context;
+  const metrics = platform.bootstrap.flux.metrics;
+  if (
+    metrics === undefined ||
+    !holds(platform.telemetry?.metrics, context.project, application.id)
+  )
+    return {};
+  return {
+    fluxScrape: {
+      namespace: fluxNamespaceOf(platform),
+      port: metrics.port,
+      path: metrics.path,
+      interval: platform.monitors.interval,
+      timeout: platform.monitors.timeout,
+      ...(platform.monitors.labels === undefined
+        ? {}
+        : { labels: platform.monitors.labels }),
+    },
+  };
 }
 
 /**
@@ -573,6 +606,7 @@ export function resolveApplication(
             ({ rule }) => nameservers === undefined || rule !== "cluster-dns",
           ),
           ...gateEgressOf(application, context),
+          ...scrapeEgressOf(application, context),
         ],
       },
     };
@@ -612,6 +646,7 @@ export function resolveApplication(
               : { labels: context.platform.monitors.labels }),
           },
         }),
+    ...fluxScrapeOf(application, context),
     ...(gate === undefined ? {} : { releaseGate: gate }),
     ...(plan === undefined ? {} : { migration: plan }),
     // A migration reads its owner credential from the store itself.

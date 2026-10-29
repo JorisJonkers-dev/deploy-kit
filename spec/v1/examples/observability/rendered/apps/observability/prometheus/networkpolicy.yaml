@@ -49,3 +49,63 @@ spec:
           port: 53
         - protocol: TCP
           port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: postgres
+      ports:
+        - protocol: UDP
+          port: 9187
+        - protocol: TCP
+          port: 9187
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: rabbitmq
+      ports:
+        - protocol: UDP
+          port: 15692
+        - protocol: TCP
+          port: 15692
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: delivery-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: release-gate
+      ports:
+        - protocol: UDP
+          port: 8080
+        - protocol: TCP
+          port: 8080
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: notes-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: notes-api
+      ports:
+        - protocol: UDP
+          port: 8080
+        - protocol: TCP
+          port: 8080
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: flux-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: flux
+      ports:
+        - protocol: UDP
+          port: 8080
+        - protocol: TCP
+          port: 8080
