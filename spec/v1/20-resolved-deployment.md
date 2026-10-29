@@ -2384,10 +2384,10 @@ classDiagram
 ```mermaid
 flowchart LR
     subgraph IN["Pinned inputs: each carried by digest"]
-        i1["Intent Fragment<br/>this project's file + env/"]
+        i1["Intent Fragment<br/>this project's file, env/, assets, proof"]
         i2["Intent Fragments<br/>of every other project"]
         i3["Platform Intent<br/>tiers, policies, engines, providers"]
-        i4["node contract<br/>site, allocatable, gpus, disks"]
+        i4["node contract, the one the Platform document pins<br/>site, allocatable, gpus, disks"]
         i5["images lock<br/>digests, uid, gid"]
         i6["ClusterState snapshot<br/>PV bindings, current placements"]
     end
@@ -2397,7 +2397,7 @@ flowchart LR
     subgraph OUT["Outputs"]
         o1["Deliverable Set<br/>layer 3, per adapter"]
         o2["ResolvedApplication<br/>the per-Application projection"]
-        o3["renderHash + inputDigests"]
+        o3["renderHash + schemaPackageIntegrity<br/>+ one digest per pinned input"]
     end
 
     i1 --> RD
