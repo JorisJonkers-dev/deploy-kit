@@ -53,7 +53,14 @@
           "minItems": 1,
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Asset"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Asset"
+              },
+              {
+                "$ref": "#/$defs/SeededAsset"
+              }
+            ]
           }
         },
         "writablePaths": {
@@ -422,6 +429,24 @@
       ],
       "additionalProperties": false
     },
+    "SeededAsset": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seedAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from",
+        "seedAt"
+      ],
+      "additionalProperties": false
+    },
     "MemoryPath": {
       "type": "object",
       "properties": {
@@ -634,7 +659,14 @@
           "minItems": 1,
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Asset"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Asset"
+              },
+              {
+                "$ref": "#/$defs/SeededAsset"
+              }
+            ]
           }
         },
         "writablePaths": {
@@ -1136,7 +1168,14 @@
           "minItems": 1,
           "type": "array",
           "items": {
-            "$ref": "#/$defs/Asset"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Asset"
+              },
+              {
+                "$ref": "#/$defs/SeededAsset"
+              }
+            ]
           }
         },
         "writablePaths": {

@@ -856,6 +856,16 @@ connects it to the Secret Store, as any grant does. The Process also carries
 `internetEgress`, with the tunnel as its reason where it declared none
 ([chapter 16](16-dependencies.md#internet-egress)).
 
+### The seeding step
+
+A Process that seeds an Asset
+([chapter 10](10-project-intent.md#seeded-assets)) is resolved with a `seeder`
+of its own: the Platform document's image, by digest, with its version where
+the lock records one, and its `memory` and `cpu`
+([chapter 14](14-platform-intent.md#the-seeder)). Each seeded Asset is resolved
+as any Asset is, its content-hashed `name` and its `content`, with its `seedAt`
+in place of a `mountAt`. A Process that seeds nothing carries no `seeder`.
+
 ### The forward-auth endpoint
 
 The middleware chain is derived, and one of its members needs an address: a
@@ -2241,7 +2251,13 @@ classDiagram
         +string name
         +Path from
         +Path mountAt
+        +Path seedAt
         +string content
+    }
+    class ResolvedSeeder {
+        +ImageRef image
+        +Quantity memory
+        +Quantity cpu
     }
     class ResolvedSidecar {
         +string name
@@ -2365,6 +2381,7 @@ classDiagram
     ResolvedEdgeProxy "1" *-- "0..1" ResolvedResolver : resolver
     ResolvedProcess "1" *-- "0..1" ResolvedGpu : gpu
     ResolvedProcess "1" *-- "0..1" ResolvedVpn : vpn
+    ResolvedProcess "1" *-- "0..1" ResolvedSeeder : seeder
     ResolvedProcess "1" *-- "0..*" ResolvedGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedEngineGrant : secrets
     ResolvedProcess "1" *-- "0..*" ResolvedClientGrant : secrets

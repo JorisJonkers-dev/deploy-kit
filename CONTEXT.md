@@ -313,6 +313,12 @@ seconds of its slot, derived and never authored
 content-hashed and a change restarts the Process, unconditionally
 ([0014](docs/adr/model/0014-file-shaped-configuration-is-an-asset.md)).
 
+**Seeded Asset**: an Asset copied onto one of its Process's volumes or
+writable paths before every start rather than mounted, so the Process may rewrite it; the copy it
+replaces is kept beside it. Static text: its secrets reach the application
+through the environment
+([0124](docs/adr/model/0124-a-seeded-asset-is-copied-onto-a-volume-before-each-start.md)).
+
 **Volume**: a claim mounted at a path, carrying its Durability Class.
 
 **Durability Class**: what losing a volume costs: `reconstructible`,

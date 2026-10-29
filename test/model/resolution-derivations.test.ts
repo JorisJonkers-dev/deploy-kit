@@ -81,6 +81,7 @@ const FOUNDATION = [
   "delivery/delivery.project.yml",
   AGENTS,
   "utility/utility.project.yml",
+  "utility/config/adguard/AdGuardHome.yaml",
   "edge/edge.project.yml",
   OBSERVABILITY,
   "observability/rules/platform.yaml",
@@ -2158,6 +2159,231 @@ describe("what an Asset and a sidecar derive", () => {
         cpu: "5m",
       },
     ]);
+  });
+});
+
+// REQ-124 (docs/requirements.md): a seeded Asset runs the platform's seeder,
+// which a node must fit beside the Process, and lands only on a file below one
+// of the Process's own volumes.
+describe("a Process that seeds an Asset", () => {
+  const VOLUME =
+    "        volumes:\n          - { claim: notes-data, mountAt: /var/lib/notes, size: 1Gi, durability: reconstructible }\n";
+  const seeding = (seedAt: string, extra = VOLUME) =>
+    one(
+      serving(
+        "notes-api",
+        `${extra}        assets:\n          - { from: config/notes.yml, seedAt: "${seedAt}" }\n`,
+      ).replace("cutover: continuous", "cutover: interrupted"),
+    );
+  const SEEDED = seeding("/var/lib/notes/notes.yml");
+  // A variable the application expands itself names no placeholder source.
+  const CONTENT = "page-size: ${PAGE_SIZE}\n";
+  const beside = (options: Options = {}): Options => ({
+    ...options,
+    env: [{ name: "minimal/config/notes.yml", text: CONTENT }],
+  });
+  const SEEDER = "seeder:\n  image: busybox\n  memory: 16Mi\n  cpu: 10m\n";
+  const unnamed = (platform: string) => platform.replace(SEEDER, "");
+  // AdGuard, in the foundation, seeds its config: without it nothing else does.
+  const unseeded = (name: string, text: string) =>
+    name === "utility/utility.project.yml"
+      ? text.replace(/ {8}assets:\n {10}- \{ from: config\/adguard.*\n/, "")
+      : text;
+  /** The refusals the notes project earns, beside the foundation's own. */
+  const notesOf = (result: ReturnType<typeof resolve>) =>
+    result.ok
+      ? []
+      : result.diagnostics.filter(
+          ({ document }) => document === "minimal/notes.project.yml",
+        );
+
+  it("runs the platform's seeder, pinned by digest, and carries the file as it is committed", () => {
+    const process = processOf(SEEDED, beside());
+
+    expect(process.seeder).toStrictEqual({
+      image: `${LOCK.images["busybox"]?.repository ?? ""}@${LOCK.images["busybox"]?.digest ?? ""}`,
+      imageVersion: "1.37.0",
+      memory: "16Mi",
+      cpu: "10m",
+    });
+    expect(process.assets).toStrictEqual([
+      {
+        name: `notes-api-notes-yml-${sha256Hasher(CONTENT).slice(7, 17)}`,
+        from: "config/notes.yml",
+        seedAt: "/var/lib/notes/notes.yml",
+        content: CONTENT,
+      },
+    ]);
+    // A Process that mounts its Assets, or has none, runs no seeder.
+    expect(
+      processOf(
+        one(
+          serving(
+            "notes-api",
+            "        assets:\n          - { from: config/notes.yml, mountAt: /etc/notes.yml }\n",
+          ),
+        ),
+        beside(),
+      ),
+    ).not.toHaveProperty("seeder");
+    expect(processOf(one(serving("notes-api")))).not.toHaveProperty("seeder");
+  });
+
+  it("asks a node to fit the seeder beside the Process", () => {
+    const placed = (memory: string) =>
+      processOf(
+        SEEDED,
+        beside({
+          platform: (platform) =>
+            platform.replace(SEEDER, SEEDER.replace("16Mi", memory)),
+        }),
+      ).placement.eligibleNodes;
+
+    expect(placed("16Mi")).toContain("enschede-pi-2");
+    // 4000Mi beside the Process's 64Mi no longer fits a 4096Mi Pi.
+    expect(placed("4000Mi")).not.toContain("enschede-pi-2");
+  });
+
+  it("asks nothing of a platform that names no seeder, where nothing is seeded", () => {
+    expect(
+      codesOf(
+        resolve(one(serving("notes-api")), {
+          platform: unnamed,
+          foundation: unseeded,
+        }),
+      ),
+    ).toStrictEqual([]);
+    // With it, the platform must name one.
+    expect(
+      codesOf(resolve(one(serving("notes-api")), { platform: unnamed })),
+    ).toStrictEqual(["E_NO_SEEDER"]);
+  });
+
+  it("refuses a seeded Asset the platform names no seeder for, and a seeder the lock does not hold", () => {
+    const unrun = resolve(SEEDED, beside({ platform: unnamed }));
+    expect(notesCodesOf(unrun)).toStrictEqual(["E_NO_SEEDER"]);
+    expect(notesOf(unrun)).toMatchObject([
+      {
+        path: "/applications/0/processes/0/assets/0/seedAt",
+        message: "notes-api seeds an Asset, and the platform names no seeder",
+        hint: "Name the seeder in the Platform document's `seeder`, or mount the Asset with `mountAt`.",
+      },
+    ]);
+
+    const unlocked = resolve(
+      SEEDED,
+      beside({
+        lock: (lock) => lock.replace("  busybox:\n", "  busybox-retired:\n"),
+      }),
+    );
+    expect(codesOf(unlocked)).toStrictEqual(["E_UNLOCKED_IMAGE"]);
+    expect(unlocked.ok ? [] : unlocked.diagnostics).toMatchObject([
+      { path: "/seeder/image" },
+    ]);
+  });
+
+  it.each([
+    ["outside every volume", "/etc/notes.yml"],
+    ["at the volume itself", "/var/lib/notes"],
+    ["at the volume, written with a slash", "/var/lib/notes/"],
+    ["out of the volume through ..", "/var/lib/notes/../notes.yml"],
+    ["through .", "/var/lib/notes/./notes.yml"],
+    [
+      "in a directory that only shares the volume's prefix",
+      "/var/lib/notes-other/notes.yml",
+    ],
+  ])("refuses a file seeded %s", (_, seedAt) => {
+    const refused = resolve(seeding(seedAt), beside());
+
+    expect(notesCodesOf(refused)).toStrictEqual(["E_SEED_OUTSIDE_VOLUME"]);
+    expect(notesOf(refused)).toMatchObject([
+      {
+        path: "/applications/0/processes/0/assets/0/seedAt",
+        message: `notes-api seeds ${seedAt}, which is a file below none of its volumes or writable paths`,
+        hint: "Seed the Asset at a path below one of the Process's volumes or writable paths, or mount it with `mountAt`.",
+      },
+    ]);
+  });
+
+  it("refuses a seeded Asset on a Process with no volume, both refusals where the platform names no seeder", () => {
+    expect(
+      notesCodesOf(resolve(seeding("/var/lib/notes/notes.yml", ""), beside())),
+    ).toStrictEqual(["E_SEED_OUTSIDE_VOLUME"]);
+    expect(
+      notesCodesOf(
+        resolve(
+          seeding("/var/lib/notes/notes.yml", ""),
+          beside({ platform: unnamed }),
+        ),
+      ),
+    ).toStrictEqual(["E_NO_SEEDER", "E_SEED_OUTSIDE_VOLUME"]);
+  });
+
+  it("accepts a file deeper below a volume, and a volume written with a slash", () => {
+    expect(
+      processOf(seeding("/var/lib/notes/conf/notes.yml"), beside()).assets?.[0],
+    ).toMatchObject({ seedAt: "/var/lib/notes/conf/notes.yml" });
+    expect(
+      processOf(
+        seeding(
+          "/var/lib/notes/notes.yml",
+          VOLUME.replace(
+            "mountAt: /var/lib/notes,",
+            "mountAt: /var/lib/notes/,",
+          ),
+        ),
+        beside(),
+      ).seeder,
+    ).toBeDefined();
+  });
+
+  it("seeds onto a writable path, whichever level declares it, which the pod starts fresh", () => {
+    const onPath = (process: string, above = "") =>
+      `  - id: notes\n${above}    processes:\n${serving(
+        "notes-api",
+        `${process}        assets:\n          - { from: config/notes.yml, seedAt: /var/conf/notes.yml }\n`,
+      )}`;
+
+    expect(
+      processOf(onPath("        writablePaths: [/var/conf]\n"), beside())
+        .seeder,
+    ).toBeDefined();
+    expect(
+      processOf(onPath("", "    writablePaths: [/var/conf]\n"), beside())
+        .seeder,
+    ).toBeDefined();
+    expect(
+      processOf(
+        onPath("        writablePaths: [{ path: /var/conf, memory: 1Mi }]\n"),
+        beside(),
+      ).seeder,
+    ).toBeDefined();
+    expect(notesCodesOf(resolve(onPath(""), beside()))).toStrictEqual([
+      "E_SEED_OUTSIDE_VOLUME",
+    ]);
+  });
+
+  it("refuses an inherited seeded Asset where it is written, and lets the Process mount the same path instead", () => {
+    const shared = (processAssets: string) =>
+      `  - id: notes\n    assets:\n      - { from: config/notes.yml, seedAt: /etc/notes.yml }\n    processes:\n${serving("notes-api", processAssets)}`;
+
+    const refused = resolve(shared(""), beside({ platform: unnamed }));
+    expect(notesOf(refused)).toMatchObject([
+      { code: "E_NO_SEEDER", path: "/applications/0/assets/0/seedAt" },
+      {
+        code: "E_SEED_OUTSIDE_VOLUME",
+        path: "/applications/0/assets/0/seedAt",
+      },
+    ]);
+    // The Process's own Asset at the path holds, and it seeds nothing.
+    const mounted = processOf(
+      shared(
+        "        assets:\n          - { from: config/notes.yml, mountAt: /etc/notes.yml }\n",
+      ),
+      beside({ platform: unnamed, foundation: unseeded }),
+    );
+    expect(mounted).not.toHaveProperty("seeder");
+    expect(mounted.assets?.[0]).toHaveProperty("mountAt", "/etc/notes.yml");
   });
 });
 

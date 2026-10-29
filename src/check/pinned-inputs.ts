@@ -423,6 +423,22 @@ const vpnRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
       ];
 };
 
+/** The seeder, where the platform names one, is an image the lock holds. */
+const seederRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
+  const image = set.platform.seeder?.image;
+  return image === undefined || Object.hasOwn(set.imagesLock.images, image)
+    ? []
+    : [
+        {
+          code: "E_UNLOCKED_IMAGE",
+          document: platform,
+          path: "/seeder/image",
+          message: `the images lock holds no entry for ${image}`,
+          hint: "Lock the alias, or name one the images lock holds.",
+        },
+      ];
+};
+
 /**
  * Each Node Agent the node contract and the pools derive has its catalog entry,
  * and every image the catalog names is one the lock holds
@@ -549,6 +565,7 @@ export const pinnedDiagnostics = (
   ...contractRefusals(set, contractDigest, platform),
   ...methodRefusals(set, platform),
   ...vpnRefusals(set, platform),
+  ...seederRefusals(set, platform),
   ...nodeAgentRefusals(set, platform),
   ...policyJobRefusals(set, platform),
   ...located.flatMap((project) => processRefusals(set, project)),

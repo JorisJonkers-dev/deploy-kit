@@ -1457,6 +1457,9 @@
         "vpn": {
           "$ref": "#/$defs/ResolvedVpn"
         },
+        "seeder": {
+          "$ref": "#/$defs/ResolvedSeeder"
+        },
         "hardening": {
           "$ref": "#/$defs/HardeningClass"
         },
@@ -1995,6 +1998,33 @@
         "self"
       ]
     },
+    "ResolvedSeeder": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "imageVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "image",
+        "memory",
+        "cpu"
+      ],
+      "additionalProperties": false
+    },
     "HardeningClass": {
       "type": "string",
       "enum": [
@@ -2518,31 +2548,62 @@
       "additionalProperties": false
     },
     "ResolvedAsset": {
-      "type": "object",
-      "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "from": {
+              "type": "string",
+              "minLength": 1
+            },
+            "mountAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "from",
+            "mountAt",
+            "content"
+          ],
+          "additionalProperties": false
         },
-        "from": {
-          "type": "string",
-          "minLength": 1
-        },
-        "mountAt": {
-          "type": "string",
-          "minLength": 1
-        },
-        "content": {
-          "type": "string"
+        {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "from": {
+              "type": "string",
+              "minLength": 1
+            },
+            "seedAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "content": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "from",
+            "seedAt",
+            "content"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "name",
-        "from",
-        "mountAt",
-        "content"
-      ],
-      "additionalProperties": false
+      ]
     },
     "ResolvedSidecar": {
       "type": "object",

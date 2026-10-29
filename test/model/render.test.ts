@@ -52,8 +52,10 @@ const SET = [
   "identity/identity.project.yml",
   "mail/mail.project.yml",
   "utility/utility.project.yml",
+  "utility/config/adguard/AdGuardHome.yaml",
   "agents/agents.project.yml",
   "agents/env/hermes/base.env",
+  "agents/config/hermes/config.yaml",
   "observability/env/grafana/base.env",
   "data/data.project.yml",
   "data/env/postgres/base.env",
@@ -4325,5 +4327,153 @@ describe("a description", () => {
     expect(refusedAt('""', longest)).toStrictEqual([
       { code: "schema", path: "/applications/0/description" },
     ]);
+  });
+});
+
+// REQ-125 (docs/requirements.md): a seeded Asset is copied onto its Process's
+// volume by the first init step, on the platform's seeder, and only that step
+// mounts it.
+describe("a seeded Asset", () => {
+  interface Mount {
+    name: string;
+    mountPath: string;
+    readOnly?: boolean;
+  }
+  interface Pod {
+    initContainers?: {
+      name: string;
+      image: string;
+      command?: string[];
+      resources: unknown;
+      securityContext: unknown;
+      volumeMounts?: Mount[];
+    }[];
+    containers: { name: string; volumeMounts?: Mount[] }[];
+  }
+  const AGENTS = "agents/agents.project.yml";
+  const SEEDED =
+    "          - { from: config/hermes/config.yaml, seedAt: /opt/data/config.yaml }\n";
+  const hermes = (
+    edit: (text: string) => string = (same) => same,
+  ): { pod: Pod; tree: Record<string, string> } => {
+    const tree = asTree(
+      artifact(render({ [AGENTS]: edit }, ["agents"]), "agents"),
+    );
+    const deployment = parseAllDocuments(
+      tree["apps/agents/hermes/workload.yaml"] ?? "",
+    )
+      .map((document) => document.toJS() as Record<string, unknown>)
+      .find(({ kind }) => kind === "Deployment") as {
+      spec: { template: { spec: Pod } };
+    };
+    return { pod: deployment.spec.template.spec, tree };
+  };
+
+  it("copies the file onto the volume first, keeping the copy it replaces, at 0600, and mounts it into that step alone", () => {
+    const { pod, tree } = hermes();
+    const [seed] = pod.initContainers ?? [];
+    const asset = /name: (hermes-config-yaml-[0-9a-f]{10})/.exec(
+      tree["apps/agents/hermes/configmap.yaml"] ?? "",
+    )?.[1] as string;
+
+    expect(seed).toStrictEqual({
+      name: "seed",
+      image:
+        "docker.io/library/busybox@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec",
+      command: [
+        "/bin/sh",
+        "-c",
+        [
+          "set -eu",
+          "umask 077",
+          "mkdir -p '/opt/data'",
+          "if [ -e '/opt/data/config.yaml' ]; then cp -p '/opt/data/config.yaml' '/opt/data/config.yaml.superseded'; fi",
+          `cp '/seed/${asset}/config.yaml' '/opt/data/config.yaml.seeding'`,
+          "chmod 0600 '/opt/data/config.yaml.seeding'",
+          "mv '/opt/data/config.yaml.seeding' '/opt/data/config.yaml'",
+        ].join("\n"),
+      ],
+      resources: {
+        requests: { memory: "16Mi", cpu: "10m" },
+        limits: { memory: "16Mi" },
+      },
+      securityContext: {
+        allowPrivilegeEscalation: false,
+        readOnlyRootFilesystem: true,
+        capabilities: { drop: ["ALL"] },
+      },
+      volumeMounts: [
+        { name: asset, mountPath: `/seed/${asset}`, readOnly: true },
+        { name: "hermes-data", mountPath: "/opt/data" },
+      ],
+    });
+    // The Process reads the copy on its volume, never the Asset itself.
+    expect(
+      pod.containers[0]?.volumeMounts?.map(({ name }) => name),
+    ).not.toContain(asset);
+    // The file is the committed text: hermes expands its own variables.
+    expect(tree["apps/agents/hermes/configmap.yaml"]).toContain(
+      "Authorization: Bearer ${GITHUB_PAT}",
+    );
+  });
+
+  it("runs before the VPN, mounts only the volumes the Assets land on, and quotes every path", () => {
+    const { pod } = hermes((text) =>
+      text
+        .replace(
+          SEEDED,
+          '          - { from: config/hermes/config.yaml, seedAt: "/opt/data/it\'s here/config.yaml" }\n',
+        )
+        .replace(
+          "          - { claim: hermes-data, mountAt: /opt/data, size: 10Gi, durability: recoverable }\n",
+          "          - { claim: hermes-data, mountAt: /opt/data, size: 10Gi, durability: recoverable }\n          - { claim: hermes-cache, mountAt: /opt/cache, size: 1Gi, durability: reconstructible }\n        vpn: { forwardedPort: false }\n",
+        ),
+    );
+    const [seed, vpn] = pod.initContainers ?? [];
+
+    expect([seed?.name, vpn?.name]).toStrictEqual(["seed", "vpn"]);
+    expect(seed?.command?.[2]).toContain("mkdir -p '/opt/data/it'\\''s here'");
+    expect(seed?.volumeMounts?.map(({ name }) => name).slice(1)).toStrictEqual([
+      "hermes-data",
+    ]);
+  });
+
+  it("seeds onto a writable path, mounting it into the step under the name the Process mounts it by", () => {
+    const tree = asTree(artifact(render(undefined, ["utility"]), "utility"));
+    const pod = (
+      parseAllDocuments(tree["apps/utility/adguard/workload.yaml"] ?? "")
+        .map((document) => document.toJS() as Record<string, unknown>)
+        .find(({ kind }) => kind === "Deployment") as {
+        spec: { template: { spec: Pod } };
+      }
+    ).spec.template.spec;
+    const [seed] = pod.initContainers ?? [];
+
+    expect(seed?.name).toBe("seed");
+    expect(seed?.volumeMounts?.slice(1)).toStrictEqual([
+      {
+        name: "writable-opt-adguardhome-conf",
+        mountPath: "/opt/adguardhome/conf",
+      },
+    ]);
+    expect(
+      pod.containers[0]?.volumeMounts?.map(({ mountPath }) => mountPath),
+    ).toContain("/opt/adguardhome/conf");
+  });
+
+  it("mounts an Asset that is not seeded into the Process, and runs no step for it", () => {
+    const { pod } = hermes((text) =>
+      text.replace(
+        SEEDED,
+        "          - { from: config/hermes/config.yaml, mountAt: /etc/hermes/config.yaml }\n",
+      ),
+    );
+
+    expect(pod.initContainers).toBeUndefined();
+    expect(
+      pod.containers[0]?.volumeMounts?.find(
+        ({ mountPath }) => mountPath === "/etc/hermes/config.yaml",
+      )?.readOnly,
+    ).toBe(true);
   });
 });

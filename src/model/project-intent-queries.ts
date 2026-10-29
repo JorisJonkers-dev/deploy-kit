@@ -6,6 +6,7 @@
 // (spec/v1/10-project-intent.md#migration). Pure: nothing here builds a target.
 import {
   SHARED_INTENT_KEYS,
+  assetPathOf,
   type Asset,
   type ApplicationDocument,
   type DependencyEdge,
@@ -89,8 +90,24 @@ export const GENERATED_DEFAULTS = { bytes: 32, encoding: "hex" } as const;
 export const dependencyIdentity = (edge: DependencyEdge): string =>
   `${edge.application}#${edge.surface}`;
 
+/**
+ * Whether `path` names a file strictly below the directory `directory`, through
+ * no `.` or `..`: where a seeded Asset may land on a volume
+ * (spec/v1/10-project-intent.md#seeded-assets).
+ */
+export const below = (path: string, directory: string): boolean => {
+  const root = directory.replace(/\/+$/, "");
+  return (
+    path.startsWith(`${root}/`) &&
+    path
+      .slice(root.length + 1)
+      .split("/")
+      .every((segment) => !["", ".", ".."].includes(segment))
+  );
+};
+
 /** Two files cannot arrive at one path. */
-export const assetIdentity = (asset: Asset): string => asset.mountAt;
+export const assetIdentity = (asset: Asset): string => assetPathOf(asset);
 
 /**
  * What a level declared of a many-valued family: a level that left it out

@@ -1,0 +1,14 @@
+# A stand-in for AdGuard Home's configuration, written for this example: the
+# live file is fleet-infra's, and this repository does not copy it. AdGuard
+# rewrites the file on every start and stops if it cannot, so the file is
+# seeded onto a writable path rather than mounted
+# (spec/v1/10-project-intent.md#seeded-assets).
+http:
+  address: 0.0.0.0:3000
+dns:
+  bind_hosts: [0.0.0.0]
+  port: 5353
+  upstream_dns:
+    - https://dns.quad9.net/dns-query
+  bootstrap_dns: [9.9.9.10, 149.112.112.10]
+schema_version: 29

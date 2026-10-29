@@ -80,6 +80,12 @@ applications:
         # nothing rebuilds them.
         volumes:
           - { claim: hermes-data, mountAt: /opt/data, size: 10Gi, durability: recoverable }
+        # Its config, copied onto the volume before every start, because hermes
+        # migrates it and edits it from its dashboard; the copy it replaces is
+        # kept beside it. The file holds no secret: hermes expands its
+        # `${GITHUB_PAT}` from the env file (spec/v1/10-project-intent.md#seeded-assets).
+        assets:
+          - { from: config/hermes/config.yaml, seedAt: /opt/data/config.yaml }
         # Model providers, the GitHub MCP server, context7, and the skills it
         # installs: every call leaves the cluster on 443.
         egress:

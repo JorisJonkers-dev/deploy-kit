@@ -31,6 +31,7 @@ spec:
         consumes.deploy-kit.jorisjonkers.dev/kubernetes-mcp-server.mcp: "true"
       annotations:
         image.jorisjonkers.dev/hermes: 2026.8.31
+        image.jorisjonkers.dev/seed: 1.37.0
     spec:
       serviceAccountName: hermes
       priorityClassName: platform-data
@@ -56,6 +57,38 @@ spec:
                       - enschede-pi-1
                       - enschede-pi-2
                       - enschede-pi-3
+      initContainers:
+        - name: seed
+          image: docker.io/library/busybox@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec
+          command:
+            - /bin/sh
+            - -c
+            - |-
+              set -eu
+              umask 077
+              mkdir -p '/opt/data'
+              if [ -e '/opt/data/config.yaml' ]; then cp -p '/opt/data/config.yaml' '/opt/data/config.yaml.superseded'; fi
+              cp '/seed/hermes-config-yaml-118d92ae7c/config.yaml' '/opt/data/config.yaml.seeding'
+              chmod 0600 '/opt/data/config.yaml.seeding'
+              mv '/opt/data/config.yaml.seeding' '/opt/data/config.yaml'
+          resources:
+            requests:
+              memory: 16Mi
+              cpu: 10m
+            limits:
+              memory: 16Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: hermes-config-yaml-118d92ae7c
+              mountPath: /seed/hermes-config-yaml-118d92ae7c
+              readOnly: true
+            - name: hermes-data
+              mountPath: /opt/data
       containers:
         - name: hermes
           image: docker.io/nousresearch/hermes-agent@sha256:64923faeae267792bf9bf87fe3b4c4869e35004e360c7df01730ad801b74d524
@@ -176,6 +209,12 @@ spec:
         - name: hermes-data
           persistentVolumeClaim:
             claimName: hermes-data
+        - name: hermes-config-yaml-118d92ae7c
+          configMap:
+            name: hermes-config-yaml-118d92ae7c
+            items:
+              - key: config.yaml
+                path: config.yaml
         - name: writable-run
           emptyDir:
             sizeLimit: 64Mi

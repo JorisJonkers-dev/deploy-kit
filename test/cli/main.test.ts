@@ -51,7 +51,9 @@ const SET = [
   "delivery/delivery.project.yml",
   "agents/agents.project.yml",
   "agents/env/hermes/base.env",
+  "agents/config/hermes/config.yaml",
   "utility/utility.project.yml",
+  "utility/config/adguard/AdGuardHome.yaml",
   "edge/edge.project.yml",
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
@@ -176,7 +178,7 @@ describe("deploy-kit validate", () => {
   it("accepts a set the checks accept", () => {
     expect(run("validate", ...SET)).toEqual({
       code: 0,
-      stdout: "accepted (13 read)\n",
+      stdout: "accepted (15 read)\n",
       stderr: "",
     });
   });

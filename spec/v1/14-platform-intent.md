@@ -93,6 +93,7 @@ other resolves and every policy one asks for the other offers:
 | two exposures dial the same port and protocol on one node through its node addresses | `E_NODE_PORT_TAKEN` |
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
+| a Process seeds an Asset and `seeder` is absent | `E_NO_SEEDER` |
 | a Node Agent the node contract or the pools derive has no entry in `nodeAgents` | `E_NO_NODE_AGENT_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names no Application its Project declares | `E_UNKNOWN_MACHINERY` |
@@ -1255,6 +1256,32 @@ project declares.
 The block is optional, and it derives jobs only beside a `secretStore`: with no
 Secret Store there is nothing to write into, and with no block the render
 carries the documents alone and nothing applies them.
+
+## The seeder
+
+```yaml
+seeder:
+  image: busybox
+  memory: 16Mi
+  cpu: 10m
+```
+
+The image a Process's seeded Assets are copied onto its volumes with, before
+every start
+([chapter 10](10-project-intent.md#seeded-assets),
+[0124](../../docs/adr/model/0124-a-seeded-asset-is-copied-onto-a-volume-before-each-start.md)).
+A Process's own image may hold no shell, so the platform names one image that
+can copy a file, and every Project's step runs it:
+
+- **`image`** is an alias the images lock holds, `E_UNLOCKED_IMAGE` otherwise.
+  It needs `/bin/sh`, `mkdir`, `cp`, `chmod` and `mv`, and nothing else.
+- **`memory`** and **`cpu`** are what the step's one container requests. A node
+  is eligible for a Process that seeds only where it fits the Process, its
+  sidecars and the step together.
+
+The step runs under the one posture, as the Process's own user, so the file it
+writes is the Process's. The block is optional: a platform that names none
+admits no seeded Asset, and one is `E_NO_SEEDER`.
 
 ## The Secret Store
 

@@ -1,0 +1,15 @@
+# A stand-in for hermes's configuration, written for this example: the live
+# file is fleet-infra's, and this repository does not copy it. hermes expands
+# each ${VAR} below from its own environment as it reads the file, so the file
+# holds no secret: the values reach hermes through its env file
+# (spec/v1/10-project-intent.md#seeded-assets).
+model:
+  provider: openrouter
+  default: anthropic/claude-sonnet-4.5
+mcp_servers:
+  github:
+    url: https://api.githubcopilot.com/mcp/
+    headers:
+      Authorization: Bearer ${GITHUB_PAT}
+  context7:
+    url: https://mcp.context7.com/mcp

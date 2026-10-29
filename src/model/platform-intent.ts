@@ -388,6 +388,13 @@ const vaultPolicyJob = z
   })
   .meta({ id: "VaultPolicyJob" });
 
+// The image the step that seeds a Process's Assets onto its volumes runs
+// (spec/v1/14-platform-intent.md#the-seeder): one that can copy a file, pinned
+// in the images lock, with what the step requests.
+const seeder = z
+  .strictObject({ image: text, memory: text, cpu: text })
+  .meta({ id: "Seeder" });
+
 // Who may hold Kubernetes API access, and where the API answers
 // (spec/v1/14-platform-intent.md#kubernetes-api-access): the Applications whose
 // Processes may declare `api`, and the ranges an egress policy admits for it.
@@ -791,6 +798,7 @@ export const platformIntent = z
     delivery: deliveryPolicy.exactOptional(),
     apiAccess: apiAccessPolicy.exactOptional(),
     policyJob: vaultPolicyJob.exactOptional(),
+    seeder: seeder.exactOptional(),
     handover: handoverLedger.exactOptional(),
     providers: z.array(provider).min(1).exactOptional(),
     libraries: z

@@ -1,5 +1,5 @@
 import { mebibytes, memoryOf } from "../model/quantities.ts";
-import { memoryPathsOf } from "../model/project-intent.ts";
+import { memoryPathsOf, seedsAssets } from "../model/project-intent.ts";
 // One lowered Process to its element of the Resolved Deployment
 // (spec/v1/20-resolved-deployment.md#derived-mechanics): what the Application
 // declared, carried through, and every mechanic derived from it and from the
@@ -560,6 +560,30 @@ function vpnOf(
   };
 }
 
+/**
+ * The step that seeds a Process's Assets onto its volumes, from the Platform's
+ * `seeder` (E_NO_SEEDER refused a seeded Asset without one, and
+ * E_UNLOCKED_IMAGE an image the lock does not hold), where it seeds one.
+ */
+function seederOf(
+  process: EffectiveProcess,
+  context: ProcessContext,
+): { readonly seeder?: NonNullable<ResolvedProcess["seeder"]> } {
+  if (!seedsAssets(process.assets)) return {};
+  const seeder = context.platform.seeder as NonNullable<
+    PlatformIntentDocument["seeder"]
+  >;
+  const image = context.lock.images[seeder.image] as LockedImage;
+  return {
+    seeder: {
+      image: `${image.repository}@${image.digest}`,
+      ...versionOf("imageVersion", image),
+      memory: seeder.memory,
+      cpu: seeder.cpu,
+    },
+  };
+}
+
 export function resolveProcess(
   process: EffectiveProcess,
   context: ProcessContext,
@@ -654,6 +678,7 @@ export function resolveProcess(
     cpu: process.placement.cpu,
     ...gpuOf(process, context),
     ...vpnOf(process, context),
+    ...seederOf(process, context),
     hardening: context.platform.hardening,
     // The pod authenticates only where a grant is delivered `self`, or where
     // it holds Kubernetes API access.
