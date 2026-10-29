@@ -22,6 +22,10 @@ export function millicores(quantity: string): number {
   return Number(amount) * (milli === "m" ? 1 : 1000);
 }
 
+/** A memory quantity of whole MiB, in whole GiB where it is one. */
+export const memoryOf = (mib: number): string =>
+  mib % 1024 === 0 ? `${String(mib / 1024)}Gi` : `${String(mib)}Mi`;
+
 /** A memory quantity in MiB: `256Mi`, `2Gi`, `1Ti`, or bytes with no unit. */
 export function mebibytes(quantity: string): number {
   const match = MEMORY.exec(quantity);

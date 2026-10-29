@@ -1381,6 +1381,21 @@
           "type": "string",
           "minLength": 1
         },
+        "command": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "args": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "uid": {
           "type": "integer",
           "minimum": 0,
@@ -2536,6 +2551,21 @@
           "type": "string",
           "minLength": 1
         },
+        "command": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "args": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "memory": {
           "type": "string",
           "minLength": 1
@@ -2646,6 +2676,10 @@
         "size": {
           "type": "string",
           "minLength": 1
+        },
+        "medium": {
+          "type": "string",
+          "const": "memory"
         }
       },
       "required": [

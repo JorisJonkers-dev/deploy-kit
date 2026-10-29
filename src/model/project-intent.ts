@@ -201,12 +201,20 @@ const sidecarMount = z
   .strictObject({ claim: text, mountAt: text })
   .meta({ id: "SidecarMount" });
 
+// What a container runs, where the image's own entrypoint and arguments are
+// not it (spec/v1/10-project-intent.md#command-and-arguments): literal words,
+// no placeholder, so nothing a grant holds reaches a process's arguments.
+const command = z.array(text).min(1);
+const args = z.array(z.string()).min(1);
+
 // A container beside the Process, or before it where it is `init`: one that
 // runs to completion before the Process starts.
 const sidecar = z
   .strictObject({
     name: text,
     image: text,
+    command: command.exactOptional(),
+    args: args.exactOptional(),
     memory: text,
     cpu: text,
     volumes: z.array(sidecarMount).min(1).exactOptional(),
@@ -339,13 +347,21 @@ const vpnAttachment = z
 // is not a field, so neither is read.
 const schedule = z.string().regex(/^[0-9A-Za-z*/,?-]+( [0-9A-Za-z*/,?-]+){4}$/);
 
+// A path the Process writes: on node disk at the platform's one ephemeral
+// size, or held in memory at its own size, which counts toward the Process's
+// memory (spec/v1/10-project-intent.md#writable-paths-are-declared-not-exempted).
+const writablePath = z.union([
+  text,
+  z.strictObject({ path: text, memory: text }).meta({ id: "MemoryPath" }),
+]);
+
 // Spread into each of the three levels rather than nested under a key: the level
 // a family is written at is not itself a field an author writes.
 const sharedIntent = {
   secrets: z.array(grant).min(1).exactOptional(),
   dependsOn: z.array(dependencyEdge).min(1).exactOptional(),
   assets: z.array(asset).min(1).exactOptional(),
-  writablePaths: z.array(text).min(1).exactOptional(),
+  writablePaths: z.array(writablePath).min(1).exactOptional(),
   placement: placement.exactOptional(),
   startupBudget: text.exactOptional(),
   cutover: cutover.exactOptional(),
@@ -379,6 +395,8 @@ const process = z
     schedule: schedule.exactOptional(),
     parked: parked.exactOptional(),
     image: text,
+    command: command.exactOptional(),
+    args: args.exactOptional(),
     runtime: runtime,
     engine: engine.exactOptional(),
     provides: z.record(text, port).meta({ entry: "Surface" }).exactOptional(),
@@ -576,3 +594,21 @@ export type EnvFile = Omit<z.output<typeof envFile>, "entries"> & {
   readonly entries: readonly EnvVariable[];
 };
 export type EnvValue = EnvVariable["value"];
+
+/** The path a writable path declares, whether on disk or in memory. */
+export const writablePathOf = (
+  declared: string | { readonly path: string },
+): string => (typeof declared === "string" ? declared : declared.path);
+
+/** The memory a Process's memory-held writable paths add to it, in MiB. */
+export const memoryPathsOf = (
+  paths: readonly (string | { readonly memory: string })[] | undefined,
+  mebibytes: (quantity: string) => number,
+): number =>
+  // A missing list and an empty one hold nothing in memory alike.
+  // Stryker disable next-line ArrayDeclaration
+  (paths ?? []).reduce(
+    (sum, path) =>
+      typeof path === "string" ? sum : sum + mebibytes(path.memory),
+    0,
+  );

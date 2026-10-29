@@ -51,6 +51,7 @@ const SET = [
   "mail/mail.project.yml",
   "utility/utility.project.yml",
   "agents/agents.project.yml",
+  "agents/env/hermes/base.env",
   "observability/env/grafana/base.env",
   "data/data.project.yml",
   "data/env/postgres/base.env",
@@ -4031,5 +4032,71 @@ describe("the metrics stack's scrapes", () => {
         JSON.stringify(peer).includes("flux"),
       ),
     ).toStrictEqual([]);
+  });
+});
+
+// REQ-119 and REQ-120 (docs/requirements.md), as the kubernetes adapter
+// spells them.
+describe("what a container runs, and what it holds in memory", () => {
+  const workloadOf = (
+    tree: Record<string, string>,
+    path: string,
+  ): {
+    spec: {
+      template: {
+        spec: {
+          containers: {
+            name: string;
+            command?: string[];
+            args?: string[];
+            resources: { requests: { memory: string } };
+          }[];
+          volumes?: { name: string; emptyDir?: unknown }[];
+        };
+      };
+    };
+  } =>
+    parseAllDocuments(tree[path] ?? "")
+      .map((document) => document.toJS() as Record<string, unknown>)
+      .find(({ kind }) => kind === "Deployment") as never;
+
+  it("writes a tier proxy's authored arguments before the ones its proxy derives", () => {
+    const tree = asTree(
+      artifact(
+        render(
+          {
+            "edge/edge.project.yml": (text) =>
+              text.replace(
+                "      - name: traefik-public\n        lifecycle: application\n        image: traefik\n",
+                "      - name: traefik-public\n        lifecycle: application\n        image: traefik\n        command: [/traefik]\n        args: [--log.level=INFO]\n",
+              ),
+          },
+          ["edge"],
+        ),
+        "edge",
+      ),
+    );
+    const [proxy] = workloadOf(tree, "apps/edge/traefik-public/workload.yaml")
+      .spec.template.spec.containers;
+
+    expect(proxy?.command).toStrictEqual(["/traefik"]);
+    expect(proxy?.args?.[0]).toBe("--log.level=INFO");
+    expect((proxy?.args ?? []).length).toBeGreaterThan(1);
+  });
+
+  it("renders a path held in memory as an in-memory emptyDir at its size, its memory in the container's", () => {
+    const hermes = workloadOf(
+      asTree(artifact(render(undefined, ["agents"]), "agents")),
+      "apps/agents/hermes/workload.yaml",
+    ).spec.template.spec;
+
+    expect(
+      hermes.volumes?.find(({ name }) => name === "writable-dev-shm"),
+    ).toStrictEqual({
+      name: "writable-dev-shm",
+      emptyDir: { medium: "Memory", sizeLimit: "1Gi" },
+    });
+    expect(hermes.containers[0]?.resources.requests.memory).toBe("3Gi");
+    expect(hermes.containers[0]?.args).toStrictEqual(["gateway", "run"]);
   });
 });

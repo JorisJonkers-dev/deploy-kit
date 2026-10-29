@@ -61,6 +61,9 @@ spec:
       containers:
         - name: kubernetes-mcp-server
           image: quay.io/containers/kubernetes_mcp_server@sha256:6d650f4bd6ac303ad82713c997e73a2d001602f9bf17392c9b9a0e30e29c6423
+          args:
+            - --port=8080
+            - --read-only
           ports:
             - name: mcp
               containerPort: 8080

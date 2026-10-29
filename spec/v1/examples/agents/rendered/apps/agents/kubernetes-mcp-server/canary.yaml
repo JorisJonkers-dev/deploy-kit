@@ -33,7 +33,7 @@ spec:
         metadata:
           application: kubernetes-mcp-server
           process: kubernetes-mcp-server
-          revision: sha256:c0c62bb065aa246801a2bde834660033cf92b63de5329a79b4caa0c435409d2a
+          revision: sha256:68734b13dd9bd13e73108801924b5f5c1b1c318fcc343a81dacb896c92e91acb
           readiness: /healthz
           errorRate: 1%
           latency: 500ms
@@ -43,7 +43,7 @@ spec:
         metadata:
           application: kubernetes-mcp-server
           process: kubernetes-mcp-server
-          revision: sha256:c0c62bb065aa246801a2bde834660033cf92b63de5329a79b4caa0c435409d2a
+          revision: sha256:68734b13dd9bd13e73108801924b5f5c1b1c318fcc343a81dacb896c92e91acb
           readiness: /healthz
           errorRate: 1%
           latency: 500ms
@@ -53,7 +53,7 @@ spec:
         metadata:
           application: kubernetes-mcp-server
           process: kubernetes-mcp-server
-          revision: sha256:c0c62bb065aa246801a2bde834660033cf92b63de5329a79b4caa0c435409d2a
+          revision: sha256:68734b13dd9bd13e73108801924b5f5c1b1c318fcc343a81dacb896c92e91acb
           readiness: /healthz
           errorRate: 1%
           latency: 500ms
@@ -63,7 +63,7 @@ spec:
         metadata:
           application: kubernetes-mcp-server
           process: kubernetes-mcp-server
-          revision: sha256:c0c62bb065aa246801a2bde834660033cf92b63de5329a79b4caa0c435409d2a
+          revision: sha256:68734b13dd9bd13e73108801924b5f5c1b1c318fcc343a81dacb896c92e91acb
           readiness: /healthz
           errorRate: 1%
           latency: 500ms

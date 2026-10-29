@@ -438,6 +438,8 @@ const resolvedSidecar = z
     name: text,
     image: text,
     imageVersion: text.exactOptional(),
+    command: z.array(text).min(1).exactOptional(),
+    args: z.array(z.string()).min(1).exactOptional(),
     memory: text,
     cpu: text,
     // The Process's volumes it mounts, each at its own path.
@@ -610,8 +612,14 @@ const ingressPeer = z
   ])
   .meta({ id: "IngressPeer" });
 
+// `size` is the platform's ephemeral size on node disk, or the path's own
+// where it is held in memory, which the Process's memory then includes.
 const writablePath = z
-  .strictObject({ path: text, size: text })
+  .strictObject({
+    path: text,
+    size: text,
+    medium: z.literal("memory").exactOptional(),
+  })
   .meta({ id: "WritablePath" });
 
 // A variable is a value, or one key of a granted Secret Store path, which the
@@ -714,6 +722,10 @@ const resolvedProcess = stated(
     // The software version the images lock records for the image, where it
     // records one: what the render writes on the pod, never what it selects on.
     imageVersion: text.exactOptional(),
+    // What the container runs in place of the image's own entrypoint, and the
+    // arguments it is given, as authored.
+    command: z.array(text).min(1).exactOptional(),
+    args: z.array(z.string()).min(1).exactOptional(),
     uid: count,
     gid: count,
     // Absent on a `lifecycle: prepare` Process: it runs once and cuts over

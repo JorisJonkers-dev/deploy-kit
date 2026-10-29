@@ -412,9 +412,12 @@ function volumesOf(process: ResolvedProcess): Volume[] {
       configMap: { name, items: [{ key: fileOf(from), path: fileOf(from) }] },
     })),
     // Stryker disable next-line ArrayDeclaration
-    ...(process.writablePaths ?? []).map(({ path, size }) => ({
+    ...(process.writablePaths ?? []).map(({ path, size, medium }) => ({
       name: writableOf(path),
-      emptyDir: { sizeLimit: size },
+      emptyDir: {
+        ...(medium === undefined ? {} : { medium: "Memory" as const }),
+        sizeLimit: size,
+      },
     })),
     ...filesOf(process).map((grant) => ({
       name: secretVolumeOf(grant),
@@ -462,6 +465,8 @@ function sidecarOf(
   return {
     name: sidecar.name,
     image: sidecar.image,
+    ...(sidecar.command === undefined ? {} : { command: sidecar.command }),
+    ...(sidecar.args === undefined ? {} : { args: sidecar.args }),
     ...(env.length === 0 ? {} : { env }),
     resources: resourcesOf(sidecar.memory, sidecar.cpu),
     securityContext: RESTRICTED,
@@ -570,10 +575,12 @@ function edgeProxyArgsOf({ edgeProxy, surfaces }: ResolvedProcess): string[] {
 function containerOf(process: ResolvedProcess): Container {
   const env = envOf(process);
   const mounts = mountsOf(process);
-  const args = edgeProxyArgsOf(process);
+  // The authored arguments, then those a tier's proxy derives.
+  const args = [...(process.args ?? []), ...edgeProxyArgsOf(process)];
   return {
     name: process.name,
     image: process.image,
+    ...(process.command === undefined ? {} : { command: process.command }),
     ...(args.length === 0 ? {} : { args }),
     ...(process.surfaces === undefined
       ? {}

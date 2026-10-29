@@ -1,3 +1,5 @@
+import { mebibytes, memoryOf } from "../model/quantities.ts";
+import { memoryPathsOf } from "../model/project-intent.ts";
 // One lowered Process to its element of the Resolved Deployment
 // (spec/v1/20-resolved-deployment.md#derived-mechanics): what the Application
 // declared, carried through, and every mechanic derived from it and from the
@@ -632,6 +634,8 @@ export function resolveProcess(
     identity: process.name,
     image: `${image.repository}@${image.digest}`,
     ...versionOf("imageVersion", image),
+    ...(process.command === undefined ? {} : { command: process.command }),
+    ...(process.args === undefined ? {} : { args: process.args }),
     uid: image.uid,
     gid: image.gid,
     ...(process.cutover === undefined ? {} : { cutover: process.cutover }),
@@ -645,7 +649,8 @@ export function resolveProcess(
       ? {}
       : { spreadAcross: process.replicas.across }),
     ...edgeProxyOf(process, context),
-    memory: process.placement.memory,
+    // A path held in memory is memory the container holds.
+    memory: withMemoryPaths(process),
     cpu: process.placement.cpu,
     ...gpuOf(process, context),
     ...vpnOf(process, context),
@@ -699,13 +704,26 @@ export function resolveProcess(
     ...(process.writablePaths === undefined
       ? {}
       : {
-          writablePaths: process.writablePaths.map((path) => ({
-            path,
-            size: context.platform.ephemeral.size,
-          })),
+          writablePaths: process.writablePaths.map((path) =>
+            typeof path === "string"
+              ? { path, size: context.platform.ephemeral.size }
+              : {
+                  path: path.path,
+                  size: path.memory,
+                  medium: "memory" as const,
+                },
+          ),
         }),
     ...(environment.length === 0 ? {} : { environment }),
     ...(surfaces.length === 0 ? {} : { surfaces }),
     ...(spawns.length === 0 ? {} : { spawns }),
   };
+}
+
+/** The Process's memory, and that of every writable path it holds in memory. */
+function withMemoryPaths(process: EffectiveProcess): string {
+  const held = memoryPathsOf(process.writablePaths, mebibytes);
+  return held === 0
+    ? process.placement.memory
+    : memoryOf(mebibytes(process.placement.memory) + held);
 }

@@ -59,6 +59,7 @@ applications:
       - name: hermes
         lifecycle: application
         image: hermes
+        args: [gateway, run] # the gateway its dashboard belongs to
         runtime: none # no telemetry to wire: hermes exports none
         engine: files # its data is plain files, backed up as files
         provides:
@@ -95,6 +96,12 @@ applications:
             access: read
             delivery: env
             rotation: { tolerates: restart }
+        # Its supervisor keeps its state under /run and hermes its own under
+        # /tmp; the browser its tools drive needs shared memory far beyond the
+        # runtime's 64MB, held in memory and counted toward the Process.
+        # Started as its own uid with every capability dropped, which hermes
+        # was shown to run as (JorisJonkers-dev/deploy-kit#692).
+        writablePaths: [/run, /tmp, { path: /dev/shm, memory: 1Gi }]
         probes:
           readiness: { path: /api/status, port: 9119 }
           liveness: { path: /api/status, port: 9119 }
@@ -108,6 +115,8 @@ applications:
       - name: kubernetes-mcp-server
         lifecycle: application
         image: kubernetes-mcp-server
+        # HTTP on its surface rather than stdio, and its write tools withheld.
+        args: [--port=8080, --read-only]
         runtime: none
         provides:
           mcp: 8080
