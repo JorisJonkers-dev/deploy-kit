@@ -1,6 +1,6 @@
 ---
 tier: decision
-status: proposed
+status: accepted
 claim: open
 owner: joris
 date: 2026-10-21
