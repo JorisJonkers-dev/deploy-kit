@@ -463,33 +463,35 @@ an ADR.
 flowchart TB
     subgraph AUTH["layer 1, hand-authored: Project Intent in each owning repository, Platform Intent in the platform's"]
         a1["platform/&lt;project&gt;.project.yml<br/>applications, processes, placement,<br/>writable paths, durability, probes,<br/>exposure, observability, secrets"]
-        a2["env/&lt;process&gt;/*.env<br/>one set per Process"]
+        a2["env/&lt;scope&gt;/*.env<br/>_project, _applications/&lt;id&gt;,<br/>or the Process's own"]
         a3["assets<br/>declarative, never executable"]
-        a5["platform.intent.yml<br/>substrate facts, bootstrap set,<br/>tiers, durability policy, hardening,<br/>cadences, engines, providers"]
+        a5["platform.intent.yml<br/>substrate facts, bootstrap set, tiers,<br/>durability, engines, delivery policy,<br/>human grants, providers"]
+        a6["platform project files<br/>the foundation, declared as Applications"]
     end
 
     a1 --> FR["Intent Fragments<br/>every authored document, published by digest"]
     a2 --> FR
     a3 --> FR
     a5 --> FR
+    a6 --> FR
 
-    FR --> CO["composition<br/>union + estate-wide invariants<br/>merges nothing, runs on any publish"]
-    PAR["participants.yml<br/>expected projects, maxAge 7d"] --> CO
+    FR --> CO["composition<br/>union + estate-wide invariants<br/>merges nothing, isolates a refused Project"]
+    PAR["participants.yml<br/>every expected publisher, maxAge 7d"] --> CO
     CO --> CI["ComposedIntent<br/>+ CompositionLock"]
 
-    CI --> RES["layer 2, Resolved Deployment<br/>every platform assignment,<br/>a function of the pinned inputs alone"]
-    NC["node contract<br/>by digest"] --> RES
+    CI --> RES["layer 2, Resolved Deployment<br/>every platform assignment, the path plan,<br/>the release gate's inputs, the capacity exception,<br/>a function of the pinned inputs alone"]
+    NC["node contract, by digest<br/>generated from Infrastructure Intent"] --> RES
     CS["ClusterState snapshot<br/>clusterStateDigest"] --> RES
     IL["images lock<br/>digests, uid, gid, never tags"] --> RES
 
     RES --> RS["resolved.yml<br/>published back per Application"]
-    RES --> DS["layer 3, Deliverable Set<br/>six registered adapters, run once centrally,<br/>one attributed adapter per file"]
+    RES --> DS["layer 3, Deliverable Set<br/>the registered adapters, run once centrally,<br/>one attributed adapter per file"]
 
-    DS --> RA["Rendered artifacts<br/>one per Project, signed keyless, named by digest"]
+    DS --> RA["Rendered artifacts<br/>one per Project, and _estate, signed keyless, named by digest"]
     RA --> PIN["pin commit, [ci skip]<br/>the estate repository's main: the deploy log"]
     PIN --> FX["Flux<br/>pulls the pinned artifact, verifies its signer, applies it"]
     FX --> K["the cluster"]
-    FG["Flagger + the Release Gate<br/>the gate reads layer 2 and holds every<br/>blue-green member behind one barrier"] --> K
+    FG["Flagger + the Release Gate<br/>the gate reads its inputs from the render<br/>and holds every blue-green member behind one barrier"] --> K
 
     RS -.->|"an owner reads their own assignments"| AUTH
 ```
