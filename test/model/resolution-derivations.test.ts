@@ -5164,8 +5164,9 @@ describe("a Process's Kubernetes API access", () => {
     );
 
   // REQ-108 (docs/requirements.md): a Process that reaches the API with its
-  // users' own tokens holds nothing of its own.
-  it("reaches the API without holding a rule, and mounts no token of its own", () => {
+  // users' own tokens holds nothing of its own, and mounts the token an
+  // in-cluster client finds the API server by.
+  it("reaches the API without holding a rule, and mounts the token that finds the API server", () => {
     const resolved = processOf(
       one(
         serving(
@@ -5180,7 +5181,7 @@ describe("a Process's Kubernetes API access", () => {
     expect(resolved.api?.server).toStrictEqual([
       { cidr: "10.43.0.1/32", port: 443 },
     ]);
-    expect(resolved.identityToken).toBe(false);
+    expect(resolved.identityToken).toBe(true);
   });
 
   it("holds namespace rules under a platform that admits its Application to its namespace alone", () => {

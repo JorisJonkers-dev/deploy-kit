@@ -816,13 +816,17 @@ An admitted declaration derives these, and nothing else derives any of them:
 | a `RoleBinding` of that role to the Process's one ServiceAccount | the Process's identity ([Process identity](#process-identity)) |
 | a `ClusterRole` holding its `cluster`-scoped rules, where it has any | the Process's `api.rules` |
 | a `ClusterRoleBinding` of that role to the same ServiceAccount | the Process's identity |
-| a mounted token, where it holds a rule | the declaration itself ([above](#the-token-is-mounted-only-where-the-pod-authenticates)) |
+| a mounted token | the declaration itself ([above](#the-token-is-mounted-only-where-the-pod-authenticates)) |
 | egress to where the API answers, by address | the Platform document's `apiAccess.server` |
 
-A declaration with no rules derives the egress alone: no role, no binding and
-no token, because the Process authenticates to the API with its users' own
-tokens and holds nothing itself. It is admitted all the same, since the way to
-the API server is the platform's to give.
+A declaration with no rules derives the egress and the token alone: no role
+and no binding, because the Process authenticates to the API with its users'
+own tokens and holds nothing itself. The token is how it finds the API server
+at all: an in-cluster client reads the server's CA and its account's token from
+the files the mount projects, and refuses to start without them. An account no
+role binds is granted nothing by its token, so mounting it widens nothing. It
+is admitted all the same, since the way to the API server is the platform's to
+give.
 
 A rule's scope decides its role. A `namespace` rule reaches only the
 Process's own namespace, so it is a `Role` there, named for the identity. A
