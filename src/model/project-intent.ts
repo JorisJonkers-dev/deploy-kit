@@ -269,9 +269,13 @@ const selfMigration = z.literal("self").meta({ id: "SelfMigration" });
 const noMigration = z.literal("none").meta({ id: "NoMigration" });
 const migration = z.union([selfMigration, noMigration, managedMigration]);
 
-const asset = z
-  .strictObject({ from: text, mountAt: text })
-  .meta({ id: "Asset" });
+// A file beside the project, mounted read-only where the Process reads it, or
+// seeded: copied onto one of its volumes before each start, where the Process
+// may rewrite it (spec/v1/10-project-intent.md#seeded-assets).
+const asset = z.union([
+  z.strictObject({ from: text, mountAt: text }).meta({ id: "Asset" }),
+  z.strictObject({ from: text, seedAt: text }).meta({ id: "SeededAsset" }),
+]);
 
 const volume = z
   .strictObject({
@@ -635,3 +639,18 @@ export const memoryPathsOf = (
       typeof path === "string" ? sum : sum + mebibytes(path.memory),
     0,
   );
+
+/** Where an Asset arrives: the path it is mounted at, or the path it is seeded to. */
+export const assetPathOf = (
+  asset: { readonly mountAt: string } | { readonly seedAt: string },
+): string => ("mountAt" in asset ? asset.mountAt : asset.seedAt);
+
+/** Whether any of a Process's Assets is seeded onto its volumes, which runs the platform's seeder. */
+export const seedsAssets = (
+  assets:
+    | readonly ({ readonly mountAt: string } | { readonly seedAt: string })[]
+    | undefined,
+): boolean =>
+  // A missing list and an empty one seed nothing alike.
+  // Stryker disable next-line ArrayDeclaration
+  (assets ?? []).some((asset) => "seedAt" in asset);

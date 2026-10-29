@@ -33,6 +33,7 @@ spec:
         gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
       annotations:
         image.jorisjonkers.dev/adguard: v0.107.79
+        image.jorisjonkers.dev/seed: 1.37.0
     spec:
       serviceAccountName: adguard
       automountServiceAccountToken: false
@@ -68,6 +69,38 @@ spec:
               matchLabelKeys:
                 - pod-template-hash
               topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: seed
+          image: docker.io/library/busybox@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec
+          command:
+            - /bin/sh
+            - -c
+            - |-
+              set -eu
+              umask 077
+              mkdir -p '/opt/adguardhome/conf'
+              if [ -e '/opt/adguardhome/conf/AdGuardHome.yaml' ]; then cp -p '/opt/adguardhome/conf/AdGuardHome.yaml' '/opt/adguardhome/conf/AdGuardHome.yaml.superseded'; fi
+              cp '/seed/adguard-adguardhome-yaml-85a1bf27a7/AdGuardHome.yaml' '/opt/adguardhome/conf/AdGuardHome.yaml.seeding'
+              chmod 0600 '/opt/adguardhome/conf/AdGuardHome.yaml.seeding'
+              mv '/opt/adguardhome/conf/AdGuardHome.yaml.seeding' '/opt/adguardhome/conf/AdGuardHome.yaml'
+          resources:
+            requests:
+              memory: 16Mi
+              cpu: 10m
+            limits:
+              memory: 16Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: adguard-adguardhome-yaml-85a1bf27a7
+              mountPath: /seed/adguard-adguardhome-yaml-85a1bf27a7
+              readOnly: true
+            - name: writable-opt-adguardhome-conf
+              mountPath: /opt/adguardhome/conf
       containers:
         - name: adguard
           image: docker.io/adguard/adguardhome@sha256:6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e
@@ -78,10 +111,10 @@ spec:
               containerPort: 5353
           resources:
             requests:
-              memory: 128Mi
+              memory: 256Mi
               cpu: 50m
             limits:
-              memory: 128Mi
+              memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
@@ -117,9 +150,16 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 6
       volumes:
+        - name: adguard-adguardhome-yaml-85a1bf27a7
+          configMap:
+            name: adguard-adguardhome-yaml-85a1bf27a7
+            items:
+              - key: AdGuardHome.yaml
+                path: AdGuardHome.yaml
         - name: writable-opt-adguardhome-work
           emptyDir:
-            sizeLimit: 64Mi
+            medium: Memory
+            sizeLimit: 128Mi
         - name: writable-opt-adguardhome-conf
           emptyDir:
             sizeLimit: 64Mi

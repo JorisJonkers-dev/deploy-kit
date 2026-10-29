@@ -215,7 +215,7 @@ and each may be declared at the **Project** header, on an **Application**, or on
 | `secrets` | every Process below the level holds the grant | [Secrets](#secrets) |
 | `env` | every Process below the level receives the variables | [Configuration](#configuration) |
 | `dependsOn` | every Process below the level gets the edge, and the egress it derives | [Dependencies](#dependencies) |
-| `assets` | the file is mounted into every Process below the level | [Assets](#assets) |
+| `assets` | the file is mounted into, or seeded for, every Process below the level | [Assets](#assets) |
 | `writablePaths` | every Process below the level may write the path | [Writable paths are declared, not exempted](#writable-paths-are-declared-not-exempted) |
 | `placement` | every Process below the level requires those node dimensions | [Placement](#placement) |
 | `cutover` | every Process below the level cuts over that way, except a prepare Process, which cuts over nothing | [Cutover is declared, not promised](#cutover-is-declared-not-promised) |
@@ -254,7 +254,7 @@ that Process's version of the grant, not a copy of it.
 | `secrets` | the **derived** read path ([Secrets](#secrets)), so a `kv` grant and a `database` grant never collide | every path either level grants; the lower grant's access, delivery and rotation where both grant a path |
 | `env` | the variable name | every variable either scope sets; the lower scope's value where both set one |
 | `dependsOn` | `{application, surface}`; `required` is a term rather than part of the identity, so an edge that differs in it is a replacement | every edge either level declares; the lower edge's `required` where both declare one |
-| `assets` | `mountAt`: two files cannot arrive at one path | every mount either level declares; the lower Asset's `from` where both mount a path |
+| `assets` | `mountAt` or `seedAt`: two files cannot arrive at one path | every Asset either level declares; the lower Asset where both name a path |
 | `writablePaths` | the path | the union of the paths |
 | `placement` | the key: `arch`, `site`, `disk`, `gpu` or `capabilities`, each separately and by value | every key either level sets; the lower value where both set one |
 | `cutover` | the family, which is one value | the lowest level's value |
@@ -1127,6 +1127,49 @@ An Asset may not be executable. `hermes-bootstrap` is 221 lines of shell and
 `n8n-hooks` 499 lines of JavaScript, both run by `alpine:3.21` from a ConfigMap:
 first-party code with no image, no tests and no version. That is a build error
 here, and the fix is an image, not a template language.
+
+### Seeded Assets
+
+Some applications own the file they are configured by. They migrate it on an
+upgrade and rewrite it from their own interface, and a read-only mount stops
+both. Such an Asset is **seeded** rather than mounted
+([0124](../../docs/adr/model/0124-a-seeded-asset-is-copied-onto-a-volume-before-each-start.md)):
+
+```yaml
+assets:
+  - from: config/hermes/config.yaml
+    seedAt: /opt/data/config.yaml
+```
+
+An Asset names `mountAt` or `seedAt`, never both. `seedAt` is a file below one
+of the Process's own volumes or [writable paths](#writable-paths-are-declared-not-exempted).
+Before every start, a step the render derives copies the Asset there. It keeps the copy it replaces as `<seedAt>.superseded`,
+then writes the new file with mode `0600` as the Process's own user, so the
+Process may rewrite it. The Process's own container does not mount the Asset.
+It reads the copy where it was seeded. An edit to the file restarts the
+Process, as for any Asset, and the step seeds the edited file. A copy on a
+volume outlives the pod, so an application that rewrites the file keeps its
+own edits until the next start seeds the Asset again. A writable path starts
+empty with every pod, so a copy there lasts only as long as the pod: that suits
+an application such as AdGuard Home, which rewrites its config on every start
+and stops if it cannot, and whose config is the Asset, not its own edits.
+
+A seeded Asset is static text, copied as it is committed. A secret reaches the
+Process through its env file ([Configuration](#configuration)), and the
+application expands the variable in the file itself, as hermes expands
+`${GITHUB_PAT}` in its config. A `${...}` that names no placeholder source
+(`secret:`, `dependency:`, `exposure:` or `client:`) is the file's own text in
+any Asset, left for the application to read.
+
+The step runs on the Platform document's `seeder` image
+([chapter 14](14-platform-intent.md#the-seeder)), and a node is eligible for the
+Process only where it also fits the step's request. Removing a seeded Asset, or
+moving it to `mountAt`, leaves the last copy on the volume.
+
+| condition | error |
+|---|---|
+| a Process seeds an Asset, and the Platform document names no `seeder` | `E_NO_SEEDER` |
+| a seeded Asset's `seedAt` is not a file below one of its Process's volumes or writable paths, or reaches one through `.` or `..` | `E_SEED_OUTSIDE_VOLUME` |
 
 ## Probes
 

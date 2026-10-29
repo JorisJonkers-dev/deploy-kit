@@ -26,12 +26,16 @@ import {
 import { addressesIn, l4AddressOf } from "../model/l4-addresses.ts";
 import { serves } from "../model/vocabularies.ts";
 import { libraryOf } from "../model/libraries.ts";
-import type {
-  L4Exposure,
-  LibraryMount,
-  ProjectIntentDocument,
+import {
+  writablePathOf,
+  type Asset,
+  type L4Exposure,
+  type LibraryMount,
+  type ProjectIntentDocument,
 } from "../model/project-intent.ts";
 import {
+  assetIdentity,
+  below,
   effectiveCutover,
   ownsBuckets,
   ownsDatabases,
@@ -45,6 +49,73 @@ export interface Named<T> {
 type Application = ProjectIntentDocument["applications"][number];
 type Grant = NonNullable<Application["secrets"]>[number];
 type Exposure = NonNullable<Application["exposure"]>[number];
+
+type Process = Application["processes"][number];
+
+/**
+ * The Assets a Process seeds, each where it is written: every level's Assets,
+ * lowest first, the lower one holding a path two levels name
+ * (spec/v1/10-project-intent.md#sharing-merges-and-a-duplicate-is-refused).
+ */
+function seededOf(
+  levels: readonly (readonly [readonly Asset[] | undefined, string])[],
+): { readonly seedAt: string; readonly at: string }[] {
+  const held = new Set<string>();
+  return levels.flatMap(([assets, at]) =>
+    // A level with no Asset and one with an empty list seed nothing alike.
+    // Stryker disable next-line ArrayDeclaration
+    (assets ?? []).flatMap((asset, i) => {
+      const path = assetIdentity(asset);
+      if (held.has(path)) return [];
+      held.add(path);
+      return "seedAt" in asset
+        ? [{ seedAt: asset.seedAt, at: `${at}/assets/${String(i)}/seedAt` }]
+        : [];
+    }),
+  );
+}
+
+/**
+ * A seeded Asset runs the platform's seeder, and lands on one of its Process's
+ * own volumes or writable paths, whichever level declares the path
+ * (spec/v1/10-project-intent.md#seeded-assets).
+ */
+function seedRefusals(
+  process: Process,
+  seeded: readonly { readonly seedAt: string; readonly at: string }[],
+  writable: readonly (
+    readonly (string | { readonly path: string })[] | undefined
+  )[],
+  platform: PlatformIntentDocument,
+): Omit<Diagnostic, "document">[] {
+  const volumes = [
+    // A Process with no volume and one with an empty list hold no path alike.
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.volumes ?? []).map(({ mountAt }) => mountAt),
+    // Stryker disable next-line ArrayDeclaration
+    ...writable.flatMap((paths) => (paths ?? []).map(writablePathOf)),
+  ];
+  return [
+    ...(seeded.length > 0 && platform.seeder === undefined
+      ? [
+          {
+            code: "E_NO_SEEDER" as const,
+            path: (seeded[0] as (typeof seeded)[number]).at,
+            message: `${process.name} seeds an Asset, and the platform names no seeder`,
+            hint: "Name the seeder in the Platform document's `seeder`, or mount the Asset with `mountAt`.",
+          },
+        ]
+      : []),
+    ...seeded
+      .filter(({ seedAt }) => !volumes.some((volume) => below(seedAt, volume)))
+      .map(({ seedAt, at }) => ({
+        code: "E_SEED_OUTSIDE_VOLUME" as const,
+        path: at,
+        message: `${process.name} seeds ${seedAt}, which is a file below none of its volumes or writable paths`,
+        hint: "Seed the Asset at a path below one of the Process's volumes or writable paths, or mount it with `mountAt`.",
+      })),
+  ];
+}
 
 function grantRefusals(
   grants: readonly Grant[],
@@ -771,6 +842,22 @@ function projectRefusals(
           message: `${process.name} attaches to a VPN, and the platform runs none`,
           hint: "Declare the VPN in the Platform document's `vpn`, or drop the attachment.",
         });
+      refusals.push(
+        ...seedRefusals(
+          process,
+          seededOf([
+            [process.assets, processAt],
+            [application.assets, at],
+            [project.assets, ""],
+          ]),
+          [
+            process.writablePaths,
+            application.writablePaths,
+            project.writablePaths,
+          ],
+          platform,
+        ),
+      );
       // Where the engine's method dumps over the network, the Process is what
       // it connects to: a surface the Process does not provide is a backup
       // that reaches nothing, behind a policy that admits nothing.

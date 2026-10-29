@@ -11,3 +11,32 @@ metadata:
 data:
   releaseGate.json: |
     {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"210s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"adguard","readiness":{"path":"/login.html","port":3000}}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adguard-adguardhome-yaml-85a1bf27a7
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/name: adguard
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/part-of: adguard
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  AdGuardHome.yaml: |
+    # A stand-in for AdGuard Home's configuration, written for this example: the
+    # live file is fleet-infra's, and this repository does not copy it. AdGuard
+    # rewrites the file on every start and stops if it cannot, so the file is
+    # seeded onto a writable path rather than mounted
+    # (spec/v1/10-project-intent.md#seeded-assets).
+    http:
+      address: 0.0.0.0:3000
+    dns:
+      bind_hosts: [0.0.0.0]
+      port: 5353
+      upstream_dns:
+        - https://dns.quad9.net/dns-query
+      bootstrap_dns: [9.9.9.10, 149.112.112.10]
+    schema_version: 29

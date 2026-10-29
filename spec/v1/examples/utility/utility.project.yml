@@ -46,7 +46,18 @@ applications:
           count: 2
           reason: the LAN keeps its resolver while one node is down
           across: node
-        writablePaths: [/opt/adguardhome/work, /opt/adguardhome/conf]
+        # Its work directory, the query log and statistics, holds 66MB live,
+        # past the platform's one ephemeral size, so it is held in memory at
+        # its own size and counted toward the Process
+        # (spec/v1/10-project-intent.md#writable-paths-are-declared-not-exempted).
+        # It is lost with the pod, as a disk one would be.
+        writablePaths: [{ path: /opt/adguardhome/work, memory: 128Mi }, /opt/adguardhome/conf]
+        # AdGuard rewrites its config on every start and stops if it cannot, so
+        # the config is seeded onto its conf directory before each start rather
+        # than mounted read-only (spec/v1/10-project-intent.md#seeded-assets).
+        # The directory is the pod's own: each pod starts from this file.
+        assets:
+          - { from: config/adguard/AdGuardHome.yaml, seedAt: /opt/adguardhome/conf/AdGuardHome.yaml }
         # Its DNS-over-HTTPS upstream is on the internet.
         egress: { to: internet, reason: answers the LAN from a DNS-over-HTTPS upstream }
         probes:

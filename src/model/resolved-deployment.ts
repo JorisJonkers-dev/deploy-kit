@@ -430,9 +430,35 @@ const resolvedVpn = z
 
 // A file-shaped settings file, by the content-hashed name an edit changes, so
 // an edit restarts the Process (spec/v1/10-project-intent.md#assets).
+// An Asset as its object carries it: mounted where the Process reads it, or
+// seeded onto one of its volumes before each start.
 const resolvedAsset = z
-  .strictObject({ name: text, from: text, mountAt: text, content: z.string() })
+  .union([
+    z.strictObject({
+      name: text,
+      from: text,
+      mountAt: text,
+      content: z.string(),
+    }),
+    z.strictObject({
+      name: text,
+      from: text,
+      seedAt: text,
+      content: z.string(),
+    }),
+  ])
   .meta({ id: "ResolvedAsset" });
+
+// The step that seeds a Process's Assets onto its volumes, on the image the
+// Platform document names (spec/v1/14-platform-intent.md#the-seeder).
+const resolvedSeeder = z
+  .strictObject({
+    image: text,
+    imageVersion: text.exactOptional(),
+    memory: text,
+    cpu: text,
+  })
+  .meta({ id: "ResolvedSeeder" });
 
 // A container beside the Process in its pod, its image pinned by digest.
 const resolvedSidecar = z
@@ -772,6 +798,9 @@ const resolvedProcess = stated(
     cpu: text,
     gpu: resolvedGpu.exactOptional(),
     vpn: resolvedVpn.exactOptional(),
+    // Where the Process seeds an Asset: the step that copies it onto its
+    // volume before every start.
+    seeder: resolvedSeeder.exactOptional(),
     hardening: hardeningClass,
     identityToken: z.boolean(),
     api: resolvedApiAccess.exactOptional(),

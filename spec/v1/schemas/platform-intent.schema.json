@@ -84,6 +84,9 @@
         "policyJob": {
           "$ref": "#/$defs/VaultPolicyJob"
         },
+        "seeder": {
+          "$ref": "#/$defs/Seeder"
+        },
         "handover": {
           "$ref": "#/$defs/HandoverLedger"
         },
@@ -1147,6 +1150,29 @@
         "memory",
         "cpu",
         "deadline"
+      ],
+      "additionalProperties": false
+    },
+    "Seeder": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "image",
+        "memory",
+        "cpu"
       ],
       "additionalProperties": false
     },

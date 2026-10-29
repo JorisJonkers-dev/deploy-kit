@@ -99,6 +99,14 @@ images:
     uid: 0
     gid: 0
     version: "v3.40.0"
+  # The seeder (spec/v1/14-platform-intent.md#the-seeder): Docker Hub's
+  # busybox 1.37.0, its multi-arch index, which runs as nobody.
+  busybox:
+    repository: docker.io/library/busybox
+    digest: "sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec"
+    uid: 65534
+    gid: 65534
+    version: "1.37.0"
   flagger:
     repository: ghcr.io/fluxcd/flagger
     digest: "sha256:5d1b8f3e7a2c9d4b6e0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b"

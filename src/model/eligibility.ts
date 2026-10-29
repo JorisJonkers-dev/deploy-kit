@@ -12,7 +12,7 @@ import { libraryOf } from "./libraries.ts";
 import type { NodeContractDocument } from "./node-contract.ts";
 import type { PlatformIntentDocument } from "./platform-intent.ts";
 import { mebibytes, millicores } from "./quantities.ts";
-import { memoryPathsOf } from "./project-intent.ts";
+import { memoryPathsOf, seedsAssets } from "./project-intent.ts";
 
 type Node = NodeContractDocument["nodes"][number];
 
@@ -21,12 +21,13 @@ const copies = (process: EffectiveProcess): number =>
   process.cutover === "continuous" ? 2 : 1;
 
 /**
- * What one copy of the Process asks for, its sidecars included, and the VPN
- * container beside it where it attaches to one.
+ * What one copy of the Process asks for, its sidecars included, the VPN
+ * container beside it where it attaches to one, and the step that seeds its
+ * Assets where it seeds one.
  */
 function request(
   process: EffectiveProcess,
-  platform: Pick<PlatformIntentDocument, "vpn">,
+  platform: Pick<PlatformIntentDocument, "vpn" | "seeder">,
 ): {
   readonly memory: number;
   readonly cpu: number;
@@ -38,6 +39,10 @@ function request(
     ...(process.vpn === undefined
       ? []
       : [platform.vpn as NonNullable<PlatformIntentDocument["vpn"]>]),
+    // E_NO_SEEDER refused a seeded Asset the platform names no seeder for.
+    ...(seedsAssets(process.assets)
+      ? [platform.seeder as NonNullable<PlatformIntentDocument["seeder"]>]
+      : []),
   ];
   return {
     memory:
@@ -64,7 +69,7 @@ const matchingCards = (gpu: GpuRequest, node: Node): Card[] =>
 function eligible(
   process: EffectiveProcess,
   node: Node,
-  platform: Pick<PlatformIntentDocument, "libraries" | "vpn">,
+  platform: Pick<PlatformIntentDocument, "libraries" | "vpn" | "seeder">,
   held: L4Hold,
 ): boolean {
   const { arch, site, capabilities, gpu, disk } = process.placement;
@@ -101,7 +106,7 @@ function eligible(
 export const eligibleNodes = (
   process: EffectiveProcess,
   contract: NodeContractDocument,
-  platform: Pick<PlatformIntentDocument, "libraries" | "vpn">,
+  platform: Pick<PlatformIntentDocument, "libraries" | "vpn" | "seeder">,
   held: L4Hold = HELD_NOWHERE,
 ): string[] =>
   contract.nodes
@@ -116,7 +121,7 @@ export const eligibleNodes = (
 export const gpuVendors = (
   process: EffectiveProcess,
   contract: NodeContractDocument,
-  platform: Pick<PlatformIntentDocument, "libraries" | "vpn">,
+  platform: Pick<PlatformIntentDocument, "libraries" | "vpn" | "seeder">,
   held: L4Hold,
 ): string[] => [
   ...new Set(

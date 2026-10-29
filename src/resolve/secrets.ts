@@ -127,6 +127,9 @@ const spelled = (from: string): string =>
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, "-");
 
+/** A placeholder of one of the sources an env file reads (spec/v1/10-project-intent.md#placeholder-sources). */
+const PLACEHOLDER = /\$\{(?:secret|dependency|exposure|client):/;
+
 export function resolveAssets(
   process: EffectiveProcess,
   files: ReadonlyMap<string, string>,
@@ -134,10 +137,13 @@ export function resolveAssets(
 ): ResolvedAsset[] {
   // A missing list and an empty one hold no Asset alike.
   // Stryker disable next-line ArrayDeclaration
-  return (process.assets ?? []).map(({ from, mountAt }) => {
+  return (process.assets ?? []).map((asset) => {
+    const { from } = asset;
     // The file is read beside its project, or E_ASSET_NOT_FOUND refused it.
     const content = files.get(from) as string;
-    if (content.includes("${"))
+    // A placeholder names its source; any other `${` is the file's own text,
+    // such as a variable the application expands itself.
+    if (PLACEHOLDER.test(content))
       throw notSupported(
         `${from}: a placeholder in an Asset is not resolved yet`,
       );
@@ -145,7 +151,9 @@ export function resolveAssets(
     return {
       name: `${process.name}-${spelled(from)}-${digest.slice(0, CONTENT_DIGITS)}`,
       from,
-      mountAt,
+      ...("mountAt" in asset
+        ? { mountAt: asset.mountAt }
+        : { seedAt: asset.seedAt }),
       content,
     };
   });

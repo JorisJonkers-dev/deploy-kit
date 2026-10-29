@@ -80,6 +80,7 @@ import { notSupported } from "../../model/internal-failure.ts";
 import { clusterNameOf, namespaceOf } from "../../model/runtime-profiles.ts";
 import { CLIENT_API_VERSION } from "../../model/platform-intent.ts";
 import { VPN_DIRECTORY } from "../../model/vpn.ts";
+import { below } from "../../model/project-intent-queries.ts";
 
 export const ADAPTER = "kubernetes";
 
@@ -361,6 +362,91 @@ const vpnContainerOf = (
   volumeMounts: [{ name: VPN_VOLUME, mountPath: VPN_DIRECTORY }],
 });
 
+type ResolvedAsset = NonNullable<ResolvedProcess["assets"]>[number];
+type SeededAsset = Extract<ResolvedAsset, { readonly seedAt: string }>;
+
+/** The Assets the Process reads where they are mounted. */
+const mountedOf = (process: ResolvedProcess) =>
+  // A missing list and an empty one hold no Asset alike.
+  // Stryker disable next-line ArrayDeclaration
+  (process.assets ?? []).filter(
+    (asset): asset is Exclude<ResolvedAsset, SeededAsset> => "mountAt" in asset,
+  );
+
+/** The Assets the seeder copies onto the Process's volumes. */
+const seededOf = (process: ResolvedProcess): SeededAsset[] =>
+  // Stryker disable next-line ArrayDeclaration
+  (process.assets ?? []).filter(
+    (asset): asset is SeededAsset => "seedAt" in asset,
+  );
+
+/** The step that seeds a Process's Assets, and where it reads each Asset's file. */
+const SEEDER_CONTAINER = "seed";
+const SEED_SOURCE = "/seed";
+
+/** A word the shell reads as itself, whatever it holds. */
+const quoted = (word: string): string => `'${word.replaceAll("'", `'\\''`)}'`;
+
+/**
+ * The script that seeds one Asset: its directory made, the copy it replaces
+ * kept beside it, and the file written beside its place at 0600 and moved in,
+ * so the Process never reads half a file.
+ */
+const seedScriptOf = ({ name, from, seedAt }: SeededAsset): string[] => {
+  const place = quoted(seedAt);
+  const staged = quoted(`${seedAt}.seeding`);
+  return [
+    `mkdir -p ${quoted(seedAt.slice(0, seedAt.lastIndexOf("/")))}`,
+    `if [ -e ${place} ]; then cp -p ${place} ${quoted(`${seedAt}.superseded`)}; fi`,
+    `cp ${quoted(`${SEED_SOURCE}/${name}/${fileOf(from)}`)} ${staged}`,
+    `chmod 0600 ${staged}`,
+    `mv ${staged} ${place}`,
+  ];
+};
+
+/**
+ * The step that seeds a Process's Assets onto its volumes before every start
+ * (spec/v1/10-project-intent.md#seeded-assets): the first init step, on the
+ * platform's seeder image, under the posture and as the Process's own user. It
+ * mounts each seeded Asset's file, and the volumes and writable paths the
+ * Assets land on.
+ */
+const seederContainerOf = (
+  seeder: NonNullable<ResolvedProcess["seeder"]>,
+  process: ResolvedProcess,
+): Container => {
+  const seeded = seededOf(process);
+  const landsBelow = (directory: string): boolean =>
+    seeded.some(({ seedAt }) => below(seedAt, directory));
+  return {
+    name: SEEDER_CONTAINER,
+    image: seeder.image,
+    command: [
+      "/bin/sh",
+      "-c",
+      ["set -eu", "umask 077", ...seeded.flatMap(seedScriptOf)].join("\n"),
+    ],
+    resources: resourcesOf(seeder.memory, seeder.cpu),
+    securityContext: RESTRICTED,
+    volumeMounts: [
+      ...seeded.map(({ name }) => ({
+        name,
+        mountPath: `${SEED_SOURCE}/${name}`,
+        readOnly: true as const,
+      })),
+      // Each Asset lands below a volume or a writable path: E_SEED_OUTSIDE_VOLUME.
+      // Stryker disable next-line ArrayDeclaration
+      ...(process.volumes ?? [])
+        .filter(({ mountAt }) => landsBelow(mountAt))
+        .map(({ claim, mountAt }) => ({ name: claim, mountPath: mountAt })),
+      // Stryker disable next-line ArrayDeclaration
+      ...(process.writablePaths ?? [])
+        .filter(({ path }) => landsBelow(path))
+        .map(({ path }) => ({ name: writableOf(path), mountPath: path })),
+    ],
+  };
+};
+
 /** The Process's writable paths, which every container of its pod mounts. */
 const writableMountsOf = (process: ResolvedProcess): VolumeMount[] =>
   // A missing list and an empty one mount nothing alike.
@@ -386,8 +472,8 @@ function mountsOf(process: ResolvedProcess): VolumeMount[] {
       ...(subPath === undefined ? {} : { subPath }),
       ...(access === "read" ? { readOnly: true as const } : {}),
     })),
-    // Stryker disable next-line ArrayDeclaration
-    ...(process.assets ?? []).map(({ name, from, mountAt }) => ({
+    // A seeded Asset is the seeder's to read, never the Process's.
+    ...mountedOf(process).map(({ name, from, mountAt }) => ({
       name,
       mountPath: mountAt,
       subPath: fileOf(from),
@@ -676,6 +762,9 @@ function podTemplateOf(
   // Stryker disable next-line ArrayDeclaration
   const sidecars = process.sidecars ?? [];
   const initContainers = [
+    ...(process.seeder === undefined
+      ? []
+      : [seederContainerOf(process.seeder, process)]),
     ...(process.vpn === undefined ? [] : [vpnContainerOf(process.vpn)]),
     ...sidecars
       .filter(({ init }) => init === true)
@@ -699,6 +788,9 @@ function podTemplateOf(
         ...(process.vpn === undefined
           ? []
           : [[VPN_CONTAINER, process.vpn.imageVersion] as const]),
+        ...(process.seeder === undefined
+          ? []
+          : [[SEEDER_CONTAINER, process.seeder.imageVersion] as const]),
       ],
     ),
     spec: {
@@ -739,7 +831,8 @@ function podTemplateOf(
         seccompProfile: { type: "RuntimeDefault" },
       },
       affinity: affinityOf(process),
-      // The VPN starts first and stays, so a step before the Process already
+      // The seeder runs first, so every later step reads the seeded files;
+      // then the VPN starts and stays, so a step before the Process already
       // reaches out through it.
       ...(initContainers.length === 0 ? {} : { initContainers }),
       containers: [
