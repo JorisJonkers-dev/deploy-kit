@@ -129,6 +129,8 @@ function without(
   departing: readonly Departing[],
 ): ParsedProjectIntent {
   const aside = departing.filter((each) => each.name === name);
+  // Setting nothing aside filters nothing, so the copy below equals the value.
+  // Stryker disable next-line ConditionalExpression
   if (aside.length === 0) return value;
   const ids = new Set(aside.map(({ application }) => application));
   return {

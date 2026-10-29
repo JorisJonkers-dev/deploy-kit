@@ -3105,6 +3105,19 @@ ${serving("notes-other").replace("provides: { http: 8080 }", "provides: { store:
     expect(web?.consumes).toBeUndefined();
   });
 
+  it("labels a consumer by no edge to a Registered Unmanaged Surface, which reaches an address rather than a pod", () => {
+    expect(
+      processOf(
+        one(
+          serving(
+            "notes-api",
+            "        dependsOn:\n          - { application: stalwart, surface: smtp }\n",
+          ),
+        ),
+      ).consumes,
+    ).toBeUndefined();
+  });
+
   it("admits the metrics stack only on the scraped Process, and every Process of the stack", () => {
     const all = projects(`  - id: notes
     observability:
@@ -5371,36 +5384,51 @@ describe("a tier's address", () => {
     ).toStrictEqual([entry("lan-edge", 80, "traefik-lan", "web")]);
   });
 
-  it("hands an acme proxy its DNS token beside its own variables, in name order", () => {
-    const proxy = processOf(
-      one(
-        serving("notes-api")
-          .replace(
-            "provides: { http: 8080 }",
-            "provides: { web: 8000, websecure: 8443 }",
-          )
-          .replace(
-            "readiness: { path: /ready, port: 8080 }",
-            "readiness: { path: /ready, port: 8000 }",
-          )
-          .replace(
-            "liveness: { path: /live, port: 8080 }",
-            "liveness: { path: /live, port: 8000 }",
-          ),
-      ),
-      {
-        platform: (document) =>
-          document
-            .replace("traefik: edge/traefik-public", "traefik: notes/notes")
-            .replace(/\n {4}address: edge-frankfurt[^\n]*/, ""),
-      },
+  /** notes-api provides both surfaces a tls tier's listener reaches. */
+  const answering = serving("notes-api")
+    .replace(
+      "provides: { http: 8080 }",
+      "provides: { web: 8000, websecure: 8443 }",
+    )
+    .replace(
+      "readiness: { path: /ready, port: 8080 }",
+      "readiness: { path: /ready, port: 8000 }",
+    )
+    .replace(
+      "liveness: { path: /live, port: 8080 }",
+      "liveness: { path: /live, port: 8000 }",
     );
+  /** The public tier, an acme one, proxied by notes. */
+  const proxiedByNotes = {
+    platform: (document: string) =>
+      document
+        .replace("traefik: edge/traefik-public", "traefik: notes/notes")
+        .replace(/\n {4}address: edge-frankfurt[^\n]*/, ""),
+  };
+
+  it("hands an acme proxy its DNS token beside its own variables, in name order", () => {
+    const proxy = processOf(one(answering), proxiedByNotes);
     expect(proxy.environment?.map(({ name }) => name)).toStrictEqual([
       "CF_DNS_API_TOKEN",
       "DEPLOYMENT_ENVIRONMENT",
       "OTEL_EXPORTER_OTLP_ENDPOINT",
       "OTEL_SERVICE_NAME",
     ]);
+  });
+
+  it("derives an acme tier on the proxy's Process that answers it, and on no other Process of the proxy", () => {
+    const [proxy, other] = application(
+      one(`${answering}${serving("notes-worker")}`),
+      proxiedByNotes,
+    ).processes;
+    const derived = (process: typeof proxy) => ({
+      token: process?.environment?.some(
+        ({ name }) => name === "CF_DNS_API_TOKEN",
+      ),
+      claim: process?.volumes?.some(({ claim }) => claim === "acme") ?? false,
+    });
+    expect(derived(proxy)).toStrictEqual({ token: true, claim: true });
+    expect(derived(other)).toStrictEqual({ token: false, claim: false });
   });
 
   it("derives on an acme tier's proxy its resolver, claim, token and way out", () => {

@@ -20,7 +20,7 @@ the rule; the measured numbers live in the CI report, never here.
 
 A pull request does not test every mutant. It runs Stryker incrementally
 against the report of the last green run on `main`: a mutant is tested again
-when its module changed or a test file that covered it changed, and every other
+when its module changed or the test that killed it changed, and every other
 result comes from that report. The score is still over every mutant. The run is
 parallel shards, each handed a disjoint share of every module's top-level
 statements balanced by the time each took in that report, and one job merges their reports into the report a single run would
@@ -79,6 +79,18 @@ jobs that a second run turned green. Stryker's incremental mode keeps the
 result of a mutant whose module and whose killing test are both unchanged, so
 a pull request that only weakens a test still re-tests what that test killed.
 
+**A test is itself until its own code changes.** Stryker's Vitest runner
+places no test in its file, so Stryker read one edit anywhere in a test file
+as every test in it changed: a pull request that added one test to an
+end-to-end suite re-tested every mutant that suite killed, and the gate ran
+many times longer than the suite it tests. The baseline is
+rewritten before a shard reads it, so a test keeps its identity while its own
+code, every declaration of its file it names, and the code of every
+`describe` around it are unchanged, compared as tokens. Names are compared as
+text, so a shadowed name over-counts a change and never hides one; whatever
+cannot be read that way leaves its file to Stryker's own reading. A helper in
+another module was never compared at all, which the full run already covers.
+
 **One job is the slowest gate, and it holds every merge.** Measured for
 [the sharding decision](https://github.com/JorisJonkers-dev/deploy-kit/issues/464),
 one incremental job was the slowest gate by far, and release pull requests that
@@ -124,6 +136,9 @@ subprocess); mutating them now would score the sandbox, not the tests.
 | Coverage reported, not enforced | no build fails over a percentage | drifts down one pull request at a time |
 | A break score of 100 minus headroom | tolerates timeout noise | noise no run produced |
 | Record the mutant counts beside the rule | the number sits in the record | stale on the next commit |
+| Stryker's own reading of a test file, every test changed by any edit | no rewrite of the baseline | one new test re-tested what its whole file killed, many times the suite's own run |
+| Smaller test files, so an edit invalidates less | no script | a file is still the unit, and a fixture shared across files would be copied |
+| Skip load-time mutants on a pull request (`ignoreStatic`) | the largest single saving | a load-time mutant the change reaches lands on `main` untested |
 | Every mutant on every pull request | no result is ever taken from an earlier run | four fifths of CI minutes, for no catch outside the changed files |
 | One incremental job over every module | no merge step | the slowest gate, holding every merge, release pull requests included |
 | Shards by whole file | each file in one report | one large module leaves its shard running alone |

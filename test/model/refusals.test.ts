@@ -833,6 +833,48 @@ describe("the refusal fixtures", () => {
     ]);
   });
 
+  /** A fixture's set with each file's text edited, refused with `code` where. */
+  const codeIn = (
+    stem: string,
+    code: string,
+    edit: (text: string) => string,
+  ): string[] => {
+    const result = checkIntentSet(
+      filesOf(stem).map((file) => ({ ...file, text: edit(file.text) })),
+    );
+    return result.ok
+      ? []
+      : result.diagnostics
+          .filter((diagnostic) => diagnostic.code === code)
+          .map(({ path }) => path);
+  };
+
+  it("lets a proxy replicate on a tier that issues no certificate through acme", () => {
+    expect(
+      codeIn("acme-proxy-replicated", "E_ACME_PROXY_REPLICATED", (text) =>
+        text.replace("certificates: acme", "certificates: none"),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("filters no class for a tier that names none, after one that does", () => {
+    expect(
+      codeIn("tier-class-unfiltered", "E_TIER_CLASS_UNFILTERED", (text) =>
+        text.replace("    ingressClass: edge-proxy-internal\n", ""),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses a tls tier whose proxy provides web but not websecure", () => {
+    expect(
+      codeIn("tier-surface-missing", "E_TIER_SURFACE_MISSING", (text) =>
+        text
+          .replace("listener: plain", "listener: tls")
+          .replace("http: 8080", "web: 8080"),
+      ),
+    ).toStrictEqual(["/tiers/0"]);
+  });
+
   it("accepts a Postgres on a volume whose durability derives no backup, because its catalog derives", () => {
     expect(checkIntentSet(filesOf("engine-owns-databases")).ok).toBe(true);
   });

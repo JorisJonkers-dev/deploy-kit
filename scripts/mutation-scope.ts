@@ -28,6 +28,7 @@ const FILES = new Set([
   ".nvmrc",
   ".github/workflows/ci.yml",
   "scripts/mutation-shard.ts",
+  "scripts/mutation-baseline.ts",
   "scripts/mutation-merge.ts",
   "scripts/mutation-scope.ts",
   "scripts/lib/mutation-report.ts",
