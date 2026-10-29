@@ -85,6 +85,9 @@
          (spec/v1/16-dependencies.md#the-consumer-label). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumes" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+    <!-- What the method may do at each path: read its login and its metadata, and create, read
+         and update each database role the catalog names, in the catalog's order. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="policy" lowerBound="1" upperBound="-1" eType="#//PolicyPath" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedCatalog">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="host" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -256,6 +259,11 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cutover" unsettable="true" eType="#//Cutover"/>
     <!-- Set on a `lifecycle: application` Process; a job has no switchover. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="switchover" unsettable="true" eType="#//Switchover"/>
+    <!-- The Deployment that serves between releases, and the label its pods are selected by: a
+         blue-green Process's primary, by the name Flagger gives it, or the Process itself, by its
+         instance. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="serving" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="servingLabel" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="deadline" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="replicas" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -566,6 +574,11 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="per" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="burst" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="clientAddress" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The Middleware a route names for this step, and its namespace: a shared one in the
+         proxy's namespace, named for its kind and content policy, or a route's own beside its
+         IngressRoute, numbered by the route's position. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- ============================================ the generated resources -->
@@ -751,6 +764,9 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//ResolvedGrant"/>
+    <!-- What the policy allows at each path, in its grants' order: an engine's own paths, or `read`
+         on a kv grant's document and on the same document's metadata. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="paths" lowerBound="1" upperBound="-1" eType="#//PolicyPath" containment="true"/>
   </eClassifiers>
 
   <!-- One file of a Vault policy job (spec/v1/30-deliverables.md#vault-configuration-is-rendered-not-applied):

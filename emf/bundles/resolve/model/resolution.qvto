@@ -535,6 +535,7 @@ query catalogJobOf(prj : String, application : String, p : PI::Process) : Resolv
 		};
 		-- The method reaches the datastore as every consumer does, by its surface's label.
 		consumes := Sequence{application + '.' + estate.engines.postgres.surface};
+		policy := catalog.policy();
 		egress := Sequence{object PolicyPeer {
 				rule := 'datastore'; namespace := ns; process := proc; port := surfacePort; }}
 			->union(storePeers())->append(object PolicyPeer {
@@ -666,6 +667,10 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	gid := own.gid;
 	if self.cutover <> PI::Cutover::absent then cutover := self.cutover.resolvedCutover() endif;
 	if self.lifecycle = Lifecycle::application then switchover := switchoverOf(app, self) endif;
+	-- Flagger serves a blue-green Process from a primary it names and labels after the Process.
+	serving := if self.servesFromPrimary(app) then self.name + '-primary' else self.name endif;
+	servingLabel := if self.servesFromPrimary(app) then 'app.kubernetes.io/name'
+		else 'app.kubernetes.io/instance' endif;
 	deadline := inSeconds(deadlineOf(self));
 	replicas := if self.replicas = null then 1 else self.replicas.count endif;
 	memory := self.placement.memory;
@@ -750,6 +755,9 @@ query imagePull() : Integer =
 	if estate.substrate.imagePull = null then 0 else ceiling(seconds(estate.substrate.imagePull)) endif;
 
 -- How the new version replaces the old (spec/v1/55-delivery.md#switchover).
+query PI::Process::servesFromPrimary(app : EffectiveApplication) : Boolean =
+	self.lifecycle = Lifecycle::application and switchoverOf(app, self) = Switchover::blueGreen;
+
 query switchoverOf(app : EffectiveApplication, p : PI::Process) : Switchover =
 	if p.cutover = PI::Cutover::interrupted then Switchover::stopStart
 	else if estate.delivery <> null and estate.delivery.machinery->exists(m | m.id = app.id)
@@ -1397,7 +1405,7 @@ mapping Exposure::exposure(in app : EffectiveApplication, in prj : EffectiveProj
 		precedence := precedenceOf(r, self.routes);
 		process := r.process.resolveone(ResolvedProcess);
 		surface := r.surface.key;
-		middleware := middlewareOf(r, self);
+		middleware := middlewareOf(r, self, app, prj);
 	});
 }
 
@@ -1412,23 +1420,36 @@ query rankOf(r : Route) : Integer =
 query precedenceOf(r : Route, routes : Collection(Route)) : Integer =
 	routes->collect(o | rankOf(o))->asSet()->select(k | k < rankOf(r))->size() + 1;
 
--- The chain the tier, the audience and the content profile derive.
-query middlewareOf(r : Route, exposure : Exposure) : Sequence(MiddlewareStep) =
+-- The chain the tier, the audience and the content profile derive, each step named as the route
+-- names its Middleware: a shared one in the proxy's namespace, by its kind and content policy, or
+-- a route's own beside its IngressRoute, by the route's position.
+query middlewareOf(r : Route, exposure : Exposure, app : EffectiveApplication, prj : EffectiveProject)
+		: Sequence(MiddlewareStep) =
+	let proxy : String = homeNamespace(projectOf(tierFor(exposure.audience).traefik.id),
+		tierFor(exposure.audience).traefik.id) in
+	let own : String = app.id + '-' + exposure.name + '-' + exposure.routes->indexOf(r).toString() in
 	(if r.audienceOf(exposure) = Audience::authenticated
 		then Sequence{object MiddlewareStep {
 			kind := MiddlewareKind::forwardAuth;
 			endpoint := tierFor(r.audienceOf(exposure)).forwardAuth;
+			name := 'forward-auth';
+			namespace := proxy;
 		}}
 		else Sequence{} endif)
 	->append(object MiddlewareStep {
 		kind := MiddlewareKind::securityHeaders;
 		if exposure.oclAsType(ECORE::EObject).states('contentPolicy')
 			then contentPolicy := exposure.contentPolicy.spelling() endif;
+		name := if contentPolicy = null then 'security-headers'
+			else 'security-headers-' + contentPolicy endif;
+		namespace := proxy;
 	})
 	->union(if r.redirectTo = null then Sequence{}
 		else Sequence{object MiddlewareStep {
 			kind := MiddlewareKind::redirect;
 			redirectTo := r.redirectTo;
+			name := own + '-redirect';
+			namespace := namespaceOf(prj.project);
 		}} endif)
 	-- A client that has sent nothing may send its whole allowance at once, and the
 	-- tier decides which address a client is counted by.
@@ -1440,6 +1461,8 @@ query middlewareOf(r : Route, exposure : Exposure) : Sequence(MiddlewareStep) =
 			burst := r.rateLimit.requests;
 			clientAddress := if tierFor(r.audienceOf(exposure)).oclAsType(ECORE::EObject).states('proxiedBy')
 				then 'cloudflare' else 'connection' endif;
+			name := own + '-rate-limit';
+			namespace := namespaceOf(prj.project);
 		}} endif);
 
 -- ============================================================ the path plan
@@ -1855,6 +1878,7 @@ query vaultFilesOf(policies : String, ns : String, holder : String, held : Seque
 			namespace := ns;
 			identity := holder;
 			grants := held;
+			paths := held->collect(g | g.allowedPaths())->flatten();
 		}.oclAsType(Deliverable),
 		object VaultRoleFile {
 			path := stem + '.role.json';
@@ -2304,26 +2328,35 @@ query Deliverable::documentOf() : Tuple(file : String, json : String) =
 	else null endif endif endif endif;
 
 -- A catalog method's own policy: it reads its login, and writes each database role it names.
-query ResolvedCatalogJob::catalogPolicyJson() : String =
-	obj(Sequence{Tuple{k = 'path', v = obj(Sequence{
-		Tuple{k = self.catalog.admin.path, v = capabilities(Sequence{'read'})},
-		Tuple{k = 'secret/metadata/' + self.catalog.admin.path.substring(KV_DATA.size() + 1, self.catalog.admin.path.size()), v = capabilities(Sequence{'read'})}}
-		->union(self.catalog.databases->collect(d | Sequence{d.owner, d.data})->flatten()
-			->collect(r | Tuple{k = 'database/roles/' + r, v = capabilities(Sequence{'create', 'read', 'update'})})
-			->asSequence()))}});
+query ResolvedCatalogJob::catalogPolicyJson() : String = pathsJson(self.policy);
+
+-- A catalog method's own policy: it reads its login and its metadata, and creates, reads and
+-- updates each database role the catalog names, in the catalog's order.
+query ResolvedCatalog::policy() : Sequence(PolicyPath) =
+	Sequence{allowing(self.admin.path, Sequence{'read'}),
+		allowing('secret/metadata/' + self.admin.path.substring(KV_DATA.size() + 1, self.admin.path.size()),
+			Sequence{'read'})}
+	->union(self.databases->collect(d | Sequence{d.owner, d.data})->flatten()
+		->collect(r | allowing('database/roles/' + r, Sequence{'create', 'read', 'update'}))->asSequence());
 
 -- What each grant may do: the paths a transit or database grant's engine derives, or `read` on
 -- a kv grant's path and on the same document's metadata.
-query VaultPolicyFile::policyJson() : String =
-	obj(Sequence{Tuple{k = 'path', v = obj(self.grants->collect(g | g.allowed())->flatten())}});
+query VaultPolicyFile::policyJson() : String = pathsJson(self.paths);
 
-query ResolvedGrant::allowed() : Sequence(Tuple(k : String, v : String)) =
-	if self.engine <> null then self.paths->collect(p |
-		Tuple{k = p.path, v = capabilities(p.allows->asSequence())})
-	else Sequence{
-		Tuple{k = self.path, v = capabilities(Sequence{'read'})},
-		Tuple{k = 'secret/metadata/' + self.path.substring(KV_DATA.size() + 1, self.path.size()),
-			v = capabilities(Sequence{'read'})}} endif;
+query pathsJson(paths : Collection(PolicyPath)) : String =
+	obj(Sequence{Tuple{k = 'path', v = obj(paths->collect(p |
+		Tuple{k = p.path, v = capabilities(p.allows->asSequence())})->asSequence())}});
+
+-- What a grant allows: its engine's own paths, or `read` on a kv grant's document and on the same
+-- document's metadata.
+query ResolvedGrant::allowedPaths() : Sequence(PolicyPath) =
+	if self.engine <> null then self.paths->collect(p | allowing(p.path, p.allows->asSequence()))
+	else Sequence{allowing(self.path, Sequence{'read'}),
+		allowing('secret/metadata/' + self.path.substring(KV_DATA.size() + 1, self.path.size()),
+			Sequence{'read'})} endif;
+
+query allowing(at : String, capabilities : Sequence(String)) : PolicyPath =
+	object PolicyPath { path := at; allows := capabilities; };
 
 property KV_DATA : String = 'secret/data/';
 

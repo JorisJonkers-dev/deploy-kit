@@ -78,8 +78,10 @@
       <!-- One prefix route, so precedence is 1 and nothing competes with it. -->
       <routes path="/" match="prefix" audience="anonymous" precedence="1"
           process="//@applications.0/@processes.0" surface="http">
-        <!-- Anonymous, so no forward-auth; `contentPolicy: strict` is authored. -->
-        <middleware kind="security-headers" contentPolicy="strict"/>
+        <!-- Anonymous, so no forward-auth; `contentPolicy: strict` is authored, and names the
+             proxy's shared Middleware. -->
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict"
+            namespace="edge-system"/>
       </routes>
     </exposure>
 
@@ -89,7 +91,8 @@
     <processes name="notes-api" identity="notes-api" lifecycle="application"
         image="ghcr.io/jorisjonkers-dev/notes/notes-api@sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
         imageVersion="1.4.0"
-        uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="180s" replicas="1"
+        uid="1000" gid="1000" cutover="continuous" switchover="blue-green"
+        serving="notes-api-primary" servingLabel="app.kubernetes.io/name" deadline="180s" replicas="1"
         memory="256Mi" cpu="50m" hardening="restricted" identityToken="false"
         component="node">
       <!-- The T1000 is the one card `{class: transcode, model: [t1000]}` matches, so nvidia's entry. -->

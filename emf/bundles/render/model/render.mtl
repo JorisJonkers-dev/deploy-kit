@@ -32,52 +32,10 @@
   [/if]
 [/template]
 
+[comment Each kind's objects, by the template for its own type: a kind with none fails the rendering
+  rather than writing a file that holds only the header. /]
 [template private yaml(d : resolveddeployment::Deliverable)]
-  [if (d.oclIsKindOf(resolveddeployment::NamespaceFile))]
-    [d.oclAsType(resolveddeployment::NamespaceFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::IndexFile))]
-    [d.oclAsType(resolveddeployment::IndexFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::NetworkPolicyFile))]
-    [d.oclAsType(resolveddeployment::NetworkPolicyFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::WorkloadFile))]
-    [d.oclAsType(resolveddeployment::WorkloadFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::SwitchoverFile))]
-    [d.oclAsType(resolveddeployment::SwitchoverFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::IdentityFile))]
-    [d.oclAsType(resolveddeployment::IdentityFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::MonitorFile))]
-    [d.oclAsType(resolveddeployment::MonitorFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::IngressRouteFile))]
-    [d.oclAsType(resolveddeployment::IngressRouteFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::ServiceFile))]
-    [d.oclAsType(resolveddeployment::ServiceFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::BudgetFile))]
-    [d.oclAsType(resolveddeployment::BudgetFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::MigrationFile))]
-    [d.oclAsType(resolveddeployment::MigrationFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::RbacFile))]
-    [d.oclAsType(resolveddeployment::RbacFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::PolicyJobFile))]
-    [d.oclAsType(resolveddeployment::PolicyJobFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::CatalogJobFile))]
-    [d.oclAsType(resolveddeployment::CatalogJobFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::EventsFile))]
-    [d.oclAsType(resolveddeployment::EventsFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::AliasFile))]
-    [d.oclAsType(resolveddeployment::AliasFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::LibraryFile))]
-    [d.oclAsType(resolveddeployment::LibraryFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::ClaimFile))]
-    [d.oclAsType(resolveddeployment::ClaimFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::ConfigMapFile))]
-    [d.oclAsType(resolveddeployment::ConfigMapFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::BackupFile))]
-    [d.oclAsType(resolveddeployment::BackupFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::SecretFile))]
-    [d.oclAsType(resolveddeployment::SecretFile).objects()/]
-  [elseif (d.oclIsKindOf(resolveddeployment::ConnectionFile))]
-    [d.oclAsType(resolveddeployment::ConnectionFile).objects()/]
-  [/if]
+  [d.objects()/]
 [/template]
 
 [comment ======================================================= project files /]
@@ -92,14 +50,13 @@
       app.kubernetes.io/managed-by: deploy-kit
 [/template]
 
-[comment An index the estate shares, a tier's under the edge, lists what every Deployment rendered
-  beside it puts there, so each writes the same whole file. /]
+[comment An index lists what its directory holds, in order. /]
 [template private objects(d : resolveddeployment::IndexFile)]
   ---
   apiVersion: kustomize.config.k8s.io/v1beta1
   kind: Kustomization
   resources:
-  [for (r : String | d.listed())]
+  [for (r : String | d.resources->sortedBy(r | r))]
       - [r/]
   [/for]
 [/template]
@@ -199,13 +156,13 @@
             - protocol: TCP
               port: [peer.port/]
   [/for]
-  [for (range : String | p.backupRanges())]
+  [for (range : resolveddeployment::AdmittedRange | p.backupRanges())]
         - to:
             - ipBlock:
-                cidr: [range.tokenize(' ')->first()/]
+                cidr: [range.cidr/]
           ports:
             - protocol: TCP
-              port: [range.tokenize(' ')->last()/]
+              port: [range.port/]
   [/for]
 [/template]
 
@@ -424,8 +381,7 @@
   [/for]
 [/template]
 
-[comment The budget of a Process above one replica. A blue-green one's selects the primary by the
-  name Flagger gives it, which is what serves between releases; any other's its own pods. /]
+[comment The budget of a Process above one replica, over the pods that serve between releases. /]
 [template private objects(d : resolveddeployment::BudgetFile)]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
     ---
@@ -437,11 +393,7 @@
       maxUnavailable: 1
       selector:
         matchLabels:
-    [if (p.switchover.toString() = 'blue-green')]
-            app.kubernetes.io/name: [p.name/]-primary
-    [else]
-            app.kubernetes.io/instance: [p.name/]
-    [/if]
+          [p.servingLabel/]: [p.serving/]
   [/for]
 [/template]
 
@@ -990,8 +942,6 @@
   [/for]
 [/template]
 
-[comment A claim for each volume, and for each backed-up one the claim its copies land on, at the same
-  size. A claim whose class derives a backup is never pruned, and neither is its copies'. /]
 [comment Per library the project mounts, the local volume onto its directory, held to its node,
   and the claim bound to it; neither is ever pruned. /]
 [template private objects(d : resolveddeployment::LibraryFile)]
@@ -1047,6 +997,8 @@
   [/for]
 [/template]
 
+[comment A claim for each volume, and for each backed-up one the claim its copies land on, at the same
+  size. A claim whose class derives a backup is never pruned, and neither is its copies'. /]
 [template private objects(d : resolveddeployment::ClaimFile)]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
@@ -1319,7 +1271,7 @@
       rolloutRestartTargets:
     [for (t : String | g.restartTargets)]
           - kind: Deployment
-            name: [d.application.serving(t)/]
+            name: [d.application.servingOf(t)/]
     [/for]
   [/if]
 [/template]
@@ -1338,15 +1290,13 @@
 
 [comment ============================================================ Vault /]
 
-[comment What each grant may do: the paths a transit or database grant's engine derives, or `read` on
-  a kv grant's path and on the same document's metadata. /]
 [template private json(d : resolveddeployment::VaultPolicyFile)]
   {
     "path": {
-  [for (k : String | d.policyPaths()) separator(',\n')]
-        "[k/]": {
+  [for (k : resolveddeployment::PolicyPath | d.paths) separator(',\n')]
+        "[k.path/]": {
           "capabilities": ['['/]
-    [for (c : String | d.allowsAt(k)) separator(',\n')]
+    [for (c : String | k.allows) separator(',\n')]
               "[c/]"[/for]
           ]
         }[/for]
@@ -1735,15 +1685,13 @@
   [/if]
 [/template]
 
-[comment A catalog method's own policy: it reads its login and its metadata, and writes each
-  database role the catalog names, in the catalog's order. /]
 [template private json(d : resolveddeployment::CatalogJobFile)]
   {
     "path": {
-  [for (k : String | d.catalogPaths()) separator(',\n')]
-        "[k/]": {
+  [for (k : resolveddeployment::PolicyPath | d.job.policy) separator(',\n')]
+        "[k.path/]": {
           "capabilities": ['['/]
-    [for (c : String | d.catalogAllows(k)) separator(',\n')]
+    [for (c : String | k.allows) separator(',\n')]
               "[c/]"[/for]
           ]
         }[/for]
@@ -1777,7 +1725,7 @@
   [/if]
   [for (r : resolveddeployment::ResolvedRoute | d.exposure.routes)]
     [for (m : resolveddeployment::MiddlewareStep | r.middleware->select(s | s.kind.toString() = 'rate-limit'))]
-      [m.rateLimit(r, d.exposure)/]
+      [m.rateLimit(d.exposure)/]
     [/for]
   [/for]
 [/template]
@@ -1785,13 +1733,13 @@
 [comment A route's rate limit, its own Middleware beside its IngressRoute, since its values are that
   route's alone. Behind Cloudflare every connection is Cloudflare's, so a client is the address it
   forwards. /]
-[template private rateLimit(m : resolveddeployment::MiddlewareStep, r : resolveddeployment::ResolvedRoute, e : resolveddeployment::ResolvedExposure)]
+[template private rateLimit(m : resolveddeployment::MiddlewareStep, e : resolveddeployment::ResolvedExposure)]
   ---
   apiVersion: traefik.io/v1alpha1
   kind: Middleware
   metadata:
-    name: [r.rateLimitName(e)/]
-    namespace: [e.application().namespace/]
+    name: [m.name/]
+    namespace: [m.namespace/]
     labels:
       app.kubernetes.io/part-of: [e.application().id/]
       app.kubernetes.io/managed-by: deploy-kit
@@ -1813,13 +1761,8 @@
     priority: [1000 - r.precedence/]
     middlewares:
   [for (m : resolveddeployment::MiddlewareStep | r.middleware)]
-    [if (m.kind.toString() = 'rate-limit')]
-          - name: [r.rateLimitName(e)/]
-            namespace: [e.application().namespace/]
-    [else]
-          - name: [m.middlewareName()/]
-            namespace: [e.proxyNamespace/]
-    [/if]
+        - name: [m.name/]
+          namespace: [m.namespace/]
   [/for]
     services:
       - name: [r.process.name/]
@@ -1868,13 +1811,6 @@
       else ',\n  "adopt": {\n    "path": "' + k.adoptPath + '",\n    "key": "' + k.adoptKey + '"\n  }' endif)
     + '\n}' /]
 
-[query private catalogPaths(d : resolveddeployment::CatalogJobFile) : Sequence(String) =
-  Sequence{d.job.catalog.admin.path, d.job.catalog.admin.path.replace('^secret/data/', 'secret/metadata/')}
-    ->concat(d.job.catalog.databases->collect(x | Sequence{'database/roles/' + x.owner, 'database/roles/' + x.data})) /]
-
-[query private catalogAllows(d : resolveddeployment::CatalogJobFile, k : String) : Sequence(String) =
-  if k.startsWith('database/roles/') then Sequence{'create', 'read', 'update'} else Sequence{'read'} endif /]
-
 [query private readinessPath(p : resolveddeployment::ResolvedProcess) : String =
   p.application().releaseGate.members
     ->select(m | m.process = p and m.readiness.oclIsKindOf(resolveddeployment::HttpTarget))
@@ -1895,17 +1831,13 @@
   if duration.endsWith('h') then amount * 3600
   else if duration.endsWith('m') then amount * 60 else amount endif endif /]
 
-[query private listed(d : resolveddeployment::IndexFile) : Sequence(String) =
-  resolveddeployment::IndexFile.allInstances()->select(i | i.path = d.path).resources
-    ->asOrderedSet()->sortedBy(r | r) /]
+[comment Every range a backup of the Process copies off-cluster to, once each in the order met: the
+  first of each cidr and port. /]
+[query private backupRanges(p : resolveddeployment::ResolvedProcess) : Sequence(resolveddeployment::AdmittedRange) =
+  let all : Sequence(resolveddeployment::AdmittedRange) = p.backups().backup.destinations in
+  all->select(r | all->select(o | o.cidr = r.cidr and o.port = r.port)->first() = r) /]
 
 [comment The volumes whose class derives a backup. /]
-[comment Every range a backup of the Process copies off-cluster to, as `<cidr> <port>`, once each
-  in the order met. /]
-[query private backupRanges(p : resolveddeployment::ResolvedProcess) : Sequence(String) =
-  p.backups().backup.destinations
-    ->collect(r | r.cidr + ' ' + r.port.toString())->asOrderedSet()->asSequence() /]
-
 [query private backups(p : resolveddeployment::ResolvedProcess) : Sequence(resolveddeployment::ResolvedVolume) =
   p.volumes->select(v | v.backup <> null) /]
 
@@ -1915,7 +1847,6 @@
 [comment A writable path's volume, named for the path. /]
 [query private writableOf(path : String) : String = 'writable' + path.replaceAll('[^a-z0-9]+', '-') /]
 
-[comment The Secret a kv grant on `path` syncs to, for the Process's own variables. /]
 [comment The Process's grants delivered as files, each synced to a Secret. /]
 [query private files(p : resolveddeployment::ResolvedProcess) : OrderedSet(resolveddeployment::ResolvedGrant) =
   p.secrets->select(g | g.delivery = 'file' and g.destination <> null) /]
@@ -1932,25 +1863,14 @@
   if mode.size() = 1 then mode.toInteger()
   else mode.substring(1, mode.size() - 1).octal() * 8 + mode.substring(mode.size(), mode.size()).toInteger() endif /]
 
+[comment The Secret a kv grant on `path` syncs to, for the Process's own variables. /]
 [query private destinationOf(p : resolveddeployment::ResolvedProcess, path : String) : String =
   p.secrets->select(g | g.destination <> null
     and (g.path = path or g.paths->exists(x | x.path = path)))->first().destination /]
 
-[comment The Deployment a rotation restarts: a blue-green Process serves from its primary. /]
-[query private serving(a : resolveddeployment::ResolvedApplication, name : String) : String =
-  if a.processes->select(p | p.name = name)->first().switchover.toString() = 'blue-green'
-  then name + '-primary' else name endif /]
-
-[comment Every path a policy names, in its grants' order: the paths a transit or database grant's
-  engine derives, or a kv grant's path and the same document's metadata. /]
-[query private policyPaths(d : resolveddeployment::VaultPolicyFile) : Sequence(String) =
-  d.grants->collect(g | if g.engine <> null then g.paths.path
-    else Sequence{g.path, g.path.replace('^secret/data/', 'secret/metadata/')} endif) /]
-
-[comment What a policy allows at one path: an engine's own, or `read` on a kv grant's document. /]
-[query private allowsAt(d : resolveddeployment::VaultPolicyFile, path : String) : Sequence(String) =
-  let derived : Sequence(resolveddeployment::PolicyPath) = d.grants.paths->select(e | e.path = path) in
-  if derived->isEmpty() then Sequence{'read'} else derived->first().allows endif /]
+[comment The Deployment that serves for the Process of that name. /]
+[query private servingOf(a : resolveddeployment::ResolvedApplication, name : String) : String =
+  a.processes->select(p | p.name = name)->first().serving /]
 
 [comment How a block scalar keeps its last line break: once, not at all, or every one. /]
 [query private chomping(content : String) : String =
@@ -1960,13 +1880,6 @@
 [query private blockOf(content : String, indent : String) : String =
   (if content.endsWith('\n') then content.substring(1, content.size() - 1) else content endif)
     .replaceAll('(?m)^(?=.)', indent) /]
-
-[query private rateLimitName(r : resolveddeployment::ResolvedRoute, e : resolveddeployment::ResolvedExposure) : String =
-  e.application().id + '-' + e.name + '-' + e.routes->indexOf(r).toString() + '-rate-limit' /]
-
-[query private middlewareName(m : resolveddeployment::MiddlewareStep) : String =
-  if m.kind.toString() = 'forward-auth' then 'forward-auth'
-  else if m.contentPolicy = null then 'security-headers' else 'security-headers-' + m.contentPolicy endif endif /]
 
 [comment A string scalar, double-quoted where a YAML 1.1 reader, which the Kubernetes API is,
   would read it as null, a boolean, an integer, a float or a timestamp, and written plain otherwise. /]
