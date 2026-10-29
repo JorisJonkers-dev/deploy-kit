@@ -404,6 +404,12 @@ runtime class [`gpus`](#gpus) names for `nvidia`, so where it names none they ar
 `E_NO_GPU_POLICY`. An agent no node needs is
 derived nowhere, and its entry renders nothing.
 
+Both refusals need only the Platform document and the node contract, so
+`deploy-kit validate` makes them too wherever its set holds the two together, as
+the estate's own check does, and refuses a node contract there that does not
+read. A set without the node contract derives no agent, so `validate` cannot
+refuse one there, and composition, which always reads the contract, does.
+
 The agents are the **`node` Project**, which no project file declares: every
 object it holds is derived from the catalog, the node contract and the pools,
 in `node-system`, under one Reconcile Unit and one pin, and the handover ledger

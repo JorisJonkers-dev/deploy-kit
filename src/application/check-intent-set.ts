@@ -24,7 +24,8 @@ import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { EnvSource } from "../model/env.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
-import { readClusterState } from "../read/pinned-inputs.ts";
+import { nodeAgentPolicyRefusals } from "../check/pinned-inputs.ts";
+import { readClusterState, readNodeContract } from "../read/pinned-inputs.ts";
 import { readYaml } from "../read/yaml.ts";
 import {
   parsePlatformIntent,
@@ -53,6 +54,7 @@ const PROJECT = ".project.yml";
 const YAML = ".yml";
 const ENV = ".env";
 const CLUSTER_STATE = "cluster-state.yml";
+const NODE_CONTRACT = "node-contract.yml";
 
 /**
  * Whether a file is a project file: named one, or, where `byKind`, any other
@@ -291,12 +293,41 @@ export function composeIntentSet(
   };
 }
 
+/**
+ * What the Platform document and the node contract decide together, where the
+ * set holds both (spec/v1/14-platform-intent.md#node-agents): a node contract
+ * that does not read, or a Node Agent the two derive with no catalog entry.
+ * Composition refuses the same, so a set `validate` accepts composes.
+ */
+function nodeContractDiagnostics(
+  files: readonly AuthoredFile[],
+  platform: Named<ParsedPlatformIntent>,
+): readonly Diagnostic[] {
+  const file = files.find(({ name }) => name.endsWith(NODE_CONTRACT));
+  if (file === undefined) return [];
+  const yaml = readYaml(file.text);
+  const read = yaml.ok ? readNodeContract(yaml.value) : yaml;
+  if (!read.ok)
+    return read.diagnostics.map((diagnostic) => ({
+      ...diagnostic,
+      document: file.name,
+    }));
+  return nodeAgentPolicyRefusals(
+    platform.value.document,
+    read.value,
+    platform.name,
+  );
+}
+
 export function checkIntentSet(
   files: readonly AuthoredFile[],
 ): Result<IntentSet> {
   const composed = composeIntentSet(files, true);
   if (!composed.ok) return composed;
   const { platform, projects } = composed.value;
+  const refusals =
+    platform === undefined ? [] : nodeContractDiagnostics(files, platform);
+  if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   return {
     ok: true,
     value: {

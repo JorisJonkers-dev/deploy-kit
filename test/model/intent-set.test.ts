@@ -962,3 +962,65 @@ describe("the handover rule across documents", () => {
     ]);
   });
 });
+
+// REQ-130 (docs/requirements.md): where the set holds the node contract beside
+// the Platform document, `validate` refuses a Node Agent the two derive with
+// no catalog entry, as composition does, so a set it accepts composes.
+describe("the Node Agent catalog across documents", () => {
+  const CONTRACT = read("platform/node-contract.yml");
+  const SPEAKER =
+    "  l4-speaker:\n    image: metallb-speaker\n    memory: 64Mi\n    cpu: 20m\n    controller: { image: metallb-controller, memory: 64Mi, cpu: 10m }\n";
+  const withPlatform = (
+    edit: (text: string) => string,
+    contract: AuthoredFile | null = CONTRACT,
+  ): AuthoredFile[] => [
+    ...WORKED.map((file) =>
+      file.name === "platform/platform.intent.yml"
+        ? { ...file, text: edit(file.text) }
+        : file,
+    ),
+    ...(contract === null ? [] : [contract]),
+  ];
+  const withoutSpeaker = (text: string): string => {
+    expect(text).toContain(SPEAKER);
+    return text.replace(SPEAKER, "");
+  };
+
+  it("accepts the worked estate with its node contract", () => {
+    expect(refusalsOf(withPlatform((text) => text))).toStrictEqual([]);
+  });
+
+  it("refuses a pool on a site with nodes whose announcer the catalog names no image for, at the entry", () => {
+    expect(refusalsOf(withPlatform(withoutSpeaker))).toStrictEqual([
+      {
+        code: "E_NO_NODE_AGENT_POLICY",
+        document: "platform/platform.intent.yml",
+        path: "/nodeAgents/l4-speaker",
+      },
+    ]);
+  });
+
+  it("refuses nothing it cannot decide: without the node contract no agent is derived", () => {
+    expect(refusalsOf(withPlatform(withoutSpeaker, null))).toStrictEqual([]);
+  });
+
+  it("asks for no announcer where no pool sits on a site with nodes", () => {
+    const noPools = (text: string): string =>
+      withoutSpeaker(text).replace(
+        /kind: pool\n {4}site: enschede/g,
+        "kind: pool\n    site: nowhere",
+      );
+    expect(refusalsOf(withPlatform(noPools))).toStrictEqual([]);
+  });
+
+  it("refuses a node contract that does not read, at the contract", () => {
+    expect(
+      refusalsOf(
+        withPlatform((text) => text, {
+          name: "platform/node-contract.yml",
+          text: "nodes: one\n",
+        }),
+      ).map(({ document }) => document),
+    ).toContain("platform/node-contract.yml");
+  });
+});
