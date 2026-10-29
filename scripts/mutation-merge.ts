@@ -1,4 +1,4 @@
-// The pull request's mutation shards, merged into one report.
+// A run's mutation shards, merged into one report.
 //
 // Each shard of the `mutation-shard` jobs in .github/workflows/ci.yml mutates
 // its own ranges (scripts/mutation-shard.ts) and writes a report holding every

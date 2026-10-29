@@ -1,4 +1,4 @@
-// REQ-063 (docs/requirements.md): the pull request's mutation shards merge
+// REQ-063 (docs/requirements.md): a run's mutation shards merge
 // into one report, which decides the score and names every survivor.
 import {
   existsSync,

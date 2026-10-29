@@ -1,7 +1,7 @@
 // One shard of a mutation run.
 //
 // Every mutant in one job grew with src/ past an hour, so both mutation runs
-// are parallel shards: the pull request's (the `mutation-shard` jobs in
+// are parallel shards: a push to main's (the `mutation-shard` jobs in
 // .github/workflows/ci.yml) and the weekly full run's
 // (.github/workflows/mutation-full.yml). Each shard is handed a disjoint share
 // of the top-level statements of the files stryker.config.json mutates, as

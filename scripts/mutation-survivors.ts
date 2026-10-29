@@ -1,6 +1,6 @@
 // What the weekly full mutation run found.
 //
-// A pull request re-tests only the mutants its own change reaches
+// A push to main re-tests only the mutants its own change reaches
 // (docs/adr/architecture/0063-coverage-and-mutation-are-ratchets.md), so the
 // full run is the check on that shortcut. Every shard of it writes Stryker's
 // JSON report; this reads them all and prints the mutants no test detected,
@@ -48,7 +48,7 @@ export function run(argv: readonly string[]): Outcome {
   const count = String(survivors.length);
   const lines = [
     `The weekly full mutation run left ${count} mutant${survivors.length === 1 ? "" : "s"} undetected.`,
-    "A pull request re-tests only the mutants its own change reaches, so no gate saw these.",
+    "A push to main re-tests only the mutants its own change reaches, so no gate saw these.",
     "",
     ...survivors.map(listed),
   ];

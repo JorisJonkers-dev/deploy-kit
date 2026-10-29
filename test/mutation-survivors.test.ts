@@ -76,7 +76,7 @@ describe("the weekly full run's report", () => {
       code: 0,
       stdout: [
         "The weekly full mutation run left 4 mutants undetected.",
-        "A pull request re-tests only the mutants its own change reaches, so no gate saw these.",
+        "A push to main re-tests only the mutants its own change reaches, so no gate saw these.",
         "",
         "- `src/a.ts:7:1` BlockStatement: no test covers it",
         "- `src/b.ts:3:2` BooleanLiteral: survived",
