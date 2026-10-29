@@ -90,6 +90,7 @@ and linted by the same script with `emf` as its root.
 |---|---|---|
 | [0023](model/0023-exposure-is-declared-by-audience.md) | Exposure is declared by Audience on an authored host, route precedence is derived, and the tier names its forward-auth endpoint | settled |
 | [0100](model/0100-a-client-is-declared-on-the-application.md) | A Client is declared on the Application in a `client` block, its paths are relative to its own host, and an authenticated host without one is refused | open |
+| [0140](model/0140-a-native-client-may-name-a-back-channel-logout-path.md) | A native Client may name a back-channel logout path on its own host, and its Client carries it as a URI | open |
 | [0024](model/0024-dependency-edges-resolve-against-the-union.md) | A dependency edge names the provider, the surface and necessity, and resolves against the union or a provider the Platform document records | settled |
 | [0093](model/0093-a-provider-is-reached-through-its-stable-address.md) | A consumer reaches a provider's surface through its Stable Address, an alias in one estate namespace that names whichever Instance serves | open |
 | [0025](model/0025-observability-is-one-optional-block.md) | Observability is one optional block on the Application, whole or absent, and the model derives only the monitor from it | settled |

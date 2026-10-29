@@ -39,6 +39,7 @@
           "maxItems": 16,
           "items": { "type": "string", "pattern": "^https://" }
         },
+        "backChannelLogoutUri": { "type": "string", "pattern": "^https://" },
         "credential": { "type": "string", "enum": ["secret", "pkce"] },
         "secretPath": { "type": "string", "pattern": "^secret/data/" },
         "roles": {

@@ -994,6 +994,10 @@
           "type": "string",
           "pattern": "^\\/$|^(\\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\\/?$"
         },
+        "backChannelLogoutPath": {
+          "type": "string",
+          "pattern": "^\\/$|^(\\/[A-Za-z0-9._~!$&'()*+,;=:@%-]+)+\\/?$"
+        },
         "credential": {
           "$ref": "#/$defs/ClientCredential"
         },

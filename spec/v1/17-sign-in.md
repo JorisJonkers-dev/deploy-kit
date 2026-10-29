@@ -48,6 +48,7 @@ exposure, and never restated
 | `launchPath` | `native`, `gated` | no | Where the Launcher sends a person. Defaults to `/`. |
 | `redirectPaths` | `native` | yes | One or more paths on the Client's host that receive the authorization code. |
 | `protectedPath` | `native` | yes | A path the Application must refuse to an anonymous request. The Release Gate requests it before switching ([What is checked](#what-is-checked)). |
+| `backChannelLogoutPath` | `native` | no | A path on the Client's host that takes an OpenID Connect back-channel logout token. When a session ends, the Identity Provider posts one to every native Client the session signed into that declares it, so the Application can end its own session too ([0140](../../docs/adr/model/0140-a-native-client-may-name-a-back-channel-logout-path.md)). Without one, the Application's session runs until it expires. |
 | `credential` | `native` | yes | `secret` \| `pkce`. `secret` derives a client secret ([Credentials](#credentials-and-placeholders)); `pkce` is a public client with no secret. |
 | `roles` | all | no | The App Roles this Client declares beyond `user`, which every Client has. Lower-case names; `E_DUPLICATE_APP_ROLE` for a repeat or for `user` stated. |
 
@@ -162,6 +163,7 @@ Flux cannot apply.
 | `launchUrl` | `https://` + host + `launchPath`, for a `native` or `gated` Client; a `token` Client has no tile to launch |
 | `iconUrl` | `https://` + host + `iconPath`, when declared |
 | `redirectUris` | `https://` + host + each of `redirectPaths` |
+| `backChannelLogoutUri` | `https://` + host + `backChannelLogoutPath`, when declared |
 | `credential` | `client.credential` |
 | `secretPath` | the derived credential path, for `credential: secret` |
 | `roles` | `user`, then `roles` in the order declared |

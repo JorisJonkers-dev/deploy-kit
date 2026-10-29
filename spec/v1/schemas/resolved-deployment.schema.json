@@ -1234,6 +1234,10 @@
             "minLength": 1
           }
         },
+        "backChannelLogoutUri": {
+          "type": "string",
+          "minLength": 1
+        },
         "credential": {
           "$ref": "#/$defs/ClientCredential"
         },

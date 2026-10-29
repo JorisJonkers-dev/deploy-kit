@@ -1024,6 +1024,7 @@ const resolvedClient = z
     launchUrl: text.exactOptional(),
     iconUrl: text.exactOptional(),
     redirectUris: z.array(text).min(1).exactOptional(),
+    backChannelLogoutUri: text.exactOptional(),
     credential: z
       .enum(CLIENT_CREDENTIALS)
       .meta({ id: "ClientCredential" })

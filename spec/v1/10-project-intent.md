@@ -3579,6 +3579,7 @@ classDiagram
         +Path launchPath
         +Path[] redirectPaths
         +Path protectedPath
+        +Path backChannelLogoutPath
         +ClientCredential credential
         +string[] roles
     }

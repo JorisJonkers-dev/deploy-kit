@@ -247,6 +247,41 @@ ${PROCESSES("grafana")}`),
     ).toStrictEqual([]);
   });
 
+  // REQ-151 (docs/requirements.md): a back-channel logout path is a native
+  // Client's alone (docs/adr/model/0140-a-native-client-may-name-a-back-channel-logout-path.md).
+  it("admits a back-channel logout path on a native Client", () => {
+    expect(
+      explained(
+        grafana(`${NATIVE}\nbackChannelLogoutPath: /logout/backchannel`),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it.each([
+    [
+      "gated",
+      "signIn: gated\nlabel: Sonarr",
+      exposureOf("public", "authenticated"),
+    ],
+    ["token", "signIn: token", exposureOf("api", "internal")],
+  ])(
+    "refuses a back-channel logout path on a %s Client, which has no session of its own to end",
+    (mode, client, exposure) => {
+      expect(
+        explained(
+          grafana(`${client}\nbackChannelLogoutPath: /logout`, exposure),
+        ),
+      ).toStrictEqual([
+        {
+          code: "E_CLIENT_FIELD_FOR_MODE",
+          path: `${AT}/backChannelLogoutPath`,
+          message: `a ${mode} Client takes no backChannelLogoutPath`,
+          hint: FIELD_HINT,
+        },
+      ]);
+    },
+  );
+
   it("refuses a gated Client with no label to show on its tile", () => {
     expect(
       explained(grafana("signIn: gated\ndescription: TV")).map(
