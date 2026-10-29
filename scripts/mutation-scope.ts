@@ -1,12 +1,12 @@
-// Whether a pull request changes anything the mutation gate reads.
+// Whether a push to main changes anything the mutation gate reads.
 //
-// A release pull request changes CHANGELOG.md, the release manifest and the
-// version in package.json and package-lock.json; a docs pull request changes
-// documents. Neither changes a module, a test, or anything that decides how
-// they run, so the gate's result is main's, and running it again only holds
-// the merge. The `mutation-scope` job in .github/workflows/ci.yml asks this
-// before any shard starts, and only for a pull request: a push to main always
-// runs, since its report is the next pull request's baseline.
+// A release changes CHANGELOG.md, the release manifest and the version in
+// package.json and package-lock.json; a docs change changes documents.
+// Neither changes a module, a test, or anything that decides how they run, so
+// the last report stands, and running it again only spends the minutes. The
+// `mutation-scope` job in .github/workflows/ci.yml asks this before any shard
+// starts, and only for a push to main: a pull request runs no mutation, and
+// the nightly run always runs.
 //
 // A library first: tests call reaches() and run() in-process. The command is
 // `node scripts/mutation-scope.ts <base>`, which compares <base> with HEAD and

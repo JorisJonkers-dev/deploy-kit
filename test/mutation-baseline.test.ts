@@ -1,4 +1,4 @@
-// REQ-022 (docs/requirements.md): a pull request re-tests a mutant when the
+// REQ-022 (docs/requirements.md): a push to main re-tests a mutant when the
 // test that killed it changed, not when another test in its file did.
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
