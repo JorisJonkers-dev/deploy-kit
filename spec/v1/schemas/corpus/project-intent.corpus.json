@@ -462,7 +462,7 @@
       "patch": [
         {
           "op": "replace",
-          "path": "/applications/3/processes/0/replicas/across",
+          "path": "/applications/2/processes/0/replicas/across",
           "value": "zone"
         }
       ]

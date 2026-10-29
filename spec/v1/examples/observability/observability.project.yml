@@ -122,8 +122,7 @@ applications:
               objects: [jobs, cronjobs]
               verbs: [list, watch]
 
-  # The operator that hands the Grafana the identity project declares every
-  # Application's dashboards.
+  # The operator that hands the Grafana below every Application's dashboards.
   - id: grafana-operator
     processes:
       - name: grafana-operator
@@ -151,6 +150,44 @@ applications:
             - group: core
               objects: [configmaps, secrets]
               verbs: [get, list, watch]
+
+  # Grafana signs people in itself, as a native Client of the identity
+  # project's provider, holding a secret (spec/v1/17-sign-in.md). Every path
+  # is on the exposure's host, which is authored once, there. The env file
+  # reads the credential through ${client:secret}, which derives the Process's
+  # read grant on the path the provider writes.
+  - id: grafana
+    exposure:
+      - name: public
+        host: grafana.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: grafana, surface: http }
+    client:
+      signIn: native
+      label: Grafana
+      description: Metrics and dashboards
+      iconPath: /public/img/grafana_icon.svg
+      redirectPaths: [/login/generic_oauth]
+      protectedPath: /api/user
+      credential: secret
+      roles: [viewer, editor, admin]
+    processes:
+      - name: grafana
+        lifecycle: application
+        image: grafana
+        runtime: none
+        provides:
+          http: 3000
+        placement:
+          memory: 256Mi
+          cpu: 50m
+        writablePaths: [/var/lib/grafana]
+        probes:
+          readiness: { path: /api/health, port: 3000 }
+        startupBudget: 30s
+        cutover: continuous
+
   # The loki store, which keeps what it is sent on a claim of its own.
   - id: loki
     processes:

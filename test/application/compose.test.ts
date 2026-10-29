@@ -76,6 +76,12 @@ const LEDGER = `handover:
 const REPORTER = "  reporter: delivery/reporter\n";
 /** The worked Platform document's sign-in provider, which no Project here declares. */
 const SIGN_IN = /\nsignIn:\n(?: {2}.*\n)+/;
+/**
+ * An Application's Client. The worked observability project's Grafana signs in
+ * through a provider no Project composed here declares, so its Client is left
+ * out with the Platform document's sign-in.
+ */
+const CLIENT = /\n {4}client:\n(?: {6}.*\n)+/;
 /** The worked Platform document's Human Grants, which every render holds. */
 const HUMAN_GRANTS = /\nhumanGrants:\n(?: {2}.*\n)+/;
 /** The worked Platform document's priority classes, which every render holds. */
@@ -103,7 +109,7 @@ function release(
     readonly string[],
   ];
   const files = names.map((name, index) => {
-    const body = text(`${directory}/${name}`);
+    const body = text(`${directory}/${name}`).replace(CLIENT, "\n");
     return { name, text: index === 0 ? edit(body) : body };
   });
   return {
@@ -148,7 +154,7 @@ const PLATFORM: Fragment = {
       // Without a Reporter or a Human Grant, so the estate-scoped artifact
       // holds what each test below gives it; their own tests name them again.
       // Without a sign-in provider, since no Project composed here declares a
-      // Client.
+      // Client (CLIENT).
       text: withLedger(
         text("platform/platform.intent.yml")
           .replace(REPORTER, "")
@@ -1187,6 +1193,7 @@ describe("composeEstate, for a Retry", () => {
         "otel-collector",
         "prometheus",
         "kube-state-metrics",
+        "grafana",
         "alloy",
         "alertmanager",
       ].map((name) => ({

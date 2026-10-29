@@ -46,7 +46,7 @@ const MINIMAL_SET = [
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
   "mail/mail.project.yml",
-  "identity/env/grafana/base.env",
+  "observability/env/grafana/base.env",
 ];
 
 /** The set, with `edit` applied to the file named `name`. */
@@ -495,18 +495,25 @@ describe("resolveIntentSet", () => {
     },
   );
 
-  // spec/v1/17-sign-in.md: the sign-in provider and the three Clients beside
-  // it, one per way chapter 17 works through, each to its committed projection.
-  it.each(["identity", "grafana", "portal", "whoami"])(
-    "resolves identity's %s to its committed projection, byte for byte",
-    (id) => {
+  // spec/v1/17-sign-in.md: the sign-in provider and the Clients of the three
+  // ways chapter 17 works through, each to its committed projection: portal
+  // and whoami beside the provider, and grafana, the native Client holding a
+  // secret, in the observability project.
+  it.each([
+    ["identity", "identity"],
+    ["identity", "portal"],
+    ["identity", "whoami"],
+    ["observability", "grafana"],
+  ])(
+    "resolves %s's %s to its committed projection, byte for byte",
+    (name, id) => {
       expect(
         canonicalJson(
-          project(resolved(), "identity").applications.find(
+          project(resolved(), name).applications.find(
             (application) => application.id === id,
           ),
         ),
-      ).toBe(text(`identity/expected/resolved.${id}.json`));
+      ).toBe(text(`${name}/expected/resolved.${id}.json`));
     },
   );
 

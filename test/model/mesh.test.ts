@@ -39,7 +39,7 @@ const SET = [
   "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
   "identity/identity.project.yml",
-  "identity/env/grafana/base.env",
+  "observability/env/grafana/base.env",
   "data/data.project.yml",
   "data/env/postgres/base.env",
   "data/config/postgresql.conf",

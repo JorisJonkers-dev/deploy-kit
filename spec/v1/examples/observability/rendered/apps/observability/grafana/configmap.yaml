@@ -4,7 +4,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana-release-gate
-  namespace: identity-system
+  namespace: observability-system
   labels:
     app.kubernetes.io/part-of: grafana
     app.kubernetes.io/managed-by: deploy-kit

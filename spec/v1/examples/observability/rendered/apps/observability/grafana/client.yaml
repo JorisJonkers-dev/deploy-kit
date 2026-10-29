@@ -15,7 +15,7 @@ spec:
   redirectUris:
     - https://grafana.jorisjonkers.dev/login/generic_oauth
   credential: secret
-  secretPath: secret/data/identity-system/grafana/client
+  secretPath: secret/data/observability-system/grafana/client
   roles:
     - user
     - viewer

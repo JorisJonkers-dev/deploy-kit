@@ -4,7 +4,7 @@ apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: grafana-public
-  namespace: identity-system
+  namespace: observability-system
   labels:
     app.kubernetes.io/part-of: grafana
     app.kubernetes.io/managed-by: deploy-kit
@@ -24,7 +24,7 @@ spec:
           namespace: edge-system
       services:
         - name: grafana
-          namespace: identity-system
+          namespace: observability-system
           port: 3000
   tls:
     certResolver: public-frankfurt

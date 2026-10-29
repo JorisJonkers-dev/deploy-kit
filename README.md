@@ -126,7 +126,7 @@ node src/cli/index.ts compose --fragments fragments/ --participants participants
 # Write an Application's App Roles, Client id and Principal contract version in its
 # language, from its project file and the Platform document; --check fails a stale file.
 node src/cli/index.ts generate identity spec/v1/examples/platform/platform.intent.yml \
-  spec/v1/examples/identity/identity.project.yml --application grafana --lang go \
+  spec/v1/examples/observability/observability.project.yml --application grafana --lang go \
   [--package <name>] [--out identity.go [--check]]
 ```
 

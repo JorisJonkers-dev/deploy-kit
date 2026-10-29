@@ -47,6 +47,15 @@ const EXAMPLES = join(
 const text = (path: string): string =>
   readFileSync(join(EXAMPLES, path), "utf8");
 
+/** The observability project, whose Grafana is a Client of the sign-in provider. */
+const OBSERVABILITY = "observability/observability.project.yml";
+/** An Application's client block, which only a set that composes the provider holds. */
+const CLIENT_BLOCK = /\n {4}client:\n(?: {6}.*\n)+/;
+/** The observability project with no Client, for a set that signs nobody in. */
+const unsigned = (project: string): string =>
+  project.replace(CLIENT_BLOCK, "\n");
+
+/** The foundation, its Grafana without the Client a set without sign-in cannot hold. */
 const FOUNDATION = [
   "platform/node-contract.yml",
   "platform/images.lock.yml",
@@ -55,15 +64,22 @@ const FOUNDATION = [
   "agents/agents.project.yml",
   "utility/utility.project.yml",
   "edge/edge.project.yml",
-  "observability/observability.project.yml",
+  OBSERVABILITY,
   "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
-].map((name): AuthoredFile => ({ name, text: text(name) }));
+].map((name): AuthoredFile => ({
+  name,
+  text: name === OBSERVABILITY ? unsigned(text(name)) : text(name),
+}));
 
-/** The sign-in provider's project, which a set composes only where it signs people in. */
+/**
+ * The sign-in provider's project, which a set composes only where it signs
+ * people in, and the observability project whole, its Grafana a Client again.
+ */
 const IDENTITY = [
   "identity/identity.project.yml",
-  "identity/env/grafana/base.env",
+  OBSERVABILITY,
+  "observability/env/grafana/base.env",
 ].map((name): AuthoredFile => ({ name, text: text(name) }));
 
 /** The worked Platform document's sign-in, which names the provider IDENTITY declares. */
@@ -150,7 +166,9 @@ function resolve(applications: string, options: Options = {}) {
           options.signIn === true ? SIGNING_IN : PLATFORM,
         ),
       },
-      ...FOUNDATION.map((file) =>
+      ...FOUNDATION.filter(
+        ({ name }) => options.signIn !== true || name !== OBSERVABILITY,
+      ).map((file) =>
         file.name === "platform/images.lock.yml" && options.lock !== undefined
           ? { ...file, text: options.lock(file.text) }
           : file.name === "platform/node-contract.yml" &&
@@ -1609,19 +1627,19 @@ roles: [writer, admin]`;
 
       expect(process?.secrets).toStrictEqual([
         {
+          client: "notes",
+          delivery: "self",
+          paths: [{ path: SECRET_PATH, allows: ["create", "read", "update"] }],
+        },
+        {
           client: "grafana",
           delivery: "self",
           paths: [
             {
-              path: "secret/data/identity-system/grafana/client",
+              path: "secret/data/observability-system/grafana/client",
               allows: ["create", "read", "update"],
             },
           ],
-        },
-        {
-          client: "notes",
-          delivery: "self",
-          paths: [{ path: SECRET_PATH, allows: ["create", "read", "update"] }],
         },
       ]);
       expect(process?.identityToken).toBe(true);
@@ -1657,7 +1675,7 @@ ${serving("alpha-api")}`;
       identity?.processes[0]?.secrets?.map((grant) =>
         "client" in grant ? grant.client : undefined,
       ),
-    ).toStrictEqual(["grafana", "alpha", "notes"]);
+    ).toStrictEqual(["alpha", "notes", "grafana"]);
   });
 
   describe("the Release Gate's anonymous check", () => {
@@ -2663,9 +2681,7 @@ describe("the profiles that inject, and the collector they are handed", () => {
   });
 
   it("finds the collector's otlp surface on whichever of its Processes provides it", () => {
-    const observability = text(
-      "observability/observability.project.yml",
-    ).replace(
+    const observability = unsigned(text(OBSERVABILITY)).replace(
       "    processes:\n",
       "    processes:\n      - name: otel-sidekick\n        lifecycle: job\n        image: otel-collector\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        startupBudget: 20s\n        cutover: interrupted\n",
     );
@@ -5308,6 +5324,11 @@ describe("a tier's proxy, read from the set", () => {
       edgeProcesses({
         platform: (platform) =>
           platform.replace(/\n {4}ingressClass: traefik-public[^\n]*/, ""),
+        // Grafana's exposure is on that tier, and no proxy would admit it.
+        foundation: (name, text) =>
+          name === OBSERVABILITY
+            ? text.replace(/\n {4}exposure:\n(?: {6}.*\n)+/, "\n")
+            : text,
       }),
     ).toStrictEqual([["traefik-public", false]]);
   });

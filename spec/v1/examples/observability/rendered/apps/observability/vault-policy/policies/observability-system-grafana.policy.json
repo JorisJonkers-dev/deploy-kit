@@ -1,11 +1,11 @@
 {
   "path": {
-    "secret/data/identity-system/grafana/client": {
+    "secret/data/observability-system/grafana/client": {
       "capabilities": [
         "read"
       ]
     },
-    "secret/metadata/identity-system/grafana/client": {
+    "secret/metadata/observability-system/grafana/client": {
       "capabilities": [
         "read"
       ]
