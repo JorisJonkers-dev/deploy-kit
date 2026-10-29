@@ -292,7 +292,7 @@ CI builds it but never runs it.
 
 ## Transformation
 
-Three QVT-Operational transformations, all run through the standalone
+Two QVT-Operational transformations, both run through the standalone
 transformation executor.
 
 **The lowering** comes first and stays inside layer 1: Shared Intent declared at
@@ -393,13 +393,20 @@ match the oracle, not presentation.
 Deployment's `deliverables` and opens one file per Deliverable at the path the
 path plan assigned it, and each Deliverable kind has one template that spells
 its target format: YAML under the one header line, or for a Vault document JSON,
-which carries no comment. Several Deployments render together, which is how the
-estate-scoped share is written: a tier's index lists every route each Deployment
-puts under it, so each writes the same whole file. An Asset's content is a block
-scalar, kept as written, its last line break chomped the way the production
-serializer chooses. The templates decide nothing: every value they
-write is a feature of the model, and the only arithmetic they do is spelling,
-a duration as whole seconds and a precedence as a Traefik priority.
+which carries no comment. A YAML kind's template is chosen by the Deliverable's
+type, so a kind with no template fails the rendering rather than writing a file
+that holds only the header. An Asset's content is a block scalar, kept as
+written, its last line break chomped the way the production serializer chooses.
+
+The templates decide nothing: every value they write is a feature of the model,
+and the only arithmetic they do is spelling, a duration as whole seconds and a
+precedence as a Traefik priority. What a template once chose is derived by the
+resolution instead: the name and namespace of the Middleware a route names
+(`MiddlewareStep.name`, `.namespace`), the Deployment that serves between
+releases and the label its pods are selected by (`ResolvedProcess.serving`,
+`.servingLabel`), and what a Vault policy allows at each path
+(`VaultPolicyFile.paths`, `ResolvedCatalogJob.policy`). A query in the module
+only selects or reaches what the model holds.
 
 Acceleo 4 strips two spaces of margin from every line of a block's body, and a
 call written at a column repeats that column's text before every line the call
@@ -409,14 +416,17 @@ one template written unindented, and each caller places it at its own depth.
 A list item is a fragment that opens on its own `- `, because the repeated text
 is copied literally and a `- ` before the call would open every line as an item.
 
-A string value is written plain unless the YAML 1.2 core schema would read it
-as null, a boolean, an integer or a float, in which case it is double-quoted,
-as the production implementation's serializer quotes it. That serializer also
+A string value is written plain unless a YAML 1.1 reader would read it as null,
+a boolean, an integer, a float or a timestamp, in which case it is
+double-quoted, as the production implementation's serializer, which writes YAML
+1.1, quotes it: the Kubernetes API reads YAML through `sigs.k8s.io/yaml`, a YAML
+1.1 reader, where `on`, `yes` and `0755` are not strings. That serializer also
 quotes a string for an indicator character or an embedded `: `, which no value
 the examples render carries yet, so the templates do not spell that case. The Java
-side, `Rendering`, only loads the module, runs it, and fails the run with
-Acceleo's own diagnostic when a template does not parse or does not evaluate, so
-a half-written tree is never read as a whole one.
+side, `Rendering`, only loads the module and runs it. It writes beside the root
+and moves the files under it once every one is written, and fails the run with
+Acceleo's own diagnostic when a template does not parse or does not evaluate,
+leaving the root as it was, so a half-written tree is never read as a whole one.
 
 ## Parity
 
