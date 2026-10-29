@@ -7,6 +7,13 @@
       "matchManagers": ["maven", "maven-wrapper"],
       "matchFileNames": ["emf/**"],
       "groupName": "emf maven"
+    },
+    {
+      "description": "Tycho 5.0.4 cannot collect its p2 dependencies under Maven 3.10.0 (Invalid Collect Request: null), so the wrapper under emf/ stays on 3.9.",
+      "matchManagers": ["maven-wrapper"],
+      "matchFileNames": ["emf/**"],
+      "matchPackageNames": ["org.apache.maven:apache-maven"],
+      "allowedVersions": "<3.10"
     }
   ]
 }
