@@ -440,6 +440,7 @@ plus per-Process identity ([0031](../../docs/adr/model/0031-identity-per-process
 | `owner` | file header | yes | Who is notified. Not shared and not inherited: it is the project's, and an Application needing a different owner needs its own project. |
 | the eight Shared Intent families | file header | no | `secrets`, `env`, `dependsOn`, `assets`, `writablePaths`, `placement`, `cutover`, `startupBudget`, each held by every Process in the file ([Shared intent](#shared-intent)). `memory` and `cpu` are refused here: `E_SHARED_QUANTITY`. |
 | `id` | Application | yes | The one referencable identity, estate-unique. The repository or product name. |
+| `description` | Application | no | What the Application does, in one plain sentence of at most 160 characters. It derives and renders nothing ([Describing an Application and a Process](#describing-an-application-and-a-process)). |
 | `observability` | Application | no | `{scrape {process, surface, path}}`, or absent. Absent means no monitoring is rendered ([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)). Never raised to the project. See [Observability](#observability). |
 | `processes` | Application | yes | One or more. They switch together. |
 | the eight Shared Intent families | Application | no | The same eight, held by every Process of this Application ([Shared intent](#shared-intent)). The level a family is written at is an author's choice about where the fact belongs, never about what it means. |
@@ -460,6 +461,23 @@ name alone, and the Vault role is the namespace and that name:
 derived in chapter 16). Two Applications in one file therefore cannot both call a
 Process `api`: that is `E_DUPLICATE_PROCESS_NAME` at composition (chapter 40),
 raised where a reader can see both declarations at once.
+
+### Describing an Application and a Process
+
+An Application and each of its Processes may carry a `description`: what it
+does, in one plain sentence, for a reader who sees only its name. `collector`
+and `reporter` say what a Process is called. They do not say what it does. The
+sentence is at most 160 characters, and an empty one is refused too. Both are
+schema refusals at the value ([What a schema refusal reports](#what-a-schema-refusal-reports)).
+
+A description is never shared: like `id` and `name`, it belongs to the one
+element it describes, so the project file header carries none and no Process
+inherits its Application's. It derives nothing and renders nothing: the
+rendered objects are byte for byte the same with every description removed. It
+reaches its readers in the project file itself, which the Intent Fragment
+carries unchanged ([chapter 40](40-composition.md#fragments)), and the estate
+dashboard shows it from there
+([0125](../../docs/adr/model/0125-an-application-and-a-process-describe-themselves-in-one-sentence.md)).
 
 No field can move an Application out of its project's namespace, so the old question of
 whether an Application may name a namespace some other applier owns has lost its
@@ -612,6 +630,9 @@ happens to expose.
 `name` is the process's own name, unique within the project file. It is not a
 derivative of the Application id, and it is what the Process's ServiceAccount and
 Vault role are called (chapter 16).
+
+`description` is optional: one plain sentence saying what the Process does
+([Describing an Application and a Process](#describing-an-application-and-a-process)).
 
 `image` is an alias resolved to a digest through the images lock, never a tag,
 never a digest here.

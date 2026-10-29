@@ -593,6 +593,45 @@
           }
         }
       ]
+    },
+    {
+      "name": "an Application description longer than one short sentence",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/knowledge/knowledge.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/description",
+          "value": "Collects every note dropped into the vault, splits each one into passages, embeds every passage, and writes the passages with their embeddings to the database, so search can find them."
+        }
+      ]
+    },
+    {
+      "name": "a Process description longer than one short sentence",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/knowledge/knowledge.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/processes/0/description",
+          "value": "Collects every note dropped into the vault, splits each one into passages, embeds every passage, and writes the passages with their embeddings to the database, so search can find them."
+        }
+      ]
+    },
+    {
+      "name": "an empty Process description",
+      "verdict": "refuse",
+      "breaks": "rule",
+      "file": "examples/knowledge/knowledge.project.yml",
+      "patch": [
+        {
+          "op": "replace",
+          "path": "/applications/1/processes/0/description",
+          "value": ""
+        }
+      ]
     }
   ]
 }

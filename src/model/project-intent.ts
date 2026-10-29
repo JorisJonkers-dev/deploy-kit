@@ -396,9 +396,17 @@ const spawnTemplate = z
   })
   .meta({ id: "SpawnTemplate" });
 
+// What an Application or a Process does, in one plain sentence a reader sees
+// beside its name (spec/v1/10-project-intent.md#describing-an-application-and-a-process).
+// It derives nothing, and the bound keeps it a sentence rather than a page.
+/** The longest description: one short sentence, not a paragraph. */
+export const DESCRIPTION_LENGTH = 160;
+const description = text.max(DESCRIPTION_LENGTH);
+
 const process = z
   .strictObject({
     name: text,
+    description: description.exactOptional(),
     lifecycle: lifecycle,
     schedule: schedule.exactOptional(),
     parked: parked.exactOptional(),
@@ -524,6 +532,7 @@ const alertRules = z.strictObject({ from: text }).meta({ id: "AlertRules" });
 const application = z
   .strictObject({
     id: text,
+    description: description.exactOptional(),
     observability: observability.exactOptional(),
     dashboards: z.array(dashboard).min(1).exactOptional(),
     alertRules: z.array(alertRules).min(1).exactOptional(),
