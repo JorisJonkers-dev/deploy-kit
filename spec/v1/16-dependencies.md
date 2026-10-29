@@ -1143,17 +1143,21 @@ an ADR.
 ### What a dependency edge derives
 
 ```mermaid
-flowchart LR
-    E["dependsOn<br/>{application, surface, required}"]
+flowchart TB
+    E["dependsOn, on knowledge-api<br/>{application: platform-postgres, surface: postgres, required}"]
 
-    E --> O1["Reconcile Unit ordering<br/>apps-knowledge after apps-data"]
-    E --> O2["dependency coordinates<br/>${dependency:platform-postgres.host}"]
-    E --> O3["NetworkPolicy egress<br/>allow postgres:5432"]
+    E --> O1["ordering<br/>another Project: its Reconcile Unit after the provider's;<br/>its own: the Release Gate"]
+    E --> O2["dependency coordinates<br/>${dependency:platform-postgres.host}<br/>the name the consumer dials"]
+    E --> O3["the alias (kubernetes)<br/>ExternalName platform-postgres<br/>in the consumer's namespace"]
+    E --> O4["NetworkPolicy egress (networking)<br/>to the provider's pods on postgres:5432"]
+    E --> O5["the consumer label (kubernetes)<br/>on the consumer's pods"]
 
     E -.->|"required: false"| N1["allow rule only,<br/>orders nothing"]
 
-    O3 --> B["+ baseline<br/>UDP/53 to cluster DNS"]
+    O3 -->|"externalName"| SA["Stable Address, estate-scoped<br/>platform-postgres-postgres.estate-system<br/>naming the active Instance"]
+    O4 --> B["+ baseline<br/>UDP/53 to cluster DNS"]
     B -.->|"only when the edge set is complete"| D["default-deny posture"]
+    O5 -.-> PI["the provider's own ingress<br/>admits every pod carrying the label"]
 ```
 
 ### The derivation map
