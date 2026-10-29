@@ -16,13 +16,6 @@
         "provenance": {
           "$ref": "#/$defs/Provenance"
         },
-        "pathPlan": {
-          "minItems": 1,
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/PathAssignment"
-          }
-        },
         "reconcileUnits": {
           "minItems": 1,
           "type": "array",
@@ -55,7 +48,6 @@
         "apiVersion",
         "kind",
         "provenance",
-        "pathPlan",
         "reconcileUnits",
         "applications"
       ],
@@ -117,46 +109,6 @@
         "node-contract",
         "images-lock",
         "cluster-state"
-      ]
-    },
-    "PathAssignment": {
-      "type": "object",
-      "properties": {
-        "path": {
-          "type": "string",
-          "minLength": 1
-        },
-        "adapter": {
-          "$ref": "#/$defs/AdapterName"
-        },
-        "scope": {
-          "$ref": "#/$defs/PathScope"
-        }
-      },
-      "required": [
-        "path",
-        "adapter",
-        "scope"
-      ],
-      "additionalProperties": false
-    },
-    "AdapterName": {
-      "type": "string",
-      "enum": [
-        "kubernetes",
-        "networking",
-        "prometheus",
-        "traefik",
-        "vault-policy",
-        "vso"
-      ]
-    },
-    "PathScope": {
-      "type": "string",
-      "enum": [
-        "estate",
-        "project",
-        "application"
       ]
     },
     "ReconcileUnit": {

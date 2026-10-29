@@ -11,7 +11,7 @@ rests-on: ["0003"]
 
 A project repository validates its project file and pushes it as an Intent
 Fragment by digest. It renders nothing. Every derivation runs once, in one
-central run over the composed union, through the six registered adapters
+central run over the composed union, through the seven registered adapters
 ([0037](0037-six-registered-adapters-satisfy-one-port.md)). What used to be
 estate-scoped catalogs are no longer separate outputs: the Gatus endpoints are
 each Application's own external checks, rendered in its Project's share, and
@@ -83,7 +83,7 @@ publish only Intent Fragments and the central run is the only render.
 
 ## Consequences
 
-- The adapter set is six, every one central over the composed union.
+- The adapter set is seven, every one central over the composed union.
 - `renderHash` covers exactly the pinned inputs and the schema package.
 - A project repository's publish workflow shrinks to validate and push.
 - The Jellyfin LAN-only path is a property of the Platform document's tiers, one

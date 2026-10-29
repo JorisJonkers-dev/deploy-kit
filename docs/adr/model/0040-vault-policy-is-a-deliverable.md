@@ -82,7 +82,7 @@ then gone and reverting means reconstructing privilege from the store's own
 state.
 
 ## Consequences
-- The `vault-policy` adapter is one of the six registered adapters
+- The `vault-policy` adapter is one of the seven registered adapters
   ([0037](0037-six-registered-adapters-satisfy-one-port.md)).
 - The rendered tree now contains documents no Kubernetes applier can consume, so
   a reader must know that `…/policies` is Vault input, paid in one directory

@@ -1803,7 +1803,7 @@ describe("what the render assembly and the shared helpers refuse", () => {
         code: "E_PATH_COLLISION",
         path: "",
         message: "apps/a/x.yaml is claimed by kubernetes and networking",
-        hint: "Every path has one owner: the plan assigns each adapter's paths from its default path.",
+        hint: "Every path has one owner: an adapter writes only below the directories the shared path helpers give it.",
       },
     ]);
   });

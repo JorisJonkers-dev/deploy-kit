@@ -336,10 +336,10 @@ through, with the deciding ADR named.
    found unrendered now has a decision, and the three items that travelled with
    this one are gone: the duplicated adapter pairs are deleted
    ([0047](../../docs/adr/model/0047-one-publication-path.md)),
-   `E_PATH_COLLISION` is a check on the path plan
-   ([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md)) awaiting a
-   compiler, and Grafana's 45 authored objects become Assets of the declared
-   observability Applications ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)).
+   `E_PATH_COLLISION` is a check over the whole Deliverable set
+   ([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md)), and
+   Grafana's 45 authored objects become Assets of the declared observability
+   Applications ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)).
    What remains is the number, which is [chapter 30](30-deliverables.md#open-in-this-chapter)'s
    one open item and is owned there.
    - **Owner:** joris.
@@ -479,7 +479,7 @@ flowchart TB
     PAR["participants.yml<br/>every expected publisher, maxAge 7d"] --> CO
     CO --> CI["ComposedIntent<br/>+ CompositionLock"]
 
-    CI --> RES["layer 2, Resolved Deployment<br/>every platform assignment, the path plan,<br/>the release gate's inputs, the capacity exception,<br/>a function of the pinned inputs alone"]
+    CI --> RES["layer 2, Resolved Deployment<br/>every platform assignment, the Reconcile Units,<br/>the release gate's inputs, the capacity exception,<br/>a function of the pinned inputs alone"]
     NC["node contract, by digest<br/>generated from Infrastructure Intent"] --> RES
     CS["ClusterState snapshot<br/>clusterStateDigest"] --> RES
     IL["images lock<br/>digests, uid, gid, never tags"] --> RES

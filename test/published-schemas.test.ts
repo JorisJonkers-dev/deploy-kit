@@ -137,7 +137,6 @@ describe("the published JSON Schemas", () => {
       "apiVersion",
       "kind",
       "provenance",
-      "pathPlan",
       "reconcileUnits",
       "applications",
     ]);

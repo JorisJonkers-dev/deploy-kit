@@ -183,7 +183,7 @@ TREES = {"10-project-intent": {
     # cross-link on the drawing joins two neighbours: the migration, whose
     # database sits a layer down, comes before the gate and not between them.
     "ResolvedDeployment": [
-        "Provenance", "PathAssignment", "ReconcileUnit", "ResolvedPolicyJob",
+        "Provenance", "ReconcileUnit", "ResolvedPolicyJob",
         "ResolvedCatalogJob", "ResolvedEvents",
         "ResolvedApplication",
     ],
@@ -193,8 +193,8 @@ TREES = {"10-project-intent": {
     "ResolvedCatalog": ["CatalogAdmin", "CatalogDatabase"],
     "ResolvedApplication": [
         "ResolvedDashboards", "ResolvedAlertRules", "ResolvedAlerting", "ResolvedClient",
-        "ResolvedMesh", "ResolvedMigration", "ReleaseGate", "ResolvedScrape", "ResolvedProcess",
-        "ResolvedExposure",
+        "ResolvedMesh", "ResolvedMigration", "ReleaseGate", "ResolvedScrape", "ResolvedFluxScrape",
+        "ResolvedProcess", "ResolvedExposure",
     ],
     "ReleaseGate": ["GateMigration", "GateAnalysis", "GateMember"],
     "GateMember": ["GateProvider"],
@@ -207,7 +207,7 @@ TREES = {"10-project-intent": {
         "WritablePath", "EnvEntry", "ResolvedSurface", "IngressPeer",
         "EgressPeer", "InternetEgress", "GateMembersPeer", "ResolvedClientGrant",
         "ResolvedSpawn", "ResolvedMove", "ResolvedPoolExposure", "ResolvedNodeExposure",
-        "ResolvedEdgeProxy",
+        "ResolvedEdgeProxy", "ResolvedSeeder",
     ],
     "ResolvedDashboards": ["ResolvedDashboard"],
     "ResolvedAlerting": ["ResolvedReceiver", "ResolvedSeverityRoute"],
@@ -286,7 +286,7 @@ REPORT_LAYOUTS = {"10-project-intent": {
     "gaps": {},
 }, "20-resolved-deployment": {
     "columns": {
-        "ResolvedDeployment": [["Provenance", "PathAssignment", "ReconcileUnit",
+        "ResolvedDeployment": [["Provenance", "ReconcileUnit",
                                 "ResolvedPolicyJob", "ResolvedEvents"],
                                ["ResolvedApplication"]],
         "Provenance": [["InputDigest"]],

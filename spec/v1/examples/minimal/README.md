@@ -21,7 +21,7 @@ written by anyone:
 
 | authored | derived | rendered |
 |---|---|---|
-| `project: notes` | namespace `notes-system`, the Reconcile Unit, the path plan | `Namespace`, both `kustomization.yaml` |
+| `project: notes` | namespace `notes-system`, the Reconcile Unit, the Project's directory | `Namespace`, both `kustomization.yaml` |
 | `id`, process `name`, `runtime` | the fixed label set ([0039](../../../../docs/adr/model/0039-the-label-set-is-fixed.md)) | every object's labels, and the `Deployment` selector |
 | `image: notes-api` | the digest, `runAsUser`, `runAsGroup` from the images lock ([0020](../../../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) | the container image and `securityContext` |
 | `placement` | requests and limits: memory request equals limit, cpu request with no limit | `resources` |

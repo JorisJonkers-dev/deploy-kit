@@ -574,7 +574,6 @@ describe("the metamodel names every class the chapter draws", () => {
 
     expect(extra).toStrictEqual([
       "AccessTier",
-      "AdapterName",
       "AnalysisCheck",
       "ApiScope",
       "ApiVerb",
@@ -597,7 +596,6 @@ describe("the metamodel names every class the chapter draws", () => {
       "MiddlewareKind",
       "MoveStep",
       "MoveTrigger",
-      "PathScope",
       "PinnedInput",
       "ResolvedHttpProbe",
       "ResolvedTcpProbe",
@@ -682,7 +680,7 @@ describe("the metamodel refuses", () => {
 });
 
 describe("the estate-wide document", () => {
-  /** Two applications, two units and two path assignments: the shape of an estate. */
+  /** Two applications and two units: the shape of an estate. */
   function estate(): unknown {
     const {
       apiVersion: _a,
@@ -694,14 +692,6 @@ describe("the estate-wide document", () => {
       apiVersion: "resolved.jorisjonkers.dev/v1",
       kind: "ResolvedDeployment",
       provenance,
-      pathPlan: [
-        {
-          path: "apps/knowledge/workload.yaml",
-          adapter: "kubernetes",
-          scope: "application",
-        },
-        { path: "namespace.yaml", adapter: "kubernetes", scope: "project" },
-      ],
       reconcileUnits: [
         { name: "apps-core" },
         { name: "apps-knowledge", after: ["apps-core"] },
@@ -710,14 +700,14 @@ describe("the estate-wide document", () => {
     };
   }
 
-  it("holds more than one application, unit and path", () => {
+  it("holds more than one application and unit", () => {
     const result = resolvedDeployment.safeParse(estate());
 
     expect(result.error?.issues ?? []).toStrictEqual([]);
   });
 
   it("holds at least one of each", () => {
-    for (const empty of ["pathPlan", "reconcileUnits", "applications"]) {
+    for (const empty of ["reconcileUnits", "applications"]) {
       const document = estate() as Record<string, unknown>;
       document[empty] = [];
 

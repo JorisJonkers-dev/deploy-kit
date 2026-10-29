@@ -265,16 +265,18 @@ never deleted**: pruning is the applier's, in delivery
 
 ## Path authority
 
-Layer 2 assigns every output path. Each object reaching layer 3 already carries
-its owning adapter and its destination, and an adapter serializes what it is
-handed rather than deciding where its output lands.
+An adapter writes its own paths, from the Project and the Application the
+projection names, and spells every root through the one set of directory
+helpers in `src/adapters/shared/paths.ts`: an Application's directory, a
+Project's, and `estate/`. No adapter spells a root of its own.
 
 This is a model rule, so it is normative in
-[chapter 20](../spec/v1/20-resolved-deployment.md#the-path-plan) and decided in
+[chapter 30](../spec/v1/30-deliverables.md#path-allocation) and decided in
 [0036](adr/model/0036-path-authority-is-layer-2.md), not here. The consequence
 for code is the part that belongs in this document: path collision is detected
-when the plan is built, before any adapter runs, and an adapter has no API with
-which to choose a path.
+on the assembled Deliverable set, once every adapter has run and before
+anything is written, and the port stamps each Deliverable with the adapter
+that returned it.
 
 ## Testing
 

@@ -9,11 +9,11 @@ rests-on: ["0003"]
 
 # The registry is the enumeration of adapters, every adapter satisfies one typed port, and every Deliverable is attributed to exactly one adapter
 
-The set is six central adapters (`kubernetes`, `networking`, `prometheus`,
-`traefik`, `vault-policy`, `vso`), enumerated in
+The set is seven central adapters (`kubernetes`, `networking`, `prometheus`,
+`grafana`, `traefik`, `vso`, `vault-policy`), enumerated in
 [chapter 30](../../../spec/v1/30-deliverables.md#adapters). Nothing renders that
 is not registered, and changing the set is a decision of its own. Every adapter
-satisfies one typed port: the Resolved Deployment and its planned paths in,
+satisfies one typed port: the Resolved Deployment in,
 attributed Deliverables out, deterministic, with no ambient read
 ([chapter 30](../../../spec/v1/30-deliverables.md#the-adapter-port)). Every
 Deliverable is produced by exactly one adapter, and a path claimed twice is
@@ -27,7 +27,7 @@ serializes what layer 2 decided, so one input shape serves every adapter, and
 
 **False if:** an adapter needs a value that reaches it only through a second
 input shape or an ambient read, or a rendered file lands at a path no adapter
-was handed. **Settled by:** the adapter contract suite run once for every
+wrote. **Settled by:** the adapter contract suite run once for every
 registered adapter, and the rendered-tree golden diff, in which every file is
 attributed to one adapter.
 
@@ -49,9 +49,10 @@ adapter is central ([0047](0047-one-publication-path.md)).
 
 **Attribution is what makes a diff readable.** It lets a diff say which
 subsystem produced a file, and lets a Project's handover diff ask who produced
-an object. Deriving it from what the path plan
-handed each adapter ([0036](0036-path-authority-is-layer-2.md)) means it is a
-query, not a second registry.
+an object. Reading it off the Deliverables the port returns, each stamped
+with the adapter that wrote its path
+([0036](0036-path-authority-is-layer-2.md)), means it is a query, not a
+second registry.
 
 **No target-neutral IR.** A neutral deliverable format with one consumer would
 be shaped entirely by Kubernetes and wrong for the second target the day it
@@ -78,5 +79,5 @@ the port, because narrowing a published port is a major release.
   whoever proposes it.
 - Every adapter is tested once through the same contract suite, paid by the
   suite's author once.
-- A kind owned by two adapters is impossible by construction, so a collision
-  appears at path planning, before any adapter runs.
+- A path owned by two adapters is refused on the assembled Deliverable set,
+  once every adapter has run and before anything is written.

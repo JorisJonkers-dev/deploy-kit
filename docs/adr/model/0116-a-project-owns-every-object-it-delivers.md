@@ -143,7 +143,7 @@ path and which unit applies it. Nothing is authored that can be derived.
 ## Reversibility
 
 Moderate. Each object moves in its own slice, and each slice can be reverted
-alone: a path in the path plan, a unit's `dependsOn`, and the oracle files.
+alone: a path an adapter writes, a unit's `dependsOn`, and the oracle files.
 Reverting all of them restores the estate-wide share and the third pass of the
 model-driven implementation. The two terms cost nothing to drop.
 

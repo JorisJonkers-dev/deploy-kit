@@ -13,12 +13,12 @@ rests-on: ["0003", "0006"]
 A step first instantiates every target from its source, then fills references by
 looking each one up in the trace: the source-to-target record every mapping
 writes. A trace link records the mapping's name, the source element and the
-target element; a render link also records its adapter and its planned path.
+target element; a render link also records its adapter and the path it wrote.
 Inside a step a `Map` from source to target is the lookup; the step returns its
 model and its links, and the use-case concatenates them into the run's trace.
 Attribution is a query over it: a Deliverable's adapter is the one render link
-that produced it. `E_PATH_COLLISION` is a query over the path plan's links,
-before any adapter runs. Adapters build typed objects from a narrow Kubernetes and
+that produced it. `E_PATH_COLLISION` is a query over the render links, once
+every adapter has run and before anything is written. Adapters build typed objects from a narrow Kubernetes and
 Vault object model that declares only the fields this estate sets. One serializer,
 in the infrastructure ring, turns the finished object set into bytes and owns key
 order, indentation and the one `GENERATED` line.
@@ -50,7 +50,7 @@ steps need the same helper, and the sketch needs casts, so the generic buys no
 safety.
 
 **No adapter can read another.** A render mapping takes a Resolved Deployment
-element and its planned path, and returns objects. It is never handed the trace;
+element and returns objects, each at a path the shared directory helpers spell. It is never handed the trace;
 only the use-case appends to it. The function's signature holds the rule, and
 depcruise holds the imports.
 

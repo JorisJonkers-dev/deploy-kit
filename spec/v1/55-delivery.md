@@ -76,9 +76,9 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   `bootstrap.flux.artifacts.repository`
   ([chapter 14](14-platform-intent.md#the-bootstrap-set)). Each of the Project's
   Reconcile Units applies its own path inside it
-  ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)). The paths the
-  path plan scopes to the estate rather than to a Project
-  ([chapter 20](20-resolved-deployment.md#the-path-plan)) form one more artifact,
+  ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)). The paths
+  scoped to the estate rather than to a Project, everything under `estate/`
+  ([chapter 30](30-deliverables.md#path-allocation)), form one more artifact,
   `_estate`, published and pinned exactly like a Project's, at the sibling
   repository `<repository>-estate`: an OCI repository's path components start
   with a letter or a digit, and nothing below `<repository>/` is the estate's,

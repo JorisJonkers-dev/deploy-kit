@@ -1,5 +1,6 @@
 // The registry (spec/v1/30-deliverables.md#attribution): the enumeration of
-// the adapters that render, each with the default path the plan assigns from.
+// the adapters that render, each with the default path that states where its
+// output lands.
 // A tool that needs to know who produces what reads this and nothing else.
 import type { ResolvedProject } from "../model/resolution.ts";
 import type { Deliverable } from "../objects/deliverable.ts";
@@ -54,7 +55,7 @@ export const ADAPTERS: readonly Adapter[] = [
   },
   {
     name: TRAEFIK,
-    defaultPath: "estate/edge/<tier>/<application>-<exposure>.yaml",
+    defaultPath: "apps/<project>/<application>/route-<exposure>.yaml",
     render: renderTraefik,
   },
   {
@@ -65,7 +66,7 @@ export const ADAPTERS: readonly Adapter[] = [
   {
     name: VAULT_POLICY,
     defaultPath:
-      "estate/vso-secrets/policies/{<namespace>-<identity>.{policy,role},<namespace>.generated}.json",
+      "apps/<project>/vault-policy/policies/{<namespace>-<identity>.{policy,role},<namespace>.generated}.json",
     render: renderVaultPolicy,
   },
 ];

@@ -124,7 +124,7 @@ and linted by the same script with `emf` as its root.
 | [0033](model/0033-reconcile-unit-derived.md) | The Reconcile Unit is derived from the dependency graph | settled |
 | [0034](model/0034-cluster-state-is-a-pinned-input.md) | The ClusterState snapshot is a pinned, digested input holding PV bindings and current placements, and node capacity is a node-contract fact | open |
 | [0035](model/0035-network-policy-is-default-deny-and-render-only.md) | Network policy is default-deny, derived from the edge set by one `networking` adapter, rendered but not promoted until a CNI with an audit stage is chosen | open |
-| [0036](model/0036-path-authority-is-layer-2.md) | Layer 2 assigns every output path; layer 3 serialises what it is handed | settled |
+| [0036](model/0036-path-authority-is-layer-2.md) | An adapter writes its own paths through one set of shared directory helpers, and the render refuses a path claimed twice | settled |
 | [0105](model/0105-every-derived-deadline-allows-the-substrates-image-pull.md) | Every derived deadline allows the substrate's image pull, which the Platform document states once | open |
 | [0106](model/0106-a-gpu-request-is-derived-from-placement.md) | A GPU request is derived from the placement that selects the card, and the Platform document names each vendor's resource and runtime class | open |
 

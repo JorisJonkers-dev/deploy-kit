@@ -5,10 +5,11 @@ worth separating) it contains **no decisions**.
 
 ## The rule
 
-> A Deliverable's content is a pure function of the Resolved Deployment, and its
-> path is **assigned by** the Resolved Deployment
+> A Deliverable's content **and its path** are a pure function of the Resolved
+> Deployment: the path follows from the Project and the Application the
+> projection names, spelled by one set of directory helpers every adapter shares
 > ([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md), normative in
-> [chapter 20](20-resolved-deployment.md#the-path-plan)).
+> [Path allocation](#path-allocation)).
 
 Layer 2 decided everything (chapter 20). Layer 3 serialises. If a renderer has to
 choose, the choice belongs one layer up, and the choice being made here is the
@@ -16,14 +17,15 @@ defect, because a decision taken during serialisation appears in no schema, is
 recorded in no lock, and is invisible in the published projection an Application owner
 reads back.
 
-An earlier form of this rule made the path a function of the adapter and the
-object it carries. That form could not answer which Application directory owns a
-per-project object, and it put an estate-scoped Deliverable in whichever
-namespace the emitting adapter happened to key off; both are recorded in
-chapter 20's path plan as the reason authority moved up a layer. An Adapter
-still declares a `defaultPath` (that is how the registry states what an Adapter
-is for, and it is what the plan assigns from), but the path a Deliverable
-carries comes from the plan.
+A path is therefore not a choice an adapter makes. Where an object lands
+follows from whose it is: an Application's objects in its own directory, a
+per-project object such as `namespace.yaml` or the namespace-wide default-deny
+in its Project's directory, once, and an estate-scoped one under `estate/`. The
+roots are spelled once, in the shared directory helpers, and an adapter names
+only the file below them. An Adapter declares a `defaultPath` in the registry,
+which states where its output lands; it describes the adapter, and nothing reads
+it to place a file. A path two Deliverables claim is refused once every adapter
+has run and before anything is written (`E_PATH_COLLISION`).
 
 ## Adapters
 
@@ -52,7 +54,7 @@ executable ([0014](../../docs/adr/model/0014-file-shaped-configuration-is-an-ass
 ([0037](../../docs/adr/model/0037-six-registered-adapters-satisfy-one-port.md), rewritten by
 [0047](../../docs/adr/model/0047-one-publication-path.md)): nothing renders
 that is not registered, `adapterContract()` is the only list, and a change to the
-set is a decision with its own ADR. The set is six, one per subsystem, and every
+set is a decision with its own ADR. The set is seven, one per subsystem, and every
 one of them is a **central** adapter running once over the composed union:
 
 | adapter | subsystem | emits |
@@ -61,7 +63,7 @@ one of them is a **central** adapter running once over the composed union:
 | `networking` | policy | every `NetworkPolicy`: the namespace's default-deny ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)), and one per Process, per spawn template ([chapter 16](16-dependencies.md#spawn-templates)), per backup identity ([chapter 16](16-dependencies.md#the-backup-identitys-policy)), per migration identity ([chapter 16](16-dependencies.md#the-migration-identitys-policy)), per open Move's step identity ([chapter 20](20-resolved-deployment.md#the-move)), and per Vault policy job and catalog method ([chapter 14](14-platform-intent.md#the-vault-policy-job)) |
 | `prometheus` | monitoring | one `ServiceMonitor` or `PodMonitor` per Application that declares `observability`, from the named surface and the Platform document's cadence, carrying the labels its `monitors` names. A `PrometheusRule` per rule-group file the monitoring stack's Applications carry, and one `AlertmanagerConfig` on its Alertmanager, from the Platform document's `monitoring` ([chapter 14](14-platform-intent.md#monitoring)) |
 | `grafana` | monitoring | one `GrafanaDashboard` per dashboard file an Application ships, in its own namespace and its Project's folder, selecting the Grafana instance the Platform document names (`allowCrossNamespaceImport`), its JSON verbatim, and a vendored file's data source inputs mapped to the Platform's data source |
-| `traefik` | edge | one `IngressRoute` set and one `Middleware` set **per tier** the Platform document declares ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md), [0047](../../docs/adr/model/0047-one-publication-path.md)), including the derived `/.auth/` route of each gated Client ([chapter 17](17-sign-in.md#what-the-edge-derives)). A route's `redirectTo` is a `RedirectRegex` Middleware of the route's own, `<application>-<exposure>-<n>-redirect`, beside its IngressRoute. Each `IngressRoute` carries its tier's ingress class as the `kubernetes.io/ingress.class` annotation, and, where the tier publishes its names, `external-dns.alpha.kubernetes.io/target` and `…/cloudflare-proxied` from the resolved exposure's `dns`: the tier's `target` and `proxied`, or its `direct` and `"false"` for an exposure that is not `proxied` |
+| `traefik` | edge | one `IngressRoute` **per exposure**, in its Application's own namespace and in its Application's own directory as `route-<exposure>.yaml`, so a Project's routes are its own share ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md), [0047](../../docs/adr/model/0047-one-publication-path.md)), including the derived `/.auth/` route of each gated Client ([chapter 17](17-sign-in.md#what-the-edge-derives)); and the shared `Middleware` set once per tier proxy's namespace, in the proxy's own directory ([Shared Middlewares](#shared-middlewares)). A route's `redirectTo` is a `RedirectRegex` Middleware of the route's own, `<application>-<exposure>-<n>-redirect`, beside its IngressRoute. Each `IngressRoute` carries its tier's ingress class as the `kubernetes.io/ingress.class` annotation, and, where the tier publishes its names, `external-dns.alpha.kubernetes.io/target` and `…/cloudflare-proxied` from the resolved exposure's `dns`: the tier's `target` and `proxied`, or its `direct` and `"false"` for an exposure that is not `proxied` |
 | `vso` | secret delivery | `VaultConnection` per namespace, `VaultAuth` per identity that holds a synced grant, `VaultStaticSecret`, `VaultDynamicSecret` |
 | `vault-policy` | secret store | one policy and one auth role per Process identity, as JSON ([0040](../../docs/adr/model/0040-vault-policy-is-a-deliverable.md)) |
 
@@ -145,9 +147,9 @@ reads raw manifests from disk inside `render`. `E_PATH_COLLISION` has **zero
 occurrences under `src/`**, while the writer applies each prepared file in turn:
 two adapters sharing a path both write, second wins, silently, both reporting
 `action: "create"`. The collision check belongs where the Deliverable set is
-assembled, on the path plan, before any adapter runs
-([chapter 20](20-resolved-deployment.md#the-path-plan)), and it must exist in
-code before the coverage assertion means anything.
+assembled, once every adapter has run and before anything is written
+([Path allocation](#path-allocation)), and it must exist in code before the
+coverage assertion means anything.
 
 Two ratchets carry the port:
 
@@ -329,7 +331,7 @@ the address of the Reporter's `http` surface, and from the Project's own name
 
 Both are attributed to the `kubernetes` adapter, which owns the indexes and
 every object no other subsystem does. They are Flux's kinds and not a
-workload's, but a seventh adapter for two objects that vary with nothing but
+workload's, but an eighth adapter for two objects that vary with nothing but
 one address would be a registration with no subsystem behind it.
 
 ## Attribution
@@ -340,8 +342,10 @@ the producer, declared in the registry, not a property of the output that an edi
 could lose:
 
 - Every registry entry declares a `defaultPath`, and registration throws
-  `adapter definition missing defaultPath` without one. It is what the path plan
-  assigns from ([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md)).
+  `adapter definition missing defaultPath` without one. It states where the
+  adapter's output lands; the path a Deliverable carries is the adapter's own,
+  spelled through the shared directory helpers
+  ([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md)).
 - `adapterContract()` is the only enumeration of the set. A tool that needs to
   know who produces what reads it; nothing reconstructs ownership by scanning
   rendered YAML.
@@ -367,9 +371,10 @@ adapters claiming one path.
 
 ### Path allocation
 
-Paths are assigned by the Resolved Deployment's path plan
-([chapter 20](20-resolved-deployment.md#the-path-plan)) from each adapter's
-`defaultPath`, never configured per Application:
+Each adapter writes its own paths, from the Project and the Application the
+projection names, through the one set of directory helpers every adapter shares
+([0036](../../docs/adr/model/0036-path-authority-is-layer-2.md)), never
+configured per Application:
 
 ```
 <gitopsRoot>/apps/<project>/<application>/<object>.yaml
@@ -475,7 +480,8 @@ spells only what the projection holds:
 
 Two adapters (`kubernetes` and `networking`) declare the same `apps` prefix
 and are kept apart by the object segment. That is why `E_PATH_COLLISION` is
-decided on the plan, before any adapter runs, rather than left as a convention.
+decided over the whole Deliverable set, once every adapter has run and before
+anything is written, rather than left as a convention.
 
 
 ### Shared Middlewares
@@ -619,7 +625,7 @@ rather than in a normative chapter; `docs/architecture.md` carries the gates tha
 will hold them. What remains open here is a model question:
 
 1. **The object-level gap is arithmetic on an old survey.** *Settled by:* a
-   per-adapter measurement against the six registered adapters, recorded as the
+   per-adapter measurement against the seven registered adapters, recorded as the
    class-A number, before any schedule is committed.
    - **Owner:** joris.
    - **Settled by:** one full render of the estate diffed against
@@ -647,7 +653,7 @@ flowchart TB
       CI["compose: the ComposedIntent<br/>+ the composition lock (chapter 40)"]
       PIN["pinned inputs, each by digest<br/>Platform document, node contract,<br/>images lock, ClusterState snapshot"]
       H["renderHash<br/>over the recorded input digests"]
-      RD["resolve: the Resolved Deployment<br/>+ path plan, one owner per path<br/>+ clusterStateDigest"]
+      RD["resolve: the Resolved Deployment<br/>+ every platform assignment<br/>+ clusterStateDigest"]
       EI --> CI --> RD
       PIN --> RD
       PIN --> H
