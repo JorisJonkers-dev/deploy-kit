@@ -162,7 +162,8 @@ TREES = {"10-project-intent": {
         "PlatformMetadata", "Substrate", "Bootstrap", "Tier", "DurabilityPolicies",
         "EnginePolicies", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
         "EphemeralPolicy", "MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy",
-        "VaultPolicyJob", "HandoverLedger", "Provider", "Library", "GpuVendor", "VpnPolicy",
+        "VaultPolicyJob", "Provider", "Library", "GpuVendor", "VpnPolicy", "Acme", "Monitoring",
+        "HumanGrant", "L4Address", "PriorityPolicy", "MeshPolicy", "SignIn", "NodeAgent",
     ],
     "Bootstrap": ["FluxSource", "VaultState"],
     "FluxSource": ["RenderedArtifacts"],
@@ -173,7 +174,10 @@ TREES = {"10-project-intent": {
     "EnginePolicies": ["EnginePolicy"],
     "EnginePolicy": ["MoveMethod"],
     "DeliveryPolicy": ["AnalysisPolicy", "MovePolicy"],
-    "HandoverLedger": ["ServingLocation"],
+    "Tier": ["ForwardAuth", "TierDns"],
+    "TelemetryPolicy": ["DashboardPolicy"],
+    "Monitoring": ["Receiver", "SeverityRoute"],
+    "PriorityPolicy": ["PriorityClass"],
 }, "20-resolved-deployment": {
     # Sibling order puts GateMember next to ResolvedProbe, so the one
     # cross-link on the drawing joins two neighbours: the migration, whose
@@ -259,8 +263,7 @@ REPORT_LAYOUTS = {"10-project-intent": {
             ["PlatformMetadata", "Substrate", "MonitorCadence", "TelemetryPolicy", "ProbeCadence",
              "EphemeralPolicy"],
             ["Bootstrap"], ["Tier", "Provider"], ["DurabilityPolicies", "EnginePolicies"],
-            ["MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy", "VaultPolicyJob",
-             "HandoverLedger"],
+            ["MigrationPolicy", "DeliveryPolicy", "ApiAccessPolicy", "VaultPolicyJob"],
         ],
         "Bootstrap": [["FluxSource", "VaultState"]],
         "FluxSource": [["RenderedArtifacts"]],
