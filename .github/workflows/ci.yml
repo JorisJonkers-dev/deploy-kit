@@ -27,7 +27,7 @@
     'branches':
       - 'main'
   # Nightly on main: a mutation run against the newest report, beside the one
-  # every push to main runs.
+  # every push to main runs. A pull request runs no mutation.
   'schedule':
     - 'cron': '23 2 * * *'
   'workflow_dispatch':
@@ -195,21 +195,20 @@
       - 'name': 'Test'
         'run': 'npm run test:coverage'
 
-  # A pull request re-tests the mutants its change reaches, not every mutant.
-  # Stryker's incremental mode compares the tree with the newest report a run
-  # on main uploaded, and tests a mutant again when its module changed or the
-  # test that killed it changed (scripts/mutation-baseline.ts); every other
-  # result is taken from that report. A pull request skips a static mutant
-  # (one made when its module loads, which runs every suite) it would have to
-  # re-test, so its stage stays inside five minutes; every push to main runs
-  # them, and uploads the report the next pull request reads. The work is twelve parallel shards, each mutating a disjoint share of
+  # A push to main re-tests the mutants its change reaches, not every mutant; a
+  # pull request runs none, since it may spend five minutes on mutation and an
+  # incremental run takes longer. Stryker's incremental mode compares the tree
+  # with the newest report a run on main uploaded, and tests a mutant again
+  # when its module changed or the test that killed it changed
+  # (scripts/mutation-baseline.ts); every other result is taken from that
+  # report. The work is twelve parallel shards, each mutating a disjoint share of
   # every module's top-level statements, balanced by the time each took in
   # that report (scripts/mutation-shard.ts), and
   # `mutation` merges their reports into the one a single run would have
   # written (scripts/mutation-merge.ts). The score is still over every mutant,
   # and a score below the break threshold in stryker.config.json fails the
-  # gate. A pull request that changes nothing the gate reads, a release or a
-  # docs change, runs no shard at all (scripts/mutation-scope.ts). The full
+  # gate. A push that changes nothing the gate reads, a release or a docs
+  # change, runs no shard at all (scripts/mutation-scope.ts). The full
   # run, which tests every mutant, is weekly:
   # .github/workflows/mutation-full.yml. See
   # docs/adr/architecture/0063-coverage-and-mutation-are-ratchets.md.
@@ -226,14 +225,14 @@
       'needed': '${{ steps.scope.outputs.needed }}'
       'baseline': '${{ steps.baseline.outputs.run }}'
     'steps':
-      # A pull request checks out its merge commit, whose first parent is the
-      # base branch: two commits are the whole diff.
+      # A push to main checks out the squashed commit, whose parent is main
+      # before it: two commits are the whole diff.
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
         'with':
           'fetch-depth': '2'
       - 'uses': './.github/actions/setup'
-      # A push to main always runs it: it tests the static mutants a pull
-      # request skipped, and its report is the next baseline.
+      # A pull request runs none; a push to main runs what its commit reaches,
+      # and its report is the next baseline; the nightly run always runs.
       - 'name': 'Decide whether the change reaches a mutant'
         'id': 'scope'
         'shell': 'bash'
@@ -242,6 +241,8 @@
         'run': |
           set -euo pipefail
           if [ "${EVENT}" = 'pull_request' ]; then
+            needed='false'
+          elif [ "${EVENT}" = 'push' ]; then
             needed="$(node scripts/mutation-scope.ts HEAD^1)"
           else
             needed='true'
@@ -313,18 +314,13 @@
       # step, rather than handing Stryker an empty list. They go beside the
       # report, for the merge to read what this shard really ran.
       - 'name': 'Mutation'
-        'shell': 'bash'
         'env':
           'SHARD': '${{ matrix.shard }}'
-          'EVENT': '${{ github.event_name }}'
         'run': |
-          set -euo pipefail
           ranges="$(node scripts/mutation-shard.ts "$SHARD" 12 reports/stryker-incremental.json)"
           mkdir -p reports/mutation
           printf '%s\n' "$ranges" > reports/mutation/ranges.txt
-          static=()
-          if [ "${EVENT}" = 'pull_request' ]; then static=(--ignoreStatic); fi
-          npm run test:mutation -- --incremental --mutate "$ranges" "${static[@]}"
+          npm run test:mutation -- --incremental --mutate "$ranges"
       # A shard with a survivor fails, and its report is what names it.
       - 'name': 'Upload mutation report'
         'if': 'always()'
@@ -353,7 +349,7 @@
     'steps':
       - 'name': 'Nothing the gate reads changed'
         'if': "needs.mutation-scope.result == 'success' && needs.mutation-scope.outputs.needed == 'false'"
-        'run': 'echo "Nothing the mutation gate reads changed: main''s result stands."'
+        'run': 'echo "No mutation here: a pull request runs none, and this push changed nothing the gate reads."'
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
         'if': "needs.mutation-scope.outputs.needed == 'true'"
       - 'uses': './.github/actions/setup'
@@ -391,8 +387,8 @@
           'path': 'reports/stryker-incremental.json'
           'if-no-files-found': 'error'
           'retention-days': 90
-      # From the first shard's start to here: what a pull request waits for,
-      # against the five minutes it may spend on mutation.
+      # From the first shard's start to here, so the cost of the run on main
+      # stays visible.
       - 'name': 'Record how long mutation took'
         'if': "always() && needs.mutation-scope.outputs.needed == 'true'"
         'shell': 'bash'
@@ -401,16 +397,12 @@
           'REPO': '${{ github.repository }}'
           'RUN_ID': '${{ github.run_id }}'
           'ATTEMPT': '${{ github.run_attempt }}'
-          'EVENT': '${{ github.event_name }}'
         'run': |
           set -euo pipefail
           started="$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/attempts/${ATTEMPT}/jobs?per_page=100" --jq '[.jobs[] | select(.name | startswith("Mutation (")) | .started_at | select(. != null) | fromdateiso8601] | min')"
           seconds=$(( $(date +%s) - started ))
           took="$(( seconds / 60 ))m$(( seconds % 60 ))s"
-          echo "Mutation took ${took} on this ${EVENT} run; a pull request may spend 5m0s." >> "$GITHUB_STEP_SUMMARY"
-          if [ "${EVENT}" = 'pull_request' ] && [ "${seconds}" -gt 300 ]; then
-            echo "::warning title=Mutation over budget::Mutation took ${took}, past the 5m0s a pull request may spend."
-          fi
+          echo "Mutation took ${took} on this ${GITHUB_EVENT_NAME} run." >> "$GITHUB_STEP_SUMMARY"
       - 'name': 'Fail: the scope or a shard did not succeed'
         'if': >-
           ${{ always() && (needs.mutation-scope.result != 'success' ||

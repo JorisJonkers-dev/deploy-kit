@@ -514,27 +514,26 @@ and only rises like the coverage ratchet does. It holds `src/**/*.ts` today;
 `scripts/**/*.ts` joins once its own gates can be exercised inside Stryker's
 sandbox, which two defect classes keep several of them from yet.
 
-The mutation gate does not test every mutant. It runs Stryker incrementally
-against the report of the last green run on `main`: a mutant is tested again
+The mutation gate runs on every push to `main` and on no pull request: a
+pull request may spend five minutes on mutation, and an incremental run takes
+longer. It does not test every mutant. It runs Stryker incrementally against
+the report of the last green run on `main`: a mutant is tested again
 when its module changed, or when the test that killed it changed, and every
 other result is taken from that report. Stryker places no Vitest test in its
 file, so `scripts/mutation-baseline.ts` first rewrites that report to keep
 every test whose own code, the declarations it names and the `describe`
 around it are unchanged; without it one edit to a test file would re-test
-everything that file's tests killed. A pull request runs with
-`--ignoreStatic`: a static mutant it would re-test, one made when its module
-loads and so run against every suite, is `Ignored` rather than tested, and
-every push to `main` tests it. The `mutation` job records the stage's wall time
-in its summary and warns when a pull request's passes five minutes. The run is twelve shards, each
+everything that file's tests killed. The `mutation` job records the stage's
+wall time in its summary. The run is twelve shards, each
 mutating a disjoint share of every module's top-level statements, balanced by
 the tests those statements' mutants ran in that report
 (`scripts/mutation-shard.ts`), and the `mutation` job merges their reports into
 the one report a single run would have written (`scripts/mutation-merge.ts`):
 that report decides the score, names every survivor, and is what a push to
 `main` uploads for the next run to read. A run that finds no report tests every
-mutant. A pull request that changes nothing the gate reads, such as a release or
-a docs change, runs no shard (`scripts/mutation-scope.ts`), and the `mutation`
-job passes on `main`'s result. The full run, every mutant in the same six
+mutant. A push that changes nothing the gate reads, such as a release or a
+docs change, runs no shard (`scripts/mutation-scope.ts`), and on a pull
+request the `mutation` job passes without one. The full run, every mutant in the same six
 shards, is a separate workflow on a weekly schedule. It gates nothing: when a
 mutant is left undetected it opens an issue that names each one.
 

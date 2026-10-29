@@ -192,13 +192,16 @@ describe("the mutation gate's jobs", () => {
     expect(shard).toContain("'fail-fast': false");
   });
 
-  it("asks for a pull request against its merge commit's first parent, and runs on every push to main and the nightly run", () => {
+  it("runs none on a pull request, asks for a push to main against the commit before it, and runs the nightly run", () => {
     expect(scope).toContain("'fetch-depth': '2'");
     expect(scope).toContain(`if [ "\${EVENT}" = 'pull_request' ]; then`);
     expect(scope).toContain(
       'needed="$(node scripts/mutation-scope.ts HEAD^1)"',
     );
-    expect(scope).not.toContain("needed='false'");
+    expect(scope).toContain(
+      `if [ "\${EVENT}" = 'pull_request' ]; then\n            needed='false'`,
+    );
+    expect(scope).toContain(`elif [ "\${EVENT}" = 'push' ]; then`);
     expect(scope).toContain(`else\n            needed='true'`);
     expect(ci).toContain("'schedule':\n    - 'cron': '23 2 * * *'");
   });

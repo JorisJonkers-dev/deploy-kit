@@ -104,10 +104,10 @@ describe("the mutation gate", () => {
     expect(gateJob).toContain("'path': 'reports/mutation'");
   });
 
-  // RULE-064. Stryker tests a mutant again when its module changed or the
+  // RULE-064. On a push to main, Stryker tests a mutant again when its module changed or the
   // test that killed it changed, and takes every other result from the
   // report it is handed, so the score is still over every mutant.
-  it("re-tests on a pull request what the change reaches, against the last green run on main, npm run test:mutation -- --incremental", () => {
+  it("re-tests on a push to main what the change reaches, against the last green run on main, npm run test:mutation -- --incremental", () => {
     expect(pullRequestShardJob).toContain(
       'npm run test:mutation -- --incremental --mutate "$ranges"',
     );
@@ -120,17 +120,14 @@ describe("the mutation gate", () => {
     expect(ci).toMatch(/'pipeline-complete':[\s\S]*?- 'mutation'\n/);
   });
 
-  // A static mutant runs every suite, so a pull request skips the ones it
-  // would re-test and stays inside five minutes; a push to main tests them.
-  it("skips static mutants on a pull request only, and records the stage's time against five minutes", () => {
-    expect(pullRequestShardJob).toContain(
-      `if [ "\${EVENT}" = 'pull_request' ]; then static=(--ignoreStatic); fi`,
+  // A pull request may spend five minutes on mutation, and an incremental run
+  // takes longer, so mutation runs on main; each run records how long it took.
+  it("runs no mutation on a pull request, and records the stage's time", () => {
+    expect(scopeJob).toContain(
+      `if [ "\${EVENT}" = 'pull_request' ]; then\n            needed='false'`,
     );
-    expect(pullRequestShardJob).toContain(
-      'npm run test:mutation -- --incremental --mutate "$ranges" "${static[@]}"',
-    );
+    expect(pullRequestShardJob).not.toContain("--ignoreStatic");
     expect(gateJob).toContain("'name': 'Record how long mutation took'");
-    expect(gateJob).toContain('[ "${seconds}" -gt 300 ]');
     expect(gateJob).toContain('>> "$GITHUB_STEP_SUMMARY"');
   });
 
