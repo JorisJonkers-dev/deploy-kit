@@ -1,0 +1,14 @@
+[module halfway('https://jorisjonkers.dev/deploy-kit/resolved-deployment/1')/]
+
+[comment Writes each Deliverable's file, then fails to evaluate: what a template that breaks on a
+  later file leaves behind. /]
+
+[comment @main /]
+[template public render(deployment : resolveddeployment::ResolvedDeployment)]
+  [for (d : resolveddeployment::Deliverable | deployment.deliverables)]
+    [file (d.path, overwrite, 'UTF-8')]
+      [d.path/]
+    [/file]
+  [/for]
+  [deployment.noSuchQuery()/]
+[/template]

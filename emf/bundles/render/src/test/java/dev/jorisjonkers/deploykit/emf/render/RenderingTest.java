@@ -10,9 +10,11 @@ import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeplo
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedGeneratedKey;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -111,5 +113,64 @@ class RenderingTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageStartingWith("the rendering did not complete: ")
                 .hasMessageContaining("Acceleo parsing error");
+    }
+
+    @Test
+    void aRenderingLeavesNothingAside(@TempDir Path out) {
+        Rendering.render(List.of(namespaceOnly()), out);
+
+        assertThat(Rendering.asideOf(out)).doesNotExist();
+    }
+
+    @Test
+    void aRenderingWritesOverWhatIsAlreadyAtAPath(@TempDir Path out) throws IOException {
+        Path namespace = out.resolve("apps/notes/namespace.yaml");
+        Files.createDirectories(namespace.getParent());
+        Files.writeString(namespace, "stale");
+
+        Rendering.render(List.of(namespaceOnly()), out);
+
+        assertThat(Files.readString(namespace)).contains("name: notes-system");
+    }
+
+    @Test
+    void aTemplateThatFailsHalfwayLeavesTheRootAsItWasAndNothingAside(@TempDir Path directory) throws IOException {
+        Path out = directory.resolve("out");
+        Files.createDirectories(out);
+        Files.writeString(out.resolve("kept.yaml"), "kept");
+
+        assertThatThrownBy(() -> Rendering.render(List.of(namespaceOnly()), out, "halfway"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageStartingWith("the rendering did not complete: ");
+
+        try (Stream<Path> files = Files.walk(out)) {
+            assertThat(files.filter(Files::isRegularFile).map(out::relativize).map(Path::toString))
+                    .containsExactly("kept.yaml");
+        }
+        assertThat(Rendering.asideOf(out)).doesNotExist();
+    }
+
+    @Test
+    void whatAFailedRenderingLeftAsideIsClearedByTheNext(@TempDir Path directory) throws IOException {
+        Path out = directory.resolve("out");
+        Path leftover = Rendering.asideOf(out).resolve("apps/stale.yaml");
+        Files.createDirectories(leftover.getParent());
+        Files.writeString(leftover, "stale");
+
+        Rendering.render(List.of(namespaceOnly()), out);
+
+        assertThat(out.resolve("apps/stale.yaml")).doesNotExist();
+        assertThat(Rendering.asideOf(out)).doesNotExist();
+    }
+
+    @Test
+    void aRootThatCannotHoldTheFilesFailsTheRenderingAndLeavesNothingAside(@TempDir Path directory) throws IOException {
+        Path out = Files.writeString(directory.resolve("out"), "a file, not a directory");
+
+        assertThatThrownBy(() -> Rendering.render(List.of(namespaceOnly()), out))
+                .isInstanceOf(UncheckedIOException.class);
+
+        assertThat(Files.readString(out)).isEqualTo("a file, not a directory");
+        assertThat(Rendering.asideOf(out)).doesNotExist();
     }
 }
