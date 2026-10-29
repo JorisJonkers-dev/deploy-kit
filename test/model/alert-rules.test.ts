@@ -12,6 +12,7 @@ describe("a rule-group file's groups", () => {
 
   it.each([
     ["YAML that does not parse", "groups: [\n"],
+    ["YAML that parses only in part", "groups: [platform]\nrules: [\n"],
     ["an empty file", ""],
     ["a null", "null\n"],
     ["a scalar", "just text\n"],
