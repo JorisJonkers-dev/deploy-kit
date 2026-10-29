@@ -69,7 +69,13 @@ describe("the manifest lint", () => {
     const output = collect();
     expect(lintManifests(tree(), kubeconform(0), output)).toBe(0);
     expect(output.text()).toMatch(/fake kubeconform .*ns\.yaml/);
-    expect(output.text()).toMatch(/-kubernetes-version 1\.31\.4/);
+    expect(output.text()).toMatch(/-kubernetes-version 1\.36\.5/);
+  });
+
+  it("reads the CRD catalog at one commit, never a branch", () => {
+    const output = collect();
+    expect(lintManifests(tree(), kubeconform(0), output)).toBe(0);
+    expect(output.text()).toMatch(/datreeio\/CRDs-catalog\/[0-9a-f]{40}\//);
   });
 
   // spec/v1/17-sign-in.md#the-client: no public catalog carries the Client
