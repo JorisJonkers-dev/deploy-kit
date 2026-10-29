@@ -217,6 +217,12 @@ const args = z.array(z.string()).min(1);
 
 // A container beside the Process, or before it where it is `init`: one that
 // runs to completion before the Process starts.
+// An Asset of the Process a sidecar mounts, by the `from` it is read from, at a
+// path of its own (spec/v1/10-project-intent.md#sidecars).
+const sidecarAsset = z
+  .strictObject({ from: text, mountAt: text })
+  .meta({ id: "SidecarAsset" });
+
 const sidecar = z
   .strictObject({
     name: text,
@@ -226,6 +232,7 @@ const sidecar = z
     memory: text,
     cpu: text,
     volumes: z.array(sidecarMount).min(1).exactOptional(),
+    assets: z.array(sidecarAsset).min(1).exactOptional(),
     init: z.literal(true).exactOptional(),
   })
   .meta({ id: "Sidecar" });

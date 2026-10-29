@@ -87,6 +87,12 @@ images:
     uid: 2000
     gid: 2000
     version: "v0.16.0"
+  stalwart-provisioner:
+    repository: ghcr.io/jorisjonkers-dev/stalwart-provisioner
+    digest: "sha256:7d1f3b5a9c2e4f6b8d0a2c4e6f8b1d3a5c7e9f2b4d6a8c0e2f4b6d8a1c3e5f7b"
+    uid: 65532
+    gid: 65532
+    version: "0.22.0"
   alertmanager:
     repository: quay.io/prometheus/alertmanager
     digest: "sha256:4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c"

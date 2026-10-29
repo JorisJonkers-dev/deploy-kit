@@ -1296,6 +1296,13 @@
             "$ref": "#/$defs/SidecarMount"
           }
         },
+        "assets": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SidecarAsset"
+          }
+        },
         "init": {
           "type": "boolean",
           "const": true
@@ -1323,6 +1330,24 @@
       },
       "required": [
         "claim",
+        "mountAt"
+      ],
+      "additionalProperties": false
+    },
+    "SidecarAsset": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mountAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from",
         "mountAt"
       ],
       "additionalProperties": false

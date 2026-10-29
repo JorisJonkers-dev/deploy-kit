@@ -30,6 +30,7 @@ spec:
         app.kubernetes.io/component: none
       annotations:
         image.jorisjonkers.dev/stalwart: v0.16.0
+        image.jorisjonkers.dev/stalwart-apply: 0.22.0
     spec:
       serviceAccountName: stalwart
       automountServiceAccountToken: false
@@ -72,6 +73,11 @@ spec:
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: stalwart-manifest-json-f1813d8cee
+              mountPath: /etc/stalwart-provisioner/manifest.json
+              subPath: manifest.json
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /healthz/ready
@@ -95,3 +101,29 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 12
+        - name: stalwart-apply
+          image: ghcr.io/jorisjonkers-dev/stalwart-provisioner@sha256:7d1f3b5a9c2e4f6b8d0a2c4e6f8b1d3a5c7e9f2b4d6a8c0e2f4b6d8a1c3e5f7b
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 10m
+            limits:
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: stalwart-manifest-json-f1813d8cee
+              mountPath: /etc/stalwart-provisioner/manifest.json
+              subPath: manifest.json
+              readOnly: true
+      volumes:
+        - name: stalwart-manifest-json-f1813d8cee
+          configMap:
+            name: stalwart-manifest-json-f1813d8cee
+            items:
+              - key: manifest.json
+                path: manifest.json

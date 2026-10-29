@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stalwart-manifest-json-f1813d8cee
+  namespace: mail-system
+  labels:
+    app.kubernetes.io/name: stalwart
+    app.kubernetes.io/instance: stalwart
+    app.kubernetes.io/part-of: stalwart
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  manifest.json: |
+    {
+      "domains": [{ "name": "jorisjonkers.dev" }],
+      "accounts": [{ "name": "postmaster", "domain": "jorisjonkers.dev" }]
+    }

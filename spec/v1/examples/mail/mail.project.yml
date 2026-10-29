@@ -13,6 +13,13 @@
 # each port renders a host port and the Process is held to that node. A host
 # port holds one copy, so the cutover is `interrupted`: a `continuous` one is
 # E_CUTOVER_UNHONOURABLE here. Mail's mailboxes are not this example's.
+#
+# Also exercises: a sidecar that mounts an Asset of its Process
+# (spec/v1/10-project-intent.md#sidecars). The provisioner beside Stalwart
+# applies the manifest of domains and accounts against the admin API on
+# localhost. The manifest is the Process's Asset, rendered as its one
+# content-hashed ConfigMap, and the sidecar names it by `from` to mount it; an
+# Asset the Process does not hold is E_UNKNOWN_SIDECAR_ASSET.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -50,3 +57,13 @@ applications:
           liveness: { path: /healthz/live, port: 8080 }
         startupBudget: 60s
         cutover: interrupted
+        assets:
+          - from: config/manifest.json
+            mountAt: /etc/stalwart-provisioner/manifest.json
+        sidecars:
+          - name: stalwart-apply
+            image: stalwart-provisioner
+            memory: 64Mi
+            cpu: 10m
+            assets:
+              - { from: config/manifest.json, mountAt: /etc/stalwart-provisioner/manifest.json }
