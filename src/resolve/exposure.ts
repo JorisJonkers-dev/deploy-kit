@@ -101,7 +101,13 @@ function middlewareOf(
             per: route.rateLimit.per,
             // A client that has sent nothing may send its whole allowance at once.
             burst: route.rateLimit.requests,
-            clientAddress: tier.proxiedBy ?? ("connection" as const),
+            // A host the DNS provider does not proxy is dialled directly,
+            // whatever the tier's `proxiedBy`: the forwarded header is the
+            // client's own.
+            clientAddress:
+              exposure.proxied === false
+                ? ("connection" as const)
+                : (tier.proxiedBy ?? ("connection" as const)),
           },
         ]),
   ];
@@ -113,6 +119,21 @@ const tierFor = (
   platform: PlatformIntentDocument,
 ): Tier =>
   platform.tiers.find(({ audiences }) => audiences.includes(audience)) as Tier;
+
+/**
+ * Where the host's record points, and whether the DNS provider proxies it: the
+ * tier's names, or, for an exposure that is not proxied, the tier's direct
+ * address. A tier that publishes no names writes no record.
+ */
+function dnsOf(exposure: Exposure, tier: Tier): Pick<ResolvedExposure, "dns"> {
+  if (tier.dns === undefined) return {};
+  const { target, proxied, direct } = tier.dns;
+  // An exposure that is not proxied is on a tier naming its direct address,
+  // or E_NO_DIRECT_TARGET refused the set.
+  return exposure.proxied === false
+    ? { dns: { target: direct as string, proxied: false } }
+    : { dns: { target, proxied } };
+}
 
 function resolveOne(
   exposure: Exposure,
@@ -136,7 +157,7 @@ function resolveOne(
     // A tier an exposure is on names one, or E_TIER_WITHOUT_INGRESS_CLASS
     // refused the set.
     ingressClass: tier.ingressClass as string,
-    ...(tier.dns === undefined ? {} : { dns: tier.dns }),
+    ...dnsOf(exposure, tier),
     listener: tier.listener,
     certificates: tier.certificates,
     proxy: {

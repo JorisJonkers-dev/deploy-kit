@@ -116,7 +116,8 @@ rather than an Application of its own
 whether it is required ([chapter 16](spec/v1/16-dependencies.md)).
 
 **Exposure**: a hostname an Application answers on, its audience and its content
-policy. Holds one or more Routes.
+policy, and, where the DNS provider must not proxy it, `proxied: false`. Holds
+one or more Routes.
 
 **Route**: a path within an Exposure, naming the Process and Surface that
 serve it.
@@ -176,7 +177,8 @@ address has no replicas and cuts over `interrupted`.
 derived from its surfaces and its tier.
 
 **Tier DNS**: where a tier's public names point and whether the DNS provider
-proxies them; every route on the tier carries it for the DNS controller.
+proxies them, and the direct address a host taken out of the proxy points at;
+every route on the tier carries its record for the DNS controller.
 
 **Ingress class**: the name a tier's proxy admits routes by, declared on the
 tier. Every route rendered for the tier carries it, so a route reaches the one

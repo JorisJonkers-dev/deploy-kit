@@ -75,11 +75,14 @@ tiers:
     certificates: acme
     forwardAuth: {provider: identity/identity, surface: http, path: /gate/forward} # the
     # sign-in provider's Gate, which every gated Client's routes ask
-    proxiedBy: cloudflare # every public host is proxied, so a client is the address Cloudflare forwards
+    proxiedBy: cloudflare # on a host Cloudflare proxies, a client is the address it forwards
     traefik: edge/traefik-public # the declared Application in the platform edge project,
     # placed on the public-ingress node
     ingressClass: traefik-public # the class this Traefik admits routes of
-    dns: {target: ingress.jorisjonkers.dev, proxied: true} # where every public name points, behind Cloudflare
+    # Where every public name points, behind Cloudflare, and where a host
+    # Cloudflare does not proxy points instead: the Frankfurt node's own
+    # address, which `edge-frankfurt` names a node for and no document states.
+    dns: {target: ingress.jorisjonkers.dev, proxied: true, direct: 167.86.79.203}
     address: edge-frankfurt # the node's own address: ports 80 and 443 derive from `tls`
   - name: lan
     audiences: [lan]

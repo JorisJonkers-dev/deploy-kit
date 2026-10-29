@@ -500,6 +500,10 @@
         },
         "proxied": {
           "type": "boolean"
+        },
+        "direct": {
+          "type": "string",
+          "minLength": 1
         }
       },
       "required": [

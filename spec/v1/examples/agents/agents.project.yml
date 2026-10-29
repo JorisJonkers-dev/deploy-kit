@@ -41,6 +41,10 @@ applications:
       - name: public
         host: hermes.jorisjonkers.dev
         audience: authenticated
+        # Not proxied: Cloudflare closes an idle WebSocket after about 100
+        # seconds, and the dashboard's chat tab runs over one, so the host
+        # resolves straight to the edge, grey-cloud, as it does live.
+        proxied: false
         routes:
           - { path: /, match: prefix, process: hermes, surface: dashboard }
       - name: lan

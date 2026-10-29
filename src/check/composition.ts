@@ -44,6 +44,7 @@ export interface Named<T> {
 
 type Application = ProjectIntentDocument["applications"][number];
 type Grant = NonNullable<Application["secrets"]>[number];
+type Exposure = NonNullable<Application["exposure"]>[number];
 
 function grantRefusals(
   grants: readonly Grant[],
@@ -708,6 +709,23 @@ function projectRefusals(
       });
   };
 
+  // An exposure the DNS provider does not proxy points its record at the
+  // tier's direct address, so a tier that names none leaves it nowhere to
+  // point.
+  const undirected = (exposure: Exposure, path: string): void => {
+    if (exposure.proxied !== false) return;
+    const tier = platform.tiers.find(({ audiences }) =>
+      (audiences as readonly string[]).includes(exposure.audience),
+    );
+    if (tier !== undefined && tier.dns?.direct === undefined)
+      refusals.push({
+        code: "E_NO_DIRECT_TARGET",
+        path: `${path}/proxied`,
+        message: `the tier ${tier.name} names no direct address, so this exposure's record would point nowhere`,
+        hint: "Name the address the tier's edge is dialled at in its `dns.direct`, or let the exposure be proxied.",
+      });
+  };
+
   // A grant at the project header reaches every Process below it, so it is
   // refused where it is written, exactly as one on an Application or a Process.
   refusals.push(...grantRefusals(project.secrets ?? [], "", platform));
@@ -722,6 +740,7 @@ function projectRefusals(
     for (const [e, exposure] of (application.exposure ?? []).entries()) {
       noTier(exposure.audience, `${at}/exposure/${e}`);
       unclassed(exposure.audience, `${at}/exposure/${e}`);
+      undirected(exposure, `${at}/exposure/${e}`);
       for (const [r, route] of exposure.routes.entries())
         if (route.audience !== undefined)
           noTier(route.audience, `${at}/exposure/${e}/routes/${r}`);

@@ -1792,6 +1792,7 @@ applications:
 | `host` | exposure | yes | The full FQDN, written out. Unique across the estate. A DNS name in lower case and nothing else: two labels or more, the last opening with a letter, with no scheme, port, path or space, so it is a name and never an address. A name the cluster itself resolves is refused too: one ending in `svc`, `local`, `internal` or `localhost`, or holding a `svc` label. That is a first filter and not the boundary, since where a name resolves is not in the name: the Release Gate, which requests through it from inside the cluster, checks the address it connects to ([chapter 55](55-delivery.md#the-release-gate)). |
 | `audience` | exposure | yes | `anonymous` \| `authenticated` \| `internal` \| `lan`. The default for every route beneath it. |
 | `contentPolicy` | exposure | no | `strict` \| `admin` \| `workflow`. The Content-Security-Policy profile: the one header choice an author makes, from a closed list. |
+| `proxied` | exposure | no | `false`, or absent. Absent, the host's record is its tier's: it points at the tier's `dns.target`, proxied as the tier says. `false` takes this one host out of the DNS provider's proxy: its record points at the tier's `dns.direct`, the address its edge is dialled at, unproxied, and its routes count a client by the connection's address, whatever the tier's `proxiedBy` ([chapter 14](14-platform-intent.md#tiers)). `true` is never written: proxying is the tier's. |
 | `routes` | exposure | yes | One or more. |
 | `path` | route | yes | The path this rule matches. `/`, or segments of URL path characters each opened by one `/`: no whitespace, quote, backtick, backslash, `?` or `#`, and never `//`, which a client reads as another host. The edge writes it into its rule and the Release Gate requests it as written. |
 | `match` | route | yes | `prefix` \| `exact`. |
@@ -1799,7 +1800,7 @@ applications:
 | `surface` | route | yes | A surface that Process declares in `provides`: a name, never a port integer. |
 | `audience` | route | no | Overrides the exposure's audience, for this path alone. |
 | `redirectTo` | route | no | A path this route redirects to, on the same scheme and host. A path, never a regex. Not permanent, so a client caches no landing path. |
-| `rateLimit` | route | no | `{requests, per}`: how many requests one client may send this route over `per`, a duration in whole seconds, minutes or hours (`30s`, `10m`, `1h`). `requests` is a whole number of at least 1. Who counts as one client is the tier's fact ([chapter 14](14-platform-intent.md#tiers)). |
+| `rateLimit` | route | no | `{requests, per}`: how many requests one client may send this route over `per`, a duration in whole seconds, minutes or hours (`30s`, `10m`, `1h`). `requests` is a whole number of at least 1. Who counts as one client is the tier's fact ([chapter 14](14-platform-intent.md#tiers)), and the connection's address on an exposure that is not `proxied`. |
 
 A route carries three optional fields and no others. It may state its own
 `audience`, which is the anonymous endpoint inside an otherwise authenticated
@@ -1831,6 +1832,25 @@ A client that has sent nothing may send its whole allowance at once: the burst
 equals `requests`, derived rather than authored. Past it, the edge answers
 `429 Too Many Requests` and the request never reaches the Process. Each replica
 of the tier's proxy counts on its own.
+
+A host the DNS provider must not proxy says so, though every other name on its
+tier is proxied
+([0127](../../docs/adr/model/0127-an-exposure-may-bypass-the-dns-providers-proxy.md)):
+
+```yaml
+exposure:
+  - name: public
+    host: hermes.jorisjonkers.dev
+    audience: authenticated
+    proxied: false                       # Cloudflare cuts the dashboard's idle WebSocket
+    routes:
+      - {path: /, match: prefix, process: hermes, surface: dashboard}
+```
+
+Its record points straight at the tier's edge, at the tier's `dns.direct`,
+with `cloudflare-proxied` false. Its clients connect to the edge themselves,
+so a `rateLimit` on any of its routes counts each by the connection's address:
+the header Cloudflare would forward is one such a client writes for itself.
 
 **Precedence is derived, not inherited from the proxy**
 ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)). `auth`
@@ -1984,6 +2004,11 @@ attention, and one nobody populates costs all four and returns nothing. A
 genuinely new case gets a field and a decision record, not a passthrough that
 would readmit every provider fragment at once and take the mechanism rule with it.
 
+`proxied` is not proxy vocabulary. It names no mechanism of the edge proxy and
+changes no route's middleware chain: it says whether the DNS provider's proxy
+stands in front of the host, which decides where its record points and who a
+client is ([0127](../../docs/adr/model/0127-an-exposure-may-bypass-the-dns-providers-proxy.md)).
+
 `rateLimit` is that case. identity's registration endpoint takes a request from
 anyone and stores a row for each one, so its rate is a real judgement with a
 real consumer, and it got a field and a decision record
@@ -2016,10 +2041,14 @@ gap, not an argument for a field.
 | a route's `redirectTo` is a path the route itself matches | `E_REDIRECT_LOOP` |
 | a route names a Process its Application does not have | `E_UNKNOWN_PROCESS` |
 | a route's `{process, surface}` pair names no surface that Process provides | `E_UNKNOWN_SURFACE` |
+| an exposure declares `proxied: false` and the tier that carries its `audience` names no `dns.direct` | `E_NO_DIRECT_TARGET` |
 
 `E_DUPLICATE_HOST` is evaluated at composition over the whole union, because a
-name another Project answers on is taken (chapter 40). The other four are
-scoped to a single document and are refused as soon as the fragment is read.
+name another Project answers on is taken (chapter 40). `E_NO_DIRECT_TARGET` is
+evaluated beside the Platform document, which holds the tier: a host taken out
+of the proxy whose tier names no direct address would get a record pointing
+nowhere. The remaining five are scoped to a single document and are refused
+as soon as the fragment is read.
 
 A host is unique **on a tier**, not across the estate. Inside one proxy two
 rules for one host have no defined winner, so one host twice on one tier is

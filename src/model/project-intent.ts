@@ -455,6 +455,11 @@ const exposure = z
     host: hostname,
     audience: audience,
     contentPolicy: contentPolicy.exactOptional(),
+    // A host the DNS provider does not proxy, though its tier's names are
+    // proxied (spec/v1/10-project-intent.md#exposure): its record points at
+    // the tier's direct address. Only `false` is written; proxying is the
+    // tier's.
+    proxied: z.literal(false).exactOptional(),
     routes: z.array(route).min(1),
   })
   .meta({ id: "Exposure" });

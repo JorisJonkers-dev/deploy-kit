@@ -163,7 +163,8 @@ export function renderTraefik(project: ResolvedProject): Deliverable[] {
           // writes a record for one by the same annotation.
           annotations: {
             [INGRESS_CLASS]: exposure.ingressClass,
-            // The DNS controller writes the tier's record for the host.
+            // The DNS controller writes the host's record: the tier's target,
+            // or its direct address for a host the provider does not proxy.
             ...(exposure.dns === undefined
               ? {}
               : {

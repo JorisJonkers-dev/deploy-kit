@@ -751,6 +751,10 @@
         "contentPolicy": {
           "$ref": "#/$defs/ContentPolicy"
         },
+        "proxied": {
+          "type": "boolean",
+          "const": false
+        },
         "routes": {
           "minItems": 1,
           "type": "array",
