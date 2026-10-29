@@ -867,12 +867,14 @@ flowchart TB
         p1["pull each fragment by tag"]
         p2["oras resolve → digest"]
         p3["verify MANIFEST.sha256 per file"]
-        p4["admit schemaVersion:<br/>same major, minor ≤ toolkit"]
+        p4["admit each participant:<br/>listed, fresh within its maxAge,<br/>schemaVersion the same major, minor ≤ toolkit"]
     end
 
     subgraph UNION["2. union"]
-        u1["merge project files, Applications, Processes,<br/>Secret Subtrees"]
-        u2["materialise the required-edge DAG<br/>and the node allocatable table"]
+        u1["lower each document:<br/>every shared declaration onto its Processes"]
+        u2["merge the project files: Applications,<br/>Processes, Secret Subtrees"]
+        u3["union the images-lock shares into one lock"]
+        u4["materialise the required-edge DAG<br/>and the node allocatable table"]
     end
 
     subgraph ASSERT["3. assert estate-wide invariants"]
@@ -884,13 +886,15 @@ flowchart TB
     end
 
     subgraph OUT["4. record"]
-        o1["composition lock,<br/>every resolved digest,<br/>exact fragment and toolkit versions"]
+        o1["composition lock:<br/>every resolved digest, exact fragment and toolkit versions,<br/>each Application's revision, the Projects isolated"]
         o2["ComposedIntent<br/>input to layer 2"]
     end
 
-    P --> PULL
+    P --> p4
     PULL --> UNION
     UNION --> ASSERT
     ASSERT --> OUT
-    ASSERT -.->|"a refusal"| X["isolate what changed, re-run;<br/>else no ComposedIntent."]
+    ASSERT -.->|"a refusal"| X["isolate what changed: its Project stays at its<br/>last composed fragment, its pin stays; re-run over the rest"]
+    p4 -.->|"missing, stale, unlisted,<br/>or a version it cannot read"| X
+    X -.->|"the Platform document, or<br/>no changed fragment named"| Y["nothing to isolate: the run stops,<br/>no ComposedIntent, no pin moves"]
 ```
