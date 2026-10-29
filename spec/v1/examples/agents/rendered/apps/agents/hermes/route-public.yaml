@@ -10,8 +10,8 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
   annotations:
     kubernetes.io/ingress.class: traefik-public
-    external-dns.alpha.kubernetes.io/target: ingress.jorisjonkers.dev
-    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+    external-dns.alpha.kubernetes.io/target: 167.86.79.203
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 spec:
   entryPoints:
     - websecure

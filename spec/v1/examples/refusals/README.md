@@ -50,6 +50,7 @@ one defect so the refusal has a single cause.
 | [`unknown-library/`](unknown-library/) | `E_UNKNOWN_LIBRARY` | a Process mounting a library the Platform document does not declare ([chapter 14](../../14-platform-intent.md#libraries)) |
 | [`unknown-critical-application/`](unknown-critical-application/) | `E_UNKNOWN_CRITICAL_APPLICATION` | a critical Application the platform names and no project file declares ([chapter 14](../../14-platform-intent.md#priority)) |
 | [`tier-without-ingress-class/`](tier-without-ingress-class/) | `E_TIER_WITHOUT_INGRESS_CLASS` | an exposure on a tier that names no ingress class, so no proxy would admit its routes ([chapter 14](../../14-platform-intent.md#tiers)) |
+| [`no-direct-target/`](no-direct-target/) | `E_NO_DIRECT_TARGET` | an exposure that takes its host out of the DNS provider's proxy, on a tier that names no direct address for its record to point at ([chapter 14](../../14-platform-intent.md#tiers)) |
 | [`tier-class-unfiltered/`](tier-class-unfiltered/) | `E_TIER_CLASS_UNFILTERED` | two tiers naming one proxy with two ingress classes ([chapter 30](../../30-deliverables.md#the-edge-proxy)) |
 | [`unknown-forward-auth-provider/`](unknown-forward-auth-provider/) | `E_UNKNOWN_FORWARD_AUTH_PROVIDER` | a tier whose forward-auth names an Application its Project does not declare ([chapter 14](../../14-platform-intent.md#tiers)) |
 | [`dashboard-not-found/`](dashboard-not-found/) | `E_DASHBOARD_NOT_FOUND` | a dashboard whose file is not beside the project file ([chapter 10](../../10-project-intent.md#dashboards)) |

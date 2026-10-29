@@ -2828,6 +2828,71 @@ describe("a route's ingress class", () => {
     ).toStrictEqual({ "kubernetes.io/ingress.class": "traefik-lan" });
   });
 
+  // REQ-127 (docs/requirements.md): a host taken out of the DNS provider's
+  // proxy points at the tier's direct address, unproxied, and its routes
+  // count a client by the connection, whatever the tier's `proxiedBy`.
+  it("points an unproxied host at the tier's direct address and counts its clients by their connection", () => {
+    const routeFile = (proxied: boolean) => {
+      const tree = asTree(
+        artifact(
+          render({
+            "minimal/notes.project.yml": (document) =>
+              document
+                .replace(
+                  "        contentPolicy: strict\n",
+                  `        contentPolicy: strict\n${proxied ? "" : "        proxied: false\n"}`,
+                )
+                .replace(
+                  "          - { path: /, match: prefix, process: notes-api, surface: http }",
+                  "          - { path: /, match: prefix, process: notes-api, surface: http, rateLimit: { requests: 10, per: 1m } }",
+                ),
+          }),
+          "notes",
+        ),
+      );
+      const [route, limit] = parseAllDocuments(
+        tree["apps/notes/notes/route-public.yaml"] ?? "",
+      ).map((document) => document.toJS() as Record<string, unknown>);
+      return {
+        annotations: (
+          route?.["metadata"] as { annotations: Record<string, string> }
+        ).annotations,
+        rateLimit: (limit?.["spec"] as { rateLimit: unknown }).rateLimit,
+      };
+    };
+
+    expect(routeFile(false)).toStrictEqual({
+      annotations: {
+        "kubernetes.io/ingress.class": "traefik-public",
+        "external-dns.alpha.kubernetes.io/target": "167.86.79.203",
+        "external-dns.alpha.kubernetes.io/cloudflare-proxied": "false",
+      },
+      rateLimit: { average: 10, period: "1m", burst: 10 },
+    });
+    // The same host behind the proxy keeps the tier's record and reading.
+    expect(routeFile(true)).toStrictEqual({
+      annotations: {
+        "kubernetes.io/ingress.class": "traefik-public",
+        "external-dns.alpha.kubernetes.io/target": "ingress.jorisjonkers.dev",
+        "external-dns.alpha.kubernetes.io/cloudflare-proxied": "true",
+      },
+      rateLimit: {
+        average: 10,
+        period: "1m",
+        burst: 10,
+        sourceCriterion: { requestHeaderName: "CF-Connecting-IP" },
+      },
+    });
+    // A tier that names no direct address leaves the record of hermes's
+    // unproxied host, in the same set, nowhere to point.
+    expect(() =>
+      render({
+        "platform/platform.intent.yml": (document) =>
+          document.replace(", direct: 167.86.79.203}", "}"),
+      }),
+    ).toThrow('["E_NO_DIRECT_TARGET"]');
+  });
+
   it("is the tier's that carries the exposure's audience", () => {
     expect(classOf()).toBe("traefik-public");
     expect(

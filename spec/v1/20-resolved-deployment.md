@@ -233,6 +233,7 @@ field's placement link to this anchor rather than copying rows.
 | `exposure[].host` | Application | unique, checked | the full FQDN, authored: no label, no zone rule, no apex flag. Estate-unique across the composed union: `E_DUPLICATE_HOST` ([chapter 40](40-composition.md#identity)) |
 | `exposure` `audience`, and a route's `audience` override | Application | no contention | one closed audience vocabulary; the per-route form is the anonymous path inside an authenticated host |
 | `exposure[].contentPolicy` | Application | no contention | `strict`, `admin` or `workflow`. Which profile an application needs is a fact about the application; the header set it selects is derived |
+| `exposure[].proxied` | Application | no contention | `false` or absent. Whether a host can stand behind the DNS provider's proxy is a fact about what it serves, such as a connection the proxy would cut; the address an unproxied host's record points at is the tier's `dns.direct`, the platform's ([0127](../../docs/adr/model/0127-an-exposure-may-bypass-the-dns-providers-proxy.md)) |
 | `exposure[].routes`: `path`, `match`, `process`, `surface`, `redirectTo` | Application | no contention | which of the Application's own Processes serves which path of the host. The surface must be one that Process `provides` (`E_UNKNOWN_SURFACE`); no two routes may share a `path` + `match` pair (`E_DUPLICATE_ROUTE_MATCH`); `redirectTo` is a path, never a regex |
 | `probes`, `startupBudget`, `cutover` | Application | no contention | what only the Application knows about its own start, health and cutover; `cutover` is required on every Process but a prepare or scheduled one and has no default |
 | `schedule` | Application | no contention | when a `scheduled` Process runs, five cron fields; on no other Process ([chapter 10](10-project-intent.md#scheduled-processes)) |
@@ -332,8 +333,14 @@ A `rate-limit` step carries what the route authored and what the tier derives:
 equal to the allowance, and
 `clientAddress`, which is `cloudflare` on a tier that states
 `proxiedBy: cloudflare` and `connection` otherwise
-([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)). It
+([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)), and
+`connection` on every route of an exposure that is not `proxied`
+([0127](../../docs/adr/model/0127-an-exposure-may-bypass-the-dns-providers-proxy.md)). It
 comes last in the chain, after the security headers.
+
+A resolved exposure's `dns` is its host's record: the tier's `target` and
+`proxied`, or the tier's `direct` and `false` for an exposure that is not
+`proxied`, and absent where the tier publishes no names.
 
 ### The namespace row was wrong, and this is the correction
 

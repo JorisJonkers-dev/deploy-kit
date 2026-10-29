@@ -871,7 +871,9 @@ const resolvedExposure = z
     tier: text,
     // The ingress class the tier's proxy admits its routes by.
     ingressClass: text,
-    // Where the tier's public names point, where it publishes them.
+    // Where the host's record points and whether the DNS provider proxies
+    // it, where the tier publishes its names: the tier's own, or its direct
+    // address for an exposure that is not proxied.
     dns: z
       .strictObject({ target: text, proxied: z.boolean() })
       .meta({ id: "ResolvedTierDns" })

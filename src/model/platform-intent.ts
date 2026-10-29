@@ -197,10 +197,15 @@ const tier = z
       .regex(/^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/)
       .exactOptional(),
     // Where the tier's public names point, and whether the DNS provider
-    // proxies them (spec/v1/14-platform-intent.md#tiers). Absent where the
-    // tier's names are not published.
+    // proxies them (spec/v1/14-platform-intent.md#tiers), and where a name it
+    // does not proxy points instead: the address a client dials the tier's
+    // edge at. Absent where the tier's names are not published.
     dns: z
-      .strictObject({ target: text, proxied: z.boolean() })
+      .strictObject({
+        target: text,
+        proxied: z.boolean(),
+        direct: text.exactOptional(),
+      })
       .meta({ id: "TierDns" })
       .exactOptional(),
     // The L4 Address the proxy listens on, by its name in `l4Addresses`: its
