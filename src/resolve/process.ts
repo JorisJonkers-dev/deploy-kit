@@ -251,7 +251,7 @@ function probesOf(
 const entriesFor = (
   files: readonly EnvFile[] | undefined,
 ): readonly EnvVariable[] =>
-  // The lowering drops an empty list, so a list it keeps holds a file.
+  // Lowering writes no empty list, so a list it wrote always holds the file.
   // Stryker disable next-line OptionalChaining
   files?.[0]?.entries ?? [];
 

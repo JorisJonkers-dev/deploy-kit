@@ -16,8 +16,10 @@ import { NODE_PROJECT } from "../model/node-agents.ts";
 import {
   ESTATE_ARTIFACT,
   artifactRepositoryOf,
+  retryPatches,
   versionPatches,
 } from "../adapters/flux/source.ts";
+import { blueGreen } from "../adapters/kubernetes/capacity.ts";
 import type { Adapter } from "../adapters/registry.ts";
 import { projectDirectory } from "../adapters/shared/paths.ts";
 import type { CompositionLockDocument } from "../model/composition-lock.ts";
@@ -56,6 +58,7 @@ import {
 } from "./render-intent-set.ts";
 import { resolveIntentSet, type ResolvedSet } from "./resolve-intent-set.ts";
 import type { RenderedObject } from "../objects/deliverable.ts";
+import type { ResolvedProject } from "../model/resolution.ts";
 import { readYaml } from "../read/yaml.ts";
 
 /** One published fragment: its digest-named reference, its manifest and its files. */
@@ -652,20 +655,16 @@ function deliver(
 }
 
 /**
- * A moving Project's artifact as it is published: its share of the rendered
- * tree, with its unit's index patched to label every pod it applies with the
- * release the pin moves to (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
- * The label travels inside the artifact, so the one fetch that brings the new
- * image brings the label with it; written on the pin source instead, Flux could
- * apply the old artifact under the new label first. The content hash still
- * covers the share alone, so a release that renders nothing new moves no pin.
+ * A Project's share with `patches` added to its unit's index, after any it
+ * already carries; a share given none is the share as rendered.
  */
-function releasedFiles(
+function patchedFiles(
   files: readonly RenderedFile[],
   project: string,
-  version: string,
+  patches: readonly unknown[],
   serialize: Serializer,
-): RenderedFile[] {
+): readonly RenderedFile[] {
+  if (patches.length === 0) return files;
   const index = `${projectDirectory(project)}/kustomization.yaml`;
   return files.map((file) => {
     if (file.path !== index) return file;
@@ -677,13 +676,59 @@ function releasedFiles(
         `${index}: the render wrote an index it cannot read`,
       );
     // Stryker restore ConditionalExpression,StringLiteral
+    const fields = read.value as Record<string, unknown>;
+    const carried = (fields["patches"] ?? []) as readonly unknown[];
     const patched = {
-      ...(read.value as Record<string, unknown>),
-      patches: versionPatches(version),
+      ...fields,
+      patches: [...carried, ...patches],
     } as unknown as RenderedObject;
     return { ...file, text: serialize([patched], file.path) };
   });
 }
+
+/**
+ * A Project's share as it is hashed: where its pin records a Retry, its unit's
+ * index annotates the pod template of every gated Process's Deployment with
+ * when the Retry ran (spec/v1/55-delivery.md#pause-and-rollback). The Retry is
+ * part of what the share holds, so a Retry alone moves the pin, and a pin that
+ * keeps it moves for nothing else.
+ */
+function retriedFiles(
+  files: readonly RenderedFile[],
+  project: ResolvedProject | undefined,
+  pin: Pin | undefined,
+  serialize: Serializer,
+): readonly RenderedFile[] {
+  const retriedAt = pin?.annotations[PIN_ANNOTATIONS.retriedAt];
+  if (project === undefined || retriedAt === undefined) return files;
+  // In the order the Project declares them, which no pull order changes.
+  const gated = project.applications.flatMap(({ namespace, processes }) =>
+    processes.filter(blueGreen).map(({ name }) => ({ namespace, name })),
+  );
+  return patchedFiles(
+    files,
+    project.project,
+    retryPatches(retriedAt, gated),
+    serialize,
+  );
+}
+
+/**
+ * A moving Project's artifact as it is published: its share of the rendered
+ * tree, with its unit's index patched to label every pod it applies with the
+ * release the pin moves to (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+ * The label travels inside the artifact, so the one fetch that brings the new
+ * image brings the label with it; written on the pin source instead, Flux could
+ * apply the old artifact under the new label first. The content hash still
+ * covers the share alone, so a release that renders nothing new moves no pin.
+ */
+const releasedFiles = (
+  files: readonly RenderedFile[],
+  project: string,
+  version: string,
+  serialize: Serializer,
+): readonly RenderedFile[] =>
+  patchedFiles(files, project, versionPatches(version), serialize);
 
 function composition(
   input: Composing,
@@ -696,7 +741,10 @@ function composition(
   const held = (name: string, annotation: string): boolean =>
     annotation in (input.pins[name]?.annotations ?? {});
   const published = platformOf(input.platform).bootstrap.flux.artifacts;
-  const artifacts = rendered.map(({ name, files }): ComposedArtifact => {
+  const artifacts = rendered.map(({ name, files: share }): ComposedArtifact => {
+    const resolved = projects.find(({ project }) => project === name);
+    const pin = input.pins[name];
+    const files = retriedFiles(share, resolved, pin, options.serialize);
     const contentHash = hash(files.map(({ path, text }) => ({ path, text })));
     // A Project's artifact is rendered from the fragment it composed at,
     // which is the release its pin moves to.
@@ -704,13 +752,11 @@ function composition(
     // An unchanged render publishes nothing, save where the pinned artifact
     // labels no release, and a paused Project moves no pin, save to the
     // release a Rollback composed it at.
-    const pin = input.pins[name];
     const unlabelled = released !== undefined && pin?.labelled === null;
     const moves =
       (!held(name, PIN_ANNOTATIONS.pausedBy) ||
         held(name, PIN_ANNOTATIONS.rollbackFragment)) &&
       (pin?.contentHash !== contentHash || unlabelled);
-    const resolved = projects.find(({ project }) => project === name);
     const url = resolved === undefined ? undefined : rolloutUrlOf(resolved);
     // The estate-scoped artifact is no fragment's, so it carries no release.
     const labelled = moves && released !== undefined;
@@ -815,7 +861,7 @@ function composition(
     artifacts,
     // Rewritten whenever the pin moves, so a unit an artifact gains is
     // applied, and whenever what the Platform document or the unit DAG says
-    // of it changes, keeping what a Pause or a Rollback recorded on the pin.
+    // of it changes, keeping what a Pause, a Rollback or a Retry recorded on the pin.
     sources: pinSources(
       artifacts.filter(({ moves }) => moves),
       rendered,

@@ -225,7 +225,7 @@ which follows nothing, where the Platform document declares a Human Grant, and `
 where it carries the catalog of a datastore the old path still runs. A unit the artifact gains changes what
 it holds, so its pin moves and the rewritten source applies the new unit, and
 a Project's routes arriving when the edge leaves the old path move its pin
-once. The rewrite keeps the annotations a Pause or a Rollback
+once. The rewrite keeps the annotations a Pause, a Rollback or a Retry
 recorded on the pin ([Pause and Rollback](#pause-and-rollback)).
 
 Once the estate-scoped artifact holds nothing, composition publishes none and
@@ -241,9 +241,12 @@ empty render.
 
 A human can hold one Project still, or take it back to an earlier release,
 without touching its repository
-([0084](../../docs/adr/model/0084-pause-and-rollback.md)). Both are workflows in
-the Estate repository, run by hand, and each is one commit to the Project's pin
-file. Neither is a second applier: Flux still applies whatever the pin names.
+([0084](../../docs/adr/model/0084-pause-and-rollback.md)), or have a failed
+release analysed again
+([0120](../../docs/adr/model/0120-a-retry-is-rendered-not-restarted.md)). Each is
+a workflow in the Estate repository, run by hand, and each is one commit to the
+Project's pin file. None is a second applier: Flux still applies whatever the
+pin names.
 
 **A Pause freezes the pin.** While a Project is paused, composition still checks
 its newest fragment against every estate-wide invariant and reports what it
@@ -290,9 +293,37 @@ one the current inputs produce. In order:
    the Rollback removed. Resuming is a human's statement that the fix has
    landed.
 
-**Both are recorded on the pin file**, as annotations on the `OCIRepository` in
-`projects/<project>/source.yaml`, so the Estate repository's history says who
-paused what, when and why:
+**A Retry analyses a failed release again.** A gated member that fails its
+analysis is rolled back to the version that served, and Flagger analyses it
+again only when its Deployment's pod template changes
+([Held releases](#held-releases)). A Retry is that change, made in the render
+Flux applies rather than on the cluster. In order:
+
+1. **One annotation, in the artifact.** Where a Project's pin carries
+   `retried-at`, its unit's index carries one patch for each Deployment a
+   Canary targets, a `blue-green` Process's, by its name and namespace. Each
+   annotates that Deployment's pod template with
+   `estate.jorisjonkers.dev/retried-at` and the time the pin records, after any
+   patch the render wrote and before the release's labels. No other workload is
+   patched: a restart analyses nothing where no Canary is.
+2. **It moves the pin once.** The annotation is part of what the Project's
+   share holds, so the content hash covers it: a new time moves the pin, and
+   every later render carries the same annotation, so Flagger sees exactly one
+   new revision and Flux, applying it as desired state, never takes it back. A
+   Project with no `blue-green` Process renders nothing new, and its pin stays.
+   Restarting the Deployment on the cluster is no Retry: Flux reverts the
+   annotation a restart writes on its next reconcile, which Flagger reads as a
+   second revision.
+3. **A Pause still holds the pin.** A paused Project's pin moves for a Retry
+   only where a Rollback composes it, as for anything else: the Retry of a
+   rolled-back Project analyses the release it was rolled back to again.
+4. **Resuming keeps it.** A Retry holds nothing, so a resume leaves it on the
+   pin: removing it would change every gated pod template, which Flagger would
+   analyse as one more release.
+
+**All three are recorded on the pin file**, as annotations on the
+`OCIRepository` in `projects/<project>/source.yaml`, so the Estate repository's
+history says who paused or retried what, when and why:
 
 | annotation | set by | value |
 |---|---|---|
@@ -301,14 +332,16 @@ paused what, when and why:
 | `estate.jorisjonkers.dev/paused-reason` | a Pause or a Rollback | the reason given, required |
 | `estate.jorisjonkers.dev/rollback-version` | a Rollback | the release version rolled back to |
 | `estate.jorisjonkers.dev/rollback-fragment` | a Rollback | that release's fragment, by digest |
+| `estate.jorisjonkers.dev/retried-at` | a Retry | an RFC 3339 time, which each Retry replaces; who ran it and why are its commit's |
 
 Their JSON Schema is
 [`schemas/pin-annotations.schema.json`](schemas/pin-annotations.schema.json).
 Composition reads the annotations as an input: a Project carrying
 `paused-by` moves no pin, save that one carrying `rollback-fragment` is
 composed at that fragment and its pin moves to that render wherever it holds
-another.
-A rewritten pin source keeps all of them. Resuming removes them all.
+another; one carrying `retried-at` renders it on every gated pod template.
+A rewritten pin source keeps all of them. Resuming removes all but
+`retried-at`.
 
 ## Switchover
 
@@ -511,7 +544,9 @@ or prepare step fails before any new version starts.
 
 The Release Gate reports a held Application as the pair (serving revision,
 pinned revision) and alerts until a new pin lands, whether that is a fix forward
-or a revert in the application repository. Nothing reverts the pin
+or a revert in the application repository, or until a Retry
+([Pause and Rollback](#pause-and-rollback)) analyses the same release again once
+what failed it lay outside the release. Nothing reverts the pin
 automatically: the old version is already serving, and an automatic revert would
 race the fix.
 
