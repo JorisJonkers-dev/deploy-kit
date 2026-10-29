@@ -120,6 +120,20 @@ describe("the mutation gate", () => {
     expect(ci).toMatch(/'pipeline-complete':[\s\S]*?- 'mutation'\n/);
   });
 
+  // A static mutant runs every suite, so a pull request skips the ones it
+  // would re-test and stays inside five minutes; a push to main tests them.
+  it("skips static mutants on a pull request only, and records the stage's time against five minutes", () => {
+    expect(pullRequestShardJob).toContain(
+      `if [ "\${EVENT}" = 'pull_request' ]; then static=(--ignoreStatic); fi`,
+    );
+    expect(pullRequestShardJob).toContain(
+      'npm run test:mutation -- --incremental --mutate "$ranges" "${static[@]}"',
+    );
+    expect(gateJob).toContain("'name': 'Record how long mutation took'");
+    expect(gateJob).toContain('[ "${seconds}" -gt 300 ]');
+    expect(gateJob).toContain('>> "$GITHUB_STEP_SUMMARY"');
+  });
+
   // test/mutation-baseline.test.ts holds which tests keep their identity.
   it("keeps every test that did not change in the report, after it downloads and before any shard reads it", () => {
     const rebase =

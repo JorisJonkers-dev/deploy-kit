@@ -521,7 +521,11 @@ other result is taken from that report. Stryker places no Vitest test in its
 file, so `scripts/mutation-baseline.ts` first rewrites that report to keep
 every test whose own code, the declarations it names and the `describe`
 around it are unchanged; without it one edit to a test file would re-test
-everything that file's tests killed. The run is twelve shards, each
+everything that file's tests killed. A pull request runs with
+`--ignoreStatic`: a static mutant it would re-test, one made when its module
+loads and so run against every suite, is `Ignored` rather than tested, and
+every push to `main` tests it. The `mutation` job records the stage's wall time
+in its summary and warns when a pull request's passes five minutes. The run is twelve shards, each
 mutating a disjoint share of every module's top-level statements, balanced by
 the tests those statements' mutants ran in that report
 (`scripts/mutation-shard.ts`), and the `mutation` job merges their reports into

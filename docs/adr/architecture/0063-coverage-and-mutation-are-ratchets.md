@@ -21,7 +21,9 @@ the rule; the measured numbers live in the CI report, never here.
 A pull request does not test every mutant. It runs Stryker incrementally
 against the report of the last green run on `main`: a mutant is tested again
 when its module changed or the test that killed it changed, and every other
-result comes from that report. The score is still over every mutant. The run is
+result comes from that report. A pull request skips a static mutant it would
+have to re-test, one made when its module loads; every push to `main` tests
+them, against the same kind of report, and uploads the next one. The score is still over every mutant. The run is
 parallel shards, each handed a disjoint share of every module's top-level
 statements balanced by the time each took in that report, and one job merges their reports into the report a single run would
 have written: that report decides the score and is the next run's baseline. A
@@ -78,6 +80,16 @@ bought no catch outside the changed files, and its only yield there was red
 jobs that a second run turned green. Stryker's incremental mode keeps the
 result of a mutant whose module and whose killing test are both unchanged, so
 a pull request that only weakens a test still re-tests what that test killed.
+
+**A pull request spends at most five minutes on mutation.** A static mutant
+runs every suite, so a handful of them outweighs hundreds of the rest: with
+each test kept as itself, a pull request's stage still ran twice that budget
+on the static mutants alone. A pull request leaves them `Ignored`, which no
+score counts, and still fails on any other survivor; a push to `main` tests
+them, so a static survivor fails `main` after the merge rather than holding
+every pull request. Each run writes how long its stage took to its summary,
+and a pull request past the budget warns. A stage that cannot stay inside it
+comes off pull requests and runs on pushes to `main` alone.
 
 **A test is itself until its own code changes.** Stryker's Vitest runner
 places no test in its file, so Stryker read one edit anywhere in a test file
@@ -138,7 +150,8 @@ subprocess); mutating them now would score the sandbox, not the tests.
 | Record the mutant counts beside the rule | the number sits in the record | stale on the next commit |
 | Stryker's own reading of a test file, every test changed by any edit | no rewrite of the baseline | one new test re-tested what its whole file killed, many times the suite's own run |
 | Smaller test files, so an edit invalidates less | no script | a file is still the unit, and a fixture shared across files would be copied |
-| Skip load-time mutants on a pull request (`ignoreStatic`) | the largest single saving | a load-time mutant the change reaches lands on `main` untested |
+| Test static mutants on a pull request too | a static survivor never reaches `main` | the stage ran twice the five minutes a pull request may spend |
+| Mutation on pushes to `main` alone | every pull request pays nothing | a runtime survivor a pull request could have named lands on `main` too |
 | Every mutant on every pull request | no result is ever taken from an earlier run | four fifths of CI minutes, for no catch outside the changed files |
 | One incremental job over every module | no merge step | the slowest gate, holding every merge, release pull requests included |
 | Shards by whole file | each file in one report | one large module leaves its shard running alone |
