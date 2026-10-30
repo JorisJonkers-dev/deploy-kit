@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.3.0...v1.3.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **model:** add NET_BIND_SERVICE for a low port, and HOME=/tmp where /tmp is writable ([#741](https://github.com/JorisJonkers-dev/deploy-kit/issues/741)) ([cd459b8](https://github.com/JorisJonkers-dev/deploy-kit/commit/cd459b81bf8a5940db311ccb54619ed7a47ece4f))
+
 ## [1.3.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.2.0...v1.3.0) (2026-10-29)
 
 
