@@ -1,5 +1,13 @@
+apps/mail/kustomization.yaml mail/rendered/apps/mail/kustomization.yaml
+apps/mail/namespace.yaml mail/rendered/apps/mail/namespace.yaml
+apps/mail/networkpolicy.yaml mail/rendered/apps/mail/networkpolicy.yaml
+apps/mail/rollout-events/alert.yaml mail/rendered/apps/mail/rollout-events/alert.yaml
+apps/mail/rollout-events/kustomization.yaml mail/rendered/apps/mail/rollout-events/kustomization.yaml
+apps/mail/rollout-events/provider.yaml mail/rendered/apps/mail/rollout-events/provider.yaml
 apps/mail/stalwart/configmap.yaml mail/rendered/apps/mail/stalwart/configmap.yaml
+apps/mail/stalwart/kustomization.yaml mail/rendered/apps/mail/stalwart/kustomization.yaml
 apps/mail/stalwart/networkpolicy.yaml mail/rendered/apps/mail/stalwart/networkpolicy.yaml
 apps/mail/stalwart/route-admin.yaml mail/rendered/apps/mail/stalwart/route-admin.yaml
 apps/mail/stalwart/service.yaml mail/rendered/apps/mail/stalwart/service.yaml
+apps/mail/stalwart/serviceaccount.yaml mail/rendered/apps/mail/stalwart/serviceaccount.yaml
 apps/mail/stalwart/workload.yaml mail/rendered/apps/mail/stalwart/workload.yaml

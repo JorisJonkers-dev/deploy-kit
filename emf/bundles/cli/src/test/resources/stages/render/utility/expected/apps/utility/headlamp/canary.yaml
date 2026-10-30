@@ -1,0 +1,73 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: headlamp
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/name: headlamp
+    app.kubernetes.io/instance: headlamp
+    app.kubernetes.io/part-of: headlamp
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: headlamp
+  progressDeadlineSeconds: 210
+  service:
+    port: 4466
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: headlamp
+          process: headlamp
+          revision: sha256:00e9e8ce5e4c29f9b673031edc8e35bc40b8a6e31c53bc12984c3740ed856312
+          paths: /
+          readiness: /
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: headlamp
+          process: headlamp
+          revision: sha256:00e9e8ce5e4c29f9b673031edc8e35bc40b8a6e31c53bc12984c3740ed856312
+          paths: /
+          readiness: /
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: headlamp
+          process: headlamp
+          revision: sha256:00e9e8ce5e4c29f9b673031edc8e35bc40b8a6e31c53bc12984c3740ed856312
+          paths: /
+          readiness: /
+          errorRate: 1%
+          latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: headlamp
+          process: headlamp
+          revision: sha256:00e9e8ce5e4c29f9b673031edc8e35bc40b8a6e31c53bc12984c3740ed856312
+          paths: /
+          readiness: /
+          errorRate: 1%
+          latency: 500ms

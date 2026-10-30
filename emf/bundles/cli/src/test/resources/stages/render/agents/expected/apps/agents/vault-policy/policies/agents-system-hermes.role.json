@@ -1,0 +1,11 @@
+{
+  "bound_service_account_names": [
+    "hermes"
+  ],
+  "bound_service_account_namespaces": [
+    "agents-system"
+  ],
+  "token_policies": [
+    "agents-system-hermes"
+  ]
+}

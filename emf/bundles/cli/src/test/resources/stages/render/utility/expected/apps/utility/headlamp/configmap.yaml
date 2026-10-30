@@ -1,0 +1,26 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: headlamp-release-gate
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/part-of: headlamp
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"210s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"headlamp","readiness":{"path":"/","port":4466}}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: headlamp-external-checks
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/part-of: headlamp
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  headlamp-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"utility","name":"headlamp-lan-1","url":"http://dashboard.lan.jorisjonkers.dev/"}]}

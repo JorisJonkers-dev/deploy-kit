@@ -1,0 +1,14 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: agents-ui-external-checks
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/part-of: agents-ui
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  agents-ui-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"agents","name":"agents-ui-public-1","url":"https://agents.jorisjonkers.dev/"}]}

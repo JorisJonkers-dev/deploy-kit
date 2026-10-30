@@ -1,0 +1,15 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - asset-sync
+  - namespace.yaml
+  - platform-garage
+  - platform-mongo
+  - platform-postgres
+  - platform-rabbitmq
+  - platform-valkey
+  - rollout-events
+  - vault-policy
+  - vaultconnection.yaml

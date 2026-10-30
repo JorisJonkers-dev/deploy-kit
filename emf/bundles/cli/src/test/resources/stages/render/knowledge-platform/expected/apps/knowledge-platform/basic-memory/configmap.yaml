@@ -1,0 +1,14 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: basic-memory-external-checks
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/part-of: basic-memory
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  basic-memory-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"knowledge-platform","name":"basic-memory-mcp-1","url":"https://memory-mcp.jorisjonkers.dev/"}]}

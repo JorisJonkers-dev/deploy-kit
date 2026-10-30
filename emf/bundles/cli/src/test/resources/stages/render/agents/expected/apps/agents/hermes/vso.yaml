@@ -1,0 +1,47 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: hermes
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/name: hermes
+    app.kubernetes.io/instance: hermes
+    app.kubernetes.io/part-of: hermes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: agents-system-hermes
+    serviceAccount: hermes
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: hermes-agents-hermes
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/name: hermes
+    app.kubernetes.io/instance: hermes
+    app.kubernetes.io/part-of: hermes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: hermes
+  mount: secret
+  type: kv-v2
+  path: agents/hermes
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: hermes-agents-hermes
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: hermes
