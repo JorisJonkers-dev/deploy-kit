@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:677d7cbb7749a4a20469b502afbb683a5753913d0d98891880a7624c03da3081" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:6a3dc92b49017005a03757ada046ced1cca653a9f181f0c84435121a7d374c5a" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests name="agents" digest="sha256:7a710b34e13d2be9c7ddfceb239b6c8e099137f760cb7a3ebb5a7d71dead88d9"/>
     <inputDigests name="auth" digest="sha256:9ede7056e41341c9040da4b17b9e1fdcf074966ed07fff0c288a2f989614d0d8"/>
     <inputDigests name="coverage" digest="sha256:0447ae0ebc9b78b52d0a6a4cbe283936791adefc9fc092017a6de1a9e2d7dc2b"/>
@@ -10,7 +10,7 @@
     <inputDigests name="identity" digest="sha256:a495f34c57b72802be980417998d579bcf5ba63b1a3d3ca2df47819fdcc9eaf0"/>
     <inputDigests name="knowledge" digest="sha256:09e444ec41eebbeec2e9f54401fbbe30a00e5037e5ba01e116d5a3f2656bfa48"/>
     <inputDigests name="knowledge-platform" digest="sha256:bbd782977092ebeb77ec78072d4f005b9f8b3c010ae7d5d8e5341a90b7dcb2dd"/>
-    <inputDigests name="mail" digest="sha256:9de4af0e428eaf7eb94954392330f92dfefc4e93cc39a07f77ecfec241caf936"/>
+    <inputDigests name="mail" digest="sha256:8969188e8126f46258197d242d12043030ca47510845267a03f066a6e31883f9"/>
     <inputDigests name="notes" digest="sha256:7876ff722429a69629d175a67bf8c4199f5e12b84c4a237b171bbd9048411918"/>
     <inputDigests name="observability" digest="sha256:a679d99bf62e83c6bef70b52d1b2bed7fbae6938a5a0cda2b5971a7ec70055fc"/>
     <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
@@ -20,7 +20,7 @@
     <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:b623d2ffe37d94ed3dfd601c8ef7aa011ef349912b4428d1071d72099e4c54a8"/>
   </provenance>
-  <applications id="stalwart" revision="sha256:0cabf7c55e421857050daad5f4097386c910d3fb7203e22196b39b9372efc6ab" project="mail" namespace="mail-system" reconcileUnit="/0/@reconcileUnits.0">
+  <applications id="stalwart" revision="sha256:71b194fdecb83ba05de5be287f95836778fd1681f8117a889762175bf5547fa6" project="mail" namespace="mail-system" reconcileUnit="/0/@reconcileUnits.0">
     <exposure name="admin" host="mail.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
       <dns target="ingress.jorisjonkers.dev" proxied="true"/>
       <routes path="/" match="exact" audience="authenticated" precedence="1" process="/0/@applications.0/@processes.0" surface="http">
@@ -33,7 +33,7 @@
         <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
       </routes>
     </exposure>
-    <processes name="stalwart" identity="stalwart" lifecycle="application" image="docker.io/stalwartlabs/stalwart@sha256:5a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f" imageVersion="v0.16.0" uid="2000" gid="2000" cutover="interrupted" switchover="stop-start" serving="stalwart" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="512Mi" cpu="100m" hardening="restricted" component="none">
+    <processes name="stalwart" identity="stalwart" lifecycle="application" image="docker.io/stalwartlabs/stalwart@sha256:5a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f" imageVersion="v0.16.0" uid="2000" gid="2000" cutover="interrupted" switchover="stop-start" serving="stalwart" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="512Mi" cpu="100m" hardening="restricted" component="none" home="/tmp">
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:HttpTarget" path="/healthz/ready" port="8080"/>
       </readiness>
@@ -50,9 +50,10 @@
         <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
       </placement>
       <assets name="stalwart-manifest-json-f1813d8cee" from="config/manifest.json" mountAt="/etc/stalwart-provisioner/manifest.json" content="{&#xA;  &quot;domains&quot;: [{ &quot;name&quot;: &quot;jorisjonkers.dev&quot; }],&#xA;  &quot;accounts&quot;: [{ &quot;name&quot;: &quot;postmaster&quot;, &quot;domain&quot;: &quot;jorisjonkers.dev&quot; }]&#xA;}&#xA;"/>
-      <sidecars name="stalwart-apply" image="ghcr.io/jorisjonkers-dev/stalwart-provisioner@sha256:7d1f3b5a9c2e4f6b8d0a2c4e6f8b1d3a5c7e9f2b4d6a8c0e2f4b6d8a1c3e5f7b" imageVersion="0.22.0" memory="64Mi" cpu="10m">
+      <sidecars name="stalwart-apply" image="ghcr.io/jorisjonkers-dev/stalwart-provisioner@sha256:7d1f3b5a9c2e4f6b8d0a2c4e6f8b1d3a5c7e9f2b4d6a8c0e2f4b6d8a1c3e5f7b" imageVersion="0.22.0" memory="64Mi" cpu="10m" home="/tmp">
         <mounts name="stalwart-manifest-json-f1813d8cee" mountAt="/etc/stalwart-provisioner/manifest.json" subPath="manifest.json" readOnly="true"/>
       </sidecars>
+      <writablePaths path="/tmp" size="64Mi"/>
       <addedPrivileges>NET_BIND_SERVICE</addedPrivileges>
     </processes>
   </applications>

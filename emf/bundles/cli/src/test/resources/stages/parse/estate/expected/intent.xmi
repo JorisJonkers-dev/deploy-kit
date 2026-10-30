@@ -1278,6 +1278,7 @@
       </exposure>
       <processes startupBudget="60s" cutover="interrupted" name="stalwart" image="stalwart" runtime="none">
         <assets xsi:type="projectintent:Asset" from="config/manifest.json" mountAt="/etc/stalwart-provisioner/manifest.json"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
         <placement memory="512Mi" cpu="100m"/>
         <provides key="http" value="8080"/>
         <provides key="smtp" value="25"/>

@@ -61,6 +61,9 @@ spec:
             - name: imaps
               containerPort: 993
               hostPort: 993
+          env:
+            - name: HOME
+              value: /tmp
           resources:
             requests:
               memory: 512Mi
@@ -80,6 +83,8 @@ spec:
               mountPath: /etc/stalwart-provisioner/manifest.json
               subPath: manifest.json
               readOnly: true
+            - name: writable-tmp
+              mountPath: /tmp
           readinessProbe:
             httpGet:
               path: /healthz/ready
@@ -105,6 +110,9 @@ spec:
             failureThreshold: 12
         - name: stalwart-apply
           image: ghcr.io/jorisjonkers-dev/stalwart-provisioner@sha256:7d1f3b5a9c2e4f6b8d0a2c4e6f8b1d3a5c7e9f2b4d6a8c0e2f4b6d8a1c3e5f7b
+          env:
+            - name: HOME
+              value: /tmp
           resources:
             requests:
               memory: 64Mi
@@ -122,6 +130,8 @@ spec:
               mountPath: /etc/stalwart-provisioner/manifest.json
               subPath: manifest.json
               readOnly: true
+            - name: writable-tmp
+              mountPath: /tmp
       volumes:
         - name: stalwart-manifest-json-f1813d8cee
           configMap:
@@ -129,3 +139,6 @@ spec:
             items:
               - key: manifest.json
                 path: manifest.json
+        - name: writable-tmp
+          emptyDir:
+            sizeLimit: 64Mi
