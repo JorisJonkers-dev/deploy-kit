@@ -25,6 +25,7 @@ import {
 } from "../shared/holders.ts";
 import { managedOnly } from "../shared/labels.ts";
 import { applicationDirectory, projectDirectory } from "../shared/paths.ts";
+import { operatedSetOf } from "../../model/operated.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 
 export const ADAPTER = "vso";
@@ -60,16 +61,27 @@ const keptOf = (
         },
       };
 
-/** The Deployment a rotation restarts: a blue-green Process serves from its primary. */
+/**
+ * The workload a rotation restarts: a blue-green Process serves from its
+ * primary, and one the Prometheus operator runs from the StatefulSet it gives it.
+ */
 function servingOf(
   name: string,
   application: ResolvedApplicationDocument,
-): string {
+): { readonly kind: "Deployment" | "StatefulSet"; readonly name: string } {
   // A restart target is a Process of the Application the grant belongs to.
   const process = application.processes.find(
     (candidate) => candidate.name === name,
   ) as ResolvedProcess;
-  return process.switchover === "blue-green" ? `${name}-primary` : name;
+  if (process.operated !== undefined)
+    return {
+      kind: "StatefulSet",
+      name: operatedSetOf(process.operated.kind, name),
+    };
+  return {
+    kind: "Deployment",
+    name: process.switchover === "blue-green" ? `${name}-primary` : name,
+  };
 }
 
 function staticSecretOf(
@@ -116,10 +128,9 @@ const restartsOf = (
   targets === undefined
     ? {}
     : {
-        rolloutRestartTargets: targets.map((target) => ({
-          kind: "Deployment" as const,
-          name: servingOf(target, application),
-        })),
+        rolloutRestartTargets: targets.map((target) =>
+          servingOf(target, application),
+        ),
       };
 
 /** A database credential an edge delivers to the environment, issued and renewed by the store. */

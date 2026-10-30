@@ -56,6 +56,7 @@ import {
   scrapeEgressOf,
 } from "./policy.ts";
 import { resolveProcess, type ProcessContext } from "./process.ts";
+import { operatedOf } from "./operated.ts";
 
 /** An Application's element: the projection without its document header and provenance. */
 export type ResolvedElement = Omit<
@@ -552,6 +553,7 @@ export function resolveApplication(
     context.platform.delivery?.machinery.includes(
       `${context.projectOf.get(application.id) as string}/${application.id}`,
     ) === true;
+  const operated = operatedOf(application, context);
   const pairs = application.processes.map((authored) => {
     // A tier derives its proxy's configuration, and on an acme tier its
     // claim, egress and token, before anything reads the Process.
@@ -597,6 +599,7 @@ export function resolveApplication(
       process,
       resolved: {
         ...base,
+        ...(operated === undefined ? {} : { operated }),
         ...(l4Exposure.length === 0 ? {} : { l4Exposure }),
         ...(nameservers === undefined ? {} : { nameservers: [...nameservers] }),
         ...withEnvironment(base, derived.environment),

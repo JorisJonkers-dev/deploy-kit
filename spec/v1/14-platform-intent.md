@@ -302,7 +302,9 @@ would test nothing per node.
 Prometheus and Alertmanager take their configuration from the Prometheus
 operator, which reads the monitors, rules and alert routing each Project
 renders as objects of its own; it is the operator, not Prometheus, that
-collects them. Gatus keeps the inbound shape below.
+collects them, and the operator that runs both, from the objects the render
+writes for them ([The operator's objects](#the-operators-objects)). Gatus
+keeps the inbound shape below.
 
 Configuration the render owns changes a pod's template whenever it changes:
 an Asset is a ConfigMap named for its content, a proxy's static configuration
@@ -978,6 +980,63 @@ value. A **severity route** sends the alerts whose `severity` label is
 route reaches a `null` receiver and is not delivered. A route naming a receiver
 the block does not declare is `E_UNKNOWN_RECEIVER`, and the Alertmanager reads
 the Secret Store, so a platform naming none is `E_NO_SECRET_STORE` for it.
+
+### The operator's objects
+
+The Prometheus operator runs the monitoring stack's Prometheus and
+Alertmanager ([0146](../../docs/adr/model/0146-the-operator-runs-the-monitoring-stacks-prometheus-and-alertmanager.md)).
+The one Process of the `prometheus` role's Application renders as a
+`Prometheus`, and the one Process of the `alertmanager` role's as an
+`Alertmanager`, each named for the Process in its own namespace, and neither
+renders a controller of its own: the operator runs each as a StatefulSet and
+writes its configuration. Everything else the Process derives renders as it
+does for any Process: its Service, ServiceAccount, claims, Assets, grants and
+policy.
+
+The object carries the pod the render would have run the Process in: its
+image and the version the images lock records, its replicas, ServiceAccount
+and token, priority class, posture, placement, requests and limits, and its
+pod labels and annotations less the three the operator sets itself
+(`app.kubernetes.io/name`, `instance` and `managed-by`). The surface is the
+port's name. The operator's own container carries the Process's variables,
+container posture, mounts and probes, merged over the operator's by mount path
+and by probe, so a claim mounted where the operator keeps the store's data
+(`/prometheus`, `/alertmanager`) is that data, in place of the scratch volume
+the operator would give it.
+
+An argument is a flag, `--name` or `--name=value`. The few the object carries
+as fields of its own become those fields, and every other is one of its
+`additionalArgs`:
+
+| role | flag | field |
+|---|---|---|
+| `prometheus` | `--storage.tsdb.retention.time`, `--storage.tsdb.retention.size` | `retention`, `retentionSize` |
+| `prometheus` | `--web.enable-remote-write-receiver` | `enableRemoteWriteReceiver` |
+| `prometheus` | each `--enable-feature`, its comma-separated list | `enableFeatures` |
+| `alertmanager` | `--data.retention` | `retention` |
+
+What each selects is the Platform document's:
+
+- **The Prometheus** scrapes every ServiceMonitor and PodMonitor of every
+  namespace that carries the [monitor cadence](#monitor-cadence)'s `labels`,
+  every one where it names none, at its `interval` and `timeout`, and
+  evaluates rules at the same `interval`. It evaluates every `PrometheusRule`
+  the render writes, in every namespace, and no other, and notifies the
+  `alertmanager` role's Process at its Service and surface. It discovers its
+  targets through the Kubernetes API, so its Process declares that access
+  ([Kubernetes API access](#kubernetes-api-access)).
+- **The Alertmanager** reads the one routing the render writes in its
+  namespace, and applies it to the alerts of every namespace.
+
+The operator runs one pod per role and replaces it in place, and it sets the
+binary's configuration file, data path and listen address itself. So the
+role's Application declares one Process, an `interrupted` application Process
+providing one surface, and no argument that is not a flag or that the
+operator sets (`--config.file`, `--storage.tsdb.path`, `--storage.path`,
+`--web.listen-address`, `--web.route-prefix`, `--web.external-url`,
+`--web.config.file`, the console flags, `--web.enable-lifecycle` and the
+cluster flags): `E_OPERATED_PROCESS` otherwise. A rotated grant restarts the
+StatefulSet the operator runs the Process in.
 
 ## Hardening policy
 
