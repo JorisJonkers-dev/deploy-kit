@@ -130,6 +130,7 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 		->union(self.generatedKeysFiles())
 		->union(self.stableAddressFiles());
 	end {
+		self.edgeFiles(result);
 		-- Only a complete element has a revision: it is the digest of all of it.
 		result.reconcileUnits->first().after := result.reconcileUnits->excluding(result.reconcileUnits->first());
 		-- The revision is the production implementation's: the digest of the
@@ -701,7 +702,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	replicas := if self.parked <> null then 0 else if self.replicas = null then 1 else self.replicas.count endif endif;
 	parked := self.parked <> null;
 	spread := self.replicas <> null and self.replicas.oclAsType(ECORE::EObject).states('across');
-	arguments := self.args;
+	arguments := self.args->asSequence()->union(edgeArgsOf(self));
 	-- A path held in memory is memory the container holds.
 	memory := let held : Real = self.writablePaths->select(w | w.oclIsKindOf(MemoryPath))
 			->collect(w | mebibytes(w.oclAsType(MemoryPath).memory))->sum() in
@@ -710,7 +711,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
 	if self.vpn <> null then vpn := vpnOf(self) endif;
 	hardening := estate.hardening.spelling();
-	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj));
+	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
 	priorityClass := priorityOf(self, app, prj);
@@ -733,6 +734,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		});
 	} endif;
 	if self.egress <> null then internetEgress := object InternetEgress { reason := self.egress.reason; } endif;
+	if self.egress = null and edgeAcme(self) then internetEgress := object InternetEgress { reason := ACME_REASON; } endif;
 	if self.egress = null and self.vpn <> null then internetEgress := object InternetEgress { reason := TUNNEL_REASON; } endif;
 	component := self.runtime.spelling();
 	if declared <> null and declared.readiness <> null then readiness := declared.readiness.cadenced() endif;
@@ -750,10 +752,12 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	surfaces := self.provides->collect(s | object ResolvedSurface {
 		name := s.key;
 		port := s.value;
-		hostPort := l4Of(self)->select(e | e.surface = s and addressOf(e.address).oclIsKindOf(NodeAddress))
+		hostPort := l4Of(self)->select(e | e.surface = s and addressOf(e.address).oclIsKindOf(NodeAddress)
+				and e.port = s.value and e.protocol = L4Protocol::tcp)
 			->collect(e | e.port)->any(true);
 	});
 	l4Services := l4ServicesOf(self);
+	nodePorts := edgeNodePortsOf(self);
 	placement := object ResolvedPlacement {
 		eligibleNodes := contract.nodes->select(n | eligible(self, n))->collect(n | n.name);
 		-- A claim the snapshot records as bound holds the Process to that node.
@@ -762,7 +766,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			_from := PinnedInput::clusterState;
 		} endif;
 	};
-	volumes := self.volumes->collect(v | v.resolvedFor(self));
+	volumes := self.volumes->collect(v | v.resolvedFor(self))->union(edgeVolumesOf(self));
 	libraries := self.libraries->collect(m | m.resolvedFor(prj));
 	-- A seeded Asset lands on a volume through an init step the target does not model yet.
 	assets := self.assets->select(a | a.oclIsKindOf(Asset))
@@ -788,7 +792,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			else estate.ephemeral.size endif;
 		memory := w.oclIsKindOf(MemoryPath);
 	});
-	environment := environmentOf(self, prj)->sortedBy(e | e.name);
+	environment := environmentOf(self, prj)->union(edgeEnvOf(self))->sortedBy(e | e.name);
 }
 
 -- `progressDeadlineSeconds`: three budgets, floored to a whole second, or for a
@@ -1306,9 +1310,11 @@ query eligible(p : PI::Process, n : Node) : Boolean =
 		else a.oclAsType(NodeAddress).node = n.name endif);
 
 -- The L4 exposures of the Process's Application that reach it.
-query l4Of(p : PI::Process) : Sequence(L4Exposure) =
+query l4Of(p : PI::Process) : Sequence(Tuple(address : String, port : Integer, protocol : L4Protocol, surface : Surface)) =
 	p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication).l4Exposure
-		->select(e | e.process = p)->asSequence();
+		->select(e | e.process = p)
+		->collect(e | Tuple{address = e.address, port = e.port, protocol = e.protocol, surface = e.surface})
+		->asSequence()->union(tierL4Of(p));
 
 -- The L4 Address the Platform document names.
 query addressOf(name : String) : L4AddressDeclaration =
@@ -1317,7 +1323,7 @@ query addressOf(name : String) : L4AddressDeclaration =
 -- A Process's Services on the pools it is exposed on, one per address, each port by port
 -- (spec/v1/16-dependencies.md#l4-exposure).
 query l4ServicesOf(p : PI::Process) : Sequence(ResolvedL4Service) =
-	let pooled : Sequence(L4Exposure) = l4Of(p)->select(e | addressOf(e.address).oclIsKindOf(PoolAddress)) in
+	let pooled : Sequence(Tuple(address : String, port : Integer, protocol : L4Protocol, surface : Surface)) = l4Of(p)->select(e | addressOf(e.address).oclIsKindOf(PoolAddress)) in
 	pooled.address->asSet()->sortedBy(a | a)->collect(address | object ResolvedL4Service {
 		name := p.name + '-' + address;
 		pool := address;
@@ -2015,7 +2021,7 @@ query egressOf(p : PI::Process) : Sequence(PolicyPeer) =
 	-- A Process that serves DNS resolves through the upstream nameservers, never the cluster's DNS.
 	(if servesDns(p) then Sequence{} else
 		Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }} endif)
-	->union(if p.secrets->isEmpty() then Sequence{} else storePeers() endif)
+	->union(if p.secrets->isEmpty() and not edgeAcme(p) then Sequence{} else storePeers() endif)
 	-- The Release Gate reaches every gate member's pods (spec/v1/16-dependencies.md#the-member-label).
 	->union(if estate.delivery <> null and estate.delivery.gate.id = app.id
 		then Sequence{object PolicyPeer { rule := 'gate-members'; port := 0; }} else Sequence{} endif);
@@ -2789,3 +2795,143 @@ query PinnedInput::spelling() : String =
 
 query AnalysisCheck::spelling() : String =
 	if self = AnalysisCheck::errorRate then 'error-rate' else 'latency' endif;
+
+-- ================================================================== edge
+-- edge: a tier's proxy (spec/v1/14-platform-intent.md#tiers): the L4 ports, the claim, the token,
+-- the arguments and the shared Middlewares its tiers derive on it, which no project file writes.
+
+property ACME_REASON : String = 'ACME issuance and its DNS challenge';
+property ACME_CLAIM : String = 'acme';
+property ACME_MOUNT : String = '/acme';
+property ACME_SIZE : String = '16Mi';
+property DNS_TOKEN_KEY : String = 'CF_DNS_API_TOKEN';
+
+-- The surfaces a listener's ports are answered on.
+query listenerSurfaces(l : Listener) : Sequence(String) =
+	if l = Listener::tls then Sequence{'web', 'websecure'} else Sequence{'web'} endif;
+
+-- The Process of an Application that provides every surface a listener names, if any does.
+query listenedBy(app : EffectiveApplication, l : Listener) : String =
+	app.processes->select(q | listenerSurfaces(l)->forAll(s | q.provides->exists(e | e.key = s)))
+		->collect(q | q.name)->any(true);
+
+-- The tiers whose proxy is this Process.
+query edgeTiersOf(p : PI::Process) : Sequence(Tier) =
+	let app : EffectiveApplication = p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication) in
+	let prj : EffectiveProject = app.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveProject) in
+	estate.tiers->select(t | heldName(t.traefik) = prj.project + '/' + app.id
+		and listenedBy(app, t.listener) = p.name)->asSequence();
+
+-- Whether the Process answers an acme tier.
+query edgeAcme(p : PI::Process) : Boolean =
+	edgeTiersOf(p)->exists(t | t.certificates = CertificateSource::acme);
+
+-- The L4 exposures its tiers derive: each port the listener derives, on the tier's address.
+query tierL4Of(p : PI::Process) : Sequence(Tuple(address : String, port : Integer, protocol : L4Protocol, surface : Surface)) =
+	edgeTiersOf(p)->select(t | t.address <> null)->collect(t |
+		listenerSurfaces(t.listener)->collect(s | Tuple{address = t.address,
+			port = if s = 'web' then 80 else 443 endif, protocol = L4Protocol::tcp,
+			surface = p.provides->select(e | e.key = s)->any(true)}))->asSequence();
+
+-- The ports on a node's own address that are not a surface's own number over TCP.
+query edgeNodePortsOf(p : PI::Process) : Sequence(L4Port) =
+	l4Of(p)->select(e | addressOf(e.address).oclIsKindOf(NodeAddress)
+			and not (e.protocol = L4Protocol::tcp and e.port = e.surface.value))
+		->sortedBy(e | e.port * 2 + (if e.protocol = L4Protocol::tcp then 0 else 1 endif))
+		->collect(e | object L4Port {
+			name := e.protocol.toString() + '-' + e.port.toString();
+			port := e.port;
+			protocol := e.protocol.toString().toUpper();
+			targetPort := e.surface.value;
+		})->asSequence();
+
+query edgeVolumesOf(p : PI::Process) : Sequence(ResolvedVolume) =
+	if edgeAcme(p) then Sequence{object ResolvedVolume {
+		claim := ACME_CLAIM;
+		mountAt := ACME_MOUNT;
+		size := ACME_SIZE;
+		durability := RD::DurabilityClass::reconstructible;
+	}} else Sequence{} endif;
+
+query edgeGrantsOf(p : PI::Process) : Sequence(ResolvedGrant) =
+	if edgeAcme(p) then Sequence{object ResolvedGrant {
+		path := estate.acme.token;
+		keys := Sequence{DNS_TOKEN_KEY};
+		_access := 'read';
+		delivery := 'env';
+		destination := destinationOf(p.name, estate.acme.token);
+		restartTargets := Sequence{p.name};
+	}} else Sequence{} endif;
+
+query edgeEnvOf(p : PI::Process) : Sequence(EnvEntry) =
+	if edgeAcme(p) then Sequence{object EnvEntry {
+		name := DNS_TOKEN_KEY;
+		secret := object SecretReference { path := estate.acme.token; key := DNS_TOKEN_KEY; };
+	}} else Sequence{} endif;
+
+query edgeSurfacePort(p : PI::Process, name : String) : Integer =
+	p.provides->select(e | e.key = name)->collect(e | e.value)->any(true);
+
+-- A tier proxy's static configuration, as Traefik's arguments
+-- (spec/v1/30-deliverables.md#the-edge-proxy), after the authored ones.
+query edgeArgsOf(p : PI::Process) : Sequence(String) =
+	let app : EffectiveApplication = p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication) in
+	let prj : EffectiveProject = app.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveProject) in
+	let t : Tier = estate.tiers->select(x | heldName(x.traefik) = prj.project + '/' + app.id
+		and x.ingressClass <> null)->any(true) in
+	if t = null or edgeSurfacePort(p, 'web') = null then Sequence{} else
+	let websecure : Integer = edgeSurfacePort(p, 'websecure') in
+	let admin : Integer = edgeSurfacePort(p, 'admin') in
+	Sequence{'--entryPoints.web.address=:' + edgeSurfacePort(p, 'web').toString() + '/tcp'}
+	->union(if websecure = null then Sequence{}
+		else Sequence{'--entryPoints.websecure.address=:' + websecure.toString() + '/tcp'} endif)
+	->union(if t.listener = Listener::tls and websecure <> null
+		then Sequence{'--entryPoints.websecure.http.tls=true'} else Sequence{} endif)
+	->union(if admin = null then Sequence{} else Sequence{
+		'--entryPoints.traefik.address=:' + admin.toString() + '/tcp',
+		'--ping=true', '--ping.entryPoint=traefik',
+		'--metrics.prometheus=true', '--metrics.prometheus.entryPoint=traefik'} endif)
+	->union(Sequence{'--providers.kubernetescrd=true',
+		'--providers.kubernetescrd.ingressClass=' + t.ingressClass,
+		'--providers.kubernetescrd.allowCrossNamespace=true',
+		'--providers.kubernetescrd.allowEmptyServices=true'})
+	->union(if t.certificates = CertificateSource::acme then Sequence{
+		'--certificatesresolvers.' + t.name + '.acme.email=' + estate.acme.email,
+		'--certificatesresolvers.' + t.name + '.acme.storage=' + ACME_MOUNT + '/' + t.name + '.json',
+		'--certificatesresolvers.' + t.name + '.acme.dnschallenge.provider=' + estate.acme.dnsProvider.toString()}
+		else Sequence{} endif)
+	->union(Sequence{'--log.format=json', '--accesslog=true', '--accesslog.format=json'})
+	endif;
+
+-- The Middlewares every route names, in the namespace of the Project's tier proxies, rendered once
+-- by the first proxy by name, with the forward-auth the first tier of the namespace names; and its
+-- place in that Application's index.
+helper EffectiveProject::edgeFiles(inout plan : ResolvedDeployment) : OclVoid {
+	var proxies : Sequence(String) := estate.tiers->collect(t | heldName(t.traefik))
+		->select(h | h.startsWith(self.project + '/'))->asSet()->asSequence()->sortedBy(h | h);
+	if (proxies->notEmpty()) {
+		var home : String := proxies->first().substring(self.project.size() + 2, proxies->first().size());
+		var asked : Tier := estate.tiers->select(t | t.forwardAuth <> null
+			and heldName(t.traefik).startsWith(self.project + '/'))->any(true);
+		plan.deliverables += object SharedMiddlewareFile {
+			path := 'apps/' + self.project + '/' + home + '/middlewares.yaml';
+			adapter := AdapterName::traefik;
+			namespace := namespaceOf(self.project);
+			application := home;
+			if (asked <> null) {
+				forwardAuth := object ForwardAuthEndpoint { address := asked.forwardAuth.endpoint(); };
+			} endif;
+			policies := Sequence{
+				object ContentPolicyHeaders { name := 'strict'; contentSecurityPolicy := 'default-src \'self\''; },
+				object ContentPolicyHeaders { name := 'admin';
+					contentSecurityPolicy := 'default-src \'self\'; style-src \'self\' \'unsafe-inline\''; },
+				object ContentPolicyHeaders { name := 'workflow';
+					contentSecurityPolicy := 'default-src \'self\'; connect-src \'self\' https:'; }};
+		};
+		var index : IndexFile := plan.deliverables[IndexFile]
+			->select(i | i.path = 'apps/' + self.project + '/' + home + '/kustomization.yaml')->any(true);
+		if (index <> null) {
+			index.resources := index.resources->append('middlewares.yaml')->sortedBy(m | m);
+		};
+	};
+}
