@@ -110,6 +110,13 @@ class RenderingTest {
     }
 
     @Test
+    void theNamedModuleSeamRendersWithTheRealModule(@TempDir Path out) {
+        Rendering.render(List.of(namespaceOnly()), out, "render");
+
+        assertThat(out.resolve("apps/notes/namespace.yaml")).exists();
+    }
+
+    @Test
     void aTemplateThatDoesNotParseFailsTheRenderingWithWhatAcceleoSaid(@TempDir Path out) {
         assertThatThrownBy(() -> Rendering.render(List.of(namespaceOnly()), out, "unindented"))
                 .isInstanceOf(IllegalStateException.class)

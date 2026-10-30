@@ -284,14 +284,12 @@ public final class Pipeline {
         EcoreUtil2.getAllContentsOfType(project, AlertRules.class).forEach(rules -> named.add(rules.getFrom()));
         List<AssetFile> read = new ArrayList<>();
         for (String from : named) {
-            Optional<Path> beside = besideProject(file, from);
-            if (beside.isPresent()) {
-                AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
-                assetFile.setProject(project.getProject());
-                assetFile.setFrom(from);
-                assetFile.setContent(Files.readString(beside.get(), StandardCharsets.UTF_8));
-                read.add(assetFile);
-            }
+            Path beside = besideProject(file, from).orElseThrow();
+            AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
+            assetFile.setProject(project.getProject());
+            assetFile.setFrom(from);
+            assetFile.setContent(Files.readString(beside, StandardCharsets.UTF_8));
+            read.add(assetFile);
         }
         return read;
     }
@@ -740,19 +738,13 @@ public final class Pipeline {
      */
     private static List<Diagnostic> shape(Resource resource, String file, List<Resource.Diagnostic> syntax) {
         List<Diagnostic> shape = new ArrayList<>();
-        if (resource instanceof XtextResource xtext) {
-            try (java.io.InputStream in =
-                    resource.getResourceSet().getURIConverter().createInputStream(resource.getURI())) {
-                String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                Grammar grammar = xtext.getResourceServiceProvider()
-                        .get(IGrammarAccess.class)
-                        .getGrammar();
-                for (Shapes.Issue issue : Shapes.check(text, grammar)) {
-                    shape.add(new Diagnostic(Diagnostic.SCHEMA, file, issue.path(), issue.message()));
-                }
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+        // The parse keeps the whole text it read, so the file is not read a second time.
+        XtextResource xtext = (XtextResource) resource;
+        String text = xtext.getParseResult().getRootNode().getText();
+        Grammar grammar =
+                xtext.getResourceServiceProvider().get(IGrammarAccess.class).getGrammar();
+        for (Shapes.Issue issue : Shapes.check(text, grammar)) {
+            shape.add(new Diagnostic(Diagnostic.SCHEMA, file, issue.path(), issue.message()));
         }
         if (!shape.isEmpty()) {
             return shape;

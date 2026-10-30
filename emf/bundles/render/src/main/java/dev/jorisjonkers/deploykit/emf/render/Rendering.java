@@ -42,6 +42,9 @@ public final class Rendering {
     private static final String NEW_LINE = "\n";
     private static final String MODEL = "rendered.resolveddeployment";
 
+    /** The refusals of a rendering that refuses nothing it writes. */
+    private static final Function<Path, List<Object>> NOTHING = aside -> List.of();
+
     private Rendering() {}
 
     /**
@@ -52,7 +55,7 @@ public final class Rendering {
      * it was, rather than a partial tree to be read as whole.
      */
     public static void render(List<ResolvedDeployment> deployments, Path root) {
-        render(deployments, root, MODULE, aside -> List.of());
+        render(deployments, root, MODULE, NOTHING);
     }
 
     /**
@@ -67,7 +70,7 @@ public final class Rendering {
 
     /** {@code deployments} rendered by the named module: the seam a test drives a broken one through. */
     static void render(List<ResolvedDeployment> deployments, Path root, String module) {
-        render(deployments, root, module, aside -> List.of());
+        render(deployments, root, module, NOTHING);
     }
 
     private static <T> List<T> render(
