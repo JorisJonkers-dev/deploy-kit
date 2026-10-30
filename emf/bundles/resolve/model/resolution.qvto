@@ -754,6 +754,8 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			->collect(e | e.port)->any(true);
 	});
 	l4Services := l4ServicesOf(self);
+	-- A Process that serves DNS resolves through the platform's upstream nameservers.
+	if servesDns(self) then nameservers := estate.substrate.upstreamNameservers endif;
 	placement := object ResolvedPlacement {
 		eligibleNodes := contract.nodes->select(n | eligible(self, n))->collect(n | n.name);
 		-- A claim the snapshot records as bound holds the Process to that node.
@@ -775,6 +777,14 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		cpu := c.cpu;
 		-- An init step runs to completion before the Process starts.
 		_init := c._init = true;
+		-- A file beside the project, mounted read-only from the Process's Asset ConfigMap.
+		mounts := c.assets->collect(a | let read : String = fileOf(prj.project, a._from) in object ContainerMount {
+			name := self.name + '-' + spelled(a._from) + '-'
+				+ read.textDigestOf().substring(8, 7 + CONTENT_DIGITS);
+			mountAt := a.mountAt;
+			subPath := a._from.substring(a._from.lastIndexOf('/') + 1, a._from.size());
+			readOnly := true;
+		});
 	});
 	dependencies := self.dependsOn->collect(e | edgeOf(e, owner(self)));
 	-- An edge to an Application's surface reaches a pod, which admits the label; one to a
@@ -1956,7 +1966,8 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 		then named(peersOf(estate.delivery.gate.id, p.provides->first().value, 'release-gate'))
 		else Sequence{} endif)
 	-- A port exposed on an L4 Address admits any client at the Process's own port.
-	->union(l4Of(p)->collect(e | Tuple{port = e.surface.value, udp = e.protocol = L4Protocol::udp})
+	->union(l4Of(p)->sortedBy(e | e.surface.value * 2 + (if e.protocol = L4Protocol::tcp then 0 else 1 endif))
+		->collect(e | Tuple{port = e.surface.value, udp = e.protocol = L4Protocol::udp})
 		->asOrderedSet()->collect(t | object PolicyPeer {
 			rule := 'l4';
 			cidr := '0.0.0.0/0';
