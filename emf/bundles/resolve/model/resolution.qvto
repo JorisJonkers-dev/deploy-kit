@@ -766,9 +766,10 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	};
 	volumes := self.volumes->collect(v | v.resolvedFor(self));
 	libraries := self.libraries->collect(m | m.resolvedFor(prj));
-	-- A seeded Asset lands on a volume through an init step the target does not model yet.
-	assets := self.assets->select(a | a.oclIsKindOf(Asset))
-		->collect(a | a.oclAsType(Asset).resolvedFor(self, prj));
+	-- A seeded Asset lands on a volume or a writable path through the seeder's init step.
+	assets := self.assets->collect(a | a.resolvedFor(self, prj));
+	if self.assets->exists(a | a.oclIsKindOf(SeededAsset)) and estate.seeder <> null then
+		seeder := self.seederOf(prj) endif;
 	sidecars := self.sidecars->collect(c | object ResolvedSidecar {
 		name := c.name;
 		image := locked(c.image).repository + '@' + locked(c.image).digest;
@@ -1098,7 +1099,7 @@ query unengined(p : PI::Process) : String {
 -- A settings file, by a name its content changes
 -- (spec/v1/10-project-intent.md#assets): the Process, the file, and the first
 -- digits of the content's digest.
-query Asset::resolvedFor(p : PI::Process, prj : EffectiveProject) : ResolvedAsset =
+query AssetDeclaration::resolvedFor(p : PI::Process, prj : EffectiveProject) : ResolvedAsset =
 	let found : Sequence(AssetFile) =
 		assetFiles->select(f | f.project = prj.project and f._from = self._from)->asSequence() in
 	let file : AssetFile = if found->isEmpty() then unfiled(self._from) else found->first() endif in
@@ -1107,9 +1108,50 @@ query Asset::resolvedFor(p : PI::Process, prj : EffectiveProject) : ResolvedAsse
 		name := p.name + '-' + spelled(self._from) + '-'
 			+ file.content.textDigestOf().substring(8, 7 + CONTENT_DIGITS);
 		_from := self._from;
-		mountAt := self.mountAt;
+		if self.oclIsKindOf(Asset) then mountAt := self.oclAsType(Asset).mountAt endif;
+		if self.oclIsKindOf(SeededAsset) then seedAt := self.oclAsType(SeededAsset).seedAt endif;
 		content := file.content;
 	} endif;
+
+-- The init step that seeds a Process's Assets onto its volumes and writable paths
+-- (spec/v1/10-project-intent.md#assets): each file is staged beside its place and moved
+-- over it, the copy it replaces kept as `.superseded`.
+query PI::Process::seederOf(prj : EffectiveProject) : ResolvedSeeder =
+	let seeded : Sequence(ResolvedAsset) = self.assets->select(a | a.oclIsKindOf(SeededAsset))
+		->collect(a | a.resolvedFor(self, prj))->asSequence() in
+	let seedImage : LockedImage = locked(estate.seeder.image) in
+	object ResolvedSeeder {
+		image := seedImage.repository + '@' + seedImage.digest;
+		imageVersion := seedImage.version;
+		memory := estate.seeder.memory;
+		cpu := estate.seeder.cpu;
+		command := Sequence{'/bin/sh', '-c',
+			Sequence{'set -eu', 'umask 077'}->union(seeded->collect(a | seedScriptOf(a))->flatten())
+				->iterate(line; acc : String = '' | if acc = '' then line else acc + '\n' + line endif)};
+		mounts := seeded->collect(a | object ContainerMount { name := a.name; mountAt := '/seed/' + a.name; readOnly := true; })
+			->union(self.volumes->select(v | seeded->exists(a | a.seedAt.startsWith(v.mountAt + '/')))
+				->collect(v | object ContainerMount { name := v.claim; mountAt := v.mountAt; }))
+			->union(self.writablePaths->select(w | seeded->exists(a | a.seedAt.startsWith(w.path + '/')))
+				->collect(w | object ContainerMount { name := writableOf(w.path); mountAt := w.path; }));
+	};
+
+query seedScriptOf(a : ResolvedAsset) : Sequence(String) =
+	let place : String = quotedWord(a.seedAt) in
+	let staged : String = quotedWord(a.seedAt + '.seeding') in
+	Sequence{
+		'mkdir -p ' + quotedWord(a.seedAt.substring(1, a.seedAt.lastIndexOf('/') - 1)),
+		'if [ -e ' + place + ' ]; then cp -p ' + place + ' ' + quotedWord(a.seedAt + '.superseded') + '; fi',
+		'cp ' + quotedWord('/seed/' + a.name + '/' + a._from.substring(a._from.lastIndexOf('/') + 1, a._from.size()))
+			+ ' ' + staged,
+		'chmod 0600 ' + staged,
+		'mv ' + staged + ' ' + place};
+
+-- A word the shell reads as it stands.
+query quotedWord(word : String) : String = '\'' + word.replaceAll('\'', '\'\\\\\'\'') + '\'';
+
+-- The volume a writable path is, named after it.
+query writableOf(path : String) : String =
+	'writable-' + path.substring(2, path.size()).toLower().replaceAll('[^a-z0-9]+', '-');
 
 -- The endpoint the edge asks a tier's forward-auth at: its provider's Stable
 -- Address on the surface, at the port its Process provides it on, and the path
@@ -2450,6 +2492,24 @@ query ResolvedProcess::json() : String =
 			Tuple{k = 'credential', v = self.vpn.credential.json()}}) endif},
 		Tuple{k = 'hardening', v = str(self.hardening)},
 		Tuple{k = 'priorityClass', v = opt(self.priorityClass)},
+		Tuple{k = 'nameservers', v = if self.nameservers->isEmpty() then null else arr(self.nameservers->collect(x | str(x))) endif},
+		Tuple{k = 'l4Exposure', v = let src : PI::Process = self.invresolveone(PI::Process) in
+			if src = null or l4Of(src)->isEmpty() then null else arr(l4Of(src).address->asSet()->sortedBy(a | a)
+				->collect(address | let declared : L4AddressDeclaration = addressOf(address) in obj(Sequence{
+					Tuple{k = 'address', v = str(address)},
+					Tuple{k = 'kind', v = str(declared.kind)},
+					Tuple{k = 'node', v = if declared.oclIsKindOf(NodeAddress) then str(declared.oclAsType(NodeAddress).node) else null endif},
+					Tuple{k = 'site', v = if declared.oclIsKindOf(PoolAddress) then str(declared.oclAsType(PoolAddress).site) else null endif},
+					Tuple{k = 'range', v = if declared.oclIsKindOf(PoolAddress) then str(declared.oclAsType(PoolAddress).range) else null endif},
+					Tuple{k = 'service', v = if declared.oclIsKindOf(PoolAddress) then str(src.name + '-' + address) else null endif},
+					Tuple{k = 'ports', v = arr(l4Of(src)->select(e | e.address = address)
+						->sortedBy(e | e.port * 2 + (if e.protocol = L4Protocol::tcp then 0 else 1 endif))
+						->collect(e | obj(Sequence{
+							Tuple{k = 'name', v = str(e.protocol.toString() + '-' + e.port.toString())},
+							Tuple{k = 'port', v = num(e.port)},
+							Tuple{k = 'protocol', v = str(e.protocol.toString())},
+							Tuple{k = 'surface', v = str(e.surface.key)},
+							Tuple{k = 'targetPort', v = num(e.surface.value)}})))}}))) endif},
 		Tuple{k = 'identityToken', v = bool(self.identityToken)},
 		Tuple{k = 'internetEgress', v = if self.internetEgress = null then null else obj(Sequence{
 			Tuple{k = 'reason', v = str(self.internetEgress.reason)}}) endif},
@@ -2485,14 +2545,29 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'assets', v = if self.assets->isEmpty() then null else arr(self.assets->collect(x | obj(Sequence{
 			Tuple{k = 'name', v = str(x.name)},
 			Tuple{k = 'from', v = str(x._from)},
-			Tuple{k = 'mountAt', v = str(x.mountAt)},
+			Tuple{k = 'mountAt', v = opt(x.mountAt)},
+			Tuple{k = 'seedAt', v = opt(x.seedAt)},
 			Tuple{k = 'content', v = str(x.content)}}))) endif},
-		Tuple{k = 'sidecars', v = if self.sidecars->isEmpty() then null else arr(self.sidecars->collect(x | obj(Sequence{
+		Tuple{k = 'seeder', v = if self.seeder = null then null else obj(Sequence{
+			Tuple{k = 'image', v = str(self.seeder.image)},
+			Tuple{k = 'imageVersion', v = opt(self.seeder.imageVersion)},
+			Tuple{k = 'memory', v = str(self.seeder.memory)},
+			Tuple{k = 'cpu', v = str(self.seeder.cpu)}}) endif},
+		Tuple{k = 'sidecars', v = if self.sidecars->isEmpty() then null else arr(self.sidecars->collect(x |
+			let src : Sidecar = self.invresolveone(PI::Process).sidecars->select(c | c.name = x.name)->any(true) in
+			obj(Sequence{
 			Tuple{k = 'name', v = str(x.name)},
 			Tuple{k = 'image', v = str(x.image)},
 			Tuple{k = 'imageVersion', v = opt(x.imageVersion)},
+			Tuple{k = 'command', v = if src.command->isEmpty() then null else arr(src.command->collect(c | str(c))) endif},
+			Tuple{k = 'args', v = if src.args->isEmpty() then null else arr(src.args->collect(c | str(c))) endif},
 			Tuple{k = 'memory', v = str(x.memory)},
-			Tuple{k = 'cpu', v = str(x.cpu)}}))) endif},
+			Tuple{k = 'cpu', v = str(x.cpu)},
+			Tuple{k = 'volumes', v = if src.volumes->isEmpty() then null else arr(src.volumes->collect(m | obj(Sequence{
+				Tuple{k = 'claim', v = str(m.claim)}, Tuple{k = 'mountAt', v = str(m.mountAt)}}))) endif},
+			Tuple{k = 'assets', v = if src.assets->isEmpty() then null else arr(src.assets->collect(m | obj(Sequence{
+				Tuple{k = 'from', v = str(m._from)}, Tuple{k = 'mountAt', v = str(m.mountAt)}}))) endif},
+			Tuple{k = 'init', v = if x._init then bool(true) else null endif}}))) endif},
 		Tuple{k = 'dependencies', v = if self.dependencies->isEmpty() then null else arr(self.dependencies->collect(x | obj(Sequence{
 			Tuple{k = 'application', v = str(x.application)},
 			Tuple{k = 'surface', v = str(x.surface)},
@@ -2512,7 +2587,9 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'surfaces', v = if self.surfaces->isEmpty() then null else arr(self.surfaces->collect(x | obj(Sequence{
 			Tuple{k = 'name', v = str(x.name)},
 			Tuple{k = 'port', v = num(x.port)}}))) endif},
-		Tuple{k = 'ingress', v = if ingress->isEmpty() then null else arr(ingress->collect(x | x.json())) endif},
+		-- An L4 client is the adapter's to admit, read off the exposure; the element carries the exposure.
+		Tuple{k = 'ingress', v = let own : Sequence(PolicyPeer) = ingress->reject(x | x.rule = 'l4') in
+			if own->isEmpty() then null else arr(own->collect(x | x.json())) endif},
 		Tuple{k = 'egress', v = arr(egress->collect(x | x.json()))}
 	});
 
@@ -2539,7 +2616,8 @@ query PolicyPeer::json() : String = obj(Sequence{
 	Tuple{k = 'namespace', v = opt(self.namespace)},
 	Tuple{k = 'process', v = opt(self.process)},
 	Tuple{k = 'consumes', v = opt(self.consumes)},
-	Tuple{k = 'port', v = num(self.port)}});
+	-- The gate's members are pods, not one port.
+	Tuple{k = 'port', v = if self.rule = 'gate-members' then null else num(self.port) endif}});
 
 query ResolvedVolume::json() : String = obj(Sequence{
 	Tuple{k = 'claim', v = str(self.claim)},
