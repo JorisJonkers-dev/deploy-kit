@@ -679,8 +679,17 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	servingLabel := if self.servesFromPrimary(app) then 'app.kubernetes.io/name'
 		else 'app.kubernetes.io/instance' endif;
 	deadline := inSeconds(deadlineOf(self));
-	replicas := if self.replicas = null then 1 else self.replicas.count endif;
-	memory := self.placement.memory;
+	-- A scheduled run that starts more than the start deadline late is skipped.
+	if self.schedule <> null then schedule := self.schedule endif;
+	if self.schedule <> null then startDeadline := '300s' endif;
+	replicas := if self.parked <> null then 0 else if self.replicas = null then 1 else self.replicas.count endif endif;
+	parked := self.parked <> null;
+	spread := self.replicas <> null and self.replicas.oclAsType(ECORE::EObject).states('across');
+	arguments := self.args;
+	-- A path held in memory is memory the container holds.
+	memory := let held : Real = self.writablePaths->select(w | w.oclIsKindOf(MemoryPath))
+			->collect(w | mebibytes(w.oclAsType(MemoryPath).memory))->sum() in
+		if held = 0 then self.placement.memory else memoryOf(mebibytes(self.placement.memory) + held) endif;
 	cpu := self.placement.cpu;
 	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
 	if self.vpn <> null then vpn := vpnOf(self) endif;
@@ -741,6 +750,8 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		imageVersion := locked(c.image).version;
 		memory := c.memory;
 		cpu := c.cpu;
+		-- An init step runs to completion before the Process starts.
+		_init := c._init = true;
 	});
 	dependencies := self.dependsOn->collect(e | edgeOf(e, owner(self)));
 	-- An edge to an Application's surface reaches a pod, which admits the label; one to a
@@ -752,6 +763,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		path := w.path;
 		size := if w.oclIsKindOf(MemoryPath) then w.oclAsType(MemoryPath).memory
 			else estate.ephemeral.size endif;
+		memory := w.oclIsKindOf(MemoryPath);
 	});
 	environment := environmentOf(self, prj)->sortedBy(e | e.name);
 }
@@ -773,7 +785,8 @@ query PI::Process::servesFromPrimary(app : EffectiveApplication) : Boolean =
 	self.lifecycle = Lifecycle::application and switchoverOf(app, self) = Switchover::blueGreen;
 
 query switchoverOf(app : EffectiveApplication, p : PI::Process) : Switchover =
-	if p.cutover = PI::Cutover::interrupted then Switchover::stopStart
+	-- A parked Process runs no pod, so it has no release to gate: it stops and starts.
+	if p.cutover = PI::Cutover::interrupted or p.parked <> null then Switchover::stopStart
 	else if estate.delivery <> null and estate.delivery.machinery->exists(m | m.id = app.id)
 		then Switchover::rolling
 	else Switchover::blueGreen endif endif;
@@ -955,6 +968,9 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 				port := range.port;
 			});
 			offCluster := policy.offCluster.destination;
+			-- Where the copy lands below the destination, and the key it is encrypted to.
+			offClusterPath := owner(p) + '/' + p.name + '/' + self.claim;
+			offClusterRecipient := policy.offCluster.recipient;
 			credential := object ResolvedGrant {
 				path := policy.offCluster.credential;
 				_access := 'read';
@@ -994,10 +1010,16 @@ query backupEgress(p : PI::Process) : Sequence(PolicyPeer) =
 query dumpedSurface(p : PI::Process) : String =
 	if not p.oclAsType(ECORE::EObject).states('engine')
 		or not p.volumes->exists(v | v.durability <> PI::DurabilityClass::reconstructible) then null
-	else if p.engine = Engine::postgres then policySurface(estate.engines.postgres)
-	else if p.engine = Engine::rabbitmq then policySurface(estate.engines.rabbitmq)
-	else if p.engine = Engine::valkey then policySurface(estate.engines.valkey)
-	else policySurface(estate.engines.files) endif endif endif endif;
+	else policySurface(enginePolicyOf(p)) endif;
+
+-- The platform's policy for the Process's engine.
+query enginePolicyOf(p : PI::Process) : EnginePolicy =
+	if p.engine = Engine::postgres then estate.engines.postgres
+	else if p.engine = Engine::rabbitmq then estate.engines.rabbitmq
+	else if p.engine = Engine::valkey then estate.engines.valkey
+	else if p.engine = Engine::mongo then estate.engines.mongo
+	else if p.engine = Engine::s3 then estate.engines.s3
+	else estate.engines.files endif endif endif endif endif;
 
 query policySurface(policy : EnginePolicy) : String =
 	if policy = null then null else policy.surface endif;
@@ -1029,10 +1051,7 @@ query homeProcess(application : String, process : String) : String =
 
 query engineMethod(p : PI::Process) : String =
 	if not p.oclAsType(ECORE::EObject).states('engine') then unengined(p)
-	else if p.engine = Engine::postgres then estate.engines.postgres.backup
-	else if p.engine = Engine::rabbitmq then estate.engines.rabbitmq.backup
-	else if p.engine = Engine::valkey then estate.engines.valkey.backup
-	else estate.engines.files.backup endif endif endif endif;
+	else enginePolicyOf(p).backup endif;
 
 query unengined(p : PI::Process) : String {
 	assert fatal (false) with log(p.name + ' backs a volume up and declares no engine: E_DURABILITY_WITHOUT_ENGINE');
@@ -2083,6 +2102,11 @@ query millicores(q : String) : Integer =
 	if q.endsWith('m') then q.substring(1, q.size() - 1).toInteger() else q.toInteger() * 1000 endif;
 
 -- A memory quantity in MiB: `256Mi`, `2Gi`, `1Ti`, or bytes with no unit.
+-- A quantity in MiB, written as the production implementation writes it.
+query memoryOf(mib : Real) : String =
+	let whole : Integer = mib.round() in
+	if whole.mod(1024) = 0 then (whole.div(1024)).toString() + 'Gi' else whole.toString() + 'Mi' endif;
+
 query mebibytes(q : String) : Real =
 	if q.endsWith('Mi') then q.substring(1, q.size() - 2).toReal()
 	else if q.endsWith('Gi') then q.substring(1, q.size() - 2).toReal() * 1024
@@ -2116,7 +2140,8 @@ query Runtime::spelling() : String =
 query HardeningClass::spelling() : String = 'restricted';
 
 query Lifecycle::spelling() : String =
-	if self = Lifecycle::application then 'application' else if self = Lifecycle::job then 'job' else 'prepare' endif endif;
+	if self = Lifecycle::application then 'application' else if self = Lifecycle::job then 'job'
+	else if self = Lifecycle::scheduled then 'scheduled' else 'prepare' endif endif endif;
 
 query Delivery::spelling() : String =
 	if self = Delivery::env then 'env' else if self = Delivery::file then 'file' else 'self' endif endif;
@@ -2283,8 +2308,15 @@ query ResolvedProcess::json() : String =
 			then str(self.cutover.spelling()) else null endif},
 		Tuple{k = 'switchover', v = if self.oclAsType(ECORE::EObject).states('switchover')
 			then str(self.switchover.spelling()) else null endif},
+		Tuple{k = 'command', v = let src : PI::Process = self.invresolveone(PI::Process) in
+			if src = null or src.command->isEmpty() then null else arr(src.command->collect(x | str(x))) endif},
+		Tuple{k = 'args', v = if self.arguments->isEmpty() then null else arr(self.arguments->collect(x | str(x))) endif},
+		Tuple{k = 'schedule', v = opt(self.schedule)},
+		Tuple{k = 'startDeadline', v = opt(self.startDeadline)},
 		Tuple{k = 'deadline', v = str(self.deadline)},
 		Tuple{k = 'replicas', v = num(self.replicas)},
+		Tuple{k = 'parked', v = if self.parked then bool(true) else null endif},
+		Tuple{k = 'spreadAcross', v = if self.spread then str('node') else null endif},
 		Tuple{k = 'memory', v = str(self.memory)},
 		Tuple{k = 'cpu', v = str(self.cpu)},
 		Tuple{k = 'gpu', v = if self.gpu = null then null else obj(Sequence{
@@ -2401,7 +2433,10 @@ query ResolvedVolume::json() : String = obj(Sequence{
 	Tuple{k = 'backup', v = if self.backup = null then null else obj(Sequence{
 		Tuple{k = 'schedule', v = str(self.backup.schedule)},
 		Tuple{k = 'retain', v = num(self.backup.retain)},
-		Tuple{k = 'offCluster', v = opt(self.backup.offCluster)},
+		Tuple{k = 'offCluster', v = if self.backup.offCluster = null then null else obj(Sequence{
+			Tuple{k = 'destination', v = str(self.backup.offCluster)},
+			Tuple{k = 'path', v = str(self.backup.offClusterPath)},
+			Tuple{k = 'recipient', v = str(self.backup.offClusterRecipient)}}) endif},
 		Tuple{k = 'method', v = str(self.backup.method)},
 		Tuple{k = 'methodVersion', v = opt(self.backup.methodVersion)},
 		Tuple{k = 'uid', v = num(self.backup.uid)},

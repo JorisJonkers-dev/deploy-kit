@@ -143,8 +143,6 @@ class OracleDistanceTest {
             "refusal unknown-telemetry-collector",
             "refusal unknown-tier-proxy",
             "refusal unresolved-placeholder",
-            "rendered auth",
-            "rendered delivery",
             "rendered minimal",
             "rendered secrets",
             "schema-refusal credentials-file-without-mount",
