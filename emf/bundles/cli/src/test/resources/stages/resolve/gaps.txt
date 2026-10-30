@@ -127,6 +127,7 @@ ResolvedApplication.alertRules is never set by a resolve case
 ResolvedApplication.alerting is never set by a resolve case
 ResolvedApplication.fluxScrape is never set by a resolve case
 ResolvedAsset.seedAt is never set by a resolve case
+ResolvedClient.backChannelLogoutUri is never set by a resolve case
 ResolvedClient.secretPath is never set by a resolve case
 ResolvedDeployment.addressPools is never set by a resolve case
 ResolvedDeployment.nodeAgents is never set by a resolve case
@@ -197,6 +198,7 @@ ResolvedNodeAgent.uid is never set by a resolve case
 ResolvedPlacement.boundTo is never set by a resolve case
 ResolvedPlacement.from is never set by a resolve case
 ResolvedProcess.arguments is never set by a resolve case
+ResolvedProcess.command is never set by a resolve case
 ResolvedProcess.instance is never set by a resolve case
 ResolvedProcess.move is never set by a resolve case
 ResolvedProcess.nameservers is never set by a resolve case
@@ -211,6 +213,8 @@ ResolvedSeeder.image is never set by a resolve case
 ResolvedSeeder.imageVersion is never set by a resolve case
 ResolvedSeeder.memory is never set by a resolve case
 ResolvedSeeder.mounts is never set by a resolve case
+ResolvedSidecar.arguments is never set by a resolve case
+ResolvedSidecar.command is never set by a resolve case
 ResolvedSpawn is never instantiated by a resolve case
 ResolvedSpawn.dependencies is never set by a resolve case
 ResolvedSpawn.egress is never set by a resolve case
@@ -232,6 +236,7 @@ SharedMiddlewareFile.forwardAuth is never set by a resolve case
 SharedMiddlewareFile.namespace is never set by a resolve case
 SharedMiddlewareFile.path is never set by a resolve case
 SharedMiddlewareFile.policies is never set by a resolve case
+SignInMode.token is never used in a resolve case's input
 SourceFile is never instantiated by a resolve case
 SourceFile.adapter is never set by a resolve case
 SourceFile.path is never set by a resolve case

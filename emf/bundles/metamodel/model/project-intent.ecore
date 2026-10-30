@@ -440,8 +440,12 @@
     <eLiterals name="token" value="2" literal="token"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="ClientCredential">
-    <eLiterals name="secret" literal="secret"/>
-    <eLiterals name="pkce" value="1" literal="pkce"/>
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="absent" value="absent"/>
+    </eAnnotations>
+    <eLiterals name="absent" literal=""/>
+    <eLiterals name="secret" value="1" literal="secret"/>
+    <eLiterals name="pkce" value="2" literal="pkce"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Lifecycle">
     <eLiterals name="application" literal="application"/>

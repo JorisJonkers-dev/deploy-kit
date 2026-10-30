@@ -329,6 +329,8 @@
     <!-- The arguments the container is handed: the authored ones, then those a tier's proxy derives
          for its static configuration. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="arguments" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The command it runs where the image's own entrypoint is not it, as written. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- The priority class its pods schedule under, where it names one. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="priorityClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- The nameservers a Process that serves DNS resolves through, never the cluster's own. -->
@@ -648,6 +650,9 @@
     <!-- The home its variables point at, where it mounts a writable /tmp and names no HOME of its
          own (docs/adr/model/0141); none for a container with no writable /tmp. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="home" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- What it runs where the image's own entrypoint is not it: the command and the arguments, as written. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="arguments" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!--
@@ -843,6 +848,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="launchUrl" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="iconUrl" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="redirectUris" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Where the provider ends a session on the Client's behalf, on the host and its own path. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="backChannelLogoutUri" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="credential" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="secretPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="roles" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

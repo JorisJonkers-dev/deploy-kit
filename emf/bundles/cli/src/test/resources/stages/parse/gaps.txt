@@ -19,6 +19,7 @@ MoveStep.sync is never used in a parse case's input
 MoveStep.unfence is never used in a parse case's input
 PolicyController.cni is never used in a parse case's input
 PolicyController.none is never used in a parse case's input
+SignInMode.token is never used in a parse case's input
 platform-intent.schema.json /durability/reconstructible/offCluster is never present in a parse case's input
 platform-intent.schema.json /durability/reconstructible/offCluster/credential is never present in a parse case's input
 platform-intent.schema.json /durability/reconstructible/offCluster/destination is never present in a parse case's input

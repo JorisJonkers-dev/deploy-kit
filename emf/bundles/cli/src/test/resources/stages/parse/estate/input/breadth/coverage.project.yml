@@ -18,7 +18,7 @@ applications:
     startupBudget: 60s
     writablePaths: [{ path: /var/cache/coverage, memory: 64Mi }]
     assets:
-      - { from: config/seed.conf, seedAt: /data/seed.conf }
+      - { from: config/seed.conf, seedAt: /var/cache/coverage/seed.conf }
     dependsOn:
       - { application: platform-valkey, surface: redis, required: false }
     secrets:
@@ -36,8 +36,12 @@ applications:
         fileMode: "0400"
         rotation: { tolerates: restart }
     client:
-      signIn: token
+      signIn: native
+      label: Coverage
+      redirectPaths: [/callback]
+      protectedPath: /api
       backChannelLogoutPath: /logout
+      credential: pkce
       roles: [reader]
     processes:
       - name: coverage-api

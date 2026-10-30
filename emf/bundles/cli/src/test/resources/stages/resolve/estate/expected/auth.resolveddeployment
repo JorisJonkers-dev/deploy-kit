@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:6a3dc92b49017005a03757ada046ced1cca653a9f181f0c84435121a7d374c5a" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:3dbab29170ed3f5f19d7ed2d99d284ac19ef1f8a4f38d9319de8e3d20e83c20b" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests name="agents" digest="sha256:7a710b34e13d2be9c7ddfceb239b6c8e099137f760cb7a3ebb5a7d71dead88d9"/>
     <inputDigests name="auth" digest="sha256:9ede7056e41341c9040da4b17b9e1fdcf074966ed07fff0c288a2f989614d0d8"/>
-    <inputDigests name="coverage" digest="sha256:0447ae0ebc9b78b52d0a6a4cbe283936791adefc9fc092017a6de1a9e2d7dc2b"/>
+    <inputDigests name="coverage" digest="sha256:af367531489d73e62a23d0d336832069223ff3797500a82fddf0901a1204c877"/>
     <inputDigests name="data" digest="sha256:d7a7a3bb48f3b4ae673f1b30c4bd8baafa398ee518566c98f410c3faf23292cf"/>
     <inputDigests name="delivery" digest="sha256:7399f88a5ed5dae0a18971a1dbcfd79053e4dc69e5ea3106d63b58a45a064448"/>
     <inputDigests name="edge" digest="sha256:b1445b93227a2a18990df93d691545276efe933c102357709d50fb4f3895b7af"/>

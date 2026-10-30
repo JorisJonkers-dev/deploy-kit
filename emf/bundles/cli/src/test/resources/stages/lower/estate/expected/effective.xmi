@@ -358,7 +358,7 @@
         </secrets>
         <dependsOn application="platform-valkey" surface="redis" required="false"/>
         <dependsOn application="platform-rabbitmq" surface="amqp" required="true"/>
-        <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/data/seed.conf"/>
+        <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/var/cache/coverage/seed.conf"/>
         <assets xsi:type="projectintent:Asset" from="config/coverage.conf" mountAt="/etc/coverage/project.conf"/>
         <writablePaths xsi:type="projectintent:MemoryPath" path="/var/cache/coverage" memory="64Mi"/>
         <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
@@ -413,7 +413,7 @@
         </secrets>
         <dependsOn application="platform-valkey" surface="redis" required="false"/>
         <dependsOn application="platform-rabbitmq" surface="amqp" required="true"/>
-        <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/data/seed.conf"/>
+        <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/var/cache/coverage/seed.conf"/>
         <assets xsi:type="projectintent:Asset" from="config/coverage.conf" mountAt="/etc/coverage/project.conf"/>
         <writablePaths xsi:type="projectintent:MemoryPath" path="/var/cache/coverage" memory="64Mi"/>
         <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
@@ -442,7 +442,7 @@
         </secrets>
         <dependsOn application="platform-valkey" surface="redis" required="false"/>
         <dependsOn application="platform-rabbitmq" surface="amqp" required="true"/>
-        <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/data/seed.conf"/>
+        <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/var/cache/coverage/seed.conf"/>
         <assets xsi:type="projectintent:Asset" from="config/coverage.conf" mountAt="/etc/coverage/project.conf"/>
         <writablePaths xsi:type="projectintent:MemoryPath" path="/var/cache/coverage" memory="64Mi"/>
         <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
@@ -456,7 +456,8 @@
         </env>
         <placement memory="32Mi" cpu="5m" site="enschede"/>
       </processes>
-      <client signIn="token" backChannelLogoutPath="/logout">
+      <client label="Coverage" protectedPath="/api" backChannelLogoutPath="/logout" credential="pkce">
+        <redirectPaths>/callback</redirectPaths>
         <roles>reader</roles>
       </client>
     </applications>

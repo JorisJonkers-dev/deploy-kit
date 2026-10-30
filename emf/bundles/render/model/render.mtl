@@ -516,7 +516,7 @@
     name: [d.process.name/]
     namespace: [d.process.application().namespace/]
     labels:
-  [for (l : resolveddeployment::KeyValue | d.process.application().scrape.labels)]
+  [for (l : resolveddeployment::KeyValue | d.process.application().scrape.labels->reject(l | d.process.ownLabelKeys()->includes(l.key)))]
         [l.key/]: [l.value.scalar()/]
   [/for]
       [d.process.labels()/]
@@ -1116,6 +1116,18 @@
 [template private sidecar(c : resolveddeployment::ResolvedSidecar, p : resolveddeployment::ResolvedProcess)]
   - name: [c.name/]
     image: [c.image/]
+  [if (c.command->notEmpty())]
+      command:
+    [for (x : String | c.command)]
+          [x.listItem()/]
+    [/for]
+  [/if]
+  [if (c.arguments->notEmpty())]
+      args:
+    [for (x : String | c.arguments)]
+          [x.listItem()/]
+    [/for]
+  [/if]
   [if (p.environment->notEmpty() or c.home <> null)]
       env:
     [if (p.environment->notEmpty())]
@@ -1223,6 +1235,12 @@
 [template private container(p : resolveddeployment::ResolvedProcess)]
   - name: [p.instanceName()/]
     image: [p.image/]
+  [if (p.command->notEmpty())]
+      command:
+    [for (x : String | p.command)]
+          [x.listItem()/]
+    [/for]
+  [/if]
   [if (p.arguments->notEmpty())]
       args:
     [for (x : String | p.arguments)]
@@ -2481,6 +2499,9 @@
           - [u/]
     [/for]
   [/if]
+  [if (d.application.client.backChannelLogoutUri <> null)]
+      backChannelLogoutUri: [d.application.client.backChannelLogoutUri/]
+  [/if]
   [if (d.application.client.credential <> null)]
       credential: [d.application.client.credential/]
   [/if]
@@ -2597,7 +2618,7 @@
     name: flux-controllers
     namespace: [d.application.namespace/]
     labels:
-  [for (l : resolveddeployment::KeyValue | d.application.fluxScrape.labels)]
+  [for (l : resolveddeployment::KeyValue | d.application.fluxScrape.labels->reject(l | d.application.ownApplicationLabelKeys()->includes(l.key)))]
         [l.key/]: [l.value.scalar()/]
   [/for]
       [d.application.applicationLabels()/]
@@ -3087,6 +3108,13 @@
   the Release Gate's policy admits. /]
 [query private member(p : resolveddeployment::ResolvedProcess) : Boolean =
   p.application().releaseGate <> null and p.application().releaseGate.members->exists(m | m.process = p) /]
+
+[comment The keys a monitor writes itself: the platform's selector labels never replace them, so each is written once. /]
+[query private ownLabelKeys(p : resolveddeployment::ResolvedProcess) : Sequence(String) =
+  Sequence{'app.kubernetes.io/name', 'app.kubernetes.io/instance', 'app.kubernetes.io/part-of', 'app.kubernetes.io/managed-by', 'app.kubernetes.io/component'} /]
+
+[query private ownApplicationLabelKeys(a : resolveddeployment::ResolvedApplication) : Sequence(String) =
+  Sequence{'app.kubernetes.io/part-of', 'app.kubernetes.io/managed-by'} /]
 
 [query private application(p : resolveddeployment::ResolvedProcess) : resolveddeployment::ResolvedApplication =
   p.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]

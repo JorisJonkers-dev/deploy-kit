@@ -615,4 +615,546 @@ class ModelWitnessesTest {
                     .contains("  annotations:\n    kustomize.toolkit.fluxcd.io/prune: disabled\n");
         }
     }
+    void everyMonitorCarriesThePlatformsSelectorLabelsBesideItsOwnAndTheMonitorsOwnValueWins(@TempDir Path work)
+            throws IOException {
+        String monitor = rendered("minimal", "apps/notes/notes/podmonitor.yaml");
+        assertThat(monitor)
+                .contains("  labels:\n    release: metrics-stack\n    app.kubernetes.io/name: notes-api\n")
+                .containsOnlyOnce("app.kubernetes.io/managed-by:");
+
+        String labels = "  labels:\n    release: metrics-stack\n";
+        Edit collision = new Edit(
+                "platform/platform.intent.yml", labels, labels + "    app.kubernetes.io/managed-by: someone-else\n");
+        for (String[] where : new String[][] {
+            {"minimal", "apps/notes/notes/podmonitor.yaml"},
+            {"observability", "apps/observability/prometheus/flux-podmonitor.yaml"}
+        }) {
+            Path collided = renderedWith(where[0], work.resolve("collided-" + where[0]), collision);
+            assertThat(Files.readString(collided.resolve(where[1])))
+                    .containsOnlyOnce("app.kubernetes.io/managed-by:")
+                    .contains("app.kubernetes.io/managed-by: deploy-kit\n");
+        }
+
+        Path bare = renderedWith("minimal", work.resolve("bare"), new Edit("platform/platform.intent.yml", labels, ""));
+        assertThat(Files.readString(bare.resolve("apps/notes/notes/podmonitor.yaml")))
+                .doesNotContain("release:")
+                .contains("  labels:\n    app.kubernetes.io/name: notes-api\n");
+    }
+
+    @Test
+    void anUnproxiedHostPointsAtTheTiersDirectAddressAndItsRoutesCountAClientByItsConnection(@TempDir Path work)
+            throws IOException {
+        String limit = "          - { path: /, match: prefix, process: notes-api, surface: http }";
+        Edit limited = new Edit(
+                "minimal/notes.project.yml",
+                limit,
+                limit.replace("surface: http }", "surface: http, rateLimit: { requests: 10, per: 1m } }"));
+        Edit unproxied = new Edit(
+                "minimal/notes.project.yml",
+                "        contentPolicy: strict\n",
+                "        contentPolicy: strict\n        proxied: false\n");
+
+        String off = Files.readString(renderedWith("minimal", work.resolve("off"), limited, unproxied)
+                .resolve("apps/notes/notes/route-public.yaml"));
+        assertThat(off)
+                .contains("external-dns.alpha.kubernetes.io/target: 167.86.79.203\n")
+                .contains("external-dns.alpha.kubernetes.io/cloudflare-proxied: \"false\"\n")
+                .contains("  rateLimit:\n    average: 10\n    period: 1m\n    burst: 10\n")
+                .doesNotContain("CF-Connecting-IP");
+
+        String on = Files.readString(
+                renderedWith("minimal", work.resolve("on"), limited).resolve("apps/notes/notes/route-public.yaml"));
+        assertThat(on)
+                .contains("external-dns.alpha.kubernetes.io/target: ingress.jorisjonkers.dev\n")
+                .contains("requestHeaderName: CF-Connecting-IP\n");
+
+        assertThat(refusal("no-direct-target"))
+                .containsExactly("E_NO_DIRECT_TARGET /applications/0/exposure/0/proxied");
+    }
+
+    @Test
+    void theMetricsStackRendersRuleGroupsAndRoutesEachSeverityToItsReceiverAndNoRuleGroupsRenderElsewhere() {
+        assertThat(rendered("observability", "apps/observability/prometheus/alertrules.yaml"))
+                .contains("kind: PrometheusRule\n")
+                .contains("  name: prometheus-platform\n")
+                .contains("    - name: platform\n");
+        String config = rendered("observability", "apps/observability/alertmanager/alertmanagerconfig.yaml");
+        assertThat(config)
+                .contains("kind: AlertmanagerConfig\n")
+                .contains("          - name: severity\n            value: critical\n        receiver: discord\n")
+                .contains("        repeatInterval: 4h\n")
+                .contains("          - name: severity\n            value: warning\n        receiver: discord\n")
+                .contains(
+                        "            name: alertmanager-platform-alertmanager-discord\n            key: webhook-url\n");
+        assertThat(rendered("observability", "apps/observability/alertmanager/vso.yaml"))
+                .contains("alertmanager-platform-alertmanager-discord");
+    }
+
+    @Test
+    void theLogCollectorReadsEveryPodsLogThroughTheApiAsOneCopyAndNoTreeHoldsAWebhookHookOrAggregatedRole()
+            throws IOException {
+        String rbac = rendered("observability", "apps/observability/alloy/rbac.yaml");
+        assertThat(rbac).contains("kind: ClusterRole\n").contains("      - pods/log\n");
+        String workload = rendered("observability", "apps/observability/alloy/workload.yaml");
+        assertThat(workload)
+                .contains("kind: Deployment\n")
+                .doesNotContain("DaemonSet")
+                .doesNotContain("hostNetwork");
+        assertThat(workload).doesNotContain("hostPID").doesNotContain("hostPath");
+        for (String example : Outputs.RESOLVED.keySet()) {
+            try (Stream<Path> files = Files.walk(tree(example))) {
+                assertThat(files.filter(file -> file.toString().endsWith(".yaml"))
+                                .map(ModelWitnessesTest::read)
+                                .filter(text -> text.contains("kind: MutatingWebhookConfiguration")
+                                        || text.contains("kind: ValidatingWebhookConfiguration")
+                                        || text.contains("helm.sh/hook")
+                                        || text.contains("aggregate-to-")))
+                        .as(example)
+                        .isEmpty();
+            }
+        }
+    }
+
+    @Test
+    void theMetricsStackScrapesFluxsControllersWhereThePlatformRecordsTheirMetricsAndNowhereElse(@TempDir Path work)
+            throws IOException {
+        String monitor = rendered("observability", "apps/observability/prometheus/flux-podmonitor.yaml");
+        assertThat(monitor)
+                .contains("  name: flux-controllers\n  namespace: observability-system\n")
+                .contains("    release: metrics-stack\n")
+                .contains("      app.kubernetes.io/part-of: flux\n")
+                .contains("      - flux-system\n")
+                .contains(
+                        "    - portNumber: 8080\n      path: /metrics\n      interval: 30s\n      scrapeTimeout: 10s\n");
+        assertThat(rendered("observability", "apps/observability/prometheus/networkpolicy.yaml"))
+                .contains("kubernetes.io/metadata.name: flux-system");
+
+        Path unrecorded = renderedWith(
+                "observability",
+                work,
+                new Edit("platform/platform.intent.yml", "    metrics: {port: 8080, path: /metrics}\n", ""));
+        assertThat(unrecorded.resolve("apps/observability/prometheus/flux-podmonitor.yaml"))
+                .doesNotExist();
+        assertThat(Files.readString(unrecorded.resolve("apps/observability/prometheus/networkpolicy.yaml")))
+                .doesNotContain("flux-system");
+    }
+
+    /** A diagnostic as {@code code document path}. */
+    private static String described(Diagnostic diagnostic) {
+        return diagnostic.code() + " " + diagnostic.document() + " " + diagnostic.path();
+    }
+
+    /** What rendering {@code example} with {@code edits} refuses, as {@code code document path}. */
+    private static List<String> renderRefusals(String example, Path work, Edit... edits) throws IOException {
+        List<Path> files = edited(example, work.resolve("in"), edits);
+        return Pipeline.render(
+                        files, List.of(Outputs.RESOLVED.get(example).project()), Outputs.INTEGRITY, work.resolve("out"))
+                .stream()
+                .map(ModelWitnessesTest::described)
+                .toList();
+    }
+
+    /** What checking the documents of {@code example} with {@code edits} refuses, as {@code code document path}. */
+    private static List<String> checkRefusals(String example, Path work, Edit... edits) throws IOException {
+        return Pipeline.check(edited(example, work.resolve("in"), edits)).stream()
+                .map(ModelWitnessesTest::described)
+                .toList();
+    }
+
+    private static final String UTILITY = "utility/utility.project.yml";
+    private static final String PLATFORM_DOCUMENT = "platform/platform.intent.yml";
+
+    @Test
+    void aProcessExposedOnAPoolIsHeldToThePoolsSiteAndAPlacementThatContradictsItIsRefused(@TempDir Path work)
+            throws IOException {
+        assertThat(rendered("utility", "apps/utility/adguard/service.yaml"))
+                .contains("metallb.io/address-pool: lan-dns\n")
+                .contains("type: LoadBalancer\n")
+                .contains("externalTrafficPolicy: Local\n")
+                .contains("      protocol: TCP\n      targetPort: 5353\n")
+                .contains("      protocol: UDP\n      targetPort: 5353\n");
+
+        assertThat(rendered("utility", "apps/utility/adguard/workload.yaml")).contains("enschede");
+        Edit elsewhere = new Edit(
+                PLATFORM_DOCUMENT,
+                "  lan-dns:\n    kind: pool\n    site: enschede\n",
+                "  lan-dns:\n    kind: pool\n    site: frankfurt\n");
+        assertThat(renderRefusals("utility", work, elsewhere))
+                .containsExactly("E_PLACEMENT_UNSATISFIABLE utility.project.yml /applications/0/processes/0/placement");
+    }
+
+    @Test
+    void replicasSpreadAcrossNodesRepelEachOtherWithinOneRevisionAndNeedANodeEach(@TempDir Path work)
+            throws IOException {
+        assertThat(rendered("utility", "apps/utility/adguard/workload.yaml"))
+                .contains("podAntiAffinity:\n")
+                .contains("requiredDuringSchedulingIgnoredDuringExecution:")
+                .contains("- pod-template-hash\n")
+                .contains("topologyKey: kubernetes.io/hostname\n");
+
+        Edit forty = new Edit(UTILITY, "          count: 2\n", "          count: 40\n");
+        assertThat(renderRefusals("utility", work.resolve("spread"), forty))
+                .containsExactly("E_PLACEMENT_UNSATISFIABLE utility.project.yml /applications/0/processes/0/replicas");
+        Path unspread = renderedWith(
+                "utility", work.resolve("unspread"), forty, new Edit(UTILITY, "          across: node\n", ""));
+        assertThat(Files.readString(unspread.resolve("apps/utility/adguard/workload.yaml")))
+                .doesNotContain("podAntiAffinity");
+    }
+
+    @Test
+    void aWritablePathsSizeIsAddedToTheProcessesMemoryAndAPathNoNodeCanHoldBesideItIsRefused(@TempDir Path work)
+            throws IOException {
+        String workload = rendered("utility", "apps/utility/adguard/workload.yaml");
+        assertThat(workload)
+                .contains("medium: Memory\n            sizeLimit: 128Mi\n")
+                .contains("sizeLimit: 64Mi\n")
+                .contains("memory: 256Mi\n");
+
+        assertThat(renderRefusals(
+                        "utility",
+                        work.resolve("held"),
+                        new Edit(
+                                UTILITY,
+                                "{ path: /opt/adguardhome/work, memory: 128Mi }",
+                                "{ path: /opt/adguardhome/work, memory: 64Gi }")))
+                .containsExactly("E_PLACEMENT_UNSATISFIABLE utility.project.yml /applications/0/processes/0/placement");
+        // The same path above the Process, in either form, is declared twice.
+        assertThat(checkRefusals(
+                        "utility",
+                        work.resolve("twice"),
+                        new Edit(
+                                UTILITY,
+                                "    processes:\n      - name: adguard\n",
+                                "    writablePaths: [/opt/adguardhome/conf]\n    processes:\n      - name: adguard\n")))
+                .containsExactly("E_SHARED_DECLARATION_DUPLICATED utility.project.yml /applications/0/processes/0");
+        assertThat(
+                        checkRefusals(
+                                "utility",
+                                work.resolve("memory"),
+                                new Edit(
+                                        UTILITY,
+                                        "    processes:\n      - name: adguard\n",
+                                        "    writablePaths: [{ path: /opt/adguardhome/work, memory: 128Mi }]\n    processes:\n      - name: adguard\n")))
+                .containsExactly("E_SHARED_DECLARATION_DUPLICATED utility.project.yml /applications/0/processes/0");
+    }
+
+    @Test
+    void theNodeAgentsAreDerivedAndACatalogThatNamesNoImageForOneIsRefusedAtTheEntry(@TempDir Path work)
+            throws IOException {
+        assertThat(checkRefusals("node", work.resolve("whole"))).isEmpty();
+
+        String speaker = "  l4-speaker:\n    image: metallb-speaker\n    memory: 64Mi\n    cpu: 20m\n"
+                + "    controller: { image: metallb-controller, memory: 64Mi, cpu: 10m }\n";
+        String platform = "platform.intent.yml";
+        assertThat(checkRefusals("node", work.resolve("speaker"), new Edit(PLATFORM_DOCUMENT, speaker, "")))
+                .containsExactly("E_NO_NODE_AGENT_POLICY " + platform + " /nodeAgents/l4-speaker");
+        assertThat(checkRefusals(
+                        "node",
+                        work.resolve("catalog"),
+                        new Edit(
+                                PLATFORM_DOCUMENT,
+                                "nodeAgents:\n  gpu-device: { image: nvidia-device-plugin, memory: 64Mi, cpu: 10m }\n"
+                                        + "  gpu-metrics: { image: dcgm-exporter, memory: 256Mi, cpu: 50m }\n"
+                                        + "  node-metrics: { image: node-exporter, memory: 64Mi, cpu: 20m }\n"
+                                        + speaker,
+                                "")))
+                .containsExactly(
+                        "E_NO_NODE_AGENT_POLICY " + platform + " /nodeAgents/gpu-device",
+                        "E_NO_NODE_AGENT_POLICY " + platform + " /nodeAgents/gpu-metrics",
+                        "E_NO_NODE_AGENT_POLICY " + platform + " /nodeAgents/node-metrics",
+                        "E_NO_NODE_AGENT_POLICY " + platform + " /nodeAgents/l4-speaker");
+    }
+
+    @Test
+    void aSetWithoutTheNodeContractDerivesNoAgentAndAPoolOnASiteWithNoNodeDerivesNoAnnouncer(@TempDir Path work)
+            throws IOException {
+        String speaker = "  l4-speaker:\n    image: metallb-speaker\n    memory: 64Mi\n    cpu: 20m\n"
+                + "    controller: { image: metallb-controller, memory: 64Mi, cpu: 10m }\n";
+        Edit unnamed = new Edit(PLATFORM_DOCUMENT, speaker, "");
+        List<Path> without = edited("node", work.resolve("without"), unnamed).stream()
+                .filter(file -> !file.getFileName().toString().equals("node-contract.yml"))
+                .toList();
+        assertThat(Pipeline.check(without)).isEmpty();
+
+        List<Edit> nowhere = new ArrayList<>(List.of(unnamed));
+        for (String pool : List.of("lan-dns", "lan-edge", "lan-mqtt")) {
+            nowhere.add(new Edit(
+                    PLATFORM_DOCUMENT,
+                    "  " + pool + ":\n    kind: pool\n    site: enschede\n",
+                    "  " + pool + ":\n    kind: pool\n    site: nowhere\n"));
+        }
+        assertThat(checkRefusals("node", work.resolve("nowhere"), nowhere.toArray(Edit[]::new)))
+                .isEmpty();
+    }
+
+    @Test
+    void aNodeContractThatDoesNotReadIsRefusedAtTheContract(@TempDir Path work) throws IOException {
+        assertThat(checkRefusals(
+                        "node",
+                        work,
+                        new Edit("platform/node-contract.yml", "labelPrefix: platform.jorisjonkers.dev\n", "")))
+                .containsExactly("schema node-contract.yml /labelPrefix");
+    }
+
+    @Test
+    void anOffClusterCopyNamesAnAgePublicKeyAndOneThatIsNoneIsRefusedWithThePlatformDocument(@TempDir Path work)
+            throws IOException {
+        assertThat(rendered("data", "apps/data/platform-postgres/backup.yaml"))
+                .contains("- name: BACKUP_OFF_CLUSTER_RECIPIENT\n")
+                .contains("age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8");
+        String key = "      recipient: age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8\n";
+        String at = "schema platform.intent.yml /durability/irreplaceable/offCluster/recipient";
+        assertThat(checkRefusals("data", work.resolve("none"), new Edit(PLATFORM_DOCUMENT, key, "")))
+                .containsExactly(at);
+        assertThat(checkRefusals(
+                        "data",
+                        work.resolve("ssh"),
+                        new Edit(PLATFORM_DOCUMENT, key, "      recipient: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI\n")))
+                .containsExactly(at);
+        assertThat(checkRefusals(
+                        "data",
+                        work.resolve("alphabet"),
+                        new Edit(PLATFORM_DOCUMENT, "recipient: age1s6v5qrx3", "recipient: age1b6v5qrx3")))
+                .containsExactly(at);
+    }
+
+    @Test
+    void aProcessAndASidecarCarryTheCommandAndArgumentsTheyNameAsWrittenAndNamingNoneCarriesNone(@TempDir Path work)
+            throws IOException {
+        Path run = renderedWith(
+                "mail",
+                work.resolve("named"),
+                new Edit(
+                        "mail/mail.project.yml",
+                        "        sidecars:\n          - name: stalwart-apply\n            image: stalwart-provisioner\n",
+                        "        command: [/usr/bin/stalwart]\n        args: [serve, --port=8080, \"\"]\n"
+                                + "        sidecars:\n          - name: stalwart-apply\n            image: stalwart-provisioner\n"
+                                + "            command: [/bin/apply]\n            args: [--verbose]\n"));
+        String workload = Files.readString(run.resolve("apps/mail/stalwart/workload.yaml"));
+        assertThat(workload)
+                .contains("          command:\n            - /usr/bin/stalwart\n          args:\n            - serve\n"
+                        + "            - --port=8080\n            - \"\"\n")
+                .contains("          command:\n            - /bin/apply\n          args:\n            - --verbose\n");
+        assertThat(rendered("mail", "apps/mail/stalwart/workload.yaml"))
+                .doesNotContain("command:")
+                .doesNotContain("args:");
+        int attempt = 0;
+        for (String empty : List.of("command: []", "command: [\"\"]", "args: []")) {
+            assertThat(checkRefusals(
+                            "mail",
+                            work.resolve("empty" + attempt++),
+                            new Edit(
+                                    "mail/mail.project.yml",
+                                    "        sidecars:\n          - name: stalwart-apply\n",
+                                    "        " + empty + "\n        sidecars:\n          - name: stalwart-apply\n")))
+                    .hasSize(1)
+                    .allMatch(refusal -> refusal.startsWith("schema mail.project.yml /applications/"));
+        }
+    }
+
+    @Test
+    void aDescriptionRendersNothingAndOneOverOneHundredAndSixtyCharactersOrEmptyIsASchemaRefusal(@TempDir Path work)
+            throws IOException {
+        Edit application = new Edit(
+                "minimal/notes.project.yml",
+                "applications:\n  - id: notes\n",
+                "applications:\n  - id: notes\n    description: What notes does.\n");
+        Edit process = new Edit(
+                "minimal/notes.project.yml",
+                "      - name: notes-api\n",
+                "      - name: notes-api\n        description: Serves the notes.\n");
+        Path described = renderedWith("minimal", work.resolve("described"), application, process);
+        try (Stream<Path> files = Files.walk(tree("minimal"))) {
+            for (Path file : files.filter(Files::isRegularFile).toList()) {
+                assertThat(Files.readString(described.resolve(tree("minimal").relativize(file))))
+                        .as(file.toString())
+                        .isEqualTo(Files.readString(file));
+            }
+        }
+        for (Edit edit : List.of(application, process)) {
+            String sentence = edit.to()
+                    .substring(edit.to().indexOf("description: ") + "description: ".length())
+                    .stripTrailing();
+            String path =
+                    edit == application ? "/applications/0/description" : "/applications/0/processes/0/description";
+            assertThat(checkRefusals(
+                            "minimal",
+                            work.resolve("long" + (edit == application)),
+                            new Edit(edit.file(), edit.from(), edit.to().replace(sentence, "x".repeat(161)))))
+                    .containsExactly("schema notes.project.yml " + path);
+            assertThat(checkRefusals(
+                            "minimal",
+                            work.resolve("empty" + (edit == application)),
+                            new Edit(edit.file(), edit.from(), edit.to().replace(sentence, "\"\""))))
+                    .containsExactly("schema notes.project.yml " + path);
+        }
+    }
+
+    @Test
+    void anOptionalKeyMakesEveryReferenceToItOptionalAndOptionalFalseIsRefused(@TempDir Path work) throws IOException {
+        String optional = "key: github-pat\n                  optional: true\n";
+        assertThat(rendered("agents", "apps/agents/hermes/workload.yaml")).contains(optional);
+
+        Path required = renderedWith(
+                "agents",
+                work.resolve("required"),
+                new Edit("agents/agents.project.yml", "- { name: github-pat, optional: true }", "- github-pat"));
+        assertThat(Files.readString(required.resolve("apps/agents/hermes/workload.yaml")))
+                .contains("key: github-pat\n")
+                .doesNotContain(optional);
+        assertThat(checkRefusals(
+                        "agents",
+                        work.resolve("false"),
+                        new Edit(
+                                "agents/agents.project.yml",
+                                "- { name: github-pat, optional: true }",
+                                "- { name: github-pat, optional: false }")))
+                .containsExactly("schema agents.project.yml /applications/0/processes/0/secrets/0/keys/2/optional");
+    }
+
+    @Test
+    void aSeededAssetIsRefusedWhereThePlatformNamesNoSeederAndWhereItLandsBelowNoVolumeOrWritablePath(
+            @TempDir Path work) throws IOException {
+        String seeded = "utility.project.yml /applications/0/processes/0/assets/0/seedAt";
+        assertThat(checkRefusals("utility", work.resolve("whole"))).isEmpty();
+        assertThat(checkRefusals(
+                        "utility",
+                        work.resolve("unnamed"),
+                        new Edit(PLATFORM_DOCUMENT, "seeder:\n  image: busybox\n  memory: 16Mi\n  cpu: 10m\n", "")))
+                // Hermes, in the foundation, seeds its config too.
+                .containsExactlyInAnyOrder(
+                        "E_NO_SEEDER " + seeded,
+                        "E_NO_SEEDER agents.project.yml /applications/0/processes/0/assets/0/seedAt");
+        assertThat(checkRefusals(
+                        "utility",
+                        work.resolve("retired"),
+                        new Edit("platform/images.lock.yml", "  busybox:\n", "  busybox-retired:\n")))
+                .containsExactly("E_UNLOCKED_IMAGE platform.intent.yml /seeder/image");
+        // A lock that does not read is refused for its shape, never for the seeder it cannot be asked about.
+        assertThat(checkRefusals(
+                        "utility",
+                        work.resolve("unreadable"),
+                        new Edit("platform/images.lock.yml", "  busybox:\n", "  busybox: 5\n")))
+                .noneMatch(refusal -> refusal.startsWith("E_UNLOCKED_IMAGE"));
+        for (String outside : List.of(
+                "/etc/AdGuardHome.yaml",
+                "/opt/adguardhome/conf",
+                "/opt/adguardhome/conf/",
+                "/opt/adguardhome/conf/../AdGuardHome.yaml",
+                "/opt/adguardhome/conf/./AdGuardHome.yaml",
+                "/opt/adguardhome/conf-other/AdGuardHome.yaml")) {
+            assertThat(checkRefusals(
+                            "utility",
+                            work.resolve("outside" + outside.hashCode()),
+                            new Edit(UTILITY, "seedAt: /opt/adguardhome/conf/AdGuardHome.yaml", "seedAt: " + outside)))
+                    .as(outside)
+                    .containsExactly("E_SEED_OUTSIDE_VOLUME " + seeded);
+        }
+        // A file below a path a level above declares, or deeper below one, is where a seed may land.
+        assertThat(checkRefusals(
+                        "utility",
+                        work.resolve("deeper"),
+                        new Edit(
+                                UTILITY,
+                                "seedAt: /opt/adguardhome/conf/AdGuardHome.yaml",
+                                "seedAt: /opt/adguardhome/conf/more/AdGuardHome.yaml")))
+                .isEmpty();
+        // The seeder is held beside the Process: a seeder no node can hold beside it leaves it nowhere to go.
+        assertThat(renderRefusals(
+                        "utility",
+                        work.resolve("heavy"),
+                        new Edit(PLATFORM_DOCUMENT, "  memory: 16Mi\n  cpu: 10m\n", "  memory: 40Gi\n  cpu: 10m\n")))
+                .containsExactly("E_PLACEMENT_UNSATISFIABLE utility.project.yml /applications/0/processes/0/placement");
+    }
+
+    @Test
+    void aSidecarMountsOnlyAnAssetItsProcessHoldsAndAnotherIsRefused(@TempDir Path work) throws IOException {
+        assertThat(rendered("mail", "apps/mail/stalwart/workload.yaml"))
+                .contains("mountPath: /etc/stalwart-provisioner/manifest.json\n")
+                .contains("readOnly: true\n");
+        assertThat(checkRefusals(
+                        "mail",
+                        work.resolve("unknown"),
+                        new Edit(
+                                "mail/mail.project.yml",
+                                "            assets:\n              - { from: config/manifest.json,",
+                                "            assets:\n              - { from: config/other.json,")))
+                .containsExactly(
+                        "E_UNKNOWN_SIDECAR_ASSET mail.project.yml /applications/0/processes/0/sidecars/0/assets/0");
+        // An Asset a level above shares down to the Process is the Process's, and one a lower level
+        // replaced at its path is not.
+        Edit shared = new Edit(
+                "mail/mail.project.yml",
+                "        assets:\n          - from: config/manifest.json\n            mountAt: /etc/stalwart-provisioner/manifest.json\n",
+                "");
+        Edit above = new Edit(
+                "mail/mail.project.yml",
+                "    processes:\n",
+                "    assets:\n      - { from: config/manifest.json, mountAt: /etc/stalwart-provisioner/manifest.json }\n    processes:\n");
+        assertThat(checkRefusals("mail", work.resolve("shared"), shared, above)).isEmpty();
+        // A lower level that holds the path replaces what the level above shares at it.
+        Edit replacing = new Edit(
+                "mail/mail.project.yml",
+                "          - from: config/manifest.json\n            mountAt: /etc/stalwart-provisioner/manifest.json\n",
+                "          - from: config/other.json\n            mountAt: /etc/stalwart-provisioner/manifest.json\n");
+        List<Path> files = edited("mail", work.resolve("replaced"), replacing, above);
+        Files.writeString(work.resolve("replaced/mail/config/other.json"), "{}\n");
+        assertThat(Pipeline.check(files).stream().map(ModelWitnessesTest::described))
+                .containsExactly(
+                        "E_UNKNOWN_SIDECAR_ASSET mail.project.yml /applications/0/processes/0/sidecars/0/assets/0");
+    }
+
+    @Test
+    void aClientTakesTheFieldsItsSignInModeTakesAndRequiresWhatItNeedsAndTheLogoutPathIsANativeClientsAlone(
+            @TempDir Path work) throws IOException {
+        Edit logout = new Edit(
+                "identity/identity.project.yml",
+                "      redirectPaths: [/callback, /silent-renew]\n",
+                "      redirectPaths: [/callback, /silent-renew]\n      backChannelLogoutPath: /logout/backchannel\n");
+        Path native_ = renderedWith("identity", work.resolve("native"), logout);
+        String client = Files.readString(native_.resolve("apps/identity/portal/client.yaml"));
+        assertThat(client)
+                .contains(
+                        "    - https://home.jorisjonkers.dev/silent-renew\n"
+                                + "  backChannelLogoutUri: https://home.jorisjonkers.dev/logout/backchannel\n  credential: pkce\n");
+        assertThat(rendered("identity", "apps/identity/portal/client.yaml")).doesNotContain("backChannelLogoutUri");
+
+        String gated = "identity.project.yml /applications/2/client/";
+        assertThat(checkRefusals(
+                        "identity",
+                        work.resolve("gated"),
+                        new Edit(
+                                "identity/identity.project.yml",
+                                "      iconPath: /favicon.ico\n",
+                                "      iconPath: /favicon.ico\n      backChannelLogoutPath: /logout\n      credential: pkce\n"
+                                        + "      redirectPaths: [/callback]\n      protectedPath: /api\n")))
+                .containsExactlyInAnyOrder(
+                        "E_CLIENT_FIELD_FOR_MODE " + gated + "redirectPaths",
+                        "E_CLIENT_FIELD_FOR_MODE " + gated + "protectedPath",
+                        "E_CLIENT_FIELD_FOR_MODE " + gated + "backChannelLogoutPath",
+                        "E_CLIENT_FIELD_FOR_MODE " + gated + "credential");
+        assertThat(checkRefusals(
+                        "identity",
+                        work.resolve("missing"),
+                        new Edit("identity/identity.project.yml", "      label: Who am I\n", "")))
+                .containsExactly("E_CLIENT_FIELD_FOR_MODE " + gated.substring(0, gated.length() - 1));
+        assertThat(checkRefusals(
+                        "identity",
+                        work.resolve("nativeless"),
+                        new Edit("identity/identity.project.yml", "      credential: pkce\n", "")))
+                .containsExactly("E_CLIENT_FIELD_FOR_MODE identity.project.yml /applications/1/client");
+        assertThat(
+                        checkRefusals(
+                                "identity",
+                                work.resolve("token"),
+                                new Edit(
+                                        "identity/identity.project.yml",
+                                        "      signIn: gated\n      label: Who am I\n      iconPath: /favicon.ico\n",
+                                        "      signIn: token\n      label: Who am I\n      description: d\n      iconPath: /favicon.ico\n      launchPath: /\n")))
+                .contains(
+                        "E_CLIENT_FIELD_FOR_MODE " + gated + "label",
+                        "E_CLIENT_FIELD_FOR_MODE " + gated + "description",
+                        "E_CLIENT_FIELD_FOR_MODE " + gated + "iconPath",
+                        "E_CLIENT_FIELD_FOR_MODE " + gated + "launchPath");
+    }
 }

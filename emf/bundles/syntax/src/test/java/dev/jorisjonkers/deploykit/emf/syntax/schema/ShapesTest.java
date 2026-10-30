@@ -265,4 +265,75 @@ class ShapesTest {
                 .contains("/l4Addresses/c/kind", "/l4Addresses/d/kind")
                 .doesNotContain("/l4Addresses/a/kind", "/l4Addresses/b/kind", "/l4Addresses/a", "/l4Addresses/b");
     }
+
+    @Test
+    void aDescriptionIsOneSentenceOfAtMostOneHundredAndSixtyCharactersAndNeverEmpty() {
+        String at = "/applications/0/processes/0/description";
+        assertThat(paths(indented("description: " + "x".repeat(160)))).isEmpty();
+        assertThat(paths(indented("description: " + "x".repeat(161)))).containsExactly(at);
+        assertThat(paths(indented("description: \"\""))).containsExactly(at);
+        assertThat(paths(indented("description: [a]"))).containsExactly(at);
+        String application = "/applications/0/description";
+        assertThat(check(HEAD.replace("id: x\n", "id: x\n    description: " + "x".repeat(160) + "\n") + PROCESS))
+                .isEmpty();
+        assertThat(check(HEAD.replace("id: x\n", "id: x\n    description: " + "x".repeat(161) + "\n") + PROCESS))
+                .containsExactly(new Issue(application, "`description` is out of range"));
+        assertThat(check(HEAD.replace("id: x\n", "id: x\n    description: \"\"\n") + PROCESS))
+                .extracting(Issue::path)
+                .containsExactly(application);
+    }
+
+    @Test
+    void whatAContainerRunsIsAtLeastOneWordAndACommandWordIsNeverEmpty() {
+        String process = "/applications/0/processes/0/";
+        assertThat(paths(indented("command: [/bin/a]\nargs: [serve, \"\"]"))).isEmpty();
+        assertThat(paths(indented("command: []"))).containsExactly(process + "command");
+        assertThat(paths(indented("command: [\"\"]"))).containsExactly(process + "command");
+        assertThat(paths(indented("command: [a, \"\"]"))).containsExactly(process + "command");
+        assertThat(paths(indented("args: []"))).containsExactly(process + "args");
+        String sidecar = "sidecars:\n  - name: s\n    image: i\n    memory: 1Mi\n    cpu: 1m\n";
+        String at = process + "sidecars/0/";
+        assertThat(paths(indented(sidecar + "    command: [a]\n    args: [\"\"]")))
+                .isEmpty();
+        assertThat(paths(indented(sidecar + "    command: []"))).containsExactly(at + "command");
+        assertThat(paths(indented(sidecar + "    command: [\"\"]"))).containsExactly(at + "command");
+        assertThat(paths(indented(sidecar + "    args: []"))).containsExactly(at + "args");
+    }
+
+    @Test
+    void anOptionalKeyIsOptionalAndNeverOptionalFalse() {
+        String grant =
+                "secrets:\n  - path: p\n    access: read\n    delivery: env\n    rotation: {tolerates: restart}\n"
+                        + "    keys:\n      - name: k\n        optional: %s\n";
+        String at = "/applications/0/processes/0/secrets/0/keys/0/optional";
+        assertThat(paths(indented(grant.formatted("true")))).isEmpty();
+        assertThat(paths(indented(grant.formatted("false")))).containsExactly(at);
+    }
+
+    @Test
+    void anOffClusterCopyIsEncryptedToAnAgePublicKeyAndNothingElse() {
+        String key = "age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8";
+        String copy = "durability:\n  irreplaceable:\n    schedule: s\n    retain: 1\n    offCluster:\n"
+                + "      destination: d\n      credential: c\n      recipient: %s\n"
+                + "      egress:\n        - cidr: 10.0.0.0/8\n          port: 443\n";
+        String at = "/durability/irreplaceable/offCluster/recipient";
+        assertThat(recipientIssues(copy.formatted(key))).isEmpty();
+        assertThat(recipientIssues(copy.formatted("\"" + key + "\""))).isEmpty();
+        for (String wrong : List.of(
+                "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI",
+                key.substring(0, key.length() - 1),
+                key.replace("age1s", "age1b"),
+                "x" + key,
+                key + "8")) {
+            assertThat(recipientIssues(copy.formatted(wrong))).as(wrong).containsExactly(at);
+        }
+        assertThat(recipientIssues(copy.replace("      recipient: %s\n", ""))).containsExactly(at);
+    }
+
+    private static List<String> recipientIssues(String text) {
+        return Shapes.check(text, PLATFORM).stream()
+                .map(Issue::path)
+                .filter(path -> path.endsWith("/recipient"))
+                .toList();
+    }
 }
