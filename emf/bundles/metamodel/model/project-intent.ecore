@@ -420,8 +420,12 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="ApiScope">
-    <eLiterals name="namespace" literal="namespace"/>
-    <eLiterals name="cluster" value="1" literal="cluster"/>
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="absent" value="absent"/>
+    </eAnnotations>
+    <eLiterals name="absent" literal=""/>
+    <eLiterals name="namespace" value="1" literal="namespace"/>
+    <eLiterals name="cluster" value="2" literal="cluster"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Spread">
     <eLiterals name="node" literal="node"/>

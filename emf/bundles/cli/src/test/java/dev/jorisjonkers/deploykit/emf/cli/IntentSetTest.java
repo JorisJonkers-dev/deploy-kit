@@ -29,10 +29,17 @@ class IntentSetTest {
             Examples.of("knowledge/knowledge.project.yml"),
             Examples.of("minimal/notes.project.yml"),
             Examples.of("observability/observability.project.yml"),
-            Examples.of("secrets/secrets.project.yml"));
+            Examples.of("secrets/secrets.project.yml"),
+            Examples.of("identity/identity.project.yml"),
+            Examples.of("mail/mail.project.yml"),
+            Examples.of("utility/utility.project.yml"),
+            Examples.of("agents/agents.project.yml"));
 
     /** The worked Platform document's telemetry block, which a variant composed with fewer projects drops. */
     private static final String TELEMETRY = "\ntelemetry:\n(  .*\n)+";
+
+    /** Its sign-in block, whose provider a variant without the identity project does not compose. */
+    private static final String SIGN_IN = "\nsignIn:\n(  .*\n)+";
 
     /** Its API access block, which names Applications a variant may not compose. */
     private static final String API_ACCESS = "\napiAccess:\n(  .*\n)+";
@@ -126,7 +133,19 @@ class IntentSetTest {
                         tuple(
                                 "E_SECRETS_AT_REST_REQUIRED",
                                 "knowledge.project.yml",
-                                "/applications/1/processes/0/secrets/0"));
+                                "/applications/1/processes/0/secrets/0"),
+                        tuple(
+                                "E_SECRETS_AT_REST_REQUIRED",
+                                "data.project.yml",
+                                "/applications/4/processes/0/secrets/0"),
+                        tuple(
+                                "E_SECRETS_AT_REST_REQUIRED",
+                                "data.project.yml",
+                                "/applications/5/processes/0/secrets/0"),
+                        tuple(
+                                "E_SECRETS_AT_REST_REQUIRED",
+                                "agents.project.yml",
+                                "/applications/0/processes/0/secrets/0"));
     }
 
     @Test
@@ -149,6 +168,8 @@ class IntentSetTest {
                         .replace("gate: delivery/release-gate", "gate: notes/notes")
                         .replace("reporter: delivery/reporter", "reporter: notes/notes")
                         .replace("secretStore: secrets/vault", "secretStore: notes/notes")
+                        .replace("ingressClass: traefik-lan", "ingressClass: traefik-public")
+                        .replaceFirst(SIGN_IN, "\n")
                         .replaceFirst(TELEMETRY, "\n")
                         .replaceFirst(API_ACCESS, "\n"));
 
@@ -215,8 +236,8 @@ class IntentSetTest {
                 "platform.intent.yml",
                 Examples.read("platform/platform.intent.yml")
                         .replace(
-                                "holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter]",
-                                "holders: [delivery/flagger, delivery/gone]"));
+                                "holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter,",
+                                "holders: [delivery/flagger, delivery/gone,"));
         List<Path> admitted = new java.util.ArrayList<>(WORKED.subList(1, WORKED.size()));
         admitted.add(0, platform);
 

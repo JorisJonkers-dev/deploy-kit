@@ -497,8 +497,13 @@ public final class Pipeline {
             XtextLinkingDiagnostic linking = (XtextLinkingDiagnostic) error;
             if (UnlinkedNames.ACROSS_DOCUMENTS.contains(linking.getCode()) == together) {
                 EObject owner = resource.getEObject(linking.getUriToProblem().fragment());
+                // A name below its owner carries where it sits as the diagnostic's one datum.
+                String below = linking.getData().length == 0 ? "" : linking.getData()[0];
                 unlinked.add(new Diagnostic(
-                        linking.getCode(), resource.getURI().lastSegment(), Pointer.of(owner), linking.getMessage()));
+                        linking.getCode(),
+                        resource.getURI().lastSegment(),
+                        Pointer.of(owner) + below,
+                        linking.getMessage()));
             }
         }
         return unlinked;

@@ -170,11 +170,35 @@ context ApiAccess
 	-- naming its own Application `flagger` is not the one the platform meant.
 	-- Read with no Platform document, there is nobody to admit it and nothing
 	-- to refuse.
+	-- An Application the platform admits to its own namespace alone holds access
+	-- there too.
 	inv E_PROCESS_RBAC_GRANT:
 		Platform.allInstances()->notEmpty() implies
 			ApiAccessPolicy.allInstances()->exists(policy |
-				policy.holders->exists(holder |
-					holder.processes->exists(process | process.api = self)
+				admittedBy(policy.holders) or admittedBy(policy.namespaceHolders))
+
+	def: admittedBy(names : OrderedSet(Application)) : Boolean =
+		names->exists(holder |
+			holder.processes->exists(process | process.api = self)
+			and Application.allInstances()->select(other | other.id = holder.id)->size() = 1)
+
+context ApiRule
+	-- Admitted to its namespace alone, a rule that reaches the cluster is one the
+	-- platform did not give.
+	inv E_PROCESS_RBAC_GRANT:
+		let access : ApiAccess = oclContainer().oclAsType(ApiAccess) in
+		ApiAccessPolicy.allInstances()->forAll(policy |
+			(access.admittedBy(policy.namespaceHolders) and not access.admittedBy(policy.holders))
+				implies scope = ApiScope::_'namespace')
+
+context Process
+	-- A spawn template derives API access to create its pods, so the platform
+	-- admits it as it admits an `api` block, at either scope.
+	inv E_PROCESS_RBAC_GRANT__spawns:
+		(Platform.allInstances()->notEmpty() and api = null and spawns->notEmpty()) implies
+			ApiAccessPolicy.allInstances()->exists(policy |
+				policy.holders->union(policy.namespaceHolders)->exists(holder |
+					holder.processes->includes(self)
 					and Application.allInstances()->select(other | other.id = holder.id)->size() = 1))
 
 context Volume
@@ -404,11 +428,11 @@ context Process
 	inv E_SCHEDULE_MISSING:
 		lifecycle = Lifecycle::scheduled implies schedule <> null
 
-	inv E_SCHEDULE_UNSCHEDULED:
+	inv E_SCHEDULE_UNSCHEDULED__schedule:
 		schedule <> null implies lifecycle = Lifecycle::scheduled
 
 	-- Five cron fields (spec/v1/10-project-intent.md#scheduled-processes).
-	inv schema:
+	inv schema__schedule:
 		schedule = null or schedule.matches('[0-9A-Za-z*/,?-]+( [0-9A-Za-z*/,?-]+){4}')
 
 	-- A Process that runs to completion cuts over nothing.
@@ -637,7 +661,18 @@ context Process
 			or (p.suffix = null and Sequence{'username', 'password'}->exists(c |
 				heldEdges->select(e | e.application + '.' + c = p.source
 					and e.credentials <> null and e.credentials.delivery = Delivery::env)->size() = 1
+				and heldEdges->select(e | p.source.startsWith(e.application + '.'))->size() = 1))
+			-- An edge naming buckets hands the object store's endpoint, and its key whole.
+			or (heldEdges->select(e | e.application + '.endpoint' = p.source and e.buckets->notEmpty())->size() = 1
+				and heldEdges->select(e | p.source.startsWith(e.application + '.'))->size() = 1)
+			or (p.suffix = null and Sequence{'accessKeyId', 'secretAccessKey'}->exists(c |
+				heldEdges->select(e | e.application + '.' + c = p.source and e.buckets->notEmpty())->size() = 1
 				and heldEdges->select(e | p.source.startsWith(e.application + '.'))->size() = 1)))
+		-- A client placeholder reads the issuer, the id or the whole secret of its
+		-- own Application's Client.
+		and placeholdersOf(PlaceholderKind::client)->forAll(p |
+			oclContainer().oclAsType(Application).client <> null
+				and Sequence{'issuer', 'id', 'secret'}->includes(p.source))
 		and placeholdersOf(PlaceholderKind::exposure)->forAll(p |
 			Application.allInstances()->forAll(a | not p.source.startsWith(a.id + '.')
 				or a.exposure->exists(x | Sequence{'url', 'host', 'scheme'}->exists(f |
@@ -823,5 +858,125 @@ context DependencyEdge
 		(Platform.allInstances()->notEmpty() and required <> false) implies
 			not holders->exists(h | providing->exists(p |
 				p = h or p.requiredPeers->closure(q | q.requiredPeers)->includes(h)))
+
+-- The rules main's catch-up added (spec/v1/14-platform-intent.md, spec/v1/17-sign-in.md).
+
+context Exposure
+	-- The tier this exposure's audience reaches, where the Platform document has one.
+	def: tier : Tier =
+		let tiers : Sequence(Tier) =
+			Tier.allInstances()->select(t | t.audiences->includes(audience))->asSequence() in
+		if tiers->isEmpty() then null else tiers->first() endif
+
+	-- A route the tier's proxy admits carries the tier's ingress class, so an
+	-- exposure on a tier that names none would be admitted by no proxy.
+	inv E_TIER_WITHOUT_INGRESS_CLASS:
+		tier = null or tier.ingressClass <> null
+
+	-- Not proxied, a host is published straight at the tier's own address, which
+	-- the tier's DNS must name.
+	inv E_NO_DIRECT_TARGET__proxied:
+		(proxied = false and tier <> null and tier.dns <> null) implies tier.dns.direct <> null
+
+context Route
+	-- A redirect its own route matches again sends the client back to it.
+	inv E_REDIRECT_LOOP:
+		redirectTo = null
+			or (if match = Match::exact then redirectTo <> path else not redirectTo.startsWith(path) endif)
+
+context Process
+	-- A tier issuing certificates through acme cannot have its proxy run twice:
+	-- a second copy would issue the same names.
+	inv E_ACME_PROXY_REPLICATED__replicas:
+		Tier.allInstances()->exists(t | t.certificates = CertificateSource::acme
+				and t.traefik.processes->includes(self))
+			implies replicas = null
+
+	-- A Process exposed on a node's own address holds a host port, so one copy.
+	def: onNode : Boolean =
+		let application : Application = oclContainer().oclAsType(Application) in
+		application.l4Exposure->exists(e | e.process = self
+			and Platform.allInstances()->exists(p | p.l4Addresses->keys()->includes(e.address)
+				and p.l4Addresses->at(e.address).oclIsKindOf(NodeAddress)))
+
+	inv E_NODE_ADDRESS_REPLICATED__replicas:
+		onNode implies replicas = null
+
+	-- The catalog applied over a surface the Process does not provide reaches nothing.
+	inv E_CATALOG_SURFACE_NOT_PROVIDED:
+		EnginePolicies.allInstances()->forAll(policies |
+			let named : EnginePolicy =
+				if engine = Engine::postgres then policies.postgres
+				else if engine = Engine::mongo then policies.mongo
+				else if engine = Engine::s3 then policies.s3
+				else null endif endif endif in
+			(named <> null and named.catalogSurface <> null)
+				implies provides->keys()->includes(named.catalogSurface))
+
+context Application
+	-- Alert rules belong to the monitoring stack, which evaluates them.
+	inv E_ALERT_RULES_OUTSIDE_MONITORING__alertRules:
+		(Platform.allInstances()->notEmpty() and alertRules->notEmpty()) implies
+			Monitoring.allInstances()->exists(m | m.grafana = self or m.prometheus = self or m.alertmanager = self)
+
+	-- A Client signs its users in through the platform's provider.
+	inv E_NO_SIGN_IN_PROVIDER__client:
+		(client <> null and Platform.allInstances()->notEmpty()) implies
+			Platform.allInstances()->forAll(p | p.signIn <> null)
+
+	-- A Client is an object of the identity CRD, which bootstrap installs.
+	inv E_CLIENT_CRD_NOT_BOOTSTRAPPED__client:
+		(client <> null and Platform.allInstances()->forAll(p | p.signIn <> null)) implies
+			Bootstrap.allInstances()->forAll(b | b.crds->includes('identity.jorisjonkers.dev/v1'))
+
+context L4Exposure
+	-- A client dials one port and protocol on an address once.
+	inv E_DUPLICATE_L4_PORT:
+		let entries : OrderedSet(L4Exposure) = oclContainer().oclAsType(Application).l4Exposure in
+		entries->select(e | entries->indexOf(e) < entries->indexOf(self))->forAll(e |
+			not (e.process = process and e.address = address and e.protocol = protocol and e.port = port))
+
+	-- The address is one the Platform document names.
+	inv E_UNKNOWN_L4_ADDRESS:
+		Platform.allInstances()->forAll(p | p.l4Addresses->keys()->includes(address))
+
+	-- A Process that serves DNS resolves through the platform's upstream
+	-- nameservers, so it must not depend on the cluster's own DNS.
+	inv E_NO_UPSTREAM_NAMESERVERS:
+		let entries : OrderedSet(L4Exposure) = oclContainer().oclAsType(Application).l4Exposure in
+		(port = 53 and entries->select(e | e.port = 53 and e.process = process)->first() = self) implies
+			Substrate.allInstances()->forAll(s | s.upstreamNameservers->notEmpty())
+
+context Tier
+	-- Certificates issued through acme need the platform's ACME account.
+	inv E_NO_ACME_POLICY:
+		certificates = CertificateSource::acme implies Platform.allInstances()->forAll(p | p.acme <> null)
+
+	-- One proxy admits one ingress class, so a second tier on it naming another
+	-- is admitted by none.
+	inv E_TIER_CLASS_UNFILTERED__ingressClass:
+		let tiers : OrderedSet(Tier) = oclContainer().oclAsType(Platform).tiers in
+		ingressClass = null or tiers->select(t | tiers->indexOf(t) < tiers->indexOf(self)
+			and t.traefik = traefik and t.ingressClass <> null)->forAll(t | t.ingressClass = ingressClass)
+
+context HumanGrant
+	-- One group holds one cluster role once.
+	inv E_DUPLICATE_HUMAN_GRANT:
+		let grants : OrderedSet(HumanGrant) = oclContainer().oclAsType(Platform).humanGrants in
+		grants->select(g | grants->indexOf(g) < grants->indexOf(self))
+			->forAll(g | not (g.group = group and g.clusterRole = clusterRole))
+
+context SeverityRoute
+	-- A route sends to a receiver the monitoring block declares.
+	inv E_UNKNOWN_RECEIVER__receiver:
+		oclContainer().oclAsType(Monitoring).receivers->exists(r | r.name = receiver)
+
+context DependencyEdge
+	-- A bucket is derived only on an object store: a Process whose engine is s3,
+	-- on the surface the edge names.
+	inv E_BUCKETS_WITHOUT_OBJECT_STORE__buckets:
+		(buckets->notEmpty() and Application.allInstances()->exists(a | a.id = application)) implies
+			Application.allInstances()->exists(a | a.id = application
+				and a.processes->exists(p | p.engine = Engine::s3 and p.provides->keys()->includes(surface)))
 
 endpackage
