@@ -1,0 +1,190 @@
+package dev.jorisjonkers.deploykit.emf.cli;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.DependencyEdges;
+import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.DescriptorFile;
+import dev.jorisjonkers.deploykit.emf.metamodel.json.CanonicalJson;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Stream;
+import org.eclipse.emf.common.util.URI;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+/**
+ * How far this implementation is from the production implementation's oracles under {@code
+ * spec/v1/examples/}, which moved on after the freeze. Every oracle is compared through the stage
+ * harness's comparator; the cases in {@link #PASSING} must match it exactly, and every other case
+ * prints one line saying how many differences it is from passing. A case that passes and is not
+ * listed fails too, so the list grows with each catch-up slice and never lags behind it.
+ */
+class OracleDistanceTest {
+
+    /** The oracle comparisons expected to pass, as {@code <oracle> <case>}. Each catch-up slice adds to it. */
+    static final Set<String> PASSING = Set.of("intent secrets");
+
+    @Test
+    void theListedOraclesMatchAndEveryOtherSaysHowFarItIs(@TempDir Path scratch) throws IOException {
+        Map<String, List<String>> distances = distances(scratch);
+        List<String> summary = new ArrayList<>();
+        List<String> failing = new ArrayList<>();
+        List<String> unlisted = new ArrayList<>();
+        distances.forEach((comparison, differences) -> {
+            boolean listed = PASSING.contains(comparison);
+            if (listed && !differences.isEmpty()) {
+                failing.add(
+                        comparison + ": " + differences.size() + " differences\n  " + String.join("\n  ", differences));
+            } else if (!listed && differences.isEmpty()) {
+                unlisted.add(comparison);
+            } else if (!listed) {
+                summary.add(comparison + ": " + differences.size() + " differences; first: " + differences.get(0));
+            }
+        });
+        System.out.println("Oracle distance, " + (distances.size() - summary.size()) + " of " + distances.size()
+                + " passing:\n  " + String.join("\n  ", summary));
+
+        assertThat(failing)
+                .withFailMessage("listed as passing, and not:%n%s", String.join("\n", failing))
+                .isEmpty();
+        assertThat(unlisted)
+                .withFailMessage("passing, and not listed: add each to PASSING:%n%s", String.join("\n", unlisted))
+                .isEmpty();
+        assertThat(distances.keySet()).containsAll(PASSING);
+    }
+
+    /** Every oracle comparison, by {@code <oracle> <case>}, with every difference it finds. */
+    static Map<String, List<String>> distances(Path scratch) throws IOException {
+        Map<String, List<String>> distances = new TreeMap<>();
+        Path examples = Examples.of("");
+        distances.put(
+                "descriptor expected",
+                compare(
+                        examples.resolve("expected").resolve(DescriptorFile.NAME),
+                        Files.readAllBytes(DescriptorFile.write(scratch.resolve("descriptor")))));
+        for (Path directory : casesWith(examples, "expected/intent.json")) {
+            distances.put("intent " + name(examples, directory), attempt(() -> {
+                Parsed parsed = Pipeline.intent(authored(directory));
+                return parsed.ok()
+                        ? compare(directory.resolve("expected/intent.json"), json(parsed.intent()))
+                        : refused(parsed.diagnostics());
+            }));
+        }
+        for (Path directory : casesWith(examples, "expected/effective.json")) {
+            distances.put("effective " + name(examples, directory), attempt(() -> {
+                Parsed parsed = Pipeline.effective(authored(directory));
+                return parsed.ok()
+                        ? compare(directory.resolve("expected/effective.json"), json(parsed.intent()))
+                        : refused(parsed.diagnostics());
+            }));
+        }
+        for (Path directory : casesWith(examples, "expected/" + DependencyEdges.NAME)) {
+            Outputs.Resolving resolving = Outputs.RESOLVED.get(name(examples, directory));
+            distances.put(
+                    "dependencies " + name(examples, directory),
+                    resolving == null
+                            ? List.of("no union this implementation resolves")
+                            : attempt(() -> {
+                                Resolved resolved = Pipeline.resolve(
+                                        resolving.documents().stream()
+                                                .map(Examples::of)
+                                                .toList(),
+                                        resolving.project(),
+                                        Outputs.INTEGRITY);
+                                return resolved.ok()
+                                        ? compare(
+                                                directory.resolve("expected/" + DependencyEdges.NAME),
+                                                json(DependencyEdges.of(resolved.deployment())))
+                                        : refused(resolved.diagnostics());
+                            }));
+        }
+        for (Path directory : casesWith(examples, "rendered")) {
+            Path rendered = directory.resolve("rendered");
+            Outputs.Resolving resolving = Outputs.RESOLVED.get(name(examples, directory));
+            Path out = scratch.resolve("rendered").resolve(name(examples, directory));
+            distances.put(
+                    "rendered " + name(examples, directory),
+                    resolving == null
+                            ? List.of("no union this implementation renders; "
+                                    + Comparison.read(rendered).size() + " files")
+                            : attempt(() -> {
+                                List<Diagnostic> refusals = Pipeline.render(
+                                        resolving.documents().stream()
+                                                .map(Examples::of)
+                                                .toList(),
+                                        List.of(resolving.project()),
+                                        Outputs.INTEGRITY,
+                                        out);
+                                return refusals.isEmpty()
+                                        ? Comparison.trees(rendered, Comparison.read(out))
+                                        : refused(refusals);
+                            }));
+        }
+        return distances;
+    }
+
+    /** A step that fails outright, such as a resolution that does not complete, is one difference. */
+    private static List<String> attempt(Step step) {
+        try {
+            return step.differences();
+        } catch (IOException | RuntimeException e) {
+            return List.of("did not complete: "
+                    + String.valueOf(e.getMessage()).lines().findFirst().orElse(""));
+        }
+    }
+
+    @FunctionalInterface
+    private interface Step {
+        List<String> differences() throws IOException;
+    }
+
+    private static List<String> compare(Path oracle, byte[] written) throws IOException {
+        String name = oracle.getFileName().toString();
+        return Comparison.files(name, URI.createFileURI(oracle.toString()), Files.readAllBytes(oracle), written);
+    }
+
+    private static List<String> refused(List<Diagnostic> diagnostics) {
+        return diagnostics.stream()
+                .map(diagnostic ->
+                        "refused: " + diagnostic.code() + " " + diagnostic.document() + " " + diagnostic.path())
+                .toList();
+    }
+
+    private static byte[] json(Object value) {
+        return CanonicalJson.write(value).getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static String name(Path examples, Path directory) {
+        return examples.relativize(directory).toString().replace('\\', '/');
+    }
+
+    /** The one authored document of a case: the first project file, or its Platform document. */
+    private static Path authored(Path directory) throws IOException {
+        try (Stream<Path> entries = Files.list(directory)) {
+            return entries.filter(path -> {
+                        String file = path.getFileName().toString();
+                        return file.endsWith(".project.yml") || file.equals("platform.intent.yml");
+                    })
+                    .min(Comparator.naturalOrder())
+                    .orElseThrow();
+        }
+    }
+
+    /** The case directories under {@code examples} carrying {@code oracle}, a path relative to the case. */
+    private static List<Path> casesWith(Path examples, String oracle) throws IOException {
+        try (Stream<Path> tree = Files.walk(examples)) {
+            return tree.filter(path -> path.endsWith(oracle))
+                    .map(path -> oracle.contains("/") ? path.getParent().getParent() : path.getParent())
+                    .sorted()
+                    .toList();
+        }
+    }
+}
