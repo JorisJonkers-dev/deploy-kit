@@ -41,8 +41,18 @@
         <mounts name="adguard-adguardhome-yaml-85a1bf27a7" mountAt="/seed/adguard-adguardhome-yaml-85a1bf27a7" readOnly="true"/>
         <mounts name="writable-opt-adguardhome-conf" mountAt="/opt/adguardhome/conf"/>
       </seeder>
+      <internetEgress reason="It resolves names upstream."/>
     </processes>
   </applications>
   <reconcileUnits name="apps-utility"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/utility/adguard/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/utility/adguard/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="consumer" consumes="adguard.http" port="3000"/>
+      <ingress rule="consumer" consumes="adguard.dns" port="5353"/>
+      <ingress rule="peer" namespace="delivery-system" process="release-gate" port="3000"/>
+      <ingress rule="l4" cidr="0.0.0.0/0" port="5353"/>
+      <ingress rule="l4" cidr="0.0.0.0/0" port="5353" protocol="UDP"/>
+    </policies>
+  </deliverables>
 </resolveddeployment:ResolvedDeployment>

@@ -43,8 +43,6 @@ GeneratedKeysFile.adapter is never set in a render case's input
 GeneratedKeysFile.keys is never set in a render case's input
 GeneratedKeysFile.path is never set in a render case's input
 IndexFile.namespace is never set in a render case's input
-InternetEgress is never instantiated in a render case's input
-InternetEgress.reason is never set in a render case's input
 MiddlewareKind.rateLimit is never used in a render case's input
 MiddlewareStep.allowance is never set in a render case's input
 MiddlewareStep.burst is never set in a render case's input
@@ -124,7 +122,6 @@ ResolvedMigration.uid is never set in a render case's input
 ResolvedPlacement.boundTo is never set in a render case's input
 ResolvedPlacement.from is never set in a render case's input
 ResolvedProcess.dependencies is never set in a render case's input
-ResolvedProcess.internetEgress is never set in a render case's input
 ResolvedProcess.vpn is never set in a render case's input
 ResolvedVpn is never instantiated in a render case's input
 ResolvedVpn.cpu is never set in a render case's input

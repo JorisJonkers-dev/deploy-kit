@@ -1,4 +1,5 @@
 apps/mail/stalwart/configmap.yaml mail/rendered/apps/mail/stalwart/configmap.yaml
+apps/mail/stalwart/networkpolicy.yaml mail/rendered/apps/mail/stalwart/networkpolicy.yaml
 apps/mail/stalwart/route-admin.yaml mail/rendered/apps/mail/stalwart/route-admin.yaml
 apps/mail/stalwart/service.yaml mail/rendered/apps/mail/stalwart/service.yaml
 apps/mail/stalwart/workload.yaml mail/rendered/apps/mail/stalwart/workload.yaml

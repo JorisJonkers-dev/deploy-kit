@@ -1,1 +1,2 @@
+apps/delivery/release-gate/networkpolicy.yaml delivery/rendered/apps/delivery/release-gate/networkpolicy.yaml
 apps/delivery/release-gate/rbac.yaml delivery/rendered/apps/delivery/release-gate/rbac.yaml

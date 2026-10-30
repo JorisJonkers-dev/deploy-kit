@@ -185,7 +185,7 @@
           - from:
               [peer.peer()/]
             ports:
-              - protocol: TCP
+              - protocol: [if (peer.protocol <> null)][peer.protocol/][else]TCP[/if]
                 port: [peer.port/]
     [/for]
   [/if]
@@ -199,16 +199,41 @@
             - protocol: TCP
               port: [peer.port/]
   [/for]
-  [comment The cluster's DNS answers on UDP, and on TCP for a truncated response. /]
+  [comment The cluster's DNS answers on UDP, and on TCP for a truncated response. The gate's own
+    requests reach every member's pods, on whichever port the member's own policy admits them. /]
   [for (peer : resolveddeployment::PolicyPeer | p.egress)]
+    [if (peer.rule = 'gate-members')]
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    app.kubernetes.io/managed-by: deploy-kit
+                podSelector:
+                  matchLabels:
+                    gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+    [else]
+          - to:
+              [peer.peer()/]
+            ports:
+              - protocol: UDP
+                port: [peer.port/]
+              - protocol: TCP
+                port: [peer.port/]
+    [/if]
+  [/for]
+  [comment The nameservers a Process that serves DNS resolves through, by address: off the
+    cluster, and answering on UDP and on TCP. /]
+  [if (p.process.nameservers->notEmpty())]
         - to:
-            [peer.peer()/]
+    [for (n : String | p.process.nameservers)]
+              - ipBlock:
+                  cidr: [n/]/32
+    [/for]
           ports:
             - protocol: UDP
-              port: [peer.port/]
+              port: 53
             - protocol: TCP
-              port: [peer.port/]
-  [/for]
+              port: 53
+  [/if]
   [comment Where the Kubernetes API answers, for a Process that holds access to it: an address,
     because the API server is no pod a selector reaches. /]
   [if (p.process.api <> null)]
@@ -247,6 +272,16 @@
       podSelector:
         matchLabels:
           [peer.consumes.consumerLabel()/]
+  [elseif (peer.cidr <> null)]
+    - ipBlock:
+        cidr: [peer.cidr/]
+  [elseif (peer.rule = 'flux-metrics')]
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: [peer.namespace/]
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: flux
   [else]
     - namespaceSelector:
         matchLabels:

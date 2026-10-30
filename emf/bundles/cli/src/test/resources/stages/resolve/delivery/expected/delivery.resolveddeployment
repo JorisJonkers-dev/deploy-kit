@@ -49,4 +49,12 @@
   </applications>
   <reconcileUnits name="apps-delivery"/>
   <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/delivery/release-gate/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/release-gate/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="peer" namespace="observability-system" process="prometheus" port="8080"/>
+      <ingress rule="consumer" consumes="release-gate.http" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="gate-members" port="0"/>
+    </policies>
+  </deliverables>
 </resolveddeployment:ResolvedDeployment>

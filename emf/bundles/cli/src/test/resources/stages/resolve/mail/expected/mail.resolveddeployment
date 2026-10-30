@@ -41,6 +41,17 @@
   <reconcileUnits name="apps-mail"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/mail/stalwart/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="Recreate"/>
   <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/mail/stalwart/service.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/mail/stalwart/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="peer" namespace="edge-system" process="traefik-public" port="8080"/>
+      <ingress rule="consumer" consumes="stalwart.http" port="8080"/>
+      <ingress rule="consumer" consumes="stalwart.smtp" port="25"/>
+      <ingress rule="consumer" consumes="stalwart.imaps" port="993"/>
+      <ingress rule="l4" cidr="0.0.0.0/0" port="25"/>
+      <ingress rule="l4" cidr="0.0.0.0/0" port="993"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
   <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/mail/stalwart/route-admin.yaml" adapter="traefik" exposure="/0/@applications.0/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
   <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/mail/stalwart/configmap.yaml" application="/0/@applications.0" processes="/0/@applications.0/@processes.0" externalChecks='{"endpoints":[{"conditions":["[STATUS] &lt; 500"],"group":"mail","name":"stalwart-admin-1","url":"https://mail.jorisjonkers.dev/"},{"conditions":["[STATUS] &lt; 500"],"group":"mail","name":"stalwart-admin-2","url":"https://mail.jorisjonkers.dev/"}]}'/>
 </resolveddeployment:ResolvedDeployment>

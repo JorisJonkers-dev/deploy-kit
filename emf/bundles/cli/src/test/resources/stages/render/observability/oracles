@@ -2,3 +2,4 @@ apps/observability/alertmanager/alertmanagerconfig.yaml observability/rendered/a
 apps/observability/grafana/client.yaml observability/rendered/apps/observability/grafana/client.yaml
 apps/observability/prometheus/alertrules.yaml observability/rendered/apps/observability/prometheus/alertrules.yaml
 apps/observability/prometheus/flux-podmonitor.yaml observability/rendered/apps/observability/prometheus/flux-podmonitor.yaml
+apps/observability/prometheus/networkpolicy.yaml observability/rendered/apps/observability/prometheus/networkpolicy.yaml

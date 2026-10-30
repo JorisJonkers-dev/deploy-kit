@@ -248,6 +248,8 @@ PlaceholderKind.identity is never used in a resolve case's input
 Placement.site is never set in a resolve case's input
 PolicyController.cni is never used in a resolve case's input
 PolicyController.none is never used in a resolve case's input
+PolicyPeer.cidr is never set by a resolve case
+PolicyPeer.protocol is never set by a resolve case
 PriorityClassFile is never instantiated by a resolve case
 PriorityClassFile.adapter is never set by a resolve case
 PriorityClassFile.critical is never set by a resolve case
