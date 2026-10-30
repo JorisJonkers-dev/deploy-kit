@@ -1770,6 +1770,50 @@
         port: [r.process.surfaces->select(s | s.name = r.surface)->first().port/]
 [/template]
 
+[comment ========================================================== the estate /]
+
+[comment The two priority classes, the datastore's first: neither is the default, and each may evict a
+  lower one. Which of the two a class is fixes its description. /]
+[template private objects(d : resolveddeployment::PriorityClassFile)]
+  [d.data.priorityClass('A datastore: it schedules before what reads it.')/]
+  [d.critical.priorityClass('The foundation and the Applications the platform names: they keep scheduling under pressure.')/]
+[/template]
+
+[template private priorityClass(p : resolveddeployment::ResolvedPriority, description : String)]
+  ---
+  apiVersion: scheduling.k8s.io/v1
+  kind: PriorityClass
+  metadata:
+    name: [p.name/]
+    labels:
+      app.kubernetes.io/managed-by: deploy-kit
+  value: [p.value/]
+  globalDefault: false
+  preemptionPolicy: PreemptLowerPriority
+  description: [description.scalar()/]
+[/template]
+
+[comment A Human Grant: the sign-in provider's group bound to a cluster role, under a name both make. /]
+[template private objects(d : resolveddeployment::HumanGrantFile)]
+  [for (g : resolveddeployment::HumanGrant | d.grants)]
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: human:[g.group/]:[g.clusterRole/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: [g.clusterRole/]
+    subjects:
+      - apiGroup: rbac.authorization.k8s.io
+        kind: Group
+        name: [g.group/]
+  [/for]
+[/template]
+
 [comment ============================================================= queries /]
 
 [comment The containers of a Process's pod whose image the lock records a version for, by name. /]
@@ -1882,7 +1926,17 @@
     .replaceAll('(?m)^(?=.)', indent) /]
 
 [comment A string scalar, double-quoted where a YAML 1.1 reader, which the Kubernetes API is,
-  would read it as null, a boolean, an integer, a float or a timestamp, and written plain otherwise. /]
+  would read it as null, a boolean, an integer, a float or a timestamp, or where a plain scalar
+  cannot hold it, and written plain otherwise. /]
 [query private scalar(value : String) : String =
   if value.matches('|~|null|Null|NULL|y|Y|yes|Yes|YES|n|N|no|No|NO|true|True|TRUE|false|False|FALSE|on|On|ON|off|Off|OFF|[-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?[0-9][0-9_]*|[-+]?0x[0-9a-fA-F_]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+|[-+]?([0-9][0-9_]*)?[.][0-9_]*([eE][-+]?[0-9]+)?|[-+]?[0-9][0-9_]*[eE][-+]?[0-9]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+[.][0-9_]*|[-+]?[.](inf|Inf|INF)|[.](nan|NaN|NAN)|[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}(([Tt]| +)[0-9]{1,2}:[0-9]{2}:[0-9]{2}([.][0-9]*)?( *(Z|[-+][0-9]{1,2}(:[0-9]{2})?))?)?')
+    or value.unplain()
   then '"' + value + '"' else value endif /]
+
+[comment Whether a plain scalar cannot hold the value: it opens on an indicator, holds a mapping's
+  separator or a comment's, ends on a colon, or opens or ends on a space. /]
+[query private unplain(value : String) : Boolean =
+  if value.size() = 0 then false
+  else Sequence{',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>', '"', '%', '@', '`'}->includes(value.substring(1, 1))
+    or value.startsWith('\'') or value.matches('[-?:]( .*)?') or value.matches('.*: .*')
+    or value.matches('.* #.*') or value.endsWith(':') or value.startsWith(' ') or value.endsWith(' ') endif /]

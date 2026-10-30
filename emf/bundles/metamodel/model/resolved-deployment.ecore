@@ -815,6 +815,28 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
+  <!-- The two priority classes the Platform document declares, estate-scoped
+       (spec/v1/14-platform-intent.md#priority): a datastore's, and the foundation's. Each
+       class's description is fixed by which of the two it is, so the template spells it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="PriorityClassFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="data" lowerBound="1" eType="#//ResolvedPriority" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="critical" lowerBound="1" eType="#//ResolvedPriority" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedPriority">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+
+  <!-- Every Human Grant the Platform document declares, each a group of the sign-in provider bound
+       to a cluster role, estate-scoped (spec/v1/14-platform-intent.md#human-grants). -->
+  <eClassifiers xsi:type="ecore:EClass" name="HumanGrantFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//HumanGrant" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="HumanGrant">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="group" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="clusterRole" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
   <!-- ==================================================== vocabularies -->
 
   <eClassifiers xsi:type="ecore:EEnum" name="PinnedInput">

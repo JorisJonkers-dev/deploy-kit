@@ -108,6 +108,13 @@ GeneratedKeysFile.keys is never set by a resolve case
 GeneratedKeysFile.path is never set by a resolve case
 GpuRequest.memory is never set in a resolve case's input
 GpuRequest.vendor is never set in a resolve case's input
+HumanGrant is never instantiated by a resolve case
+HumanGrant.clusterRole is never set by a resolve case
+HumanGrant.group is never set by a resolve case
+HumanGrantFile is never instantiated by a resolve case
+HumanGrantFile.adapter is never set by a resolve case
+HumanGrantFile.grants is never set by a resolve case
+HumanGrantFile.path is never set by a resolve case
 IndexFile.namespace is never set by a resolve case
 InternetEgress is never instantiated by a resolve case
 InternetEgress.reason is never set by a resolve case
@@ -157,6 +164,11 @@ PlaceholderKind.identity is never used in a resolve case's input
 Placement.site is never set in a resolve case's input
 PolicyController.cni is never used in a resolve case's input
 PolicyController.none is never used in a resolve case's input
+PriorityClassFile is never instantiated by a resolve case
+PriorityClassFile.adapter is never set by a resolve case
+PriorityClassFile.critical is never set by a resolve case
+PriorityClassFile.data is never set by a resolve case
+PriorityClassFile.path is never set by a resolve case
 Process.egress is never set in a resolve case's input
 Process.replicas is never set in a resolve case's input
 Process.vpn is never set in a resolve case's input
@@ -250,6 +262,9 @@ ResolvedMigration.testedAgainst is never set by a resolve case
 ResolvedMigration.uid is never set by a resolve case
 ResolvedPlacement.boundTo is never set by a resolve case
 ResolvedPlacement.from is never set by a resolve case
+ResolvedPriority is never instantiated by a resolve case
+ResolvedPriority.name is never set by a resolve case
+ResolvedPriority.value is never set by a resolve case
 ResolvedProcess.api is never set by a resolve case
 ResolvedProcess.consumes is never set by a resolve case
 ResolvedProcess.dependencies is never set by a resolve case
