@@ -526,6 +526,38 @@ describe("the kubernetes adapter", () => {
     ]);
   });
 
+  // REQ-157 (docs/requirements.md): a replica set member checks that the name
+  // it is configured by is its own, so that name resolves to the pod itself.
+  it("resolves a Process's own names to its loopback, and writes no alias for one that has none", () => {
+    const aliasesOf = (project: ReturnType<typeof edited>) =>
+      renderKubernetes(project)
+        .flatMap(({ objects }) => objects)
+        .flatMap((object) => {
+          const pod = (
+            object as {
+              spec?: { template?: { spec?: Record<string, unknown> } };
+            }
+          ).spec?.template?.spec;
+          return pod === undefined ? [] : [pod["hostAliases"]];
+        });
+
+    expect(
+      aliasesOf(
+        edited(undefined, () => ({
+          selfNames: ["notes-api.notes-system.svc.cluster.local"],
+        })),
+      ),
+    ).toStrictEqual([
+      [
+        {
+          ip: "127.0.0.1",
+          hostnames: ["notes-api.notes-system.svc.cluster.local"],
+        },
+      ],
+    ]);
+    expect(aliasesOf(edited())).toStrictEqual([undefined]);
+  });
+
   it("claims each volume ReadWriteOnce at its size, and writes no pruning guard on one nothing backs up", () => {
     expect(objectsAt(stopStart(), "pvc.yaml")).toStrictEqual([
       {

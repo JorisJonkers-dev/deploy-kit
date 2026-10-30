@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **132** rows. The compiler's behaviours join it as they land.
+This ledger holds **133** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -155,3 +155,4 @@ This ledger holds **132** rows. The compiler's behaviours join it as they land.
 | REQ-152 | Every rendered container that mounts a writable volume at `/tmp` itself (the Process's, each sidecar, the seeding step, the migration runner) gets `HOME=/tmp`, after its own variables, so a tool that writes under its home has somewhere to write on the read-only root; one whose variables already name `HOME` keeps the author's, and one with no writable `/tmp` gets none | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-153 | Every namespace the render writes, a Project's, the node agents' and the Stable Addresses', carries `kustomize.toolkit.fluxcd.io/prune: disabled`, so no prune deletes a namespace and the kept claims in it with it | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-154 | The hourly run of every Vault policy job and catalog method gives up within the hour, `backoffLimit: 6` and `activeDeadlineSeconds: 3000` on its CronJob's job template, so a run whose hashed ConfigMap a later render pruned never holds off the next under `Forbid`; the one-shot Job keeps `backoffLimit: 2147483647` and no deadline of its own, and retries until an attempt succeeds | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-157 | A Process whose engine is `mongo` resolves its own Service's name, `<process>.<namespace>.svc.cluster.local`, to itself: it records the name as `selfNames`, and its pod renders a `hostAliases` entry giving that name `127.0.0.1`, so a replica set member configured by the name its consumers reach it by finds itself whatever the Service's type; a Process of any other engine, or of none, records and renders neither | [test/model/resolution-derivations.test.ts](../test/model/resolution-derivations.test.ts) |
