@@ -189,6 +189,7 @@ describe("an enrolled Project", () => {
           "app.kubernetes.io/managed-by": "deploy-kit",
           "istio.io/dataplane-mode": "ambient",
         },
+        annotations: { "kustomize.toolkit.fluxcd.io/prune": "disabled" },
       });
     },
   );
