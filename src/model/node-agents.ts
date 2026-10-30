@@ -52,6 +52,30 @@ export interface AgentImage {
   readonly cpu: string;
 }
 
+/**
+ * How the speakers find each other fast: memberlist, keyed by a value the
+ * `node` Project's own Vault policy job generates and the Secret Store
+ * delivers (spec/v1/14-platform-intent.md#node-agents).
+ */
+export interface Memberlist {
+  /** The Secret Store's endpoint, which the operator reads the key from. */
+  readonly store: string;
+  /** The document the key is generated in, under the Project's prefix. */
+  readonly path: string;
+  /** The key, under the name the speaker reads it by. */
+  readonly key: string;
+  /** The Secret the key lands in, and the speaker mounts. */
+  readonly secret: string;
+}
+
+/** The speaker's key, generated under the `node` Project's own prefix. */
+export const memberlistOf = (store: string): Memberlist => ({
+  store,
+  path: `secret/data/${NODE_PROJECT}-system/l4-speaker`,
+  key: "secretkey",
+  secret: "l4-speaker-memberlist",
+});
+
 export interface ResolvedNodeAgent extends DerivedAgent, AgentImage {
   /** The speaker's controller, which runs once. */
   readonly controller?: AgentImage;
@@ -59,6 +83,8 @@ export interface ResolvedNodeAgent extends DerivedAgent, AgentImage {
   readonly pools?: readonly SpokenPool[];
   /** The runtime class the Platform names for the GPU agents' cards. */
   readonly runtimeClass?: string;
+  /** The speaker's memberlist, where a Vault policy job can generate its key. */
+  readonly memberlist?: Memberlist;
 }
 
 type Node = NodeContractDocument["nodes"][number];

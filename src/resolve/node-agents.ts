@@ -4,6 +4,7 @@
 import type { ImagesLockDocument, LockedImage } from "../model/images-lock.ts";
 import {
   GPU_AGENT_VENDOR,
+  memberlistOf,
   nodeAgentsOf,
   type AgentImage,
   type ResolvedNodeAgent,
@@ -29,10 +30,16 @@ const pinnedOf = (
   };
 };
 
+/**
+ * `store` is the Secret Store's endpoint where the platform names a Vault
+ * policy job to generate the speaker's key; without one the speakers find
+ * each other through the API alone.
+ */
 export function resolveNodeAgents(
   platform: PlatformIntentDocument,
   contract: NodeContractDocument,
   lock: ImagesLockDocument,
+  store?: string,
 ): ResolvedNodeAgent[] {
   return nodeAgentsOf(platform, contract).map((derived) => {
     // Every derived agent has its entry, or E_NO_NODE_AGENT_POLICY refused
@@ -46,6 +53,9 @@ export function resolveNodeAgents(
       ...(entry.controller === undefined
         ? {}
         : { controller: pinnedOf(entry.controller, lock) }),
+      ...(entry.controller === undefined || store === undefined
+        ? {}
+        : { memberlist: memberlistOf(store) }),
       // A GPU agent's vendor has its policy, or E_NO_GPU_POLICY refused the
       // set.
       ...(derived.agent.startsWith("gpu-")

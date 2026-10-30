@@ -12,6 +12,10 @@ import type {
 } from "../../objects/custom.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import { namespaceOf, vaultNameOf } from "../../model/runtime-profiles.ts";
+import {
+  NODE_PROJECT,
+  type ResolvedNodeAgent,
+} from "../../model/node-agents.ts";
 import { holdersOf, type Grant } from "../shared/holders.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 import { policyJobDirectory } from "../shared/paths.ts";
@@ -156,4 +160,53 @@ export function renderCatalogVault(
     { path: `${stem}.policy.json`, adapter: ADAPTER, objects: [policy] },
     { path: `${stem}.role.json`, adapter: ADAPTER, objects: [role] },
   ];
+}
+
+/**
+ * The `node` Project's share: where the speaker runs memberlist, its identity's
+ * policy and role, reading its one document, and the key the Project's own
+ * policy job generates there (spec/v1/14-platform-intent.md#node-agents).
+ */
+export function renderNodeVault(
+  agents: readonly ResolvedNodeAgent[],
+): Deliverable[] {
+  const namespace = namespaceOf(NODE_PROJECT);
+  const policies = policiesOf(policyJobDirectory(NODE_PROJECT));
+  return agents.flatMap(({ agent, memberlist }): Deliverable[] => {
+    if (memberlist === undefined) return [];
+    const name = vaultNameOf(namespace, agent);
+    const policy: VaultPolicy = {
+      path: {
+        [memberlist.path]: { capabilities: ["read"] },
+        [memberlist.path.replace(KV_DATA, KV_METADATA)]: {
+          capabilities: ["read"],
+        },
+      },
+    };
+    const role: VaultRole = {
+      bound_service_account_names: [agent],
+      bound_service_account_namespaces: [namespace],
+      token_policies: [name],
+    };
+    // Memberlist keys its traffic with the first 32 bytes of the value.
+    const key: GeneratedKey = {
+      path: memberlist.path,
+      key: memberlist.key,
+      bytes: 32,
+      encoding: "hex",
+    };
+    return [
+      {
+        path: `${policies}/${name}.policy.json`,
+        adapter: ADAPTER,
+        objects: [policy],
+      },
+      { path: `${policies}/${name}.role.json`, adapter: ADAPTER, objects: [role] },
+      {
+        path: `${policies}/${namespace}.generated.json`,
+        adapter: ADAPTER,
+        objects: [{ keys: [key] }],
+      },
+    ];
+  });
 }
