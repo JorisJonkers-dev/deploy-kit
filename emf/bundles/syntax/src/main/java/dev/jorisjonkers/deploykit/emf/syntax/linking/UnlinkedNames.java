@@ -10,7 +10,6 @@ import org.eclipse.emf.ecore.EReference;
 import org.eclipse.xtext.diagnostics.DiagnosticMessage;
 import org.eclipse.xtext.diagnostics.Severity;
 import org.eclipse.xtext.linking.impl.LinkingDiagnosticMessageProvider;
-import org.eclipse.xtext.nodemodel.INode;
 import org.eclipse.xtext.nodemodel.util.NodeModelUtils;
 
 /**
@@ -168,11 +167,11 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
         if (!reference.isMany()) {
             return "/" + reference.getName();
         }
-        List<INode> nodes = NodeModelUtils.findNodesForFeature(owner, reference);
-        int index = 0;
-        while (index < nodes.size() - 1 && !name.equals(NodeModelUtils.getTokenText(nodes.get(index)))) {
-            index++;
-        }
-        return "/" + reference.getName() + "/" + index;
+        List<String> written = NodeModelUtils.findNodesForFeature(owner, reference).stream()
+                .map(NodeModelUtils::getTokenText)
+                .toList();
+        // A name written in quotes is not written as its text: such a name is placed last.
+        int found = written.indexOf(name);
+        return "/" + reference.getName() + "/" + (found < 0 ? written.size() - 1 : found);
     }
 }

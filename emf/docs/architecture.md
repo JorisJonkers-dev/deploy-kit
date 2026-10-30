@@ -184,7 +184,7 @@ and no document holds one.
 
 ## Constraints
 
-Every constraint lives in a Complete OCL file beside the source metamodel,
+Every constraint over the parsed model lives in a Complete OCL file beside the source metamodel,
 evaluated by Eclipse OCL standalone in the build and by the Xtext-generated
 editor while a file is edited. An
 invariant's name is the diagnostic code it emits, so a failed invariant maps to
@@ -223,6 +223,28 @@ descriptor leaves them out because a literal the language cannot write is not
 part of the vocabulary. And the Platform classes live in the Project Intent
 package, because a tier's proxy is an Application a project file declares, and
 one package is what lets that be an Ecore reference.
+
+A few refusals are decided in Java instead, beside the parse in the `cli`
+bundle, because each asks something the parsed model does not hold
+([0142](adr/emf/0142-a-refusal-is-decided-in-ocl-unless-the-model-cannot-hold-what-it-asks.md)):
+
+- `ShippedFiles`: whether a dashboard or a rule file a project names is beside
+  it, keyed by a uid or holding rule groups, and whether two dashboards of the
+  set share a uid. The model holds the path, never the file.
+- `L4Checks`: a tier's proxy that answers no listener, a pool with fewer
+  addresses than Processes, a node's port two owners dial. A tier derives ports
+  no project file writes, and a refusal there is placed at the tier's address,
+  which no invariant's path can name.
+- `Pipeline.check`: a Project the mesh enrols that no file declares, placed at
+  its entry of a list of strings, and an image the images lock holds as root,
+  which the pinned inputs decide and the intent's constraints never read.
+
+A Process is checked with the env files beside its project attached, since
+what it reads through them is part of what is checked of it. The codes that
+ask that, self delivery without a Vault client and a secret placeholder on a
+Client that holds none, are kept by `Pipeline.refusals` until a document holds
+on its own, as the production implementation asks them of the union only after
+each document's own checks pass.
 
 Constraint parity is checked by code: every OCL invariant is named by the
 diagnostic code it emits, and the root's parity test compares those names with

@@ -2,9 +2,11 @@ package dev.jorisjonkers.deploykit.emf.cli;
 
 import com.google.inject.Injector;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.AssetFile;
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ImagesLock;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.AlertRules;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Asset;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.AssetDeclaration;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Dashboard;
@@ -33,11 +35,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
@@ -123,33 +129,24 @@ public final class Pipeline {
      */
     public static Parsed effective(Path path) throws IOException {
         Resource resource = read(List.of(path)).get(0);
+        // What a Process reads through its env files is part of what is checked of it.
+        withEnv(resource, path);
+        List<Diagnostic> refusals = new ArrayList<>(refusals(resource, false));
         EnvFiles.Read env = EnvFiles.read(envBeside(path));
-        List<Diagnostic> refusals = new ArrayList<>();
-        // The env files reach their levels before the document is checked: what a Process reads
-        // through them is part of what is checked of it.
-        if (env.diagnostics().isEmpty()
-                && resource.getErrors().isEmpty()
-                && !resource.getContents().isEmpty()
-                && resource.getContents().get(0) instanceof Project project) {
-            for (EnvFiles.Scoped scoped : env.files()) {
-                Optional<SharedIntent> level = levelOf(project, scoped.scope());
-                if (level.isEmpty()) {
-                    refusals.add(new Diagnostic(
-                            UNKNOWN_ENV_SCOPE,
-                            scoped.path(),
-                            scoped.path(),
-                            "this scope directory names nothing the project file declares"));
-                } else {
-                    level.get().getEnv().add(scoped.file());
-                }
-            }
-        }
-        refusals.addAll(0, refusals(resource, false));
         refusals.addAll(env.diagnostics());
         if (!refusals.isEmpty()) {
             return Parsed.refused(refusals);
         }
         Project project = (Project) resource.getContents().get(0);
+        for (EnvFiles.Scoped scoped : env.files()) {
+            if (levelOf(project, scoped.scope()).isEmpty()) {
+                refusals.add(new Diagnostic(
+                        UNKNOWN_ENV_SCOPE,
+                        scoped.path(),
+                        scoped.path(),
+                        "this scope directory names nothing the project file declares"));
+            }
+        }
         return refusals.isEmpty() ? Parsed.of(IntentJson.of(Lowering.lower(project))) : Parsed.refused(refusals);
     }
 
@@ -430,8 +427,9 @@ public final class Pipeline {
                         project, file.getFileName().toString(), from -> textBeside(file, from), placed));
                 projects.add(project.getProject());
                 named.put(project, file.getFileName().toString());
-            } else if (read.get(i).getContents().get(0) instanceof Platform document) {
-                platform = Optional.of(document);
+            } else {
+                // Only a project file and the Platform document are among the documents.
+                platform = Optional.of((Platform) read.get(i).getContents().get(0));
             }
         }
         refusals.addAll(ShippedFiles.acrossTheEstate(placed, platform));
@@ -469,53 +467,67 @@ public final class Pipeline {
     }
 
     /**
-     * Every image a pod runs as its own user that the images lock holds with uid 0, for each project
-     * whose every image the lock holds (spec/v1/10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group):
-     * the posture runs every pod as non-root, and the kubelet refuses such a pod.
+     * Every image a pod runs as its own user that the images lock holds with uid 0
+     * (spec/v1/10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group): the
+     * posture runs every pod as non-root, and the kubelet refuses such a pod. A lock that does not
+     * parse is refused for its shape, not here.
      */
-    private static List<Diagnostic> rootImages(Path lock, java.util.Collection<Project> projects) {
+    private static List<Diagnostic> rootImages(Path lock, Collection<Project> projects) {
         Resource read = read(List.of(lock)).get(0);
-        if (!read.getErrors().isEmpty()
-                || read.getContents().isEmpty()
-                || !(read.getContents().get(0)
-                        instanceof dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ImagesLock images)) {
-            return List.of();
-        }
-        Map<String, Integer> uids = new LinkedHashMap<>();
-        images.getImages().forEach(image -> uids.put(image.getAlias(), image.getUid()));
-        java.util.TreeSet<String> root = new java.util.TreeSet<>();
+        return read.getErrors().isEmpty()
+                ? read.getContents().stream()
+                        .map(ImagesLock.class::cast)
+                        .findFirst()
+                        .map(images -> {
+                            Map<String, Integer> uids = new LinkedHashMap<>();
+                            images.getImages().forEach(image -> uids.put(image.getAlias(), image.getUid()));
+                            return rootAliases(uids, projects).stream()
+                                    .map(alias -> new Diagnostic(
+                                            IMAGE_RUNS_AS_ROOT,
+                                            lock.getFileName().toString(),
+                                            "/images/" + alias,
+                                            "the images lock holds " + alias
+                                                    + " with uid 0, and every pod runs as non-root"))
+                                    .toList();
+                        })
+                        .orElse(List.of())
+                : List.of();
+    }
+
+    /**
+     * The aliases, sorted, of every image a pod of {@code projects} runs as its own user, a Process's
+     * or a migration's, that {@code uids} holds as root, for each project whose every image, a
+     * sidecar's too, the lock holds: an alias the lock does not hold is the share's own refusal.
+     */
+    static SortedSet<String> rootAliases(Map<String, Integer> uids, Collection<Project> projects) {
+        SortedSet<String> root = new TreeSet<>();
         for (Project project : projects) {
-            java.util.Set<String> aliases = new java.util.TreeSet<>();
-            java.util.Set<String> ownUser = new java.util.TreeSet<>();
-            for (var application : project.getApplications()) {
-                for (var process : application.getProcesses()) {
-                    aliases.add(process.getImage());
+            Set<String> aliases = new TreeSet<>();
+            Set<String> ownUser = new TreeSet<>();
+            for (Application application : project.getApplications()) {
+                for (dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process process :
+                        application.getProcesses()) {
                     ownUser.add(process.getImage());
                     process.getSidecars().forEach(sidecar -> aliases.add(sidecar.getImage()));
                 }
-                if (application.getMigration() != null) {
-                    aliases.add(application.getId() + "-migration");
+                // Only a migration over the platform's runner runs an image of its own.
+                if (application.getMigration()
+                        instanceof dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ManagedMigration) {
                     ownUser.add(application.getId() + "-migration");
                 }
             }
+            aliases.addAll(ownUser);
             if (uids.keySet().containsAll(aliases)) {
                 ownUser.stream().filter(alias -> uids.get(alias) == 0).forEach(root::add);
             }
         }
-        return root.stream()
-                .map(alias -> new Diagnostic(
-                        IMAGE_RUNS_AS_ROOT,
-                        lock.getFileName().toString(),
-                        "/images/" + alias,
-                        "the images lock holds " + alias + " with uid 0, and every pod runs as non-root"))
-                .toList();
+        return root;
     }
 
     /** The env files beside {@code file} on the levels they name, where {@code resource} holds a project. */
     private static void withEnv(Resource resource, Path file) {
-        if (resource.getErrors().isEmpty()
-                && !resource.getContents().isEmpty()
-                && resource.getContents().get(0) instanceof Project project) {
+        // A document whose shape breaks is refused for its shape before anything it holds is asked.
+        if (!resource.getContents().isEmpty() && resource.getContents().get(0) instanceof Project project) {
             attachEnv(project, file);
         }
     }
