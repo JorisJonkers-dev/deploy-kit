@@ -489,3 +489,17 @@ export interface Alertmanager {
     readonly retention?: string;
   };
 }
+
+/** The Grafana operator's handle on a Grafana it does not run: where it is, and how to sign in. */
+export interface GrafanaInstance {
+  readonly apiVersion: "grafana.integreatly.org/v1beta1";
+  readonly kind: "Grafana";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly external: {
+      readonly url: string;
+      readonly adminUser: { readonly name: string; readonly key: string };
+      readonly adminPassword: { readonly name: string; readonly key: string };
+    };
+  };
+}

@@ -1005,6 +1005,10 @@ monitoring:
   grafana: observability/grafana
   prometheus: observability/prometheus
   alertmanager: observability/alertmanager
+  stores:
+    loki: observability/loki
+    tempo: observability/tempo
+    pyroscope: observability/pyroscope
   receivers:
     - name: discord
       discord:
@@ -1020,6 +1024,9 @@ they carry alert rules ([chapter 10](10-project-intent.md#alert-rules)). A role
 whose Project the set holds but which declares no such Application is
 `E_UNKNOWN_MONITORING_APPLICATION`; a set that holds no file of its Project,
 such as one Project's own check, cannot tell, and the composition does.
+`stores`, optional, names the stores Grafana reads beside them, by the kind of
+data source each is: `loki`, `tempo` and `pyroscope`, each optional and each
+linked as a role is. A store carries no alert rules.
 
 Alerts have one routing, which renders as one `AlertmanagerConfig` in the
 Alertmanager's namespace and routes the alerts of every namespace. A
@@ -1088,6 +1095,49 @@ operator sets (`--config.file`, `--storage.tsdb.path`, `--storage.path`,
 `--web.config.file`, the console flags, `--web.enable-lifecycle` and the
 cluster flags): `E_OPERATED_PROCESS` otherwise. A rotated grant restarts the
 StatefulSet the operator runs the Process in.
+
+### Grafana's instance and data sources
+
+The Grafana operator imports every dashboard into the monitoring stack's
+Grafana, and the render writes the two things it needs to
+([0149](../../docs/adr/model/0149-grafanas-instance-and-data-sources-derive-from-the-monitoring-stack.md)):
+
+- **The instance.** Where the Platform document names `telemetry.dashboards`,
+  the `grafana` role's Application renders one `Grafana` in its namespace,
+  named for it and carrying `instance`'s labels, which every dashboard selects
+  ([Telemetry](#telemetry)). It is external: the operator reaches the
+  Application's first Process at its `http` surface, through its Service. A
+  Grafana that provides no `http` surface renders no instance.
+- **The admin credential.** The same Process holds a derived grant on
+  `secret/data/<project>-system/<application>-admin`, keys `user` and
+  `password`, each a [generated key](10-project-intent.md#generated-keys) of
+  32 bytes, hex encoded, delivered `env` and restarting it. Grafana reads them
+  as `GF_SECURITY_ADMIN_USER` and `GF_SECURITY_ADMIN_PASSWORD`, and the
+  instance names the same Secret for the operator, so neither value is ever
+  written by hand.
+
+**Data sources** are an inbound derivation, rendered as an Asset of the same
+Process ([chapter 10](10-project-intent.md#assets)): one data source per
+dependency edge the Process declares into an Application the monitoring stack
+names, mounted at `/etc/grafana/provisioning/datasources/datasources.yaml`.
+An edge into any other Application derives none, and a Process with no such
+edge renders no Asset.
+
+| the edge's Application | name | type | uid |
+|---|---|---|---|
+| `prometheus` | `Prometheus` | `prometheus` | `prometheus` |
+| `stores.loki` | `Loki` | `loki` | `loki` |
+| `stores.tempo` | `Tempo` | `tempo` | `tempo` |
+| `stores.pyroscope` | `Pyroscope` | `grafana-pyroscope-datasource` | `pyroscope` |
+| `alertmanager` | `Alertmanager` | `alertmanager` | `alertmanager` |
+
+Each is listed in that order, reached through the proxy at `http://` and the
+edge's address, read-only, and the Prometheus is the default. The uids are
+the kinds, so every dashboard that names one finds it. Each links to the
+others the set holds, and to nothing it does not: the Prometheus's exemplars
+and a Loki line's `trace_id` field open the trace in Tempo, a trace opens its
+logs, its span metrics, its service map and its profile, and the
+Alertmanager is the Prometheus implementation's, managing no Grafana alert.
 
 ## Hardening policy
 

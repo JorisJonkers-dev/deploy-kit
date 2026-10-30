@@ -981,6 +981,35 @@ describe("the refusal fixtures", () => {
     ]);
   });
 
+  // REQ-163 (docs/requirements.md): a store the monitoring stack names is an
+  // Application its Project declares, and carries no alert rules.
+  it("refuses a store of the monitoring stack its Project does not declare, at the store", () => {
+    expect(
+      codeIn(
+        "unknown-monitoring-application",
+        "E_UNKNOWN_MONITORING_APPLICATION",
+        (text) =>
+          text.replace(
+            "  receivers:\n",
+            "  stores:\n    loki: refusals/loki\n    tempo: refusals/api\n  receivers:\n",
+          ),
+      ),
+    ).toStrictEqual(["/monitoring/grafana", "/monitoring/stores/loki"]);
+  });
+
+  it("refuses alert rules on a store of the monitoring stack, which only its three roles carry", () => {
+    expect(
+      codeIn(
+        "alert-rules-outside-monitoring",
+        "E_ALERT_RULES_OUTSIDE_MONITORING",
+        (text) =>
+          text.includes("kind: Platform")
+            ? `${text}monitoring:\n  grafana: observability/grafana\n  prometheus: observability/prometheus\n  alertmanager: observability/alertmanager\n  stores:\n    loki: refusals/api\n  receivers:\n    - name: discord\n      discord:\n        webhook: {path: secret/data/refusals/discord, key: webhook-url}\n  routes:\n    - {severity: warning, receiver: discord, repeat: 12h}\n`
+            : text,
+      ),
+    ).toStrictEqual(["/applications/0/alertRules"]);
+  });
+
   it("lets a proxy replicate on a tier that issues no certificate through acme", () => {
     expect(
       codeIn("acme-proxy-replicated", "E_ACME_PROXY_REPLICATED", (text) =>
