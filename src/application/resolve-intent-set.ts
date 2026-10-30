@@ -389,6 +389,7 @@ export function resolveIntentSet(
         set.platform,
         set.nodeContract,
         set.imagesLock,
+        job?.address,
       ),
       // An absent list and an undefined one render no binding alike.
       // Stryker disable next-line ConditionalExpression

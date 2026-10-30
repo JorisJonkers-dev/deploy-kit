@@ -61,6 +61,20 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
+            - name: METALLB_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: METALLB_ML_BIND_ADDR
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: METALLB_ML_LABELS
+              value: app.kubernetes.io/name=l4-speaker
+            - name: METALLB_ML_BIND_PORT
+              value: "7946"
+            - name: METALLB_ML_SECRET_KEY_PATH
+              value: /etc/ml_secret_key
           ports:
             - name: metrics
               containerPort: 7472
@@ -78,6 +92,14 @@ spec:
                 - NET_RAW
               drop:
                 - ALL
+          volumeMounts:
+            - name: memberlist
+              mountPath: /etc/ml_secret_key
+              readOnly: true
+      volumes:
+        - name: memberlist
+          secret:
+            secretName: l4-speaker-memberlist
 ---
 apiVersion: apps/v1
 kind: Deployment

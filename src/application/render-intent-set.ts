@@ -5,6 +5,7 @@
 // before anything is serialized. Nothing here performs IO.
 import { NODE_PROJECT } from "../model/node-agents.ts";
 import { renderNodeAgents } from "../adapters/kubernetes/node-agents.ts";
+import { renderNodeSecrets } from "../adapters/vso/render.ts";
 import { renderSharedMiddlewares } from "../adapters/traefik/shared-middlewares.ts";
 import { renderHeldCertificates } from "../adapters/traefik/held-certificates.ts";
 import {
@@ -28,6 +29,7 @@ import { documentsOf, renderPolicyJob } from "../adapters/vault-policy/job.ts";
 import {
   policiesOf,
   renderCatalogVault,
+  renderNodeVault,
 } from "../adapters/vault-policy/render.ts";
 import {
   catalogDigestOf,
@@ -37,7 +39,6 @@ import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { Hasher } from "../model/hasher.ts";
 import type { Deliverable, RenderedObject } from "../objects/deliverable.ts";
 import type { ServiceAccount } from "../objects/kubernetes.ts";
-import type { ResolvedProject } from "../model/resolution.ts";
 import type {
   ResolvedCatalogJob,
   ResolvedPolicyJob,
@@ -266,11 +267,10 @@ const meshIn = (
 ): { mesh?: NonNullable<ResolvedPolicyJob["mesh"]> } => {
   // A Project this render holds resolved; one whose one Application moved out
   // of it holds none, and enrols nothing.
-  const [first] = (
-    resolved.projects.find(
-      (held) => held.project === project,
-    ) as ResolvedProject
-  ).applications;
+  // The Node Agents' Project resolves no Application, and enrols nothing.
+  const [first] =
+    resolved.projects.find((held) => held.project === project)?.applications ??
+    [];
   const mesh = first?.mesh;
   // `{}` and `{ mesh: undefined }` render the same job, so no test tells them apart.
   // Stryker disable next-line ConditionalExpression
@@ -352,14 +352,23 @@ export function renderResolvedSet(
   );
   const held = heldCatalogs(resolved, options.projects);
   const catalogs = catalogJobsOf(resolved, held, options.hash);
+  // The Node Agents are the `node` Project's, rendered where it is asked for:
+  // the speaker's memberlist key is that Project's own to generate.
+  const agents = options.projects.includes(NODE_PROJECT)
+    ? [
+        ...renderNodeAgents(resolved.nodeAgents),
+        ...renderNodeSecrets(resolved.nodeAgents),
+        ...renderNodeVault(resolved.nodeAgents),
+      ]
+    : [];
   const rendered = [
     ...projects,
     ...catalogs,
+    ...agents,
     ...policyJobsOf(
       resolved,
-      [...projects, ...catalogs],
-      // The Node Agents read no secret, so their Project writes no policy.
-      options.projects.filter((project) => project !== NODE_PROJECT),
+      [...projects, ...catalogs, ...agents],
+      options.projects,
       held,
       options.hash,
     ),
@@ -390,10 +399,6 @@ export function renderResolvedSet(
     ...renderHumanGrants(resolved.humanGrants ?? []),
     // The priority classes are the cluster's, so every render holds them.
     ...renderPriorityClasses(resolved.priority),
-    // The Node Agents are the `node` Project's, rendered where it is asked for.
-    ...(options.projects.includes(NODE_PROJECT)
-      ? renderNodeAgents(resolved.nodeAgents)
-      : []),
   ];
   const deliverables = [
     ...rendered,
