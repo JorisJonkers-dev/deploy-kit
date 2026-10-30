@@ -78,6 +78,9 @@ public final class Pipeline {
     private static final java.util.Set<String> ACROSS_THE_UNION =
             java.util.Set.of("E_SELF_WITHOUT_VAULT_CLIENT", "E_CLIENT_PLACEHOLDER_WITHOUT_SECRET");
 
+    /** The code an image earns that a pod runs as its own user where the lock holds it as root. */
+    private static final String IMAGE_RUNS_AS_ROOT = "E_IMAGE_RUNS_AS_ROOT";
+
     /** The code a Project the mesh enrols earns where no project file declares it. */
     private static final String UNKNOWN_ENROLLED_PROJECT = "E_UNKNOWN_ENROLLED_PROJECT";
 
@@ -385,6 +388,7 @@ public final class Pipeline {
         List<Resource> read = read(documents);
         List<ShippedFiles.Placed> placed = new ArrayList<>();
         List<String> projects = new ArrayList<>();
+        Map<Project, String> named = new LinkedHashMap<>();
         Optional<Platform> platform = Optional.empty();
         for (int i = 0; i < documents.size(); i++) {
             Path file = documents.get(i);
@@ -395,12 +399,18 @@ public final class Pipeline {
                 refusals.addAll(ShippedFiles.check(
                         project, file.getFileName().toString(), from -> textBeside(file, from), placed));
                 projects.add(project.getProject());
+                named.put(project, file.getFileName().toString());
             } else if (read.get(i).getContents().get(0) instanceof Platform document) {
                 platform = Optional.of(document);
             }
         }
         refusals.addAll(ShippedFiles.acrossTheEstate(placed, platform));
         platform.ifPresent(document -> refusals.addAll(unknownEnrolled(document, projects)));
+        platform.ifPresent(document -> refusals.addAll(L4Checks.check(document, named)));
+        files.stream()
+                .filter(file -> file.getFileName().toString().equals(IMAGES_LOCK))
+                .findFirst()
+                .ifPresent(lock -> refusals.addAll(rootImages(lock, named.keySet())));
         for (Resource document : read) {
             refusals.addAll(refusals(document, true));
         }
@@ -426,6 +436,49 @@ public final class Pipeline {
             }
         }
         return unknown;
+    }
+
+    /**
+     * Every image a pod runs as its own user that the images lock holds with uid 0, for each project
+     * whose every image the lock holds (spec/v1/10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group):
+     * the posture runs every pod as non-root, and the kubelet refuses such a pod.
+     */
+    private static List<Diagnostic> rootImages(Path lock, java.util.Collection<Project> projects) {
+        Resource read = read(List.of(lock)).get(0);
+        if (!read.getErrors().isEmpty()
+                || read.getContents().isEmpty()
+                || !(read.getContents().get(0)
+                        instanceof dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ImagesLock images)) {
+            return List.of();
+        }
+        Map<String, Integer> uids = new LinkedHashMap<>();
+        images.getImages().forEach(image -> uids.put(image.getAlias(), image.getUid()));
+        java.util.TreeSet<String> root = new java.util.TreeSet<>();
+        for (Project project : projects) {
+            java.util.Set<String> aliases = new java.util.TreeSet<>();
+            java.util.Set<String> ownUser = new java.util.TreeSet<>();
+            for (var application : project.getApplications()) {
+                for (var process : application.getProcesses()) {
+                    aliases.add(process.getImage());
+                    ownUser.add(process.getImage());
+                    process.getSidecars().forEach(sidecar -> aliases.add(sidecar.getImage()));
+                }
+                if (application.getMigration() != null) {
+                    aliases.add(application.getId() + "-migration");
+                    ownUser.add(application.getId() + "-migration");
+                }
+            }
+            if (uids.keySet().containsAll(aliases)) {
+                ownUser.stream().filter(alias -> uids.get(alias) == 0).forEach(root::add);
+            }
+        }
+        return root.stream()
+                .map(alias -> new Diagnostic(
+                        IMAGE_RUNS_AS_ROOT,
+                        lock.getFileName().toString(),
+                        "/images/" + alias,
+                        "the images lock holds " + alias + " with uid 0, and every pod runs as non-root"))
+                .toList();
     }
 
     /** The env files beside {@code file} on the levels they name, where {@code resource} holds a project. */
