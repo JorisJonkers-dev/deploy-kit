@@ -1190,18 +1190,14 @@ describe("composeEstate, for a Retry", () => {
           : [],
       ),
     ).toStrictEqual(
-      [
-        "otel-collector",
-        "prometheus",
-        "kube-state-metrics",
-        "grafana",
-        "alloy",
-        "alertmanager",
-      ].map((name) => ({
-        kind: "Deployment",
-        namespace: "observability-system",
-        name,
-      })),
+      // The Prometheus and Alertmanager the operator runs stop and start.
+      ["otel-collector", "kube-state-metrics", "grafana", "alloy"].map(
+        (name) => ({
+          kind: "Deployment",
+          namespace: "observability-system",
+          name,
+        }),
+      ),
     );
   });
 

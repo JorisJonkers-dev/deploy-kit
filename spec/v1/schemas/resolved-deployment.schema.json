@@ -1315,6 +1315,80 @@
           "type": "string",
           "minLength": 1
         },
+        "operated": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "Prometheus"
+                },
+                "interval": {
+                  "type": "string",
+                  "pattern": "^\\d+(ms|s|m|h)$"
+                },
+                "timeout": {
+                  "type": "string",
+                  "pattern": "^\\d+(ms|s|m|h)$"
+                },
+                "monitors": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "additionalProperties": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "alertmanager": {
+                  "type": "object",
+                  "properties": {
+                    "namespace": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "service": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "port": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "namespace",
+                    "service",
+                    "port"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "kind",
+                "interval",
+                "timeout"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "const": "Alertmanager"
+                }
+              },
+              "required": [
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
         "instance": {
           "type": "string",
           "minLength": 1
@@ -1525,6 +1599,14 @@
           }
         },
         "nameservers": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "selfNames": {
           "minItems": 1,
           "type": "array",
           "items": {

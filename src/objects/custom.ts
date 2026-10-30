@@ -1,7 +1,7 @@
 // The custom resources this estate renders, typed the same way: Flagger's
 // Canary, the Identity Provider's Client, the Prometheus Operator's
 // PodMonitor, Traefik's IngressRoute. Only the fields the render sets.
-import type { Labels, ObjectMeta } from "./kubernetes.ts";
+import type { Container, Labels, ObjectMeta, PodSpec } from "./kubernetes.ts";
 
 export interface Webhook {
   readonly name: string;
@@ -286,7 +286,7 @@ export interface VaultStaticSecret {
       readonly annotations: Readonly<Record<string, string>>;
     };
     readonly rolloutRestartTargets?: readonly {
-      readonly kind: "Deployment" | "DaemonSet";
+      readonly kind: "Deployment" | "DaemonSet" | "StatefulSet";
       readonly name: string;
     }[];
   };
@@ -307,7 +307,7 @@ export interface VaultDynamicSecret {
       readonly annotations: Readonly<Record<string, string>>;
     };
     readonly rolloutRestartTargets?: readonly {
-      readonly kind: "Deployment";
+      readonly kind: "Deployment" | "StatefulSet";
       readonly name: string;
     }[];
   };
@@ -395,5 +395,87 @@ export interface AlertmanagerConfig {
         readonly sendResolved: boolean;
       }[];
     }[];
+  };
+}
+
+/** A selector the operator matches objects by: every one where it names no label. */
+export interface LabelSelection {
+  readonly matchLabels?: Readonly<Record<string, string>>;
+}
+
+/** The container the operator generates, as the render patches it. */
+export interface OperatedContainer {
+  readonly name: string;
+  readonly env?: Container["env"];
+  readonly securityContext: Container["securityContext"];
+  readonly volumeMounts?: Container["volumeMounts"];
+  readonly readinessProbe?: Container["readinessProbe"];
+  readonly livenessProbe?: Container["livenessProbe"];
+  readonly startupProbe?: Container["startupProbe"];
+}
+
+/** What the Prometheus operator's Prometheus and Alertmanager share: the pod the operator runs. */
+export interface OperatedSpec {
+  readonly image: string;
+  readonly version?: string;
+  readonly replicas: number;
+  readonly serviceAccountName: string;
+  readonly automountServiceAccountToken: boolean;
+  readonly priorityClassName?: string;
+  readonly podMetadata: {
+    readonly labels: Labels;
+    readonly annotations?: Readonly<Record<string, string>>;
+  };
+  readonly portName: string;
+  readonly securityContext: PodSpec["securityContext"];
+  readonly affinity?: PodSpec["affinity"];
+  readonly resources: NonNullable<Container["resources"]>;
+  readonly containers: readonly OperatedContainer[];
+  readonly volumes?: PodSpec["volumes"];
+  readonly additionalArgs?: readonly {
+    readonly name: string;
+    readonly value?: string;
+  }[];
+}
+
+/** The monitoring stack's Prometheus, which the operator runs and configures. */
+export interface Prometheus {
+  readonly apiVersion: "monitoring.coreos.com/v1";
+  readonly kind: "Prometheus";
+  readonly metadata: ObjectMeta;
+  readonly spec: OperatedSpec & {
+    readonly scrapeInterval: string;
+    readonly scrapeTimeout: string;
+    readonly evaluationInterval: string;
+    readonly serviceMonitorSelector: LabelSelection;
+    readonly serviceMonitorNamespaceSelector: LabelSelection;
+    readonly podMonitorSelector: LabelSelection;
+    readonly podMonitorNamespaceSelector: LabelSelection;
+    readonly ruleSelector: LabelSelection;
+    readonly ruleNamespaceSelector: LabelSelection;
+    readonly alerting?: {
+      readonly alertmanagers: readonly {
+        readonly namespace: string;
+        readonly name: string;
+        readonly port: string;
+        readonly apiVersion: "v2";
+      }[];
+    };
+    readonly retention?: string;
+    readonly retentionSize?: string;
+    readonly enableRemoteWriteReceiver?: true;
+    readonly enableFeatures?: readonly string[];
+  };
+}
+
+/** The monitoring stack's Alertmanager, which the operator runs and configures. */
+export interface Alertmanager {
+  readonly apiVersion: "monitoring.coreos.com/v1";
+  readonly kind: "Alertmanager";
+  readonly metadata: ObjectMeta;
+  readonly spec: OperatedSpec & {
+    readonly alertmanagerConfigSelector: LabelSelection;
+    readonly alertmanagerConfigMatcherStrategy: { readonly type: "None" };
+    readonly retention?: string;
   };
 }

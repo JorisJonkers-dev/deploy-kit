@@ -138,10 +138,10 @@
             | tar -xz kubeconform
           KUBECONFORM="${PWD}/kubeconform" npm run lint:manifests
 
-      # The behaviour ledger (docs/requirements.md): every row parses, names a
-      # real test that holds at least one test, its stated count matches what
-      # it holds, and every REQ-NNN cited in the tracked tree resolves to a
-      # row. See docs/adr/architecture/0065-a-behaviour-ledger-names-what-a-test-proves.md.
+      # The behaviour ledger (docs/requirements/*.md, one file per area): every
+      # row parses, sits in an area file, carries a unique id, names a real
+      # test that holds at least one test, and every REQ-NNN cited in the
+      # tracked tree resolves to a row. See docs/adr/architecture/0065-a-behaviour-ledger-names-what-a-test-proves.md.
       - 'name': 'Requirements ledger'
         'run': 'npm run lint:requirements'
 

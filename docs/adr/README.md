@@ -129,6 +129,7 @@ and linted by the same script with `emf` as its root.
 | [0036](model/0036-path-authority-is-layer-2.md) | An adapter writes its own paths through one set of shared directory helpers, and the render refuses a path claimed twice | settled |
 | [0105](model/0105-every-derived-deadline-allows-the-substrates-image-pull.md) | Every derived deadline allows the substrate's image pull, which the Platform document states once | open |
 | [0106](model/0106-a-gpu-request-is-derived-from-placement.md) | A GPU request is derived from the placement that selects the card, and the Platform document names each vendor's resource and runtime class | open |
+| [0145](model/0145-a-mongo-resolves-its-own-service-name-to-itself.md) | A mongo resolves its own Service's name to itself, so the replica set member that name configures finds itself | open |
 
 ## Adapters and rendering
 
@@ -158,6 +159,7 @@ and linted by the same script with `emf` as its root.
 | [0114](model/0114-every-images-lock-entry-records-its-version.md) | Every images lock entry records its version, and a missing one is refused apart from an engine's version of the wrong shape | settled |
 | [0118](model/0118-a-human-grant-is-declared-in-the-platform-document.md) | A human grant is declared in the Platform document: a group, a built-in cluster role and a reason, rendered estate-scoped | open |
 | [0121](model/0121-flux-is-scraped-where-the-bootstrap-set-records-its-metrics.md) | Flux is scraped where the bootstrap set records its metrics, and the metrics stack's egress reaches every scrape port | open |
+| [0146](model/0146-the-operator-runs-the-monitoring-stacks-prometheus-and-alertmanager.md) | The Prometheus operator runs the monitoring stack's Prometheus and Alertmanager, from objects the render writes for their Processes | open |
 | [0119](model/0119-an-edge-names-its-buckets-and-the-stores-method-mints-each-projects-key.md) | An edge into an object store names its buckets, and the store's catalog method mints each project's key | open |
 | [0144](model/0144-the-device-plugin-names-each-card-by-its-index.md) | The device plugin names each card by its index, as the hosts' CDI specification does | open |
 | [0147](model/0147-the-speakers-find-each-other-by-memberlist-keyed-by-a-generated-key.md) | The speakers find each other by memberlist, keyed by a key the `node` Project's own Vault policy job generates | open |

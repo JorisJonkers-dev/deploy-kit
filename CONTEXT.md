@@ -188,7 +188,9 @@ proxy its audience selects.
 project file, rendered into its Project's folder; vendored, never fetched.
 
 **Monitoring stack**: the Grafana, Prometheus and Alertmanager the Platform
-document names by role; the only Applications that carry alert rules.
+document names by role; the only Applications that carry alert rules. The
+Prometheus operator runs its Prometheus and Alertmanager from objects the
+render writes for their Processes.
 
 **Receiver**: a named place an alert is delivered, declared in the Platform
 document, its credential read from Vault.

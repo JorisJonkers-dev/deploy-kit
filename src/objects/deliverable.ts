@@ -19,7 +19,9 @@ import type {
   VaultDynamicSecret,
   VaultStaticSecret,
   GrafanaDashboard,
+  Alertmanager,
   AlertmanagerConfig,
+  Prometheus,
   PrometheusRule,
 } from "./custom.ts";
 import type {
@@ -77,6 +79,8 @@ export type RenderedObject =
   | GrafanaDashboard
   | PrometheusRule
   | AlertmanagerConfig
+  | Prometheus
+  | Alertmanager
   | CronJob
   | Job
   | HorizontalPodAutoscaler

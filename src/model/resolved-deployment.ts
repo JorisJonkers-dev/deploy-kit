@@ -724,9 +724,29 @@ const switchoverFollowsCutover: ShapeRule<{
   },
 };
 
+// The monitoring stack's Prometheus or Alertmanager, which the Prometheus
+// operator runs from an object of its own rather than a controller the render
+// writes (spec/v1/14-platform-intent.md#the-operators-objects): the
+// Prometheus's cadence, the labels it selects monitors by, and the
+// Alertmanager it notifies, by Service and port name.
+const resolvedOperated = z.union([
+  z.strictObject({
+    kind: z.literal("Prometheus"),
+    interval: duration,
+    timeout: duration,
+    monitors: z.record(text, text).exactOptional(),
+    alertmanager: z
+      .strictObject({ namespace: text, service: text, port: text })
+      .exactOptional(),
+  }),
+  z.strictObject({ kind: z.literal("Alertmanager") }),
+]);
+
 const resolvedProcess = stated(
   z.strictObject({
     name: text,
+    // Present where the Prometheus operator runs the Process.
+    operated: resolvedOperated.exactOptional(),
     // The Instance that serves the Process, where ClusterState records one
     // under another name than the Process's: what a Move made it
     // (spec/v1/20-resolved-deployment.md#the-move).
@@ -815,6 +835,10 @@ const resolvedProcess = stated(
     // The resolvers a Process that serves DNS resolves through, in place of
     // the cluster's DNS (spec/v1/20-resolved-deployment.md#derived-mechanics).
     nameservers: z.array(text).min(1).exactOptional(),
+    // The names a `mongo` Process's own pod resolves to itself: its Service's,
+    // the name its replica set member is configured by
+    // (spec/v1/20-resolved-deployment.md#a-replica-set-member-finds-itself).
+    selfNames: z.array(text).min(1).exactOptional(),
     spawns: z.array(resolvedSpawn).exactOptional(),
     move: resolvedMove.exactOptional(),
     ingress: z.array(ingressPeer).exactOptional(),

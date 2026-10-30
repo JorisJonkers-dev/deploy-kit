@@ -50,6 +50,7 @@ import {
   scaled,
 } from "./capacity.ts";
 import { migrationOf } from "./migration.ts";
+import { operatedWorkloadOf } from "./operated.ts";
 import { RESTRICTED, postureOf, withHome } from "./posture.ts";
 import {
   asInstance,
@@ -319,6 +320,9 @@ const gpuShareOf = (
         ...resources,
         limits: { ...resources.limits, [process.gpu.resource]: "1" },
       };
+
+/** The address a pod reaches itself at, whatever its network. */
+const LOOPBACK = "127.0.0.1";
 
 /** The volume the VPN writes the forwarded port to, and how much it may hold. */
 const VPN_VOLUME = "vpn";
@@ -823,6 +827,14 @@ function podTemplateOf(
         : {
             dnsPolicy: "None" as const,
             dnsConfig: { nameservers: [...process.nameservers] },
+          }),
+      // A replica set member checks that the name it is configured by is its
+      // own; through its Service that holds only where traffic turns back to
+      // the pod it left, so the name resolves to the pod's own loopback.
+      ...(process.selfNames === undefined
+        ? {}
+        : {
+            hostAliases: [{ ip: LOOPBACK, hostnames: [...process.selfNames] }],
           }),
       // An absent policy and an undefined one render alike: YAML drops the key.
       // Stryker disable next-line ConditionalExpression
@@ -1604,7 +1616,16 @@ const plain = (instance: Instance, process: ResolvedProcess): boolean =>
 function instanceWorkloadsOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
-): (Deployment | CronJob)[] {
+): RenderedObject[] {
+  // The operator runs the monitoring stack's Prometheus and Alertmanager.
+  if (process.operated !== undefined)
+    return [
+      operatedWorkloadOf(
+        process,
+        application,
+        podTemplateOf(process, application),
+      ),
+    ];
   return instancesOf(process, application).map((instance) => {
     const workload = asInstance(
       workloadOf(instance.process, application),
