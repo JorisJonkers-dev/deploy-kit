@@ -5430,7 +5430,7 @@ describe("Grafana's instance and data sources", () => {
       [PROJECT]: reading("prometheus", "loki", "alertmanager"),
       [PLATFORM]: (text) =>
         text.replace(
-          /  # The stores Grafana reads beside them[^\n]*\n[^\n]*\n  stores:\n(    [a-z]+: observability\/[a-z]+\n)+/,
+          / {2}# The stores Grafana reads beside them[^\n]*\n[^\n]*\n {2}stores:\n( {4}[a-z]+: observability\/[a-z]+\n)+/,
           "",
         ),
     });
