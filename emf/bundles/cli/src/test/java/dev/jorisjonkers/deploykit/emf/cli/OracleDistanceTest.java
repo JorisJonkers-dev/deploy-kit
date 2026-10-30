@@ -145,7 +145,25 @@ class OracleDistanceTest {
             "refusal unknown-tier-proxy",
             "refusal unresolved-placeholder",
             "schema-refusal credentials-file-without-mount",
-            "schema-refusal schedule-malformed");
+            "schema-refusal egress-outside-vocabulary",
+            "schema-refusal egress-with-range",
+            "schema-refusal egress-without-reason",
+            "schema-refusal every-offending-value",
+            "schema-refusal human-grant-in-a-namespace",
+            "schema-refusal human-grant-role-outside-vocabulary",
+            "schema-refusal human-grant-to-a-user",
+            "schema-refusal human-grant-without-reason",
+            "schema-refusal missing-field",
+            "schema-refusal no-shape-matches",
+            "schema-refusal outside-yaml-subset",
+            "schema-refusal platform-unknown-field",
+            "schema-refusal rate-limit-of-no-requests",
+            "schema-refusal rate-limit-period-in-milliseconds",
+            "schema-refusal rate-limit-without-period",
+            "schema-refusal schedule-malformed",
+            "schema-refusal two-documents",
+            "schema-refusal unknown-field",
+            "schema-refusal wrong-type");
 
     @Test
     void theListedOraclesMatchAndEveryOtherSaysHowFarItIs(@TempDir Path scratch) throws IOException {

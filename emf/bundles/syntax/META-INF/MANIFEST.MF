@@ -8,6 +8,7 @@ Automatic-Module-Name: dev.jorisjonkers.deploykit.emf.syntax
 Export-Package: dev.jorisjonkers.deploykit.emf.syntax,
  dev.jorisjonkers.deploykit.emf.syntax.blocks,
  dev.jorisjonkers.deploykit.emf.syntax.linking,
+ dev.jorisjonkers.deploykit.emf.syntax.schema,
  dev.jorisjonkers.deploykit.emf.syntax.values,
  dev.jorisjonkers.deploykit.emf.syntax.parser.antlr,
  dev.jorisjonkers.deploykit.emf.syntax.services
