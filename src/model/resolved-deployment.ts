@@ -724,9 +724,29 @@ const switchoverFollowsCutover: ShapeRule<{
   },
 };
 
+// The monitoring stack's Prometheus or Alertmanager, which the Prometheus
+// operator runs from an object of its own rather than a controller the render
+// writes (spec/v1/14-platform-intent.md#the-operators-objects): the
+// Prometheus's cadence, the labels it selects monitors by, and the
+// Alertmanager it notifies, by Service and port name.
+const resolvedOperated = z.union([
+  z.strictObject({
+    kind: z.literal("Prometheus"),
+    interval: duration,
+    timeout: duration,
+    monitors: z.record(text, text).exactOptional(),
+    alertmanager: z
+      .strictObject({ namespace: text, service: text, port: text })
+      .exactOptional(),
+  }),
+  z.strictObject({ kind: z.literal("Alertmanager") }),
+]);
+
 const resolvedProcess = stated(
   z.strictObject({
     name: text,
+    // Present where the Prometheus operator runs the Process.
+    operated: resolvedOperated.exactOptional(),
     // The Instance that serves the Process, where ClusterState records one
     // under another name than the Process's: what a Move made it
     // (spec/v1/20-resolved-deployment.md#the-move).

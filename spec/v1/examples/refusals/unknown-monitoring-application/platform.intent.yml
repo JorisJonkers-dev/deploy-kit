@@ -62,8 +62,8 @@ ephemeral: { size: 64Mi }
 secretStore: refusals/edge-proxy
 monitoring:
   grafana: refusals/grafana
-  prometheus: refusals/api
-  alertmanager: refusals/edge-proxy
+  prometheus: observability/prometheus
+  alertmanager: observability/alertmanager
   receivers:
     - name: discord
       discord:

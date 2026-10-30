@@ -4782,39 +4782,27 @@ describe("the Node Agent catalog", () => {
 });
 
 // REQ-093 (docs/requirements.md): a receiver's webhook is granted to the
-// Alertmanager's first Process alone.
+// Alertmanager's Process alone.
 describe("a receiver's credential", () => {
-  it("is granted to the Alertmanager's first Process, and no other", () => {
-    const result = resolve(one(serving("notes-api")), {
-      foundation: (name, text) =>
-        name === "observability/observability.project.yml"
-          ? text +
-            `      - name: alertmanager-sidecar
-        lifecycle: application
-        image: alertmanager
-        runtime: none
-        provides: { admin: 9094 }
-        placement: { memory: 64Mi, cpu: 10m }
-        probes:
-          readiness: { tcp: 9094 }
-        startupBudget: 20s
-        cutover: continuous
-`
-          : text,
-    });
+  it("is granted to the Alertmanager's Process, and to no other Application's", () => {
+    const result = resolve(one(serving("notes-api")));
     if (!result.ok) throw new Error(JSON.stringify(result.diagnostics));
-    const alertmanager = result.value.projects
-      .find(({ project }) => project === "observability")
-      ?.applications.find(({ id }) => id === "alertmanager");
-    const paths = alertmanager?.processes.map(({ name, secrets }) => [
-      name,
-      (secrets ?? []).map((grant) => ("path" in grant ? grant.path : "")),
-    ]);
+    const holders = (
+      result.value.projects.find(({ project }) => project === "observability")
+        ?.applications ?? []
+    ).flatMap(({ processes }) =>
+      processes
+        .filter(({ secrets }) =>
+          (secrets ?? []).some(
+            (grant) =>
+              "path" in grant &&
+              grant.path === "secret/data/platform/alertmanager-discord",
+          ),
+        )
+        .map(({ name }) => name),
+    );
 
-    expect(paths).toStrictEqual([
-      ["alertmanager", ["secret/data/platform/alertmanager-discord"]],
-      ["alertmanager-sidecar", []],
-    ]);
+    expect(holders).toStrictEqual(["alertmanager"]);
   });
 });
 
