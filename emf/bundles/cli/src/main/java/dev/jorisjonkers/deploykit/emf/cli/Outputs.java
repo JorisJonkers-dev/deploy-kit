@@ -166,6 +166,9 @@ public final class Outputs {
     private static final String REVERSED = "diagnostics.reversed.json";
     private static final String PLATFORM = "platform.intent.yml";
 
+    /** The images lock a refused set may carry beside its documents. */
+    private static final String IMAGES_LOCK = "images.lock.yml";
+
     private Outputs() {}
 
     /** Every case under {@code examples} run through the pipeline, written under {@code out}. */
@@ -193,7 +196,12 @@ public final class Outputs {
             // A directory beside the oracle is a set of documents read together; a file is read alone.
             if (Files.isDirectory(set)) {
                 List<Path> documents = documents(set);
-                writeDiagnostics(directory, Pipeline.check(documents));
+                // A set's images lock is checked with it, and is no model of its own.
+                List<Path> checked = new ArrayList<>(documents);
+                if (Files.isRegularFile(set.resolve(IMAGES_LOCK))) {
+                    checked.add(0, set.resolve(IMAGES_LOCK));
+                }
+                writeDiagnostics(directory, Pipeline.check(checked));
                 writeModels(directory, documents);
             } else {
                 writeParsed(directory, oracle.resolveSibling(stem + PROJECT));
