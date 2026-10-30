@@ -268,8 +268,8 @@ const meshIn = (
   // of it holds none, and enrols nothing.
   // The Node Agents' Project resolves no Application, and enrols nothing.
   const [first] =
-    resolved.projects.find((held) => held.project === project)
-      ?.applications ?? [];
+    resolved.projects.find((held) => held.project === project)?.applications ??
+    [];
   const mesh = first?.mesh;
   // `{}` and `{ mesh: undefined }` render the same job, so no test tells them apart.
   // Stryker disable next-line ConditionalExpression

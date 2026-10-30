@@ -393,7 +393,7 @@ nodeAgents:
 | `gpu-device` | every node with an `nvidia` card in the node contract | the device plugin: privileged, the host's PIDs, the kubelet's device-plugin socket and the CDI directory, and time-slicing of **four shares per GPU** |
 | `gpu-metrics` | the same nodes | the card counters: `SYS_ADMIN`, the kubelet's pod-resources socket read-only, and **one share** of the card it reads |
 | `node-metrics` | every node | the host's metrics: the host network and PIDs, and `/proc`, `/sys` and `/` read-only, as a non-root user |
-| `l4-speaker` | the nodes of every site with a pool-kind [L4 Address](#l4-addresses) | the announcer: the host network and `NET_RAW` alone; beside it a **controller**, which runs once with no privilege, and per pool an address pool and an advertisement |
+| `l4-speaker` | the nodes of every site with a pool-kind [L4 Address](#l4-addresses) | the announcer: the host network and `NET_RAW` alone, its peers found by **memberlist**; beside it a **controller**, which runs once with no privilege, and per pool an address pool and an advertisement |
 
 Each agent is a DaemonSet held to exactly the nodes its row names, by name,
 so a node the contract does not list runs none. A pool's address pool hands
@@ -419,6 +419,18 @@ object it holds is derived from the catalog, the node contract and the pools,
 in `node-system`, under one Reconcile Unit and one pin, and the handover ledger
 hands it to the estate path like any other Project. It follows nothing, since
 an agent needs only its node.
+
+The speakers find each other by memberlist, so a node that leaves the network
+loses its addresses to another within seconds, rather than once the API marks
+it not ready. Where the platform names a [Vault policy job](#the-vault-policy-job)
+and a Secret Store answers, memberlist's traffic is keyed by a
+[generated key](10-project-intent.md#generated-keys) of the `node` Project:
+`secretkey` in `secret/data/node-system/l4-speaker`, written by the Project's
+own Vault policy job and read by the speaker's own identity through the
+operator, which restarts every speaker when the key changes. Where it names
+none, the speakers find each other through the API alone, and `node` writes
+nothing into the Secret Store
+([0147](../../docs/adr/model/0147-the-speakers-find-each-other-by-memberlist-keyed-by-a-generated-key.md)).
 
 ## Tiers
 

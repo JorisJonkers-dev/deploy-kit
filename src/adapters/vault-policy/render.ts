@@ -201,7 +201,11 @@ export function renderNodeVault(
         adapter: ADAPTER,
         objects: [policy],
       },
-      { path: `${policies}/${name}.role.json`, adapter: ADAPTER, objects: [role] },
+      {
+        path: `${policies}/${name}.role.json`,
+        adapter: ADAPTER,
+        objects: [role],
+      },
       {
         path: `${policies}/${namespace}.generated.json`,
         adapter: ADAPTER,

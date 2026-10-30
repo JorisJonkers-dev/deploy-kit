@@ -551,7 +551,9 @@ function agentDeliverables(agent: ResolvedNodeAgent): Deliverable[] {
     },
   );
   const spec =
-    agent.memberlist === undefined ? pod : withMemberlist(pod, agent.memberlist);
+    agent.memberlist === undefined
+      ? pod
+      : withMemberlist(pod, agent.memberlist);
   const speaker = agent.controller !== undefined;
   return [
     {

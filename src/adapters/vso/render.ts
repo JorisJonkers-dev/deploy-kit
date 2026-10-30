@@ -286,6 +286,8 @@ export function renderNodeSecrets(
           create: true,
           annotations: UNTRACKED,
         },
+        // A speaker reads its key at start, so a changed key restarts them all.
+        rolloutRestartTargets: [{ kind: "DaemonSet", name: agent }],
       },
     };
     return [
