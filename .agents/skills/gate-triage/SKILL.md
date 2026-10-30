@@ -13,8 +13,9 @@ the fixture, and (for a rule) the ADR that decided it exists at all.
 
 1. **Find the id.** A `RULE-NNN` in the failure text names a row in
    [`docs/architecture-rules.md`](../../../docs/architecture-rules.md); a
-   `REQ-NNN` names a row in
-   [`docs/requirements.md`](../../../docs/requirements.md). No id in the
+   `REQ-NNN` names a row in one of the area files under
+   [`docs/requirements/`](../../../docs/requirements/)
+   (`grep -rn REQ-NNN docs/requirements/` finds it). No id in the
    text: match the failing command to the `gate` column of
    [`docs/architecture.md`](../../../docs/architecture.md#gates), which names
    the npm script or workflow job, then find the ledger row(s) whose

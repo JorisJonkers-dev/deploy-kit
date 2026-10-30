@@ -78,7 +78,7 @@ table does not name, so a new gate cannot go undocumented.
 | `lint:links` | every relative link and heading anchor in Markdown git does not ignore |
 | `lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas, and every pod template against Pod Security's `restricted` profile |
 | `lint:boundaries` | the compiler's layer boundaries and module reachability on the dependency graph |
-| `lint:requirements` | the behaviour ledger, [`docs/requirements.md`](docs/requirements.md) |
+| `lint:requirements` | the behaviour ledger: the area files under [`docs/requirements/`](docs/requirements/), indexed by [`docs/requirements.md`](docs/requirements.md) |
 | `lint:rules` | the rule ledger, [`docs/architecture-rules.md`](docs/architecture-rules.md) |
 | `lint:codes` | every specification `E_` code, exercised or pending |
 | `lint:docs` | README.md and CONTRIBUTING.md, held to the scripts, paths, coverage numbers and Node version they name |

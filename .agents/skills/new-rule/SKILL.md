@@ -20,7 +20,8 @@ separately from what that command checks.
    "Considered and rejected" table. A rule resembling one already rejected
    there starts from that argument, not from scratch.
 2. **Take the next `RULE-NNN`.** Grep the document's own rows; do not reuse
-   an id from `docs/requirements.md`, a different, non-overlapping sequence.
+   an id from the behaviour ledger (`docs/requirements/`), a different,
+   non-overlapping sequence.
 3. **Pick the enforcer kind.** `depcruise:` a named rule in
    `.dependency-cruiser.cjs`; `eslint:` a rule id `eslint.config.js`
    configures; `npm:` a script `package.json` defines; `file:` a file that

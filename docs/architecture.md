@@ -473,7 +473,7 @@ proves the two never drift apart.
 | decisions | `npm run lint:adrs` | frontmatter, register integrity, citations, normative anchors per domain |
 | links | `npm run lint:links` | relative links and heading anchors across every Markdown file git does not ignore |
 | manifests | `npm run lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas, and every pod template against Pod Security's `restricted` profile |
-| requirements | `npm run lint:requirements` | a behaviour ledger row that no longer parses, names a missing or empty test, drifts from its stated count, or is cited by an id no row carries |
+| requirements | `npm run lint:requirements` | a behaviour ledger row that no longer parses, names a missing or empty test, reuses an id, or sits on the front page rather than in an area file; an area file with no row; an id cited that no row carries |
 | rules | `npm run lint:rules` | a [rule ledger](architecture-rules.md) row whose enforcer no longer exists, whose fixture no longer asserts on its witness, or that is pending with no ticket and no reason, and a rule the ruleset or the lint configuration enforces that no row claims |
 | codes | `npm run lint:codes` | a specification `E_` code no test exercises and no ticket holds pending, a pending code a test already exercises, and a code used in the tree that no chapter defines |
 | docs | `npm run lint:docs` | a script, path, coverage number or Node version README.md or CONTRIBUTING.md name that no longer matches the repository |
