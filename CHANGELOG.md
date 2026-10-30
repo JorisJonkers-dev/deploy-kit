@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.5.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.4.0...v1.5.0) (2026-10-30)
+
+
+### Features
+
+* **model:** run the l4-speaker with memberlist, keyed by the node Project's own generated key ([#758](https://github.com/JorisJonkers-dev/deploy-kit/issues/758)) ([a65de6c](https://github.com/JorisJonkers-dev/deploy-kit/commit/a65de6c57f2902bde18b3965591ba6b64ef30c76))
+
+
+### Bug Fixes
+
+* **model:** give an hourly policy or catalog run up within the hour ([#752](https://github.com/JorisJonkers-dev/deploy-kit/issues/752)) ([ad069fa](https://github.com/JorisJonkers-dev/deploy-kit/commit/ad069fa03e30bca9332183e51e3ae8d90140a6a5))
+* **model:** hand out each GPU by its index, as the hosts' CDI specification names it ([#754](https://github.com/JorisJonkers-dev/deploy-kit/issues/754)) ([0f81e24](https://github.com/JorisJonkers-dev/deploy-kit/commit/0f81e24d5d2f53e36bd65227abdccee3441badd4))
+* **model:** start the l4-speaker and its controller on MetalLB 0.15.3 ([#753](https://github.com/JorisJonkers-dev/deploy-kit/issues/753)) ([5c5a98b](https://github.com/JorisJonkers-dev/deploy-kit/commit/5c5a98b98113edb20d5bf6ea309d0c83a7dacda7))
+
 ## [1.4.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.3.1...v1.4.0) (2026-10-30)
 
 
