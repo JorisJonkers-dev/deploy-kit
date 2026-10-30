@@ -615,6 +615,7 @@ class ModelWitnessesTest {
                     .contains("  annotations:\n    kustomize.toolkit.fluxcd.io/prune: disabled\n");
         }
     }
+
     void everyMonitorCarriesThePlatformsSelectorLabelsBesideItsOwnAndTheMonitorsOwnValueWins(@TempDir Path work)
             throws IOException {
         String monitor = rendered("minimal", "apps/notes/notes/podmonitor.yaml");
