@@ -26,6 +26,17 @@ export const nodeAffinityOf = (nodes: readonly string[]): NodeAffinity => ({
 export const UNTIL_SUCCEEDED = 2_147_483_647;
 
 /**
+ * An hourly run's retries: a few, and a deadline inside the hour. Its pod
+ * template is frozen when the run is created, so a run whose hashed ConfigMap
+ * a later render pruned can never succeed, and under `Forbid` would hold off
+ * every later run; this one gives up before the next is due.
+ */
+export const WITHIN_THE_HOUR = {
+  backoffLimit: 6,
+  activeDeadlineSeconds: 3000,
+} as const;
+
+/**
  * The mark on a one-shot Job that the applier recreates rather than updates.
  * A Job's pod template never changes once created, and its name digests only
  * what it is handed, so a change the render alone makes to the template (a
