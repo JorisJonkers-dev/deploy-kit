@@ -319,7 +319,10 @@ public final class Outputs {
         }
         DependencyEdges.write(directory, resolved.deployment());
         // The two extents the transformation read, so a launch in Eclipse runs it on the same models.
-        EcoreUtil.Copier copier = new EcoreUtil.Copier();
+        // A link to an Application the union does not hold, such as a critical Application the
+        // Platform document names in another set, lands nowhere in either extent, so it is left out
+        // rather than written as a reference to a document beside the case.
+        EcoreUtil.Copier copier = new EcoreUtil.Copier(true, false);
         Resource intent = model(directory, INTENT_MODEL);
         Resource pinned = model(directory, PINNED_MODEL);
         intent.getContents().addAll(copier.copyAll(resolved.intent()));
