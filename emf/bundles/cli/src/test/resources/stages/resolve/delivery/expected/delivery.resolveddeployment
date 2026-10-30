@@ -77,6 +77,31 @@
       </api>
     </processes>
   </applications>
+  <applications id="flagger" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="flagger" identity="flagger" lifecycle="application" image="ghcr.io/fluxcd/flagger@sha256:5d1b8f3e7a2c9d4b6e0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b" imageVersion="1.41.0" uid="10001" gid="10001" cutover="continuous" switchover="rolling" deadline="210s" replicas="1" serving="flagger" servingLabel="app.kubernetes.io/instance" memory="64Mi" cpu="10m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app" home="/tmp">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <consumes>release-gate.http</consumes>
+    </processes>
+  </applications>
   <reconcileUnits name="apps-delivery"/>
   <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/delivery/release-gate/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/release-gate/networkpolicy.yaml" adapter="networking">
@@ -87,6 +112,7 @@
       <egress rule="gate-members" port="0"/>
     </policies>
   </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/delivery/flagger/workload.yaml" processes="/0/@applications.2/@processes.0" strategy="RollingUpdate"/>
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/reporter/networkpolicy.yaml" adapter="networking">
     <policies process="/0/@applications.1/@processes.0">
       <ingress rule="consumer" consumes="reporter.http" port="8080"/>

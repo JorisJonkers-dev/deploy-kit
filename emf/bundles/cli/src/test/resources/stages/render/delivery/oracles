@@ -1,3 +1,4 @@
+apps/delivery/flagger/workload.yaml delivery/rendered/apps/delivery/flagger/workload.yaml
 apps/delivery/release-gate/networkpolicy.yaml delivery/rendered/apps/delivery/release-gate/networkpolicy.yaml
 apps/delivery/release-gate/rbac.yaml delivery/rendered/apps/delivery/release-gate/rbac.yaml
 apps/delivery/reporter/networkpolicy.yaml delivery/rendered/apps/delivery/reporter/networkpolicy.yaml

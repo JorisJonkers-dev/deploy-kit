@@ -4,7 +4,7 @@
     <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
   </provenance>
   <applications id="traefik-lan" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0">
-    <processes name="traefik-lan" identity="traefik-lan" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" deadline="180s" replicas="1" serving="traefik-lan" servingLabel="app.kubernetes.io/instance" memory="128Mi" cpu="50m" hardening="restricted" component="none" priorityClass="platform-critical-app">
+    <processes name="traefik-lan" identity="traefik-lan" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" deadline="180s" replicas="1" serving="traefik-lan" servingLabel="app.kubernetes.io/instance" memory="128Mi" cpu="50m" hardening="restricted" component="none" priorityClass="platform-critical-app" home="/tmp">
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
       </readiness>
@@ -41,7 +41,7 @@
     </processes>
   </applications>
   <applications id="traefik-public" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0">
-    <processes name="traefik-public" identity="traefik-public" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" deadline="180s" replicas="1" serving="traefik-public" servingLabel="app.kubernetes.io/instance" memory="128Mi" cpu="50m" hardening="restricted" component="none" priorityClass="platform-critical-app">
+    <processes name="traefik-public" identity="traefik-public" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" deadline="180s" replicas="1" serving="traefik-public" servingLabel="app.kubernetes.io/instance" memory="128Mi" cpu="50m" hardening="restricted" component="none" priorityClass="platform-critical-app" home="/tmp">
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
       </readiness>

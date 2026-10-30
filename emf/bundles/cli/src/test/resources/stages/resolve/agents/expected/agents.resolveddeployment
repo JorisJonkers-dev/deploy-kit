@@ -66,7 +66,7 @@
       <redirectUris>https://hermes.jorisjonkers.dev/auth/callback</redirectUris>
       <roles>user</roles>
     </client>
-    <processes name="hermes" identity="hermes" lifecycle="application" image="docker.io/nousresearch/hermes-agent@sha256:64923faeae267792bf9bf87fe3b4c4869e35004e360c7df01730ad801b74d524" imageVersion="2026.8.31" uid="10000" gid="10000" cutover="interrupted" switchover="stop-start" deadline="480s" replicas="1" serving="hermes" servingLabel="app.kubernetes.io/instance" memory="3Gi" cpu="250m" hardening="restricted" component="none" priorityClass="platform-data">
+    <processes name="hermes" identity="hermes" lifecycle="application" image="docker.io/nousresearch/hermes-agent@sha256:64923faeae267792bf9bf87fe3b4c4869e35004e360c7df01730ad801b74d524" imageVersion="2026.8.31" uid="10000" gid="10000" cutover="interrupted" switchover="stop-start" deadline="480s" replicas="1" serving="hermes" servingLabel="app.kubernetes.io/instance" memory="3Gi" cpu="250m" hardening="restricted" component="none" priorityClass="platform-data" home="/tmp">
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:HttpTarget" path="/api/status" port="9119"/>
       </readiness>
@@ -136,7 +136,31 @@
       <consumes>kubernetes-mcp-server.mcp</consumes>
     </processes>
   </applications>
+  <applications id="agents-ui" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="agents" namespace="agents-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="agents-ui" identity="agents-ui" lifecycle="application" image="ghcr.io/jorisjonkers-dev/agents-ui@sha256:5b41e0ab23e60fbb3f14f42fe5138e6c266aa1bf1289967bfc8a7f9f820bcbc6" imageVersion="0.19.1" uid="101" gid="101" cutover="interrupted" switchover="stop-start" deadline="720s" replicas="0" serving="agents-ui" servingLabel="app.kubernetes.io/instance" memory="96Mi" cpu="100m" hardening="restricted" component="static">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </liveness>
+      <surfaces name="http" port="80"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <writablePaths path="/var/cache/nginx" size="64Mi"/>
+      <writablePaths path="/var/run" size="64Mi"/>
+      <addedPrivileges>NET_BIND_SERVICE</addedPrivileges>
+    </processes>
+  </applications>
   <reconcileUnits name="apps-agents"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/agents/agents-ui/workload.yaml" processes="/0/@applications.2/@processes.0" strategy="RollingUpdate"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/agents/hermes/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="Recreate"/>
   <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/agents/agents-api/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/agents/agents-api/networkpolicy.yaml" adapter="networking">

@@ -71,6 +71,8 @@ spec:
               value: postgres
             - name: POSTGRES_USER
               value: postgres
+            - name: HOME
+              value: /tmp
           resources:
             requests:
               memory: 2Gi
@@ -126,6 +128,8 @@ spec:
               value: postgres
             - name: POSTGRES_USER
               value: postgres
+            - name: HOME
+              value: /tmp
           resources:
             requests:
               memory: 64Mi
@@ -232,6 +236,8 @@ spec:
               value: postgres
             - name: POSTGRES_USER
               value: postgres
+            - name: HOME
+              value: /tmp
           resources:
             requests:
               memory: 2Gi
@@ -287,6 +293,8 @@ spec:
               value: postgres
             - name: POSTGRES_USER
               value: postgres
+            - name: HOME
+              value: /tmp
           resources:
             requests:
               memory: 64Mi

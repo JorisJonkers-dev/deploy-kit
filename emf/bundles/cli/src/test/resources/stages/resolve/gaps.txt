@@ -1134,6 +1134,7 @@ ResolvedMigration.database is never set by a resolve case
 ResolvedMigration.deadline is never set by a resolve case
 ResolvedMigration.egress is never set by a resolve case
 ResolvedMigration.gid is never set by a resolve case
+ResolvedMigration.home is never set by a resolve case
 ResolvedMigration.identity is never set by a resolve case
 ResolvedMigration.memory is never set by a resolve case
 ResolvedMigration.nonTransactional is never set by a resolve case
@@ -1218,6 +1219,7 @@ ResolvedProbe.period is never set by a resolve case
 ResolvedProbe.target is never set by a resolve case
 ResolvedProbe.timeout is never set by a resolve case
 ResolvedProcess is never instantiated by a resolve case
+ResolvedProcess.addedPrivileges is never set by a resolve case
 ResolvedProcess.api is never set by a resolve case
 ResolvedProcess.arguments is never set by a resolve case
 ResolvedProcess.assets is never set by a resolve case
@@ -1232,6 +1234,7 @@ ResolvedProcess.frozen is never set by a resolve case
 ResolvedProcess.gid is never set by a resolve case
 ResolvedProcess.gpu is never set by a resolve case
 ResolvedProcess.hardening is never set by a resolve case
+ResolvedProcess.home is never set by a resolve case
 ResolvedProcess.identity is never set by a resolve case
 ResolvedProcess.identityToken is never set by a resolve case
 ResolvedProcess.image is never set by a resolve case
@@ -1292,6 +1295,7 @@ ResolvedSeeder.memory is never set by a resolve case
 ResolvedSeeder.mounts is never set by a resolve case
 ResolvedSidecar is never instantiated by a resolve case
 ResolvedSidecar.cpu is never set by a resolve case
+ResolvedSidecar.home is never set by a resolve case
 ResolvedSidecar.image is never set by a resolve case
 ResolvedSidecar.imageVersion is never set by a resolve case
 ResolvedSidecar.init is never set by a resolve case
