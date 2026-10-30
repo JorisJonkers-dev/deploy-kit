@@ -320,6 +320,9 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 			path := self.observability.scrape.path;
 			interval := estate.monitors.interval;
 			timeout := estate.monitors.timeout;
+			-- What the metrics stack selects its monitors by, as the platform names it.
+			labels := estate.monitors.labels->sortedBy(l | l.key)
+				->collect(l | object KeyValue { key := l.key; value := l.value; });
 		}
 	endif;
 	releaseGate := if gated(self) then self.map gate() else null endif;
@@ -684,6 +687,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
+	priorityClass := priorityOf(self, app, prj);
 	identityToken := self.api <> null or self.secrets->exists(g | g.delivery = Delivery::selfDelivery)
 		or self.edgeCredentials(app, prj)->exists(g | g.delivery = 'self');
 	-- The platform admits the holder, or E_PROCESS_RBAC_GRANT refused it, so the
@@ -694,6 +698,8 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			group := r.group;
 			objects := r.objects;
 			verbs := r.verbs->collect(v | v.toString());
+			-- A rule reaches the cluster unless it says its own namespace.
+			scope := if r.scope = ApiScope::_namespace then RuleScope::_namespace else RuleScope::cluster endif;
 		});
 		server := estate.apiAccess.server->collect(range | object AdmittedRange {
 			cidr := range.cidr;
@@ -855,10 +861,12 @@ query Grant::resolvedFor(p : PI::Process) : ResolvedGrant = object ResolvedGrant
 		endif;
 	} elif (self.oclIsKindOf(TransitGrant)) {
 		engine := 'transit';
+		-- `read` is the key's public part and versions, which the key itself serves.
 		paths := self.oclAsType(TransitGrant).operations->collect(o | object PolicyPath {
-			path := if o = TransitOp::rotate then 'transit/keys/' + self.oclAsType(TransitGrant).key + '/rotate'
-				else 'transit/' + o.spelling() + '/' + self.oclAsType(TransitGrant).key endif;
-			allows := Sequence{'update'};
+			path := if o = TransitOp::read then 'transit/keys/' + self.oclAsType(TransitGrant).key
+				else if o = TransitOp::rotate then 'transit/keys/' + self.oclAsType(TransitGrant).key + '/rotate'
+				else 'transit/' + o.spelling() + '/' + self.oclAsType(TransitGrant).key endif endif;
+			allows := Sequence{if o = TransitOp::read then 'read' else 'update' endif};
 		});
 	} else {
 		engine := 'database';
@@ -1418,6 +1426,37 @@ query surfaceAddress(application : String, surface : String) : String =
 
 -- ================================================================== exposure
 
+-- The priority class a Process runs at (spec/v1/14-platform-intent.md#priority): the
+-- data class for one that runs an engine, the critical class for the foundation and
+-- the Applications the platform names, none otherwise.
+query priorityOf(p : PI::Process, app : EffectiveApplication, prj : EffectiveProject) : String =
+	let policy : PriorityPolicy = estate.priority in
+	if policy = null then null
+	else if p.engine <> Engine::absent then policy.data.name
+	else if foundation()->includes(prj.project + '/' + app.id)
+			or policy.criticalApplications->exists(a | heldName(a) = prj.project + '/' + app.id)
+		then policy.critical.name
+	else null endif endif endif;
+
+-- `<project>/<application>` of an Application a document declares.
+query heldName(a : Application) : String =
+	a.oclAsType(ECORE::EObject).eContainer().oclAsType(Project).project + '/' + a.id;
+
+-- The Applications the Platform document names in a privileged role.
+query foundation() : Set(String) =
+	let none : Sequence(Application) = Sequence{} in
+	estate.tiers->collect(t | t.traefik)->asSequence()
+		->union(if estate.delivery = null then none
+			else estate.delivery.machinery->asSequence()->append(estate.delivery.gate) endif)
+		->union(if estate.delivery = null or estate.delivery.reporter = null then none
+			else Sequence{estate.delivery.reporter} endif)
+		->union(if estate.apiAccess = null then none else estate.apiAccess.holders->asSequence() endif)
+		->union(if estate.telemetry = null then none
+			else Sequence{estate.telemetry.collector, estate.telemetry.metrics} endif)
+		->union(if estate.secretStore = null then none else Sequence{estate.secretStore} endif)
+		->union(if estate.signIn = null then none else Sequence{estate.signIn.provider} endif)
+		->collect(a | heldName(a))->asSet();
+
 -- The tier carrying an audience, or E_NO_TIER_FOR_AUDIENCE refused the set.
 query tierFor(audience : Audience) : Tier =
 	estate.tiers->select(t | t.audiences->includes(audience))->first();
@@ -1432,6 +1471,13 @@ mapping Exposure::exposure(in app : EffectiveApplication, in prj : EffectiveProj
 	proxyApplication := tierFor(self.audience).traefik.id;
 	proxyNamespace := homeNamespace(projectOf(tierFor(self.audience).traefik.id),
 		tierFor(self.audience).traefik.id);
+	ingressClass := tierFor(self.audience).ingressClass;
+	-- The name the tier publishes the host behind, or, where the exposure is not
+	-- proxied, the tier's own address (spec/v1/14-platform-intent.md#tiers).
+	dns := let named : TierDns = tierFor(self.audience).dns in
+		if named = null then null
+		else if self.proxied = false then object ExposureDns { target := named.direct; proxied := false; }
+		else object ExposureDns { target := named.target; proxied := named.proxied; } endif endif;
 	routes := self.routes->collect(r | object ResolvedRoute {
 		path := r.path;
 		match := r.match.resolvedMatch();
@@ -1612,13 +1658,14 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				adapter := AdapterName::kubernetes;
 				processes := claimed;
 			}.oclAsType(Deliverable)} else Sequence{} endif)
-		->union(if configured->notEmpty() or gated(self) then Sequence{object ConfigMapFile {
+		->union(if configured->notEmpty() or gated(self) or self.exposure->notEmpty() then Sequence{object ConfigMapFile {
 				path := root + 'configmap.yaml';
 				adapter := AdapterName::kubernetes;
 				application := self.resolveone(ResolvedApplication);
 				processes := configured;
 				-- The element as the Release Gate reads it: canonical JSON, on one line.
 				releaseGate := if gated(self) then self.resolveone(ResolvedApplication).releaseGate.json() else null endif;
+				externalChecks := self.externalChecks(prj);
 			}.oclAsType(Deliverable)} else Sequence{} endif)
 		->union(if backedUp->notEmpty() then Sequence{object BackupFile {
 				path := root + 'backup.yaml';
@@ -1675,7 +1722,7 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 query monitorOf(app : EffectiveApplication, root : String) : Sequence(Deliverable) =
 	if app.observability = null or app.observability.scrape = null then Sequence{} else
 	let scraped : ResolvedProcess = app.observability.scrape.process.resolveone(ResolvedProcess) in
-	let monitored : MonitorKind = if scraped.switchover = Switchover::stopStart
+	let monitored : MonitorKind = if scraped.switchover <> Switchover::blueGreen
 		then MonitorKind::serviceMonitor else MonitorKind::podMonitor endif in
 	Sequence{object MonitorFile {
 		path := root + (if monitored = MonitorKind::serviceMonitor then 'servicemonitor.yaml' else 'podmonitor.yaml' endif);
@@ -1747,7 +1794,14 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value, 'metrics-stack')
 		else Sequence{} endif))
 	->union(consumersOf(p, app))
-	->union(named(backupsOf(p)->union(eventsOf(p, app))));
+	->union(named(backupsOf(p)->union(eventsOf(p, app))))
+	-- A blue-green Process that publishes readiness is a gate member, and admits the
+	-- Release Gate's own requests on its first surface
+	-- (spec/v1/16-dependencies.md#the-member-label).
+	->union(if switchesBlueGreen(app, p) and readinessOf(p) <> null and estate.delivery <> null
+			and p.provides->notEmpty()
+		then named(peersOf(estate.delivery.gate.id, p.provides->first().value, 'release-gate'))
+		else Sequence{} endif);
 
 -- Each peer a policy names, once, in the order first reached.
 query named(peers : Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)))
@@ -1842,8 +1896,21 @@ query EffectiveApplication::routeFiles(root : String) : Sequence(Deliverable) =
 			adapter := AdapterName::traefik;
 			exposure := e.resolveone(ResolvedExposure);
 			entryPoint := if tier.listener = Listener::tls then 'websecure' else 'web' endif;
-			if tier.certificates = CertificateSource::acme then certificateResolver := 'acme' endif;
+			-- A tier issuing through acme names its own resolver, and a tls listener ends TLS.
+			if tier.certificates = CertificateSource::acme then certificateResolver := tier.name endif;
+			terminatesTls := tier.listener = Listener::tls;
 		}.oclAsType(Deliverable))->asSequence();
+
+-- An Application's external checks (spec/v1/14-platform-intent.md#the-foundation-is-declared):
+-- one Gatus endpoint per route of each exposure, which fails on a 5xx or on no answer.
+query EffectiveApplication::externalChecks(prj : EffectiveProject) : String =
+	if self.exposure->isEmpty() then null else
+	obj(Sequence{Tuple{k = 'endpoints', v = arr(self.exposure->collect(e | e.routes->collect(r | obj(Sequence{
+		Tuple{k = 'name', v = str(self.id + '-' + e.name + '-' + e.routes->indexOf(r).toString())},
+		Tuple{k = 'group', v = str(prj.project)},
+		Tuple{k = 'url', v = str((if tierFor(e.audience).listener = Listener::tls then 'https' else 'http' endif)
+			+ '://' + e.host + r.path)},
+		Tuple{k = 'conditions', v = arr(Sequence{str('[STATUS] < 500')})}})))->flatten())}}) endif;
 
 -- Per identity that holds a grant, one Vault policy over every grant it holds
 -- and one Kubernetes auth role bound to it, estate-scoped by namespace: the
@@ -2037,7 +2104,9 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 			Tuple{k = 'surface', v = str(self.scrape.surface)},
 			Tuple{k = 'path', v = str(self.scrape.path)},
 			Tuple{k = 'interval', v = str(self.scrape.interval)},
-			Tuple{k = 'timeout', v = str(self.scrape.timeout)}}) endif},
+			Tuple{k = 'timeout', v = str(self.scrape.timeout)},
+			Tuple{k = 'labels', v = if self.scrape.labels->isEmpty() then null
+				else obj(self.scrape.labels->collect(l | Tuple{k = l.key, v = str(l.value)})) endif}}) endif},
 		Tuple{k = 'releaseGate', v = if self.releaseGate = null then null else self.releaseGate.json() endif},
 		Tuple{k = 'migration', v = if self.migration = null then null else obj(Sequence{
 			Tuple{k = 'runner', v = str(self.migration.runner)},
@@ -2111,6 +2180,10 @@ query ResolvedExposure::json() : String = obj(Sequence{
 	Tuple{k = 'tier', v = str(self.tier)},
 	Tuple{k = 'listener', v = str(self.listener)},
 	Tuple{k = 'certificates', v = str(self.certificates)},
+	Tuple{k = 'ingressClass', v = opt(self.ingressClass)},
+	Tuple{k = 'dns', v = if self.dns = null then null else obj(Sequence{
+		Tuple{k = 'target', v = str(self.dns.target)},
+		Tuple{k = 'proxied', v = bool(self.dns.proxied)}}) endif},
 	Tuple{k = 'proxy', v = obj(Sequence{
 		Tuple{k = 'application', v = str(self.proxyApplication)},
 		Tuple{k = 'namespace', v = str(self.proxyNamespace)}})},
@@ -2169,6 +2242,7 @@ query ResolvedProcess::json() : String =
 				Tuple{k = 'value', v = str(x.value)}})))},
 			Tuple{k = 'credential', v = self.vpn.credential.json()}}) endif},
 		Tuple{k = 'hardening', v = str(self.hardening)},
+		Tuple{k = 'priorityClass', v = opt(self.priorityClass)},
 		Tuple{k = 'identityToken', v = bool(self.identityToken)},
 		Tuple{k = 'internetEgress', v = if self.internetEgress = null then null else obj(Sequence{
 			Tuple{k = 'reason', v = str(self.internetEgress.reason)}}) endif},
@@ -2177,7 +2251,8 @@ query ResolvedProcess::json() : String =
 			Tuple{k = 'rules', v = arr(self.api.rules->collect(r | obj(Sequence{
 				Tuple{k = 'group', v = str(r.group)},
 				Tuple{k = 'objects', v = arr(r.objects->collect(x | str(x)))},
-				Tuple{k = 'verbs', v = arr(r.verbs->collect(x | str(x)))}})))},
+				Tuple{k = 'verbs', v = arr(r.verbs->collect(x | str(x)))},
+				Tuple{k = 'scope', v = str(if r.scope = RuleScope::_namespace then 'namespace' else 'cluster' endif)}})))},
 			Tuple{k = 'server', v = arr(self.api.server->collect(x | obj(Sequence{
 				Tuple{k = 'cidr', v = str(x.cidr)},
 				Tuple{k = 'port', v = num(x.port)}})))}}) endif},

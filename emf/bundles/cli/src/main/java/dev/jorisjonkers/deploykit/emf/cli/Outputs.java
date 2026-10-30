@@ -69,29 +69,29 @@ public final class Outputs {
      * Every case the production implementation resolves is here; `knowledge`, whose images
      * no lock holds, is resolved by neither, and retires with the project it models (JorisJonkers-dev/deploy-kit#272).
      */
-    public static final Map<String, Resolving> RESOLVED = Map.of(
-            "minimal",
-            new Resolving("notes", withFoundation("minimal/notes.project.yml")),
-            "auth",
-            new Resolving(
+    public static final Map<String, Resolving> RESOLVED = Map.ofEntries(
+            Map.entry("minimal", new Resolving("notes", withFoundation("minimal/notes.project.yml"))),
+            Map.entry(
                     "auth",
-                    withFoundation("auth/auth.project.yml", "auth/migration-proof.yml", "data/data.project.yml")),
-            "data",
-            new Resolving("data", withFoundation("data/data.project.yml")),
-            "knowledge-platform",
-            new Resolving(
+                    new Resolving(
+                            "auth",
+                            withFoundation(
+                                    "auth/auth.project.yml", "auth/migration-proof.yml", "data/data.project.yml"))),
+            Map.entry("data", new Resolving("data", withFoundation("data/data.project.yml"))),
+            Map.entry(
                     "knowledge-platform",
-                    withFoundation("knowledge-platform/knowledge-platform.project.yml", "data/data.project.yml")),
-            "delivery",
-            new Resolving("delivery", withFoundation()),
-            "edge",
-            new Resolving("edge", withFoundation()),
-            "observability",
-            new Resolving("observability", withFoundation()),
-            "secrets",
-            new Resolving("secrets", withFoundation()),
-            "identity",
-            new Resolving("identity", withFoundation()));
+                    new Resolving(
+                            "knowledge-platform",
+                            withFoundation(
+                                    "knowledge-platform/knowledge-platform.project.yml", "data/data.project.yml"))),
+            Map.entry("delivery", new Resolving("delivery", withFoundation())),
+            Map.entry("edge", new Resolving("edge", withFoundation())),
+            Map.entry("observability", new Resolving("observability", withFoundation())),
+            Map.entry("secrets", new Resolving("secrets", withFoundation())),
+            Map.entry("identity", new Resolving("identity", withFoundation())),
+            Map.entry("agents", new Resolving("agents", withFoundation())),
+            Map.entry("mail", new Resolving("mail", withFoundation())),
+            Map.entry("utility", new Resolving("utility", withFoundation())));
 
     /** The Platform document, its pinned inputs and the foundation every case composes with, then {@code own}. */
     private static List<String> withFoundation(String... own) {
