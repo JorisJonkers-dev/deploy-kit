@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="agents-api" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="agents" namespace="agents-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="agents-api" identity="agents-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="agents-api" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="jvm">
+      <api reason="It starts and watches an agent's pods.">
+        <rules group="core" scope="namespace">
+          <objects>configmaps</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="core" scope="namespace">
+          <objects>pods</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+          <verbs>create</verbs>
+          <verbs>delete</verbs>
+        </rules>
+        <rules group="core" scope="namespace">
+          <objects>pods/log</objects>
+          <verbs>get</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <applications id="hermes" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="agents" namespace="agents-system" reconcileUnit="/0/@reconcileUnits.0">
+    <client signIn="native" host="hermes.jorisjonkers.dev" launchUrl="https://hermes.jorisjonkers.dev/" credential="pkce" label="Hermes" description="The agent gateway">
+      <redirectUris>https://hermes.jorisjonkers.dev/auth/callback</redirectUris>
+      <roles>user</roles>
+    </client>
+    <processes name="hermes-main" identity="hermes-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="hermes-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-agents"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/agents/agents-api/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClientFile" path="apps/agents/hermes/client.yaml" application="/0/@applications.1"/>
+</resolveddeployment:ResolvedDeployment>

@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: identity.jorisjonkers.dev/v1
+kind: Client
+metadata:
+  name: hermes
+  labels:
+    app.kubernetes.io/part-of: hermes
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  signIn: native
+  host: hermes.jorisjonkers.dev
+  launchUrl: https://hermes.jorisjonkers.dev/
+  redirectUris:
+    - https://hermes.jorisjonkers.dev/auth/callback
+  credential: pkce
+  roles:
+    - user
+  label: Hermes
+  description: The agent gateway

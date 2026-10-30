@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="platform-rabbitmq" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
+    <dashboards folder="data" datasource="prometheus">
+      <instance key="dashboards" value="grafana"/>
+      <files name="platform-rabbitmq-rabbitmq" content='{&#10;  "__inputs": [&#10;    {&#10;      "name": "DS_PROMETHEUS",&#10;      "label": "Prometheus",&#10;      "type": "datasource",&#10;      "pluginId": "prometheus"&#10;    }&#10;  ],&#10;  "uid": "rabbitmq",&#10;  "title": "RabbitMQ",&#10;  "tags": ["rabbitmq", "messaging"],&#10;  "editable": false,&#10;  "refresh": "30s",&#10;  "time": { "from": "now-1h", "to": "now" },&#10;  "panels": [&#10;    {&#10;      "id": 1,&#10;      "title": "Queue Messages (Ready)",&#10;      "type": "timeseries",&#10;      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },&#10;      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },&#10;      "targets": [&#10;        { "expr": "rabbitmq_queue_messages_ready", "legendFormat": "{{queue}} ready" }&#10;      ]&#10;    }&#10;  ],&#10;  "schemaVersion": 39&#10;}&#10;'>
+        <inputs>DS_PROMETHEUS</inputs>
+      </files>
+    </dashboards>
+    <processes name="platform-rabbitmq-main" identity="platform-rabbitmq-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="platform-rabbitmq-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-data"/>
+  <deliverables xsi:type="resolveddeployment:DashboardFile" path="apps/data/platform-rabbitmq/dashboards.yaml" adapter="grafana" application="/0/@applications.0"/>
+</resolveddeployment:ResolvedDeployment>

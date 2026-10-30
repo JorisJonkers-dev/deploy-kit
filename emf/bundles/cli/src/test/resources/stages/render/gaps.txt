@@ -67,16 +67,7 @@ MigrationFile.path is never set in a render case's input
 MigrationFile.role is never set in a render case's input
 MigrationFile.upTag is never set in a render case's input
 NetworkPolicyFile.migration is never set in a render case's input
-RbacFile is never instantiated in a render case's input
-RbacFile is never instantiated in a render case's input (render.mtl dispatches on it)
-RbacFile.adapter is never set in a render case's input
-RbacFile.path is never set in a render case's input
-RbacFile.processes is never set in a render case's input
 ReleaseGate.migration is never set in a render case's input
-ResolvedApiAccess is never instantiated in a render case's input
-ResolvedApiAccess.reason is never set in a render case's input
-ResolvedApiAccess.rules is never set in a render case's input
-ResolvedApiAccess.server is never set in a render case's input
 ResolvedApplication.migration is never set in a render case's input
 ResolvedCatalog is never instantiated in a render case's input
 ResolvedCatalog.admin is never set in a render case's input
@@ -138,7 +129,6 @@ ResolvedMigration.testedAgainst is never set in a render case's input
 ResolvedMigration.uid is never set in a render case's input
 ResolvedPlacement.boundTo is never set in a render case's input
 ResolvedPlacement.from is never set in a render case's input
-ResolvedProcess.api is never set in a render case's input
 ResolvedProcess.consumes is never set in a render case's input
 ResolvedProcess.dependencies is never set in a render case's input
 ResolvedProcess.internetEgress is never set in a render case's input

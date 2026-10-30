@@ -269,7 +269,12 @@ class ResolvedDeploymentTest {
                         "PriorityClassFile",
                         "HumanGrantFile",
                         "NodeAgentFile",
-                        "AddressPoolFile");
+                        "AddressPoolFile",
+                        "ClientFile",
+                        "AlertRulesFile",
+                        "AlertingFile",
+                        "FluxMonitorFile",
+                        "DashboardFile");
     }
 
     @Test

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="portal" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="identity" namespace="identity-system" reconcileUnit="/0/@reconcileUnits.0">
+    <client signIn="native" host="home.jorisjonkers.dev" launchUrl="https://home.jorisjonkers.dev/apps" credential="pkce" label="Home" description="Every application you can open">
+      <redirectUris>https://home.jorisjonkers.dev/callback</redirectUris>
+      <redirectUris>https://home.jorisjonkers.dev/silent-renew</redirectUris>
+      <roles>user</roles>
+    </client>
+    <processes name="portal-main" identity="portal-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="portal-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <applications id="whoami" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="identity" namespace="identity-system" reconcileUnit="/0/@reconcileUnits.0">
+    <client signIn="gated" host="whoami.jorisjonkers.dev" launchUrl="https://whoami.jorisjonkers.dev/" iconUrl="https://whoami.jorisjonkers.dev/favicon.ico" label="Who am I">
+      <roles>user</roles>
+    </client>
+    <processes name="whoami-main" identity="whoami-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="whoami-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-identity"/>
+  <deliverables xsi:type="resolveddeployment:ClientFile" path="apps/identity/portal/client.yaml" application="/0/@applications.0"/>
+  <deliverables xsi:type="resolveddeployment:ClientFile" path="apps/identity/whoami/client.yaml" application="/0/@applications.1"/>
+</resolveddeployment:ResolvedDeployment>

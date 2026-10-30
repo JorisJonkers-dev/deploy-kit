@@ -860,46 +860,70 @@
   [/if]
 [/template]
 
-[comment What a Process that holds Kubernetes API access may ask of it: a ClusterRole of its
-  declared rules, bound to its one ServiceAccount, both under the name its namespace and
-  identity make. `core` is the group Kubernetes itself spells as no name at all. /]
+[comment What a Process that holds Kubernetes API access may ask of it: its namespace's rules as a
+  Role in its own namespace under its identity, and its cluster's as a ClusterRole under the name its
+  namespace and identity make, each bound to its one ServiceAccount. A scope with no rule renders
+  nothing. /]
 [template private objects(d : resolveddeployment::RbacFile)]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
-    ---
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRole
-    metadata:
-      name: [p.application().namespace/]-[p.identity/]
-      labels:
-        [p.labels()/]
-    rules:
-    [for (r : resolveddeployment::ResolvedApiRule | p.api.rules)]
-        - apiGroups:
-            - [if (r.group = 'core')]""[else][r.group/][/if]
-          resources:
-      [for (o : String | r.objects)]
-              - [o/]
-      [/for]
-          verbs:
-      [for (v : String | r.verbs)]
-              - [v/]
-      [/for]
-    [/for]
-    ---
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRoleBinding
-    metadata:
-      name: [p.application().namespace/]-[p.identity/]
-      labels:
-        [p.labels()/]
-    roleRef:
-      apiGroup: rbac.authorization.k8s.io
-      kind: ClusterRole
-      name: [p.application().namespace/]-[p.identity/]
-    subjects:
-      - kind: ServiceAccount
+    [if (p.api.rules->exists(r | r.scope.toString() = 'namespace'))]
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
         name: [p.identity/]
         namespace: [p.application().namespace/]
+        labels:
+          [p.labels()/]
+      rules:
+      [for (r : resolveddeployment::ResolvedApiRule | p.api.rules->select(r | r.scope.toString() = 'namespace'))]
+          [r.rule()/]
+      [/for]
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: [p.identity/]
+        namespace: [p.application().namespace/]
+        labels:
+          [p.labels()/]
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: [p.identity/]
+      subjects:
+        - kind: ServiceAccount
+          name: [p.identity/]
+          namespace: [p.application().namespace/]
+    [/if]
+    [if (p.api.rules->exists(r | r.scope.toString() = 'cluster'))]
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        name: [p.application().namespace/]-[p.identity/]
+        labels:
+          [p.labels()/]
+      rules:
+      [for (r : resolveddeployment::ResolvedApiRule | p.api.rules->select(r | r.scope.toString() = 'cluster'))]
+          [r.rule()/]
+      [/for]
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: [p.application().namespace/]-[p.identity/]
+        labels:
+          [p.labels()/]
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: [p.application().namespace/]-[p.identity/]
+      subjects:
+        - kind: ServiceAccount
+          name: [p.identity/]
+          namespace: [p.application().namespace/]
+    [/if]
   [/for]
 [/template]
 
@@ -1768,6 +1792,200 @@
       - name: [r.process.name/]
         namespace: [e.application().namespace/]
         port: [r.process.surfaces->select(s | s.name = r.surface)->first().port/]
+[/template]
+
+[comment ====================================================== sign-in and monitoring /]
+
+[comment The Client an Application declares: cluster-scoped, so it names no namespace, and named by
+  the Application Id, which is its Client id. /]
+[template private objects(d : resolveddeployment::ClientFile)]
+  ---
+  apiVersion: identity.jorisjonkers.dev/v1
+  kind: Client
+  metadata:
+    name: [d.application.id/]
+    labels:
+      app.kubernetes.io/part-of: [d.application.id/]
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    signIn: [d.application.client.signIn/]
+    host: [d.application.client.host/]
+  [if (d.application.client.launchUrl <> null)]
+      launchUrl: [d.application.client.launchUrl/]
+  [/if]
+  [if (d.application.client.iconUrl <> null)]
+      iconUrl: [d.application.client.iconUrl/]
+  [/if]
+  [if (d.application.client.redirectUris->notEmpty())]
+      redirectUris:
+    [for (u : String | d.application.client.redirectUris)]
+          - [u/]
+    [/for]
+  [/if]
+  [if (d.application.client.credential <> null)]
+      credential: [d.application.client.credential/]
+  [/if]
+  [if (d.application.client.secretPath <> null)]
+      secretPath: [d.application.client.secretPath/]
+  [/if]
+    roles:
+  [for (r : String | d.application.client.roles)]
+        - [r/]
+  [/for]
+  [if (d.application.client.label <> null)]
+      label: [d.application.client.label.scalar()/]
+  [/if]
+  [if (d.application.client.description <> null)]
+      description: [d.application.client.description.scalar()/]
+  [/if]
+[/template]
+
+[comment The labels of an object that belongs to an Application and to none of its Processes. /]
+[template private applicationLabels(a : resolveddeployment::ResolvedApplication)]
+  app.kubernetes.io/part-of: [a.id/]
+  app.kubernetes.io/managed-by: deploy-kit
+[/template]
+
+[comment One PrometheusRule per rule file, its groups as written. /]
+[template private objects(d : resolveddeployment::AlertRulesFile)]
+  [for (f : resolveddeployment::ResolvedAlertRules | d.application.alertRules)]
+    ---
+    apiVersion: monitoring.coreos.com/v1
+    kind: PrometheusRule
+    metadata:
+      name: [f.name/]
+      namespace: [d.application.namespace/]
+      labels:
+        [d.application.applicationLabels()/]
+    spec:
+      groups:
+    [for (g : resolveddeployment::AlertRuleGroup | f.groups)]
+          - name: [g.name.scalar()/]
+            rules:
+      [for (r : resolveddeployment::AlertRule | g.rules)]
+                [r.alertRule()/]
+      [/for]
+    [/for]
+  [/for]
+[/template]
+
+[template private alertRule(r : resolveddeployment::AlertRule)]
+  - alert: [r.alert.scalar()/]
+    expr: [r.expr.scalar()/]
+  [if (r.duration <> null)]
+      for: [r.duration.scalar()/]
+  [/if]
+  [if (r.labels->notEmpty())]
+      labels:
+    [for (l : resolveddeployment::KeyValue | r.labels)]
+          [l.key/]: [l.value.scalar()/]
+    [/for]
+  [/if]
+  [if (r.annotations->notEmpty())]
+      annotations:
+    [for (l : resolveddeployment::KeyValue | r.annotations)]
+          [l.key/]: [l.value.scalar()/]
+    [/for]
+  [/if]
+[/template]
+
+[comment The one routing of every alert: by severity to its receiver, and an alert that matches no
+  severity to the receiver that delivers nothing. /]
+[template private objects(d : resolveddeployment::AlertingFile)]
+  ---
+  apiVersion: monitoring.coreos.com/v1alpha1
+  kind: AlertmanagerConfig
+  metadata:
+    name: estate-alerts
+    namespace: [d.application.namespace/]
+    labels:
+      [d.application.applicationLabels()/]
+  spec:
+    route:
+      receiver: "null"
+      groupBy:
+        - alertname
+        - namespace
+      groupWait: 1m
+      groupInterval: 5m
+      repeatInterval: 12h
+      routes:
+  [for (r : resolveddeployment::AlertRoute | d.application.alerting.routes)]
+          - matchers:
+              - name: severity
+                value: [r.severity.scalar()/]
+            receiver: [r.receiver.scalar()/]
+            repeatInterval: [r.repeat/]
+  [/for]
+    receivers:
+      - name: "null"
+  [for (r : resolveddeployment::AlertReceiver | d.application.alerting.receivers)]
+        - name: [r.name.scalar()/]
+          discordConfigs:
+            - apiURL:
+                name: [r.secret/]
+                key: [r.key/]
+              sendResolved: true
+  [/for]
+[/template]
+
+[comment Flux's controllers, selected by the label Flux's install gives them and reached by number. /]
+[template private objects(d : resolveddeployment::FluxMonitorFile)]
+  ---
+  apiVersion: monitoring.coreos.com/v1
+  kind: PodMonitor
+  metadata:
+    name: flux-controllers
+    namespace: [d.application.namespace/]
+    labels:
+  [for (l : resolveddeployment::KeyValue | d.application.fluxScrape.labels)]
+        [l.key/]: [l.value.scalar()/]
+  [/for]
+      [d.application.applicationLabels()/]
+  spec:
+    jobLabel: app
+    selector:
+      matchLabels:
+        app.kubernetes.io/part-of: flux
+    namespaceSelector:
+      matchNames:
+        - [d.application.fluxScrape.namespace/]
+    podMetricsEndpoints:
+      - portNumber: [d.application.fluxScrape.port/]
+        path: [d.application.fluxScrape.path/]
+        interval: [d.application.fluxScrape.interval/]
+        scrapeTimeout: [d.application.fluxScrape.timeout/]
+[/template]
+
+[comment One GrafanaDashboard per dashboard file, for the Grafana in its own Project's namespace. /]
+[template private objects(d : resolveddeployment::DashboardFile)]
+  [for (f : resolveddeployment::ResolvedDashboard | d.application.dashboards.files)]
+    ---
+    apiVersion: grafana.integreatly.org/v1beta1
+    kind: GrafanaDashboard
+    metadata:
+      name: [f.name/]
+      namespace: [d.application.namespace/]
+      labels:
+        [d.application.applicationLabels()/]
+    spec:
+      instanceSelector:
+        matchLabels:
+    [for (l : resolveddeployment::KeyValue | d.application.dashboards.instance)]
+            [l.key/]: [l.value.scalar()/]
+    [/for]
+      allowCrossNamespaceImport: true
+      folder: [d.application.dashboards.folder/]
+      json: [f.content.chomping()/]
+    [f.content.blockOf('    ')/]
+    [if (f.inputs->notEmpty())]
+        datasources:
+      [for (i : String | f.inputs)]
+            - inputName: [i/]
+              datasourceName: [d.application.dashboards.datasource/]
+      [/for]
+    [/if]
+  [/for]
 [/template]
 
 [comment ======================================================== the node agents /]

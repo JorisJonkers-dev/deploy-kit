@@ -147,6 +147,16 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//ResolvedExposure" containment="true"/>
     <!-- Where the metrics stack scrapes the Application, at the platform's cadence. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="scrape" eType="#//ResolvedScrape" containment="true"/>
+    <!-- The sign-in Client the Application declares (spec/v1/17-sign-in.md#the-client). -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="client" eType="#//ResolvedClient" containment="true"/>
+    <!-- What the monitoring stack's Application carries for the estate: its rule files, the one
+         routing of every alert, and the scrape of Flux's controllers
+         (spec/v1/14-platform-intent.md#monitoring). -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="alertRules" upperBound="-1" eType="#//ResolvedAlertRules" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="alerting" eType="#//ResolvedAlerting" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="fluxScrape" eType="#//ResolvedFluxScrape" containment="true"/>
+    <!-- The dashboard files the Application ships, for the Grafana the Platform document names. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dashboards" eType="#//ResolvedDashboards" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess" containment="true"/>
   </eClassifiers>
 
@@ -251,7 +261,8 @@
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedProcess">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Unique within its Application only, and often the Application's own Id, so no ID. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="lifecycle" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -434,6 +445,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="group" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="objects" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="verbs" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Whether the rule holds in the Process's own namespace or across the cluster. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scope" lowerBound="1" eType="#//ApiScope"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="AdmittedRange">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cidr" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -650,6 +663,77 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="nodes" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
+  <!-- The Client an Application declares, named by its Application Id: how a person signs in to it, where it answers and is launched from, what it shows, and the roles it knows. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedClient">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="signIn" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="host" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="launchUrl" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="iconUrl" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="redirectUris" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="credential" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secretPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="roles" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="label" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- One rule file of the monitoring stack, named for its Application and its base name, and its groups as written. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedAlertRules">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="groups" lowerBound="1" upperBound="-1" eType="#//AlertRuleGroup" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AlertRuleGroup">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" lowerBound="1" upperBound="-1" eType="#//AlertRule" containment="true"/>
+  </eClassifiers>
+  <!-- An alerting rule: what it alerts as, on what expression, held how long, and its labels and annotations. -->
+  <eClassifiers xsi:type="ecore:EClass" name="AlertRule">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alert" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="expr" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="duration" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="annotations" upperBound="-1" eType="#//KeyValue" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="KeyValue">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- Where an alert of each severity goes, how often it repeats there, and each receiver with the Secret key its address is read from. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedAlerting">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="routes" lowerBound="1" upperBound="-1" eType="#//AlertRoute" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="receivers" lowerBound="1" upperBound="-1" eType="#//AlertReceiver" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AlertRoute">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="severity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="receiver" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="repeat" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AlertReceiver">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secret" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- Flux's controllers, scraped from the monitoring stack's namespace: no Process, so selected by the labels Flux's install gives them and reached by port number. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedFluxScrape">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
+  </eClassifiers>
+  <!-- The dashboard files of an Application, the folder they land in, the Grafana instance that imports them, and the data source each file's inputs map to. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedDashboards">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="folder" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="instance" lowerBound="1" upperBound="-1" eType="#//KeyValue" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="datasource" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="files" lowerBound="1" upperBound="-1" eType="#//ResolvedDashboard" containment="true"/>
+  </eClassifiers>
+  <!-- One dashboard file, named for its Application and its uid, as written, with its data source inputs. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedDashboard">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="content" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="inputs" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
   <!-- ============================================ the generated resources -->
 
   <!--
@@ -918,6 +1002,26 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="pools" lowerBound="1" upperBound="-1" eType="#//ResolvedAddressPool"/>
   </eClassifiers>
 
+  <!-- The Client an Application declares, cluster-scoped. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ClientFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
+  <!-- One PrometheusRule per rule file of an Application. -->
+  <eClassifiers xsi:type="ecore:EClass" name="AlertRulesFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
+  <!-- The monitoring stack's one routing of every alert, by severity: an alert that matches none reaches no one. -->
+  <eClassifiers xsi:type="ecore:EClass" name="AlertingFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
+  <!-- The monitor of Flux's controllers. -->
+  <eClassifiers xsi:type="ecore:EClass" name="FluxMonitorFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
+  <!-- One GrafanaDashboard per dashboard file of an Application. -->
+  <eClassifiers xsi:type="ecore:EClass" name="DashboardFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
   <!-- ==================================================== vocabularies -->
 
   <eClassifiers xsi:type="ecore:EEnum" name="PinnedInput">
@@ -926,6 +1030,12 @@
     <eLiterals name="nodeContract" value="2" literal="node-contract"/>
     <eLiterals name="imagesLock" value="3" literal="images-lock"/>
     <eLiterals name="clusterState" value="4" literal="cluster-state"/>
+  </eClassifiers>
+
+  <!-- Where an API rule holds: across the cluster, or in the Process's own namespace. -->
+  <eClassifiers xsi:type="ecore:EEnum" name="ApiScope">
+    <eLiterals name="cluster" literal="cluster"/>
+    <eLiterals name="namespace" value="1" literal="namespace"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EEnum" name="Cutover">
@@ -967,6 +1077,7 @@
     <eLiterals name="traefik" value="3" literal="traefik"/>
     <eLiterals name="vaultPolicy" value="4" literal="vault-policy"/>
     <eLiterals name="vso" value="5" literal="vso"/>
+    <eLiterals name="grafana" value="6" literal="grafana"/>
   </eClassifiers>
 
   <!-- The kind derives from `lifecycle` and `volumes`; the template spells it. -->
