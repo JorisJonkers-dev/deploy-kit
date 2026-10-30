@@ -5103,7 +5103,7 @@ describe("the operator's objects", () => {
   });
 });
 
-// REQ-162 (docs/requirements.md): the metrics stack scrapes k3s's kubelet,
+// REQ-164 (docs/requirements.md): the metrics stack scrapes k3s's kubelet,
 // cAdvisor and probes, its API server and the cluster's DNS where the bootstrap
 // set records them, as its own ServiceAccount with the read that takes.
 describe("the metrics stack's scrapes of k3s", () => {
