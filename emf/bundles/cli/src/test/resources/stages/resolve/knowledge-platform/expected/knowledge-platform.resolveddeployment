@@ -116,10 +116,65 @@
       <consumes>platform-garage.s3</consumes>
     </processes>
   </applications>
+  <applications id="basic-memory" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="knowledge-platform" namespace="knowledge-platform-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="basic-memory" identity="basic-memory" lifecycle="application" image="ghcr.io/basicmachines-co/basic-memory@sha256:939f1173d96626c280763e14622f2381d49fbbb7db17cae2e832f4f639405643" imageVersion="v0.14.2" uid="1000" gid="1000" cutover="interrupted" switchover="stop-start" deadline="480s" replicas="1" serving="basic-memory" servingLabel="app.kubernetes.io/instance" memory="1Gi" cpu="500m" hardening="restricted" component="python">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="8000"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="8000"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="24">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="8000"/>
+      </startup>
+      <surfaces name="mcp" port="8000"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="basic-memory-vault" mountAt="/vault" size="1Gi" durability="reconstructible"/>
+      <volumes claim="basic-memory-config" mountAt="/app/.basic-memory" size="1Gi" durability="reconstructible"/>
+      <secrets path="secret/data/basic-memory-knowledge-system-vault-deploy-key" access="read" delivery="file" destination="basic-memory-knowledge-system-vault-deploy-key" mountAt="/run/secrets/knowledge-vault/id_ed25519" fileMode="0400">
+        <keys>private_key</keys>
+      </secrets>
+      <environment name="BASIC_MEMORY_CONFIG_DIR" value="/app/.basic-memory"/>
+      <environment name="BASIC_MEMORY_DEFAULT_PROJECT" value="main"/>
+      <environment name="BASIC_MEMORY_DISABLE_PERMALINKS" value="true"/>
+      <environment name="BASIC_MEMORY_ENSURE_FRONTMATTER_ON_SYNC" value="false"/>
+      <environment name="BASIC_MEMORY_HOME" value="/vault"/>
+      <environment name="BASIC_MEMORY_LOG_LEVEL" value="INFO"/>
+      <environment name="BASIC_MEMORY_PROJECT_ROOT" value="/vault"/>
+      <environment name="BASIC_MEMORY_SEMANTIC_EMBEDDING_CACHE_DIR" value="/app/.basic-memory/fastembed"/>
+      <environment name="BASIC_MEMORY_SYNC_CHANGES" value="true"/>
+      <environment name="BASIC_MEMORY_SYNC_DELAY" value="1000"/>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="GIT_CONFIG_COUNT" value="1"/>
+      <environment name="GIT_CONFIG_KEY_0" value="safe.directory"/>
+      <environment name="GIT_CONFIG_VALUE_0" value="/vault"/>
+      <environment name="LOG_LEVEL" value="INFO"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="basic-memory"/>
+      <environment name="POLL_SECONDS" value="10"/>
+      <environment name="PORT" value="8000"/>
+      <environment name="PUSH" value="true"/>
+      <environment name="VAULT_AUTHOR_EMAIL" value="basicmemory@knowledge.local"/>
+      <environment name="VAULT_AUTHOR_NAME" value="basic-memory-vault"/>
+      <environment name="VAULT_BRANCH" value="main"/>
+      <environment name="VAULT_CLONE_URL" value="git@github.com:JorisJonkers-dev/knowledge-vault.git"/>
+      <environment name="VAULT_DIR" value="/vault"/>
+      <environment name="VAULT_SSH_KEY_PATH" value="/run/secrets/knowledge-vault/id_ed25519"/>
+      <sidecars name="git-sync" image="ghcr.io/jorisjonkers-dev/knowledge/basic-memory-git-sync@sha256:7507f69d7e903da30006f07d84091d892dfa42c359c125cccaec05506af36e50" imageVersion="1.0.0" memory="64Mi" cpu="50m">
+        <mounts name="basic-memory-vault" mountAt="/vault"/>
+      </sidecars>
+      <sidecars name="git-clone" image="ghcr.io/jorisjonkers-dev/knowledge/basic-memory-git-sync@sha256:7507f69d7e903da30006f07d84091d892dfa42c359c125cccaec05506af36e50" imageVersion="1.0.0" memory="64Mi" cpu="50m" init="true">
+        <mounts name="basic-memory-vault" mountAt="/vault"/>
+      </sidecars>
+    </processes>
+  </applications>
   <reconcileUnits name="apps-knowledge-platform"/>
   <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/knowledge-platform/hindsight/vso.yaml" adapter="vso" application="/0/@applications.0">
     <holders identity="hindsight-api" component="python" grants="/0/@applications.0/@processes.0/@secrets.0 /0/@applications.0/@processes.0/@secrets.1"/>
     <holders identity="hindsight-worker" component="python" grants="/0/@applications.0/@processes.1/@secrets.0 /0/@applications.0/@processes.1/@secrets.1"/>
   </deliverables>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/knowledge-platform/karakeep/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/knowledge-platform/basic-memory/workload.yaml" processes="/0/@applications.2/@processes.0" strategy="Recreate"/>
 </resolveddeployment:ResolvedDeployment>

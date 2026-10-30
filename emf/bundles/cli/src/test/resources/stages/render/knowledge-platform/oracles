@@ -1,2 +1,3 @@
+apps/knowledge-platform/basic-memory/workload.yaml knowledge-platform/rendered/apps/knowledge-platform/basic-memory/workload.yaml
 apps/knowledge-platform/hindsight/vso.yaml knowledge-platform/rendered/apps/knowledge-platform/hindsight/vso.yaml
 apps/knowledge-platform/karakeep/workload.yaml knowledge-platform/rendered/apps/knowledge-platform/karakeep/workload.yaml
