@@ -161,6 +161,7 @@ and linted by the same script with `emf` as its root.
 | [0121](model/0121-flux-is-scraped-where-the-bootstrap-set-records-its-metrics.md) | Flux is scraped where the bootstrap set records its metrics, and the metrics stack's egress reaches every scrape port | open |
 | [0119](model/0119-an-edge-names-its-buckets-and-the-stores-method-mints-each-projects-key.md) | An edge into an object store names its buckets, and the store's catalog method mints each project's key | open |
 | [0144](model/0144-the-device-plugin-names-each-card-by-its-index.md) | The device plugin names each card by its index, as the hosts' CDI specification does | open |
+| [0147](model/0147-the-speakers-find-each-other-by-memberlist-keyed-by-a-generated-key.md) | The speakers find each other by memberlist, keyed by a key the `node` Project's own Vault policy job generates | open |
 
 ## Delivery and release
 

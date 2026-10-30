@@ -4504,7 +4504,7 @@ describe("a mongo, the document store", () => {
     });
   });
 
-  // REQ-157 (docs/requirements.md): its replica set member is configured by
+  // REQ-158 (docs/requirements.md): its replica set member is configured by
   // the name consumers reach it by, so the pod resolves that name to itself.
   it("resolves its own Service's name to itself, the name its replica set member is configured by", () => {
     expect(store("recoverable").selfNames).toStrictEqual([

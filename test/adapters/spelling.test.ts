@@ -526,7 +526,7 @@ describe("the kubernetes adapter", () => {
     ]);
   });
 
-  // REQ-157 (docs/requirements.md): a replica set member checks that the name
+  // REQ-158 (docs/requirements.md): a replica set member checks that the name
   // it is configured by is its own, so that name resolves to the pod itself.
   it("resolves a Process's own names to its loopback, and writes no alias for one that has none", () => {
     const aliasesOf = (project: ReturnType<typeof edited>) =>
