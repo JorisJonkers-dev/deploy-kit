@@ -43,6 +43,9 @@ property FORWARDED_PORT_FILE : String = '/run/vpn/forwarded-port';
 property TUNNEL_REASON : String = 'the VPN\'s tunnel reaches its provider\'s servers';
 -- The surface a Release Gate and a Secret Store answer on.
 property HTTP_SURFACE : String = 'http';
+
+-- Where every Stable Address lives (spec/v1/16-dependencies.md#the-stable-address).
+property STABLE_NAMESPACE : String = 'estate-system';
 -- The path of the Reporter's `http` surface that receives Flux's events.
 property EVENTS_PATH : String = '/flux';
 -- Flux's notification controller, by the `app` label its own install gives its pods.
@@ -306,7 +309,6 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 	id := self.id;
 	project := prj.project;
 	namespace := namespaceOf(prj.project);
-	if self.observability <> null then alertClass := self.observability.alertClass.spelling() endif;
 	reconcileUnit := prj.map unit();
 	-- The Processes first: everything below refers to them.
 	processes := self.processes->map process(self, prj);
@@ -495,8 +497,9 @@ query catalogJobOf(prj : String, application : String, p : PI::Process) : Resolv
 		and r.applications->exists(a | let d : Sequence(PolicyPeer) = datastoreOf(a) in
 			d->notEmpty() and d->first().namespace = ns and d->first().process = proc))
 		->collect(r | r.project)->sortedBy(n | n)->asSequence() in
-	let logins : Sequence(AdminLogin) = stated(application)->select(l | l.admin <> null)
-		->collect(l | l.admin)->asSequence() in
+	let logins : Sequence(AdminLogin) = stated(application)
+		->select(l | l.admin <> null and l.admin.oclIsKindOf(AdminLogin))
+		->collect(l | l.admin.oclAsType(AdminLogin))->asSequence() in
 	if readers->isEmpty() or (legacy(prj) and logins->isEmpty()) then null else
 	let own : LockedImage = locked(estate.engines.postgres.catalog) in
 	let surfacePort : Integer = p.provides->select(s | s.key = estate.engines.postgres.surface)->any(true).value in
@@ -722,7 +725,9 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	};
 	volumes := self.volumes->collect(v | v.resolvedFor(self));
 	libraries := self.libraries->collect(m | m.resolvedFor(prj));
-	assets := self.assets->collect(a | a.resolvedFor(self, prj));
+	-- A seeded Asset lands on a volume through an init step the target does not model yet.
+	assets := self.assets->select(a | a.oclIsKindOf(Asset))
+		->collect(a | a.oclAsType(Asset).resolvedFor(self, prj));
 	sidecars := self.sidecars->collect(c | object ResolvedSidecar {
 		name := c.name;
 		image := locked(c.image).repository + '@' + locked(c.image).digest;
@@ -735,9 +740,11 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	-- Registered Unmanaged Surface reaches an address.
 	consumes := result.dependencies->select(d | d.peers->notEmpty())
 		->collect(d | d.application + '.' + d.surface);
+	-- A path held in memory is sized by what it holds; every other by the ephemeral policy.
 	writablePaths := self.writablePaths->collect(w | object WritablePath {
-		path := w;
-		size := estate.ephemeral.size;
+		path := w.path;
+		size := if w.oclIsKindOf(MemoryPath) then w.oclAsType(MemoryPath).memory
+			else estate.ephemeral.size endif;
 	});
 	environment := environmentOf(self, prj)->sortedBy(e | e.name);
 }
@@ -1041,6 +1048,15 @@ query Asset::resolvedFor(p : PI::Process, prj : EffectiveProject) : ResolvedAsse
 		content := file.content;
 	} endif;
 
+-- The endpoint the edge asks a tier's forward-auth at: its provider's Stable
+-- Address on the surface, at the port its Process provides it on, and the path
+-- (spec/v1/14-platform-intent.md#tiers).
+query ForwardAuth::endpoint() : String =
+	let port : Integer = self.provider.processes.provides
+		->select(s | s.key = self.surface)->any(true).value in
+	'http://' + self.provider.id + '-' + self.surface + '.' + STABLE_NAMESPACE + '.svc.cluster.local:'
+		+ port.toString() + self.path;
+
 query unfiled(source : String) : AssetFile {
 	assert fatal (false) with log(source + ': an Asset whose file is not beside its project');
 	return null;
@@ -1075,7 +1091,7 @@ query edgeOf(e : DependencyEdge, consumer : String) : ResolvedEdge =
 			application := e.application;
 			surface := e.surface;
 			address := dialled(e, host, consumer) + ':' + at.toString();
-			target := aliasTarget(host, consumer);
+			target := aliasTarget(e, host, consumer);
 			peers := Sequence{object PolicyPeer {
 				namespace := homeNamespace(first.project, e.application);
 				process := homeProcess(e.application, first.process.name);
@@ -1092,7 +1108,7 @@ query edgeOf(e : DependencyEdge, consumer : String) : ResolvedEdge =
 			surface := e.surface;
 			address := dialled(e, host, consumer) + ':'
 				+ registered->first().surfaces->select(s | s.key = e.surface)->any(true).value.toString();
-			target := aliasTarget(host, consumer);
+			target := aliasTarget(e, host, consumer);
 		} endif
 	endif;
 
@@ -1115,9 +1131,12 @@ query dialled(e : DependencyEdge, host : String, consumer : String) : String =
 	else if isLiteral(host) then host
 	else aliasNameOf(e, consumer) endif endif;
 
--- Where an alias points, on an edge that derives one.
-query aliasTarget(host : String, consumer : String) : String =
-	if isLocal(host, consumer) or isLiteral(host) then null else host endif;
+-- Where an alias points, on an edge that derives one: the surface's Stable
+-- Address, so a provider that moves changes the Stable Address alone, never a
+-- consumer's render (spec/v1/16-dependencies.md#the-stable-address).
+query aliasTarget(e : DependencyEdge, host : String, consumer : String) : String =
+	if isLocal(host, consumer) or isLiteral(host) then null
+	else e.application + '-' + e.surface + '.' + STABLE_NAMESPACE + '.svc.cluster.local' endif;
 
 -- The alias's name: the Application Id, or the Id and the surface where the
 -- project's edges name several surfaces of it, since a name carries no port.
@@ -1237,11 +1256,7 @@ query unwritten(p : PI::Process) : Sequence(EnvEntry) {
 }
 
 query authoredOf(p : PI::Process) : Sequence(EnvVariable) =
-	let base : Sequence(EnvVariable) =
-			p.env->select(f | f.cluster = null)->collect(f | f.entries)->asSequence(),
-		overlay : Sequence(EnvVariable) =
-			p.env->select(f | f.cluster = estate.metadata.cluster)->collect(f | f.entries)->asSequence() in
-	base->select(b | overlay->forAll(o | o.name <> b.name))->union(overlay);
+	p.env->collect(f | f.entries)->asSequence();
 
 query EnvVariable::entry(prj : EffectiveProject) : EnvEntry =
 	if self.value.oclIsKindOf(EnvLiteral) then
@@ -1272,6 +1287,23 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 			}
 		else unresolved(variable, 'a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE') endif
 	else if self.kind = PlaceholderKind::dependency and self.source.lastIndexOf('.') > 0
+			and Sequence{'accessKeyId', 'secretAccessKey'}->includes(
+				self.source.substring(self.source.lastIndexOf('.') + 1, self.source.size())) then
+		-- A key to an object store is read from the project's key to the store the edge names
+		-- buckets in (spec/v1/16-dependencies.md#the-bucket-catalog).
+		let application : String = self.source.substring(1, self.source.lastIndexOf('.') - 1) in
+		let coordinate : String = self.source.substring(self.source.lastIndexOf('.') + 1, self.source.size()) in
+		let edge : DependencyEdge = owner.dependsOn->select(e | e.application = application)->any(true) in
+		let store : String = projects.applications->select(a | a.id = application).processes
+			->select(p | p.provides->exists(s | s.key = edge.surface))->any(true).name in
+		object EnvEntry {
+			name := variable;
+			secret := object SecretReference {
+				path := 'secret/data/' + prj.project + '/' + store + '/s3';
+				key := if coordinate = 'accessKeyId' then 'access-key-id' else 'secret-access-key' endif;
+			};
+		}
+	else if self.kind = PlaceholderKind::dependency and self.source.lastIndexOf('.') > 0
 			and Sequence{'username', 'password'}->includes(self.source.substring(self.source.lastIndexOf('.') + 1, self.source.size())) then
 		-- A login is read from the Secret the edge's credential is synced to, or
 		-- E_UNRESOLVED_PLACEHOLDER refused the placeholder.
@@ -1285,7 +1317,7 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 		}
 	else
 		object EnvEntry { name := variable; value := self.textFor(owner, prj) + suffix; }
-	endif endif endif;
+	endif endif endif endif;
 
 query Placeholder::textFor(owner : PI::Process, prj : EffectiveProject) : String =
 	if self.kind = PlaceholderKind::dependency then dependencyValue(self.source, owner)
@@ -1304,13 +1336,15 @@ query dependencyValue(source : String, owner : PI::Process) : String =
 	let application : String = source.substring(1, cut - 1) in
 	let coordinate : String = source.substring(cut + 1, source.size()) in
 	let edges : Sequence(DependencyEdge) = owner.dependsOn->select(e | e.application = application)->asSequence() in
-	if edges->size() <> 1 or (coordinate <> 'host' and coordinate <> 'port')
+	if edges->size() <> 1 or (coordinate <> 'host' and coordinate <> 'port' and coordinate <> 'endpoint')
 		then unresolvedText(source, 'a dependency placeholder names no one edge of the Process and no coordinate of it')
 	else
 		let address : String = edgeOf(edges->first(), owner(owner)).address in
 		let colon : Integer = address.lastIndexOf(':') in
-		if coordinate = 'host' then address.substring(1, colon - 1)
-		else address.substring(colon + 1, address.size()) endif
+		-- An object store is reached over HTTP at what the edge dials.
+		if coordinate = 'endpoint' then 'http://' + address
+		else if coordinate = 'host' then address.substring(1, colon - 1)
+		else address.substring(colon + 1, address.size()) endif endif
 	endif endif;
 
 -- `${exposure:<application>.<name>#<field>}`: one field of an exposure the union declares.
@@ -1431,7 +1465,7 @@ query middlewareOf(r : Route, exposure : Exposure, app : EffectiveApplication, p
 	(if r.audienceOf(exposure) = Audience::authenticated
 		then Sequence{object MiddlewareStep {
 			kind := MiddlewareKind::forwardAuth;
-			endpoint := tierFor(r.audienceOf(exposure)).forwardAuth;
+			endpoint := tierFor(r.audienceOf(exposure)).forwardAuth.endpoint();
 			name := 'forward-auth';
 			namespace := proxy;
 		}}
@@ -1936,9 +1970,6 @@ query PI::Cutover::resolvedCutover() : RD::Cutover =
 query PI::Match::resolvedMatch() : RD::Match =
 	if self = PI::Match::exact then RD::Match::exact else RD::Match::prefix endif;
 
-query AlertClass::spelling() : String =
-	if self = AlertClass::businessHours then 'business-hours'
-	else if self = AlertClass::urgent then 'urgent' else 'page' endif endif;
 
 query Audience::spelling() : String =
 	if self = Audience::anonymous then 'anonymous'

@@ -66,8 +66,8 @@ public final class Outputs {
      * The cases this implementation resolves, each with the project it resolves and the set of
      * documents it is read with: the case's own documents, the foundation it composes with, and the
      * pinned inputs beside the Platform document (spec/v1/20-resolved-deployment.md#pinned-inputs).
-     * Every case the production implementation resolves is here; `knowledge` is resolved by
-     * neither, and retires with the project it models (JorisJonkers-dev/deploy-kit#272).
+     * Every case the production implementation resolves is here; `knowledge`, whose images
+     * no lock holds, is resolved by neither, and retires with the project it models (JorisJonkers-dev/deploy-kit#272).
      */
     public static final Map<String, Resolving> RESOLVED = Map.of(
             "minimal",
@@ -89,7 +89,9 @@ public final class Outputs {
             "observability",
             new Resolving("observability", withFoundation()),
             "secrets",
-            new Resolving("secrets", withFoundation()));
+            new Resolving("secrets", withFoundation()),
+            "identity",
+            new Resolving("identity", withFoundation()));
 
     /** The Platform document, its pinned inputs and the foundation every case composes with, then {@code own}. */
     private static List<String> withFoundation(String... own) {
