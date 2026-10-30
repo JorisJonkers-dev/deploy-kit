@@ -2062,11 +2062,11 @@ mapping Exposure::exposure(in app : EffectiveApplication, in prj : EffectiveProj
 		path := r.path;
 		match := r.match.resolvedMatch();
 		audience := r.audienceOf(self).spelling();
-		precedence := precedenceOf(r, self.routes);
+		precedence := precedenceWith(rankOf(r), exposureRanks(self, app));
 		process := r.process.resolveone(ResolvedProcess);
 		surface := r.surface.key;
 		middleware := middlewareOf(r, self, app, prj);
-	});
+	})->union(if derivesGateRoute(app, self) then Sequence{gateRouteOf(self, app)} else Sequence{} endif);
 }
 
 query Route::audienceOf(exposure : Exposure) : Audience =
@@ -2530,7 +2530,9 @@ query EffectiveApplication::externalChecks(prj : EffectiveProject) : String =
 		Tuple{k = 'group', v = str(prj.project)},
 		Tuple{k = 'url', v = str((if tierFor(e.audience).listener = Listener::tls then 'https' else 'http' endif)
 			+ '://' + e.host + r.path)},
-		Tuple{k = 'conditions', v = arr(Sequence{str('[STATUS] < 500')})}})))->flatten())}}) endif;
+		Tuple{k = 'conditions', v = arr(Sequence{str('[STATUS] < 500')})}}))
+		->append(if derivesGateRoute(self, e) then gateCheck(self, e, prj) else null endif)
+		->select(c | c <> null))->flatten())}}) endif;
 
 -- Per identity that holds a grant, one Vault policy over every grant it holds
 -- and one Kubernetes auth role bound to it, estate-scoped by namespace: the
@@ -2832,8 +2834,12 @@ query ResolvedExposure::json() : String = obj(Sequence{
 	Tuple{k = 'routes', v = arr(self.routes->collect(r | obj(Sequence{
 		Tuple{k = 'path', v = str(r.path)},
 		Tuple{k = 'match', v = str(r.match.spelling())},
-		Tuple{k = 'process', v = str(r.process.name)},
-		Tuple{k = 'surface', v = str(r.surface)},
+		Tuple{k = 'process', v = if r.process = null then null else str(r.process.name) endif},
+		Tuple{k = 'surface', v = opt(r.surface)},
+		Tuple{k = 'gate', v = if r.gate = null then null else obj(Sequence{
+			Tuple{k = 'name', v = str(r.gate.name)},
+			Tuple{k = 'namespace', v = str(r.gate.namespace)},
+			Tuple{k = 'port', v = num(r.gate.port)}}) endif},
 		Tuple{k = 'audience', v = str(r.audience)},
 		Tuple{k = 'precedence', v = num(r.precedence)},
 		Tuple{k = 'middleware', v = arr(r.middleware->collect(m | obj(Sequence{
@@ -3719,3 +3725,59 @@ query lowPrivileges(p : ResolvedProcess) : Sequence(String) =
 	if p.surfaces->exists(s | s.port < FIRST_UNPRIVILEGED_PORT)
 			or p.nodePorts->exists(x | x.targetPort < FIRST_UNPRIVILEGED_PORT)
 		then Sequence{'NET_BIND_SERVICE'} else Sequence{} endif;
+
+-- ================================================================== identity: the gate route
+-- identity: the Gate's /.auth/ route a gated Client's exposure gains (spec/v1/17-sign-in.md#what-the-edge-derives).
+
+property GATE_PATH : String = '/.auth/';
+
+-- Whether the exposure the Client names is authenticated and the Client gated.
+query derivesGateRoute(app : EffectiveApplication, exposure : Exposure) : Boolean =
+	app.client <> null and clientExposureOf(app) = exposure
+		and exposure.audience = Audience::authenticated and app.client.signIn = SignInMode::gated;
+
+-- The ranks of the exposure's routes, with the gate route's, a prefix of its length.
+query exposureRanks(exposure : Exposure, app : EffectiveApplication) : Set(Integer) =
+	exposure.routes->collect(o | rankOf(o))->asSet()
+		->union(if derivesGateRoute(app, exposure) then Set{-GATE_PATH.size()} else Set{} endif);
+
+query precedenceWith(rank : Integer, ranks : Set(Integer)) : Integer =
+	ranks->select(k | k < rank)->size() + 1;
+
+query gateProcessOf(exposure : Exposure) : PI::Process =
+	let fa : ForwardAuth = tierFor(exposure.audience).forwardAuth in
+	fa.provider.processes->select(p | p.provides->exists(s | s.key = fa.surface))->first();
+
+-- The derived route: the Gate's Service, with the exposure's security headers and no forward-auth.
+query gateRouteOf(exposure : Exposure, app : EffectiveApplication) : ResolvedRoute =
+	let fa : ForwardAuth = tierFor(exposure.audience).forwardAuth in
+	let proxy : String = homeNamespace(projectOf(tierFor(exposure.audience).traefik.id),
+		tierFor(exposure.audience).traefik.id) in
+	object ResolvedRoute {
+		path := GATE_PATH;
+		match := RD::Match::prefix;
+		audience := Audience::authenticated.spelling();
+		precedence := precedenceWith(-GATE_PATH.size(), exposureRanks(exposure, app));
+		gate := object GateRoute {
+			name := gateProcessOf(exposure).name;
+			namespace := homeNamespace(projectOf(fa.provider.id), fa.provider.id);
+			port := fa.surface.portOf(fa.provider.id);
+		};
+		middleware := Sequence{object MiddlewareStep {
+			kind := MiddlewareKind::securityHeaders;
+			if exposure.oclAsType(ECORE::EObject).states('contentPolicy')
+				then contentPolicy := exposure.contentPolicy.spelling() endif;
+			name := if contentPolicy = null then 'security-headers'
+				else 'security-headers-' + contentPolicy endif;
+			namespace := proxy;
+		}};
+	};
+
+-- The external check of the derived route, numbered after the exposure's own routes.
+query gateCheck(app : EffectiveApplication, e : Exposure, prj : EffectiveProject) : String =
+	obj(Sequence{
+		Tuple{k = 'name', v = str(app.id + '-' + e.name + '-' + (e.routes->size() + 1).toString())},
+		Tuple{k = 'group', v = str(prj.project)},
+		Tuple{k = 'url', v = str((if tierFor(e.audience).listener = Listener::tls then 'https' else 'http' endif)
+			+ '://' + e.host + GATE_PATH)},
+		Tuple{k = 'conditions', v = arr(Sequence{str('[STATUS] < 500')})}});

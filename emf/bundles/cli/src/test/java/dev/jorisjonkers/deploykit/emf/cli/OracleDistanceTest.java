@@ -163,6 +163,7 @@ class OracleDistanceTest {
             "rendered data",
             "rendered delivery",
             "rendered edge",
+            "rendered identity",
             "rendered knowledge-platform",
             "rendered mail",
             "rendered minimal",
