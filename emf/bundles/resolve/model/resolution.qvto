@@ -345,6 +345,9 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 		}
 	endif;
 	if managed(self) then migration := self.map migrationOf(prj) endif;
+	alertRules := Sequence{1..self.alertRules->size()}->collect(i | obsAlertRules(self.id, self.alertRules->at(i)._from, fileOf(prj.project, self.alertRules->at(i)._from)));
+	if obsAlerts(self) then alerting := obsAlerting(self) endif;
+	if obsFlux(self) then fluxScrape := obsFluxScrape() endif;
 	-- The operator syncs from the Secret Store wherever a grant or a backup's
 	-- off-cluster or peer credential is delivered anywhere but to the Process itself,
 	-- and a migration reads its owner credential from the store itself.
@@ -711,7 +714,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
 	if self.vpn <> null then vpn := vpnOf(self) endif;
 	hardening := estate.hardening.spelling();
-	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self));
+	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self))->union(obsReceiverGrants(self, app));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
 	priorityClass := priorityOf(self, app, prj);
@@ -1823,6 +1826,9 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				adapter := AdapterName::grafana;
 				application := self.resolveone(ResolvedApplication);
 			}.oclAsType(Deliverable)} endif)
+		->union(if self.alertRules->isEmpty() then Sequence{} else Sequence{object AlertRulesFile {path := root + 'alertrules.yaml'; adapter := AdapterName::prometheus; application := self.resolveone(ResolvedApplication);}.oclAsType(Deliverable)} endif)
+		->union(if obsAlerts(self) then Sequence{object AlertingFile {path := root + 'alertmanagerconfig.yaml'; adapter := AdapterName::prometheus; application := self.resolveone(ResolvedApplication);}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if obsFlux(self) then Sequence{object FluxMonitorFile {path := root + 'flux-podmonitor.yaml'; adapter := AdapterName::prometheus; application := self.resolveone(ResolvedApplication);}.oclAsType(Deliverable)} else Sequence{} endif)
 		->union(if backedUp->notEmpty() then Sequence{object BackupFile {
 				path := root + 'backup.yaml';
 				adapter := AdapterName::kubernetes;
@@ -2024,7 +2030,8 @@ query egressOf(p : PI::Process) : Sequence(PolicyPeer) =
 	->union(if p.secrets->isEmpty() and not edgeAcme(p) then Sequence{} else storePeers() endif)
 	-- The Release Gate reaches every gate member's pods (spec/v1/16-dependencies.md#the-member-label).
 	->union(if estate.delivery <> null and estate.delivery.gate.id = app.id
-		then Sequence{object PolicyPeer { rule := 'gate-members'; port := 0; }} else Sequence{} endif);
+		then Sequence{object PolicyPeer { rule := 'gate-members'; port := 0; }} else Sequence{} endif)
+	->union(obsScrapeEgress(app));
 
 -- Whether a Process serves DNS on an L4 port and resolves through the platform's upstream nameservers.
 query servesDns(p : PI::Process) : Boolean =
@@ -2312,6 +2319,9 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 			Tuple{k = 'consumes', v = arr(self.migration.consumes->collect(c | str(c)))},
 			Tuple{k = 'credential', v = self.migration.credential.json()},
 			Tuple{k = 'egress', v = arr(self.migration.egress->collect(x | x.json()))}}) endif},
+		Tuple{k = 'alertRules', v = if self.alertRules->isEmpty() then null else arr(Sequence{1..self.alertRules->size()}->collect(i | obsAlertRulesJson(self.alertRules->at(i), src.alertRules->at(i)._from))) endif},
+		Tuple{k = 'alerting', v = if self.alerting = null then null else obsAlertingJson(self.alerting) endif},
+		Tuple{k = 'fluxScrape', v = if self.fluxScrape = null then null else obsFluxJson(self.fluxScrape) endif},
 		Tuple{k = 'secretStore', v = opt(self.secretStore)},
 		Tuple{k = 'dashboards', v = if self.dashboards = null then null else obj(Sequence{
 			Tuple{k = 'folder', v = str(self.dashboards.folder)},
@@ -2935,3 +2945,158 @@ helper EffectiveProject::edgeFiles(inout plan : ResolvedDeployment) : OclVoid {
 		};
 	};
 }
+
+-- ==================================================================== observability
+-- observability: rule groups, the Alertmanager's routing, and Flux's metrics scrape.
+
+query obsAlerts(app : EffectiveApplication) : Boolean =
+	estate.monitoring <> null and estate.monitoring.alertmanager.id = app.id;
+
+query obsFlux(app : EffectiveApplication) : Boolean =
+	estate.bootstrap.flux.metrics <> null and estate.telemetry <> null and estate.telemetry.metrics.id = app.id;
+
+query obsFluxScrape() : ResolvedFluxScrape =
+	object ResolvedFluxScrape {
+		namespace := estate.bootstrap.flux.sourceRef.substringBefore('/');
+		port := estate.bootstrap.flux.metrics.port;
+		path := estate.bootstrap.flux.metrics.path;
+		interval := estate.monitors.interval;
+		timeout := estate.monitors.timeout;
+		labels := estate.monitors.labels->sortedBy(l | l.key)
+			->collect(l | object KeyValue { key := l.key; value := l.value; });
+	};
+
+query obsAlerting(app : EffectiveApplication) : ResolvedAlerting =
+	object ResolvedAlerting {
+		routes := estate.monitoring.routes->collect(r | object AlertRoute {
+			severity := r.severity; receiver := r.receiver; repeat := r.repeat; });
+		receivers := estate.monitoring.receivers->collect(r | object AlertReceiver {
+			name := r.name;
+			secret := destinationOf(app.processes->first().name, r.discord.webhook.path);
+			key := r.discord.webhook.key; });
+	};
+
+-- The rule name: the Application, then the file's base name without its extension.
+query obsRuleName(app : String, source : String) : String =
+	let base : String = source.substring(source.lastIndexOf('/') + 1, source.size()) in
+	app + '-' + (if base.endsWith('.yaml') then base.substring(1, base.size() - 5)
+		else if base.endsWith('.yml') then base.substring(1, base.size() - 4) else base endif endif)
+		.toLower().replaceAll('[^a-z0-9-]', '-');
+
+-- A rule-group file as indented lines, without blanks and comments.
+query obsLines(content : String) : Sequence(Tuple(n : Integer, t : String)) =
+	content.tokenize('\n')->select(l | l.trim().size() > 0 and not l.trim().startsWith('#'))
+		->collect(l | Tuple{n = l.size() - l.replaceAll('^ +', '').size(), t = l.trim()})->asSequence();
+
+query obsBare(t : String) : String =
+	if t.startsWith('- ') then t.substring(3, t.size()).trim() else t endif;
+
+query obsUnquote(s : String) : String =
+	if s.size() >= 2 and ((s.startsWith('"') and s.endsWith('"')) or (s.startsWith('\'') and s.endsWith('\'')))
+	then s.substring(2, s.size() - 1) else s endif;
+
+query obsKey(t : String) : String =
+	let b : String = obsBare(t) in b.substring(1, b.indexOf(':') - 1);
+
+query obsValue(t : String) : String =
+	let b : String = obsBare(t) in obsUnquote(b.substring(b.indexOf(':') + 1, b.size()).trim());
+
+-- The last line of the span that starts at `i`, among the lines that start `marks`.
+query obsEnd(marks : Sequence(Integer), i : Integer, last : Integer) : Integer =
+	let later : Sequence(Integer) = marks->select(x | x > i)->asSequence() in
+	if later->isEmpty() then last else later->first() - 1 endif;
+
+query obsAlertRules(app : String, source : String, content : String) : ResolvedAlertRules =
+	let ls : Sequence(Tuple(n : Integer, t : String)) = obsLines(content) in
+	let gs : Sequence(Integer) = Sequence{1..ls->size()}->select(i | ls->at(i).t.startsWith('- name:'))->asSequence() in
+	object ResolvedAlertRules {
+		name := obsRuleName(app, source);
+		groups := gs->collect(g | let gEnd : Integer = obsEnd(gs, g, ls->size()) in
+			let rs : Sequence(Integer) = Sequence{g + 1..gEnd}->select(i | ls->at(i).t.startsWith('- alert:'))->asSequence() in
+			object AlertRuleGroup {
+				name := obsValue(ls->at(g).t);
+				rules := rs->collect(r | let rEnd : Integer = obsEnd(rs, r, gEnd) in
+					let fields : Integer = ls->at(r).n + 2 in
+					let top : Sequence(Integer) = Sequence{r..rEnd}->select(j | ls->at(j).n = fields or j = r)->asSequence() in
+					object AlertRule {
+						alert := obsValue(ls->at(r).t);
+						expr := obsValue(ls->at(top->select(j | obsBare(ls->at(j).t).startsWith('expr:'))->first()).t);
+						duration := let d : Sequence(Integer) = top->select(j | obsBare(ls->at(j).t).startsWith('for:'))->asSequence() in
+							if d->isEmpty() then null else obsValue(ls->at(d->first()).t) endif;
+						labels := obsMap(ls, r, rEnd, 'labels', fields);
+						annotations := obsMap(ls, r, rEnd, 'annotations', fields);
+					});
+			});
+	};
+
+-- The entries of the mapping `key` at `indent`, within lines from..to.
+query obsMap(ls : Sequence(Tuple(n : Integer, t : String)), lo : Integer, hi : Integer, heading : String, indent : Integer) : Sequence(KeyValue) =
+	let at : Sequence(Integer) = Sequence{lo..hi}->select(j | ls->at(j).n = indent and ls->at(j).t = heading + ':')->asSequence() in
+	if at->isEmpty() then Sequence{} else
+	let start : Integer = at->first() in
+	Sequence{start + 1..hi}->select(j | Sequence{start + 1..j}->forAll(m | ls->at(m).n > indent))
+		->collect(j | object KeyValue { key := obsKey(ls->at(j).t); value := obsValue(ls->at(j).t); })->asSequence() endif;
+
+query obsKvJson(items : Sequence(KeyValue)) : String =
+	if items->isEmpty() then null else obj(items->collect(i | Tuple{k = i.key, v = str(i.value)})) endif;
+
+query obsAlertRulesJson(rules : ResolvedAlertRules, source : String) : String =
+	obj(Sequence{
+		Tuple{k = 'from', v = str(source)},
+		Tuple{k = 'groups', v = arr(rules.groups->collect(g | obj(Sequence{
+			Tuple{k = 'name', v = str(g.name)},
+			Tuple{k = 'rules', v = arr(g.rules->collect(r | obj(Sequence{
+				Tuple{k = 'alert', v = str(r.alert)},
+				Tuple{k = 'expr', v = str(r.expr)},
+				Tuple{k = 'for', v = opt(r.duration)},
+				Tuple{k = 'labels', v = obsKvJson(r.labels->asSequence())},
+				Tuple{k = 'annotations', v = obsKvJson(r.annotations->asSequence())}}))->asSequence())}}))->asSequence())}});
+
+query obsAlertingJson(alerting : ResolvedAlerting) : String =
+	obj(Sequence{
+		Tuple{k = 'receivers', v = arr(alerting.receivers->collect(r | obj(Sequence{
+			Tuple{k = 'name', v = str(r.name)},
+			Tuple{k = 'discord', v = obj(Sequence{
+				Tuple{k = 'secret', v = str(r.secret)},
+				Tuple{k = 'key', v = str(r.key)}})}}))->asSequence())},
+		Tuple{k = 'routes', v = arr(alerting.routes->collect(r | obj(Sequence{
+			Tuple{k = 'severity', v = str(r.severity)},
+			Tuple{k = 'receiver', v = str(r.receiver)},
+			Tuple{k = 'repeat', v = str(r.repeat)}}))->asSequence())}});
+
+query obsFluxJson(flux : ResolvedFluxScrape) : String =
+	obj(Sequence{
+		Tuple{k = 'namespace', v = str(flux.namespace)},
+		Tuple{k = 'port', v = num(flux.port)},
+		Tuple{k = 'path', v = str(flux.path)},
+		Tuple{k = 'interval', v = str(flux.interval)},
+		Tuple{k = 'timeout', v = str(flux.timeout)},
+		Tuple{k = 'labels', v = obsKvJson(flux.labels->asSequence())}});
+
+-- Each receiver's webhook, read onto the Alertmanager's first Process through the one secret delivery.
+query obsReceiverGrants(p : PI::Process, app : EffectiveApplication) : Sequence(ResolvedGrant) =
+	if not obsAlerts(app) or app.processes->first() <> p then Sequence{} else
+	estate.monitoring.receivers->collect(r | object ResolvedGrant {
+		path := r.discord.webhook.path;
+		keys := Sequence{r.discord.webhook.key};
+		_access := 'read';
+		delivery := 'env';
+		destination := destinationOf(p.name, r.discord.webhook.path);
+	})->asSequence() endif;
+
+-- What the metrics stack scrapes: every Application's scrape target, where it runs, in one
+-- order, then Flux's controllers on the port the bootstrap set records.
+query obsScrapeEgress(app : EffectiveApplication) : Sequence(PolicyPeer) =
+	if estate.telemetry = null or estate.telemetry.metrics.id <> app.id then Sequence{} else
+	let targets : Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
+		projects->collect(prj | prj.applications->select(a | a.observability <> null and a.observability.scrape <> null)
+			->collect(a | Tuple{rule = 'peer', namespace = homeNamespace(prj.project, a.id),
+				process = homeProcess(a.id, a.observability.scrape.process.name),
+				port = a.observability.scrape.surface.value}))->flatten() in
+	named(targets->asOrderedSet()->asSequence()->sortedBy(t | t.namespace + ' ' + t.process + ' ' + t.port.toString())->asSequence())
+	->union(if estate.bootstrap.flux.metrics = null then Sequence{} else Sequence{object PolicyPeer {
+		rule := 'flux-metrics';
+		namespace := estate.bootstrap.flux.sourceRef.substringBefore('/');
+		port := estate.bootstrap.flux.metrics.port;
+	}} endif)
+	endif;
