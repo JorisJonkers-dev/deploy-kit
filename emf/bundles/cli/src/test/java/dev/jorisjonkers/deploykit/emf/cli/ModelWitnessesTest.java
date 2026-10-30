@@ -601,4 +601,18 @@ class ModelWitnessesTest {
                 object(Files.readString(authored.resolve("apps/auth/auth/workload.yaml")), "Deployment", "auth-api");
         assertThat(api).contains("- name: HOME\n              value: /work\n").doesNotContain("value: /tmp\n");
     }
+
+    @Test
+    void everyNamespaceTheRenderWritesIsNeverPruned() {
+        for (String[] namespace : new String[][] {
+            {"minimal", "apps/notes/namespace.yaml"},
+            {"node", "apps/node/namespace.yaml"},
+            {"auth", "estate/stable-addresses/namespace.yaml"}
+        }) {
+            assertThat(rendered(namespace[0], namespace[1]))
+                    .as(namespace[1])
+                    .contains("kind: Namespace")
+                    .contains("  annotations:\n    kustomize.toolkit.fluxcd.io/prune: disabled\n");
+        }
+    }
 }

@@ -40,6 +40,8 @@
 
 [comment ======================================================= project files /]
 
+[comment A namespace is never pruned, so no prune deletes it and the claims in it
+  (spec/v1/30-deliverables.md#flagger-ready-objects). /]
 [template private objects(d : resolveddeployment::NamespaceFile)]
   ---
   apiVersion: v1
@@ -48,6 +50,8 @@
     name: [d.namespace/]
     labels:
       app.kubernetes.io/managed-by: deploy-kit
+    annotations:
+      kustomize.toolkit.fluxcd.io/prune: disabled
 [/template]
 
 [comment An index lists what its directory holds, in order. /]

@@ -21,7 +21,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **57** witnesses, and **20** pending.
+This list holds **58** witnesses, and **20** pending.
 
 | id | JUnit test |
 |---|---|
@@ -82,6 +82,7 @@ This list holds **57** witnesses, and **20** pending.
 | REQ-117 | `ModelWitnessesTest#everyCanaryAsksTheReleaseGateAFourthQuestionRollback` |
 | REQ-125 | `ModelWitnessesTest#aSeededAssetIsTheFirstInitContainerThatWritesItAtMode0600AndTheProcessNeverMountsIt` |
 | REQ-152 | `ModelWitnessesTest#aContainerThatMountsAWritableTmpGetsHomeAfterItsOwnVariablesAndOneWithoutGetsNone` |
+| REQ-153 | `ModelWitnessesTest#everyNamespaceTheRenderWritesIsNeverPruned` |
 
 ## Pending
 

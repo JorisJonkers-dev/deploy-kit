@@ -48,6 +48,8 @@ class RenderingTest {
                           name: notes-system
                           labels:
                             app.kubernetes.io/managed-by: deploy-kit
+                          annotations:
+                            kustomize.toolkit.fluxcd.io/prune: disabled
                         """);
     }
 

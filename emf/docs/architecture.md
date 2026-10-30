@@ -226,7 +226,7 @@ one package is what lets that be an Ecore reference.
 
 A few refusals are decided in Java instead, beside the parse in the `cli`
 bundle, because each asks something the parsed model does not hold
-([0142](adr/emf/0142-a-refusal-is-decided-in-ocl-unless-the-model-cannot-hold-what-it-asks.md)):
+([0143](adr/emf/0143-a-refusal-is-decided-in-ocl-unless-the-model-cannot-hold-what-it-asks.md)):
 
 - `ShippedFiles`: whether a dashboard or a rule file a project names is beside
   it, keyed by a uid or holding rule groups, and whether two dashboards of the
