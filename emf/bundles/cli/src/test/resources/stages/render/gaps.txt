@@ -1,8 +1,3 @@
-BudgetFile is never instantiated in a render case's input
-BudgetFile is never instantiated in a render case's input (render.mtl dispatches on it)
-BudgetFile.adapter is never set in a render case's input
-BudgetFile.path is never set in a render case's input
-BudgetFile.processes is never set in a render case's input
 CatalogAdmin is never instantiated in a render case's input
 CatalogAdmin.password is never set in a render case's input
 CatalogAdmin.path is never set in a render case's input
@@ -34,11 +29,6 @@ GeneratedKeysFile.adapter is never set in a render case's input
 GeneratedKeysFile.keys is never set in a render case's input
 GeneratedKeysFile.path is never set in a render case's input
 IndexFile.namespace is never set in a render case's input
-MiddlewareKind.rateLimit is never used in a render case's input
-MiddlewareStep.allowance is never set in a render case's input
-MiddlewareStep.burst is never set in a render case's input
-MiddlewareStep.clientAddress is never set in a render case's input
-MiddlewareStep.per is never set in a render case's input
 MigratedDatabase is never instantiated in a render case's input
 MigratedDatabase.host is never set in a render case's input
 MigratedDatabase.name is never set in a render case's input

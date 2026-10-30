@@ -3,11 +3,92 @@
   <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
     <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
   </provenance>
-  <applications id="auth" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="auth" namespace="auth-system" reconcileUnit="/0/@reconcileUnits.0">
-    <processes name="auth-main" identity="auth-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="auth-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+  <applications id="auth" revision="sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0" project="auth" namespace="auth-system" reconcileUnit="/0/@reconcileUnits.0">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="1920s">
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
+      <members process="/0/@applications.0/@processes.0">
+        <readiness xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/readiness" port="8080"/>
+      </members>
+      <members process="/0/@applications.0/@processes.1">
+        <readiness xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </members>
+    </releaseGate>
+    <exposure name="public" host="auth.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/api/v1/users/register" match="exact" audience="anonymous" precedence="1" process="/0/@applications.0/@processes.0" surface="http">
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+        <middleware kind="rate-limit" allowance="10" per="1h" burst="10" clientAddress="cloudflare" name="auth-public-1-rate-limit" namespace="auth-system"/>
+      </routes>
+      <routes path="/api" audience="anonymous" precedence="2" process="/0/@applications.0/@processes.0" surface="http">
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+      </routes>
+      <routes path="/" audience="anonymous" precedence="3" process="/0/@applications.0/@processes.1" surface="http">
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <processes name="auth-api" identity="auth-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/auth/auth-api@sha256:3e5a7c9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3c5b7d9f1e3a5c7b9d1f3e5a" imageVersion="2.3.0" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="1920s" replicas="2" serving="auth-api-primary" servingLabel="app.kubernetes.io/name" memory="768Mi" cpu="250m" hardening="restricted" identityToken="true" component="jvm" priorityClass="platform-critical-app">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/readiness" port="8081"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/liveness" port="8081"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="120">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/liveness" port="8081"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <environment name="AUTH_ISSUER" value="https://auth.jorisjonkers.dev"/>
+      <environment name="AUTH_LOGIN_URL" value="https://auth.jorisjonkers.dev/login"/>
+      <environment name="CONFIRMATION_URL" value="https://auth.jorisjonkers.dev/confirm"/>
+      <environment name="DB_HOST" value="platform-postgres"/>
+      <environment name="DB_PORT" value="5432"/>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="MAIL_HOST" value="stalwart"/>
+      <environment name="MAIL_PORT" value="25"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="auth-api"/>
+      <environment name="PORT" value="8080"/>
+      <environment name="SESSION_COOKIE_SECURE" value="true"/>
+      <environment name="SPRING_CONFIG_IMPORT" value="vault://"/>
+      <environment name="SPRING_PROFILES_ACTIVE" value="prod"/>
+      <environment name="SPRING_RABBITMQ_HOST" value="platform-rabbitmq"/>
+      <environment name="SPRING_RABBITMQ_PORT" value="5672"/>
+      <environment name="VALKEY_HOST" value="platform-valkey"/>
+      <environment name="VALKEY_PORT" value="6379"/>
+      <environment name="VAULT_AUTHENTICATION" value="KUBERNETES"/>
+      <environment name="VAULT_ENABLED" value="true"/>
+      <environment name="VAULT_KUBERNETES_ROLE" value="auth-system-auth-api"/>
+      <consumes>platform-postgres.postgres</consumes>
+      <consumes>platform-valkey.redis</consumes>
+      <consumes>platform-rabbitmq.amqp</consumes>
+      <consumes>stalwart.smtp</consumes>
+    </processes>
+    <processes name="auth-ui" identity="auth-ui" lifecycle="application" image="ghcr.io/jorisjonkers-dev/auth/auth-ui@sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d" imageVersion="2.3.0" uid="101" gid="101" cutover="continuous" switchover="blue-green" deadline="210s" replicas="1" serving="auth-ui-primary" servingLabel="app.kubernetes.io/name" memory="64Mi" cpu="10m" hardening="restricted" component="static" priorityClass="platform-critical-app">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </startup>
+      <surfaces name="http" port="80"/>
       <placement>
         <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
       </placement>
+      <writablePaths path="/var/cache/nginx" size="64Mi"/>
+      <writablePaths path="/var/run" size="64Mi"/>
     </processes>
   </applications>
   <reconcileUnits name="apps-auth"/>
@@ -28,4 +109,7 @@
     <resources>namespace.yaml</resources>
     <resources>services.yaml</resources>
   </deliverables>
+  <deliverables xsi:type="resolveddeployment:SwitchoverFile" path="apps/auth/auth/canary.yaml" processes="/0/@applications.0/@processes.0 /0/@applications.0/@processes.1"/>
+  <deliverables xsi:type="resolveddeployment:BudgetFile" path="apps/auth/auth/pdb.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/auth/auth/route-public.yaml" adapter="traefik" exposure="/0/@applications.0/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
 </resolveddeployment:ResolvedDeployment>
