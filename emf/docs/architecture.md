@@ -443,8 +443,10 @@ drift apart. `parse` writes the authored extent with its env files,
 `lower` writes `effective.xmi` and each project's Effective Intent; `resolve`
 writes `<project>.resolveddeployment` and its edges for each project its
 `projects` file names; `render` writes the tree. The goldens are this
-implementation's own: `minimal` and `data` read the documents at the tag
-`mde-task-3`, and their rendered trees equal that tag's committed trees.
+implementation's own: `estate` reads main's worked documents, every project
+of the estate together, beside a `coverage` project and a Platform document
+that write what the worked documents leave out. A `resolve` or `render` case
+names the projects it resolves in its `projects` file.
 
 `Comparison` compares by content first and bytes last: JSON as a Jackson tree,
 YAML as every document of the stream through SnakeYAML's YAML 1.1 reader on both

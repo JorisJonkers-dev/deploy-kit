@@ -1,0 +1,4 @@
+{
+  "domains": [{ "name": "jorisjonkers.dev" }],
+  "accounts": [{ "name": "postmaster", "domain": "jorisjonkers.dev" }]
+}

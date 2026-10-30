@@ -1,0 +1,435 @@
+# The images lock: every image alias the estate's documents name, resolved to
+# one digest, the user the image runs as and the version of the software in it
+# (spec/v1/20-resolved-deployment.md#the-images-lock). A pinned input like any
+# other, carried by digest in every Resolved Deployment rendered from it.
+#
+# An alias is what a Process's `image` names; nothing authored names a tag or a
+# digest. `uid` and `gid` are what the image's own user is, read once when the
+# lock is written, and what the one hardening posture runs it as.
+
+apiVersion: lock.jorisjonkers.dev/v1
+kind: ImagesLock
+schemaVersion: 1.0.0
+name: estate
+
+images:
+  asset-sync:
+    repository: ghcr.io/jorisjonkers-dev/platform/asset-sync
+    digest: "sha256:5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e"
+    uid: 65532
+    gid: 65532
+    version: "1.0.0"
+  collector:
+    repository: ghcr.io/jorisjonkers-dev/delivery/collector
+    digest: "sha256:7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d"
+    uid: 65532
+    gid: 65532
+    version: "1.0.0"
+  reporter:
+    repository: ghcr.io/jorisjonkers-dev/delivery/reporter
+    digest: "sha256:4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f"
+    uid: 65532
+    gid: 65532
+    version: "1.0.0"
+  file-backup:
+    repository: ghcr.io/jorisjonkers-dev/platform/file-backup
+    digest: "sha256:2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d"
+    uid: 1000
+    gid: 1000
+    version: "1.2.0"
+  agents-api:
+    repository: ghcr.io/jorisjonkers-dev/agents/agents-api
+    digest: "sha256:7a1c3e5b9d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e6b8d0f"
+    uid: 1000
+    gid: 1000
+    version: "2.3.0"
+  agent-runner:
+    repository: ghcr.io/jorisjonkers-dev/agents/agent-runner
+    digest: "sha256:8b2d4f6e8a0c2e4b6d8f5a2c4e6b8d0f7a1c3e5b9d2f4a6c8e0b2d4f7e1f3c5a"
+    uid: 1000
+    gid: 1000
+    version: "2.3.0"
+  # agents as it runs live: hermes starts as root and drops to 10000, which is
+  # the user its data is owned by; the posture runs it as 10000 from the start.
+  hermes:
+    repository: docker.io/nousresearch/hermes-agent
+    digest: "sha256:64923faeae267792bf9bf87fe3b4c4869e35004e360c7df01730ad801b74d524"
+    uid: 10000
+    gid: 10000
+    version: "2026.8.31"
+  kubernetes-mcp-server:
+    repository: quay.io/containers/kubernetes_mcp_server
+    digest: "sha256:6d650f4bd6ac303ad82713c997e73a2d001602f9bf17392c9b9a0e30e29c6423"
+    uid: 1000
+    gid: 1000
+    version: "0.0.66"
+  agents-ui:
+    repository: ghcr.io/jorisjonkers-dev/agents-ui
+    digest: "sha256:5b41e0ab23e60fbb3f14f42fe5138e6c266aa1bf1289967bfc8a7f9f820bcbc6"
+    uid: 101
+    gid: 101
+    version: "0.19.1"
+  headlamp:
+    repository: ghcr.io/headlamp-k8s/headlamp
+    digest: "sha256:9c3e5a7b1d4f6a8c0e2b4d6f8a1c3e5b7d9f2a4c6e8b0d2f4a6c8e1b3d5f7a9c"
+    uid: 100
+    gid: 101
+    version: "v0.35.0"
+  adguard:
+    repository: docker.io/adguard/adguardhome
+    digest: "sha256:6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e"
+    uid: 1000
+    gid: 1000
+    version: "v0.107.79"
+  stalwart:
+    repository: docker.io/stalwartlabs/stalwart
+    digest: "sha256:5a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f"
+    uid: 2000
+    gid: 2000
+    version: "v0.16.0"
+  stalwart-provisioner:
+    repository: ghcr.io/jorisjonkers-dev/stalwart-provisioner
+    digest: "sha256:7d1f3b5a9c2e4f6b8d0a2c4e6f8b1d3a5c7e9f2b4d6a8c0e2f4b6d8a1c3e5f7b"
+    uid: 65532
+    gid: 65532
+    version: "0.22.0"
+  alertmanager:
+    repository: quay.io/prometheus/alertmanager
+    digest: "sha256:4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c"
+    uid: 65534
+    gid: 65534
+    version: "v0.28.1"
+  gluetun:
+    repository: docker.io/qmcgaw/gluetun
+    digest: "sha256:7e1f3c5a9b2d4f6e8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f"
+    uid: 0
+    gid: 0
+    version: "v3.40.0"
+  # The seeder (spec/v1/14-platform-intent.md#the-seeder): Docker Hub's
+  # busybox 1.37.0, its multi-arch index, which runs as nobody.
+  busybox:
+    repository: docker.io/library/busybox
+    digest: "sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec"
+    uid: 65534
+    gid: 65534
+    version: "1.37.0"
+  flagger:
+    repository: ghcr.io/fluxcd/flagger
+    digest: "sha256:5d1b8f3e7a2c9d4b6e0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b"
+    uid: 10001
+    gid: 10001
+    version: "1.41.0"
+  notes-api:
+    repository: ghcr.io/jorisjonkers-dev/notes/notes-api
+    digest: "sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a"
+    uid: 1000
+    gid: 1000
+    version: "1.4.0"
+  otel-collector:
+    repository: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib
+    digest: "sha256:8e2c4a6f0b1d3e5a7c9f2b4d6e8a0c1f3b5d7e9a2c4f6b8d0e1a3c5f7b9d2e4a"
+    uid: 10001
+    gid: 10001
+    version: "0.120.0"
+  postgres-backup:
+    repository: ghcr.io/jorisjonkers-dev/platform/postgres-backup
+    digest: "sha256:6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f"
+    uid: 999
+    gid: 999
+    version: "1.2.0"
+  postgres-catalog:
+    repository: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog
+    digest: "sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c"
+    uid: 65532
+    gid: 65532
+    version: "1.0.0"
+  garage-catalog:
+    repository: ghcr.io/jorisjonkers-dev/delivery/garage-catalog
+    digest: "sha256:3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e"
+    uid: 65532
+    gid: 65532
+    version: "1.0.0"
+  prometheus:
+    repository: quay.io/prometheus/prometheus
+    digest: "sha256:4c6e8a0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c"
+    uid: 65534
+    gid: 65534
+    version: "v3.2.1"
+  mongo-backup:
+    repository: ghcr.io/jorisjonkers-dev/platform/mongo-backup
+    digest: "sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d"
+    uid: 999
+    gid: 999
+    version: "1.0.0"
+  rabbitmq-backup:
+    repository: ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup
+    digest: "sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2"
+    uid: 999
+    gid: 999
+    version: "1.2.0"
+  release-gate:
+    repository: ghcr.io/jorisjonkers-dev/delivery/release-gate
+    digest: "sha256:3e7a9c1d5b2f8e4a6c0d9b7e5f3a1c8d6e4b2a0f9c7e5d3b1a8f6e4c2d0b9a7e"
+    uid: 1000
+    gid: 1000
+    version: "1.0.0"
+  traefik:
+    repository: docker.io/library/traefik
+    digest: "sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a"
+    uid: 65532
+    gid: 65532
+    version: "v3.3.4"
+  vault:
+    repository: docker.io/hashicorp/vault
+    digest: "sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c"
+    uid: 100
+    gid: 1000
+    version: "1.18.5"
+  postgres-exporter:
+    repository: quay.io/prometheuscommunity/postgres-exporter
+    digest: "sha256:4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d"
+    uid: 65534
+    gid: 65534
+    version: "v0.17.1"
+  postgres-move:
+    repository: ghcr.io/jorisjonkers-dev/estate/postgres-move
+    digest: "sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f"
+    uid: 999
+    gid: 999
+    version: "1.0.0"
+  postgres:
+    repository: docker.io/pgvector/pgvector
+    digest: "sha256:9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e"
+    uid: 999
+    gid: 999
+    version: "17.2.0"
+  rabbitmq:
+    repository: docker.io/library/rabbitmq
+    digest: "sha256:2d4f6b8a0c2e4d6f8b0a2c4e6d8f0b2a4c6e8d0f2b4a6c8e0d2f4b6a8c0e2d4f"
+    uid: 999
+    gid: 999
+    version: "4.0.7"
+  garage:
+    repository: docker.io/dxflrs/garage
+    digest: "sha256:8d0f2b4c6e8a0d2f4b6c8e0a2d4f6b8c0e2a4d6f8b0c2e4a6d8f0b2c4e6a8d0f"
+    uid: 1000
+    gid: 1000
+    version: "2.3.0"
+  mongo:
+    repository: docker.io/library/mongo
+    digest: "sha256:5f7b9d1a3c5e7f9b1d3a5c7e9f1b3d5a7c9e1f3b5d7a9c1e3f5b7d9a1c3e5f7b"
+    uid: 999
+    gid: 999
+    version: "8.0.15"
+  valkey:
+    repository: docker.io/valkey/valkey
+    digest: "sha256:6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c"
+    uid: 999
+    gid: 1000
+    version: "8.1.0"
+  auth-api:
+    repository: ghcr.io/jorisjonkers-dev/auth/auth-api
+    digest: "sha256:3e5a7c9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3c5b7d9f1e3a5c7b9d1f3e5a"
+    uid: 1000
+    gid: 1000
+    version: "2.3.0"
+  auth-ui:
+    repository: ghcr.io/jorisjonkers-dev/auth/auth-ui
+    digest: "sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d"
+    uid: 101
+    gid: 101
+    version: "2.3.0"
+  # Built FROM liquibase-runner with the Application's changelog in it, by the
+  # Application's own CI (spec/v1/14-platform-intent.md#migration-policy).
+  auth-migration:
+    repository: ghcr.io/jorisjonkers-dev/auth/auth-migration
+    digest: "sha256:5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e"
+    uid: 1000
+    gid: 1000
+    version: "2.3.0"
+  vault-policy:
+    repository: ghcr.io/jorisjonkers-dev/delivery/vault-policy
+    digest: "sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7"
+    uid: 65532
+    gid: 65532
+    version: "1.0.0"
+  # The knowledge platform (spec/v1/examples/knowledge-platform): the digests fleet-infra pins.
+  # Where fleet-infra runs an image as its own user, that user is the lock's; karakeep's three
+  # run as their images' defaults there, which RENDER-GAPS.md beside the example records.
+  docling-serve:
+    repository: ghcr.io/docling-project/docling-serve
+    digest: "sha256:5d1a649d48b5715e23ec4906bb0624632b1971a1d975a4bc57d0f723114c7c6e"
+    uid: 1000
+    gid: 1000
+    version: "v1.5.0"
+  hindsight-api:
+    repository: ghcr.io/vectorize-io/hindsight-api
+    digest: "sha256:7b14a1f4062252992d0176758753615e0a2071d9a269995be007be223ab01812"
+    uid: 1000
+    gid: 1000
+    version: "0.4.0"
+  hindsight-control-plane:
+    repository: ghcr.io/vectorize-io/hindsight-control-plane
+    digest: "sha256:d9bf57083f7cb0a53ee5011bdfde6aae2490dbf5c360d2d1bff10473b45eb112"
+    uid: 1000
+    gid: 1000
+    version: "0.4.0"
+  text-embeddings-inference:
+    repository: ghcr.io/huggingface/text-embeddings-inference
+    digest: "sha256:8de25e75ce39617f17f2f6c77d60a4f75b65e779ed5005420eb1400072a15c1c"
+    uid: 1000
+    gid: 1000
+    version: "1.7.0"
+  basic-memory:
+    repository: ghcr.io/basicmachines-co/basic-memory
+    digest: "sha256:939f1173d96626c280763e14622f2381d49fbbb7db17cae2e832f4f639405643"
+    uid: 1000
+    gid: 1000
+    version: "v0.14.2"
+  basic-memory-git-sync:
+    repository: ghcr.io/jorisjonkers-dev/knowledge/basic-memory-git-sync
+    digest: "sha256:7507f69d7e903da30006f07d84091d892dfa42c359c125cccaec05506af36e50"
+    uid: 1000
+    gid: 1000
+    version: "1.0.0"
+  karakeep:
+    repository: ghcr.io/karakeep-app/karakeep
+    digest: "sha256:3d57623bf031f32a0597a3ebe0cd869bff6ba181c02ebc90fac492458bcfd4a4"
+    uid: 1000
+    gid: 1000
+    version: "0.33.2"
+  meilisearch:
+    repository: getmeili/meilisearch
+    digest: "sha256:860fa4baed04ae1c235de870edab0c8006227546dea1bbb6411fbfc5e27cf1db"
+    uid: 1000
+    gid: 1000
+    version: "v1.41.0"
+  karakeep-chrome:
+    repository: ghcr.io/karakeep-app/karakeep-chrome
+    digest: "sha256:5b19bbb160e9ff60681a3abd97e1c4ec9f64212301410de658c3900ab7ef31e7"
+    uid: 1000
+    gid: 1000
+    version: "124.0.6367.78"
+  # The worked sign-in (spec/v1/examples/identity): the Identity Provider and
+  # the Applications that sign people in through it, grafana among them, which
+  # the observability example declares.
+  identity:
+    repository: ghcr.io/jorisjonkers-dev/identity/identity
+    digest: "sha256:1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c"
+    uid: 65532
+    gid: 65532
+    version: "1.0.0"
+  grafana:
+    repository: docker.io/grafana/grafana
+    digest: "sha256:2c4e6a8b0d2f4c6e8a0b2d4f6c8e0a2b4d6f8c0e2a4b6d8f0c2e4a6b8d0f2c4e"
+    uid: 472
+    gid: 472
+    version: "12.2.0"
+  portal:
+    repository: ghcr.io/jorisjonkers-dev/identity/portal
+    digest: "sha256:3d5f7b9c1e3a5d7f9b1c3e5a7d9f1b3c5e7a9d1f3b5c7e9a1d3f5b7c9e1a3d5f"
+    uid: 101
+    gid: 101
+    version: "1.0.0"
+  whoami:
+    repository: docker.io/traefik/whoami
+    digest: "sha256:4e6a8c0d2f4b6e8a0c2d4f6b8e0a2c4d6f8b0e2a4c6d8f0b2e4a6c8d0f2b4e6a"
+    uid: 65532
+    gid: 65532
+    version: "v1.11.0"
+  dcgm-exporter:
+    repository: nvcr.io/nvidia/k8s/dcgm-exporter
+    digest: "sha256:6faf8666aeffe3aa674aa33eb59433addf6b8d5ec267ac1a096892d1ffab6a0b"
+    uid: 0
+    gid: 0
+    version: "4.1.1-4.0.4"
+  metallb-controller:
+    repository: quay.io/metallb/controller
+    digest: "sha256:8bd722cbf5d88cf8b9c82fed1ab069dc1a2f8e5ee383dcf57e49c359ee9d27a3"
+    uid: 65534
+    gid: 65534
+    version: "0.14.9"
+  metallb-speaker:
+    repository: quay.io/metallb/speaker
+    digest: "sha256:a2de24e2d206541cb9f101b66876944ecd5a2f19d1783d674e982bfb829defbe"
+    uid: 0
+    gid: 0
+    version: "0.14.9"
+  node-exporter:
+    repository: quay.io/prometheus/node-exporter
+    digest: "sha256:2303824a4e3dc61fe3195d1a6e978029d4774876cc9aba9d2c60ef85eb96a845"
+    uid: 65534
+    gid: 65534
+    version: "1.9.0"
+  nvidia-device-plugin:
+    repository: nvcr.io/nvidia/k8s-device-plugin
+    digest: "sha256:eeaf499dbb6f09bb79d95f788d3d87ca6ffa0ae36ed63210d5672e08ba266ff4"
+    uid: 0
+    gid: 0
+    version: "0.17.0"
+  external-dns:
+    repository: registry.k8s.io/external-dns/external-dns
+    digest: "sha256:32d7bec08ad97a73bf55e6bd4a434206f5eefb0b15adc05453203c72788fcd5d"
+    uid: 65532
+    gid: 65532
+    version: "0.15.1"
+  vault-secrets-operator:
+    repository: docker.io/hashicorp/vault-secrets-operator
+    digest: "sha256:286ccf0ef7da6fd261b12075a0e5c05f5df0a1676796614e5d8f53d9ddddfc7c"
+    uid: 65532
+    gid: 65532
+    version: "0.10.0"
+  prometheus-operator:
+    repository: quay.io/prometheus-operator/prometheus-operator
+    digest: "sha256:b32bec04dd57ec4c604c3f72b7103224b6006922536099eb5e92c017524819c6"
+    uid: 65534
+    gid: 65534
+    version: "0.81.0"
+  kube-state-metrics:
+    repository: registry.k8s.io/kube-state-metrics/kube-state-metrics
+    digest: "sha256:6e9bea4d3f394ba14fe405f6027d4d2187f751814702d595a0f68a9cc679171c"
+    uid: 65534
+    gid: 65534
+    version: "2.15.0"
+  grafana-operator:
+    repository: ghcr.io/grafana/grafana-operator
+    digest: "sha256:5689f1966f7e00acd0cdcff38ae0fc49d66469b384af9139412d645439937c2d"
+    uid: 65532
+    gid: 65532
+    version: "5.17.0"
+  loki:
+    repository: docker.io/grafana/loki
+    digest: "sha256:982945308d3682d16636fd628c314e293499e99c00120acd9b693f5ab16e1648"
+    uid: 10001
+    gid: 10001
+    version: "3.4.2"
+  tempo:
+    repository: docker.io/grafana/tempo
+    digest: "sha256:8d6546721a1d106cf8d27f7326ebae7e83c1592aeb7479b8f7ec9d8d700d464f"
+    uid: 10001
+    gid: 10001
+    version: "2.7.1"
+  pyroscope:
+    repository: docker.io/grafana/pyroscope
+    digest: "sha256:af2bcaf32f82481f3d0138ebd1f99ba2ca96ac6104acac0a10ee9b193e5df2af"
+    uid: 10001
+    gid: 10001
+    version: "1.12.0"
+  gatus:
+    repository: ghcr.io/twin/gatus
+    digest: "sha256:421c15f697f7992eb00e61643a4284e8d2f57bcc2eabea3639459fa1040add33"
+    uid: 65534
+    gid: 65534
+    version: "5.17.0"
+  gatus-checks:
+    repository: ghcr.io/jorisjonkers-dev/platform/gatus-checks
+    digest: "sha256:a542f60b6e21372a737b4f4dd62c5fd41d76939818b57b0ebb46b650f29dcd5a"
+    uid: 65532
+    gid: 65532
+    version: "1.0.0"
+  alloy:
+    repository: docker.io/grafana/alloy
+    digest: "sha256:65d9d6c5c7c2d5c29e38b777edf8da1dbd764f67deeeaa230724967cafe4e684"
+    uid: 473
+    gid: 473
+    version: "1.7.1"

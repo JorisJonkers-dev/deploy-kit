@@ -1,0 +1,69 @@
+# Worked example: mail's web admin, the live case of a route's redirect
+# (spec/v1/10-project-intent.md#exposure).
+#
+# Exercises: a route that redirects. Stalwart serves its web admin under
+# /admin/ and answers 404 at the bare root, so the root of the host redirects
+# to /admin/. The redirect is the route's own: `match: exact` on `/`, so the
+# path it lands on is served by the prefix route below and never redirected
+# again (a redirect its own route matches is E_REDIRECT_LOOP).
+#
+# Also exercises: a raw surface on a node's own address
+# (spec/v1/10-project-intent.md#l4-exposure). Mail's SMTP and IMAP listeners
+# are reached on `mail-node`, the address of a node at a site with no pool, so
+# each port renders a host port and the Process is held to that node. A host
+# port holds one copy, so the cutover is `interrupted`: a `continuous` one is
+# E_CUTOVER_UNHONOURABLE here. Mail's mailboxes are not this example's.
+#
+# Also exercises: a sidecar that mounts an Asset of its Process
+# (spec/v1/10-project-intent.md#sidecars). The provisioner beside Stalwart
+# applies the manifest of domains and accounts against the admin API on
+# localhost. The manifest is the Process's Asset, rendered as its one
+# content-hashed ConfigMap, and the sidecar names it by `from` to mount it; an
+# Asset the Process does not hold is E_UNKNOWN_SIDECAR_ASSET.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: mail # the namespace derives: mail-system
+owner: joris
+
+applications:
+  - id: stalwart
+    exposure:
+      - name: admin
+        host: mail.jorisjonkers.dev
+        audience: authenticated # the web admin sits behind forward-auth
+        routes:
+          - { path: /, match: exact, process: stalwart, surface: http, redirectTo: /admin/ }
+          - { path: /, match: prefix, process: stalwart, surface: http }
+    l4Exposure:
+      - { address: mail-node, port: 25, protocol: tcp, process: stalwart, surface: smtp }
+      - { address: mail-node, port: 993, protocol: tcp, process: stalwart, surface: imaps }
+    processes:
+      - name: stalwart
+        lifecycle: application
+        image: stalwart
+        runtime: none
+        provides:
+          http: 8080
+          smtp: 25
+          imaps: 993
+        placement:
+          memory: 512Mi
+          cpu: 100m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 60s
+        cutover: interrupted
+        assets:
+          - from: config/manifest.json
+            mountAt: /etc/stalwart-provisioner/manifest.json
+        sidecars:
+          - name: stalwart-apply
+            image: stalwart-provisioner
+            memory: 64Mi
+            cpu: 10m
+            assets:
+              - { from: config/manifest.json, mountAt: /etc/stalwart-provisioner/manifest.json }

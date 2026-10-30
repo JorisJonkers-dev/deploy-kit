@@ -47,6 +47,7 @@ class FieldCoverageTest {
             if (Files.isRegularFile(file)) {
                 kept.retainAll(baseline);
             }
+            Files.createDirectories(file.getParent());
             Files.write(file, kept);
             return;
         }
