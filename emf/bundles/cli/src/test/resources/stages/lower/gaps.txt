@@ -1,0 +1,27 @@
+Audience.internal is never used by a lower case
+Audience.internal is never used in a lower case's input
+ContentPolicy.admin is never used by a lower case
+ContentPolicy.admin is never used in a lower case's input
+ContentPolicy.workflow is never used by a lower case
+ContentPolicy.workflow is never used in a lower case's input
+DatabaseEngine.database is never used by a lower case
+DatabaseEngine.database is never used in a lower case's input
+DatabaseGrant is never instantiated by a lower case
+DatabaseGrant is never instantiated in a lower case's input
+DatabaseGrant.delivery is never set by a lower case
+DatabaseGrant.delivery is never set in a lower case's input
+DatabaseGrant.engine is never set by a lower case
+DatabaseGrant.engine is never set in a lower case's input
+DatabaseGrant.fileMode is never set by a lower case
+DatabaseGrant.fileMode is never set in a lower case's input
+DatabaseGrant.mountAt is never set by a lower case
+DatabaseGrant.mountAt is never set in a lower case's input
+DatabaseGrant.role is never set by a lower case
+DatabaseGrant.role is never set in a lower case's input
+DatabaseGrant.rotation is never set by a lower case
+DatabaseGrant.rotation is never set in a lower case's input
+Engine.valkey is never used by a lower case
+Engine.valkey is never used in a lower case's input
+Generate.adopt is never set by a lower case
+Generate.adopt is never set in a lower case's input
+LibraryAccess.read is never used by a lower case

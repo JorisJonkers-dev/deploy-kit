@@ -1,0 +1,77 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: identity
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/name: identity
+    app.kubernetes.io/instance: identity
+    app.kubernetes.io/part-of: identity
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: identity
+  progressDeadlineSeconds: 210
+  service:
+    port: 8080
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: identity
+          process: identity
+          revision: sha256:04f21489fa0baf215c3c144f3de73f8ef87c180b2b796d5b1ed058e6766df332
+          paths: /
+          readiness: /health/ready
+          hostnames: id.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: identity
+          process: identity
+          revision: sha256:04f21489fa0baf215c3c144f3de73f8ef87c180b2b796d5b1ed058e6766df332
+          paths: /
+          readiness: /health/ready
+          hostnames: id.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: identity
+          process: identity
+          revision: sha256:04f21489fa0baf215c3c144f3de73f8ef87c180b2b796d5b1ed058e6766df332
+          paths: /
+          readiness: /health/ready
+          hostnames: id.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: identity
+          process: identity
+          revision: sha256:04f21489fa0baf215c3c144f3de73f8ef87c180b2b796d5b1ed058e6766df332
+          paths: /
+          readiness: /health/ready
+          hostnames: id.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms

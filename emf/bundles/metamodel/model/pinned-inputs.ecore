@@ -90,7 +90,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="capturedAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="bindings" upperBound="-1" eType="#//Binding" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="placements" upperBound="-1" eType="#//CurrentPlacement" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="backups" upperBound="-1" eType="#//RollbackBackup" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="instances" upperBound="-1" eType="#//PinnedInstance" containment="true"/>
   </eClassifiers>
 
   <!-- A bound PersistentVolume, and the node holding it. -->
@@ -105,19 +105,36 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="node" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
-  <!-- A Rollback's one-shot backup Job, and how it ended (spec/v1/55-delivery.md#pause-and-rollback). -->
-  <eClassifiers xsi:type="ecore:EClass" name="RollbackBackup">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="request" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="project" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="job" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="outcome" lowerBound="1" eType="#//BackupOutcome"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="finishedAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  <!-- Where one Instance of an Application runs, as the cluster pins it, and where a Move
+       in flight takes it (spec/v1/20-resolved-deployment.md#cluster-state). -->
+  <eClassifiers xsi:type="ecore:EClass" name="PinnedInstance">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" lowerBound="1" name="application" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" lowerBound="1" name="instance" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" lowerBound="1" name="version" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" lowerBound="1" name="namespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" lowerBound="1" name="node" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="phase" eType="#//MoveStep"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="flippedAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" eType="#//MoveTarget" containment="true"/>
   </eClassifiers>
 
-  <!-- Whether a Rollback's backup Job succeeded: a running one is not reported. -->
-  <eClassifiers xsi:type="ecore:EEnum" name="BackupOutcome">
-    <eLiterals name="succeeded"/>
-    <eLiterals name="failed" value="1"/>
+  <!-- Where a Move takes an Instance. -->
+  <eClassifiers xsi:type="ecore:EClass" name="MoveTarget">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" lowerBound="1" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" lowerBound="1" name="version" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" lowerBound="1" name="namespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="node" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- The step a Move has reached. -->
+  <eClassifiers xsi:type="ecore:EEnum" name="MoveStep">
+    <eLiterals name="sync" literal="sync"/>
+    <eLiterals name="lag" value="1" literal="lag"/>
+    <eLiterals name="fence" value="2" literal="fence"/>
+    <eLiterals name="unfence" value="3" literal="unfence"/>
+    <eLiterals name="reverse" value="4" literal="reverse"/>
+    <eLiterals name="retire" value="5" literal="retire"/>
   </eClassifiers>
 
   <!-- ================================================ the migration proof -->

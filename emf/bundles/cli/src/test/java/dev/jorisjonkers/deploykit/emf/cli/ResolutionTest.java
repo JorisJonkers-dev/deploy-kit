@@ -59,9 +59,15 @@ class ResolutionTest {
                 Pipeline.resolve(MINIMAL_SET.stream().map(Examples::of).toList(), "notes", Outputs.INTEGRITY);
 
         assertThat(resolved.ok()).isTrue();
-        // Five authored projects, their five lowerings, and the Platform document.
-        assertThat(resolved.intent()).hasSize(11);
-        assertThat(resolved.pinned()).hasSize(3);
+        // Every authored project, its lowering, and the Platform document.
+        long projects = MINIMAL_SET.stream()
+                .filter(file -> file.endsWith(".project.yml"))
+                .count();
+        assertThat(resolved.intent()).hasSize((int) (2 * projects + 1));
+        // The node contract, the images lock and the cluster state, beside every Asset file read.
+        assertThat(resolved.pinned())
+                .filteredOn(root -> !(root instanceof dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.AssetFile))
+                .hasSize(3);
     }
 
     @Test
@@ -128,7 +134,9 @@ class ResolutionTest {
         assertThat(Pipeline.resolve(files, "data", Outputs.INTEGRITY).diagnostics())
                 .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path)
                 .containsExactly(
-                        tuple("E_ASSET_NOT_FOUND", "data.project.yml", "/applications/0/processes/0/assets/0/from"));
+                        tuple("E_ASSET_NOT_FOUND", "data.project.yml", "/applications/0/processes/0/assets/0/from"),
+                        tuple("E_ASSET_NOT_FOUND", "data.project.yml", "/applications/5/processes/0/assets/0/from"),
+                        tuple("E_DASHBOARD_NOT_FOUND", "data.project.yml", "/applications/1/dashboards/0/from"));
     }
 
     /**
@@ -148,8 +156,11 @@ class ResolutionTest {
                             Outputs.INTEGRITY)
                     .deployment();
             try (var oracles = java.nio.file.Files.list(Examples.of(example + "/expected"))) {
+                // A moving projection is the worked Move's, resolved from a set whose datastore
+                // declares its rollback, which the data-moving render case holds.
                 for (Path oracle : oracles.filter(
-                                file -> file.getFileName().toString().startsWith("resolved"))
+                                file -> file.getFileName().toString().startsWith("resolved")
+                                        && !file.getFileName().toString().contains(".moving."))
                         .toList()) {
                     String text = java.nio.file.Files.readString(oracle);
                     String id = field(text, "id");

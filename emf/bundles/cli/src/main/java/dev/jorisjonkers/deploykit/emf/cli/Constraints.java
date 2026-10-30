@@ -54,8 +54,13 @@ public final class Constraints {
         if (violated.find()) {
             // A violation carries the object it refused as its first datum.
             EObject refused = (EObject) diagnostic.getData().get(0);
+            // An invariant named CODE__feature refuses one feature of the object, and its path says so.
+            String[] named = violated.group(1).split("__", 2);
             refusals.add(new dev.jorisjonkers.deploykit.emf.cli.Diagnostic(
-                    violated.group(1), file, Pointer.of(refused), diagnostic.getMessage()));
+                    named[0],
+                    file,
+                    Pointer.of(refused) + (named.length == 1 ? "" : "/" + named[1]),
+                    diagnostic.getMessage()));
         }
         for (Diagnostic child : diagnostic.getChildren()) {
             refusals.addAll(refusals(file, child));

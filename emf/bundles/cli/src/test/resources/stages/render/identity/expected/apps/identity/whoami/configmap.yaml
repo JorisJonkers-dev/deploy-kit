@@ -1,0 +1,26 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: whoami-release-gate
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/part-of: whoami
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"720s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"whoami","readiness":{"path":"/health","port":8080}}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: whoami-external-checks
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/part-of: whoami
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  whoami-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"identity","name":"whoami-public-1","url":"https://whoami.jorisjonkers.dev/"},{"conditions":["[STATUS] < 500"],"group":"identity","name":"whoami-public-2","url":"https://whoami.jorisjonkers.dev/health"},{"conditions":["[STATUS] < 500"],"group":"identity","name":"whoami-public-3","url":"https://whoami.jorisjonkers.dev/.auth/"}]}

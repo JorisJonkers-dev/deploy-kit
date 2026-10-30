@@ -27,8 +27,11 @@ class OutputsTest {
     /** Set by the mutation gate, whose every run of this test is of a mutant (emf/pom.xml). */
     private static final String MUTATING = "emf.mutation";
 
-    /** The cases whose committed rendered trees the composed union writes between them. */
-    private static final java.util.Set<String> RENDERED_CASES = java.util.Set.of("minimal", "data", "_estate");
+    /**
+     * The cases whose committed rendered trees the composed union writes between them: minimal's
+     * and data's own, and the platform's estate-scoped share every render holds.
+     */
+    private static final java.util.Set<String> RENDERED_CASES = java.util.Set.of("minimal", "data", "platform");
 
     @Test
     void aRunLeavesEveryCaseUnderTheModulesBuildOutput() throws IOException {
@@ -51,16 +54,10 @@ class OutputsTest {
         Path out = root.resolve("out");
         accepted(examples, "minimal");
         touch(examples.resolve("minimal").resolve("expected").resolve("effective.json"));
-        for (String document : List.of(
-                "platform/platform.intent.yml",
-                "platform/node-contract.yml",
-                "platform/images.lock.yml",
-                "platform/cluster-state.yml",
-                "delivery/delivery.project.yml",
-                "edge/edge.project.yml",
-                "observability/observability.project.yml",
-                "secrets/secrets.project.yml")) {
-            copy(Examples.of(document), examples.resolve(document));
+        for (String document : Outputs.RESOLVED.get("minimal").documents()) {
+            if (!document.startsWith("minimal/")) {
+                withWhatItReads(examples, document, text -> text);
+            }
         }
         copy(
                 Examples.of("negative/dependency-cycle/intent/notes.yml"),
@@ -202,10 +199,7 @@ class OutputsTest {
     /** minimal's resolution set, copied out of the real examples, its project file passed through {@code edit}. */
     private static void resolving(Path examples, java.util.function.UnaryOperator<String> edit) throws IOException {
         for (String document : Outputs.RESOLVED.get("minimal").documents()) {
-            Path target = examples.resolve(document);
-            Files.createDirectories(target.getParent());
-            String text = Examples.read(document);
-            Files.writeString(target, document.equals("minimal/notes.project.yml") ? edit.apply(text) : text);
+            withWhatItReads(examples, document, document.equals("minimal/notes.project.yml") ? edit : text -> text);
         }
         touch(examples.resolve("minimal/expected/dependencies.json"));
         Files.createDirectories(examples.resolve("refusals"));
@@ -337,6 +331,30 @@ class OutputsTest {
             copy(Examples.of("refusals/" + stem + ".project.yml"), refusals.resolve(stem + ".project.yml"));
         }
         touch(refusals.resolve(stem + ".diagnostics.json"));
+    }
+
+    /**
+     * {@code document}, edited, with every file it reads beside it (its env files, its Assets and its
+     * dashboards), and none of its directory's oracles, so the copy is no case of its own.
+     */
+    private static void withWhatItReads(Path examples, String document, java.util.function.UnaryOperator<String> edit)
+            throws IOException {
+        Path target = examples.resolve(document);
+        Files.createDirectories(target.getParent());
+        Files.writeString(target, edit.apply(Examples.read(document)));
+        Path source = Examples.of(document).getParent();
+        try (Stream<Path> tree = Files.walk(source)) {
+            for (Path file : tree.filter(Files::isRegularFile)
+                    .filter(file -> source.relativize(file).getNameCount() > 1)
+                    .filter(file -> !List.of("expected", "rendered", "moving")
+                            .contains(source.relativize(file).getName(0).toString()))
+                    .toList()) {
+                Path copied = target.getParent().resolve(source.relativize(file).toString());
+                if (!Files.exists(copied)) {
+                    copy(file, copied);
+                }
+            }
+        }
     }
 
     /** Every authored document of {@code source}, and nothing else a case's directory happens to hold. */

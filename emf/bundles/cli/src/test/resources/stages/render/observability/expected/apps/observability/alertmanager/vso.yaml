@@ -1,0 +1,50 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: alertmanager
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/instance: alertmanager
+    app.kubernetes.io/part-of: alertmanager
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    estate.jorisjonkers.dev/revision: sha256:d9f557e6af7f39728e3985f209dbcdb62583cae345612e85f262db489819262f
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: observability-system-alertmanager
+    serviceAccount: alertmanager
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: alertmanager-platform-alertmanager-discord
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/instance: alertmanager
+    app.kubernetes.io/part-of: alertmanager
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    estate.jorisjonkers.dev/revision: sha256:d9f557e6af7f39728e3985f209dbcdb62583cae345612e85f262db489819262f
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  vaultAuthRef: alertmanager
+  mount: secret
+  type: kv-v2
+  path: platform/alertmanager-discord
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: alertmanager-platform-alertmanager-discord
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

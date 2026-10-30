@@ -53,6 +53,7 @@ public final class EnvFiles {
     private static final ProjectIntentFactory MODEL = ProjectIntentFactory.eINSTANCE;
     private static final Pattern NAME = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*");
     private static final String OPENS = "${";
+    private static final String BASE = "base.env";
     private static final String PROJECT_SCOPE = "_project";
     private static final String APPLICATION_SCOPE = "_applications";
 
@@ -66,6 +67,11 @@ public final class EnvFiles {
             Optional<Scope> scope = scopeOf(source.path());
             if (scope.isEmpty()) {
                 refusals.add(schema(source.path(), source.path(), "this path names no env scope directory"));
+                continue;
+            }
+            // A scope holds one file, and no file varies by cluster.
+            if (!source.path().endsWith("/" + BASE)) {
+                refusals.add(schema(source.path(), source.path(), "a scope's one env file is " + BASE));
                 continue;
             }
             List<Diagnostic> broke = new ArrayList<>();
@@ -104,7 +110,6 @@ public final class EnvFiles {
 
     private static EnvFile readOne(Source source, List<Diagnostic> refusals) {
         EnvFile file = MODEL.createEnvFile();
-        clusterOf(source.path()).ifPresent(file::setCluster);
         Set<String> seen = new LinkedHashSet<>();
         String[] lines = source.text().split("\n", -1);
         for (int i = 0; i < lines.length; i++) {
@@ -174,12 +179,6 @@ public final class EnvFiles {
     /** Literal text: no {@code #}, which is a comment wherever it appears, and no placeholder. */
     private static boolean literal(String text) {
         return !text.contains("#") && !text.contains(OPENS);
-    }
-
-    /** {@code base.env} does not vary, so it names no Cluster Target. */
-    private static Optional<String> clusterOf(String path) {
-        String file = path.substring(path.lastIndexOf('/') + 1).replaceFirst("\\.env$", "");
-        return "base".equals(file) ? Optional.empty() : Optional.of(file);
     }
 
     private static Diagnostic schema(String document, String at, String message) {

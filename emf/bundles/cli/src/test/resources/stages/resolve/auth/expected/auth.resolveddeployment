@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:cab892c30eb1b8fed583e97417825fc21159c196d94d569e8ac96a7ee36bf110" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
+    <inputDigests name="auth" digest="sha256:8c18c46f2cd0a837bd12620b7a43c3768e945501983c5de8ecc0dfa94adce99b"/>
+    <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
+    <inputDigests name="delivery" digest="sha256:31f4d21b3c877943fecd855a160f8e339bce5c46f1ba9264c6256d37c4124767"/>
+    <inputDigests name="edge" digest="sha256:b1445b93227a2a18990df93d691545276efe933c102357709d50fb4f3895b7af"/>
+    <inputDigests name="identity" digest="sha256:c7e40e058d9b9a19572313f69d5c00859f1b30a6b36c91db290b9903cf9a11e7"/>
+    <inputDigests name="mail" digest="sha256:94fada2c3ecb8b3433bdc676e677e7d5d732509b31f6980f8352cdb25590a5c8"/>
+    <inputDigests name="observability" digest="sha256:d5098265009c4d1ef5a75d9e7035d4af64f7e16c6e1983185a0d469869cc6639"/>
+    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:45c0c42d181d86db9f5f89fafc18a197ecc19dde86e77189936ce98c081384f3"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
+  </provenance>
+  <applications id="auth" revision="sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0" project="auth" namespace="auth-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="1920s">
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
+      <members process="/0/@applications.0/@processes.0">
+        <readiness xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/readiness" port="8081"/>
+        <checks>error-rate</checks>
+        <checks>latency</checks>
+      </members>
+      <members process="/0/@applications.0/@processes.1">
+        <readiness xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </members>
+      <migration identity="auth-migration" testedAgainst="sha256:2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a" nonTransactional="false"/>
+    </releaseGate>
+    <migration runner="ghcr.io/jorisjonkers-dev/auth/auth-migration@sha256:5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e" runnerVersion="2.3.0" testedAgainst="sha256:2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a" nonTransactional="false" uid="1000" gid="1000" identity="auth-migration" deadline="10m" memory="256Mi" cpu="100m" scratch="64Mi" home="/tmp">
+      <database host="postgres.data-system.svc.cluster.local" port="5432" name="auth_db"/>
+      <consumes>platform-postgres.postgres</consumes>
+      <credential engine="database" delivery="self">
+        <paths path="database/creds/auth-owner">
+          <allows>read</allows>
+        </paths>
+      </credential>
+      <egress rule="datastore" namespace="data-system" process="postgres" port="5432"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </migration>
+    <exposure name="public" host="auth.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/api/v1/users/register" match="exact" audience="anonymous" precedence="1" process="/0/@applications.0/@processes.0" surface="http">
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+        <middleware kind="rate-limit" allowance="10" per="1h" burst="10" clientAddress="cloudflare" name="auth-public-1-rate-limit" namespace="auth-system"/>
+      </routes>
+      <routes path="/api" audience="anonymous" precedence="2" process="/0/@applications.0/@processes.0" surface="http">
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+      </routes>
+      <routes path="/" audience="anonymous" precedence="3" process="/0/@applications.0/@processes.1" surface="http">
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <scrape process="/0/@applications.0/@processes.0" surface="http" path="/api/actuator/prometheus" interval="30s" timeout="10s">
+      <labels key="release" value="metrics-stack"/>
+    </scrape>
+    <processes name="auth-api" identity="auth-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/auth/auth-api@sha256:3e5a7c9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3c5b7d9f1e3a5c7b9d1f3e5a" imageVersion="2.3.0" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" serving="auth-api-primary" servingLabel="app.kubernetes.io/name" deadline="1920s" replicas="2" memory="768Mi" cpu="250m" hardening="restricted" identityToken="true" component="jvm" priorityClass="platform-critical-app" home="/tmp">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/readiness" port="8081"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/liveness" port="8081"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="120">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/liveness" port="8081"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <secrets path="secret/data/platform/postgres/auth" access="read" delivery="self">
+        <keys>user</keys>
+        <keys>password</keys>
+      </secrets>
+      <secrets path="secret/data/auth-api" access="read" delivery="self">
+        <keys>mail.password</keys>
+        <keys>valkey.password</keys>
+        <keys>rabbitmq.user</keys>
+        <keys>rabbitmq.password</keys>
+      </secrets>
+      <secrets engine="transit" delivery="self">
+        <paths path="transit/sign/auth-api-jwt">
+          <allows>update</allows>
+        </paths>
+        <paths path="transit/keys/auth-api-jwt/rotate">
+          <allows>update</allows>
+        </paths>
+        <paths path="transit/keys/auth-api-jwt">
+          <allows>read</allows>
+        </paths>
+      </secrets>
+      <secrets engine="database" delivery="self">
+        <paths path="database/creds/auth-data">
+          <allows>read</allows>
+        </paths>
+      </secrets>
+      <dependencies application="platform-postgres" surface="postgres" address="platform-postgres:5432" target="platform-postgres-postgres.estate-system.svc.cluster.local">
+        <peers namespace="data-system" process="postgres" port="5432"/>
+      </dependencies>
+      <dependencies application="platform-valkey" surface="redis" address="platform-valkey:6379" target="platform-valkey-redis.estate-system.svc.cluster.local">
+        <peers namespace="data-system" process="valkey" port="6379"/>
+      </dependencies>
+      <dependencies application="platform-rabbitmq" surface="amqp" address="platform-rabbitmq:5672" target="platform-rabbitmq-amqp.estate-system.svc.cluster.local">
+        <peers namespace="data-system" process="rabbitmq" port="5672"/>
+      </dependencies>
+      <dependencies application="stalwart" surface="smtp" address="stalwart:25" target="stalwart-smtp.estate-system.svc.cluster.local">
+        <peers namespace="mail-system" process="stalwart" port="25"/>
+      </dependencies>
+      <consumes>platform-postgres.postgres</consumes>
+      <consumes>platform-valkey.redis</consumes>
+      <consumes>platform-rabbitmq.amqp</consumes>
+      <consumes>stalwart.smtp</consumes>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <environment name="AUTH_ISSUER" value="https://auth.jorisjonkers.dev"/>
+      <environment name="AUTH_LOGIN_URL" value="https://auth.jorisjonkers.dev/login"/>
+      <environment name="CONFIRMATION_URL" value="https://auth.jorisjonkers.dev/confirm"/>
+      <environment name="DB_HOST" value="platform-postgres"/>
+      <environment name="DB_PORT" value="5432"/>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="MAIL_HOST" value="stalwart"/>
+      <environment name="MAIL_PORT" value="25"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="auth-api"/>
+      <environment name="PORT" value="8080"/>
+      <environment name="SESSION_COOKIE_SECURE" value="true"/>
+      <environment name="SPRING_CONFIG_IMPORT" value="vault://"/>
+      <environment name="SPRING_PROFILES_ACTIVE" value="prod"/>
+      <environment name="SPRING_RABBITMQ_HOST" value="platform-rabbitmq"/>
+      <environment name="SPRING_RABBITMQ_PORT" value="5672"/>
+      <environment name="VALKEY_HOST" value="platform-valkey"/>
+      <environment name="VALKEY_PORT" value="6379"/>
+      <environment name="VAULT_AUTHENTICATION" value="KUBERNETES"/>
+      <environment name="VAULT_ENABLED" value="true"/>
+      <environment name="VAULT_KUBERNETES_ROLE" value="auth-system-auth-api"/>
+    </processes>
+    <processes name="auth-ui" identity="auth-ui" lifecycle="application" image="ghcr.io/jorisjonkers-dev/auth/auth-ui@sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d" imageVersion="2.3.0" uid="101" gid="101" cutover="continuous" switchover="blue-green" serving="auth-ui-primary" servingLabel="app.kubernetes.io/name" deadline="210s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="static" priorityClass="platform-critical-app">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </startup>
+      <surfaces name="http" port="80"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <writablePaths path="/var/cache/nginx" size="64Mi"/>
+      <writablePaths path="/var/run" size="64Mi"/>
+      <addedPrivileges>NET_BIND_SERVICE</addedPrivileges>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-auth" after="/0/@reconcileUnits.1 /0/@reconcileUnits.2 /0/@reconcileUnits.3 /0/@reconcileUnits.4"/>
+  <reconcileUnits name="apps-data"/>
+  <reconcileUnits name="apps-edge"/>
+  <reconcileUnits name="apps-mail"/>
+  <reconcileUnits name="apps-secrets"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+  </policyJob>
+  <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/auth/namespace.yaml" namespace="auth-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/auth/kustomization.yaml">
+    <resources>aliases.yaml</resources>
+    <resources>auth</resources>
+    <resources>namespace.yaml</resources>
+    <resources>rollout-events</resources>
+    <resources>vault-policy</resources>
+    <resources>vaultconnection.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/auth/networkpolicy.yaml" adapter="networking"/>
+  <deliverables xsi:type="resolveddeployment:AliasFile" path="apps/auth/aliases.yaml" namespace="auth-system">
+    <aliases name="platform-postgres" target="platform-postgres-postgres.estate-system.svc.cluster.local"/>
+    <aliases name="platform-rabbitmq" target="platform-rabbitmq-amqp.estate-system.svc.cluster.local"/>
+    <aliases name="platform-valkey" target="platform-valkey-redis.estate-system.svc.cluster.local"/>
+    <aliases name="stalwart" target="stalwart-smtp.estate-system.svc.cluster.local"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:ConnectionFile" path="apps/auth/vaultconnection.yaml" adapter="vso" namespace="auth-system" address="http://vault.secrets-system.svc.cluster.local:8200"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/auth/auth/kustomization.yaml">
+    <resources>canary.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>migration.yaml</resources>
+    <resources>pdb.yaml</resources>
+    <resources>podmonitor.yaml</resources>
+    <resources>route-public.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/auth/auth/route-public.yaml" adapter="traefik" exposure="/0/@applications.0/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/auth/auth/workload.yaml" processes="/0/@applications.0/@processes.0 /0/@applications.0/@processes.1" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:SwitchoverFile" path="apps/auth/auth/canary.yaml" processes="/0/@applications.0/@processes.0 /0/@applications.0/@processes.1"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/auth/auth/serviceaccount.yaml" processes="/0/@applications.0/@processes.0 /0/@applications.0/@processes.1"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/auth/auth/configmap.yaml" application="/0/@applications.0" releaseGate="{&quot;analysis&quot;:{&quot;errorRate&quot;:&quot;1%&quot;,&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;latency&quot;:&quot;500ms&quot;,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;1920s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;checks&quot;:[&quot;error-rate&quot;,&quot;latency&quot;],&quot;process&quot;:&quot;auth-api&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/api/actuator/health/readiness&quot;,&quot;port&quot;:8081}},{&quot;process&quot;:&quot;auth-ui&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/&quot;,&quot;port&quot;:80}}],&quot;migration&quot;:{&quot;identity&quot;:&quot;auth-migration&quot;,&quot;nonTransactional&quot;:false,&quot;testedAgainst&quot;:&quot;sha256:2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a&quot;}}" externalChecks="{&quot;endpoints&quot;:[{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;auth&quot;,&quot;name&quot;:&quot;auth-public-1&quot;,&quot;url&quot;:&quot;https://auth.jorisjonkers.dev/api/v1/users/register&quot;},{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;auth&quot;,&quot;name&quot;:&quot;auth-public-2&quot;,&quot;url&quot;:&quot;https://auth.jorisjonkers.dev/api&quot;},{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;auth&quot;,&quot;name&quot;:&quot;auth-public-3&quot;,&quot;url&quot;:&quot;https://auth.jorisjonkers.dev/&quot;}]}"/>
+  <deliverables xsi:type="resolveddeployment:BudgetFile" path="apps/auth/auth/pdb.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:MigrationFile" path="apps/auth/auth/migration.yaml" application="/0/@applications.0" upTag="08b008c7a195" downTag="2f4a6c8e0b2d" role="auth-system-auth-migration"/>
+  <deliverables xsi:type="resolveddeployment:MonitorFile" path="apps/auth/auth/podmonitor.yaml" adapter="prometheus" process="/0/@applications.0/@processes.0" surface="http" scrapePath="/api/actuator/prometheus" interval="30s" timeout="10s"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/auth/auth/networkpolicy.yaml" adapter="networking" migration="/0/@applications.0/@migration">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="8080"/>
+      <ingress rule="metrics-stack" namespace="observability-system" process="prometheus" port="8080"/>
+      <ingress rule="consumer" consumes="auth.http" port="8080"/>
+      <ingress rule="release-gate" namespace="delivery-system" process="release-gate" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+    <policies process="/0/@applications.0/@processes.1">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="80"/>
+      <ingress rule="consumer" consumes="auth.http" port="80"/>
+      <ingress rule="release-gate" namespace="delivery-system" process="release-gate" port="80"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/auth/vault-policy/policies/auth-system-auth-api.policy.json" adapter="vault-policy" namespace="auth-system" identity="auth-api" grants="/0/@applications.0/@processes.0/@secrets.0 /0/@applications.0/@processes.0/@secrets.1 /0/@applications.0/@processes.0/@secrets.2 /0/@applications.0/@processes.0/@secrets.3">
+    <paths path="secret/data/platform/postgres/auth">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/postgres/auth">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/data/auth-api">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/auth-api">
+      <allows>read</allows>
+    </paths>
+    <paths path="transit/sign/auth-api-jwt">
+      <allows>update</allows>
+    </paths>
+    <paths path="transit/keys/auth-api-jwt/rotate">
+      <allows>update</allows>
+    </paths>
+    <paths path="transit/keys/auth-api-jwt">
+      <allows>read</allows>
+    </paths>
+    <paths path="database/creds/auth-data">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/auth/vault-policy/policies/auth-system-auth-api.role.json" adapter="vault-policy" namespace="auth-system" identity="auth-api"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/auth/vault-policy/policies/auth-system-auth-migration.policy.json" adapter="vault-policy" namespace="auth-system" identity="auth-migration" grants="/0/@applications.0/@migration/@credential">
+    <paths path="database/creds/auth-owner">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/auth/vault-policy/policies/auth-system-auth-migration.role.json" adapter="vault-policy" namespace="auth-system" identity="auth-migration"/>
+  <deliverables xsi:type="resolveddeployment:StableAddressFile" path="estate/stable-addresses/services.yaml" namespace="estate-system">
+    <addresses name="platform-postgres-postgres" target="postgres.data-system.svc.cluster.local"/>
+    <addresses name="platform-rabbitmq-amqp" target="rabbitmq.data-system.svc.cluster.local"/>
+    <addresses name="platform-valkey-redis" target="valkey.data-system.svc.cluster.local"/>
+    <addresses name="stalwart-smtp" target="stalwart.mail-system.svc.cluster.local"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="estate/stable-addresses/namespace.yaml" namespace="estate-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/stable-addresses/kustomization.yaml">
+    <resources>namespace.yaml</resources>
+    <resources>services.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/configmap.yaml" adapter="vault-policy" namespace="auth-system" part="configmap" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-data&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt/rotate&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]},&quot;transit/sign/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]}}}"/>
+    <documents file="auth-system-auth-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-api&quot;]}"/>
+    <documents file="auth-system-auth-migration.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="auth-system-auth-migration.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-migration&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-migration&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/job.yaml" adapter="vault-policy" namespace="auth-system" part="job" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-data&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt/rotate&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]},&quot;transit/sign/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]}}}"/>
+    <documents file="auth-system-auth-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-api&quot;]}"/>
+    <documents file="auth-system-auth-migration.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="auth-system-auth-migration.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-migration&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-migration&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/cronjob.yaml" adapter="vault-policy" namespace="auth-system" part="cronjob" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-data&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt/rotate&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]},&quot;transit/sign/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]}}}"/>
+    <documents file="auth-system-auth-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-api&quot;]}"/>
+    <documents file="auth-system-auth-migration.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="auth-system-auth-migration.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-migration&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-migration&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/serviceaccount.yaml" adapter="vault-policy" namespace="auth-system" part="serviceaccount" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-data&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt/rotate&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]},&quot;transit/sign/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]}}}"/>
+    <documents file="auth-system-auth-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-api&quot;]}"/>
+    <documents file="auth-system-auth-migration.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="auth-system-auth-migration.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-migration&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-migration&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/networkpolicy.yaml" adapter="networking" namespace="auth-system" part="networkpolicy" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-data&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt/rotate&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]},&quot;transit/sign/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]}}}"/>
+    <documents file="auth-system-auth-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-api&quot;]}"/>
+    <documents file="auth-system-auth-migration.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="auth-system-auth-migration.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-migration&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-migration&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/auth/vault-policy/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>cronjob.yaml</resources>
+    <resources>job.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/auth/rollout-events/alert.yaml" part="alert" project="auth" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/auth/rollout-events/provider.yaml" part="provider" project="auth" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/auth/rollout-events/kustomization.yaml">
+    <resources>alert.yaml</resources>
+    <resources>provider.yaml</resources>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>

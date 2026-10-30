@@ -45,3 +45,4 @@ Numbers come from the one estate-wide sequence shared with `docs/adr/`.
 | [0081](emf/0081-bundles-and-tests-are-separate-tiers.md) | The tree splits into an Eclipse bundle tier and a test tier, and only the bundle tier is Java | open |
 | [0082](emf/0082-the-env-files-are-read-not-parsed-by-xtext.md) | The env files are read by a hand-written reader, not by a second Xtext grammar | settled |
 | [0098](emf/0098-cross-file-invariants-navigate-an-estate-root.md) | Cross-file invariants navigate an Estate root that contains every document of a set, instead of reading the resource set through `allInstances()` | open |
+| [0143](emf/0143-a-refusal-is-decided-in-ocl-unless-the-model-cannot-hold-what-it-asks.md) | A refusal is decided in Complete OCL, unless the model cannot hold what it asks | settled |

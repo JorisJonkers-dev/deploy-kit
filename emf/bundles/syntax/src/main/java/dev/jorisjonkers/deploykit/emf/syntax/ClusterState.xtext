@@ -16,7 +16,7 @@ ClusterState returns ClusterState:
 	& ('capturedAt' ':' capturedAt=Text)
 	& ('bindings' ':' BEGIN (DASH BEGIN bindings+=Binding END)* END)
 	& ('placements' ':' BEGIN (DASH BEGIN placements+=CurrentPlacement END)* END)
-	& ('backups' ':' BEGIN (DASH BEGIN backups+=RollbackBackup END)* END)?);
+	& ('instances' ':' BEGIN (DASH BEGIN instances+=PinnedInstance END)* END)?);
 
 Binding returns Binding:
 	(('claim' ':' claim=Text)
@@ -26,16 +26,26 @@ CurrentPlacement returns CurrentPlacement:
 	(('process' ':' process=Text)
 	& ('node' ':' node=Text));
 
-// How a Rollback's one-shot backup Job ended, as the Collector reports it.
-RollbackBackup returns RollbackBackup:
-	(('request' ':' request=Text)
-	& ('project' ':' project=Text)
-	& ('job' ':' job=Text)
-	& ('outcome' ':' outcome=BackupOutcome)
-	& ('finishedAt' ':' finishedAt=Text));
+// Where one Instance of an Application runs, and where a Move in flight takes it.
+PinnedInstance returns PinnedInstance:
+	(('application' ':' application=Text)
+	& ('instance' ':' instance=Text)
+	& ('name' ':' name=Text)?
+	& ('version' ':' version=Text)
+	& ('namespace' ':' namespace=Text)
+	& ('node' ':' node=Text)
+	& ('phase' ':' phase=MoveStep)?
+	& ('flippedAt' ':' flippedAt=Text)?
+	& ('target' ':' BEGIN target=MoveTarget END)?);
 
-enum BackupOutcome returns BackupOutcome:
-	succeeded | failed;
+MoveTarget returns MoveTarget:
+	(('name' ':' name=Text)
+	& ('version' ':' version=Text)
+	& ('namespace' ':' namespace=Text)
+	& ('node' ':' node=Text)?);
+
+enum MoveStep returns MoveStep:
+	sync | lag | fence | unfence | reverse | retire;
 
 // Every keyword this document adds is also a scalar, as the project language's are.
 @Override
@@ -43,5 +53,5 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | ClusterStateKeyword;
 
 ClusterStateKeyword:
-	'backups' | 'bindings' | 'capturedAt' | 'cluster' | 'failed' | 'finishedAt' | 'outcome'
-	| 'placements' | 'request' | 'succeeded';
+	'bindings' | 'capturedAt' | 'fence' | 'flippedAt' | 'instance' | 'instances' | 'lag'
+	| 'phase' | 'placements' | 'retire' | 'reverse' | 'sync' | 'target' | 'unfence' | 'version';

@@ -1,0 +1,49 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: platform-rabbitmq-rabbitmq
+  namespace: data-system
+  labels:
+    app.kubernetes.io/part-of: platform-rabbitmq
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  allowCrossNamespaceImport: true
+  folder: data
+  json: |
+    {
+      "__inputs": [
+        {
+          "name": "DS_PROMETHEUS",
+          "label": "Prometheus",
+          "type": "datasource",
+          "pluginId": "prometheus"
+        }
+      ],
+      "uid": "rabbitmq",
+      "title": "RabbitMQ",
+      "tags": ["rabbitmq", "messaging"],
+      "editable": false,
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Queue Messages (Ready)",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "targets": [
+            { "expr": "rabbitmq_queue_messages_ready", "legendFormat": "{{queue}} ready" }
+          ]
+        }
+      ],
+      "schemaVersion": 39
+    }
+  datasources:
+    - inputName: DS_PROMETHEUS
+      datasourceName: prometheus

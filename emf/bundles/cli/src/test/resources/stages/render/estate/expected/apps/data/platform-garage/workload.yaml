@@ -1,0 +1,131 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: garage
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: garage
+    app.kubernetes.io/instance: garage
+    app.kubernetes.io/part-of: platform-garage
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  progressDeadlineSeconds: 300
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: garage
+      app.kubernetes.io/instance: garage
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: garage
+        app.kubernetes.io/instance: garage
+        app.kubernetes.io/part-of: platform-garage
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/garage: 2.3.0
+    spec:
+      serviceAccountName: garage
+      priorityClassName: platform-data
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - frankfurt-contabo-1
+      containers:
+        - name: garage
+          image: docker.io/dxflrs/garage@sha256:8d0f2b4c6e8a0d2f4b6c8e0a2d4f6b8c0e2a4d6f8b0c2e4a6d8f0b2c4e6a8d0f
+          ports:
+            - name: s3
+              containerPort: 3900
+            - name: admin
+              containerPort: 3903
+          env:
+            - name: GARAGE_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: garage-platform-garage
+                  key: admin-token
+            - name: GARAGE_RPC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: garage-platform-garage
+                  key: rpc-secret
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 200m
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: garage-meta
+              mountPath: /var/lib/garage/meta
+            - name: garage-snapshots
+              mountPath: /var/lib/garage/snapshots
+            - name: garage-data
+              mountPath: /var/lib/garage/data
+            - name: garage-garage-toml-120c7a969e
+              mountPath: /etc/garage.toml
+              subPath: garage.toml
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3903
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            tcpSocket:
+              port: 3900
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            tcpSocket:
+              port: 3900
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 12
+      volumes:
+        - name: garage-meta
+          persistentVolumeClaim:
+            claimName: garage-meta
+        - name: garage-snapshots
+          persistentVolumeClaim:
+            claimName: garage-snapshots
+        - name: garage-data
+          persistentVolumeClaim:
+            claimName: garage-data
+        - name: garage-garage-toml-120c7a969e
+          configMap:
+            name: garage-garage-toml-120c7a969e
+            items:
+              - key: garage.toml
+                path: garage.toml

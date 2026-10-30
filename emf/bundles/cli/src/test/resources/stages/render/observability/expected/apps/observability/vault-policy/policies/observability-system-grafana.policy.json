@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/observability-system/grafana/client": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/observability-system/grafana/client": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

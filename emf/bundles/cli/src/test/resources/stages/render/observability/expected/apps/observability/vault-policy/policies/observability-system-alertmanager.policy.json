@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/platform/alertmanager-discord": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/alertmanager-discord": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

@@ -21,7 +21,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **29** witnesses, and **1** pending.
+This list holds **58** witnesses, and **20** pending.
 
 | id | JUnit test |
 |---|---|
@@ -54,9 +54,57 @@ This list holds **29** witnesses, and **1** pending.
 | REQ-070 | `RenderedTreeTest#aProjectsShareIsItsCommittedTreeByteForByte` |
 | REQ-071 | `RenderedTreeTest#theKnowledgePlatformsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
 | REQ-072 | `RenderedTreeTest#authsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
+| REQ-075 | `ModelWitnessesTest#aLowPortKeepsNetBindServiceAloneAndAHighPortAddsNothing` |
+| REQ-076 | `ModelWitnessesTest#aTransitGrantThatReadsCoversTheKeyAndUpdatesEachOtherOperationsOnePath` |
+| REQ-077 | `ModelWitnessesTest#aMongoIsDumpedByThePlatformsMethodOwnsNoDatabaseAndIsRefusedWithoutADurableVolume` |
+| REQ-078 | `ModelWitnessesTest#aScheduledProcessIsACronJobThatNeverRunsTwiceAndSkipsALateRun` |
+| REQ-079 | `PipelineRefusalsTest#anImageTheLockHoldsAsRootIsRefusedAtTheLock` |
+| REQ-080 | `ModelWitnessesTest#eachHumanGrantIsOneClusterRoleBindingInEveryCompositionAndADuplicateIsRefused` |
+| REQ-084 | `ModelWitnessesTest#theSameHostOnOneTierIsRefusedAndOnTwoTiersRendersOneRoutePerProxy` |
+| REQ-085 | `ModelWitnessesTest#everyRouteCarriesItsTiersIngressClassAndATierThatNamesNoneIsRefused` |
+| REQ-087 | `ModelWitnessesTest#theProjectThatDeclaresAProxyRendersTheSharedMiddlewaresOncePerNamespace` |
+| REQ-090 | `ModelWitnessesTest#aForwardAuthNamesAProviderSurfaceAndPathAndAnUnknownProviderIsRefused` |
+| REQ-091 | `ModelWitnessesTest#aTiersProxyIsConfiguredByItsSurfacesAndTheCrdProviderFilteredOnItsClass` |
+| REQ-092 | `ModelWitnessesTest#eachDashboardFileIsOneGrafanaDashboardInItsFolderAndAnUnusableOneIsRefused` |
+| REQ-094 | `ModelWitnessesTest#aRouteOnATierThatDeclaresDnsCarriesTheExternalDnsAnnotationsAndOneOnATierWithoutCarriesNone` |
+| REQ-095 | `ModelWitnessesTest#aParkedProcessKeepsWhatItOwnsRunsNoPodAndAParkedScheduleStartsNoRun` |
+| REQ-096 | `ModelWitnessesTest#aDatastoreRunsAtTheDataClassACriticalApplicationAtTheCriticalClassAndAnyOtherAtNone` |
+| REQ-097 | `ModelWitnessesTest#aNodeAddressExposureIsAHostPortOnTheProcessHoldsItToTheNodeAndRendersNoLoadBalancer` |
+| REQ-099 | `ModelWitnessesTest#aTiersAddressExposesItsProxyOnTheListenersPortsAndAnAcmeTierGetsAResolverWithItsOwnState` |
+| REQ-100 | `ModelWitnessesTest#aRoutesTlsFollowsItsTierAnAcmeTierNamesItsResolverAPlainTierRendersNoneAndATlsTierThatIssuesNoneAnEmptyBlock` |
+| REQ-102 | `PipelineRefusalsTest#aProcessIsCheckedWithTheEnvFilesBesideItsProjectFile` |
+| REQ-105 | `ModelWitnessesTest#aProcessAnsweringOnPort53ResolvesThroughThePlatformsUpstreamNameserversAndIsRefusedWithoutThem` |
+| REQ-107 | `ModelWitnessesTest#aProcessThatSpawnsCreatesPodsFromItsTemplateAlone` |
+| REQ-108 | `ModelWitnessesTest#anAdmittedApiBlockWithNoRulesRendersNoRoleAndNoBindingBesideItsMountedToken` |
+| REQ-109 | `ModelWitnessesTest#anEdgeIntoAnObjectStoreThatNamesBucketsDerivesItsCatalogAndHandsTheConsumerItsKey` |
+| REQ-111 | `ModelWitnessesTest#everyStableAddressIsOneExternalNameCreatedOnceAndAConsumersAliasNamesItAlone` |
+| REQ-113 | `ModelWitnessesTest#anOpenMoveRendersItsFrozenSourceBesideItsTargetAndOneSuspendedJobPerStep` |
+| REQ-117 | `ModelWitnessesTest#everyCanaryAsksTheReleaseGateAFourthQuestionRollback` |
+| REQ-125 | `ModelWitnessesTest#aSeededAssetIsTheFirstInitContainerThatWritesItAtMode0600AndTheProcessNeverMountsIt` |
+| REQ-152 | `ModelWitnessesTest#aContainerThatMountsAWritableTmpGetsHomeAfterItsOwnVariablesAndOneWithoutGetsNone` |
+| REQ-153 | `ModelWitnessesTest#everyNamespaceTheRenderWritesIsNeverPruned` |
 
 ## Pending
 
 | id | why no witness yet | ticket |
 |---|---|---|
 | REQ-035 | `resolved.json` binds the production implementation only, so the shared claim is the rendered tree, which REQ-040's witness holds; the row's own last clause, knowledge's resolved edges, is resolved by neither implementation, and leaves with the example when knowledge-system retires ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #272 |
+| REQ-081 | the Service, its pool and its network policy render, but the placement hold to the pool's site and `E_PLACEMENT_UNSATISFIABLE` are not implemented here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-082 | a Platform `monitors.labels` key that a monitor already carries renders the key twice, the Platform's value ahead of the monitor's, instead of the monitor's winning; found by the witness, to fix in `render.mtl` ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-089 | the required anti-affinity renders, but `E_PLACEMENT_UNSATISFIABLE` for fewer eligible nodes than the replica count is not implemented here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-093 | proved by the observability example, which another change is rewriting; witnessed once that lands ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-098 | the derived Node Agents render, but `E_NO_NODE_AGENT_POLICY` is not implemented here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-101 | proved by the observability example (the log collector), which another change is rewriting; witnessed once that lands ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-104 | the backup pod's `BACKUP_OFF_CLUSTER*` variables render, but a recipient that is no age public key is not refused with the Platform document here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-110 | the pinned Move facts and `E_ENGINE_VERSION_MISSING` are not implemented here: resolution derives no Move ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-112 | a Move is not derived here: no `E_MOVE_UNSUPPORTED`, `E_NO_MOVE_POLICY` or `E_MOVE_OPEN`, and no resolved `move` ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-118 | proved by the observability example (the Flux PodMonitor), which another change is rewriting; witnessed once that lands ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-119 | `command` and `args` parse but resolution carries neither and the Process's container renders neither ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-120 | a writable path's size is not added to the Process's memory here, and `E_PLACEMENT_UNSATISFIABLE` is not implemented ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-121 | a description renders nothing, but the schema refusal of one over 160 characters or empty is not implemented here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-123 | optional keys render optional, but `optional: false` is not refused by the schema here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-124 | `E_NO_SEEDER` and the `seedAt` placement refusals are not implemented here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-127 | a rate limit on a route of an exposure with `proxied: false` still counts clients by `CF-Connecting-IP`; found by the witness, to fix in `render.mtl` ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-130 | `E_NO_NODE_AGENT_POLICY` is not implemented here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-140 | `E_UNKNOWN_SIDECAR_ASSET` is not implemented here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |
+| REQ-151 | belongs to the identity example, which another change is rewriting; `E_CLIENT_FIELD_FOR_MODE` is also not implemented here ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) | #666 |

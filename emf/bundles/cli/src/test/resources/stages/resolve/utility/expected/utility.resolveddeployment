@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:20f3a11d4708c9876e83dab4c4db764a29b8cdd0a7fc4e5ddec9eaa2576c3636" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
+    <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
+    <inputDigests name="delivery" digest="sha256:31f4d21b3c877943fecd855a160f8e339bce5c46f1ba9264c6256d37c4124767"/>
+    <inputDigests name="edge" digest="sha256:b1445b93227a2a18990df93d691545276efe933c102357709d50fb4f3895b7af"/>
+    <inputDigests name="identity" digest="sha256:c7e40e058d9b9a19572313f69d5c00859f1b30a6b36c91db290b9903cf9a11e7"/>
+    <inputDigests name="mail" digest="sha256:94fada2c3ecb8b3433bdc676e677e7d5d732509b31f6980f8352cdb25590a5c8"/>
+    <inputDigests name="observability" digest="sha256:d5098265009c4d1ef5a75d9e7035d4af64f7e16c6e1983185a0d469869cc6639"/>
+    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:f7490b93e1893a6e9269c8b6f9ad9b4ae0b5ee0842b2dd870bbaf7a50da7fbe6"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
+  </provenance>
+  <applications id="adguard" revision="sha256:9f34923070e19389d1e83a5f4945cdc100cac60e541ac4650a550ce6d5670d55" project="utility" namespace="utility-system" reconcileUnit="/0/@reconcileUnits.0">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="210s">
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
+      <members process="/0/@applications.0/@processes.0">
+        <readiness xsi:type="resolveddeployment:HttpTarget" path="/login.html" port="3000"/>
+      </members>
+    </releaseGate>
+    <processes name="adguard" identity="adguard" lifecycle="application" image="docker.io/adguard/adguardhome@sha256:6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e" imageVersion="v0.107.79" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" serving="adguard-primary" servingLabel="app.kubernetes.io/name" deadline="210s" replicas="2" memory="256Mi" cpu="50m" hardening="restricted" component="none" spread="true">
+      <internetEgress reason="answers the LAN from a DNS-over-HTTPS upstream"/>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/login.html" port="3000"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/login.html" port="3000"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/login.html" port="3000"/>
+      </startup>
+      <surfaces name="http" port="3000"/>
+      <surfaces name="dns" port="5353"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+      </placement>
+      <assets name="adguard-adguardhome-yaml-85a1bf27a7" from="config/adguard/AdGuardHome.yaml" content="# A stand-in for AdGuard Home's configuration, written for this example: the&#xA;# live file is fleet-infra's, and this repository does not copy it. AdGuard&#xA;# rewrites the file on every start and stops if it cannot, so the file is&#xA;# seeded onto a writable path rather than mounted&#xA;# (spec/v1/10-project-intent.md#seeded-assets).&#xA;http:&#xA;  address: 0.0.0.0:3000&#xA;dns:&#xA;  bind_hosts: [0.0.0.0]&#xA;  port: 5353&#xA;  upstream_dns:&#xA;    - https://dns.quad9.net/dns-query&#xA;  bootstrap_dns: [9.9.9.10, 149.112.112.10]&#xA;schema_version: 29&#xA;" seedAt="/opt/adguardhome/conf/AdGuardHome.yaml"/>
+      <writablePaths path="/opt/adguardhome/work" size="128Mi" memory="true"/>
+      <writablePaths path="/opt/adguardhome/conf" size="64Mi"/>
+      <nameservers>9.9.9.10</nameservers>
+      <nameservers>149.112.112.10</nameservers>
+      <seeder image="docker.io/library/busybox@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec" imageVersion="1.37.0" memory="16Mi" cpu="10m">
+        <command>/bin/sh</command>
+        <command>-c</command>
+        <command>set -eu
+umask 077
+mkdir -p '/opt/adguardhome/conf'
+if [ -e '/opt/adguardhome/conf/AdGuardHome.yaml' ]; then cp -p '/opt/adguardhome/conf/AdGuardHome.yaml' '/opt/adguardhome/conf/AdGuardHome.yaml.superseded'; fi
+cp '/seed/adguard-adguardhome-yaml-85a1bf27a7/AdGuardHome.yaml' '/opt/adguardhome/conf/AdGuardHome.yaml.seeding'
+chmod 0600 '/opt/adguardhome/conf/AdGuardHome.yaml.seeding'
+mv '/opt/adguardhome/conf/AdGuardHome.yaml.seeding' '/opt/adguardhome/conf/AdGuardHome.yaml'</command>
+        <mounts name="adguard-adguardhome-yaml-85a1bf27a7" mountAt="/seed/adguard-adguardhome-yaml-85a1bf27a7" readOnly="true"/>
+        <mounts name="writable-opt-adguardhome-conf" mountAt="/opt/adguardhome/conf"/>
+      </seeder>
+      <l4Services name="adguard-lan-dns" pool="lan-dns">
+        <ports name="tcp-53" port="53" protocol="TCP" targetPort="5353"/>
+        <ports name="udp-53" port="53" protocol="UDP" targetPort="5353"/>
+      </l4Services>
+    </processes>
+  </applications>
+  <applications id="headlamp" revision="sha256:00e9e8ce5e4c29f9b673031edc8e35bc40b8a6e31c53bc12984c3740ed856312" project="utility" namespace="utility-system" reconcileUnit="/0/@reconcileUnits.0">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="210s">
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
+      <members process="/0/@applications.1/@processes.0">
+        <readiness xsi:type="resolveddeployment:HttpTarget" path="/" port="4466"/>
+      </members>
+    </releaseGate>
+    <exposure name="lan" host="dashboard.lan.jorisjonkers.dev" tier="lan" listener="plain" certificates="none" proxyApplication="traefik-lan" proxyNamespace="edge-system" ingressClass="traefik-lan">
+      <routes path="/" audience="lan" precedence="1" process="/0/@applications.1/@processes.0" surface="http">
+        <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <processes name="headlamp" identity="headlamp" lifecycle="application" image="ghcr.io/headlamp-k8s/headlamp@sha256:9c3e5a7b1d4f6a8c0e2b4d6f8a1c3e5b7d9f2a4c6e8b0d2f4a6c8e1b3d5f7a9c" imageVersion="v0.35.0" uid="100" gid="101" cutover="continuous" switchover="blue-green" serving="headlamp-primary" servingLabel="app.kubernetes.io/name" deadline="210s" replicas="1" memory="128Mi" cpu="50m" hardening="restricted" identityToken="true" component="none">
+      <api reason="it acts on the API with each signed-in user's own token, and holds nothing of its own">
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="4466"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="4466"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="4466"/>
+      </startup>
+      <surfaces name="http" port="4466"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-utility" after="/0/@reconcileUnits.1"/>
+  <reconcileUnits name="apps-edge"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+  </policyJob>
+  <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/utility/namespace.yaml" namespace="utility-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/utility/kustomization.yaml">
+    <resources>adguard</resources>
+    <resources>headlamp</resources>
+    <resources>namespace.yaml</resources>
+    <resources>rollout-events</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/utility/networkpolicy.yaml" adapter="networking"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/utility/adguard/kustomization.yaml">
+    <resources>canary.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>pdb.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/utility/adguard/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:SwitchoverFile" path="apps/utility/adguard/canary.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/utility/adguard/service.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/utility/adguard/serviceaccount.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/utility/adguard/configmap.yaml" processes="/0/@applications.0/@processes.0" application="/0/@applications.0" releaseGate="{&quot;analysis&quot;:{&quot;errorRate&quot;:&quot;1%&quot;,&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;latency&quot;:&quot;500ms&quot;,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;210s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;process&quot;:&quot;adguard&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/login.html&quot;,&quot;port&quot;:3000}}]}"/>
+  <deliverables xsi:type="resolveddeployment:BudgetFile" path="apps/utility/adguard/pdb.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/utility/adguard/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="consumer" consumes="adguard.http" port="3000"/>
+      <ingress rule="consumer" consumes="adguard.dns" port="5353"/>
+      <ingress rule="release-gate" namespace="delivery-system" process="release-gate" port="3000"/>
+      <ingress rule="l4" port="5353" cidr="0.0.0.0/0"/>
+      <ingress rule="l4" port="5353" cidr="0.0.0.0/0" protocol="UDP"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/utility/headlamp/kustomization.yaml">
+    <resources>canary.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>route-lan.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/utility/headlamp/route-lan.yaml" adapter="traefik" exposure="/0/@applications.1/@exposure.0" entryPoint="web"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/utility/headlamp/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:SwitchoverFile" path="apps/utility/headlamp/canary.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/utility/headlamp/serviceaccount.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/utility/headlamp/configmap.yaml" application="/0/@applications.1" releaseGate="{&quot;analysis&quot;:{&quot;errorRate&quot;:&quot;1%&quot;,&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;latency&quot;:&quot;500ms&quot;,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;210s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;process&quot;:&quot;headlamp&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/&quot;,&quot;port&quot;:4466}}]}" externalChecks="{&quot;endpoints&quot;:[{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;utility&quot;,&quot;name&quot;:&quot;headlamp-lan-1&quot;,&quot;url&quot;:&quot;http://dashboard.lan.jorisjonkers.dev/&quot;}]}"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/utility/headlamp/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.1/@processes.0">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-lan" port="4466"/>
+      <ingress rule="consumer" consumes="headlamp.http" port="4466"/>
+      <ingress rule="release-gate" namespace="delivery-system" process="release-gate" port="4466"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/utility/rollout-events/alert.yaml" part="alert" project="utility" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/utility/rollout-events/provider.yaml" part="provider" project="utility" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/utility/rollout-events/kustomization.yaml">
+    <resources>alert.yaml</resources>
+    <resources>provider.yaml</resources>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>

@@ -1,5 +1,6 @@
 package dev.jorisjonkers.deploykit.emf.cli;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.Descriptor;
 import dev.jorisjonkers.deploykit.emf.syntax.values.ProjectIntentValueConverters;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -35,7 +36,7 @@ public final class IntentJson {
         Map<String, Object> json = new LinkedHashMap<>();
         for (EStructuralFeature feature : root.eClass().getEAllStructuralFeatures()) {
             if (isSet(root, feature)) {
-                json.put(feature.getName(), value(root, feature));
+                json.put(Descriptor.keyOf(feature), value(root, feature));
             }
         }
         return json;

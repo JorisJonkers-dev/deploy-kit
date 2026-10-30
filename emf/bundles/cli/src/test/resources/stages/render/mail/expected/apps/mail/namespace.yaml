@@ -1,0 +1,10 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mail-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled

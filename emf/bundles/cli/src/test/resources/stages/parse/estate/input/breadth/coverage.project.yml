@@ -1,0 +1,106 @@
+# A project that writes, between them, every key the estate's own projects leave
+# out, so each stage of the harness reads all of the source model.
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: coverage
+owner: joris
+placement: { site: enschede }
+startupBudget: 90s
+writablePaths: [/tmp]
+dependsOn:
+  - { application: platform-rabbitmq, surface: amqp, required: true }
+assets:
+  - { from: config/coverage.conf, mountAt: /etc/coverage/project.conf }
+applications:
+  - id: coverage-api
+    description: Reads every key the other projects leave out
+    startupBudget: 60s
+    writablePaths: [{ path: /var/cache/coverage, memory: 64Mi }]
+    assets:
+      - { from: config/seed.conf, seedAt: /data/seed.conf }
+    dependsOn:
+      - { application: platform-valkey, surface: redis, required: false }
+    secrets:
+      - path: secret/data/coverage-system/app
+        keys:
+          - name: session
+            generate: { bytes: 32, encoding: base64 }
+          - name: cookie
+            generate: { bytes: 16, encoding: base64url }
+          - name: salt
+            generate: { encoding: hex }
+        access: read
+        delivery: file
+        mountAt: /run/secrets/app
+        fileMode: "0400"
+        rotation: { tolerates: restart }
+    client:
+      signIn: token
+      backChannelLogoutPath: /logout
+      roles: [reader]
+    processes:
+      - name: coverage-api
+        lifecycle: application
+        image: coverage-api
+        runtime: none
+        command: [/bin/coverage]
+        args: [serve, --verbose]
+        rollback: forward-only
+        cutover: interrupted
+        provides: { http: 8080 }
+        placement:
+          memory: 64Mi
+          cpu: 10m
+          arch: [arm64]
+          disk: { media: [hdd] }
+          gpu: { memory: 8Gi, vendor: [nvidia] }
+        api:
+          reason: it reads the nodes it places work on
+          rules:
+            - { group: core, objects: [nodes], verbs: [get], scope: cluster }
+        sidecars:
+          - name: helper
+            image: coverage-helper
+            command: [/bin/helper]
+            args: [run]
+            memory: 16Mi
+            cpu: 5m
+        secrets:
+          - path: secret/data/coverage/rolled
+            keys: [password]
+            access: self-roll
+            delivery: file
+            mountAt: /run/secrets/rolled
+            fileMode: "0400"
+            rotation: { tolerates: restart }
+          - path: secret/data/coverage/renewed
+            keys: [lease]
+            access: self-renew
+            delivery: file
+            mountAt: /run/secrets/renewed
+            fileMode: "0400"
+            rotation: { tolerates: restart }
+          - path: secret/data/coverage/custody
+            keys: [root]
+            access: custody
+            delivery: self
+            rotation: { tolerates: reload }
+          - engine: transit
+            key: coverage
+            operations: [encrypt, decrypt, verify]
+            delivery: self
+            mountAt: /run/secrets/transit
+            fileMode: "0400"
+            rotation: { tolerates: restart }
+      - name: coverage-seed
+        lifecycle: prepare
+        image: coverage-seed
+        runtime: none
+        placement: { memory: 32Mi, cpu: 5m }
+      - name: coverage-job
+        lifecycle: job
+        image: coverage-job
+        runtime: none
+        placement: { memory: 32Mi, cpu: 5m }
+        cutover: interrupted

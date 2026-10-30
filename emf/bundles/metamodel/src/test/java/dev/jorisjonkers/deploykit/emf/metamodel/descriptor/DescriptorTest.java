@@ -47,7 +47,7 @@ class DescriptorTest {
                 .toList();
 
         assertThat(classes).isSorted().doesNotHaveDuplicates().contains("Project", "Process", "KvGrant");
-        assertThat(vocabularies).isSorted().doesNotHaveDuplicates().contains("AlertClass", "TransitOp");
+        assertThat(vocabularies).isSorted().doesNotHaveDuplicates().contains("Lifecycle", "TransitOp");
     }
 
     @Test
@@ -169,7 +169,24 @@ class DescriptorTest {
 
     @Test
     void aVocabularyCarriesItsLiteralsInOrder() {
-        assertThat(named("vocabularies", "AlertClass"))
-                .isEqualTo(Map.of("name", "AlertClass", "literals", List.of("business-hours", "urgent", "page")));
+        assertThat(named("vocabularies", "Lifecycle"))
+                .isEqualTo(
+                        Map.of("name", "Lifecycle", "literals", List.of("application", "job", "prepare", "scheduled")));
+    }
+
+    @Test
+    void aFeatureWhoseKeyIsNoJavaIdentifierIsWrittenUnderItsKeyAndSortedByIt() {
+        assertThat(((List<?>) named("classes", "NodeAgents").get("features"))
+                        .stream()
+                                .map(feature -> ((Map<?, ?>) feature).get("name"))
+                                .toList())
+                .isEqualTo(List.of("gpu-device", "gpu-metrics", "l4-speaker", "node-metrics"));
+    }
+
+    @Test
+    void aMapEntryTheProductionImplementationLeavesUnnamedCarriesTheNameItWrites() {
+        assertThat(feature("MonitorCadence", "labels").get("entry")).isEqualTo("undefined");
+        assertThat(feature("Platform", "l4Addresses").get("entry")).isEqualTo("L4Address");
+        assertThat(feature("Platform", "l4Addresses").get("types")).isEqualTo(List.of("NodeAddress", "PoolAddress"));
     }
 }

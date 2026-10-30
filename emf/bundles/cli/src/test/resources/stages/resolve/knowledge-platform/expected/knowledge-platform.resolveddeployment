@@ -1,0 +1,828 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:e83846daa063286ed1b2afa4ec02427aa5893760e25e0a2a8ac879cffeedbb91" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
+    <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
+    <inputDigests name="delivery" digest="sha256:31f4d21b3c877943fecd855a160f8e339bce5c46f1ba9264c6256d37c4124767"/>
+    <inputDigests name="edge" digest="sha256:b1445b93227a2a18990df93d691545276efe933c102357709d50fb4f3895b7af"/>
+    <inputDigests name="identity" digest="sha256:c7e40e058d9b9a19572313f69d5c00859f1b30a6b36c91db290b9903cf9a11e7"/>
+    <inputDigests name="knowledge-platform" digest="sha256:2a32d7c67b28a40424a3f2cea1d41917d569cce0b3bca6dffb714efaf6265e62"/>
+    <inputDigests name="mail" digest="sha256:94fada2c3ecb8b3433bdc676e677e7d5d732509b31f6980f8352cdb25590a5c8"/>
+    <inputDigests name="observability" digest="sha256:d5098265009c4d1ef5a75d9e7035d4af64f7e16c6e1983185a0d469869cc6639"/>
+    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:f7490b93e1893a6e9269c8b6f9ad9b4ae0b5ee0842b2dd870bbaf7a50da7fbe6"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
+  </provenance>
+  <applications id="docling-serve" revision="sha256:7b7c0d2af493a5bb06e3d017cf578cb8a646ca82d5dc169267012e3e84b4ac5d" project="knowledge-platform" namespace="knowledge-platform-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <processes name="docling-serve" identity="docling-serve" lifecycle="application" image="ghcr.io/docling-project/docling-serve@sha256:5d1a649d48b5715e23ec4906bb0624632b1971a1d975a4bc57d0f723114c7c6e" imageVersion="v1.5.0" uid="1000" gid="1000" cutover="interrupted" switchover="stop-start" serving="docling-serve" servingLabel="app.kubernetes.io/instance" deadline="480s" replicas="1" memory="1Gi" cpu="500m" hardening="restricted" component="python" priorityClass="platform-data">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health" port="8000"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health" port="8000"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="24">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health" port="8000"/>
+      </startup>
+      <surfaces name="http" port="8000"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="docling-serve-archive" mountAt="/archive" size="50Gi" durability="irreplaceable">
+        <backup schedule="45 2 * * *" retain="90" offCluster="s3://backup-storage/jorisjonkers-dev" offClusterPath="knowledge-platform/docling-serve/docling-serve-archive" offClusterRecipient="age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8" method="ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d" methodVersion="1.2.0" uid="1000" gid="1000" identity="docling-serve-backup" claim="docling-serve-archive-backup">
+          <credential path="secret/data/platform/backup/off-cluster" access="read" delivery="env" destination="docling-serve-backup-platform-backup-off-cluster"/>
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+          <destinations cidr="203.0.113.0/24" port="443"/>
+        </backup>
+      </volumes>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="docling-serve"/>
+      <environment name="PORT" value="8000"/>
+      <environment name="UVICORN_HOST" value="0.0.0.0"/>
+      <environment name="UVICORN_PORT" value="8000"/>
+    </processes>
+  </applications>
+  <applications id="hindsight" revision="sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67" project="knowledge-platform" namespace="knowledge-platform-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="480s">
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
+      <members process="/0/@applications.1/@processes.0">
+        <readiness xsi:type="resolveddeployment:HttpTarget" path="/health" port="8888"/>
+        <checks>error-rate</checks>
+        <checks>latency</checks>
+        <waitsFor application="hindsight-embedding" process="hindsight-tei-embedding"/>
+      </members>
+      <members process="/0/@applications.1/@processes.2">
+        <readiness xsi:type="resolveddeployment:TcpTarget" tcp="3000"/>
+        <checks>error-rate</checks>
+        <checks>latency</checks>
+      </members>
+    </releaseGate>
+    <exposure name="console" host="memory.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/" audience="authenticated" precedence="1" process="/0/@applications.1/@processes.2" surface="console">
+        <middleware endpoint="http://identity-http.estate-system.svc.cluster.local:8080/gate/forward" name="forward-auth" namespace="edge-system"/>
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <exposure name="api" host="memory-api.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/" audience="authenticated" precedence="1" process="/0/@applications.1/@processes.0" surface="api">
+        <middleware endpoint="http://identity-http.estate-system.svc.cluster.local:8080/gate/forward" name="forward-auth" namespace="edge-system"/>
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <processes name="hindsight-api" identity="hindsight-api" lifecycle="application" image="ghcr.io/vectorize-io/hindsight-api@sha256:7b14a1f4062252992d0176758753615e0a2071d9a269995be007be223ab01812" imageVersion="0.4.0" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" serving="hindsight-api-primary" servingLabel="app.kubernetes.io/name" deadline="480s" replicas="1" memory="1Gi" cpu="500m" hardening="restricted" component="python">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health" port="8888"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health/live" port="8888"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="24">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health/live" port="8888"/>
+      </startup>
+      <surfaces name="api" port="8888"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+      </placement>
+      <secrets path="secret/data/platform/hindsight" access="read" delivery="env" destination="hindsight-api-platform-hindsight">
+        <keys>llm-api-key</keys>
+        <restartTargets>hindsight-api</restartTargets>
+      </secrets>
+      <secrets engine="database" delivery="env" destination="hindsight-api-database-creds-knowledge-platform-owner">
+        <paths path="database/creds/knowledge-platform-owner">
+          <allows>read</allows>
+        </paths>
+        <restartTargets>hindsight-api</restartTargets>
+      </secrets>
+      <dependencies application="platform-postgres" surface="postgres" address="platform-postgres:5432" target="platform-postgres-postgres.estate-system.svc.cluster.local">
+        <peers namespace="data-system" process="postgres" port="5432"/>
+      </dependencies>
+      <dependencies application="hindsight-embedding" surface="embeddings" address="hindsight-tei-embedding:8091">
+        <peers namespace="knowledge-platform-system" process="hindsight-tei-embedding" port="8091"/>
+      </dependencies>
+      <consumes>platform-postgres.postgres</consumes>
+      <consumes>hindsight-embedding.embeddings</consumes>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="HINDSIGHT_API_EMBEDDINGS_PROVIDER" value="tei"/>
+      <environment name="HINDSIGHT_API_LLM_API_KEY">
+        <secret path="secret/data/platform/hindsight" key="llm-api-key"/>
+      </environment>
+      <environment name="HINDSIGHT_API_LLM_BASE_URL" value="https://eu.openrouter.ai/api/v1"/>
+      <environment name="HINDSIGHT_API_LLM_MODEL" value="mistralai/mistral-small-2603"/>
+      <environment name="HINDSIGHT_API_LLM_PROVIDER" value="openai"/>
+      <environment name="HINDSIGHT_API_PORT" value="8888"/>
+      <environment name="HINDSIGHT_API_WORKER_ENABLED" value="false"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="hindsight-api"/>
+      <environment name="PGPASSWORD">
+        <secret path="database/creds/knowledge-platform-owner" key="password"/>
+      </environment>
+      <environment name="PGUSER">
+        <secret path="database/creds/knowledge-platform-owner" key="username"/>
+      </environment>
+      <environment name="PORT" value="8888"/>
+    </processes>
+    <processes name="hindsight-worker" identity="hindsight-worker" lifecycle="application" image="ghcr.io/vectorize-io/hindsight-api@sha256:7b14a1f4062252992d0176758753615e0a2071d9a269995be007be223ab01812" imageVersion="0.4.0" uid="1000" gid="1000" cutover="continuous" switchover="stop-start" serving="hindsight-worker" servingLabel="app.kubernetes.io/instance" deadline="480s" memory="1Gi" cpu="500m" hardening="restricted" component="python" parked="true">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health" port="8889"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health/live" port="8889"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="24">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health/live" port="8889"/>
+      </startup>
+      <surfaces name="worker" port="8889"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+      </placement>
+      <secrets path="secret/data/platform/hindsight" access="read" delivery="env" destination="hindsight-worker-platform-hindsight">
+        <keys>llm-api-key</keys>
+        <restartTargets>hindsight-worker</restartTargets>
+      </secrets>
+      <secrets engine="database" delivery="file" destination="hindsight-worker-database-creds-knowledge-platform-owner" mountAt="/run/secrets/database" fileMode="0400">
+        <paths path="database/creds/knowledge-platform-owner">
+          <allows>read</allows>
+        </paths>
+        <restartTargets>hindsight-worker</restartTargets>
+      </secrets>
+      <dependencies application="platform-postgres" surface="postgres" address="platform-postgres:5432" target="platform-postgres-postgres.estate-system.svc.cluster.local">
+        <peers namespace="data-system" process="postgres" port="5432"/>
+      </dependencies>
+      <dependencies application="hindsight-embedding" surface="embeddings" address="hindsight-tei-embedding:8091">
+        <peers namespace="knowledge-platform-system" process="hindsight-tei-embedding" port="8091"/>
+      </dependencies>
+      <consumes>platform-postgres.postgres</consumes>
+      <consumes>hindsight-embedding.embeddings</consumes>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="HINDSIGHT_API_EMBEDDINGS_PROVIDER" value="tei"/>
+      <environment name="HINDSIGHT_API_LLM_API_KEY">
+        <secret path="secret/data/platform/hindsight" key="llm-api-key"/>
+      </environment>
+      <environment name="HINDSIGHT_API_LLM_BASE_URL" value="https://eu.openrouter.ai/api/v1"/>
+      <environment name="HINDSIGHT_API_LLM_MODEL" value="mistralai/mistral-small-2603"/>
+      <environment name="HINDSIGHT_API_LLM_PROVIDER" value="openai"/>
+      <environment name="HINDSIGHT_API_PORT" value="8889"/>
+      <environment name="HINDSIGHT_API_WORKER_BATCH_SIZE" value="10"/>
+      <environment name="HINDSIGHT_API_WORKER_HTTP_PORT" value="8889"/>
+      <environment name="HINDSIGHT_API_WORKER_MAX_RETRIES" value="3"/>
+      <environment name="HINDSIGHT_API_WORKER_POLL_INTERVAL_MS" value="500"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="hindsight-worker"/>
+      <environment name="PORT" value="8889"/>
+    </processes>
+    <processes name="hindsight-control-plane" identity="hindsight-control-plane" lifecycle="application" image="ghcr.io/vectorize-io/hindsight-control-plane@sha256:d9bf57083f7cb0a53ee5011bdfde6aae2490dbf5c360d2d1bff10473b45eb112" imageVersion="0.4.0" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" serving="hindsight-control-plane-primary" servingLabel="app.kubernetes.io/name" deadline="300s" replicas="1" memory="512Mi" cpu="250m" hardening="restricted" component="node">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="3000"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="3000"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="3000"/>
+      </startup>
+      <surfaces name="console" port="3000"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+      </placement>
+      <dependencies application="hindsight" surface="api" address="hindsight-api:8888">
+        <peers namespace="knowledge-platform-system" process="hindsight-api" port="8888"/>
+      </dependencies>
+      <consumes>hindsight.api</consumes>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="HINDSIGHT_CP_HOSTNAME" value="0.0.0.0"/>
+      <environment name="HINDSIGHT_CP_PORT" value="3000"/>
+      <environment name="NODE_ENV" value="production"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="hindsight-control-plane"/>
+      <environment name="PORT" value="3000"/>
+    </processes>
+  </applications>
+  <applications id="basic-memory" revision="sha256:1a52e063fc6a1e3bdf02551694019e529ef35c07d124957d1367595321a22f67" project="knowledge-platform" namespace="knowledge-platform-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <exposure name="mcp" host="memory-mcp.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/" audience="authenticated" precedence="1" process="/0/@applications.2/@processes.0" surface="mcp">
+        <middleware endpoint="http://identity-http.estate-system.svc.cluster.local:8080/gate/forward" name="forward-auth" namespace="edge-system"/>
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <processes name="basic-memory" identity="basic-memory" lifecycle="application" image="ghcr.io/basicmachines-co/basic-memory@sha256:939f1173d96626c280763e14622f2381d49fbbb7db17cae2e832f4f639405643" imageVersion="v0.14.2" uid="1000" gid="1000" cutover="interrupted" switchover="stop-start" serving="basic-memory" servingLabel="app.kubernetes.io/instance" deadline="480s" replicas="1" memory="1Gi" cpu="500m" hardening="restricted" component="python">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="8000"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="8000"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="24">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="8000"/>
+      </startup>
+      <surfaces name="mcp" port="8000"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="basic-memory-vault" mountAt="/vault" size="5Gi"/>
+      <volumes claim="basic-memory-config" mountAt="/app/.basic-memory" size="2Gi"/>
+      <secrets path="secret/data/knowledge-system/vault-deploy-key" access="read" delivery="file" destination="basic-memory-knowledge-system-vault-deploy-key" mountAt="/run/secrets/knowledge-vault/id_ed25519" fileMode="0400">
+        <keys>private_key</keys>
+        <restartTargets>basic-memory</restartTargets>
+      </secrets>
+      <sidecars name="git-clone" image="ghcr.io/jorisjonkers-dev/knowledge/basic-memory-git-sync@sha256:7507f69d7e903da30006f07d84091d892dfa42c359c125cccaec05506af36e50" imageVersion="1.0.0" memory="64Mi" cpu="50m" init="true">
+        <mounts name="basic-memory-vault" mountAt="/vault"/>
+      </sidecars>
+      <sidecars name="git-sync" image="ghcr.io/jorisjonkers-dev/knowledge/basic-memory-git-sync@sha256:7507f69d7e903da30006f07d84091d892dfa42c359c125cccaec05506af36e50" imageVersion="1.0.0" memory="64Mi" cpu="50m">
+        <mounts name="basic-memory-vault" mountAt="/vault"/>
+      </sidecars>
+      <environment name="BASIC_MEMORY_CONFIG_DIR" value="/app/.basic-memory"/>
+      <environment name="BASIC_MEMORY_DEFAULT_PROJECT" value="main"/>
+      <environment name="BASIC_MEMORY_DISABLE_PERMALINKS" value="true"/>
+      <environment name="BASIC_MEMORY_ENSURE_FRONTMATTER_ON_SYNC" value="false"/>
+      <environment name="BASIC_MEMORY_HOME" value="/vault"/>
+      <environment name="BASIC_MEMORY_LOG_LEVEL" value="INFO"/>
+      <environment name="BASIC_MEMORY_PROJECT_ROOT" value="/vault"/>
+      <environment name="BASIC_MEMORY_SEMANTIC_EMBEDDING_CACHE_DIR" value="/app/.basic-memory/fastembed"/>
+      <environment name="BASIC_MEMORY_SYNC_CHANGES" value="true"/>
+      <environment name="BASIC_MEMORY_SYNC_DELAY" value="1000"/>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="GIT_CONFIG_COUNT" value="1"/>
+      <environment name="GIT_CONFIG_KEY_0" value="safe.directory"/>
+      <environment name="GIT_CONFIG_VALUE_0" value="/vault"/>
+      <environment name="LOG_LEVEL" value="INFO"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="basic-memory"/>
+      <environment name="POLL_SECONDS" value="10"/>
+      <environment name="PORT" value="8000"/>
+      <environment name="PUSH" value="true"/>
+      <environment name="VAULT_AUTHOR_EMAIL" value="basicmemory@knowledge.local"/>
+      <environment name="VAULT_AUTHOR_NAME" value="basic-memory-vault"/>
+      <environment name="VAULT_BRANCH" value="main"/>
+      <environment name="VAULT_CLONE_URL" value="git@github.com:JorisJonkers-dev/knowledge-vault.git"/>
+      <environment name="VAULT_DIR" value="/vault"/>
+      <environment name="VAULT_SSH_KEY_PATH" value="/run/secrets/knowledge-vault/id_ed25519"/>
+    </processes>
+  </applications>
+  <applications id="karakeep" revision="sha256:fe9f88ac000d87904d52bf36ec404239fb5782931f94da16a6516938cbb26ecf" project="knowledge-platform" namespace="knowledge-platform-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <exposure name="public" host="karakeep.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/" audience="authenticated" precedence="1" process="/0/@applications.3/@processes.0" surface="http">
+        <middleware endpoint="http://identity-http.estate-system.svc.cluster.local:8080/gate/forward" name="forward-auth" namespace="edge-system"/>
+        <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <processes name="karakeep" identity="karakeep" lifecycle="application" image="ghcr.io/karakeep-app/karakeep@sha256:3d57623bf031f32a0597a3ebe0cd869bff6ba181c02ebc90fac492458bcfd4a4" imageVersion="0.33.2" uid="1000" gid="1000" cutover="interrupted" switchover="stop-start" serving="karakeep" servingLabel="app.kubernetes.io/instance" deadline="720s" replicas="1" memory="512Mi" cpu="200m" hardening="restricted" component="node" priorityClass="platform-data">
+      <vpn image="docker.io/qmcgaw/gluetun@sha256:7e1f3c5a9b2d4f6e8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f" imageVersion="v3.40.0" memory="128Mi" cpu="50m">
+        <environment name="DNS_KEEP_NAMESERVER" value="on"/>
+        <environment name="DOT" value="off"/>
+        <environment name="FIREWALL_INPUT_PORTS" value="3000"/>
+        <environment name="PORT_FORWARD_ONLY" value="on"/>
+        <environment name="SERVER_COUNTRIES" value="Netherlands"/>
+        <environment name="VPN_PORT_FORWARDING" value="off"/>
+        <environment name="VPN_SERVICE_PROVIDER" value="protonvpn"/>
+        <environment name="VPN_TYPE" value="wireguard"/>
+        <credential path="secret/data/platform/vpn/knowledge-platform-karakeep" access="read" delivery="env" destination="karakeep-vpn-platform-vpn-knowledge-platform-karakeep"/>
+      </vpn>
+      <internetEgress reason="The browser fetches the pages it bookmarks."/>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/health" port="3000"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/health" port="3000"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="40">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/health" port="3000"/>
+      </startup>
+      <surfaces name="http" port="3000"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="karakeep-data" mountAt="/data" size="50Gi" durability="recoverable">
+        <backup schedule="15 3 * * *" retain="14" method="ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d" methodVersion="1.2.0" uid="1000" gid="1000" identity="karakeep-backup" claim="karakeep-data-backup">
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+        </backup>
+      </volumes>
+      <volumes claim="karakeep-meili" mountAt="/meili_data" size="5Gi"/>
+      <volumes claim="meilisearch-data" mountAt="/meili_data" size="20Gi"/>
+      <secrets path="secret/data/platform/karakeep" access="read" delivery="env" destination="karakeep-platform-karakeep">
+        <keys>nextauth-secret</keys>
+        <keys>meili-master-key</keys>
+        <keys>openrouter-api-key</keys>
+        <restartTargets>karakeep</restartTargets>
+      </secrets>
+      <secrets path="secret/data/knowledge-platform/garage/s3" access="read" delivery="env" destination="karakeep-knowledge-platform-garage-s3">
+        <keys>access-key-id</keys>
+        <keys>secret-access-key</keys>
+      </secrets>
+      <sidecars name="meilisearch" image="getmeili/meilisearch@sha256:860fa4baed04ae1c235de870edab0c8006227546dea1bbb6411fbfc5e27cf1db" imageVersion="v1.41.0" memory="256Mi" cpu="100m">
+        <mounts name="karakeep-meili" mountAt="/meili_data"/>
+      </sidecars>
+      <sidecars name="chrome" image="ghcr.io/karakeep-app/karakeep-chrome@sha256:5b19bbb160e9ff60681a3abd97e1c4ec9f64212301410de658c3900ab7ef31e7" imageVersion="124.0.6367.78" memory="512Mi" cpu="500m"/>
+      <dependencies application="platform-garage" surface="s3" address="platform-garage:3900" target="platform-garage-s3.estate-system.svc.cluster.local">
+        <peers namespace="data-system" process="garage" port="3900"/>
+      </dependencies>
+      <consumes>platform-garage.s3</consumes>
+      <environment name="ASSET_STORE_S3_ACCESS_KEY_ID">
+        <secret path="secret/data/knowledge-platform/garage/s3" key="access-key-id"/>
+      </environment>
+      <environment name="ASSET_STORE_S3_BUCKET" value="knowledge-platform-assets"/>
+      <environment name="ASSET_STORE_S3_ENDPOINT" value="http://platform-garage:3900"/>
+      <environment name="ASSET_STORE_S3_FORCE_PATH_STYLE" value="true"/>
+      <environment name="ASSET_STORE_S3_REGION" value="garage"/>
+      <environment name="ASSET_STORE_S3_SECRET_ACCESS_KEY">
+        <secret path="secret/data/knowledge-platform/garage/s3" key="secret-access-key"/>
+      </environment>
+      <environment name="BROWSER_WEB_URL" value="http://localhost:9222"/>
+      <environment name="DATA_DIR" value="/data"/>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="INFERENCE_CONTEXT_LENGTH" value="2048"/>
+      <environment name="INFERENCE_ENABLE_AUTO_SUMMARIZATION" value="true"/>
+      <environment name="INFERENCE_ENABLE_AUTO_TAGGING" value="true"/>
+      <environment name="INFERENCE_TEXT_MODEL" value="mistralai/mistral-small-2603"/>
+      <environment name="MEILI_ADDR" value="http://localhost:7700"/>
+      <environment name="MEILI_MASTER_KEY">
+        <secret path="secret/data/platform/karakeep" key="meili-master-key"/>
+      </environment>
+      <environment name="MEILI_NO_ANALYTICS" value="true"/>
+      <environment name="NEXTAUTH_SECRET">
+        <secret path="secret/data/platform/karakeep" key="nextauth-secret"/>
+      </environment>
+      <environment name="NEXTAUTH_URL" value="https://karakeep.jorisjonkers.dev"/>
+      <environment name="OPENAI_API_BASE" value="https://eu.openrouter.ai/api/v1"/>
+      <environment name="OPENAI_API_KEY">
+        <secret path="secret/data/platform/karakeep" key="openrouter-api-key"/>
+      </environment>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="karakeep"/>
+      <environment name="PORT" value="3000"/>
+    </processes>
+  </applications>
+  <applications id="hindsight-embedding" revision="sha256:bf58dfb840ffb6e9c0f06b870b5185a9af123a508f2dd9331e241307c16dfcc6" project="knowledge-platform" namespace="knowledge-platform-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="hindsight-tei-embedding" identity="hindsight-tei-embedding" lifecycle="application" image="ghcr.io/huggingface/text-embeddings-inference@sha256:8de25e75ce39617f17f2f6c77d60a4f75b65e779ed5005420eb1400072a15c1c" imageVersion="1.7.0" uid="1000" gid="1000" cutover="interrupted" switchover="stop-start" serving="hindsight-tei-embedding" servingLabel="app.kubernetes.io/instance" deadline="1020s" replicas="1" memory="6Gi" cpu="500m" hardening="restricted" component="none">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health" port="8091"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health" port="8091"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="60">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health" port="8091"/>
+      </startup>
+      <surfaces name="embeddings" port="8091"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+      </placement>
+      <volumes claim="hindsight-tei-model-cache" mountAt="/data" size="8Gi"/>
+      <environment name="MAX_CLIENT_BATCH_SIZE" value="256"/>
+      <environment name="PAYLOAD_LIMIT" value="10000000"/>
+      <environment name="PORT" value="8091"/>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-knowledge-platform" after="/0/@reconcileUnits.1 /0/@reconcileUnits.2 /0/@reconcileUnits.3"/>
+  <reconcileUnits name="apps-data"/>
+  <reconcileUnits name="apps-edge"/>
+  <reconcileUnits name="apps-secrets"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+  </policyJob>
+  <catalogJobs identity="postgres-catalog" namespace="data-system" image="ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c" imageVersion="1.0.0" uid="65532" gid="65532" role="data-system-postgres-catalog" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <catalog host="postgres.data-system.svc.cluster.local" port="5432" connection="postgres">
+      <admin path="secret/data/platform/postgres" user="postgres.user" password="postgres.password"/>
+      <databases name="knowledge-platform_db" owner="knowledge-platform-owner" data="knowledge-platform-data"/>
+    </catalog>
+    <consumes>platform-postgres.postgres</consumes>
+    <egress rule="datastore" namespace="data-system" process="postgres" port="5432"/>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    <policy path="secret/data/platform/postgres">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/metadata/platform/postgres">
+      <allows>read</allows>
+    </policy>
+    <policy path="database/roles/knowledge-platform-owner">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+    <policy path="database/roles/knowledge-platform-data">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+  </catalogJobs>
+  <catalogJobs identity="garage-catalog" namespace="data-system" image="ghcr.io/jorisjonkers-dev/delivery/garage-catalog@sha256:3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e" imageVersion="1.0.0" uid="65532" gid="65532" role="data-system-garage-catalog" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <catalog host="garage.data-system.svc.cluster.local" port="3903">
+      <admin path="secret/data/platform/garage" token="admin-token"/>
+      <keys name="knowledge-platform" path="secret/data/knowledge-platform/garage/s3">
+        <buckets>knowledge-platform-assets</buckets>
+      </keys>
+    </catalog>
+    <consumes>platform-garage.admin</consumes>
+    <egress rule="datastore" namespace="data-system" process="garage" port="3903"/>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    <policy path="secret/data/platform/garage">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/metadata/platform/garage">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/data/knowledge-platform/garage/s3">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+  </catalogJobs>
+  <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/knowledge-platform/namespace.yaml" namespace="knowledge-platform-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/knowledge-platform/kustomization.yaml">
+    <resources>aliases.yaml</resources>
+    <resources>basic-memory</resources>
+    <resources>docling-serve</resources>
+    <resources>hindsight</resources>
+    <resources>hindsight-embedding</resources>
+    <resources>karakeep</resources>
+    <resources>namespace.yaml</resources>
+    <resources>rollout-events</resources>
+    <resources>vault-policy</resources>
+    <resources>vaultconnection.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/knowledge-platform/networkpolicy.yaml" adapter="networking"/>
+  <deliverables xsi:type="resolveddeployment:AliasFile" path="apps/knowledge-platform/aliases.yaml" namespace="knowledge-platform-system">
+    <aliases name="platform-garage" target="platform-garage-s3.estate-system.svc.cluster.local"/>
+    <aliases name="platform-postgres" target="platform-postgres-postgres.estate-system.svc.cluster.local"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:ConnectionFile" path="apps/knowledge-platform/vaultconnection.yaml" adapter="vso" namespace="knowledge-platform-system" address="http://vault.secrets-system.svc.cluster.local:8200"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/knowledge-platform/docling-serve/kustomization.yaml">
+    <resources>backup.yaml</resources>
+    <resources>pvc.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/knowledge-platform/docling-serve/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/knowledge-platform/docling-serve/service.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/knowledge-platform/docling-serve/serviceaccount.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/knowledge-platform/docling-serve/pvc.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:BackupFile" path="apps/knowledge-platform/docling-serve/backup.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/knowledge-platform/docling-serve/vso.yaml" adapter="vso" application="/0/@applications.0">
+    <holders identity="docling-serve-backup" component="none" grants="/0/@applications.0/@processes.0/@volumes.0/@backup/@credential"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/knowledge-platform/docling-serve/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="consumer" consumes="docling-serve.http" port="8000"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/knowledge-platform/hindsight/kustomization.yaml">
+    <resources>canary.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>route-api.yaml</resources>
+    <resources>route-console.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/knowledge-platform/hindsight/route-console.yaml" adapter="traefik" exposure="/0/@applications.1/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/knowledge-platform/hindsight/route-api.yaml" adapter="traefik" exposure="/0/@applications.1/@exposure.1" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/knowledge-platform/hindsight/workload.yaml" processes="/0/@applications.1/@processes.0 /0/@applications.1/@processes.1 /0/@applications.1/@processes.2" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:SwitchoverFile" path="apps/knowledge-platform/hindsight/canary.yaml" processes="/0/@applications.1/@processes.0 /0/@applications.1/@processes.2"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/knowledge-platform/hindsight/service.yaml" processes="/0/@applications.1/@processes.1"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/knowledge-platform/hindsight/serviceaccount.yaml" processes="/0/@applications.1/@processes.0 /0/@applications.1/@processes.1 /0/@applications.1/@processes.2"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/knowledge-platform/hindsight/configmap.yaml" application="/0/@applications.1" releaseGate="{&quot;analysis&quot;:{&quot;errorRate&quot;:&quot;1%&quot;,&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;latency&quot;:&quot;500ms&quot;,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;480s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;checks&quot;:[&quot;error-rate&quot;,&quot;latency&quot;],&quot;process&quot;:&quot;hindsight-api&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/health&quot;,&quot;port&quot;:8888},&quot;waitsFor&quot;:[{&quot;application&quot;:&quot;hindsight-embedding&quot;,&quot;process&quot;:&quot;hindsight-tei-embedding&quot;}]},{&quot;checks&quot;:[&quot;error-rate&quot;,&quot;latency&quot;],&quot;process&quot;:&quot;hindsight-control-plane&quot;,&quot;readiness&quot;:{&quot;tcp&quot;:3000}}]}" externalChecks="{&quot;endpoints&quot;:[{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;knowledge-platform&quot;,&quot;name&quot;:&quot;hindsight-console-1&quot;,&quot;url&quot;:&quot;https://memory.jorisjonkers.dev/&quot;},{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;knowledge-platform&quot;,&quot;name&quot;:&quot;hindsight-api-1&quot;,&quot;url&quot;:&quot;https://memory-api.jorisjonkers.dev/&quot;}]}"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/knowledge-platform/hindsight/vso.yaml" adapter="vso" application="/0/@applications.1">
+    <holders identity="hindsight-api" component="python" grants="/0/@applications.1/@processes.0/@secrets.0 /0/@applications.1/@processes.0/@secrets.1"/>
+    <holders identity="hindsight-worker" component="python" grants="/0/@applications.1/@processes.1/@secrets.0 /0/@applications.1/@processes.1/@secrets.1"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/knowledge-platform/hindsight/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.1/@processes.0">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="8888"/>
+      <ingress rule="consumer" consumes="hindsight.api" port="8888"/>
+      <ingress rule="release-gate" namespace="delivery-system" process="release-gate" port="8888"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+    <policies process="/0/@applications.1/@processes.1">
+      <ingress rule="consumer" consumes="hindsight.worker" port="8889"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+    <policies process="/0/@applications.1/@processes.2">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="3000"/>
+      <ingress rule="consumer" consumes="hindsight.console" port="3000"/>
+      <ingress rule="release-gate" namespace="delivery-system" process="release-gate" port="3000"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/knowledge-platform/basic-memory/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>pvc.yaml</resources>
+    <resources>route-mcp.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/knowledge-platform/basic-memory/route-mcp.yaml" adapter="traefik" exposure="/0/@applications.2/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/knowledge-platform/basic-memory/workload.yaml" processes="/0/@applications.2/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/knowledge-platform/basic-memory/service.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/knowledge-platform/basic-memory/serviceaccount.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/knowledge-platform/basic-memory/pvc.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/knowledge-platform/basic-memory/configmap.yaml" application="/0/@applications.2" externalChecks="{&quot;endpoints&quot;:[{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;knowledge-platform&quot;,&quot;name&quot;:&quot;basic-memory-mcp-1&quot;,&quot;url&quot;:&quot;https://memory-mcp.jorisjonkers.dev/&quot;}]}"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/knowledge-platform/basic-memory/vso.yaml" adapter="vso" application="/0/@applications.2">
+    <holders identity="basic-memory" component="python" grants="/0/@applications.2/@processes.0/@secrets.0"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/knowledge-platform/basic-memory/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.2/@processes.0">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="8000"/>
+      <ingress rule="consumer" consumes="basic-memory.mcp" port="8000"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/knowledge-platform/karakeep/kustomization.yaml">
+    <resources>backup.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>pvc.yaml</resources>
+    <resources>route-public.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/knowledge-platform/karakeep/route-public.yaml" adapter="traefik" exposure="/0/@applications.3/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/knowledge-platform/karakeep/workload.yaml" processes="/0/@applications.3/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/knowledge-platform/karakeep/service.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/knowledge-platform/karakeep/serviceaccount.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/knowledge-platform/karakeep/pvc.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/knowledge-platform/karakeep/configmap.yaml" application="/0/@applications.3" externalChecks="{&quot;endpoints&quot;:[{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;knowledge-platform&quot;,&quot;name&quot;:&quot;karakeep-public-1&quot;,&quot;url&quot;:&quot;https://karakeep.jorisjonkers.dev/&quot;}]}"/>
+  <deliverables xsi:type="resolveddeployment:BackupFile" path="apps/knowledge-platform/karakeep/backup.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/knowledge-platform/karakeep/vso.yaml" adapter="vso" application="/0/@applications.3">
+    <holders identity="karakeep" component="node" grants="/0/@applications.3/@processes.0/@secrets.0 /0/@applications.3/@processes.0/@secrets.1 /0/@applications.3/@processes.0/@vpn/@credential"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/knowledge-platform/karakeep/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.3/@processes.0">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="3000"/>
+      <ingress rule="consumer" consumes="karakeep.http" port="3000"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/knowledge-platform/hindsight-embedding/kustomization.yaml">
+    <resources>pvc.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/knowledge-platform/hindsight-embedding/workload.yaml" processes="/0/@applications.4/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/knowledge-platform/hindsight-embedding/service.yaml" processes="/0/@applications.4/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/knowledge-platform/hindsight-embedding/serviceaccount.yaml" processes="/0/@applications.4/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/knowledge-platform/hindsight-embedding/pvc.yaml" processes="/0/@applications.4/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/knowledge-platform/hindsight-embedding/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.4/@processes.0">
+      <ingress rule="consumer" consumes="hindsight-embedding.embeddings" port="8091"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-docling-serve-backup.policy.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="docling-serve-backup" grants="/0/@applications.0/@processes.0/@volumes.0/@backup/@credential">
+    <paths path="secret/data/platform/backup/off-cluster">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/backup/off-cluster">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-docling-serve-backup.role.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="docling-serve-backup"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-hindsight-api.policy.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="hindsight-api" grants="/0/@applications.1/@processes.0/@secrets.0 /0/@applications.1/@processes.0/@secrets.1">
+    <paths path="secret/data/platform/hindsight">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/hindsight">
+      <allows>read</allows>
+    </paths>
+    <paths path="database/creds/knowledge-platform-owner">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-hindsight-api.role.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="hindsight-api"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-hindsight-worker.policy.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="hindsight-worker" grants="/0/@applications.1/@processes.1/@secrets.0 /0/@applications.1/@processes.1/@secrets.1">
+    <paths path="secret/data/platform/hindsight">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/hindsight">
+      <allows>read</allows>
+    </paths>
+    <paths path="database/creds/knowledge-platform-owner">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-hindsight-worker.role.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="hindsight-worker"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-basic-memory.policy.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="basic-memory" grants="/0/@applications.2/@processes.0/@secrets.0">
+    <paths path="secret/data/knowledge-system/vault-deploy-key">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/knowledge-system/vault-deploy-key">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-basic-memory.role.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="basic-memory"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-karakeep.policy.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="karakeep" grants="/0/@applications.3/@processes.0/@secrets.0 /0/@applications.3/@processes.0/@secrets.1 /0/@applications.3/@processes.0/@vpn/@credential">
+    <paths path="secret/data/platform/karakeep">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/karakeep">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/data/knowledge-platform/garage/s3">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/knowledge-platform/garage/s3">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/data/platform/vpn/knowledge-platform-karakeep">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/vpn/knowledge-platform-karakeep">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/knowledge-platform/vault-policy/policies/knowledge-platform-system-karakeep.role.json" adapter="vault-policy" namespace="knowledge-platform-system" identity="karakeep"/>
+  <deliverables xsi:type="resolveddeployment:StableAddressFile" path="estate/stable-addresses/services.yaml" namespace="estate-system">
+    <addresses name="hindsight-api" target="hindsight-api.knowledge-platform-system.svc.cluster.local"/>
+    <addresses name="hindsight-embedding-embeddings" target="hindsight-tei-embedding.knowledge-platform-system.svc.cluster.local"/>
+    <addresses name="platform-garage-s3" target="garage.data-system.svc.cluster.local"/>
+    <addresses name="platform-postgres-postgres" target="postgres.data-system.svc.cluster.local"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="estate/stable-addresses/namespace.yaml" namespace="estate-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/stable-addresses/kustomization.yaml">
+    <resources>namespace.yaml</resources>
+    <resources>services.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/knowledge-platform/vault-policy/configmap.yaml" adapter="vault-policy" namespace="knowledge-platform-system" part="configmap" name="vault-policy-c7a57a1080df" job="/0/@policyJob">
+    <documents file="knowledge-platform-system-basic-memory.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-basic-memory.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;basic-memory&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-basic-memory&quot;]}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;docling-serve-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-docling-serve-backup&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-api&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-worker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-worker&quot;]}"/>
+    <documents file="knowledge-platform-system-karakeep.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-karakeep.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;karakeep&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-karakeep&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/knowledge-platform/vault-policy/job.yaml" adapter="vault-policy" namespace="knowledge-platform-system" part="job" name="vault-policy-c7a57a1080df" job="/0/@policyJob">
+    <documents file="knowledge-platform-system-basic-memory.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-basic-memory.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;basic-memory&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-basic-memory&quot;]}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;docling-serve-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-docling-serve-backup&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-api&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-worker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-worker&quot;]}"/>
+    <documents file="knowledge-platform-system-karakeep.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-karakeep.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;karakeep&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-karakeep&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/knowledge-platform/vault-policy/cronjob.yaml" adapter="vault-policy" namespace="knowledge-platform-system" part="cronjob" name="vault-policy-c7a57a1080df" job="/0/@policyJob">
+    <documents file="knowledge-platform-system-basic-memory.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-basic-memory.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;basic-memory&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-basic-memory&quot;]}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;docling-serve-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-docling-serve-backup&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-api&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-worker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-worker&quot;]}"/>
+    <documents file="knowledge-platform-system-karakeep.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-karakeep.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;karakeep&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-karakeep&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/knowledge-platform/vault-policy/serviceaccount.yaml" adapter="vault-policy" namespace="knowledge-platform-system" part="serviceaccount" name="vault-policy-c7a57a1080df" job="/0/@policyJob">
+    <documents file="knowledge-platform-system-basic-memory.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-basic-memory.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;basic-memory&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-basic-memory&quot;]}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;docling-serve-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-docling-serve-backup&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-api&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-worker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-worker&quot;]}"/>
+    <documents file="knowledge-platform-system-karakeep.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-karakeep.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;karakeep&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-karakeep&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/knowledge-platform/vault-policy/networkpolicy.yaml" adapter="networking" namespace="knowledge-platform-system" part="networkpolicy" name="vault-policy-c7a57a1080df" job="/0/@policyJob">
+    <documents file="knowledge-platform-system-basic-memory.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-system/vault-deploy-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-basic-memory.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;basic-memory&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-basic-memory&quot;]}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-docling-serve-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;docling-serve-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-docling-serve-backup&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-api&quot;]}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.policy.json" json="{&quot;path&quot;:{&quot;database/creds/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/hindsight&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-hindsight-worker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hindsight-worker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-hindsight-worker&quot;]}"/>
+    <documents file="knowledge-platform-system-karakeep.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/vpn/knowledge-platform-karakeep&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="knowledge-platform-system-karakeep.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;karakeep&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;knowledge-platform-system&quot;],&quot;token_policies&quot;:[&quot;knowledge-platform-system-karakeep&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/knowledge-platform/vault-policy/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>cronjob.yaml</resources>
+    <resources>job.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/postgres-catalog.yaml" part="objects" name="postgres-catalog-d83cbeba5875" catalogJson="{&quot;admin&quot;:{&quot;password&quot;:&quot;postgres.password&quot;,&quot;path&quot;:&quot;secret/data/platform/postgres&quot;,&quot;user&quot;:&quot;postgres.user&quot;},&quot;connection&quot;:&quot;postgres&quot;,&quot;databases&quot;:[{&quot;data&quot;:&quot;knowledge-platform-data&quot;,&quot;name&quot;:&quot;knowledge-platform_db&quot;,&quot;owner&quot;:&quot;knowledge-platform-owner&quot;}],&quot;host&quot;:&quot;postgres.data-system.svc.cluster.local&quot;,&quot;port&quot;:5432}" job="/0/@catalogJobs.0"/>
+  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/postgres-catalog-networkpolicy.yaml" adapter="networking" part="networkpolicy" job="/0/@catalogJobs.0"/>
+  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/policies/data-system-postgres-catalog.policy.json" adapter="vault-policy" part="policy" job="/0/@catalogJobs.0"/>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="estate/vso-secrets/policies/data-system-postgres-catalog.role.json" adapter="vault-policy" namespace="data-system" identity="postgres-catalog"/>
+  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/garage-catalog.yaml" part="objects" name="garage-catalog-1e2e72807623" catalogJson="{&quot;admin&quot;:{&quot;path&quot;:&quot;secret/data/platform/garage&quot;,&quot;token&quot;:&quot;admin-token&quot;},&quot;host&quot;:&quot;garage.data-system.svc.cluster.local&quot;,&quot;keys&quot;:[{&quot;buckets&quot;:[&quot;knowledge-platform-assets&quot;],&quot;name&quot;:&quot;knowledge-platform&quot;,&quot;path&quot;:&quot;secret/data/knowledge-platform/garage/s3&quot;}],&quot;port&quot;:3903}" job="/0/@catalogJobs.1"/>
+  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/garage-catalog-networkpolicy.yaml" adapter="networking" part="networkpolicy" job="/0/@catalogJobs.1"/>
+  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/policies/data-system-garage-catalog.policy.json" adapter="vault-policy" part="policy" job="/0/@catalogJobs.1"/>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="estate/vso-secrets/policies/data-system-garage-catalog.role.json" adapter="vault-policy" namespace="data-system" identity="garage-catalog"/>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/configmap.yaml" adapter="vault-policy" namespace="data-system" part="configmap" name="vault-policy-1971956a0616" job="/0/@policyJob">
+    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
+    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/job.yaml" adapter="vault-policy" namespace="data-system" part="job" name="vault-policy-1971956a0616" job="/0/@policyJob">
+    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
+    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/cronjob.yaml" adapter="vault-policy" namespace="data-system" part="cronjob" name="vault-policy-1971956a0616" job="/0/@policyJob">
+    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
+    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/serviceaccount.yaml" adapter="vault-policy" namespace="data-system" part="serviceaccount" name="vault-policy-1971956a0616" job="/0/@policyJob">
+    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
+    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/networkpolicy.yaml" adapter="networking" namespace="data-system" part="networkpolicy" name="vault-policy-1971956a0616" job="/0/@policyJob">
+    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
+    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/vso-secrets/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>cronjob.yaml</resources>
+    <resources>garage-catalog.yaml</resources>
+    <resources>job.yaml</resources>
+    <resources>postgres-catalog.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/knowledge-platform/rollout-events/alert.yaml" part="alert" project="knowledge-platform" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/knowledge-platform/rollout-events/provider.yaml" part="provider" project="knowledge-platform" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/knowledge-platform/rollout-events/kustomization.yaml">
+    <resources>alert.yaml</resources>
+    <resources>provider.yaml</resources>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>

@@ -1,0 +1,482 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:20f3a11d4708c9876e83dab4c4db764a29b8cdd0a7fc4e5ddec9eaa2576c3636" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
+    <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
+    <inputDigests name="delivery" digest="sha256:31f4d21b3c877943fecd855a160f8e339bce5c46f1ba9264c6256d37c4124767"/>
+    <inputDigests name="edge" digest="sha256:b1445b93227a2a18990df93d691545276efe933c102357709d50fb4f3895b7af"/>
+    <inputDigests name="identity" digest="sha256:c7e40e058d9b9a19572313f69d5c00859f1b30a6b36c91db290b9903cf9a11e7"/>
+    <inputDigests name="mail" digest="sha256:94fada2c3ecb8b3433bdc676e677e7d5d732509b31f6980f8352cdb25590a5c8"/>
+    <inputDigests name="observability" digest="sha256:d5098265009c4d1ef5a75d9e7035d4af64f7e16c6e1983185a0d469869cc6639"/>
+    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:f7490b93e1893a6e9269c8b6f9ad9b4ae0b5ee0842b2dd870bbaf7a50da7fbe6"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
+  </provenance>
+  <applications id="hermes" revision="sha256:93bee5b1debde12d65ef323313ee3ed658975fbe1f1a68a1f675d957076e78c1" project="agents" namespace="agents-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <exposure name="public" host="hermes.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="167.86.79.203"/>
+      <routes path="/" audience="authenticated" precedence="1" process="/0/@applications.0/@processes.0" surface="dashboard">
+        <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <exposure name="lan" host="hermes.jorisjonkers.dev" tier="lan" listener="plain" certificates="none" proxyApplication="traefik-lan" proxyNamespace="edge-system" ingressClass="traefik-lan">
+      <routes path="/" audience="lan" precedence="1" process="/0/@applications.0/@processes.0" surface="dashboard">
+        <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <client signIn="native" host="hermes.jorisjonkers.dev" launchUrl="https://hermes.jorisjonkers.dev/" credential="pkce" label="Hermes" description="The agent gateway">
+      <redirectUris>https://hermes.jorisjonkers.dev/auth/callback</redirectUris>
+      <roles>user</roles>
+    </client>
+    <processes name="hermes" identity="hermes" lifecycle="application" image="docker.io/nousresearch/hermes-agent@sha256:64923faeae267792bf9bf87fe3b4c4869e35004e360c7df01730ad801b74d524" imageVersion="2026.8.31" uid="10000" gid="10000" cutover="interrupted" switchover="stop-start" serving="hermes" servingLabel="app.kubernetes.io/instance" deadline="480s" replicas="1" memory="3Gi" cpu="250m" hardening="restricted" component="none" priorityClass="platform-data" home="/tmp">
+      <internetEgress reason="Hermes calls its model providers and remote MCP servers, and installs the skills it is given."/>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/status" port="9119"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/status" port="9119"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="24">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/status" port="9119"/>
+      </startup>
+      <surfaces name="dashboard" port="9119"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+      </placement>
+      <volumes claim="hermes-data" mountAt="/opt/data" size="10Gi" durability="recoverable">
+        <backup schedule="15 3 * * *" retain="14" method="ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d" methodVersion="1.2.0" uid="10000" gid="10000" identity="hermes-backup" claim="hermes-data-backup">
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+        </backup>
+      </volumes>
+      <secrets path="secret/data/agents/hermes" access="read" delivery="env" destination="hermes-agents-hermes">
+        <keys>memory-api-key</keys>
+        <keys>overleaf-session</keys>
+        <keys>github-pat</keys>
+        <keys>hindsight-api-token</keys>
+        <keys>openrouter-api-key</keys>
+        <keys>anthropic-api-key</keys>
+        <keys>openai-api-key</keys>
+        <restartTargets>hermes</restartTargets>
+      </secrets>
+      <assets name="hermes-config-yaml-118d92ae7c" from="config/hermes/config.yaml" content="# A stand-in for hermes's configuration, written for this example: the live&#xA;# file is fleet-infra's, and this repository does not copy it. hermes expands&#xA;# each ${VAR} below from its own environment as it reads the file, so the file&#xA;# holds no secret: the values reach hermes through its env file&#xA;# (spec/v1/10-project-intent.md#seeded-assets).&#xA;model:&#xA;  provider: openrouter&#xA;  default: anthropic/claude-sonnet-4.5&#xA;mcp_servers:&#xA;  github:&#xA;    url: https://api.githubcopilot.com/mcp/&#xA;    headers:&#xA;      Authorization: Bearer ${GITHUB_PAT}&#xA;  context7:&#xA;    url: https://mcp.context7.com/mcp&#xA;" seedAt="/opt/data/config.yaml"/>
+      <dependencies application="kubernetes-mcp-server" surface="mcp" address="kubernetes-mcp-server:8080">
+        <peers namespace="agents-system" process="kubernetes-mcp-server" port="8080"/>
+      </dependencies>
+      <consumes>kubernetes-mcp-server.mcp</consumes>
+      <writablePaths path="/run" size="64Mi"/>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <writablePaths path="/dev/shm" size="1Gi" memory="true"/>
+      <environment name="ANTHROPIC_API_KEY">
+        <secret path="secret/data/agents/hermes" key="anthropic-api-key" optional="true"/>
+      </environment>
+      <environment name="API_SERVER_ENABLED" value="false"/>
+      <environment name="GITHUB_PAT">
+        <secret path="secret/data/agents/hermes" key="github-pat" optional="true"/>
+      </environment>
+      <environment name="HERMES_DASHBOARD" value="1"/>
+      <environment name="HERMES_DASHBOARD_HOST" value="0.0.0.0"/>
+      <environment name="HERMES_DASHBOARD_OIDC_CLIENT_ID" value="hermes"/>
+      <environment name="HERMES_DASHBOARD_OIDC_ISSUER" value="https://id.jorisjonkers.dev"/>
+      <environment name="HERMES_DASHBOARD_OIDC_SCOPES" value="openid profile email"/>
+      <environment name="HERMES_DASHBOARD_PORT" value="9119"/>
+      <environment name="HERMES_DASHBOARD_PUBLIC_URL" value="https://hermes.jorisjonkers.dev"/>
+      <environment name="HERMES_SKIP_CONFIG_MIGRATION" value="false"/>
+      <environment name="HINDSIGHT_API_TOKEN">
+        <secret path="secret/data/agents/hermes" key="hindsight-api-token" optional="true"/>
+      </environment>
+      <environment name="MEMORY_API_KEY">
+        <secret path="secret/data/agents/hermes" key="memory-api-key" optional="true"/>
+      </environment>
+      <environment name="OPENAI_API_KEY">
+        <secret path="secret/data/agents/hermes" key="openai-api-key" optional="true"/>
+      </environment>
+      <environment name="OPENROUTER_API_KEY">
+        <secret path="secret/data/agents/hermes" key="openrouter-api-key" optional="true"/>
+      </environment>
+      <environment name="OVERLEAF_SESSION">
+        <secret path="secret/data/agents/hermes" key="overleaf-session" optional="true"/>
+      </environment>
+      <environment name="S6_YES_I_WANT_A_WORLD_WRITABLE_RUN_BECAUSE_KUBERNETES" value="1"/>
+      <arguments>gateway</arguments>
+      <arguments>run</arguments>
+      <seeder image="docker.io/library/busybox@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec" imageVersion="1.37.0" memory="16Mi" cpu="10m">
+        <command>/bin/sh</command>
+        <command>-c</command>
+        <command>set -eu
+umask 077
+mkdir -p '/opt/data'
+if [ -e '/opt/data/config.yaml' ]; then cp -p '/opt/data/config.yaml' '/opt/data/config.yaml.superseded'; fi
+cp '/seed/hermes-config-yaml-118d92ae7c/config.yaml' '/opt/data/config.yaml.seeding'
+chmod 0600 '/opt/data/config.yaml.seeding'
+mv '/opt/data/config.yaml.seeding' '/opt/data/config.yaml'</command>
+        <mounts name="hermes-config-yaml-118d92ae7c" mountAt="/seed/hermes-config-yaml-118d92ae7c" readOnly="true"/>
+        <mounts name="hermes-data" mountAt="/opt/data"/>
+      </seeder>
+    </processes>
+  </applications>
+  <applications id="kubernetes-mcp-server" revision="sha256:68734b13dd9bd13e73108801924b5f5c1b1c318fcc343a81dacb896c92e91acb" project="agents" namespace="agents-system" reconcileUnit="/0/@reconcileUnits.0">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="180s">
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
+      <members process="/0/@applications.1/@processes.0">
+        <readiness xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </members>
+    </releaseGate>
+    <processes name="kubernetes-mcp-server" identity="kubernetes-mcp-server" lifecycle="application" image="quay.io/containers/kubernetes_mcp_server@sha256:6d650f4bd6ac303ad82713c997e73a2d001602f9bf17392c9b9a0e30e29c6423" imageVersion="0.0.66" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" serving="kubernetes-mcp-server-primary" servingLabel="app.kubernetes.io/name" deadline="180s" replicas="1" memory="256Mi" cpu="50m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app">
+      <api reason="the MCP server answers an agent's questions about workloads, logs, routes and Flux, cluster-wide, and changes nothing">
+        <rules group="core">
+          <objects>pods</objects>
+          <objects>pods/log</objects>
+          <objects>events</objects>
+          <objects>services</objects>
+          <objects>endpoints</objects>
+          <objects>nodes</objects>
+          <objects>namespaces</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="apps">
+          <objects>deployments</objects>
+          <objects>statefulsets</objects>
+          <objects>daemonsets</objects>
+          <objects>replicasets</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="batch">
+          <objects>jobs</objects>
+          <objects>cronjobs</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="networking.k8s.io">
+          <objects>ingresses</objects>
+          <objects>networkpolicies</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="traefik.io">
+          <objects>ingressroutes</objects>
+          <objects>middlewares</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="kustomize.toolkit.fluxcd.io">
+          <objects>kustomizations</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="helm.toolkit.fluxcd.io">
+          <objects>helmreleases</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="source.toolkit.fluxcd.io">
+          <objects>gitrepositories</objects>
+          <objects>helmrepositories</objects>
+          <objects>ocirepositories</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="4">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </startup>
+      <surfaces name="mcp" port="8080"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <arguments>--port=8080</arguments>
+      <arguments>--read-only</arguments>
+    </processes>
+  </applications>
+  <applications id="agents-api" revision="sha256:1dea6098e730fe929f12bebabe215621941a2dc5082e489d2aef4758cfdb47be" project="agents" namespace="agents-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="agents-api" identity="agents-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/agents/agents-api@sha256:7a1c3e5b9d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e6b8d0f" imageVersion="2.3.0" uid="1000" gid="1000" cutover="continuous" switchover="stop-start" serving="agents-api" servingLabel="app.kubernetes.io/instance" deadline="300s" memory="512Mi" cpu="100m" hardening="restricted" identityToken="true" component="jvm" parked="true">
+      <api reason="it reads the session settings it keeps beside itself">
+        <rules group="core" scope="namespace">
+          <objects>configmaps</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="core" scope="namespace">
+          <objects>pods</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+          <verbs>create</verbs>
+          <verbs>delete</verbs>
+        </rules>
+        <rules group="core" scope="namespace">
+          <objects>pods/log</objects>
+          <verbs>get</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/actuator/health/readiness" port="8082"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/actuator/health/liveness" port="8082"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/actuator/health/liveness" port="8082"/>
+      </startup>
+      <surfaces name="http" port="8082"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="agents-api"/>
+      <environment name="PORT" value="8082"/>
+      <environment name="SPAWN_RUNNER_IMAGE" value="ghcr.io/jorisjonkers-dev/agents/agent-runner@sha256:8b2d4f6e8a0c2e4b6d8f5a2c4e6b8d0f7a1c3e5b9d2f4a6c8e0b2d4f7e1f3c5a"/>
+      <environment name="SPAWN_RUNNER_LABELS" value="deploy-kit.jorisjonkers.dev/spawned-from=agents-api-runner,consumes.deploy-kit.jorisjonkers.dev/agents-api.http=true"/>
+      <spawns name="agents-api-runner">
+        <surfaces name="http" port="8090"/>
+        <dependencies application="agents-api" surface="http" address="agents-api:8082">
+          <peers namespace="agents-system" process="agents-api" port="8082"/>
+        </dependencies>
+        <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+        <internetEgress reason="an agent clones and pushes the repositories it works on"/>
+      </spawns>
+    </processes>
+  </applications>
+  <applications id="agents-ui" revision="sha256:66b7dcdee79c3cc50b160bb471e06bf0c3f568de1cd7a30a61605f9db1970044" project="agents" namespace="agents-system" reconcileUnit="/0/@reconcileUnits.0">
+    <exposure name="public" host="agents.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/" audience="anonymous" precedence="1" process="/0/@applications.3/@processes.0" surface="http">
+        <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <processes name="agents-ui" identity="agents-ui" lifecycle="application" image="ghcr.io/jorisjonkers-dev/agents-ui@sha256:5b41e0ab23e60fbb3f14f42fe5138e6c266aa1bf1289967bfc8a7f9f820bcbc6" imageVersion="0.19.1" uid="101" gid="101" cutover="continuous" switchover="stop-start" serving="agents-ui" servingLabel="app.kubernetes.io/instance" deadline="720s" memory="96Mi" cpu="100m" hardening="restricted" component="static" parked="true">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/" port="80"/>
+      </liveness>
+      <surfaces name="http" port="80"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <writablePaths path="/var/cache/nginx" size="64Mi"/>
+      <writablePaths path="/var/run" size="64Mi"/>
+      <addedPrivileges>NET_BIND_SERVICE</addedPrivileges>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-agents" after="/0/@reconcileUnits.1 /0/@reconcileUnits.2"/>
+  <reconcileUnits name="apps-edge"/>
+  <reconcileUnits name="apps-secrets"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+  </policyJob>
+  <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/agents/namespace.yaml" namespace="agents-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/agents/kustomization.yaml">
+    <resources>agents-api</resources>
+    <resources>agents-ui</resources>
+    <resources>hermes</resources>
+    <resources>kubernetes-mcp-server</resources>
+    <resources>namespace.yaml</resources>
+    <resources>rollout-events</resources>
+    <resources>vault-policy</resources>
+    <resources>vaultconnection.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/agents/networkpolicy.yaml" adapter="networking"/>
+  <deliverables xsi:type="resolveddeployment:ConnectionFile" path="apps/agents/vaultconnection.yaml" adapter="vso" namespace="agents-system" address="http://vault.secrets-system.svc.cluster.local:8200"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/agents/hermes/kustomization.yaml">
+    <resources>backup.yaml</resources>
+    <resources>client.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>pvc.yaml</resources>
+    <resources>route-lan.yaml</resources>
+    <resources>route-public.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/agents/hermes/route-public.yaml" adapter="traefik" exposure="/0/@applications.0/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/agents/hermes/route-lan.yaml" adapter="traefik" exposure="/0/@applications.0/@exposure.1" entryPoint="web"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/agents/hermes/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/agents/hermes/service.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/agents/hermes/serviceaccount.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/agents/hermes/pvc.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/agents/hermes/configmap.yaml" processes="/0/@applications.0/@processes.0" application="/0/@applications.0" externalChecks="{&quot;endpoints&quot;:[{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;agents&quot;,&quot;name&quot;:&quot;hermes-public-1&quot;,&quot;url&quot;:&quot;https://hermes.jorisjonkers.dev/&quot;},{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;agents&quot;,&quot;name&quot;:&quot;hermes-lan-1&quot;,&quot;url&quot;:&quot;http://hermes.jorisjonkers.dev/&quot;}]}"/>
+  <deliverables xsi:type="resolveddeployment:ClientFile" path="apps/agents/hermes/client.yaml" application="/0/@applications.0"/>
+  <deliverables xsi:type="resolveddeployment:BackupFile" path="apps/agents/hermes/backup.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/agents/hermes/vso.yaml" adapter="vso" application="/0/@applications.0">
+    <holders identity="hermes" component="none" grants="/0/@applications.0/@processes.0/@secrets.0"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/agents/hermes/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="9119"/>
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-lan" port="9119"/>
+      <ingress rule="consumer" consumes="hermes.dashboard" port="9119"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/agents/kubernetes-mcp-server/kustomization.yaml">
+    <resources>canary.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>rbac.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/agents/kubernetes-mcp-server/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:SwitchoverFile" path="apps/agents/kubernetes-mcp-server/canary.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/agents/kubernetes-mcp-server/serviceaccount.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/agents/kubernetes-mcp-server/configmap.yaml" application="/0/@applications.1" releaseGate="{&quot;analysis&quot;:{&quot;errorRate&quot;:&quot;1%&quot;,&quot;interval&quot;:&quot;30s&quot;,&quot;iterations&quot;:4,&quot;latency&quot;:&quot;500ms&quot;,&quot;threshold&quot;:3},&quot;deadline&quot;:&quot;180s&quot;,&quot;endpoint&quot;:&quot;http://release-gate.delivery-system.svc.cluster.local:8080&quot;,&quot;members&quot;:[{&quot;process&quot;:&quot;kubernetes-mcp-server&quot;,&quot;readiness&quot;:{&quot;path&quot;:&quot;/healthz&quot;,&quot;port&quot;:8080}}]}"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/agents/kubernetes-mcp-server/rbac.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/agents/kubernetes-mcp-server/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.1/@processes.0">
+      <ingress rule="consumer" consumes="kubernetes-mcp-server.mcp" port="8080"/>
+      <ingress rule="release-gate" namespace="delivery-system" process="release-gate" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/agents/agents-api/kustomization.yaml">
+    <resources>rbac.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/agents/agents-api/workload.yaml" processes="/0/@applications.2/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/agents/agents-api/service.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/agents/agents-api/serviceaccount.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/agents/agents-api/rbac.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/agents/agents-api/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.2/@processes.0">
+      <ingress rule="consumer" consumes="agents-api.http" port="8082"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/agents/agents-ui/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>route-public.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/agents/agents-ui/route-public.yaml" adapter="traefik" exposure="/0/@applications.3/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/agents/agents-ui/workload.yaml" processes="/0/@applications.3/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/agents/agents-ui/service.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/agents/agents-ui/serviceaccount.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/agents/agents-ui/configmap.yaml" application="/0/@applications.3" externalChecks="{&quot;endpoints&quot;:[{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;agents&quot;,&quot;name&quot;:&quot;agents-ui-public-1&quot;,&quot;url&quot;:&quot;https://agents.jorisjonkers.dev/&quot;}]}"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/agents/agents-ui/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.3/@processes.0">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="80"/>
+      <ingress rule="consumer" consumes="agents-ui.http" port="80"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/agents/vault-policy/policies/agents-system-hermes.policy.json" adapter="vault-policy" namespace="agents-system" identity="hermes" grants="/0/@applications.0/@processes.0/@secrets.0">
+    <paths path="secret/data/agents/hermes">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/agents/hermes">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/agents/vault-policy/policies/agents-system-hermes.role.json" adapter="vault-policy" namespace="agents-system" identity="hermes"/>
+  <deliverables xsi:type="resolveddeployment:StableAddressFile" path="estate/stable-addresses/services.yaml" namespace="estate-system">
+    <addresses name="kubernetes-mcp-server-mcp" target="kubernetes-mcp-server.agents-system.svc.cluster.local"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="estate/stable-addresses/namespace.yaml" namespace="estate-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/stable-addresses/kustomization.yaml">
+    <resources>namespace.yaml</resources>
+    <resources>services.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/agents/vault-policy/configmap.yaml" adapter="vault-policy" namespace="agents-system" part="configmap" name="vault-policy-6ea110f7edda" job="/0/@policyJob">
+    <documents file="agents-system-hermes.policy.json" json="{&quot;path&quot;:{&quot;secret/data/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="agents-system-hermes.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hermes&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;agents-system&quot;],&quot;token_policies&quot;:[&quot;agents-system-hermes&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/agents/vault-policy/job.yaml" adapter="vault-policy" namespace="agents-system" part="job" name="vault-policy-6ea110f7edda" job="/0/@policyJob">
+    <documents file="agents-system-hermes.policy.json" json="{&quot;path&quot;:{&quot;secret/data/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="agents-system-hermes.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hermes&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;agents-system&quot;],&quot;token_policies&quot;:[&quot;agents-system-hermes&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/agents/vault-policy/cronjob.yaml" adapter="vault-policy" namespace="agents-system" part="cronjob" name="vault-policy-6ea110f7edda" job="/0/@policyJob">
+    <documents file="agents-system-hermes.policy.json" json="{&quot;path&quot;:{&quot;secret/data/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="agents-system-hermes.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hermes&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;agents-system&quot;],&quot;token_policies&quot;:[&quot;agents-system-hermes&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/agents/vault-policy/serviceaccount.yaml" adapter="vault-policy" namespace="agents-system" part="serviceaccount" name="vault-policy-6ea110f7edda" job="/0/@policyJob">
+    <documents file="agents-system-hermes.policy.json" json="{&quot;path&quot;:{&quot;secret/data/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="agents-system-hermes.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hermes&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;agents-system&quot;],&quot;token_policies&quot;:[&quot;agents-system-hermes&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/agents/vault-policy/networkpolicy.yaml" adapter="networking" namespace="agents-system" part="networkpolicy" name="vault-policy-6ea110f7edda" job="/0/@policyJob">
+    <documents file="agents-system-hermes.policy.json" json="{&quot;path&quot;:{&quot;secret/data/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/agents/hermes&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="agents-system-hermes.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;hermes&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;agents-system&quot;],&quot;token_policies&quot;:[&quot;agents-system-hermes&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/agents/vault-policy/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>cronjob.yaml</resources>
+    <resources>job.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/agents/rollout-events/alert.yaml" part="alert" project="agents" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/agents/rollout-events/provider.yaml" part="provider" project="agents" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/agents/rollout-events/kustomization.yaml">
+    <resources>alert.yaml</resources>
+    <resources>provider.yaml</resources>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>

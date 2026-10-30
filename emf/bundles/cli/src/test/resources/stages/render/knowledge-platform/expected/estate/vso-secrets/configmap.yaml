@@ -1,0 +1,23 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-policy-1971956a0616
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: vault-policy
+    app.kubernetes.io/instance: vault-policy
+    app.kubernetes.io/part-of: vault-policy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  data-system-garage-catalog.policy.json: |
+    {"path":{"secret/data/knowledge-platform/garage/s3":{"capabilities":["create","read","update"]},"secret/data/platform/garage":{"capabilities":["read"]},"secret/metadata/platform/garage":{"capabilities":["read"]}}}
+  data-system-garage-catalog.role.json: |
+    {"bound_service_account_names":["garage-catalog"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-garage-catalog"]}
+  data-system-postgres-catalog.policy.json: |
+    {"path":{"database/roles/knowledge-platform-data":{"capabilities":["create","read","update"]},"database/roles/knowledge-platform-owner":{"capabilities":["create","read","update"]},"secret/data/platform/postgres":{"capabilities":["read"]},"secret/metadata/platform/postgres":{"capabilities":["read"]}}}
+  data-system-postgres-catalog.role.json: |
+    {"bound_service_account_names":["postgres-catalog"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-postgres-catalog"]}

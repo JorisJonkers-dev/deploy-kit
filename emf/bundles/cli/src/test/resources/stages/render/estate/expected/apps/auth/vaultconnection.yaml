@@ -1,0 +1,12 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultConnection
+metadata:
+  name: secret-store
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  address: http://vault.secrets-system.svc.cluster.local:8200
+  skipTLSVerify: false

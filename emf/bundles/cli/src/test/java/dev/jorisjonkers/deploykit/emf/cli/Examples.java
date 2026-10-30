@@ -11,11 +11,16 @@ final class Examples {
     private Examples() {}
 
     static Path of(String relative) {
+        return repository().resolve("spec/v1/examples").resolve(relative);
+    }
+
+    /** The working copy's root: the directory holding {@code emf/pom.xml}. */
+    static Path repository() {
         Path dir = Path.of("").toAbsolutePath();
         while (!Files.isRegularFile(dir.resolve("emf/pom.xml"))) {
             dir = dir.getParent();
         }
-        return dir.resolve("spec/v1/examples").resolve(relative);
+        return dir;
     }
 
     static String read(String relative) {

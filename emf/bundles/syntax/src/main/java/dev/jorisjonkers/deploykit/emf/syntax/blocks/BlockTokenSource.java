@@ -27,6 +27,9 @@ import org.antlr.runtime.TokenSource;
 public class BlockTokenSource implements TokenSource {
 
     private final TokenSource delegate;
+    /** The colon that ends a key, after which a value of several words is one plain scalar. */
+    private static final String KEY = ":";
+
     private final BlockTokens types;
     private final Deque<Integer> blocks = new ArrayDeque<>();
     private final Queue<Token> pending = new ArrayDeque<>();
@@ -34,6 +37,7 @@ public class BlockTokenSource implements TokenSource {
     private boolean afterDash = false;
     private int flowDepth = 0;
     private int lineColumn = 0;
+    private int colonLine = -1;
 
     public BlockTokenSource(TokenSource delegate, BlockTokens types) {
         this.delegate = delegate;
@@ -78,6 +82,10 @@ public class BlockTokenSource implements TokenSource {
             folded(token);
             return;
         }
+        if (token.getLine() == colonLine && plain(token)) {
+            return;
+        }
+        colonLine = KEY.equals(token.getText()) ? token.getLine() : -1;
         if (types.opensFlow(token.getType())) {
             afterDash = false;
             flowDepth++;
@@ -97,6 +105,60 @@ public class BlockTokenSource implements TokenSource {
             pending.add(token);
             afterDash = token.getType() == types.dash();
         }
+    }
+
+    /**
+     * A plain scalar of several words, from the value after a key to the end of its line, or in a flow
+     * collection to the next separator: the words become one scalar token spanning them, so the grammar
+     * reads a value rather than its words. A value of one word is left as the token it is, so a keyword
+     * and a vocabulary literal still read as themselves. Returns whether it wrote the value.
+     */
+    private boolean plain(Token first) {
+        colonLine = -1;
+        if (types.opensFlow(first.getType()) || types.closesFlow(first.getType()) || first.getType() == types.dash()) {
+            return false;
+        }
+        List<Token> words = new ArrayList<>(List.of(first));
+        List<Token> between = new ArrayList<>();
+        Token next = delegate.nextToken();
+        while (continues(next)) {
+            if (next.getType() == types.whitespace()) {
+                between.add(next);
+            } else {
+                between.clear();
+                words.add(next);
+            }
+            next = delegate.nextToken();
+        }
+        if (words.size() == 1) {
+            pending.add(first);
+            afterDash = false;
+        } else {
+            CommonToken start = (CommonToken) first;
+            CommonToken last = (CommonToken) words.get(words.size() - 1);
+            CommonToken scalar = new CommonToken(
+                    types.scalar(), start.getInputStream().substring(start.getStartIndex(), last.getStopIndex()));
+            scalar.setLine(start.getLine());
+            scalar.setCharPositionInLine(start.getCharPositionInLine());
+            scalar.setStartIndex(start.getStartIndex());
+            scalar.setStopIndex(last.getStopIndex());
+            pending.add(scalar);
+            afterDash = false;
+        }
+        between.forEach(this::read);
+        read(next);
+        return true;
+    }
+
+    /** Whether {@code token} is still part of a plain value: on its line, and before a separator in a flow. */
+    private boolean continues(Token token) {
+        if (token.getType() == Token.EOF || token.getType() == types.comment()) {
+            return false;
+        }
+        if (token.getType() == types.whitespace()) {
+            return token.getText().indexOf('\n') < 0;
+        }
+        return flowDepth == 0 || !(token.getType() == types.separator() || types.closesFlow(token.getType()));
     }
 
     /**
@@ -120,7 +182,9 @@ public class BlockTokenSource implements TokenSource {
         }
         int end = ((CommonToken) last).getStopIndex();
         String raw = marker.getInputStream().substring(marker.getStartIndex(), end);
-        CommonToken scalar = new CommonToken(types.scalar(), fold(marker.getText(), raw));
+        // The token's text is the source it covers, so every node after it sits where its text is;
+        // the value the lines fold to is the value converter's to read (valueOf).
+        CommonToken scalar = new CommonToken(types.scalar(), raw);
         scalar.setLine(marker.getLine());
         scalar.setCharPositionInLine(marker.getCharPositionInLine());
         scalar.setStartIndex(marker.getStartIndex());
@@ -138,6 +202,18 @@ public class BlockTokenSource implements TokenSource {
      */
     private boolean inBlock(Token token) {
         return token.getType() == types.whitespace() || token.getCharPositionInLine() > lineColumn;
+    }
+
+    /**
+     * The value a scalar token's text stands for: a block scalar's lines folded as its marker says, and
+     * any other text as it is. Only a block scalar opens on {@code >} or {@code |}, which no plain
+     * scalar may.
+     */
+    public static String valueOf(String text) {
+        if (text.isEmpty() || (text.charAt(0) != '>' && text.charAt(0) != '|')) {
+            return text;
+        }
+        return fold(text.length() > 1 && text.charAt(1) == '-' ? text.substring(0, 2) : text.substring(0, 1), text);
     }
 
     /**

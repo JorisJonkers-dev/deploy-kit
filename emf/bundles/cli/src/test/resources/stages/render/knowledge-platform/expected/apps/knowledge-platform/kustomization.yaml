@@ -1,0 +1,15 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - aliases.yaml
+  - basic-memory
+  - docling-serve
+  - hindsight
+  - hindsight-embedding
+  - karakeep
+  - namespace.yaml
+  - rollout-events
+  - vault-policy
+  - vaultconnection.yaml

@@ -1,0 +1,17 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: identity.jorisjonkers.dev/v1
+kind: Client
+metadata:
+  name: whoami
+  labels:
+    app.kubernetes.io/part-of: whoami
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  signIn: gated
+  host: whoami.jorisjonkers.dev
+  launchUrl: https://whoami.jorisjonkers.dev/
+  iconUrl: https://whoami.jorisjonkers.dev/favicon.ico
+  roles:
+    - user
+  label: Who am I

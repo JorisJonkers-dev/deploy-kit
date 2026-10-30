@@ -265,13 +265,26 @@ class ResolvedDeploymentTest {
                         "ConnectionFile",
                         "VaultPolicyFile",
                         "VaultRoleFile",
-                        "GeneratedKeysFile");
+                        "GeneratedKeysFile",
+                        "PriorityClassFile",
+                        "HumanGrantFile",
+                        "NodeAgentFile",
+                        "AddressPoolFile",
+                        "ClientFile",
+                        "AlertRulesFile",
+                        "AlertingFile",
+                        "FluxMonitorFile",
+                        "DashboardFile",
+                        "SharedMiddlewareFile",
+                        "StableAddressFile",
+                        "MoveFile",
+                        "SourceFile");
     }
 
     @Test
     void theMinimalModelAssignsAPathToEveryFileTheRenderedTreeHolds() {
-        // The paths under spec/v1/examples/minimal/rendered/ and its route in the
-        // estate-scoped tree, which is what the Acceleo templates must write (#94).
+        // The paths under spec/v1/examples/minimal/rendered/, which is what the Acceleo templates
+        // must write (#94), and the platform's estate-scoped share every render holds.
         List<String> paths =
                 minimal().getDeliverables().stream().map(Deliverable::getPath).toList();
 
@@ -290,18 +303,25 @@ class ResolvedDeploymentTest {
                         "apps/notes/notes/networkpolicy.yaml",
                         "apps/notes/rollout-events/alert.yaml",
                         "apps/notes/rollout-events/provider.yaml",
+                        "estate/priority-classes/priorityclasses.yaml",
+                        "estate/priority-classes/kustomization.yaml",
+                        "estate/human-grants/clusterrolebindings.yaml",
+                        "estate/human-grants/kustomization.yaml",
                         "apps/notes/rollout-events/kustomization.yaml",
                         "apps/notes/notes/route-public.yaml");
     }
 
     @Test
     void thePathsItAssignsAreThePathsTheRenderedTreeActuallyHolds() throws IOException {
-        // The project's share is minimal's own tree, its route among it: nothing of it is
-        // estate-scoped.
+        // The project's share is minimal's own tree, its route among it, and its estate-scoped
+        // share is the platform's alone.
         Set<String> assigned =
                 minimal().getDeliverables().stream().map(Deliverable::getPath).collect(Collectors.toSet());
+        Set<String> committed =
+                new java.util.HashSet<>(yamlUnder(REPOSITORY.resolve("spec/v1/examples/minimal/rendered")));
+        committed.addAll(yamlUnder(REPOSITORY.resolve("spec/v1/examples/platform/rendered")));
 
-        assertThat(assigned).isEqualTo(yamlUnder(REPOSITORY.resolve("spec/v1/examples/minimal/rendered")));
+        assertThat(assigned).isEqualTo(committed);
     }
 
     private static Set<String> yamlUnder(Path rendered) throws IOException {

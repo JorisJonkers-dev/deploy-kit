@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/agents/hermes": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/agents/hermes": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

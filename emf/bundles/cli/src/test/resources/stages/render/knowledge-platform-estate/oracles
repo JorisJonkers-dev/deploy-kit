@@ -1,0 +1,14 @@
+estate/vso-secrets/configmap.yaml knowledge-platform/rendered/estate/vso-secrets/configmap.yaml
+estate/vso-secrets/cronjob.yaml knowledge-platform/rendered/estate/vso-secrets/cronjob.yaml
+estate/vso-secrets/garage-catalog-networkpolicy.yaml knowledge-platform/rendered/estate/vso-secrets/garage-catalog-networkpolicy.yaml
+estate/vso-secrets/garage-catalog.yaml knowledge-platform/rendered/estate/vso-secrets/garage-catalog.yaml
+estate/vso-secrets/job.yaml knowledge-platform/rendered/estate/vso-secrets/job.yaml
+estate/vso-secrets/kustomization.yaml knowledge-platform/rendered/estate/vso-secrets/kustomization.yaml
+estate/vso-secrets/networkpolicy.yaml knowledge-platform/rendered/estate/vso-secrets/networkpolicy.yaml
+estate/vso-secrets/policies/data-system-garage-catalog.policy.json knowledge-platform/rendered/estate/vso-secrets/policies/data-system-garage-catalog.policy.json
+estate/vso-secrets/policies/data-system-garage-catalog.role.json knowledge-platform/rendered/estate/vso-secrets/policies/data-system-garage-catalog.role.json
+estate/vso-secrets/policies/data-system-postgres-catalog.policy.json knowledge-platform/rendered/estate/vso-secrets/policies/data-system-postgres-catalog.policy.json
+estate/vso-secrets/policies/data-system-postgres-catalog.role.json knowledge-platform/rendered/estate/vso-secrets/policies/data-system-postgres-catalog.role.json
+estate/vso-secrets/postgres-catalog-networkpolicy.yaml knowledge-platform/rendered/estate/vso-secrets/postgres-catalog-networkpolicy.yaml
+estate/vso-secrets/postgres-catalog.yaml knowledge-platform/rendered/estate/vso-secrets/postgres-catalog.yaml
+estate/vso-secrets/serviceaccount.yaml knowledge-platform/rendered/estate/vso-secrets/serviceaccount.yaml

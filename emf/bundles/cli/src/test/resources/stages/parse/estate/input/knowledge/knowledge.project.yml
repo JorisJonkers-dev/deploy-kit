@@ -1,0 +1,352 @@
+# Worked example: the knowledge project's Intent Fragment
+#
+#   applications/knowledge/platform/knowledge.project.yml
+#
+# One file per project, one file one Intent Fragment
+# (docs/adr/model/0009-intent-is-authored-one-file-per-project.md). The knowledge project owns two
+# Applications; the namespace derives from the header as knowledge-system,
+# which is the namespace both already run in.
+#
+# Exercises: two Applications because their cutovers differ, two Processes on
+# two runtimes and therefore two identities, one
+# authored hostname whose five routes carry mixed audiences -- four anonymous
+# overrides inside an authenticated host -- `probes: none` for a Process with
+# no listener, grants at the project header and on a Process, a split Subtree
+# path beside an unsplit one, and an irreplaceable volume.
+#
+# Companion env files, one per PROCESS, plus the variables both Processes share
+# at the project scope (docs/adr/model/0013-configuration-is-dotenv-at-three-scopes.md):
+#   platform/env/_project/base.env
+#     -- reproduced as env/_project/base.env
+#   platform/env/knowledge-api/base.env
+#     -- reproduced as env/knowledge-api/base.env
+#   platform/env/knowledge-ingest-worker/base.env
+#     -- reproduced as env/knowledge-ingest-worker/base.env
+
+# The data model's own semver, not the toolkit's
+# (docs/adr/model/0032-the-resolved-deployment-is-a-versioned-artifact.md).
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: knowledge
+owner: joris              # the project's own
+
+# Shared grants, one of the eight Shared Intent families
+# (docs/adr/model/0012-shared-intent-descends-and-is-lowered.md). Both Processes read
+# the same Postgres and RabbitMQ credentials, so declaring them once here is
+# the difference between one edit and two when a key is added. A shared grant
+# is held by every Process below it, including ones added later; a Process
+# that needs different terms on one of these paths says so on the Process,
+# and a Process that must not hold one at all is evidence it was never
+# shared, so it moves down a level. There is no removal syntax.
+#
+# They sit at the project header because the two Processes are now two
+# Applications. A project-level grant hands every Application in the file a
+# reader slot on the whole path
+# (docs/adr/model/0008-vault-read-is-per-path.md), and that is exactly this
+# file's reader set: both of its Applications, and nothing else.
+#
+# `delivery: env` and `delivery: file` render a Kubernetes Secret, so both
+# are refused unless the pinned Platform document advertises
+# `secretsEncryption: true` -- E_SECRETS_AT_REST_REQUIRED
+# (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md). Until that flag lands on the
+# pinned k3s version, knowledge cannot ship.
+secrets:
+  # Hand-written for now. Once the resolver derives the data credential from
+  # the edge to platform-postgres (#92), this grant is what that derivation
+  # replaces, and it goes.
+  #
+  # SPLIT PATH, one path per reader set
+  # (docs/adr/model/0028-grant-unit-is-the-path.md). A KV-v2 read returns the
+  # whole document, so the only boundary the store can enforce is the path:
+  # while every consumer's credentials shared secret/data/platform/postgres,
+  # these pods could read auth-api's database password. The reader set here
+  # is knowledge's two Applications; auth-api reads .../postgres/auth.
+  - path: secret/data/platform/postgres/kb
+    keys: [user, password]
+    access: read
+    delivery: env
+    rotation: {tolerates: restart}
+
+  # NOT split. Its reader set is already exactly this project's two
+  # Processes, and the rule is one path per reader SET, not one path per
+  # consumer. It splits on the day a third reader is granted it.
+  - path: secret/data/platform/rabbitmq
+    keys: [rabbitmq.user, rabbitmq.password]
+    access: read
+    delivery: env
+    rotation: {tolerates: restart}
+
+applications:
+  # =============================================================== knowledge
+  - id: knowledge
+    # REQUIRED: knowledge-api's edge to platform-postgres derives the project's
+    # database, knowledge_db. This Application moves its schema, with a
+    # Liquibase YAML changelog the platform's runner applies before the new
+    # version starts (spec/v1/10-project-intent.md#migration).
+    migration:
+      changelog: knowledge-api/src/main/resources/db/changelog.yml
+
+    # Per Application; never raised to the project. The api Process publishes for
+    # the Application, and the ingest worker publishes nothing of its own.
+    observability:
+      scrape:
+        process: knowledge-api
+        surface: http
+        path: /api/actuator/prometheus
+
+    # One Process, which releases blue/green: its new version starts beside the
+    # old one and takes traffic only once it has passed analysis. The ingest
+    # worker used to be a second Process here, and cannot be: its ReadWriteOnce
+    # volume forces a stop-start cutover, and one Application switches as one
+    # (docs/adr/model/0052-an-application-is-the-release-unit.md), so a continuous
+    # API and an interrupted worker in one Application is
+    # E_RELEASE_UNIT_MIXED_CUTOVER. The worker is `knowledge-ingest`, below.
+    #
+    # An Application is still not a Reconcile Unit: `platform-postgres` before
+    # `knowledge` is ordering, derived from the edge set
+    # (docs/adr/model/0033-reconcile-unit-derived.md), and the later unit waits rather
+    # than being held.
+
+    # ONE hostname, ONE Process behind it -- and it still belongs to the
+    # Application, because `exposure` says *this hostname routes here* while
+    # `provides` says *this process listens on this port*
+    # (review/EXPOSURE-MANIFEST.md).
+    #
+    # `host` is the full FQDN, authored. Nothing derives it: the estate also
+    # answers on kb.jorisjonkers.dev, `platform-rabbitmq` serves rabbitmq, and
+    # `status` belongs to no Application -- a `<application>.<zone>` rule would be right
+    # here and silently wrong there, and the wrong ones are the ones nobody
+    # checks. This block replaces the six places the hostname used to be
+    # declared independently: both catalogs, both IngressRoutes, the
+    # reachability channel and the Gatus endpoint.
+    exposure:
+      - name: public              # unique within the Application, and what
+                                  # ${exposure:knowledge.public#url} addresses
+        host: knowledge.jorisjonkers.dev
+        audience: authenticated   # the exposure's audience is the default for
+                                  # every route under it
+        routes:
+          # PER-ROUTE `audience` IS AN OVERRIDE, and this is the case it exists
+          # for: anonymous paths inside an authenticated host. /mcp answers a
+          # workstation holding only a bearer token, and the two install
+          # scripts are fetched by curl before any session exists. The `/`
+          # catch-all keeps the Application's audience, so everything else is
+          # behind forward-auth -- derived from the audience, never named here
+          # (docs/adr/model/0023-exposure-is-declared-by-audience.md).
+          #
+          # Written as block mappings rather than one-liners only because five
+          # fields do not fit a line; the shape is the same one auth's two
+          # routes use.
+          - path: /mcp
+            match: exact
+            process: knowledge-api
+            surface: http
+            audience: anonymous     # override
+          - path: /mcp/
+            match: prefix
+            process: knowledge-api
+            surface: http
+            audience: anonymous     # override
+          - path: /install.sh
+            match: exact
+            process: knowledge-api
+            surface: http
+            audience: anonymous     # override
+          - path: /install-agents.sh
+            match: exact
+            process: knowledge-api
+            surface: http
+            audience: anonymous     # override
+          - path: /
+            match: prefix
+            process: knowledge-api
+            surface: http           # no `audience`: the Application's stands
+        # No `contentPolicy`: this Application picks no CSP profile, so it takes the
+        # baseline the tier derives. The field is optional and the vocabulary
+        # stops there -- `contentPolicy` and `redirectTo` are the whole of what
+        # an author may say about the proxy.
+
+    processes:
+      # ------------------------------------------------------ knowledge-api
+      - name: knowledge-api
+        # Identity is the Process name under the project namespace:
+        # `knowledge-system.knowledge-api`
+        # (docs/adr/model/0031-identity-per-process.md).
+        lifecycle: application
+        image: knowledge-api    # alias -> digest through the images lock
+        runtime: jvm            # -> otel-jvm profile: 10 OTEL, 6 PYROSCOPE
+
+        # The JVM writes to /tmp. Declared, mounted as an emptyDir, and the
+        # read-only root control stays intact
+        # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
+        writablePaths: [/tmp]
+
+        # Surfaces are a property of the process, so they sit on the Process.
+        # The rendered Kubernetes port name is the surface name, which is how
+        # 'http' survives. A consumer names the Application and the surface, never
+        # a port integer: `dependsOn: {application: knowledge, surface: http}`.
+        provides:
+          http: 8080
+
+        # Hard dimensions, all of which must match
+        # (docs/adr/model/0017-placement-is-hard-dimensions.md).
+        placement:
+          memory: 768Mi         # a JVM application at its default heap. Raw, not a
+                                # class: a class name cannot be compared to a
+                                # node's allocatable without carrying the table,
+                                # and the comparison is now arithmetic
+          cpu: 250m             # request only; no cpu limit is derived
+          capabilities: [public-ingress]
+          # frankfurt-contabo-1 is the only node advertising public-ingress, so
+          # this replaces `nodeSelector: {site: frankfurt}` without naming a
+          # site. It is a hard filter like every other dimension: if the
+          # capability leaves the fleet, the build fails with
+          # E_PLACEMENT_UNSATISFIABLE rather than the pod placing anywhere and
+          # the surface going dark.
+
+        # No `hardening` block. The default `restricted` class applies
+        # unstated: runAsNonRoot, readOnlyRootFilesystem, drop ALL, seccomp
+        # RuntimeDefault. This image is built here and meets it
+        # (docs/adr/model/0020-hardening-is-one-platform-posture.md).
+
+        dependsOn:
+          - {application: platform-postgres, surface: postgres}
+          - {application: platform-rabbitmq, surface: amqp}
+
+        # No `exposure` here: the five routes and the hostname they hang off
+        # sit on the Application above, and each route names this Process and its
+        # `http` surface. `provides` is what stays.
+
+        probes:
+          readiness:
+            path: /api/actuator/health/readiness
+            port: 8080
+          liveness:
+            path: /api/actuator/health/liveness
+            port: 8080
+          # Distinct paths, stated. A liveness probe on the readiness endpoint
+          # turns a Postgres outage into a crash-loop
+          # (docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md).
+
+        startupBudget: 600s     # JVM cold start measured at ~250-300s
+
+        # REQUIRED, no default. This Process holds no volume, and its owner
+        # requires continuity: the MCP endpoint 503s if a roll opens a gap.
+        cutover: continuous
+
+        # No `replicas` block: the derived count is one. Capacity is the only
+        # local exception to a derived value, and this Process needs none.
+
+        # Process-level grant: the API serves /mcp, the worker does not. This
+        # is an access boundary only because identity is per Process -- this
+        # pod authenticates as `knowledge-api` and the worker as
+        # `knowledge-ingest-worker`, each bound to exactly its own effective
+        # grant set, which is every level's list merged with this one
+        # (docs/adr/model/0031-identity-per-process.md).
+        secrets:
+          - path: secret/data/knowledge-system/mcp-bearer
+            keys: [workstation]
+            access: read
+            delivery: env
+            rotation: {tolerates: restart}
+
+  # ======================================================== knowledge-ingest
+  - id: knowledge-ingest
+    # An Application of its own because its cutover is not the API's: the
+    # ReadWriteOnce volume below cannot attach to a second copy, so this Process
+    # stops before it starts, and an Application switches as one. It has no
+    # `observability` block and no exposure: it publishes nothing and listens on
+    # nothing.
+    #
+    # It reads the project's database too, and one Application of a project
+    # moves that schema: `knowledge` does, so this one declares that it moves
+    # none. A second changelog here would be E_MIGRATION_OWNER_DUPLICATED.
+    migration: none
+    # One plain sentence each, for a reader who sees only the name. It derives
+    # nothing and renders nothing (spec/v1/10-project-intent.md#describing-an-application-and-a-process).
+    description: Turns the notes dropped into the vault into searchable knowledge.
+    processes:
+      - name: knowledge-ingest-worker
+        description: Takes one note at a time off the queue and indexes it.
+        lifecycle: application
+        image: knowledge-ingest-worker
+        runtime: python         # a different profile: 5 OTEL keys plus
+                                # OTEL_PYTHON_LOG_CORRELATION, no JVM batch
+                                # tuning
+
+        # No `provides`. A RabbitMQ consumer opens no listener, so it declares
+        # no surface, nothing can depend on it, and the derived default-deny
+        # policy gives it no ingress at all
+        # (docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md).
+
+        placement:
+          memory: 256Mi         # a single-consumer queue worker, not a server
+          cpu: 50m
+          # Nothing else is declared, and the volume below is why nothing more
+          # is needed: a `local-path` PV pins this Process to the node holding
+          # it. That pinning is DERIVED -- read from the pinned ClusterState
+          # snapshot (docs/adr/model/0034-cluster-state-is-a-pinned-input.md) -- rather
+          # than restated here as a dimension that could disagree with the
+          # binding.
+
+        # Default `restricted` again, and nothing here fights it: the deploy key
+        # arrives on a projected volume, not on the root filesystem, so
+        # readOnlyRootFilesystem costs this Process nothing.
+
+        dependsOn:
+          - {application: platform-rabbitmq, surface: amqp}
+          - {application: platform-postgres, surface: postgres}
+
+        # A RabbitMQ consumer with no listener. Declared, not omitted, so the
+        # absence is a decision rather than an oversight
+        # (docs/adr/model/0016-probes-are-siblings-and-startup-targets-liveness.md).
+        probes: none
+
+        startupBudget: 120s
+
+        # `interrupted`, and it is the only honourable answer: the ReadWriteOnce
+        # local-path volume below cannot attach to two pods at once, so
+        # `cutover: continuous` here is E_CUTOVER_UNHONOURABLE rather than a
+        # strategy silently derived to stop-start. The owner states the
+        # stop-then-start that the storage already forces.
+        cutover: interrupted
+
+        # A file-level copy is the backup method for a directory of files, and
+        # `irreplaceable` derives one -- so the engine is required here
+        # (docs/adr/model/0018-durability-class-derives-a-backup.md,
+        # docs/adr/model/0019-engine-is-process-vocabulary.md).
+        engine: files
+
+        volumes:
+          - claim: knowledge-vault-clone
+            mountAt: /var/lib/knowledge-vault
+            size: 20Gi
+            durability: irreplaceable
+            # The one fact only the owning Application knows
+            # (docs/adr/model/0018-durability-class-derives-a-backup.md); schedule, sweep
+            # and destination are derived. `irreplaceable` renders a backup job
+            # with retention plus an off-cluster copy, and its restore must be
+            # rehearsed before the first production apply
+            # (docs/adr/model/0049-datastore-and-restore.md).
+            #
+            # Not declared: storage class and volume size -- both draw on finite
+            # node disk and are assigned. A `placement.disk` dimension filters
+            # which nodes are ELIGIBLE to hold a claim; it does not decide how
+            # large the claim is.
+
+        # Process-level, and `delivery: file` because an SSH private key cannot
+        # be an environment variable. This is the grant that makes per-Process
+        # identity load-bearing: under one identity per Application the
+        # internet-facing API Process would authenticate as a principal holding
+        # `read` on this key, and the store cannot narrow a read below the path
+        # (docs/adr/model/0008-vault-read-is-per-path.md).
+        secrets:
+          - path: secret/data/knowledge-system/vault-deploy-key
+            keys: [key]
+            access: read
+            delivery: file
+            mountAt: /home/worker/.ssh/id_ed25519
+            fileMode: "0400"
+            rotation: {tolerates: restart}

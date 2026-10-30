@@ -36,7 +36,8 @@ deletes: this directory; the `emf` CI job and the `ADR contract (emf)` step in
 `RULE-062` and `REQ-015`; the `emf` domain entry in `scripts/lint-adrs.ts` and
 the two `emf/` cases in `test/adr-contract.test.ts`; the `emf` exclusion in
 `release-please-config.json`, the `emf maven` rule in `renovate.json`, the
-`/emf/` line in `.github/CODEOWNERS` and the `mvnw` line in `.gitattributes`;
+`/emf/` line in `.github/CODEOWNERS`, the `mvnw` line in `.gitattributes` and
+the stage goldens' line in `.prettierignore`;
 and the `emf/` mentions in `docs/architecture.md`, `docs/requirements.md`,
 `docs/adr/README.md`, `README.md`, `CONTEXT.md` and `CLAUDE.md`.
 
@@ -183,7 +184,7 @@ and no document holds one.
 
 ## Constraints
 
-Every constraint lives in a Complete OCL file beside the source metamodel,
+Every constraint over the parsed model lives in a Complete OCL file beside the source metamodel,
 evaluated by Eclipse OCL standalone in the build and by the Xtext-generated
 editor while a file is edited. An
 invariant's name is the diagnostic code it emits, so a failed invariant maps to
@@ -223,6 +224,28 @@ part of the vocabulary. And the Platform classes live in the Project Intent
 package, because a tier's proxy is an Application a project file declares, and
 one package is what lets that be an Ecore reference.
 
+A few refusals are decided in Java instead, beside the parse in the `cli`
+bundle, because each asks something the parsed model does not hold
+([0143](adr/emf/0143-a-refusal-is-decided-in-ocl-unless-the-model-cannot-hold-what-it-asks.md)):
+
+- `ShippedFiles`: whether a dashboard or a rule file a project names is beside
+  it, keyed by a uid or holding rule groups, and whether two dashboards of the
+  set share a uid. The model holds the path, never the file.
+- `L4Checks`: a tier's proxy that answers no listener, a pool with fewer
+  addresses than Processes, a node's port two owners dial. A tier derives ports
+  no project file writes, and a refusal there is placed at the tier's address,
+  which no invariant's path can name.
+- `Pipeline.check`: a Project the mesh enrols that no file declares, placed at
+  its entry of a list of strings, and an image the images lock holds as root,
+  which the pinned inputs decide and the intent's constraints never read.
+
+A Process is checked with the env files beside its project attached, since
+what it reads through them is part of what is checked of it. The codes that
+ask that, self delivery without a Vault client and a secret placeholder on a
+Client that holds none, are kept by `Pipeline.refusals` until a document holds
+on its own, as the production implementation asks them of the union only after
+each document's own checks pass.
+
 Constraint parity is checked by code: every OCL invariant is named by the
 diagnostic code it emits, and the root's parity test compares those names with
 the TypeScript checks and the refused fixtures
@@ -254,6 +277,18 @@ language's, into one resource set. The Platform grammar inherits the project
 grammar, its terminals, block tokens and scalars included, and adds only its
 own rules. There is no inferred syntax metamodel and no mapping step between
 parsing and validation.
+
+A schema refusal is decided by a shape check, not by the parser's error. The
+check reads the grammar's own rules as data, which keys a mapping may hold, which
+it must, and what each value may be, over a plain reading of the YAML subset into
+a tree, and it runs on every authored document beside the Xtext parse. Where it
+finds a fault, its diagnostics replace the parser's; where it finds none, what
+the parser said stands. Xtext stops at its first error and recovers into more
+that point nowhere, while the production implementation names every offending
+key by its JSON pointer, so only a check that reads the whole file can report
+the same set of paths. The grammar stays the one statement of the schema: the
+check holds nothing the grammar says, only the two scalar limits it cannot, a
+rate limit's request count and period.
 
 A plain scalar holds no colon: the lexer cannot tell `sha256:6f1c` from a key
 without looking past the colon, so a value that carries one, a digest, a URL or
@@ -292,7 +327,7 @@ CI builds it but never runs it.
 
 ## Transformation
 
-Three QVT-Operational transformations, all run through the standalone
+Two QVT-Operational transformations, both run through the standalone
 transformation executor.
 
 **The lowering** comes first and stays inside layer 1: Shared Intent declared at
@@ -393,13 +428,20 @@ match the oracle, not presentation.
 Deployment's `deliverables` and opens one file per Deliverable at the path the
 path plan assigned it, and each Deliverable kind has one template that spells
 its target format: YAML under the one header line, or for a Vault document JSON,
-which carries no comment. Several Deployments render together, which is how the
-estate-scoped share is written: a tier's index lists every route each Deployment
-puts under it, so each writes the same whole file. An Asset's content is a block
-scalar, kept as written, its last line break chomped the way the production
-serializer chooses. The templates decide nothing: every value they
-write is a feature of the model, and the only arithmetic they do is spelling,
-a duration as whole seconds and a precedence as a Traefik priority.
+which carries no comment. A YAML kind's template is chosen by the Deliverable's
+type, so a kind with no template fails the rendering rather than writing a file
+that holds only the header. An Asset's content is a block scalar, kept as
+written, its last line break chomped the way the production serializer chooses.
+
+The templates decide nothing: every value they write is a feature of the model,
+and the only arithmetic they do is spelling, a duration as whole seconds and a
+precedence as a Traefik priority. What a template once chose is derived by the
+resolution instead: the name and namespace of the Middleware a route names
+(`MiddlewareStep.name`, `.namespace`), the Deployment that serves between
+releases and the label its pods are selected by (`ResolvedProcess.serving`,
+`.servingLabel`), and what a Vault policy allows at each path
+(`VaultPolicyFile.paths`, `ResolvedCatalogJob.policy`). A query in the module
+only selects or reaches what the model holds.
 
 Acceleo 4 strips two spaces of margin from every line of a block's body, and a
 call written at a column repeats that column's text before every line the call
@@ -409,14 +451,81 @@ one template written unindented, and each caller places it at its own depth.
 A list item is a fragment that opens on its own `- `, because the repeated text
 is copied literally and a `- ` before the call would open every line as an item.
 
-A string value is written plain unless the YAML 1.2 core schema would read it
-as null, a boolean, an integer or a float, in which case it is double-quoted,
-as the production implementation's serializer quotes it. That serializer also
+A string value is written plain unless a YAML 1.1 reader would read it as null,
+a boolean, an integer, a float or a timestamp, in which case it is
+double-quoted, as the production implementation's serializer, which writes YAML
+1.1, quotes it: the Kubernetes API reads YAML through `sigs.k8s.io/yaml`, a YAML
+1.1 reader, where `on`, `yes` and `0755` are not strings. That serializer also
 quotes a string for an indicator character or an embedded `: `, which no value
 the examples render carries yet, so the templates do not spell that case. The Java
-side, `Rendering`, only loads the module, runs it, and fails the run with
-Acceleo's own diagnostic when a template does not parse or does not evaluate, so
-a half-written tree is never read as a whole one.
+side, `Rendering`, only loads the module and runs it. It writes beside the root
+and moves the files under it once every one is written, and fails the run with
+Acceleo's own diagnostic when a template does not parse or does not evaluate,
+leaving the root as it was, so a half-written tree is never read as a whole one.
+
+## Stage tests
+
+Each stage also runs on its own, in-process, file in and file out, so a wrong
+label costs one stage and names its path rather than a full build and a byte
+diff of a whole file. The cases sit under
+`bundles/cli/src/test/resources/stages/<stage>/<case>/`, in `cli` because it
+is the one bundle that reaches every stage, and `StageTest` reads them from the
+working copy. Only `parse` holds an `input/`, the authored documents of a
+union; `lower`, `resolve` and `render` each read the `expected/` of the stage
+before, the same files, so one golden serves in two roles and two stages cannot
+drift apart. `parse` writes the authored extent with its env files,
+`intent.xmi`, the pinned extent, `pinned.xmi`, and each document's intent;
+`lower` writes `effective.xmi` and each project's Effective Intent; `resolve`
+writes `<project>.resolveddeployment` and its edges for each project its
+`projects` file names; `render` writes the tree. The goldens are this
+implementation's own: `estate` reads main's worked documents, every project
+of the estate together, beside a `coverage` project and a Platform document
+that write what the worked documents leave out. A `resolve` or `render` case
+names the projects it resolves in its `projects` file.
+
+A `resolve` case with no `lower` case of its name is *given*: its Resolved
+Deployment is written by hand, because no resolution writes that shape yet, and
+it drives the `render` case of the same name alone. A given model must validate
+against the metamodel, and its stage never rewrites it. A `render` case whose
+expected files are copies of the production implementation's oracles names
+each in an `oracles` file, one `<expected path> <oracle path>` pair a line, and
+each copy must equal its oracle byte for byte, so the copies cannot drift; a
+golden update leaves such a case alone.
+
+`Comparison` compares by content first and bytes last: JSON as a Jackson tree,
+YAML as every document of the stream through SnakeYAML's YAML 1.1 reader on both
+sides, and XMI loaded into EMF and walked feature by feature, with
+`EcoreUtil.EqualityHelper` deciding. It reports every difference as a path, a
+list of named items by name, and a file whose content matches but whose bytes
+do not as one "formatting only" difference at the first line that parts.
+Jackson and SnakeYAML reach the bundles in test scope only, beside JUnit and
+AssertJ.
+
+Two more suites ride on the same cases. `FieldCoverageTest` lists, per stage,
+every feature of every concrete class a stage's documents can hold that no case
+sets, every enum literal none uses, the same of what `lower` and `resolve`
+write, every intent schema path no `parse` input carries, and every type
+`render.mtl` dispatches on that no `render` input instantiates; the stage's
+`gaps.txt` must equal that list, so a new gap fails and a covered one must be
+removed. `OracleDistanceTest` compares this implementation with every oracle
+under `spec/v1/examples/` through the same comparator: the cases in `PASSING`
+must match, a case that matches must be listed, and every other case prints how
+many differences it is from passing.
+
+The loop, from `emf/`, after one full build:
+
+```bash
+./mvnw verify -Dtest=StageTest -Dsurefire.failIfNoSpecifiedTests=false \
+  -Djacoco.skip=true -Dspotless.check.skip=true -DskipPitest=true
+```
+
+That runs the reactor and the stage cases alone, about 25 seconds warm against
+35 for `OutputsTest` and `ParityTest`; one case takes well under two seconds of
+it. Adding `-Dgolden.update=true` rewrites every `expected/` from what the
+stages wrote, in stage order, and removes the covered entries of each
+`gaps.txt`; review it in `git diff`. It never writes under `spec/v1/examples/`.
+Run `verify`, not `test`: the constraints load from the packaged metamodel
+bundle, and add `clean` when a test compile reads a stale class.
 
 ## Parity
 

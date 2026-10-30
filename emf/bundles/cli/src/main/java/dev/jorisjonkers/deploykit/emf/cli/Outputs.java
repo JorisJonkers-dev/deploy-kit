@@ -35,6 +35,21 @@ import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
  */
 public final class Outputs {
 
+    /**
+     * The project files every case composes with: the Applications the Platform document names in a
+     * privileged role, the sign-in provider among them, and what they depend on.
+     */
+    private static final List<String> FOUNDATION = List.of(
+            "delivery/delivery.project.yml",
+            "edge/edge.project.yml",
+            "observability/observability.project.yml",
+            "secrets/secrets.project.yml",
+            "identity/identity.project.yml",
+            "mail/mail.project.yml",
+            "utility/utility.project.yml",
+            "agents/agents.project.yml",
+            "data/data.project.yml");
+
     /** The parsed intent of a case the pipeline accepted. */
     public static final String INTENT = "intent.json";
 
@@ -51,30 +66,36 @@ public final class Outputs {
      * The cases this implementation resolves, each with the project it resolves and the set of
      * documents it is read with: the case's own documents, the foundation it composes with, and the
      * pinned inputs beside the Platform document (spec/v1/20-resolved-deployment.md#pinned-inputs).
-     * Every case the production implementation resolves is here; `knowledge` is resolved by
-     * neither, and retires with the project it models (JorisJonkers-dev/deploy-kit#272).
+     * Every case the production implementation resolves is here; `knowledge`, whose images
+     * no lock holds, is resolved by neither, and retires with the project it models (JorisJonkers-dev/deploy-kit#272).
      */
-    public static final Map<String, Resolving> RESOLVED = Map.of(
-            "minimal",
-            new Resolving("notes", withFoundation("minimal/notes.project.yml")),
-            "auth",
-            new Resolving(
+    public static final Map<String, Resolving> RESOLVED = Map.ofEntries(
+            Map.entry("minimal", new Resolving("notes", withFoundation("minimal/notes.project.yml"))),
+            Map.entry(
                     "auth",
-                    withFoundation("auth/auth.project.yml", "auth/migration-proof.yml", "data/data.project.yml")),
-            "data",
-            new Resolving("data", withFoundation("data/data.project.yml")),
-            "knowledge-platform",
-            new Resolving(
+                    new Resolving(
+                            "auth",
+                            withFoundation(
+                                    "auth/auth.project.yml", "auth/migration-proof.yml", "data/data.project.yml"))),
+            Map.entry("data", new Resolving("data", withFoundation("data/data.project.yml"))),
+            Map.entry(
                     "knowledge-platform",
-                    withFoundation("knowledge-platform/knowledge-platform.project.yml", "data/data.project.yml")),
-            "delivery",
-            new Resolving("delivery", withFoundation()),
-            "edge",
-            new Resolving("edge", withFoundation()),
-            "observability",
-            new Resolving("observability", withFoundation()),
-            "secrets",
-            new Resolving("secrets", withFoundation()));
+                    new Resolving(
+                            "knowledge-platform",
+                            withFoundation(
+                                    "knowledge-platform/knowledge-platform.project.yml", "data/data.project.yml"))),
+            Map.entry("delivery", new Resolving("delivery", withFoundation())),
+            Map.entry("edge", new Resolving("edge", withFoundation())),
+            // The metrics stack scrapes notes' Process, which only the union holding notes lists as a peer.
+            Map.entry("observability", new Resolving("observability", withFoundation("minimal/notes.project.yml"))),
+            Map.entry("secrets", new Resolving("secrets", withFoundation())),
+            Map.entry("identity", new Resolving("identity", withFoundation())),
+            Map.entry("agents", new Resolving("agents", withFoundation())),
+            Map.entry("mail", new Resolving("mail", withFoundation())),
+            Map.entry("utility", new Resolving("utility", withFoundation())),
+            // The Node Agents, which no project file declares: the Platform document and the node
+            // contract derive them.
+            Map.entry("node", new Resolving("node", withFoundation())));
 
     /** The Platform document, its pinned inputs and the foundation every case composes with, then {@code own}. */
     private static List<String> withFoundation(String... own) {
@@ -84,11 +105,11 @@ public final class Outputs {
                 "platform/images.lock.yml",
                 "platform/cluster-state.yml"));
         documents.addAll(List.of(own));
-        documents.addAll(List.of(
-                "delivery/delivery.project.yml",
-                "edge/edge.project.yml",
-                "observability/observability.project.yml",
-                "secrets/secrets.project.yml"));
+        for (String foundation : FOUNDATION) {
+            if (!documents.contains(foundation)) {
+                documents.add(foundation);
+            }
+        }
         return List.copyOf(documents);
     }
 
@@ -146,6 +167,9 @@ public final class Outputs {
     private static final String REVERSED = "diagnostics.reversed.json";
     private static final String PLATFORM = "platform.intent.yml";
 
+    /** The images lock a refused set may carry beside its documents. */
+    private static final String IMAGES_LOCK = "images.lock.yml";
+
     private Outputs() {}
 
     /** Every case under {@code examples} run through the pipeline, written under {@code out}. */
@@ -173,7 +197,12 @@ public final class Outputs {
             // A directory beside the oracle is a set of documents read together; a file is read alone.
             if (Files.isDirectory(set)) {
                 List<Path> documents = documents(set);
-                writeDiagnostics(directory, Pipeline.check(documents));
+                // A set's images lock is checked with it, and is no model of its own.
+                List<Path> checked = new ArrayList<>(documents);
+                if (Files.isRegularFile(set.resolve(IMAGES_LOCK))) {
+                    checked.add(0, set.resolve(IMAGES_LOCK));
+                }
+                writeDiagnostics(directory, Pipeline.check(checked));
                 writeModels(directory, documents);
             } else {
                 writeParsed(directory, oracle.resolveSibling(stem + PROJECT));
@@ -299,7 +328,10 @@ public final class Outputs {
         }
         DependencyEdges.write(directory, resolved.deployment());
         // The two extents the transformation read, so a launch in Eclipse runs it on the same models.
-        EcoreUtil.Copier copier = new EcoreUtil.Copier();
+        // A link to an Application the union does not hold, such as a critical Application the
+        // Platform document names in another set, lands nowhere in either extent, so it is left out
+        // rather than written as a reference to a document beside the case.
+        EcoreUtil.Copier copier = new EcoreUtil.Copier(true, false);
         Resource intent = model(directory, INTENT_MODEL);
         Resource pinned = model(directory, PINNED_MODEL);
         intent.getContents().addAll(copier.copyAll(resolved.intent()));

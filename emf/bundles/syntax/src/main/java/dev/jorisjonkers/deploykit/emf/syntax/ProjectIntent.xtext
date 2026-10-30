@@ -17,8 +17,8 @@ Project returns Project:
 	& ('owner' ':' owner=Text)
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
 	& ('dependsOn' ':' BEGIN (DASH BEGIN dependsOn+=DependencyEdge END)+ END)?
-	& ('assets' ':' BEGIN (DASH BEGIN assets+=Asset END)+ END)?
-	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=Text END | writablePaths+=Text)+ END)?
+	& ('assets' ':' BEGIN (DASH BEGIN assets+=AssetDeclaration END)+ END)?
+	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=WritablePath END | writablePaths+=PlainPath | BEGIN writablePaths+=MemoryPath END)+ END)?
 	& ('placement' ':' BEGIN placement=Placement END)?
 	& ('startupBudget' ':' startupBudget=Text)?
 	& ('cutover' ':' cutover=Cutover)?
@@ -26,21 +26,52 @@ Project returns Project:
 
 Application returns Application:
 	(('id' ':' id=Text)
+	& ('description' ':' description=Text)?
+	& ('client' ':' BEGIN client=Client END)?
+	& ('l4Exposure' ':' BEGIN (DASH BEGIN l4Exposure+=L4Exposure END | BEGIN l4Exposure+=L4Exposure END)+ END)?
+	& ('dashboards' ':' BEGIN (DASH BEGIN dashboards+=Dashboard END | BEGIN dashboards+=Dashboard END)+ END)?
+	& ('alertRules' ':' BEGIN (DASH BEGIN alertRules+=AlertRules END | BEGIN alertRules+=AlertRules END)+ END)?
 	& ('migration' ':' migration=Migration)?
 	& ('observability' ':' BEGIN observability=Observability END)?
 	& ('exposure' ':' BEGIN (DASH BEGIN exposure+=Exposure END)+ END)?
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
 	& ('dependsOn' ':' BEGIN (DASH BEGIN dependsOn+=DependencyEdge END)+ END)?
-	& ('assets' ':' BEGIN (DASH BEGIN assets+=Asset END)+ END)?
-	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=Text END | writablePaths+=Text)+ END)?
+	& ('assets' ':' BEGIN (DASH BEGIN assets+=AssetDeclaration END)+ END)?
+	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=WritablePath END | writablePaths+=PlainPath | BEGIN writablePaths+=MemoryPath END)+ END)?
 	& ('placement' ':' BEGIN placement=Placement END)?
 	& ('startupBudget' ':' startupBudget=Text)?
 	& ('cutover' ':' cutover=Cutover)?
 	& ('processes' ':' BEGIN (DASH BEGIN processes+=Process END)+ END));
 
 Observability returns Observability:
-	(('alertClass' ':' alertClass=AlertClass)
-	& ('scrape' ':' BEGIN scrape=Scrape END)?);
+	'scrape' ':' BEGIN scrape=Scrape END;
+
+// How an Application signs its users in through the platform's provider.
+Client returns Client:
+	(('signIn' ':' signIn=SignInMode)
+	& ('exposure' ':' exposure=Text)?
+	& ('label' ':' label=Text)?
+	& ('description' ':' description=Text)?
+	& ('iconPath' ':' iconPath=Text)?
+	& ('launchPath' ':' launchPath=Text)?
+	& ('redirectPaths' ':' BEGIN (DASH BEGIN redirectPaths+=Text END | redirectPaths+=Text)+ END)?
+	& ('protectedPath' ':' protectedPath=Text)?
+	& ('backChannelLogoutPath' ':' backChannelLogoutPath=Text)?
+	& ('credential' ':' credential=ClientCredential)?
+	& ('roles' ':' BEGIN (DASH BEGIN roles+=Text END | roles+=Text)+ END)?);
+
+L4Exposure returns L4Exposure:
+	(('address' ':' address=Text)
+	& ('port' ':' port=Port)
+	& ('protocol' ':' protocol=L4Protocol)
+	& ('process' ':' process=[Process|Text])
+	& ('surface' ':' surface=[Surface|Text]));
+
+Dashboard returns Dashboard:
+	'from' ':' from=Text;
+
+AlertRules returns AlertRules:
+	'from' ':' from=Text;
 
 Scrape returns Scrape:
 	(('process' ':' process=[Process|Text])
@@ -52,6 +83,7 @@ Exposure returns Exposure:
 	& ('host' ':' host=Text)
 	& ('audience' ':' audience=Audience)
 	& ('contentPolicy' ':' contentPolicy=ContentPolicy)?
+	& ('proxied' ':' proxied=Bool)?
 	& ('routes' ':' BEGIN (DASH BEGIN routes+=Route END)+ END));
 
 Route returns Route:
@@ -76,10 +108,10 @@ Process returns Process:
 	& ('engine' ':' engine=Engine)?
 	& ('provides' ':' BEGIN provides+=Surface+ END)?
 	& ('placement' ':' BEGIN placement=Placement END)?
-	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=Text END | writablePaths+=Text)+ END)?
+	& ('writablePaths' ':' BEGIN (DASH BEGIN writablePaths+=WritablePath END | writablePaths+=PlainPath | BEGIN writablePaths+=MemoryPath END)+ END)?
 	& ('sidecars' ':' BEGIN (DASH BEGIN sidecars+=Sidecar END)+ END)?
 	& ('dependsOn' ':' BEGIN (DASH BEGIN dependsOn+=DependencyEdge END)+ END)?
-	& ('assets' ':' BEGIN (DASH BEGIN assets+=Asset END)+ END)?
+	& ('assets' ':' BEGIN (DASH BEGIN assets+=AssetDeclaration END)+ END)?
 	& ('probes' ':' probes=ProbePolicy)?
 	& ('volumes' ':' BEGIN (DASH BEGIN volumes+=Volume END)+ END)?
 	& ('libraries' ':' BEGIN (DASH BEGIN libraries+=LibraryMount END)+ END)?
@@ -89,7 +121,44 @@ Process returns Process:
 	& ('vpn' ':' BEGIN vpn=VpnAttachment END)?
 	& ('secrets' ':' BEGIN (DASH BEGIN secrets+=Grant END)+ END)?
 	& ('startupBudget' ':' startupBudget=Text)?
-	& ('cutover' ':' cutover=Cutover)?);
+	& ('cutover' ':' cutover=Cutover)?
+	& ('description' ':' description=Text)?
+	& ('schedule' ':' schedule=Text)?
+	& ('parked' ':' BEGIN parked=Parked END)?
+	& ('command' ':' BEGIN (DASH BEGIN command+=Text END | command+=Text)+ END)?
+	& ('args' ':' BEGIN (DASH BEGIN args+=Text END | args+=Text)+ END)?
+	& ('spawns' ':' BEGIN (DASH BEGIN spawns+=SpawnTemplate END)+ END)?
+	& ('rollback' ':' rollback=Rollback)?);
+
+Parked returns Parked:
+	'reason' ':' reason=Text;
+
+Rollback returns Rollback:
+	{Rollback} 'forward-only';
+
+// A pod the Process creates through the API, from a template the platform renders.
+SpawnTemplate returns SpawnTemplate:
+	(('name' ':' name=Text)
+	& ('image' ':' image=Text)
+	& ('placement' ':' BEGIN placement=SpawnPlacement END)
+	& ('provides' ':' BEGIN provides+=Surface+ END)?
+	& ('dependsOn' ':' BEGIN (DASH BEGIN dependsOn+=DependencyEdge END)+ END)?
+	& ('egress' ':' BEGIN egress=Egress END)?);
+
+SpawnPlacement returns SpawnPlacement:
+	(('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text));
+
+// A path the Process may write: plain, or held in memory at a size.
+WritablePath returns WritablePathDeclaration:
+	PlainPath | MemoryPath;
+
+PlainPath returns PlainPath:
+	path=Text;
+
+MemoryPath returns MemoryPath:
+	(('path' ':' path=Text)
+	& ('memory' ':' memory=Text));
 
 Surface returns Surface:
 	key=Text ':' value=Port;
@@ -117,13 +186,27 @@ GpuRequest returns GpuRequest:
 Sidecar returns Sidecar:
 	(('name' ':' name=Text)
 	& ('image' ':' image=Text)
+	& ('command' ':' BEGIN (DASH BEGIN command+=Text END | command+=Text)+ END)?
+	& ('args' ':' BEGIN (DASH BEGIN args+=Text END | args+=Text)+ END)?
 	& ('memory' ':' memory=Text)
-	& ('cpu' ':' cpu=Text));
+	& ('cpu' ':' cpu=Text)
+	& ('volumes' ':' BEGIN (DASH BEGIN volumes+=SidecarMount END | BEGIN volumes+=SidecarMount END)+ END)?
+	& ('assets' ':' BEGIN (DASH BEGIN assets+=SidecarAsset END | BEGIN assets+=SidecarAsset END)+ END)?
+	& ('init' ':' init=Bool)?);
+
+SidecarMount returns SidecarMount:
+	(('claim' ':' claim=Text)
+	& ('mountAt' ':' mountAt=Text));
+
+SidecarAsset returns SidecarAsset:
+	(('from' ':' from=Text)
+	& ('mountAt' ':' mountAt=Text));
 
 DependencyEdge returns DependencyEdge:
 	(('application' ':' application=Text)
 	& ('surface' ':' surface=Text)
 	& ('required' ':' required=Bool)?
+	& ('buckets' ':' BEGIN (DASH BEGIN buckets+=Text END | buckets+=Text)+ END)?
 	& ('credentials' ':' BEGIN credentials=Credentials END)?);
 
 Credentials returns Credentials:
@@ -145,9 +228,14 @@ NoMigration returns NoMigration:
 ManagedMigration returns ManagedMigration:
 	BEGIN 'changelog' ':' changelog=Text END;
 
-Asset returns Asset:
-	(('from' ':' from=Text)
-	& ('mountAt' ':' mountAt=Text));
+// A file beside the project: mounted read-only, or seeded once onto a volume.
+// Spelled out key order by key order: the two kinds share `from`, and only the
+// key after it says which one a block is.
+AssetDeclaration returns AssetDeclaration:
+	{Asset} 'from' ':' from=Text 'mountAt' ':' mountAt=Text
+	| {Asset} 'mountAt' ':' mountAt=Text 'from' ':' from=Text
+	| {SeededAsset} 'from' ':' from=Text 'seedAt' ':' seedAt=Text
+	| {SeededAsset} 'seedAt' ':' seedAt=Text 'from' ':' from=Text;
 
 ProbePolicy returns ProbePolicy:
 	NoProbes | Probes;
@@ -186,7 +274,8 @@ LibraryMount returns LibraryMount:
 
 Capacity returns Capacity:
 	(('count' ':' count=Port)
-	& ('reason' ':' reason=Text));
+	& ('reason' ':' reason=Text)
+	& ('across' ':' across=Spread)?);
 
 // The Kubernetes API access a Process needs: what it may ask of which objects, and why.
 // Whether the provider forwards the attached Process a port.
@@ -199,19 +288,20 @@ Egress returns Egress:
 
 ApiAccess returns ApiAccess:
 	(('reason' ':' reason=Text)
-	& ('rules' ':' BEGIN (DASH BEGIN rules+=ApiRule END)+ END));
+	& ('rules' ':' BEGIN (DASH BEGIN rules+=ApiRule END)+ END)?);
 
 ApiRule returns ApiRule:
 	(('group' ':' group=Text)
 	& ('objects' ':' BEGIN (DASH BEGIN objects+=Text END | objects+=Text)+ END)
-	& ('verbs' ':' BEGIN (DASH BEGIN verbs+=ApiVerb END | verbs+=ApiVerb)+ END));
+	& ('verbs' ':' BEGIN (DASH BEGIN verbs+=ApiVerb END | verbs+=ApiVerb)+ END)
+	& ('scope' ':' scope=ApiScope)?);
 
 Grant returns Grant:
 	KvGrant | DatabaseGrant | TransitGrant;
 
 KvGrant returns KvGrant:
 	(('path' ':' path=Text)
-	& ('keys' ':' BEGIN (DASH BEGIN keys+=KvKey END | keys+=PlainKey | BEGIN keys+=GeneratedKey END)+ END)
+	& ('keys' ':' BEGIN (DASH BEGIN keys+=KvKey END | keys+=PlainKey | BEGIN keys+=BlockKey END)+ END)
 	& ('access' ':' access=AccessTier)
 	& ('delivery' ':' delivery=Delivery)
 	& ('mountAt' ':' mountAt=Text)?
@@ -220,14 +310,18 @@ KvGrant returns KvGrant:
 
 // A key is its name, or a block naming it and how the Vault policy job generates it.
 KvKey returns KvKey:
-	PlainKey | GeneratedKey;
+	PlainKey | BlockKey;
+
+// A generated key or one the Process starts without when the Secret Store holds no
+// value for it, spelled out key order by key order: both open on `name`.
+BlockKey returns KvKey:
+	{GeneratedKey} 'name' ':' name=Text 'generate' ':' BEGIN ^generate=Generate END
+	| {GeneratedKey} 'generate' ':' BEGIN ^generate=Generate END 'name' ':' name=Text
+	| {OptionalKey} 'name' ':' name=Text 'optional' ':' optional=Bool
+	| {OptionalKey} 'optional' ':' optional=Bool 'name' ':' name=Text;
 
 PlainKey returns PlainKey:
 	name=Text;
-
-GeneratedKey returns GeneratedKey:
-	(('name' ':' name=Text)
-	& ('generate' ':' BEGIN ^generate=Generate END));
 
 Generate returns Generate:
 	{Generate}
@@ -268,31 +362,34 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword;
 
 Keyword:
-	'access' | 'admin' | 'adopt' | 'alertClass' | 'amd64' | 'anonymous' | 'api' | 'apiVersion' | 'application' | 'applications' |
-	'arch' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'base64' | 'base64url' | 'business-hours' | 'bytes' | 'capabilities' | 'changelog' | 'claim' |
-	'class' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'create' | 'credentials' | 'custody' | 'cutover' | 'database' | 'decrypt' |
-	'delete' | 'delivery' | 'dependsOn' | 'disk' | 'durability' | 'egress' | 'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' |
-	'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'forwardedPort' | 'from' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' |
-	'host' | 'id' | 'image' | 'internal' | 'internet' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' |
-	'keys' | 'kind' | 'kv' | 'lan' | 'libraries' | 'library' | 'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' |
-	'media' | 'memory' | 'migration' | 'model' | 'mountAt' | 'name' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' |
-	'operations' | 'owner' | 'page' | 'patch' | 'path' | 'per' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' |
-	'probes' | 'process' | 'processes' | 'project' | 'provides' | 'python' | 'rabbitmq' | 'rateLimit' | 'read' |
-	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectTo' | 'reload' | 'replicas' | 'requests' |
-	'required' | 'restart' | 'role' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' |
-	'schemaVersion' | 'scrape' | 'secrets' | 'self' | 'self-renew' | 'self-roll' | 'sidecars' | 'sign' |
-	'site' | 'size' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'subPath' | 'surface' | 'tcp' |
-	'to' | 'tolerates' | 'transit' | 'true' | 'update' | 'urgent' | 'valkey' | 'vendor' | 'verbs' | 'verify' | 'volumes' | 'vpn' | 'watch' | 'workflow' |
-	'writablePaths' | 'write';
+	'access' | 'across' | 'address' | 'admin' | 'adopt' | 'alertRules' | 'amd64' | 'anonymous' | 'api' | 'apiVersion' |
+	'application' | 'applications' | 'arch' | 'args' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'backChannelLogoutPath' |
+	'base64' | 'base64url' | 'buckets' | 'bytes' | 'capabilities' | 'changelog' | 'claim' | 'class' | 'client' | 'cluster' |
+	'command' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'create' | 'credential' | 'credentials' | 'custody' | 'cutover' |
+	'dashboards' | 'database' | 'decrypt' | 'delete' | 'delivery' | 'dependsOn' | 'description' | 'disk' | 'durability' | 'egress' |
+	'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' | 'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'forward-only' |
+	'forwardedPort' | 'from' | 'gated' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' | 'host' | 'iconPath' | 'id' |
+	'image' | 'init' | 'internal' | 'internet' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' | 'keys' | 'kind' | 'kv' |
+	'l4Exposure' | 'label' | 'lan' | 'launchPath' | 'libraries' | 'library' | 'lifecycle' | 'list' | 'liveness' | 'match' |
+	'maxAge' | 'media' | 'memory' | 'migration' | 'model' | 'mongo' | 'mountAt' | 'name' | 'namespace' | 'native' | 'node' |
+	'none' | 'nvme' | 'objects' | 'observability' | 'operations' | 'optional' | 'owner' | 'parked' | 'patch' | 'path' | 'per' |
+	'pkce' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' | 'probes' | 'process' | 'processes' | 'project' |
+	'protectedPath' | 'protocol' | 'provides' | 'proxied' | 'python' | 'rabbitmq' | 'rateLimit' | 'read' | 'readiness' | 'reason' |
+	'reconstructible' | 'recoverable' | 'redirectPaths' | 'redirectTo' | 'reload' | 'replicas' | 'requests' | 'required' |
+	'restart' | 'role' | 'roles' | 'rollback' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' | 's3' | 'schedule' |
+	'scheduled' | 'schemaVersion' | 'scope' | 'scrape' | 'secret' | 'secrets' | 'seedAt' | 'self' | 'self-renew' | 'self-roll' |
+	'sidecars' | 'sign' | 'signIn' | 'site' | 'size' | 'spawns' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'subPath' |
+	'surface' | 'tcp' | 'to' | 'token' | 'tolerates' | 'transit' | 'true' | 'udp' | 'update' | 'valkey' | 'vendor' | 'verbs' |
+	'verify' | 'volumes' | 'vpn' | 'watch' | 'workflow' | 'writablePaths' | 'write';
 
 enum Lifecycle returns Lifecycle:
-	application='application' | job='job' | prepare='prepare';
+	application='application' | job='job' | prepare='prepare' | scheduled='scheduled';
 
 enum Runtime returns Runtime:
 	jvm='jvm' | python='python' | node='node' | static='static' | none='none';
 
 enum Engine returns Engine:
-	postgres='postgres' | rabbitmq='rabbitmq' | valkey='valkey' | files='files';
+	postgres='postgres' | rabbitmq='rabbitmq' | valkey='valkey' | mongo='mongo' | files='files' | s3='s3';
 
 enum Cutover returns Cutover:
 	continuous='continuous' | interrupted='interrupted';
@@ -306,8 +403,20 @@ enum Arch returns Arch:
 enum Media returns Media:
 	nvme='nvme' | ssd='ssd' | hdd='hdd';
 
-enum AlertClass returns AlertClass:
-	businessHours='business-hours' | urgent='urgent' | page='page';
+enum ApiScope returns ApiScope:
+	namespace='namespace' | cluster='cluster';
+
+enum Spread returns Spread:
+	node='node';
+
+enum L4Protocol returns L4Protocol:
+	tcp='tcp' | udp='udp';
+
+enum SignInMode returns SignInMode:
+	native='native' | gated='gated' | token='token';
+
+enum ClientCredential returns ClientCredential:
+	secret='secret' | pkce='pkce';
 
 enum Audience returns Audience:
 	anonymous='anonymous' | authenticated='authenticated' | internal='internal' | lan='lan';
@@ -337,7 +446,7 @@ enum LibraryAccess returns LibraryAccess:
 	read='read' | write='write';
 
 enum TransitOp returns TransitOp:
-	sign='sign' | verify='verify' | encrypt='encrypt' | decrypt='decrypt' | rotate='rotate';
+	sign='sign' | verify='verify' | encrypt='encrypt' | decrypt='decrypt' | rotate='rotate' | read='read';
 
 enum Delivery returns Delivery:
 	env='env' | file='file' | selfDelivery='self';
@@ -366,7 +475,9 @@ terminal FOLD: ('>' | '|') '-'?;
 terminal INT returns ecore::EInt: ('0'..'9')+;
 
 terminal SCALAR:
-	!(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#' | '"' | "'" | '-' | '>' | '|')
+	(!(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#' | '"' | "'" | '-' | '>' | '|')
+	| '-' !(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#' | '"' | "'" | '-' | '>' | '|')
+	| '--' !(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#' | '"' | "'" | '-' | '>' | '|'))
 	(!(' ' | '\t' | '\r' | '\n' | ':' | ',' | '{' | '}' | '[' | ']' | '#'))*;
 
 terminal STRING:

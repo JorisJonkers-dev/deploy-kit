@@ -2,14 +2,21 @@ package dev.jorisjonkers.deploykit.emf.cli;
 
 import com.google.inject.Injector;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.AssetFile;
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ImagesLock;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsPackage;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.AlertRules;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Asset;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.AssetDeclaration;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Dashboard;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.SharedIntent;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.Alias;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.StableAddressFile;
 import dev.jorisjonkers.deploykit.emf.render.Rendering;
 import dev.jorisjonkers.deploykit.emf.resolve.Lowering;
 import dev.jorisjonkers.deploykit.emf.resolve.Resolution;
@@ -20,6 +27,7 @@ import dev.jorisjonkers.deploykit.emf.syntax.NodeContractStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.PlatformIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.ProjectIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.linking.UnlinkedNames;
+import dev.jorisjonkers.deploykit.emf.syntax.schema.Shapes;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -27,10 +35,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
@@ -42,8 +55,11 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 import org.eclipse.xtext.EcoreUtil2;
+import org.eclipse.xtext.Grammar;
+import org.eclipse.xtext.IGrammarAccess;
 import org.eclipse.xtext.linking.impl.XtextLinkingDiagnostic;
 import org.eclipse.xtext.resource.IResourceFactory;
+import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.resource.XtextResourceSet;
 
 /**
@@ -67,6 +83,16 @@ public final class Pipeline {
     /** The code an env file earns whose scope directory names no level of the project file. */
     private static final String UNKNOWN_ENV_SCOPE = "E_UNKNOWN_ENV_SCOPE";
 
+    /** The codes of what a Process holds across its levels and its env files, asked of a document that holds. */
+    private static final java.util.Set<String> ACROSS_THE_UNION =
+            java.util.Set.of("E_SELF_WITHOUT_VAULT_CLIENT", "E_CLIENT_PLACEHOLDER_WITHOUT_SECRET");
+
+    /** The code an image earns that a pod runs as its own user where the lock holds it as root. */
+    private static final String IMAGE_RUNS_AS_ROOT = "E_IMAGE_RUNS_AS_ROOT";
+
+    /** The code a Project the mesh enrols earns where no project file declares it. */
+    private static final String UNKNOWN_ENROLLED_PROJECT = "E_UNKNOWN_ENROLLED_PROJECT";
+
     private static final String PLATFORM = "platform.intent.yml";
     private static final String PROJECT = ".project.yml";
     private static final String YAML = ".yml";
@@ -85,10 +111,14 @@ public final class Pipeline {
 
     /** The parsed intent of the one authored file at {@code path}, or the diagnostics refusing it. */
     public static Parsed intent(Path path) {
-        Resource resource = read(List.of(path)).get(0);
-        List<Diagnostic> refusals = refusals(resource, false);
+        // Checked with the env files beside it, since what a Process reads through them is part of what
+        // is checked of it; the intent is the authored document alone.
+        Resource checked = read(List.of(path)).get(0);
+        withEnv(checked, path);
+        List<Diagnostic> refusals = refusals(checked, false);
         return refusals.isEmpty()
-                ? Parsed.of(IntentJson.of(resource.getContents().get(0)))
+                ? Parsed.of(
+                        IntentJson.of(read(List.of(path)).get(0).getContents().get(0)))
                 : Parsed.refused(refusals);
     }
 
@@ -99,6 +129,8 @@ public final class Pipeline {
      */
     public static Parsed effective(Path path) throws IOException {
         Resource resource = read(List.of(path)).get(0);
+        // What a Process reads through its env files is part of what is checked of it.
+        withEnv(resource, path);
         List<Diagnostic> refusals = new ArrayList<>(refusals(resource, false));
         EnvFiles.Read env = EnvFiles.read(envBeside(path));
         refusals.addAll(env.diagnostics());
@@ -107,15 +139,12 @@ public final class Pipeline {
         }
         Project project = (Project) resource.getContents().get(0);
         for (EnvFiles.Scoped scoped : env.files()) {
-            Optional<SharedIntent> level = levelOf(project, scoped.scope());
-            if (level.isEmpty()) {
+            if (levelOf(project, scoped.scope()).isEmpty()) {
                 refusals.add(new Diagnostic(
                         UNKNOWN_ENV_SCOPE,
                         scoped.path(),
                         scoped.path(),
                         "this scope directory names nothing the project file declares"));
-            } else {
-                level.get().getEnv().add(scoped.file());
             }
         }
         return refusals.isEmpty() ? Parsed.of(IntentJson.of(Lowering.lower(project))) : Parsed.refused(refusals);
@@ -128,9 +157,34 @@ public final class Pipeline {
      * the checks refuse is refused here with their diagnostics, before anything is resolved.
      */
     public static Resolved resolve(List<Path> files, String project, String schemaPackageIntegrity) throws IOException {
+        Authored authored = authored(files);
+        if (!authored.ok()) {
+            return Resolved.refused(authored.diagnostics());
+        }
+        List<EObject> intent = new ArrayList<>();
+        for (EObject root : authored.intent()) {
+            intent.add(root);
+            // The authored Project stays in the extent beside its lowering: the Platform document's
+            // links point into it, and the transformation reads the lowering.
+            if (root instanceof Project document) {
+                intent.add(Lowering.lower(document));
+            }
+        }
+        return Resolved.of(
+                Resolution.resolve(intent, authored.pinned(), project, schemaPackageIntegrity),
+                intent,
+                authored.pinned());
+    }
+
+    /**
+     * {@code files} read together as the resolution reads them, before any project is lowered: every
+     * authored Project with the env files beside it on the levels they name, the Platform document, and
+     * the pinned inputs with the file each Asset names. A set the checks refuse is refused here.
+     */
+    public static Authored authored(List<Path> files) throws IOException {
         List<Diagnostic> refusals = new ArrayList<>(check(files));
         if (!refusals.isEmpty()) {
-            return Resolved.refused(refusals);
+            return Authored.refused(refusals);
         }
         List<Resource> documents = read(files);
         List<EObject> intent = new ArrayList<>();
@@ -145,19 +199,14 @@ public final class Pipeline {
                         levelOf(authored, scoped.scope())
                                 .ifPresent(level -> level.getEnv().add(scoped.file()));
                     }
-                    // The authored Project stays in the extent beside its lowering: the Platform
-                    // document's links point into it, and the transformation reads the lowering.
                     intent.add(authored);
-                    intent.add(Lowering.lower(authored));
                     pinned.addAll(assetFiles(authored, files.get(i)));
                 }
                 case Platform platform -> intent.add(platform);
                 default -> pinned.add(root);
             }
         }
-        return refusals.isEmpty()
-                ? Resolved.of(Resolution.resolve(intent, pinned, project, schemaPackageIntegrity), intent, pinned)
-                : Resolved.refused(refusals);
+        return refusals.isEmpty() ? Authored.of(intent, pinned) : Authored.refused(refusals);
     }
 
     /**
@@ -178,8 +227,42 @@ public final class Pipeline {
             }
             deployments.add(resolved.deployment());
         }
-        Rendering.render(deployments, root);
-        return List.of();
+        return renderTogether(deployments, root);
+    }
+
+    /**
+     * {@code deployments} rendered together to {@code root}, the estate-scoped share they name written
+     * whole, unless a path, a Vault name or a ServiceAccount has two owners: then nothing is written,
+     * and the collisions are returned.
+     */
+    static List<Diagnostic> renderTogether(List<ResolvedDeployment> deployments, Path root) {
+        oneStableAddressFile(deployments);
+        List<Diagnostic> planned = Collisions.ofPlan(deployments);
+        if (!planned.isEmpty()) {
+            return planned;
+        }
+        return Rendering.render(deployments, root, Collisions::ofAccounts);
+    }
+
+    /**
+     * The Stable Addresses are the estate's, delivered with the Projects that name them
+     * (spec/v1/16-dependencies.md#the-stable-address): each Project's resolution plans the file of
+     * those its own edges name, so a render of several writes one file of every one any of them
+     * names, once each and in name order.
+     */
+    private static void oneStableAddressFile(List<ResolvedDeployment> deployments) {
+        List<StableAddressFile> files = deployments.stream()
+                .flatMap(deployment -> deployment.getDeliverables().stream())
+                .filter(StableAddressFile.class::isInstance)
+                .map(StableAddressFile.class::cast)
+                .toList();
+        Map<String, Alias> named = new TreeMap<>();
+        files.forEach(file -> file.getAddresses().forEach(alias -> named.putIfAbsent(alias.getName(), alias)));
+        List<Alias> every = List.copyOf(named.values());
+        files.forEach(file -> {
+            file.getAddresses().clear();
+            file.getAddresses().addAll(EcoreUtil.copyAll(every));
+        });
     }
 
     /**
@@ -188,15 +271,22 @@ public final class Pipeline {
      * with E_ASSET_NOT_FOUND.
      */
     private static List<AssetFile> assetFiles(Project project, Path file) throws IOException {
+        // An Asset, mounted or seeded, and every dashboard and alert rules file the project names
+        // are read from beside it; only an Asset's absence is refused before resolution.
+        List<String> named = new ArrayList<>();
+        EcoreUtil2.getAllContentsOfType(project, AssetDeclaration.class).forEach(asset -> named.add(asset.getFrom()));
+        EcoreUtil2.getAllContentsOfType(project, Dashboard.class).forEach(board -> named.add(board.getFrom()));
+        EcoreUtil2.getAllContentsOfType(project, AlertRules.class).forEach(rules -> named.add(rules.getFrom()));
         List<AssetFile> read = new ArrayList<>();
-        for (Asset asset : EcoreUtil2.getAllContentsOfType(project, Asset.class)) {
-            AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
-            assetFile.setProject(project.getProject());
-            assetFile.setFrom(asset.getFrom());
-            // check refused an Asset whose file is not beside the project.
-            assetFile.setContent(
-                    Files.readString(besideProject(file, asset.getFrom()).orElseThrow(), StandardCharsets.UTF_8));
-            read.add(assetFile);
+        for (String from : named) {
+            Optional<Path> beside = besideProject(file, from);
+            if (beside.isPresent()) {
+                AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
+                assetFile.setProject(project.getProject());
+                assetFile.setFrom(from);
+                assetFile.setContent(Files.readString(beside.get(), StandardCharsets.UTF_8));
+                read.add(assetFile);
+            }
         }
         return read;
     }
@@ -322,23 +412,142 @@ public final class Pipeline {
                 .toList();
         List<Diagnostic> refusals = new ArrayList<>();
         for (Path document : documents) {
-            refusals.addAll(refusals(read(List.of(document)).get(0), false));
+            Resource alone = read(List.of(document)).get(0);
+            withEnv(alone, document);
+            refusals.addAll(refusals(alone, false));
         }
         if (!refusals.isEmpty()) {
             return refusals;
         }
         List<Resource> read = read(documents);
+        List<ShippedFiles.Placed> placed = new ArrayList<>();
+        List<String> projects = new ArrayList<>();
+        Map<Project, String> named = new LinkedHashMap<>();
+        Optional<Platform> platform = Optional.empty();
         for (int i = 0; i < documents.size(); i++) {
+            Path file = documents.get(i);
             if (read.get(i).getContents().get(0) instanceof Project project) {
                 // What a Process holds reaches it through the env files beside its project too.
-                attachEnv(project, documents.get(i));
-                refusals.addAll(unreadAssets(project, documents.get(i)));
+                attachEnv(project, file);
+                refusals.addAll(unreadAssets(project, file));
+                refusals.addAll(ShippedFiles.check(
+                        project, file.getFileName().toString(), from -> textBeside(file, from), placed));
+                projects.add(project.getProject());
+                named.put(project, file.getFileName().toString());
+            } else {
+                // Only a project file and the Platform document are among the documents.
+                platform = Optional.of((Platform) read.get(i).getContents().get(0));
             }
         }
+        refusals.addAll(ShippedFiles.acrossTheEstate(placed, platform));
+        platform.ifPresent(document -> refusals.addAll(unknownEnrolled(document, projects)));
+        platform.ifPresent(document -> refusals.addAll(L4Checks.check(document, named)));
+        files.stream()
+                .filter(file -> file.getFileName().toString().equals(IMAGES_LOCK))
+                .findFirst()
+                .ifPresent(lock -> refusals.addAll(rootImages(lock, named.keySet())));
         for (Resource document : read) {
             refusals.addAll(refusals(document, true));
         }
         return refusals;
+    }
+
+    /**
+     * Every Project the mesh enrols that no project file of the set declares
+     * (spec/v1/14-platform-intent.md#the-mesh).
+     */
+    private static List<Diagnostic> unknownEnrolled(Platform platform, List<String> projects) {
+        List<Diagnostic> unknown = new ArrayList<>();
+        if (platform.getMesh() != null) {
+            List<String> enrolled = platform.getMesh().getEnrolled();
+            for (int i = 0; i < enrolled.size(); i++) {
+                if (!projects.contains(enrolled.get(i))) {
+                    unknown.add(new Diagnostic(
+                            UNKNOWN_ENROLLED_PROJECT,
+                            platform.eResource().getURI().lastSegment(),
+                            Pointer.of(platform.getMesh()) + "/enrolled/" + i,
+                            "no project file declares the Project " + enrolled.get(i) + " the mesh enrols"));
+                }
+            }
+        }
+        return unknown;
+    }
+
+    /**
+     * Every image a pod runs as its own user that the images lock holds with uid 0
+     * (spec/v1/10-project-intent.md#the-uid-is-a-pinned-input-and-the-volume-needs-a-group): the
+     * posture runs every pod as non-root, and the kubelet refuses such a pod. A lock that does not
+     * parse is refused for its shape, not here.
+     */
+    private static List<Diagnostic> rootImages(Path lock, Collection<Project> projects) {
+        Resource read = read(List.of(lock)).get(0);
+        return read.getErrors().isEmpty()
+                ? read.getContents().stream()
+                        .map(ImagesLock.class::cast)
+                        .findFirst()
+                        .map(images -> {
+                            Map<String, Integer> uids = new LinkedHashMap<>();
+                            images.getImages().forEach(image -> uids.put(image.getAlias(), image.getUid()));
+                            return rootAliases(uids, projects).stream()
+                                    .map(alias -> new Diagnostic(
+                                            IMAGE_RUNS_AS_ROOT,
+                                            lock.getFileName().toString(),
+                                            "/images/" + alias,
+                                            "the images lock holds " + alias
+                                                    + " with uid 0, and every pod runs as non-root"))
+                                    .toList();
+                        })
+                        .orElse(List.of())
+                : List.of();
+    }
+
+    /**
+     * The aliases, sorted, of every image a pod of {@code projects} runs as its own user, a Process's
+     * or a migration's, that {@code uids} holds as root, for each project whose every image, a
+     * sidecar's too, the lock holds: an alias the lock does not hold is the share's own refusal.
+     */
+    static SortedSet<String> rootAliases(Map<String, Integer> uids, Collection<Project> projects) {
+        SortedSet<String> root = new TreeSet<>();
+        for (Project project : projects) {
+            Set<String> aliases = new TreeSet<>();
+            Set<String> ownUser = new TreeSet<>();
+            for (Application application : project.getApplications()) {
+                for (dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process process :
+                        application.getProcesses()) {
+                    ownUser.add(process.getImage());
+                    process.getSidecars().forEach(sidecar -> aliases.add(sidecar.getImage()));
+                }
+                // Only a migration over the platform's runner runs an image of its own.
+                if (application.getMigration()
+                        instanceof dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ManagedMigration) {
+                    ownUser.add(application.getId() + "-migration");
+                }
+            }
+            aliases.addAll(ownUser);
+            if (uids.keySet().containsAll(aliases)) {
+                ownUser.stream().filter(alias -> uids.get(alias) == 0).forEach(root::add);
+            }
+        }
+        return root;
+    }
+
+    /** The env files beside {@code file} on the levels they name, where {@code resource} holds a project. */
+    private static void withEnv(Resource resource, Path file) {
+        // A document whose shape breaks is refused for its shape before anything it holds is asked.
+        if (!resource.getContents().isEmpty() && resource.getContents().get(0) instanceof Project project) {
+            attachEnv(project, file);
+        }
+    }
+
+    /** The text of the file {@code from} names beside {@code file}, if one is there. */
+    private static Optional<String> textBeside(Path file, String from) {
+        return besideProject(file, from).map(path -> {
+            try {
+                return Files.readString(path, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
     }
 
     /** The env files beside {@code file}, each on the level its scope directory names. */
@@ -448,22 +657,62 @@ public final class Pipeline {
     private static List<Diagnostic> refusals(Resource resource, boolean together) {
         String file = resource.getURI().lastSegment();
         List<Diagnostic> refusals = new ArrayList<>();
+        List<Resource.Diagnostic> syntax = new ArrayList<>();
         for (Resource.Diagnostic error : resource.getErrors()) {
             if (!(error instanceof XtextLinkingDiagnostic)) {
-                refusals.add(new Diagnostic(
-                        Diagnostic.SCHEMA, file, "", "line " + error.getLine() + ": " + error.getMessage()));
+                syntax.add(error);
             }
         }
-        if (resource.getContents().isEmpty()) {
-            refusals.add(new Diagnostic(Diagnostic.SCHEMA, file, "", file + " holds no document"));
-        }
+        refusals.addAll(shape(resource, file, syntax));
         if (!refusals.isEmpty()) {
             return refusals;
         }
-        refusals.addAll(Constraints.check(
-                resource.getContents().get(0), Constraints.beside(ProjectIntentPackage.class, CONSTRAINTS)));
+        List<Diagnostic> constraints = Constraints.check(
+                resource.getContents().get(0), Constraints.beside(ProjectIntentPackage.class, CONSTRAINTS));
+        // What a Process holds across its levels and env files is asked only of a document that holds
+        // on its own, as the production implementation asks it of the union after each document.
+        boolean holds = constraints.stream().allMatch(refusal -> ACROSS_THE_UNION.contains(refusal.code()));
+        refusals.addAll(
+                holds
+                        ? constraints
+                        : constraints.stream()
+                                .filter(refusal -> !ACROSS_THE_UNION.contains(refusal.code()))
+                                .toList());
         refusals.addAll(unlinked(resource, together));
         return refusals;
+    }
+
+    /**
+     * Where a document's shape is wrong, as the schema's refusals say it: one diagnostic for every node
+     * that is wrong, at its JSON pointer. The parser stops at its first error and cannot say where in
+     * the document that is, so the grammar's own rules are read against the whole file; what the
+     * parser said stands only when they find nothing.
+     */
+    private static List<Diagnostic> shape(Resource resource, String file, List<Resource.Diagnostic> syntax) {
+        List<Diagnostic> shape = new ArrayList<>();
+        if (resource instanceof XtextResource xtext) {
+            try (java.io.InputStream in =
+                    resource.getResourceSet().getURIConverter().createInputStream(resource.getURI())) {
+                String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                Grammar grammar = xtext.getResourceServiceProvider()
+                        .get(IGrammarAccess.class)
+                        .getGrammar();
+                for (Shapes.Issue issue : Shapes.check(text, grammar)) {
+                    shape.add(new Diagnostic(Diagnostic.SCHEMA, file, issue.path(), issue.message()));
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        if (!shape.isEmpty()) {
+            return shape;
+        }
+        List<Diagnostic> parsed = new ArrayList<>();
+        for (Resource.Diagnostic error : syntax) {
+            parsed.add(
+                    new Diagnostic(Diagnostic.SCHEMA, file, "", "line " + error.getLine() + ": " + error.getMessage()));
+        }
+        return parsed;
     }
 
     /**
@@ -477,8 +726,13 @@ public final class Pipeline {
             XtextLinkingDiagnostic linking = (XtextLinkingDiagnostic) error;
             if (UnlinkedNames.ACROSS_DOCUMENTS.contains(linking.getCode()) == together) {
                 EObject owner = resource.getEObject(linking.getUriToProblem().fragment());
+                // A name below its owner carries where it sits as the diagnostic's one datum.
+                String below = linking.getData().length == 0 ? "" : linking.getData()[0];
                 unlinked.add(new Diagnostic(
-                        linking.getCode(), resource.getURI().lastSegment(), Pointer.of(owner), linking.getMessage()));
+                        linking.getCode(),
+                        resource.getURI().lastSegment(),
+                        Pointer.of(owner) + below,
+                        linking.getMessage()));
             }
         }
         return unlinked;

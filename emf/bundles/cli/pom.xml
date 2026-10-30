@@ -29,6 +29,17 @@
           <avoidCallsTo>
             <avoidCallsTo>org.eclipse.ocl.xtext.completeocl.CompleteOCLStandaloneSetup</avoidCallsTo>
           </avoidCallsTo>
+          <!--
+            The stage harness compares whole files, seconds a case. The unit
+            suites hold the mutation gate, and a harness run per mutant would
+            spend its budget.
+          -->
+          <excludedTestClasses>
+            <param>dev.jorisjonkers.deploykit.emf.cli.ComparisonTest</param>
+            <param>dev.jorisjonkers.deploykit.emf.cli.StageTest</param>
+            <param>dev.jorisjonkers.deploykit.emf.cli.FieldCoverageTest</param>
+            <param>dev.jorisjonkers.deploykit.emf.cli.OracleDistanceTest</param>
+          </excludedTestClasses>
         </configuration>
       </plugin>
     </plugins>

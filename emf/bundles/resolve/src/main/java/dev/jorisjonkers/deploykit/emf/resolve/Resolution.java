@@ -56,7 +56,10 @@ public final class Resolution {
                         new BasicModelExtent(new ArrayList<>(pinned)),
                         target);
         if (run.getSeverity() != Diagnostic.OK || target.getContents().isEmpty()) {
-            throw new IllegalStateException(project + " did not resolve: " + run);
+            // A transformation that does not compile says why only in its children.
+            StringBuilder why = new StringBuilder(project + " did not resolve: " + run);
+            run.getChildren().forEach(child -> why.append("\n  ").append(child.getMessage()));
+            throw new IllegalStateException(why.toString());
         }
         return (ResolvedDeployment) target.getContents().get(0);
     }

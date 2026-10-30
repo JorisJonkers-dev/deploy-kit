@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -35,12 +36,28 @@ class RenderedTreeTest {
     }
 
     private static void assertSameTree(Path rendered, Path committed) throws IOException {
-        assertThat(filesUnder(rendered)).isEqualTo(filesUnder(committed));
-        for (Path file : filesUnder(committed)) {
-            assertThat(Files.readString(rendered.resolve(file)))
-                    .as(file.toString())
-                    .isEqualTo(Files.readString(committed.resolve(file)));
+        assertSameTree(rendered, List.of(committed));
+    }
+
+    /** {@code rendered} is every committed tree together, byte for byte. */
+    private static void assertSameTree(Path rendered, List<Path> committed) throws IOException {
+        List<Path> expected = new ArrayList<>();
+        for (Path tree : committed) {
+            expected.addAll(filesUnder(tree));
         }
+        assertThat(filesUnder(rendered)).isEqualTo(expected.stream().sorted().toList());
+        for (Path tree : committed) {
+            for (Path file : filesUnder(tree)) {
+                assertThat(Files.readString(rendered.resolve(file)))
+                        .as(file.toString())
+                        .isEqualTo(Files.readString(tree.resolve(file)));
+            }
+        }
+    }
+
+    /** The platform's own estate-scoped share, which every render holds beside a Project's. */
+    private static Path platformShare() {
+        return Examples.of("platform/rendered");
     }
 
     @ParameterizedTest(name = "{0}")
@@ -65,7 +82,7 @@ class RenderedTreeTest {
                         out))
                 .isEmpty();
 
-        assertSameTree(out, Examples.of("auth/rendered"));
+        assertSameTree(out, List.of(Examples.of("auth/rendered"), platformShare()));
     }
 
     @Test
@@ -80,7 +97,7 @@ class RenderedTreeTest {
                         out))
                 .isEmpty();
 
-        assertSameTree(out, Examples.of("knowledge-platform/rendered"));
+        assertSameTree(out, List.of(Examples.of("knowledge-platform/rendered"), platformShare()));
     }
 
     @Test
@@ -88,11 +105,12 @@ class RenderedTreeTest {
         assertThat(Pipeline.render(union(), Outputs.RENDERED_UNION.projects(), Outputs.INTEGRITY, out))
                 .isEmpty();
 
-        // Every object each delivers is its own, its routes among them (issue #546).
+        // Every object each delivers is its own, its routes among them (issue #546): the
+        // estate-scoped share is the platform's alone.
         assertThat(filesUnder(out).stream()
                         .filter(file -> file.startsWith("estate"))
                         .toList())
-                .isEmpty();
+                .isEqualTo(filesUnder(platformShare()));
     }
 
     /**
@@ -109,8 +127,8 @@ class RenderedTreeTest {
                 Examples.read("platform/platform.intent.yml")
                         .replace("legacy: [auth, data, knowledge, notes]", "legacy: [auth, knowledge, notes]")
                         .replace(
-                                "estate: [delivery, edge, knowledge-platform, observability, secrets]",
-                                "estate: [data, delivery, edge, knowledge-platform, observability, secrets]")
+                                "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
+                                "estate: [agents, data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]")
                         .replaceAll("\n {2}serving:\n( {4}.*\n| {6}.*\n)+", "\n"));
         List<Path> files = Outputs.KNOWLEDGE_PLATFORM_UNION.documents().stream()
                 .map(file -> file.equals("platform/platform.intent.yml") ? platform : Examples.of(file))

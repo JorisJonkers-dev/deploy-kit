@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reporter
+  namespace: delivery-system
+  labels:
+    app.kubernetes.io/name: reporter
+    app.kubernetes.io/instance: reporter
+    app.kubernetes.io/part-of: reporter
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: reporter
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

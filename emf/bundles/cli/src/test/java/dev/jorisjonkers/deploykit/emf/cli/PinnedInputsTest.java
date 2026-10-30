@@ -3,13 +3,13 @@ package dev.jorisjonkers.deploykit.emf.cli;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
-import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.BackupOutcome;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ClusterState;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.Disk;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ImagesLock;
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.MoveStep;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.Node;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.NodeContract;
-import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.RollbackBackup;
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInstance;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Media;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -105,37 +105,34 @@ class PinnedInputsTest {
         assertThat(state.getCapturedAt()).isEqualTo("2026-09-30T00:00:00Z");
         assertThat(state.getBindings()).isEmpty();
         assertThat(state.getPlacements()).isEmpty();
-        assertThat(state.getBackups()).isEmpty();
+        assertThat(state.getInstances()).isEmpty();
     }
 
     @Test
-    void aSnapshotRecordsHowEachRollbacksBackupEnded(@TempDir Path directory) throws IOException {
+    void aSnapshotPinsWhereEachInstanceRunsAndWhereAMoveInFlightTakesIt(@TempDir Path directory) throws IOException {
         Path snapshot = directory.resolve("cluster-state.yml");
         Files.writeString(
                 snapshot,
                 Files.readString(Examples.of("platform/cluster-state.yml"))
-                        + "backups:\n"
-                        + "  - request: \"38526643693\"\n"
-                        + "    project: data\n"
-                        + "    job: postgres-data-backup-38526643693\n"
-                        + "    outcome: failed\n"
-                        + "    finishedAt: \"2026-09-30T00:20:00Z\"\n");
+                        + "instances:\n"
+                        + "  - application: platform-postgres\n"
+                        + "    instance: platform-postgres\n"
+                        + "    version: 16.4.0\n"
+                        + "    namespace: data-system\n"
+                        + "    node: enschede-t1000-1\n"
+                        + "    phase: lag\n"
+                        + "    target: { name: platform-postgres, version: 17.0.0, namespace: data-system }\n");
         Resource resource = Pipeline.read(List.of(snapshot)).get(0);
         assertThat(resource.getErrors()).isEmpty();
         ClusterState state = (ClusterState) resource.getContents().get(0);
 
-        assertThat(state.getBackups())
+        assertThat(state.getInstances())
                 .extracting(
-                        RollbackBackup::getRequest,
-                        RollbackBackup::getProject,
-                        RollbackBackup::getJob,
-                        RollbackBackup::getOutcome,
-                        RollbackBackup::getFinishedAt)
-                .containsExactly(tuple(
-                        "38526643693",
-                        "data",
-                        "postgres-data-backup-38526643693",
-                        BackupOutcome.FAILED,
-                        "2026-09-30T00:20:00Z"));
+                        PinnedInstance::getApplication,
+                        PinnedInstance::getVersion,
+                        PinnedInstance::getNode,
+                        PinnedInstance::getPhase,
+                        instance -> instance.getTarget().getVersion())
+                .containsExactly(tuple("platform-postgres", "16.4.0", "enschede-t1000-1", MoveStep.LAG, "17.0.0"));
     }
 }

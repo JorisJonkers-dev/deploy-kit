@@ -7,6 +7,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.json.CanonicalJson;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -116,8 +117,8 @@ class PipelineTest {
                 .allSatisfy(diagnostic -> {
                     assertThat(diagnostic.code()).isEqualTo(Diagnostic.SCHEMA);
                     assertThat(diagnostic.document()).isEqualTo("notes.project.yml");
-                    assertThat(diagnostic.path()).isEmpty();
-                    assertThat(diagnostic.message()).startsWith("line ");
+                    assertThat(diagnostic.path()).isEqualTo("/applications/0/processes/0/runtime");
+                    assertThat(diagnostic.message()).isEqualTo("does not match any shape the schema allows here");
                 })
                 .isNotEmpty();
     }
@@ -160,8 +161,9 @@ class PipelineTest {
         Parsed parsed = Pipeline.intent(file(directory, ""));
 
         assertThat(parsed.diagnostics())
-                .extracting(Diagnostic::message)
-                .contains("notes.project.yml holds no document");
+                .extracting(Diagnostic::code, Diagnostic::path, Diagnostic::message)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(
+                        Diagnostic.SCHEMA, "", "outside the YAML subset: no document"));
     }
 
     @Test
@@ -229,5 +231,28 @@ class PipelineTest {
         assertThat(effective.ok()).isFalse();
         assertThat(effective.diagnostics()).extracting(Diagnostic::code).contains("schema");
         assertThat(effective.intent()).isEmpty();
+    }
+
+    @Test
+    void aSetWhosePlanClaimsAPathTwiceWritesNothing(@TempDir Path out) throws IOException {
+        List<Diagnostic> refused =
+                Pipeline.renderTogether(List.of(ResolutionTest.minimal(), ResolutionTest.minimal()), out);
+
+        assertThat(refused).isNotEmpty().extracting(Diagnostic::code).containsOnly("E_PATH_COLLISION");
+        assertThat(out).isEmptyDirectory();
+    }
+
+    @Test
+    void aSetWhoseFilesHoldOneServiceAccountTwiceWritesNothing(@TempDir Path out) throws IOException {
+        ResolvedDeployment copy = ResolutionTest.minimal();
+        copy.getDeliverables().removeIf(deliverable -> deliverable.getPath().contains("/policies/"));
+        copy.getDeliverables().forEach(deliverable -> deliverable.setPath("copy/" + deliverable.getPath()));
+
+        List<Diagnostic> refused = Pipeline.renderTogether(List.of(ResolutionTest.minimal(), copy), out);
+
+        assertThat(refused)
+                .isNotEmpty()
+                .allSatisfy(diagnostic -> assertThat(diagnostic.message()).startsWith("the ServiceAccount "));
+        assertThat(out).isEmptyDirectory();
     }
 }

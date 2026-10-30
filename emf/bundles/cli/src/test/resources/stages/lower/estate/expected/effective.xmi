@@ -1,0 +1,1790 @@
+<?xml version="1.0" encoding="ASCII"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:projectintent="https://jorisjonkers.dev/deploy-kit/project-intent/1">
+  <projectintent:EffectiveProject project="agents" owner="joris">
+    <applications id="hermes">
+      <exposure name="public" host="hermes.jorisjonkers.dev" audience="authenticated" proxied="false">
+        <routes path="/" process="/0/@applications.0/@processes.0" surface="/0/@applications.0/@processes.0/@provides.0"/>
+      </exposure>
+      <exposure name="lan" host="hermes.jorisjonkers.dev" audience="lan">
+        <routes path="/" process="/0/@applications.0/@processes.0" surface="/0/@applications.0/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="120s" cutover="interrupted" name="hermes" image="hermes" runtime="none" engine="files">
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/agents/hermes">
+          <rotation/>
+          <keys xsi:type="projectintent:OptionalKey" name="memory-api-key" optional="true"/>
+          <keys xsi:type="projectintent:OptionalKey" name="overleaf-session" optional="true"/>
+          <keys xsi:type="projectintent:OptionalKey" name="github-pat" optional="true"/>
+          <keys xsi:type="projectintent:OptionalKey" name="hindsight-api-token" optional="true"/>
+          <keys xsi:type="projectintent:OptionalKey" name="openrouter-api-key" optional="true"/>
+          <keys xsi:type="projectintent:OptionalKey" name="anthropic-api-key" optional="true"/>
+          <keys xsi:type="projectintent:OptionalKey" name="openai-api-key" optional="true"/>
+        </secrets>
+        <dependsOn application="kubernetes-mcp-server" surface="mcp"/>
+        <assets xsi:type="projectintent:SeededAsset" from="config/hermes/config.yaml" seedAt="/opt/data/config.yaml"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/run"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <writablePaths xsi:type="projectintent:MemoryPath" path="/dev/shm" memory="1Gi"/>
+        <env>
+          <entries name="HERMES_DASHBOARD">
+            <value xsi:type="projectintent:EnvLiteral" text="1"/>
+          </entries>
+          <entries name="HERMES_DASHBOARD_HOST">
+            <value xsi:type="projectintent:EnvLiteral" text="0.0.0.0"/>
+          </entries>
+          <entries name="HERMES_DASHBOARD_PORT">
+            <value xsi:type="projectintent:EnvLiteral" text="9119"/>
+          </entries>
+          <entries name="HERMES_DASHBOARD_PUBLIC_URL">
+            <value xsi:type="projectintent:Placeholder" kind="exposure" source="hermes.public#url"/>
+          </entries>
+          <entries name="HERMES_DASHBOARD_OIDC_ISSUER">
+            <value xsi:type="projectintent:Placeholder" kind="client" source="issuer"/>
+          </entries>
+          <entries name="HERMES_DASHBOARD_OIDC_CLIENT_ID">
+            <value xsi:type="projectintent:Placeholder" kind="client" source="id"/>
+          </entries>
+          <entries name="HERMES_DASHBOARD_OIDC_SCOPES">
+            <value xsi:type="projectintent:EnvLiteral" text="openid profile email"/>
+          </entries>
+          <entries name="API_SERVER_ENABLED">
+            <value xsi:type="projectintent:EnvLiteral" text="false"/>
+          </entries>
+          <entries name="HERMES_SKIP_CONFIG_MIGRATION">
+            <value xsi:type="projectintent:EnvLiteral" text="false"/>
+          </entries>
+          <entries name="S6_YES_I_WANT_A_WORLD_WRITABLE_RUN_BECAUSE_KUBERNETES">
+            <value xsi:type="projectintent:EnvLiteral" text="1"/>
+          </entries>
+          <entries name="ANTHROPIC_API_KEY">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/agents/hermes#anthropic-api-key"/>
+          </entries>
+          <entries name="OPENAI_API_KEY">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/agents/hermes#openai-api-key"/>
+          </entries>
+          <entries name="OPENROUTER_API_KEY">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/agents/hermes#openrouter-api-key"/>
+          </entries>
+          <entries name="GITHUB_PAT">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/agents/hermes#github-pat"/>
+          </entries>
+          <entries name="HINDSIGHT_API_TOKEN">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/agents/hermes#hindsight-api-token"/>
+          </entries>
+          <entries name="MEMORY_API_KEY">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/agents/hermes#memory-api-key"/>
+          </entries>
+          <entries name="OVERLEAF_SESSION">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/agents/hermes#overleaf-session"/>
+          </entries>
+        </env>
+        <placement memory="2Gi" cpu="250m" site="enschede"/>
+        <provides key="dashboard" value="9119"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/api/status" port="9119"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/api/status" port="9119"/>
+        </probes>
+        <volumes claim="hermes-data" mountAt="/opt/data" size="10Gi" durability="recoverable"/>
+        <egress reason="Hermes calls its model providers and remote MCP servers, and installs the skills it is given."/>
+        <args>gateway</args>
+        <args>run</args>
+      </processes>
+      <client exposure="public" label="Hermes" description="The agent gateway" protectedPath="/api/status" credential="pkce">
+        <redirectPaths>/auth/callback</redirectPaths>
+      </client>
+    </applications>
+    <applications id="kubernetes-mcp-server">
+      <processes startupBudget="20s" cutover="continuous" name="kubernetes-mcp-server" image="kubernetes-mcp-server" runtime="none">
+        <placement memory="256Mi" cpu="50m"/>
+        <provides key="mcp" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+        </probes>
+        <api reason="the MCP server answers an agent's questions about workloads, logs, routes and Flux, cluster-wide, and changes nothing">
+          <rules group="core">
+            <objects>pods</objects>
+            <objects>pods/log</objects>
+            <objects>events</objects>
+            <objects>services</objects>
+            <objects>endpoints</objects>
+            <objects>nodes</objects>
+            <objects>namespaces</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="apps">
+            <objects>deployments</objects>
+            <objects>statefulsets</objects>
+            <objects>daemonsets</objects>
+            <objects>replicasets</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="batch">
+            <objects>jobs</objects>
+            <objects>cronjobs</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="networking.k8s.io">
+            <objects>ingresses</objects>
+            <objects>networkpolicies</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="traefik.io">
+            <objects>ingressroutes</objects>
+            <objects>middlewares</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="kustomize.toolkit.fluxcd.io">
+            <objects>kustomizations</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="helm.toolkit.fluxcd.io">
+            <objects>helmreleases</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="source.toolkit.fluxcd.io">
+            <objects>gitrepositories</objects>
+            <objects>helmrepositories</objects>
+            <objects>ocirepositories</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+        <args>--port=8080</args>
+        <args>--read-only</args>
+      </processes>
+    </applications>
+    <applications id="agents-api">
+      <processes startupBudget="60s" cutover="continuous" name="agents-api" image="agents-api">
+        <placement memory="512Mi" cpu="100m"/>
+        <provides key="http" value="8082"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/actuator/health/readiness" port="8082"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/actuator/health/liveness" port="8082"/>
+        </probes>
+        <api reason="it reads the session settings it keeps beside itself">
+          <rules group="core" scope="namespace">
+            <objects>configmaps</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+        <parked reason="Agent sessions run through hermes since 2026-09-01."/>
+        <spawns name="runner" image="agent-runner">
+          <placement memory="1Gi" cpu="500m"/>
+          <provides key="http" value="8090"/>
+          <dependsOn application="agents-api" surface="http"/>
+          <egress reason="an agent clones and pushes the repositories it works on"/>
+        </spawns>
+      </processes>
+    </applications>
+    <applications id="agents-ui">
+      <exposure name="public" host="agents.jorisjonkers.dev" audience="anonymous">
+        <routes path="/" process="/0/@applications.3/@processes.0" surface="/0/@applications.3/@processes.0/@provides.0"/>
+      </exposure>
+      <processes cutover="continuous" name="agents-ui" image="agents-ui" runtime="static">
+        <writablePaths xsi:type="projectintent:PlainPath" path="/var/cache/nginx"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/var/run"/>
+        <placement memory="96Mi" cpu="100m"/>
+        <provides key="http" value="80"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/" port="80"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/" port="80"/>
+        </probes>
+        <parked reason="Agent sessions run through hermes since 2026-09-01."/>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="auth" owner="joris">
+    <applications id="auth">
+      <migration xsi:type="projectintent:ManagedMigration" changelog="auth-api/src/main/resources/db/changelog/db.changelog-master.yaml"/>
+      <observability>
+        <scrape process="/1/@applications.0/@processes.0" surface="/1/@applications.0/@processes.0/@provides.0" path="/api/actuator/prometheus"/>
+      </observability>
+      <exposure name="public" host="auth.jorisjonkers.dev" audience="anonymous" contentPolicy="strict">
+        <routes path="/api/v1/users/register" match="exact" process="/1/@applications.0/@processes.0" surface="/1/@applications.0/@processes.0/@provides.0">
+          <rateLimit requests="10" per="1h"/>
+        </routes>
+        <routes path="/api" process="/1/@applications.0/@processes.0" surface="/1/@applications.0/@processes.0/@provides.0"/>
+        <routes path="/" process="/1/@applications.0/@processes.1" surface="/1/@applications.0/@processes.1/@provides.0"/>
+      </exposure>
+      <processes startupBudget="600s" cutover="continuous" name="auth-api" image="auth-api">
+        <secrets xsi:type="projectintent:KvGrant" delivery="self" path="secret/data/platform/postgres/auth">
+          <rotation tolerates="reload" maxAge="168h"/>
+          <keys xsi:type="projectintent:PlainKey" name="user"/>
+          <keys xsi:type="projectintent:PlainKey" name="password"/>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="self" path="secret/data/auth-api">
+          <rotation tolerates="reload"/>
+          <keys xsi:type="projectintent:PlainKey" name="mail.password"/>
+          <keys xsi:type="projectintent:PlainKey" name="valkey.password"/>
+          <keys xsi:type="projectintent:PlainKey" name="rabbitmq.user"/>
+          <keys xsi:type="projectintent:PlainKey" name="rabbitmq.password"/>
+        </secrets>
+        <secrets xsi:type="projectintent:TransitGrant" delivery="self" key="auth-api-jwt">
+          <rotation tolerates="reload"/>
+          <operations>sign</operations>
+          <operations>rotate</operations>
+          <operations>read</operations>
+        </secrets>
+        <dependsOn application="platform-postgres" surface="postgres"/>
+        <dependsOn application="platform-valkey" surface="redis"/>
+        <dependsOn application="platform-rabbitmq" surface="amqp"/>
+        <dependsOn application="stalwart" surface="smtp"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <env>
+          <entries name="SPRING_PROFILES_ACTIVE">
+            <value xsi:type="projectintent:EnvLiteral" text="prod"/>
+          </entries>
+          <entries name="SESSION_COOKIE_SECURE">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="DB_HOST">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-postgres.host"/>
+          </entries>
+          <entries name="DB_PORT">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-postgres.port"/>
+          </entries>
+          <entries name="VALKEY_HOST">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-valkey.host"/>
+          </entries>
+          <entries name="VALKEY_PORT">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-valkey.port"/>
+          </entries>
+          <entries name="SPRING_RABBITMQ_HOST">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-rabbitmq.host"/>
+          </entries>
+          <entries name="SPRING_RABBITMQ_PORT">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-rabbitmq.port"/>
+          </entries>
+          <entries name="MAIL_HOST">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="stalwart.host"/>
+          </entries>
+          <entries name="MAIL_PORT">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="stalwart.port"/>
+          </entries>
+          <entries name="AUTH_ISSUER">
+            <value xsi:type="projectintent:Placeholder" kind="exposure" source="auth.public#url"/>
+          </entries>
+          <entries name="AUTH_LOGIN_URL">
+            <value xsi:type="projectintent:Placeholder" kind="exposure" source="auth.public#url" suffix="/login"/>
+          </entries>
+          <entries name="CONFIRMATION_URL">
+            <value xsi:type="projectintent:Placeholder" kind="exposure" source="auth.public#url" suffix="/confirm"/>
+          </entries>
+          <entries name="SPRING_CONFIG_IMPORT">
+            <value xsi:type="projectintent:EnvLiteral" text="vault://"/>
+          </entries>
+          <entries name="VAULT_ENABLED">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="VAULT_AUTHENTICATION">
+            <value xsi:type="projectintent:EnvLiteral" text="KUBERNETES"/>
+          </entries>
+          <entries name="VAULT_KUBERNETES_ROLE">
+            <value xsi:type="projectintent:Placeholder" kind="identity" source="vaultRole"/>
+          </entries>
+        </env>
+        <placement memory="768Mi" cpu="250m">
+          <arch>amd64</arch>
+          <capabilities>public-ingress</capabilities>
+        </placement>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/api/actuator/health/readiness" port="8081"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/api/actuator/health/liveness" port="8081"/>
+        </probes>
+        <replicas count="2" reason="Capacity, not availability: the pair was provisioned on freed Frankfurt budget and both pods land on the one public-ingress node. Retires when that budget is reclaimed or the capability spreads to a second node."/>
+      </processes>
+      <processes startupBudget="30s" cutover="continuous" name="auth-ui" image="auth-ui" runtime="static">
+        <writablePaths xsi:type="projectintent:PlainPath" path="/var/cache/nginx"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/var/run"/>
+        <placement memory="64Mi" cpu="10m"/>
+        <provides key="http" value="80"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/" port="80"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/" port="80"/>
+        </probes>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="coverage" owner="joris">
+    <applications id="coverage-api" description="Reads every key the other projects leave out">
+      <processes startupBudget="60s" cutover="interrupted" name="coverage-api" image="coverage-api" runtime="none">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/rolled" fileMode="0400" path="secret/data/coverage/rolled" access="self-roll">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="password"/>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/renewed" fileMode="0400" path="secret/data/coverage/renewed" access="self-renew">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="lease"/>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="self" path="secret/data/coverage/custody" access="custody">
+          <rotation tolerates="reload"/>
+          <keys xsi:type="projectintent:PlainKey" name="root"/>
+        </secrets>
+        <secrets xsi:type="projectintent:TransitGrant" delivery="self" mountAt="/run/secrets/transit" fileMode="0400" key="coverage">
+          <rotation/>
+          <operations>encrypt</operations>
+          <operations>decrypt</operations>
+          <operations>verify</operations>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/app" fileMode="0400" path="secret/data/coverage-system/app">
+          <rotation/>
+          <keys xsi:type="projectintent:GeneratedKey" name="session">
+            <generate bytes="32" encoding="base64"/>
+          </keys>
+          <keys xsi:type="projectintent:GeneratedKey" name="cookie">
+            <generate bytes="16" encoding="base64url"/>
+          </keys>
+          <keys xsi:type="projectintent:GeneratedKey" name="salt">
+            <generate encoding="hex"/>
+          </keys>
+        </secrets>
+        <dependsOn application="platform-valkey" surface="redis" required="false"/>
+        <dependsOn application="platform-rabbitmq" surface="amqp" required="true"/>
+        <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/data/seed.conf"/>
+        <assets xsi:type="projectintent:Asset" from="config/coverage.conf" mountAt="/etc/coverage/project.conf"/>
+        <writablePaths xsi:type="projectintent:MemoryPath" path="/var/cache/coverage" memory="64Mi"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <env>
+          <entries name="VAULT_ROLE">
+            <value xsi:type="projectintent:Placeholder" kind="identity" source="vaultRole"/>
+          </entries>
+          <entries name="LEVEL">
+            <value xsi:type="projectintent:EnvLiteral" text="info"/>
+          </entries>
+          <entries name="MODE">
+            <value xsi:type="projectintent:EnvLiteral" text="full"/>
+          </entries>
+        </env>
+        <placement memory="64Mi" cpu="10m" site="enschede">
+          <arch>arm64</arch>
+          <disk>
+            <media>hdd</media>
+          </disk>
+          <gpu memory="8Gi">
+            <vendor>nvidia</vendor>
+          </gpu>
+        </placement>
+        <provides key="http" value="8080"/>
+        <sidecars name="helper" image="coverage-helper" memory="16Mi" cpu="5m">
+          <command>/bin/helper</command>
+          <args>run</args>
+        </sidecars>
+        <api reason="it reads the nodes it places work on">
+          <rules group="core" scope="cluster">
+            <objects>nodes</objects>
+            <verbs>get</verbs>
+          </rules>
+        </api>
+        <command>/bin/coverage</command>
+        <args>serve</args>
+        <args>--verbose</args>
+        <rollback/>
+      </processes>
+      <processes startupBudget="60s" name="coverage-seed" lifecycle="prepare" image="coverage-seed" runtime="none">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/app" fileMode="0400" path="secret/data/coverage-system/app">
+          <rotation/>
+          <keys xsi:type="projectintent:GeneratedKey" name="session">
+            <generate bytes="32" encoding="base64"/>
+          </keys>
+          <keys xsi:type="projectintent:GeneratedKey" name="cookie">
+            <generate bytes="16" encoding="base64url"/>
+          </keys>
+          <keys xsi:type="projectintent:GeneratedKey" name="salt">
+            <generate encoding="hex"/>
+          </keys>
+        </secrets>
+        <dependsOn application="platform-valkey" surface="redis" required="false"/>
+        <dependsOn application="platform-rabbitmq" surface="amqp" required="true"/>
+        <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/data/seed.conf"/>
+        <assets xsi:type="projectintent:Asset" from="config/coverage.conf" mountAt="/etc/coverage/project.conf"/>
+        <writablePaths xsi:type="projectintent:MemoryPath" path="/var/cache/coverage" memory="64Mi"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <env>
+          <entries name="LEVEL">
+            <value xsi:type="projectintent:EnvLiteral" text="info"/>
+          </entries>
+          <entries name="MODE">
+            <value xsi:type="projectintent:EnvLiteral" text="full"/>
+          </entries>
+        </env>
+        <placement memory="32Mi" cpu="5m" site="enschede"/>
+      </processes>
+      <processes startupBudget="60s" cutover="interrupted" name="coverage-job" lifecycle="job" image="coverage-job" runtime="none">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/app" fileMode="0400" path="secret/data/coverage-system/app">
+          <rotation/>
+          <keys xsi:type="projectintent:GeneratedKey" name="session">
+            <generate bytes="32" encoding="base64"/>
+          </keys>
+          <keys xsi:type="projectintent:GeneratedKey" name="cookie">
+            <generate bytes="16" encoding="base64url"/>
+          </keys>
+          <keys xsi:type="projectintent:GeneratedKey" name="salt">
+            <generate encoding="hex"/>
+          </keys>
+        </secrets>
+        <dependsOn application="platform-valkey" surface="redis" required="false"/>
+        <dependsOn application="platform-rabbitmq" surface="amqp" required="true"/>
+        <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/data/seed.conf"/>
+        <assets xsi:type="projectintent:Asset" from="config/coverage.conf" mountAt="/etc/coverage/project.conf"/>
+        <writablePaths xsi:type="projectintent:MemoryPath" path="/var/cache/coverage" memory="64Mi"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <env>
+          <entries name="LEVEL">
+            <value xsi:type="projectintent:EnvLiteral" text="info"/>
+          </entries>
+          <entries name="MODE">
+            <value xsi:type="projectintent:EnvLiteral" text="full"/>
+          </entries>
+        </env>
+        <placement memory="32Mi" cpu="5m" site="enschede"/>
+      </processes>
+      <client signIn="token" backChannelLogoutPath="/logout">
+        <roles>reader</roles>
+      </client>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="data" owner="joris">
+    <applications id="platform-postgres">
+      <observability>
+        <scrape process="/3/@applications.0/@processes.0" surface="/3/@applications.0/@processes.0/@provides.1" path="/metrics"/>
+      </observability>
+      <processes startupBudget="60s" cutover="interrupted" name="postgres" image="postgres" runtime="none" engine="postgres">
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/postgres/exporter">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="datasource"/>
+        </secrets>
+        <assets xsi:type="projectintent:Asset" from="config/postgresql.conf" mountAt="/etc/postgresql/postgresql.conf"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/var/run/postgresql"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <env>
+          <entries name="POSTGRES_DB">
+            <value xsi:type="projectintent:EnvLiteral" text="postgres"/>
+          </entries>
+          <entries name="POSTGRES_USER">
+            <value xsi:type="projectintent:EnvLiteral" text="postgres"/>
+          </entries>
+          <entries name="DATA_SOURCE_NAME">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/postgres/exporter#datasource"/>
+          </entries>
+        </env>
+        <placement memory="2Gi" cpu="500m">
+          <arch>amd64</arch>
+          <disk>
+            <media>nvme</media>
+            <media>ssd</media>
+          </disk>
+        </placement>
+        <provides key="postgres" value="5432"/>
+        <provides key="metrics" value="9187"/>
+        <sidecars name="postgres-exporter" image="postgres-exporter" memory="64Mi" cpu="10m"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:TcpProbe" tcp="5432"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="5432"/>
+        </probes>
+        <volumes claim="postgres-data" mountAt="/var/lib/postgresql/data" size="20Gi" durability="irreplaceable"/>
+      </processes>
+    </applications>
+    <applications id="platform-rabbitmq">
+      <observability>
+        <scrape process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.2" path="/metrics"/>
+      </observability>
+      <exposure name="management" host="rabbitmq.jorisjonkers.dev" audience="authenticated">
+        <routes path="/" process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.1"/>
+      </exposure>
+      <exposure name="lan" host="rabbitmq.jorisjonkers.dev" audience="lan">
+        <routes path="/" process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.1"/>
+      </exposure>
+      <processes startupBudget="120s" cutover="interrupted" name="rabbitmq" image="rabbitmq" runtime="none" engine="rabbitmq">
+        <placement memory="2Gi" cpu="500m"/>
+        <provides key="amqp" value="5672"/>
+        <provides key="management" value="15672"/>
+        <provides key="metrics" value="15692"/>
+        <provides key="mqtt" value="1883"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:TcpProbe" tcp="5672"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="5672"/>
+        </probes>
+        <volumes claim="rabbitmq-data" mountAt="/var/lib/rabbitmq" size="20Gi" durability="recoverable"/>
+      </processes>
+      <l4Exposure address="lan-mqtt" port="1883" process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.3"/>
+      <dashboards from="dashboards/rabbitmq.json"/>
+    </applications>
+    <applications id="platform-valkey">
+      <processes startupBudget="30s" cutover="interrupted" name="valkey" image="valkey" runtime="none">
+        <placement memory="256Mi" cpu="50m"/>
+        <provides key="redis" value="6379"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:TcpProbe" tcp="6379"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="6379"/>
+        </probes>
+        <volumes claim="valkey-data" mountAt="/data" size="2Gi"/>
+      </processes>
+    </applications>
+    <applications id="platform-mongo">
+      <processes startupBudget="60s" cutover="interrupted" name="mongo" image="mongo" runtime="none" engine="mongo">
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/data/configdb"/>
+        <placement memory="2Gi" cpu="200m"/>
+        <provides key="mongo" value="27017"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:TcpProbe" tcp="27017"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="27017"/>
+        </probes>
+        <volumes claim="mongo-data" mountAt="/data/db" size="20Gi" durability="irreplaceable"/>
+      </processes>
+    </applications>
+    <applications id="asset-sync">
+      <processes name="asset-sync" lifecycle="scheduled" image="asset-sync" runtime="none" schedule="*/15 * * * *">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/garage/credentials" fileMode="0400" path="secret/data/platform/garage/web-key">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="credentials"/>
+        </secrets>
+        <placement memory="64Mi" cpu="25m" site="frankfurt"/>
+        <egress reason="reads the latest release from GitHub and uploads it to the public assets bucket"/>
+      </processes>
+    </applications>
+    <applications id="platform-garage">
+      <processes startupBudget="60s" cutover="interrupted" name="garage" image="garage" runtime="none" engine="s3">
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/garage">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="rpc-secret"/>
+          <keys xsi:type="projectintent:PlainKey" name="admin-token"/>
+        </secrets>
+        <assets xsi:type="projectintent:Asset" from="config/garage.toml" mountAt="/etc/garage.toml"/>
+        <env>
+          <entries name="GARAGE_RPC_SECRET">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/garage#rpc-secret"/>
+          </entries>
+          <entries name="GARAGE_ADMIN_TOKEN">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/garage#admin-token"/>
+          </entries>
+        </env>
+        <placement memory="1Gi" cpu="200m" site="frankfurt"/>
+        <provides key="s3" value="3900"/>
+        <provides key="admin" value="3903"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/health" port="3903"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="3900"/>
+        </probes>
+        <volumes claim="garage-meta" mountAt="/var/lib/garage/meta" size="2Gi"/>
+        <volumes claim="garage-snapshots" mountAt="/var/lib/garage/snapshots" size="4Gi" durability="recoverable"/>
+        <volumes claim="garage-data" mountAt="/var/lib/garage/data" size="20Gi" durability="recoverable"/>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="delivery" owner="joris">
+    <applications id="flagger">
+      <processes startupBudget="30s" cutover="continuous" name="flagger" image="flagger" runtime="none">
+        <dependsOn application="release-gate" surface="http"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <placement memory="64Mi" cpu="10m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+        </probes>
+        <api reason="Flagger switches every blue-green Process, so it scales its Deployment, generates its Services and copies, and records the Canary">
+          <rules group="flagger.app">
+            <objects>canaries</objects>
+            <objects>canaries/status</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+          </rules>
+          <rules group="apps">
+            <objects>deployments</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="autoscaling">
+            <objects>horizontalpodautoscalers</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="core">
+            <objects>services</objects>
+            <objects>configmaps</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="core">
+            <objects>secrets</objects>
+            <verbs>get</verbs>
+          </rules>
+          <rules group="core">
+            <objects>events</objects>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="release-gate">
+      <observability>
+        <scrape process="/4/@applications.1/@processes.0" surface="/4/@applications.1/@processes.0/@provides.0" path="/metrics"/>
+      </observability>
+      <processes startupBudget="10s" cutover="continuous" name="release-gate" image="release-gate" runtime="none">
+        <placement memory="64Mi" cpu="25m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/readyz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+        </probes>
+        <api reason="the Release Gate answers Flagger from what the cluster holds, so it reads each gated Application's inputs, Canaries, Deployments, Jobs and pods; it finds the gated Applications by listing ConfigMaps, keeps each one's release record in a ConfigMap of its own, unsuspends the migration Jobs it starts, and deletes a gated Application's Vault sync objects of an older revision once it serves the new one">
+          <rules group="core">
+            <objects>configmaps</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+          </rules>
+          <rules group="core" scope="namespace">
+            <objects>configmaps</objects>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+          </rules>
+          <rules group="core">
+            <objects>pods</objects>
+            <verbs>list</verbs>
+          </rules>
+          <rules group="apps">
+            <objects>deployments</objects>
+            <verbs>get</verbs>
+          </rules>
+          <rules group="batch">
+            <objects>jobs</objects>
+            <verbs>list</verbs>
+            <verbs>patch</verbs>
+          </rules>
+          <rules group="flagger.app">
+            <objects>canaries</objects>
+            <verbs>get</verbs>
+          </rules>
+          <rules group="secrets.hashicorp.com">
+            <objects>vaultauths</objects>
+            <objects>vaultstaticsecrets</objects>
+            <objects>vaultdynamicsecrets</objects>
+            <verbs>list</verbs>
+            <verbs>delete</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="collector">
+      <processes startupBudget="10s" cutover="interrupted" name="collector" image="collector" runtime="none">
+        <placement memory="64Mi" cpu="10m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/readyz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/fresh" port="8080"/>
+        </probes>
+        <api reason="the Collector captures where each bound claim and each rendered pod is, so it lists the three kinds that say so, cluster-wide, and writes nothing">
+          <rules group="core">
+            <objects>persistentvolumes</objects>
+            <objects>persistentvolumeclaims</objects>
+            <objects>pods</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="reporter">
+      <processes startupBudget="10s" cutover="interrupted" name="reporter" image="reporter" runtime="none">
+        <placement memory="64Mi" cpu="10m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/readyz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+        </probes>
+        <api reason="the Reporter reads every Project's unit and every Canary again on start and on an interval, to correct a status an event it missed left behind, and writes nothing">
+          <rules group="kustomize.toolkit.fluxcd.io">
+            <objects>kustomizations</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="flagger.app">
+            <objects>canaries</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="edge" owner="joris">
+    <applications id="traefik-public">
+      <processes startupBudget="20s" cutover="continuous" name="traefik-public" image="traefik" runtime="none">
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <placement memory="128Mi" cpu="50m">
+          <capabilities>public-ingress</capabilities>
+        </placement>
+        <provides key="web" value="8000"/>
+        <provides key="websecure" value="8443"/>
+        <provides key="admin" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
+        </probes>
+      </processes>
+    </applications>
+    <applications id="traefik-lan">
+      <processes startupBudget="20s" cutover="continuous" name="traefik-lan" image="traefik" runtime="none">
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <placement memory="128Mi" cpu="50m">
+          <capabilities>lan-ingress</capabilities>
+        </placement>
+        <provides key="web" value="8000"/>
+        <provides key="admin" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
+        </probes>
+      </processes>
+    </applications>
+    <applications id="external-dns">
+      <processes startupBudget="30s" cutover="interrupted" name="external-dns" image="external-dns" runtime="none">
+        <placement memory="64Mi" cpu="10m"/>
+        <provides key="metrics" value="7979"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/healthz" port="7979"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="7979"/>
+        </probes>
+        <api reason="external-dns reads every route and the Services behind it, cluster-wide, to publish their hosts">
+          <rules group="core">
+            <objects>services</objects>
+            <objects>endpoints</objects>
+            <objects>pods</objects>
+            <objects>nodes</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="traefik.io">
+            <objects>ingressroutes</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+        <egress reason="the DNS provider's API"/>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="identity" owner="joris">
+    <applications id="identity">
+      <exposure name="public" host="id.jorisjonkers.dev" audience="anonymous" contentPolicy="strict">
+        <routes path="/" process="/6/@applications.0/@processes.0" surface="/6/@applications.0/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="30s" cutover="continuous" name="identity" image="identity" runtime="none">
+        <placement memory="256Mi" cpu="50m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/health/ready" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/health/live" port="8080"/>
+        </probes>
+      </processes>
+    </applications>
+    <applications id="portal">
+      <exposure name="public" host="home.jorisjonkers.dev" audience="authenticated">
+        <routes path="/" process="/6/@applications.1/@processes.0" surface="/6/@applications.1/@processes.0/@provides.0"/>
+      </exposure>
+      <processes cutover="continuous" name="portal" image="portal" runtime="none">
+        <placement memory="64Mi" cpu="10m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/" port="8080"/>
+        </probes>
+      </processes>
+      <client label="Home" description="Every application you can open" launchPath="/apps" protectedPath="/api/me" credential="pkce">
+        <redirectPaths>/callback</redirectPaths>
+        <redirectPaths>/silent-renew</redirectPaths>
+      </client>
+    </applications>
+    <applications id="whoami">
+      <exposure name="public" host="whoami.jorisjonkers.dev" audience="authenticated">
+        <routes path="/" process="/6/@applications.2/@processes.0" surface="/6/@applications.2/@processes.0/@provides.0"/>
+        <routes path="/health" match="exact" process="/6/@applications.2/@processes.0" surface="/6/@applications.2/@processes.0/@provides.0" audience="anonymous"/>
+      </exposure>
+      <processes cutover="continuous" name="whoami" image="whoami" runtime="none">
+        <placement memory="32Mi" cpu="10m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/health" port="8080"/>
+        </probes>
+        <replicas count="2" reason="Availability of the sign-in probe across a node loss." across="node"/>
+      </processes>
+      <client signIn="gated" label="Who am I" iconPath="/favicon.ico"/>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="knowledge-platform" owner="joris">
+    <applications id="docling-serve">
+      <processes startupBudget="120s" cutover="interrupted" name="docling-serve" image="docling-serve" runtime="python" engine="files">
+        <env>
+          <entries name="UVICORN_HOST">
+            <value xsi:type="projectintent:EnvLiteral" text="0.0.0.0"/>
+          </entries>
+          <entries name="UVICORN_PORT">
+            <value xsi:type="projectintent:EnvLiteral" text="8000"/>
+          </entries>
+        </env>
+        <placement memory="1Gi" cpu="500m" site="frankfurt"/>
+        <provides key="http" value="8000"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/health" port="8000"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/health" port="8000"/>
+        </probes>
+        <volumes claim="docling-serve-archive" mountAt="/archive" size="50Gi" durability="irreplaceable"/>
+      </processes>
+    </applications>
+    <applications id="hindsight">
+      <migration xsi:type="projectintent:SelfMigration"/>
+      <exposure name="console" host="memory.jorisjonkers.dev" audience="authenticated" contentPolicy="strict">
+        <routes path="/" process="/7/@applications.1/@processes.2" surface="/7/@applications.1/@processes.2/@provides.0"/>
+      </exposure>
+      <exposure name="api" host="memory-api.jorisjonkers.dev" audience="authenticated" contentPolicy="strict">
+        <routes path="/" process="/7/@applications.1/@processes.0" surface="/7/@applications.1/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="120s" cutover="continuous" name="hindsight-api" image="hindsight-api" runtime="python">
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/hindsight">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="llm-api-key"/>
+        </secrets>
+        <dependsOn application="platform-postgres" surface="postgres">
+          <credentials delivery="env">
+            <rotation/>
+          </credentials>
+        </dependsOn>
+        <dependsOn application="hindsight-embedding" surface="embeddings"/>
+        <env>
+          <entries name="HINDSIGHT_API_LLM_PROVIDER">
+            <value xsi:type="projectintent:EnvLiteral" text="openai"/>
+          </entries>
+          <entries name="HINDSIGHT_API_LLM_BASE_URL">
+            <value xsi:type="projectintent:EnvLiteral" text="https://eu.openrouter.ai/api/v1"/>
+          </entries>
+          <entries name="HINDSIGHT_API_LLM_MODEL">
+            <value xsi:type="projectintent:EnvLiteral" text="mistralai/mistral-small-2603"/>
+          </entries>
+          <entries name="HINDSIGHT_API_LLM_API_KEY">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/hindsight#llm-api-key"/>
+          </entries>
+          <entries name="HINDSIGHT_API_EMBEDDINGS_PROVIDER">
+            <value xsi:type="projectintent:EnvLiteral" text="tei"/>
+          </entries>
+          <entries name="PGUSER">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-postgres.username"/>
+          </entries>
+          <entries name="PGPASSWORD">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-postgres.password"/>
+          </entries>
+          <entries name="HINDSIGHT_API_WORKER_ENABLED">
+            <value xsi:type="projectintent:EnvLiteral" text="false"/>
+          </entries>
+          <entries name="HINDSIGHT_API_PORT">
+            <value xsi:type="projectintent:EnvLiteral" text="8888"/>
+          </entries>
+        </env>
+        <placement memory="1Gi" cpu="500m" site="enschede"/>
+        <provides key="api" value="8888"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/health" port="8888"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/health/live" port="8888"/>
+        </probes>
+      </processes>
+      <processes startupBudget="120s" cutover="continuous" name="hindsight-worker" image="hindsight-api" runtime="python">
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/hindsight">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="llm-api-key"/>
+        </secrets>
+        <dependsOn application="platform-postgres" surface="postgres">
+          <credentials delivery="file" mountAt="/run/secrets/database" fileMode="0400">
+            <rotation/>
+          </credentials>
+        </dependsOn>
+        <dependsOn application="hindsight-embedding" surface="embeddings"/>
+        <env>
+          <entries name="HINDSIGHT_API_LLM_PROVIDER">
+            <value xsi:type="projectintent:EnvLiteral" text="openai"/>
+          </entries>
+          <entries name="HINDSIGHT_API_LLM_BASE_URL">
+            <value xsi:type="projectintent:EnvLiteral" text="https://eu.openrouter.ai/api/v1"/>
+          </entries>
+          <entries name="HINDSIGHT_API_LLM_MODEL">
+            <value xsi:type="projectintent:EnvLiteral" text="mistralai/mistral-small-2603"/>
+          </entries>
+          <entries name="HINDSIGHT_API_LLM_API_KEY">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/hindsight#llm-api-key"/>
+          </entries>
+          <entries name="HINDSIGHT_API_EMBEDDINGS_PROVIDER">
+            <value xsi:type="projectintent:EnvLiteral" text="tei"/>
+          </entries>
+          <entries name="HINDSIGHT_API_PORT">
+            <value xsi:type="projectintent:EnvLiteral" text="8889"/>
+          </entries>
+          <entries name="HINDSIGHT_API_WORKER_HTTP_PORT">
+            <value xsi:type="projectintent:EnvLiteral" text="8889"/>
+          </entries>
+          <entries name="HINDSIGHT_API_WORKER_POLL_INTERVAL_MS">
+            <value xsi:type="projectintent:EnvLiteral" text="500"/>
+          </entries>
+          <entries name="HINDSIGHT_API_WORKER_BATCH_SIZE">
+            <value xsi:type="projectintent:EnvLiteral" text="10"/>
+          </entries>
+          <entries name="HINDSIGHT_API_WORKER_MAX_RETRIES">
+            <value xsi:type="projectintent:EnvLiteral" text="3"/>
+          </entries>
+        </env>
+        <placement memory="1Gi" cpu="500m" site="enschede"/>
+        <provides key="worker" value="8889"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/health" port="8889"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/health/live" port="8889"/>
+        </probes>
+        <parked reason="Ingestion paused while the job store is migrated."/>
+      </processes>
+      <processes startupBudget="60s" cutover="continuous" name="hindsight-control-plane" image="hindsight-control-plane" runtime="node">
+        <dependsOn application="hindsight" surface="api"/>
+        <env>
+          <entries name="HINDSIGHT_CP_HOSTNAME">
+            <value xsi:type="projectintent:EnvLiteral" text="0.0.0.0"/>
+          </entries>
+          <entries name="HINDSIGHT_CP_PORT">
+            <value xsi:type="projectintent:EnvLiteral" text="3000"/>
+          </entries>
+          <entries name="NODE_ENV">
+            <value xsi:type="projectintent:EnvLiteral" text="production"/>
+          </entries>
+        </env>
+        <placement memory="512Mi" cpu="250m" site="enschede"/>
+        <provides key="console" value="3000"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:TcpProbe" tcp="3000"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="3000"/>
+        </probes>
+      </processes>
+    </applications>
+    <applications id="basic-memory">
+      <exposure name="mcp" host="memory-mcp.jorisjonkers.dev" audience="authenticated" contentPolicy="strict">
+        <routes path="/" process="/7/@applications.2/@processes.0" surface="/7/@applications.2/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="120s" cutover="interrupted" name="basic-memory" image="basic-memory" runtime="python">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/knowledge-vault/id_ed25519" fileMode="0400" path="secret/data/knowledge-system/vault-deploy-key">
+          <rotation tolerates="reload"/>
+          <keys xsi:type="projectintent:PlainKey" name="private_key"/>
+        </secrets>
+        <env>
+          <entries name="BASIC_MEMORY_PROJECT_ROOT">
+            <value xsi:type="projectintent:EnvLiteral" text="/vault"/>
+          </entries>
+          <entries name="BASIC_MEMORY_HOME">
+            <value xsi:type="projectintent:EnvLiteral" text="/vault"/>
+          </entries>
+          <entries name="BASIC_MEMORY_DEFAULT_PROJECT">
+            <value xsi:type="projectintent:EnvLiteral" text="main"/>
+          </entries>
+          <entries name="BASIC_MEMORY_DISABLE_PERMALINKS">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="BASIC_MEMORY_ENSURE_FRONTMATTER_ON_SYNC">
+            <value xsi:type="projectintent:EnvLiteral" text="false"/>
+          </entries>
+          <entries name="BASIC_MEMORY_SEMANTIC_EMBEDDING_CACHE_DIR">
+            <value xsi:type="projectintent:EnvLiteral" text="/app/.basic-memory/fastembed"/>
+          </entries>
+          <entries name="BASIC_MEMORY_CONFIG_DIR">
+            <value xsi:type="projectintent:EnvLiteral" text="/app/.basic-memory"/>
+          </entries>
+          <entries name="BASIC_MEMORY_SYNC_CHANGES">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="BASIC_MEMORY_SYNC_DELAY">
+            <value xsi:type="projectintent:EnvLiteral" text="1000"/>
+          </entries>
+          <entries name="BASIC_MEMORY_LOG_LEVEL">
+            <value xsi:type="projectintent:EnvLiteral" text="INFO"/>
+          </entries>
+          <entries name="VAULT_CLONE_URL">
+            <value xsi:type="projectintent:EnvLiteral" text="git@github.com:JorisJonkers-dev/knowledge-vault.git"/>
+          </entries>
+          <entries name="VAULT_DIR">
+            <value xsi:type="projectintent:EnvLiteral" text="/vault"/>
+          </entries>
+          <entries name="VAULT_BRANCH">
+            <value xsi:type="projectintent:EnvLiteral" text="main"/>
+          </entries>
+          <entries name="VAULT_SSH_KEY_PATH">
+            <value xsi:type="projectintent:EnvLiteral" text="/run/secrets/knowledge-vault/id_ed25519"/>
+          </entries>
+          <entries name="VAULT_AUTHOR_NAME">
+            <value xsi:type="projectintent:EnvLiteral" text="basic-memory-vault"/>
+          </entries>
+          <entries name="VAULT_AUTHOR_EMAIL">
+            <value xsi:type="projectintent:EnvLiteral" text="basicmemory@knowledge.local"/>
+          </entries>
+          <entries name="GIT_CONFIG_COUNT">
+            <value xsi:type="projectintent:EnvLiteral" text="1"/>
+          </entries>
+          <entries name="GIT_CONFIG_KEY_0">
+            <value xsi:type="projectintent:EnvLiteral" text="safe.directory"/>
+          </entries>
+          <entries name="GIT_CONFIG_VALUE_0">
+            <value xsi:type="projectintent:EnvLiteral" text="/vault"/>
+          </entries>
+          <entries name="POLL_SECONDS">
+            <value xsi:type="projectintent:EnvLiteral" text="10"/>
+          </entries>
+          <entries name="PUSH">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="LOG_LEVEL">
+            <value xsi:type="projectintent:EnvLiteral" text="INFO"/>
+          </entries>
+        </env>
+        <placement memory="1Gi" cpu="500m" site="frankfurt"/>
+        <provides key="mcp" value="8000"/>
+        <sidecars name="git-clone" image="basic-memory-git-sync" memory="64Mi" cpu="50m" init="true">
+          <volumes claim="basic-memory-vault" mountAt="/vault"/>
+        </sidecars>
+        <sidecars name="git-sync" image="basic-memory-git-sync" memory="64Mi" cpu="50m">
+          <volumes claim="basic-memory-vault" mountAt="/vault"/>
+        </sidecars>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:TcpProbe" tcp="8000"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="8000"/>
+        </probes>
+        <volumes claim="basic-memory-vault" mountAt="/vault" size="5Gi"/>
+        <volumes claim="basic-memory-config" mountAt="/app/.basic-memory" size="2Gi"/>
+      </processes>
+    </applications>
+    <applications id="karakeep">
+      <exposure name="public" host="karakeep.jorisjonkers.dev" audience="authenticated" contentPolicy="strict">
+        <routes path="/" process="/7/@applications.3/@processes.0" surface="/7/@applications.3/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="200s" cutover="interrupted" name="karakeep" image="karakeep" runtime="node" engine="files">
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/karakeep">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="nextauth-secret"/>
+          <keys xsi:type="projectintent:PlainKey" name="meili-master-key"/>
+          <keys xsi:type="projectintent:PlainKey" name="openrouter-api-key"/>
+        </secrets>
+        <dependsOn application="platform-garage" surface="s3">
+          <buckets>assets</buckets>
+        </dependsOn>
+        <env>
+          <entries name="NEXTAUTH_SECRET">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/karakeep#nextauth-secret"/>
+          </entries>
+          <entries name="NEXTAUTH_URL">
+            <value xsi:type="projectintent:Placeholder" kind="exposure" source="karakeep.public#url"/>
+          </entries>
+          <entries name="DATA_DIR">
+            <value xsi:type="projectintent:EnvLiteral" text="/data"/>
+          </entries>
+          <entries name="MEILI_ADDR">
+            <value xsi:type="projectintent:EnvLiteral" text="http://localhost:7700"/>
+          </entries>
+          <entries name="MEILI_MASTER_KEY">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/karakeep#meili-master-key"/>
+          </entries>
+          <entries name="MEILI_NO_ANALYTICS">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="BROWSER_WEB_URL">
+            <value xsi:type="projectintent:EnvLiteral" text="http://localhost:9222"/>
+          </entries>
+          <entries name="OPENAI_API_KEY">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/karakeep#openrouter-api-key"/>
+          </entries>
+          <entries name="OPENAI_API_BASE">
+            <value xsi:type="projectintent:EnvLiteral" text="https://eu.openrouter.ai/api/v1"/>
+          </entries>
+          <entries name="INFERENCE_TEXT_MODEL">
+            <value xsi:type="projectintent:EnvLiteral" text="mistralai/mistral-small-2603"/>
+          </entries>
+          <entries name="INFERENCE_CONTEXT_LENGTH">
+            <value xsi:type="projectintent:EnvLiteral" text="2048"/>
+          </entries>
+          <entries name="INFERENCE_ENABLE_AUTO_TAGGING">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="INFERENCE_ENABLE_AUTO_SUMMARIZATION">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="ASSET_STORE_S3_ENDPOINT">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-garage.endpoint"/>
+          </entries>
+          <entries name="ASSET_STORE_S3_REGION">
+            <value xsi:type="projectintent:EnvLiteral" text="garage"/>
+          </entries>
+          <entries name="ASSET_STORE_S3_BUCKET">
+            <value xsi:type="projectintent:EnvLiteral" text="knowledge-platform-assets"/>
+          </entries>
+          <entries name="ASSET_STORE_S3_FORCE_PATH_STYLE">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="ASSET_STORE_S3_ACCESS_KEY_ID">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-garage.accessKeyId"/>
+          </entries>
+          <entries name="ASSET_STORE_S3_SECRET_ACCESS_KEY">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-garage.secretAccessKey"/>
+          </entries>
+        </env>
+        <placement memory="512Mi" cpu="200m" site="frankfurt"/>
+        <provides key="http" value="3000"/>
+        <sidecars name="meilisearch" image="meilisearch" memory="256Mi" cpu="100m">
+          <volumes claim="karakeep-meili" mountAt="/meili_data"/>
+        </sidecars>
+        <sidecars name="chrome" image="karakeep-chrome" memory="512Mi" cpu="500m"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/api/health" port="3000"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/api/health" port="3000"/>
+        </probes>
+        <volumes claim="karakeep-data" mountAt="/data" size="50Gi" durability="recoverable"/>
+        <volumes claim="karakeep-meili" mountAt="/meili_data" size="5Gi"/>
+        <volumes claim="meilisearch-data" mountAt="/meili_data" size="20Gi"/>
+        <egress reason="The browser fetches the pages it bookmarks."/>
+        <vpn forwardedPort="false"/>
+      </processes>
+    </applications>
+    <applications id="hindsight-embedding">
+      <processes startupBudget="300s" cutover="interrupted" name="hindsight-tei-embedding" image="text-embeddings-inference" runtime="none">
+        <env>
+          <entries name="PORT">
+            <value xsi:type="projectintent:EnvLiteral" text="8091"/>
+          </entries>
+          <entries name="PAYLOAD_LIMIT">
+            <value xsi:type="projectintent:EnvLiteral" text="10000000"/>
+          </entries>
+          <entries name="MAX_CLIENT_BATCH_SIZE">
+            <value xsi:type="projectintent:EnvLiteral" text="256"/>
+          </entries>
+        </env>
+        <placement memory="6Gi" cpu="500m" site="enschede"/>
+        <provides key="embeddings" value="8091"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/health" port="8091"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/health" port="8091"/>
+        </probes>
+        <volumes claim="hindsight-tei-model-cache" mountAt="/data" size="8Gi"/>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="knowledge" owner="joris">
+    <applications id="knowledge">
+      <migration xsi:type="projectintent:ManagedMigration" changelog="knowledge-api/src/main/resources/db/changelog.yml"/>
+      <observability>
+        <scrape process="/8/@applications.0/@processes.0" surface="/8/@applications.0/@processes.0/@provides.0" path="/api/actuator/prometheus"/>
+      </observability>
+      <exposure name="public" host="knowledge.jorisjonkers.dev" audience="authenticated">
+        <routes path="/mcp" match="exact" process="/8/@applications.0/@processes.0" surface="/8/@applications.0/@processes.0/@provides.0" audience="anonymous"/>
+        <routes path="/mcp/" process="/8/@applications.0/@processes.0" surface="/8/@applications.0/@processes.0/@provides.0" audience="anonymous"/>
+        <routes path="/install.sh" match="exact" process="/8/@applications.0/@processes.0" surface="/8/@applications.0/@processes.0/@provides.0" audience="anonymous"/>
+        <routes path="/install-agents.sh" match="exact" process="/8/@applications.0/@processes.0" surface="/8/@applications.0/@processes.0/@provides.0" audience="anonymous"/>
+        <routes path="/" process="/8/@applications.0/@processes.0" surface="/8/@applications.0/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="600s" cutover="continuous" name="knowledge-api" image="knowledge-api">
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/knowledge-system/mcp-bearer">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="workstation"/>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/postgres/kb">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="user"/>
+          <keys xsi:type="projectintent:PlainKey" name="password"/>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/rabbitmq">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="rabbitmq.user"/>
+          <keys xsi:type="projectintent:PlainKey" name="rabbitmq.password"/>
+        </secrets>
+        <dependsOn application="platform-postgres" surface="postgres"/>
+        <dependsOn application="platform-rabbitmq" surface="amqp"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <env>
+          <entries name="SPRING_PROFILES_ACTIVE">
+            <value xsi:type="projectintent:EnvLiteral" text="prod"/>
+          </entries>
+          <entries name="KB_RECALL_DEFAULT_MODE">
+            <value xsi:type="projectintent:EnvLiteral" text="hybrid"/>
+          </entries>
+          <entries name="KNOWLEDGE_MODE">
+            <value xsi:type="projectintent:EnvLiteral" text="lite"/>
+          </entries>
+          <entries name="KNOWLEDGE_MCP_TOKENS_WORKSTATION">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/knowledge-system/mcp-bearer#workstation"/>
+          </entries>
+          <entries name="DB_HOST">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-postgres.host"/>
+          </entries>
+          <entries name="DB_PORT">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-postgres.port"/>
+          </entries>
+          <entries name="RABBITMQ_HOST">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-rabbitmq.host"/>
+          </entries>
+          <entries name="RABBITMQ_PORT">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-rabbitmq.port"/>
+          </entries>
+          <entries name="DB_USER">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/postgres/kb#user"/>
+          </entries>
+          <entries name="DB_PASSWORD">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/postgres/kb#password"/>
+          </entries>
+          <entries name="RABBITMQ_USER">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/rabbitmq#rabbitmq.user"/>
+          </entries>
+          <entries name="RABBITMQ_PASSWORD">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/rabbitmq#rabbitmq.password"/>
+          </entries>
+        </env>
+        <placement memory="768Mi" cpu="250m">
+          <capabilities>public-ingress</capabilities>
+        </placement>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/api/actuator/health/readiness" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/api/actuator/health/liveness" port="8080"/>
+        </probes>
+      </processes>
+    </applications>
+    <applications id="knowledge-ingest" description="Turns the notes dropped into the vault into searchable knowledge.">
+      <migration xsi:type="projectintent:NoMigration"/>
+      <processes startupBudget="120s" cutover="interrupted" name="knowledge-ingest-worker" image="knowledge-ingest-worker" runtime="python" engine="files" description="Takes one note at a time off the queue and indexes it.">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/home/worker/.ssh/id_ed25519" fileMode="0400" path="secret/data/knowledge-system/vault-deploy-key">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="key"/>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/postgres/kb">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="user"/>
+          <keys xsi:type="projectintent:PlainKey" name="password"/>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/rabbitmq">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="rabbitmq.user"/>
+          <keys xsi:type="projectintent:PlainKey" name="rabbitmq.password"/>
+        </secrets>
+        <dependsOn application="platform-rabbitmq" surface="amqp"/>
+        <dependsOn application="platform-postgres" surface="postgres"/>
+        <env>
+          <entries name="INGEST_QUEUE">
+            <value xsi:type="projectintent:EnvLiteral" text="knowledge.ingest"/>
+          </entries>
+          <entries name="INGEST_PREFETCH">
+            <value xsi:type="projectintent:EnvLiteral" text="4"/>
+          </entries>
+          <entries name="LOG_LEVEL">
+            <value xsi:type="projectintent:EnvLiteral" text="INFO"/>
+          </entries>
+          <entries name="DB_HOST">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-postgres.host"/>
+          </entries>
+          <entries name="DB_PORT">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-postgres.port"/>
+          </entries>
+          <entries name="RABBITMQ_HOST">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-rabbitmq.host"/>
+          </entries>
+          <entries name="RABBITMQ_PORT">
+            <value xsi:type="projectintent:Placeholder" kind="dependency" source="platform-rabbitmq.port"/>
+          </entries>
+          <entries name="DB_USER">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/postgres/kb#user"/>
+          </entries>
+          <entries name="DB_PASSWORD">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/postgres/kb#password"/>
+          </entries>
+          <entries name="RABBITMQ_USER">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/rabbitmq#rabbitmq.user"/>
+          </entries>
+          <entries name="RABBITMQ_PASSWORD">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/rabbitmq#rabbitmq.password"/>
+          </entries>
+        </env>
+        <placement memory="256Mi" cpu="50m"/>
+        <probes xsi:type="projectintent:NoProbes"/>
+        <volumes claim="knowledge-vault-clone" mountAt="/var/lib/knowledge-vault" size="20Gi" durability="irreplaceable"/>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="mail" owner="joris">
+    <applications id="stalwart">
+      <exposure name="admin" host="mail.jorisjonkers.dev" audience="authenticated">
+        <routes path="/" match="exact" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.0" redirectTo="/admin/"/>
+        <routes path="/" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="60s" cutover="interrupted" name="stalwart" image="stalwart" runtime="none">
+        <assets xsi:type="projectintent:Asset" from="config/manifest.json" mountAt="/etc/stalwart-provisioner/manifest.json"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
+        <placement memory="512Mi" cpu="100m"/>
+        <provides key="http" value="8080"/>
+        <provides key="smtp" value="25"/>
+        <provides key="imaps" value="993"/>
+        <sidecars name="stalwart-apply" image="stalwart-provisioner" memory="64Mi" cpu="10m">
+          <assets from="config/manifest.json" mountAt="/etc/stalwart-provisioner/manifest.json"/>
+        </sidecars>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/healthz/ready" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz/live" port="8080"/>
+        </probes>
+      </processes>
+      <l4Exposure address="mail-node" port="25" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.1"/>
+      <l4Exposure address="mail-node" port="993" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.2"/>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="notes" owner="joris">
+    <applications id="notes">
+      <observability>
+        <scrape process="/10/@applications.0/@processes.0" surface="/10/@applications.0/@processes.0/@provides.0" path="/metrics"/>
+      </observability>
+      <exposure name="public" host="notes.jorisjonkers.dev" audience="anonymous" contentPolicy="strict">
+        <routes path="/" process="/10/@applications.0/@processes.0" surface="/10/@applications.0/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="20s" cutover="continuous" name="notes-api" image="notes-api" runtime="node">
+        <env>
+          <entries name="NODE_ENV">
+            <value xsi:type="projectintent:EnvLiteral" text="production"/>
+          </entries>
+          <entries name="NOTES_PAGE_SIZE">
+            <value xsi:type="projectintent:EnvLiteral" text="50"/>
+          </entries>
+        </env>
+        <placement memory="256Mi" cpu="50m">
+          <gpu class="transcode">
+            <model>t1000</model>
+          </gpu>
+        </placement>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/healthz/ready" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz/live" port="8080"/>
+        </probes>
+        <libraries library="media" mountAt="/attachments" subPath="Notes" access="write"/>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="observability" owner="joris">
+    <applications id="otel-collector">
+      <processes startupBudget="20s" cutover="continuous" name="otel-collector" image="otel-collector" runtime="none">
+        <placement memory="256Mi" cpu="50m"/>
+        <provides key="otlp" value="4317"/>
+        <provides key="health" value="13133"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/" port="13133"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/" port="13133"/>
+        </probes>
+      </processes>
+    </applications>
+    <applications id="prometheus">
+      <processes startupBudget="60s" cutover="continuous" name="prometheus" image="prometheus" runtime="none">
+        <writablePaths xsi:type="projectintent:PlainPath" path="/prometheus"/>
+        <placement memory="512Mi" cpu="100m"/>
+        <provides key="http" value="9090"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/-/ready" port="9090"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/-/healthy" port="9090"/>
+        </probes>
+      </processes>
+      <alertRules from="rules/platform.yaml"/>
+    </applications>
+    <applications id="prometheus-operator">
+      <processes startupBudget="30s" cutover="interrupted" name="prometheus-operator" image="prometheus-operator" runtime="none">
+        <placement memory="128Mi" cpu="50m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+        </probes>
+        <api reason="the operator reconciles every monitor, rule and Alertmanager routing object into the Prometheus and Alertmanager configuration, cluster-wide">
+          <rules group="monitoring.coreos.com">
+            <objects>prometheuses</objects>
+            <objects>prometheuses/status</objects>
+            <objects>alertmanagers</objects>
+            <objects>alertmanagers/status</objects>
+            <objects>servicemonitors</objects>
+            <objects>podmonitors</objects>
+            <objects>prometheusrules</objects>
+            <objects>alertmanagerconfigs</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="core">
+            <objects>services</objects>
+            <objects>endpoints</objects>
+            <objects>pods</objects>
+            <objects>nodes</objects>
+            <objects>namespaces</objects>
+            <objects>configmaps</objects>
+            <objects>secrets</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="apps">
+            <objects>statefulsets</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>delete</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="kube-state-metrics">
+      <processes startupBudget="30s" cutover="continuous" name="kube-state-metrics" image="kube-state-metrics" runtime="none">
+        <placement memory="128Mi" cpu="20m"/>
+        <provides key="http" value="8080"/>
+        <provides key="telemetry" value="8081"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/livez" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/livez" port="8080"/>
+        </probes>
+        <api reason="kube-state-metrics reports the state of every object it lists, cluster-wide">
+          <rules group="core">
+            <objects>pods</objects>
+            <objects>nodes</objects>
+            <objects>namespaces</objects>
+            <objects>services</objects>
+            <objects>persistentvolumeclaims</objects>
+            <objects>persistentvolumes</objects>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="apps">
+            <objects>deployments</objects>
+            <objects>statefulsets</objects>
+            <objects>daemonsets</objects>
+            <objects>replicasets</objects>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="batch">
+            <objects>jobs</objects>
+            <objects>cronjobs</objects>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="grafana-operator">
+      <processes startupBudget="30s" cutover="interrupted" name="grafana-operator" image="grafana-operator" runtime="none">
+        <placement memory="64Mi" cpu="20m"/>
+        <provides key="metrics" value="8080"/>
+        <provides key="health" value="8081"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/healthz" port="8081"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8081"/>
+        </probes>
+        <api reason="the operator imports every Application's dashboards into the Grafana it selects, cluster-wide">
+          <rules group="grafana.integreatly.org">
+            <objects>grafanas</objects>
+            <objects>grafanas/status</objects>
+            <objects>grafanadashboards</objects>
+            <objects>grafanadashboards/status</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+          </rules>
+          <rules group="core">
+            <objects>configmaps</objects>
+            <objects>secrets</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="grafana">
+      <exposure name="public" host="grafana.jorisjonkers.dev" audience="authenticated">
+        <routes path="/" process="/11/@applications.5/@processes.0" surface="/11/@applications.5/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="30s" cutover="continuous" name="grafana" image="grafana" runtime="none">
+        <writablePaths xsi:type="projectintent:PlainPath" path="/var/lib/grafana"/>
+        <env>
+          <entries name="GF_SERVER_ROOT_URL">
+            <value xsi:type="projectintent:Placeholder" kind="exposure" source="grafana.public#url"/>
+          </entries>
+          <entries name="GF_AUTH_GENERIC_OAUTH_ENABLED">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+          <entries name="GF_AUTH_GENERIC_OAUTH_NAME">
+            <value xsi:type="projectintent:EnvLiteral" text="jorisjonkers.dev"/>
+          </entries>
+          <entries name="GF_AUTH_GENERIC_OAUTH_CLIENT_ID">
+            <value xsi:type="projectintent:Placeholder" kind="client" source="id"/>
+          </entries>
+          <entries name="GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET">
+            <value xsi:type="projectintent:Placeholder" kind="client" source="secret"/>
+          </entries>
+          <entries name="GF_AUTH_GENERIC_OAUTH_AUTH_URL">
+            <value xsi:type="projectintent:Placeholder" kind="client" source="issuer" suffix="/oauth2/authorize"/>
+          </entries>
+          <entries name="GF_AUTH_GENERIC_OAUTH_TOKEN_URL">
+            <value xsi:type="projectintent:Placeholder" kind="client" source="issuer" suffix="/oauth2/token"/>
+          </entries>
+          <entries name="GF_AUTH_GENERIC_OAUTH_API_URL">
+            <value xsi:type="projectintent:Placeholder" kind="client" source="issuer" suffix="/userinfo"/>
+          </entries>
+          <entries name="GF_AUTH_GENERIC_OAUTH_SCOPES">
+            <value xsi:type="projectintent:EnvLiteral" text="openid,profile,email"/>
+          </entries>
+          <entries name="GF_AUTH_DISABLE_LOGIN_FORM">
+            <value xsi:type="projectintent:EnvLiteral" text="true"/>
+          </entries>
+        </env>
+        <placement memory="256Mi" cpu="50m"/>
+        <provides key="http" value="3000"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/api/health" port="3000"/>
+        </probes>
+      </processes>
+      <client label="Grafana" description="Metrics and dashboards" iconPath="/public/img/grafana_icon.svg" protectedPath="/api/user" credential="secret">
+        <redirectPaths>/login/generic_oauth</redirectPaths>
+        <roles>viewer</roles>
+        <roles>editor</roles>
+        <roles>admin</roles>
+      </client>
+    </applications>
+    <applications id="loki">
+      <processes startupBudget="30s" cutover="interrupted" name="loki" image="loki" runtime="none">
+        <placement memory="512Mi" cpu="100m"/>
+        <provides key="http" value="3100"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/ready" port="3100"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/ready" port="3100"/>
+        </probes>
+        <volumes claim="loki" mountAt="/loki" size="10Gi"/>
+      </processes>
+    </applications>
+    <applications id="tempo">
+      <processes startupBudget="30s" cutover="interrupted" name="tempo" image="tempo" runtime="none">
+        <placement memory="512Mi" cpu="100m"/>
+        <provides key="http" value="3200"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/ready" port="3200"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/ready" port="3200"/>
+        </probes>
+        <volumes claim="tempo" mountAt="/var/tempo" size="10Gi"/>
+      </processes>
+    </applications>
+    <applications id="pyroscope">
+      <processes startupBudget="30s" cutover="interrupted" name="pyroscope" image="pyroscope" runtime="none">
+        <placement memory="512Mi" cpu="100m"/>
+        <provides key="http" value="4040"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/ready" port="4040"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/ready" port="4040"/>
+        </probes>
+        <volumes claim="pyroscope" mountAt="/data" size="10Gi"/>
+      </processes>
+    </applications>
+    <applications id="gatus">
+      <processes startupBudget="30s" cutover="interrupted" name="gatus" image="gatus" runtime="none">
+        <placement memory="64Mi" cpu="20m"/>
+        <provides key="http" value="8080"/>
+        <sidecars name="checks" image="gatus-checks" memory="32Mi" cpu="10m"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/health" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/health" port="8080"/>
+        </probes>
+        <api reason="the checks sidecar watches every Project's external-checks ConfigMap, cluster-wide">
+          <rules group="core">
+            <objects>configmaps</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="alloy">
+      <processes startupBudget="30s" cutover="continuous" name="alloy" image="alloy" runtime="none">
+        <placement memory="256Mi" cpu="50m"/>
+        <provides key="http" value="12345"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/-/ready" port="12345"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/-/ready" port="12345"/>
+        </probes>
+        <api reason="Alloy tails every pod's log through the API, cluster-wide">
+          <rules group="core">
+            <objects>pods</objects>
+            <objects>pods/log</objects>
+            <objects>namespaces</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="alertmanager">
+      <processes startupBudget="30s" cutover="continuous" name="alertmanager" image="alertmanager" runtime="none">
+        <writablePaths xsi:type="projectintent:PlainPath" path="/alertmanager"/>
+        <placement memory="128Mi" cpu="50m"/>
+        <provides key="http" value="9093"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/-/ready" port="9093"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/-/healthy" port="9093"/>
+        </probes>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="secrets" owner="joris">
+    <applications id="vault">
+      <processes startupBudget="30s" cutover="interrupted" name="vault" image="vault" runtime="none">
+        <placement memory="256Mi" cpu="100m"/>
+        <provides key="http" value="8200"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/v1/sys/health" port="8200"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/v1/sys/health" port="8200"/>
+        </probes>
+      </processes>
+    </applications>
+    <applications id="vault-secrets-operator">
+      <processes startupBudget="30s" cutover="interrupted" name="vault-secrets-operator" image="vault-secrets-operator" runtime="none">
+        <placement memory="128Mi" cpu="50m"/>
+        <provides key="metrics" value="8080"/>
+        <provides key="health" value="8081"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/healthz" port="8081"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8081"/>
+        </probes>
+        <api reason="the operator syncs every grant's sync object into its Secret, cluster-wide, and restarts the Processes a rotation names">
+          <rules group="secrets.hashicorp.com">
+            <objects>vaultstaticsecrets</objects>
+            <objects>vaultstaticsecrets/status</objects>
+            <objects>vaultdynamicsecrets</objects>
+            <objects>vaultdynamicsecrets/status</objects>
+            <objects>vaultauths</objects>
+            <objects>vaultauths/status</objects>
+            <objects>vaultconnections</objects>
+            <objects>vaultconnections/status</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="core">
+            <objects>secrets</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="core">
+            <objects>serviceaccounts/token</objects>
+            <verbs>create</verbs>
+          </rules>
+          <rules group="apps">
+            <objects>deployments</objects>
+            <objects>statefulsets</objects>
+            <objects>daemonsets</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>patch</verbs>
+          </rules>
+          <rules group="core">
+            <objects>events</objects>
+            <verbs>create</verbs>
+            <verbs>patch</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+  <projectintent:EffectiveProject project="utility" owner="joris">
+    <applications id="adguard">
+      <processes startupBudget="30s" cutover="continuous" name="adguard" image="adguard" runtime="none">
+        <assets xsi:type="projectintent:SeededAsset" from="config/adguard/AdGuardHome.yaml" seedAt="/opt/adguardhome/conf/AdGuardHome.yaml"/>
+        <writablePaths xsi:type="projectintent:MemoryPath" path="/opt/adguardhome/work" memory="128Mi"/>
+        <writablePaths xsi:type="projectintent:PlainPath" path="/opt/adguardhome/conf"/>
+        <placement memory="128Mi" cpu="50m">
+          <capabilities>adguard</capabilities>
+        </placement>
+        <provides key="http" value="3000"/>
+        <provides key="dns" value="5353"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/login.html" port="3000"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/login.html" port="3000"/>
+        </probes>
+        <replicas count="2" reason="the LAN keeps its resolver while one node is down" across="node"/>
+        <egress reason="answers the LAN from a DNS-over-HTTPS upstream"/>
+      </processes>
+      <l4Exposure address="lan-dns" port="53" protocol="udp" process="/13/@applications.0/@processes.0" surface="/13/@applications.0/@processes.0/@provides.1"/>
+      <l4Exposure address="lan-dns" port="53" process="/13/@applications.0/@processes.0" surface="/13/@applications.0/@processes.0/@provides.1"/>
+    </applications>
+    <applications id="headlamp">
+      <exposure name="lan" host="dashboard.lan.jorisjonkers.dev" audience="lan">
+        <routes path="/" process="/13/@applications.1/@processes.0" surface="/13/@applications.1/@processes.0/@provides.0"/>
+      </exposure>
+      <processes startupBudget="30s" cutover="continuous" name="headlamp" image="headlamp" runtime="none">
+        <placement memory="128Mi" cpu="50m"/>
+        <provides key="http" value="4466"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/" port="4466"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/" port="4466"/>
+        </probes>
+        <api reason="it acts on the API with each signed-in user's own token, and holds nothing of its own"/>
+      </processes>
+    </applications>
+  </projectintent:EffectiveProject>
+</xmi:XMI>

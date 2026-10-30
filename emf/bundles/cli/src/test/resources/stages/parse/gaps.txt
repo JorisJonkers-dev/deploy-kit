@@ -1,0 +1,138 @@
+Audience.internal is never used in a parse case's input
+ContentPolicy.admin is never used in a parse case's input
+ContentPolicy.workflow is never used in a parse case's input
+DatabaseEngine.database is never used in a parse case's input
+DatabaseGrant is never instantiated in a parse case's input
+DatabaseGrant.delivery is never set in a parse case's input
+DatabaseGrant.engine is never set in a parse case's input
+DatabaseGrant.fileMode is never set in a parse case's input
+DatabaseGrant.mountAt is never set in a parse case's input
+DatabaseGrant.role is never set in a parse case's input
+DatabaseGrant.rotation is never set in a parse case's input
+Datastore.etcd is never used in a parse case's input
+Engine.valkey is never used in a parse case's input
+Generate.adopt is never set in a parse case's input
+MoveStep.lag is never used in a parse case's input
+MoveStep.retire is never used in a parse case's input
+MoveStep.reverse is never used in a parse case's input
+MoveStep.sync is never used in a parse case's input
+MoveStep.unfence is never used in a parse case's input
+PolicyController.cni is never used in a parse case's input
+PolicyController.none is never used in a parse case's input
+platform-intent.schema.json /durability/reconstructible/offCluster is never present in a parse case's input
+platform-intent.schema.json /durability/reconstructible/offCluster/credential is never present in a parse case's input
+platform-intent.schema.json /durability/reconstructible/offCluster/destination is never present in a parse case's input
+platform-intent.schema.json /durability/reconstructible/offCluster/egress is never present in a parse case's input
+platform-intent.schema.json /durability/reconstructible/offCluster/egress[]/cidr is never present in a parse case's input
+platform-intent.schema.json /durability/reconstructible/offCluster/egress[]/port is never present in a parse case's input
+platform-intent.schema.json /durability/reconstructible/offCluster/recipient is never present in a parse case's input
+platform-intent.schema.json /durability/reconstructible/retain is never present in a parse case's input
+platform-intent.schema.json /durability/reconstructible/schedule is never present in a parse case's input
+platform-intent.schema.json /durability/recoverable/offCluster is never present in a parse case's input
+platform-intent.schema.json /durability/recoverable/offCluster/credential is never present in a parse case's input
+platform-intent.schema.json /durability/recoverable/offCluster/destination is never present in a parse case's input
+platform-intent.schema.json /durability/recoverable/offCluster/egress is never present in a parse case's input
+platform-intent.schema.json /durability/recoverable/offCluster/egress[]/cidr is never present in a parse case's input
+platform-intent.schema.json /durability/recoverable/offCluster/egress[]/port is never present in a parse case's input
+platform-intent.schema.json /durability/recoverable/offCluster/recipient is never present in a parse case's input
+platform-intent.schema.json /engines/files/catalog is never present in a parse case's input
+platform-intent.schema.json /engines/files/catalogSurface is never present in a parse case's input
+platform-intent.schema.json /engines/files/move is never present in a parse case's input
+platform-intent.schema.json /engines/files/move/breaksOn is never present in a parse case's input
+platform-intent.schema.json /engines/files/move/image is never present in a parse case's input
+platform-intent.schema.json /engines/files/move/reverse is never present in a parse case's input
+platform-intent.schema.json /engines/files/surface is never present in a parse case's input
+platform-intent.schema.json /engines/mongo/catalog is never present in a parse case's input
+platform-intent.schema.json /engines/mongo/catalogSurface is never present in a parse case's input
+platform-intent.schema.json /engines/mongo/move is never present in a parse case's input
+platform-intent.schema.json /engines/mongo/move/breaksOn is never present in a parse case's input
+platform-intent.schema.json /engines/mongo/move/image is never present in a parse case's input
+platform-intent.schema.json /engines/mongo/move/reverse is never present in a parse case's input
+platform-intent.schema.json /engines/postgres/catalogSurface is never present in a parse case's input
+platform-intent.schema.json /engines/rabbitmq/catalog is never present in a parse case's input
+platform-intent.schema.json /engines/rabbitmq/catalogSurface is never present in a parse case's input
+platform-intent.schema.json /engines/s3/move is never present in a parse case's input
+platform-intent.schema.json /engines/s3/move/breaksOn is never present in a parse case's input
+platform-intent.schema.json /engines/s3/move/image is never present in a parse case's input
+platform-intent.schema.json /engines/s3/move/reverse is never present in a parse case's input
+platform-intent.schema.json /engines/s3/surface is never present in a parse case's input
+platform-intent.schema.json /engines/valkey/catalog is never present in a parse case's input
+platform-intent.schema.json /engines/valkey/catalogSurface is never present in a parse case's input
+project-intent.schema.json /applications[]/assets[]/mountAt is never present in a parse case's input
+project-intent.schema.json /applications[]/dependsOn[]/buckets is never present in a parse case's input
+project-intent.schema.json /applications[]/dependsOn[]/credentials is never present in a parse case's input
+project-intent.schema.json /applications[]/dependsOn[]/credentials/delivery is never present in a parse case's input
+project-intent.schema.json /applications[]/dependsOn[]/credentials/fileMode is never present in a parse case's input
+project-intent.schema.json /applications[]/dependsOn[]/credentials/mountAt is never present in a parse case's input
+project-intent.schema.json /applications[]/dependsOn[]/credentials/rotation is never present in a parse case's input
+project-intent.schema.json /applications[]/dependsOn[]/credentials/rotation/maxAge is never present in a parse case's input
+project-intent.schema.json /applications[]/dependsOn[]/credentials/rotation/tolerates is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/arch is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/capabilities is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/cpu is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/disk is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/disk/media is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/gpu is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/gpu/class is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/gpu/memory is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/gpu/model is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/gpu/vendor is never present in a parse case's input
+project-intent.schema.json /applications[]/placement/memory is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/dependsOn[]/credentials/rotation/maxAge is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/dependsOn[]/required is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/secrets[]/keys[]/generate is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/secrets[]/keys[]/generate/adopt is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/secrets[]/keys[]/generate/bytes is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/secrets[]/keys[]/generate/encoding is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/secrets[]/role is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/spawns[]/dependsOn[]/buckets is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/spawns[]/dependsOn[]/credentials is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/spawns[]/dependsOn[]/credentials/delivery is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/spawns[]/dependsOn[]/credentials/fileMode is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/spawns[]/dependsOn[]/credentials/mountAt is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/spawns[]/dependsOn[]/credentials/rotation is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/spawns[]/dependsOn[]/credentials/rotation/maxAge is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/spawns[]/dependsOn[]/credentials/rotation/tolerates is never present in a parse case's input
+project-intent.schema.json /applications[]/processes[]/spawns[]/dependsOn[]/required is never present in a parse case's input
+project-intent.schema.json /applications[]/secrets[]/engine is never present in a parse case's input
+project-intent.schema.json /applications[]/secrets[]/key is never present in a parse case's input
+project-intent.schema.json /applications[]/secrets[]/keys[]/generate/adopt is never present in a parse case's input
+project-intent.schema.json /applications[]/secrets[]/keys[]/optional is never present in a parse case's input
+project-intent.schema.json /applications[]/secrets[]/operations is never present in a parse case's input
+project-intent.schema.json /applications[]/secrets[]/role is never present in a parse case's input
+project-intent.schema.json /applications[]/secrets[]/rotation/maxAge is never present in a parse case's input
+project-intent.schema.json /assets[]/seedAt is never present in a parse case's input
+project-intent.schema.json /dependsOn[]/buckets is never present in a parse case's input
+project-intent.schema.json /dependsOn[]/credentials is never present in a parse case's input
+project-intent.schema.json /dependsOn[]/credentials/delivery is never present in a parse case's input
+project-intent.schema.json /dependsOn[]/credentials/fileMode is never present in a parse case's input
+project-intent.schema.json /dependsOn[]/credentials/mountAt is never present in a parse case's input
+project-intent.schema.json /dependsOn[]/credentials/rotation is never present in a parse case's input
+project-intent.schema.json /dependsOn[]/credentials/rotation/maxAge is never present in a parse case's input
+project-intent.schema.json /dependsOn[]/credentials/rotation/tolerates is never present in a parse case's input
+project-intent.schema.json /placement/arch is never present in a parse case's input
+project-intent.schema.json /placement/capabilities is never present in a parse case's input
+project-intent.schema.json /placement/cpu is never present in a parse case's input
+project-intent.schema.json /placement/disk is never present in a parse case's input
+project-intent.schema.json /placement/disk/media is never present in a parse case's input
+project-intent.schema.json /placement/gpu is never present in a parse case's input
+project-intent.schema.json /placement/gpu/class is never present in a parse case's input
+project-intent.schema.json /placement/gpu/memory is never present in a parse case's input
+project-intent.schema.json /placement/gpu/model is never present in a parse case's input
+project-intent.schema.json /placement/gpu/vendor is never present in a parse case's input
+project-intent.schema.json /placement/memory is never present in a parse case's input
+project-intent.schema.json /secrets[]/engine is never present in a parse case's input
+project-intent.schema.json /secrets[]/fileMode is never present in a parse case's input
+project-intent.schema.json /secrets[]/key is never present in a parse case's input
+project-intent.schema.json /secrets[]/keys[]/generate is never present in a parse case's input
+project-intent.schema.json /secrets[]/keys[]/generate/adopt is never present in a parse case's input
+project-intent.schema.json /secrets[]/keys[]/generate/bytes is never present in a parse case's input
+project-intent.schema.json /secrets[]/keys[]/generate/encoding is never present in a parse case's input
+project-intent.schema.json /secrets[]/keys[]/name is never present in a parse case's input
+project-intent.schema.json /secrets[]/keys[]/optional is never present in a parse case's input
+project-intent.schema.json /secrets[]/mountAt is never present in a parse case's input
+project-intent.schema.json /secrets[]/operations is never present in a parse case's input
+project-intent.schema.json /secrets[]/role is never present in a parse case's input
+project-intent.schema.json /secrets[]/rotation/maxAge is never present in a parse case's input
+project-intent.schema.json /writablePaths[]/memory is never present in a parse case's input
+project-intent.schema.json /writablePaths[]/path is never present in a parse case's input

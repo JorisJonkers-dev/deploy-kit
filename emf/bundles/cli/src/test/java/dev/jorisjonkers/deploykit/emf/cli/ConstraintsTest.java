@@ -21,17 +21,14 @@ class ConstraintsTest {
             owner: joris
             applications:
               - id: unwired
-                observability:
-                  alertClass: page
                 processes:
                   - name: unwired-worker
-                    lifecycle: application
+                    lifecycle: scheduled
                     image: unwired-worker
                     runtime: node
                     placement:
                       memory: 128Mi
                       cpu: 25m
-                    cutover: continuous
             """;
 
     private static Path file(Path directory, String text) throws IOException {
@@ -47,10 +44,10 @@ class ConstraintsTest {
         assertThat(parsed.ok()).isFalse();
         assertThat(parsed.intent()).isEmpty();
         assertThat(parsed.diagnostics()).singleElement().satisfies(diagnostic -> {
-            assertThat(diagnostic.code()).isEqualTo("E_ALERT_CLASS_WITHOUT_SIGNAL");
+            assertThat(diagnostic.code()).isEqualTo("E_SCHEDULE_MISSING");
             assertThat(diagnostic.document()).isEqualTo("unwired.project.yml");
-            assertThat(diagnostic.path()).isEqualTo("/applications/0/observability");
-            assertThat(diagnostic.message()).contains("E_ALERT_CLASS_WITHOUT_SIGNAL");
+            assertThat(diagnostic.path()).isEqualTo("/applications/0/processes/0");
+            assertThat(diagnostic.message()).contains("E_SCHEDULE_MISSING");
         });
     }
 
@@ -63,7 +60,6 @@ class ConstraintsTest {
             applications:
               - id: wired
                 observability:
-                  alertClass: page
                   scrape:
                     process: wired-worker
                     surface: http

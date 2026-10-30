@@ -1,0 +1,18 @@
+ControllerKind.statefulSet is never used in a render case's input
+GeneratedKeysFile is never instantiated in a render case's input
+GeneratedKeysFile is never instantiated in a render case's input (render.mtl dispatches on it)
+GeneratedKeysFile.adapter is never set in a render case's input
+GeneratedKeysFile.keys is never set in a render case's input
+GeneratedKeysFile.path is never set in a render case's input
+IndexFile.namespace is never set in a render case's input
+ResolvedGeneratedKey is never instantiated in a render case's input
+ResolvedGeneratedKey.adoptKey is never set in a render case's input
+ResolvedGeneratedKey.adoptPath is never set in a render case's input
+ResolvedGeneratedKey.bytes is never set in a render case's input
+ResolvedGeneratedKey.encoding is never set in a render case's input
+ResolvedGeneratedKey.key is never set in a render case's input
+ResolvedGeneratedKey.path is never set in a render case's input
+ResolvedGrant.generated is never set in a render case's input
+ResolvedPlacement.boundTo is never set in a render case's input
+ResolvedPlacement.from is never set in a render case's input
+WorkloadFile.disruptionBudget is never set in a render case's input
