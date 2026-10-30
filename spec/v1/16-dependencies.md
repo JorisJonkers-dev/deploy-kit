@@ -808,7 +808,10 @@ refuses to guess at. It declares what it asks, in `api`
 document admits its Application by name
 ([chapter 14](14-platform-intent.md#kubernetes-api-access),
 [0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)).
-An admitted declaration derives these, and nothing else derives any of them:
+An admitted declaration derives these, and so does a tier for its proxy, which
+reads its routes through the API: the platform names the proxy in the tier,
+and the tier fixes the rules ([chapter 14](14-platform-intent.md#tiers)).
+Nothing else derives any of them:
 
 | derived | from |
 |---|---|

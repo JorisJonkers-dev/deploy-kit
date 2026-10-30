@@ -1,8 +1,8 @@
 // What an acme tier derives on the Process of its proxy
 // (spec/v1/20-resolved-deployment.md#a-tiers-proxy): the claim that keeps the
 // ACME state, the DNS provider's token and the way out to the certificate
-// authority. The resolver itself is the edge proxy's. Nothing here is
-// authored.
+// authority; and on every tier, the API access its provider reads routes with.
+// The resolver itself is the edge proxy's. Nothing here is authored.
 import type {
   EffectiveApplication,
   EffectiveProcess,
@@ -14,6 +14,7 @@ import {
   ACME_MOUNT,
   ACME_SIZE,
   DNS_TOKEN_KEYS,
+  PROXY_API,
   tiersAnsweredBy,
 } from "../model/tier-proxy.ts";
 import { destinationOf } from "./secrets.ts";
@@ -22,7 +23,7 @@ type ResolvedGrant = NonNullable<ResolvedProcess["secrets"]>[number];
 type EnvEntry = NonNullable<ResolvedProcess["environment"]>[number];
 
 export interface ProxyDerivation {
-  /** The Process as resolution reads it: an acme tier's claim and egress added. */
+  /** The Process as resolution reads it: its API access, and an acme tier's claim and egress, added. */
   readonly process: EffectiveProcess;
   /** The grants the tier derives: an acme tier's DNS token. */
   readonly grants: readonly ResolvedGrant[];
@@ -44,8 +45,10 @@ export function deriveProxy(
     application,
     process.name,
   );
+  if (tiers.length === 0) return { process, grants: [], environment: [] };
+  const read = withProxyApi(process);
   const acme = tiers.some(({ certificates }) => certificates === "acme");
-  if (!acme) return { process, grants: [], environment: [] };
+  if (!acme) return { process: read, grants: [], environment: [] };
   // Every acme tier has the platform's account, or E_NO_ACME_POLICY refused it.
   const account = context.platform.acme as NonNullable<
     PlatformIntentDocument["acme"]
@@ -53,7 +56,7 @@ export function deriveProxy(
   const key = DNS_TOKEN_KEYS[account.dnsProvider];
   return {
     process: {
-      ...process,
+      ...read,
       volumes: [
         // A Process with no volumes and one with an empty list hold none alike.
         // Stryker disable next-line ArrayDeclaration
@@ -85,5 +88,24 @@ export function deriveProxy(
       },
     ],
     environment: [{ name: key, secret: { path: account.token, key } }],
+  };
+}
+
+/**
+ * A tier's proxy reads its routes through the Kubernetes API, so it holds the
+ * access its provider needs, beside any it declares itself.
+ */
+function withProxyApi(process: EffectiveProcess): EffectiveProcess {
+  const rules = PROXY_API.rules.map(({ group, objects, verbs }) => ({
+    group,
+    objects: [...objects],
+    verbs: [...verbs],
+  }));
+  return {
+    ...process,
+    api: {
+      reason: process.api?.reason ?? PROXY_API.reason,
+      rules: [...rules, ...(process.api?.rules ?? [])],
+    },
   };
 }

@@ -121,3 +121,42 @@ export const tiersAnsweredBy = (
   tiersProxiedBy(platform, project, application.id).filter(
     ({ listener }) => proxyProcessOf(application, listener) === process,
   );
+
+/**
+ * What a tier's proxy asks of the Kubernetes API: its provider reads every
+ * route, middleware and TLS object, and the Services, endpoints and Secrets
+ * they name, in every namespace (spec/v1/14-platform-intent.md#tiers).
+ */
+export const PROXY_API = {
+  reason:
+    "the proxy reads every route of its tier and what each names, cluster-wide",
+  rules: [
+    {
+      group: "core",
+      objects: ["services", "secrets", "nodes", "configmaps", "namespaces"],
+      verbs: ["get", "list", "watch"],
+    },
+    { group: "core", objects: ["pods"], verbs: ["get"] },
+    {
+      group: "discovery.k8s.io",
+      objects: ["endpointslices"],
+      verbs: ["get", "list", "watch"],
+    },
+    {
+      group: "traefik.io",
+      objects: [
+        "ingressroutes",
+        "ingressroutetcps",
+        "ingressrouteudps",
+        "middlewares",
+        "middlewaretcps",
+        "serverstransports",
+        "serverstransporttcps",
+        "tlsoptions",
+        "tlsstores",
+        "traefikservices",
+      ],
+      verbs: ["get", "list", "watch"],
+    },
+  ],
+} as const;

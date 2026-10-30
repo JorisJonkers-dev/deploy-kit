@@ -3794,6 +3794,66 @@ describe("a tier's proxy", () => {
   });
 });
 
+// REQ-161 (docs/requirements.md): a tier's proxy reads its routes through the
+// Kubernetes API, so it holds the access its provider needs without declaring
+// any: a ClusterRole bound to its ServiceAccount, and a mounted token.
+describe("a tier's proxy's API access", () => {
+  const edge = () => asTree(artifact(render(undefined, ["edge"]), "edge"));
+  const objectsOf = (path: string) =>
+    parseAllDocuments(edge()[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+
+  it("binds the proxy of a tier that declares no api to a role that reads every route", () => {
+    const [role, binding] = objectsOf("apps/edge/traefik-lan/rbac.yaml") as {
+      kind: string;
+      rules?: { apiGroups: string[]; resources: string[]; verbs: string[] }[];
+      subjects?: unknown[];
+    }[];
+    expect(role?.kind).toBe("ClusterRole");
+    const routes = role?.rules?.find(
+      ({ apiGroups }) => apiGroups[0] === "traefik.io",
+    );
+    expect(routes?.resources).toEqual(
+      expect.arrayContaining(["ingressroutes", "tlsstores"]),
+    );
+    expect(routes?.verbs).toStrictEqual(["get", "list", "watch"]);
+    expect(binding?.subjects).toStrictEqual([
+      { kind: "ServiceAccount", name: "traefik-lan", namespace: "edge-system" },
+    ]);
+  });
+
+  it("mounts the proxy's token, so its provider can authenticate", () => {
+    const [workload] = objectsOf("apps/edge/traefik-lan/workload.yaml") as {
+      spec: { template: { spec: { automountServiceAccountToken: boolean } } };
+    }[];
+    expect(workload?.spec.template.spec.automountServiceAccountToken).toBe(
+      true,
+    );
+  });
+
+  it("holds the rules the proxy declares itself beside the derived ones", () => {
+    const declared = render(
+      {
+        "edge/edge.project.yml": (text) =>
+          text.replace(
+            "        cutover: continuous\n\n  - id: traefik-lan",
+            "        cutover: continuous\n        api:\n          reason: it reads its plugins\n          rules:\n            - { group: core, objects: [persistentvolumes], verbs: [get] }\n\n  - id: traefik-lan",
+          ),
+        "platform/platform.intent.yml": (text) =>
+          text.replace("holders: [", "holders: [edge/traefik-public, "),
+      },
+      ["edge"],
+    );
+    const rbac =
+      asTree(artifact(declared, "edge"))[
+        "apps/edge/traefik-public/rbac.yaml"
+      ] ?? "";
+    expect(rbac).toContain("persistentvolumes");
+    expect(rbac).toContain("ingressroutes");
+  });
+});
+
 // REQ-100 (docs/requirements.md): a route takes its TLS from its tier: on an
 // acme tier the resolver named for the tier, on a tls tier that issues none the
 // certificate the proxy already holds, and on a plain tier none at all.
