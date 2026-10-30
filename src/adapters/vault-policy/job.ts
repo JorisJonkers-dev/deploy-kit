@@ -18,6 +18,7 @@ import {
   nodeAffinityOf,
   RECREATED,
   UNTIL_SUCCEEDED,
+  WITHIN_THE_HOUR,
 } from "../shared/placement.ts";
 import { ADAPTER } from "./render.ts";
 
@@ -155,7 +156,7 @@ export function renderPolicyJob(
       concurrencyPolicy: "Forbid",
       jobTemplate: {
         metadata: { labels },
-        spec: { backoffLimit: UNTIL_SUCCEEDED, template: pod },
+        spec: { ...WITHIN_THE_HOUR, template: pod },
       },
     },
   };

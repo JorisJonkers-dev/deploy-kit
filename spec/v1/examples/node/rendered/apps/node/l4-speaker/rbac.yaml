@@ -60,6 +60,19 @@ rules:
       - delete
       - update
       - patch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - configurationstates
+      - configurationstates/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -79,6 +92,52 @@ subjects:
     namespace: node-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: l4-speaker
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/name: l4-speaker
+    app.kubernetes.io/part-of: node
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - metallb.io
+    resources:
+      - servicebgpstatuses
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: l4-speaker
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/name: l4-speaker
+    app.kubernetes.io/part-of: node
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: l4-speaker
+subjects:
+  - kind: ServiceAccount
+    name: l4-speaker
+    namespace: node-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: node:l4-controller
@@ -92,6 +151,7 @@ rules:
     resources:
       - services
       - namespaces
+      - nodes
     verbs:
       - get
       - list
@@ -128,6 +188,19 @@ rules:
       - ipaddresspools/status
     verbs:
       - update
+  - apiGroups:
+      - metallb.io
+    resources:
+      - configurationstates
+      - configurationstates/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -141,6 +214,44 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: node:l4-controller
+subjects:
+  - kind: ServiceAccount
+    name: l4-controller
+    namespace: node-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: l4-controller
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/name: l4-controller
+    app.kubernetes.io/part-of: node
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: l4-controller
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/name: l4-controller
+    app.kubernetes.io/part-of: node
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: l4-controller
 subjects:
   - kind: ServiceAccount
     name: l4-controller
