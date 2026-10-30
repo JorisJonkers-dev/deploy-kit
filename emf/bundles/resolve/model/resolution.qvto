@@ -327,6 +327,22 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 		}
 	endif;
 	releaseGate := if gated(self) then self.map gate() else null endif;
+	-- Each dashboard file as the set read it, in its Project's folder, for the Grafana
+	-- the Platform document names (spec/v1/10-project-intent.md#dashboards).
+	if self.dashboards->notEmpty() and estate.telemetry <> null and estate.telemetry.dashboards <> null then
+		dashboards := object ResolvedDashboards {
+			folder := prj.project;
+			instance := estate.telemetry.dashboards.instance->sortedBy(i | i.key)
+				->collect(i | object KeyValue { key := i.key; value := i.value; });
+			datasource := estate.telemetry.dashboards.datasource;
+			files := self.dashboards->collect(d | let read : String = fileOf(prj.project, d._from) in
+				object ResolvedDashboard {
+					name := self.id + '-' + uidOf(read);
+					content := read;
+					inputs := inputsOf(read);
+				});
+		}
+	endif;
 	if managed(self) then migration := self.map migrationOf(prj) endif;
 	-- The operator syncs from the Secret Store wherever a grant or a backup's
 	-- off-cluster or peer credential is delivered anywhere but to the Process itself,
@@ -730,7 +746,14 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			failures := ceiling(seconds(self.startupBudget) / STARTUP_PERIOD);
 		}
 	endif;
-	surfaces := self.provides->collect(s | object ResolvedSurface { name := s.key; port := s.value; });
+	-- A surface exposed on a node's own address listens on the host's port too.
+	surfaces := self.provides->collect(s | object ResolvedSurface {
+		name := s.key;
+		port := s.value;
+		hostPort := l4Of(self)->select(e | e.surface = s and addressOf(e.address).oclIsKindOf(NodeAddress))
+			->collect(e | e.port)->any(true);
+	});
+	l4Services := l4ServicesOf(self);
 	placement := object ResolvedPlacement {
 		eligibleNodes := contract.nodes->select(n | eligible(self, n))->collect(n | n.name);
 		-- A claim the snapshot records as bound holds the Process to that node.
@@ -893,7 +916,9 @@ query Grant::resolvedFor(p : PI::Process) : ResolvedGrant = object ResolvedGrant
 	if self.fileMode <> null then fileMode := self.fileMode endif;
 	-- A synced value restarts its consumer once the operator syncs it, whatever the rotation
 	-- tolerates; read by the Process itself, a rotation restarts it, and a reload restarts nothing.
-	if self.delivery <> Delivery::selfDelivery or self.rotation.tolerates = Tolerance::restart then
+	-- A scheduled Process reads its values afresh on every run, so nothing restarts it.
+	if p.lifecycle <> Lifecycle::scheduled
+			and (self.delivery <> Delivery::selfDelivery or self.rotation.tolerates = Tolerance::restart) then
 		restartTargets := Sequence{p.name}
 	endif;
 };
@@ -1085,6 +1110,29 @@ query ForwardAuth::endpoint() : String =
 	'http://' + self.provider.id + '-' + self.surface + '.' + STABLE_NAMESPACE + '.svc.cluster.local:'
 		+ port.toString() + self.path;
 
+-- The content of a file the project names, read from beside it.
+query fileOf(project : String, source : String) : String =
+	let found : Sequence(AssetFile) =
+		assetFiles->select(f | f.project = project and f._from = source)->asSequence() in
+	if found->isEmpty() then unfiled(source).content else found->first().content endif;
+
+-- A dashboard's own uid: the top-level key of its JSON, as Grafana exports it.
+query uidOf(content : String) : String =
+	let at : Integer = content.indexOf('\n  "uid": "') in
+	if at <= 0 then null else
+	let rest : String = content.substring(at + 11, content.size()) in
+	rest.substring(1, rest.indexOf('"') - 1) endif;
+
+-- The data source inputs a vendored dashboard declares, by name.
+query inputsOf(content : String) : Sequence(String) =
+	let at : Integer = content.indexOf('"__inputs"') in
+	if at <= 0 then Sequence{} else
+	let rest : String = content.substring(at, content.size()) in
+	let segment : String = rest.substring(1, rest.indexOf(']')) in
+	segment.tokenize('}')->select(e | e.indexOf('"type": "datasource"') > 0 and e.indexOf('"name": "') > 0)
+		->collect(e | let named : String = e.substring(e.indexOf('"name": "') + 9, e.size()) in
+			named.substring(1, named.indexOf('"') - 1))->asSequence() endif;
+
 query unfiled(source : String) : AssetFile {
 	assert fatal (false) with log(source + ': an Asset whose file is not beside its project');
 	return null;
@@ -1251,7 +1299,37 @@ query eligible(p : PI::Process, n : Node) : Boolean =
 	and (p.placement.disk = null or n.disks->exists(d |
 		p.placement.disk.media->exists(m | m.spelling() = d.media)))
 	-- A library the Process mounts holds it to the library's node.
-	and p.libraries->forAll(m | libraryOf(m._library) <> null and libraryOf(m._library).node = n.name);
+	and p.libraries->forAll(m | libraryOf(m._library) <> null and libraryOf(m._library).node = n.name)
+	-- Its L4 exposures hold it to the sites of its pools and the nodes of its node addresses.
+	and l4Of(p)->forAll(e | let a : L4AddressDeclaration = addressOf(e.address) in
+		if a.oclIsKindOf(PoolAddress) then a.oclAsType(PoolAddress).site = n.site
+		else a.oclAsType(NodeAddress).node = n.name endif);
+
+-- The L4 exposures of the Process's Application that reach it.
+query l4Of(p : PI::Process) : Sequence(L4Exposure) =
+	p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication).l4Exposure
+		->select(e | e.process = p)->asSequence();
+
+-- The L4 Address the Platform document names.
+query addressOf(name : String) : L4AddressDeclaration =
+	estate.l4Addresses->select(a | a.key = name)->any(true).value;
+
+-- A Process's Services on the pools it is exposed on, one per address, each port by port
+-- (spec/v1/16-dependencies.md#l4-exposure).
+query l4ServicesOf(p : PI::Process) : Sequence(ResolvedL4Service) =
+	let pooled : Sequence(L4Exposure) = l4Of(p)->select(e | addressOf(e.address).oclIsKindOf(PoolAddress)) in
+	pooled.address->asSet()->sortedBy(a | a)->collect(address | object ResolvedL4Service {
+		name := p.name + '-' + address;
+		pool := address;
+		ports := pooled->select(e | e.address = address)
+			->sortedBy(e | e.port * 2 + (if e.protocol = L4Protocol::tcp then 0 else 1 endif))
+			->collect(e | object L4Port {
+				name := e.protocol.toString() + '-' + e.port.toString();
+				port := e.port;
+				protocol := e.protocol.toString().toUpper();
+				targetPort := e.surface.value;
+			});
+	})->asSequence();
 
 -- The VPN container beside an attached Process (spec/v1/20-resolved-deployment.md#the-vpn-attachment):
 -- the platform's image and quantities, its settings with the three values derived from the
@@ -1733,6 +1811,12 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				releaseGate := if gated(self) then self.resolveone(ResolvedApplication).releaseGate.json() else null endif;
 				externalChecks := self.externalChecks(prj);
 			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if self.resolveone(ResolvedApplication).dashboards = null then Sequence{} else
+			Sequence{object DashboardFile {
+				path := root + 'dashboards.yaml';
+				adapter := AdapterName::grafana;
+				application := self.resolveone(ResolvedApplication);
+			}.oclAsType(Deliverable)} endif)
 		->union(if backedUp->notEmpty() then Sequence{object BackupFile {
 				path := root + 'backup.yaml';
 				adapter := AdapterName::kubernetes;
@@ -1841,10 +1925,13 @@ query backupOf(p : ResolvedProcess) : BackupPlan =
 
 -- The controller every serving Process runs under, and the strategy from
 -- `cutover`; the templates spell both.
-query controllerOf(p : PI::Process) : ControllerKind = ControllerKind::deployment;
+-- A scheduled Process runs from a CronJob, which has no rollout strategy.
+query controllerOf(p : PI::Process) : ControllerKind =
+	if p.lifecycle = Lifecycle::scheduled then ControllerKind::cronJob else ControllerKind::deployment endif;
 
 query strategyOf(p : PI::Process) : String =
-	if p.cutover = PI::Cutover::interrupted then 'Recreate' else 'RollingUpdate' endif;
+	if p.lifecycle = Lifecycle::scheduled then 'none'
+	else if p.cutover = PI::Cutover::interrupted then 'Recreate' else 'RollingUpdate' endif endif;
 
 -- Who may reach a Process (spec/v1/16-dependencies.md#the-derived-allow-set):
 -- the proxy of the tier each route's audience reaches, the metrics stack where
@@ -1867,7 +1954,15 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 	->union(if switchesBlueGreen(app, p) and readinessOf(p) <> null and estate.delivery <> null
 			and p.provides->notEmpty()
 		then named(peersOf(estate.delivery.gate.id, p.provides->first().value, 'release-gate'))
-		else Sequence{} endif);
+		else Sequence{} endif)
+	-- A port exposed on an L4 Address admits any client at the Process's own port.
+	->union(l4Of(p)->collect(e | Tuple{port = e.surface.value, udp = e.protocol = L4Protocol::udp})
+		->asOrderedSet()->collect(t | object PolicyPeer {
+			rule := 'l4';
+			cidr := '0.0.0.0/0';
+			port := t.port;
+			if t.udp then protocol := 'UDP' endif;
+		})->asSequence());
 
 -- Each peer a policy names, once, in the order first reached.
 query named(peers : Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)))
@@ -2212,6 +2307,16 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 			Tuple{k = 'credential', v = self.migration.credential.json()},
 			Tuple{k = 'egress', v = arr(self.migration.egress->collect(x | x.json()))}}) endif},
 		Tuple{k = 'secretStore', v = opt(self.secretStore)},
+		Tuple{k = 'dashboards', v = if self.dashboards = null then null else obj(Sequence{
+			Tuple{k = 'folder', v = str(self.dashboards.folder)},
+			Tuple{k = 'datasource', v = str(self.dashboards.datasource)},
+			Tuple{k = 'instance', v = obj(self.dashboards.instance->collect(i | Tuple{k = i.key, v = str(i.value)}))},
+			Tuple{k = 'files', v = arr(src.dashboards->collect(d | let content : String = fileOf(prj.project, d._from) in
+				obj(Sequence{
+					Tuple{k = 'uid', v = str(uidOf(content))},
+					Tuple{k = 'from', v = str(d._from)},
+					Tuple{k = 'content', v = str(content)},
+					Tuple{k = 'inputs', v = arr(inputsOf(content)->collect(x | str(x)))}})))}}) endif},
 		Tuple{k = 'exposure', v = if self.exposure->isEmpty() then null
 			else arr(self.exposure->collect(e | e.json())) endif},
 		Tuple{k = 'processes', v = arr(self.processes->collect(p | p.json()))}

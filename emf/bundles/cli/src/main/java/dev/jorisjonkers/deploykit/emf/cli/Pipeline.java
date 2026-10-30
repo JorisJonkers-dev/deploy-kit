@@ -4,7 +4,10 @@ import com.google.inject.Injector;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.AssetFile;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsPackage;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.AlertRules;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Asset;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.AssetDeclaration;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Dashboard;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
@@ -208,15 +211,22 @@ public final class Pipeline {
      * with E_ASSET_NOT_FOUND.
      */
     private static List<AssetFile> assetFiles(Project project, Path file) throws IOException {
+        // An Asset, mounted or seeded, and every dashboard and alert rules file the project names
+        // are read from beside it; only an Asset's absence is refused before resolution.
+        List<String> named = new ArrayList<>();
+        EcoreUtil2.getAllContentsOfType(project, AssetDeclaration.class).forEach(asset -> named.add(asset.getFrom()));
+        EcoreUtil2.getAllContentsOfType(project, Dashboard.class).forEach(board -> named.add(board.getFrom()));
+        EcoreUtil2.getAllContentsOfType(project, AlertRules.class).forEach(rules -> named.add(rules.getFrom()));
         List<AssetFile> read = new ArrayList<>();
-        for (Asset asset : EcoreUtil2.getAllContentsOfType(project, Asset.class)) {
-            AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
-            assetFile.setProject(project.getProject());
-            assetFile.setFrom(asset.getFrom());
-            // check refused an Asset whose file is not beside the project.
-            assetFile.setContent(
-                    Files.readString(besideProject(file, asset.getFrom()).orElseThrow(), StandardCharsets.UTF_8));
-            read.add(assetFile);
+        for (String from : named) {
+            Optional<Path> beside = besideProject(file, from);
+            if (beside.isPresent()) {
+                AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
+                assetFile.setProject(project.getProject());
+                assetFile.setFrom(from);
+                assetFile.setContent(Files.readString(beside.get(), StandardCharsets.UTF_8));
+                read.add(assetFile);
+            }
         }
         return read;
     }
