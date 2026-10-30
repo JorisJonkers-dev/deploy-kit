@@ -214,4 +214,38 @@ class BlockTokenSourceTest {
     void aFlowSequenceIsAnEmptyBlockRatherThanAnItem() {
         assertThat(blocks("a: []\n")).containsExactly("a", ":", "BEGIN", "END");
     }
+
+    @Test
+    void aValueThatClosesAFlowOrOpensAnItemIsNoPlainScalar() {
+        assertThat(blocks("a: { b: }\n")).containsExactly("a", ":", "BEGIN", "b", ":", "END");
+        assertThat(blocks("a: - b c\n")).containsExactly("a", ":", "-", "BEGIN", "b", "c", "END");
+    }
+
+    @Test
+    void aPlainScalarOfSeveralWordsSitsWhereItsFirstWordSatAndCoversItsSourceOnce() {
+        String source = "a: one two  three # c\n";
+        CommonToken scalar = (CommonToken) tokens(source).stream()
+                .filter(token -> token.getText().equals("one two  three"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(scalar.getLine()).isEqualTo(1);
+        assertThat(scalar.getCharPositionInLine()).isEqualTo(3);
+        assertThat(scalar.getStartIndex()).isEqualTo(3);
+        assertThat(scalar.getStopIndex()).isEqualTo(16);
+        int next = 0;
+        for (Token token : tokens(source)) {
+            CommonToken common = (CommonToken) token;
+            if (!token.getText().isEmpty()) {
+                assertThat(common.getStartIndex()).as(token.getText()).isEqualTo(next);
+                next = common.getStopIndex() + 1;
+            }
+        }
+        assertThat(next).isEqualTo(source.length());
+    }
+
+    @Test
+    void aMarkerWithNothingUnderItIsOneLineBreak() {
+        assertThat(BlockTokenSource.valueOf("|")).isEqualTo("\n");
+    }
 }

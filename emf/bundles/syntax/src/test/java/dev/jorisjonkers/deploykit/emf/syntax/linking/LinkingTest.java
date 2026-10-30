@@ -308,4 +308,77 @@ class LinkingTest {
                 .containsExactly("E_UNKNOWN_API_HOLDER no project file declares the Application links/gone the platform"
                         + " admits to hold Kubernetes API access");
     }
+
+    /** Each name that links to nothing, by its code, its message and where below its owner it sits. */
+    private static List<String> refused(Resource resource) {
+        return resource.getErrors().stream()
+                .map(error -> {
+                    XtextLinkingDiagnostic linking = (XtextLinkingDiagnostic) error;
+                    return linking.getCode() + " " + error.getMessage() + " at '" + String.join("", linking.getData())
+                            + "'";
+                })
+                .toList();
+    }
+
+    @Test
+    void theSignInProviderIsAnApplicationAProjectFileDeclares() throws IOException {
+        assertThat(
+                        refused(
+                                platform(
+                                        "links/elsewhere",
+                                        "signIn: { issuer: \"https://id.jorisjonkers.dev\", provider: links/gone, contract: \"1.2\" }\n")))
+                .containsExactly(
+                        "E_UNKNOWN_SIGN_IN_PROVIDER no project file declares the sign-in provider links/gone at ''");
+    }
+
+    @Test
+    void anApiHolderIsAnApplicationAProjectFileDeclares() throws IOException {
+        assertThat(refused(platform(
+                        "links/elsewhere",
+                        "apiAccess:\n  holders: [links/elsewhere]\n  namespaceHolders: [links/gone]\n"
+                                + "  server:\n    - { cidr: 10.43.0.1/32, port: 443 }\n")))
+                .containsExactly("E_UNKNOWN_API_HOLDER no project file declares the Application links/gone"
+                        + " the platform admits to hold Kubernetes API access at ''");
+    }
+
+    @Test
+    void aMonitoringApplicationLinksToNothingOnlyUnderAProjectTheSetComposes() throws IOException {
+        assertThat(refused(platform(
+                        "links/elsewhere",
+                        "monitoring:\n  grafana: links/gone\n  prometheus: links/elsewhere\n  alertmanager: other/gone\n"
+                                + "  receivers:\n    - name: discord\n      discord:\n"
+                                + "        webhook: {path: secret/data/platform/discord, key: url}\n"
+                                + "  routes:\n    - {severity: critical, receiver: discord, repeat: 4h}\n")))
+                .containsExactly("E_UNKNOWN_MONITORING_APPLICATION no project file declares the Application links/gone"
+                        + " the monitoring stack's grafana names at '/grafana'");
+    }
+
+    @Test
+    void aCriticalApplicationIsRefusedAtItsPlaceInTheList() throws IOException {
+        String priority = "priority: { data: { name: platform-data, value: 1000000 },"
+                + " critical: { name: platform-critical-app, value: 100000 }, criticalApplications: CRITICAL }\n";
+
+        assertThat(refused(platform("links/elsewhere", priority.replace("CRITICAL", "[links/elsewhere, links/gone]"))))
+                .containsExactly("E_UNKNOWN_CRITICAL_APPLICATION no project file declares the Application links/gone"
+                        + " the platform names critical at '/criticalApplications/1'");
+        assertThat(refused(platform("links/elsewhere", priority.replace("CRITICAL", "[links/gone, links/elsewhere]"))))
+                .containsExactly("E_UNKNOWN_CRITICAL_APPLICATION no project file declares the Application links/gone"
+                        + " the platform names critical at '/criticalApplications/0'");
+        assertThat(refused(platform(
+                        "links/elsewhere",
+                        priority.replace("CRITICAL", "[\"links/elsewhere\", \"links/gone\", \"links/elsewhere\"]"))))
+                .containsExactly("E_UNKNOWN_CRITICAL_APPLICATION no project file declares the Application links/gone"
+                        + " the platform names critical at '/criticalApplications/2'");
+        // A name under no Project at all is under none the set composes.
+        assertThat(refused(platform("links/elsewhere", priority.replace("CRITICAL", "[gone]"))))
+                .isEmpty();
+    }
+
+    @Test
+    void aForwardAuthProviderIsRefusedAtItsOwnBlock() throws IOException {
+        assertThat(refused(
+                        platform("links/elsewhere, forwardAuth: { provider: links/gone, surface: http, path: /gate }")))
+                .containsExactly("E_UNKNOWN_FORWARD_AUTH_PROVIDER no project file declares the Application links/gone"
+                        + " that answers the forward-auth surface at ''");
+    }
 }
