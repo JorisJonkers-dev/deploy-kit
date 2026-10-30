@@ -256,6 +256,18 @@ grammar, its terminals, block tokens and scalars included, and adds only its
 own rules. There is no inferred syntax metamodel and no mapping step between
 parsing and validation.
 
+A schema refusal is decided by a shape check, not by the parser's error. The
+check reads the grammar's own rules as data, which keys a mapping may hold, which
+it must, and what each value may be, over a plain reading of the YAML subset into
+a tree, and it runs on every authored document beside the Xtext parse. Where it
+finds a fault, its diagnostics replace the parser's; where it finds none, what
+the parser said stands. Xtext stops at its first error and recovers into more
+that point nowhere, while the production implementation names every offending
+key by its JSON pointer, so only a check that reads the whole file can report
+the same set of paths. The grammar stays the one statement of the schema: the
+check holds nothing the grammar says, only the two scalar limits it cannot, a
+rate limit's request count and period.
+
 A plain scalar holds no colon: the lexer cannot tell `sha256:6f1c` from a key
 without looking past the colon, so a value that carries one, a digest, a URL or
 a timestamp, is quoted in the authored files and in the pinned inputs alike: the

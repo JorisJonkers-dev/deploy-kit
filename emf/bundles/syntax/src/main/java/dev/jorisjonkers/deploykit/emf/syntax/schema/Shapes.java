@@ -7,11 +7,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.xtext.AbstractElement;
 import org.eclipse.xtext.AbstractRule;
 import org.eclipse.xtext.Alternatives;
 import org.eclipse.xtext.Assignment;
+import org.eclipse.xtext.CompoundElement;
 import org.eclipse.xtext.CrossReference;
 import org.eclipse.xtext.EnumLiteralDeclaration;
 import org.eclipse.xtext.EnumRule;
@@ -86,36 +89,27 @@ public final class Shapes {
     private void flatten(AbstractElement element, ParserRule rule, List<Form> out) {
         if (element instanceof Alternatives alternatives) {
             alternatives.getElements().forEach(e -> flatten(e, rule, out));
-        } else if (element instanceof RuleCall call
-                && call.getRule() instanceof ParserRule called
-                && !GrammarUtil.isDatatypeRule(called)) {
-            out.addAll(formsOf(called));
+        } else if (element instanceof RuleCall call) {
+            out.addAll(formsOf((ParserRule) call.getRule()));
         } else {
             Map<String, Entry> entries = new LinkedHashMap<>();
-            walk(element, false, entries);
+            walk(element, entries);
             Entry any = entries.isEmpty() ? anyKey(element) : null;
-            Keyword keyword = null;
-            if (entries.isEmpty() && any == null) {
-                keyword = firstKeyword(element);
-            }
-            boolean plain = entries.isEmpty() && any == null && keyword == null;
-            out.add(new Form(rule.getName(), keyword == null ? null : keyword.getValue(), plain, entries, any));
+            String literal = entries.isEmpty() && any == null ? firstKeyword(element) : null;
+            boolean plain = entries.isEmpty() && any == null && literal == null;
+            out.add(new Form(rule.getName(), literal, plain, entries, any));
         }
     }
 
-    private static Keyword firstKeyword(AbstractElement element) {
-        if (element instanceof Keyword k) {
-            return k;
-        }
-        if (element instanceof Group group) {
-            for (AbstractElement child : group.getElements()) {
-                Keyword k = firstKeyword(child);
-                if (k != null) {
-                    return k;
-                }
-            }
-        }
-        return null;
+    /** The keyword a form is made of, when it is one word: {@code 'self'}, {@code 'none'}. */
+    private static String firstKeyword(AbstractElement element) {
+        return Stream.concat(
+                        Stream.of((EObject) element),
+                        StreamSupport.stream(((Iterable<EObject>) element::eAllContents).spliterator(), false))
+                .filter(Keyword.class::isInstance)
+                .map(e -> ((Keyword) e).getValue())
+                .findFirst()
+                .orElse(null);
     }
 
     /** {@code key=Text ':' value=Port}: a mapping whose every key is data. */
@@ -123,9 +117,7 @@ public final class Shapes {
         if (element instanceof Group group) {
             List<AbstractElement> children = group.getElements();
             for (int i = 1; i < children.size(); i++) {
-                if (children.get(i) instanceof Keyword colon
-                        && colon.getValue().equals(":")
-                        && children.get(i - 1) instanceof Assignment) {
+                if (isColon(children.get(i))) {
                     return new Entry("*", true, children.subList(i + 1, children.size()));
                 }
             }
@@ -133,56 +125,42 @@ public final class Shapes {
         return null;
     }
 
+    private static boolean isColon(AbstractElement element) {
+        return element instanceof Keyword keyword && keyword.getValue().equals(":");
+    }
+
     private static boolean startsKey(List<AbstractElement> children, int i) {
-        return children.get(i) instanceof Keyword k
-                && !k.getValue().equals(":")
-                && i + 1 < children.size()
-                && children.get(i + 1) instanceof Keyword colon
-                && colon.getValue().equals(":");
+        return children.get(i) instanceof Keyword && i + 1 < children.size() && isColon(children.get(i + 1));
     }
 
-    private static boolean holdsKeys(AbstractElement element) {
-        if (element instanceof UnorderedGroup) {
-            return true;
-        }
-        if (element instanceof Group group) {
-            List<AbstractElement> children = group.getElements();
-            for (int i = 0; i < children.size(); i++) {
-                if (startsKey(children, i) || holdsKeys(children.get(i)) && !(children.get(i) instanceof Alternatives)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private void walk(AbstractElement element, boolean optional, Map<String, Entry> entries) {
+    /**
+     * The keys of a form, in the order written. A key is required unless the group it opens is
+     * {@code ?}; the grammar never nests an unordered group inside an optional one.
+     */
+    private void walk(AbstractElement element, Map<String, Entry> entries) {
         if (element instanceof UnorderedGroup group) {
-            boolean here = optional || "?".equals(group.getCardinality());
-            group.getElements().forEach(child -> walk(child, here, entries));
+            group.getElements().forEach(child -> walk(child, entries));
         } else if (element instanceof Group group) {
-            boolean here = optional || "?".equals(group.getCardinality());
+            boolean optional = "?".equals(group.getCardinality());
             List<AbstractElement> children = group.getElements();
             String key = null;
             List<AbstractElement> value = new ArrayList<>();
             for (int i = 0; i < children.size(); i++) {
                 AbstractElement child = children.get(i);
                 if (startsKey(children, i)) {
-                    close(key, here, value, entries);
+                    close(key, optional, value, entries);
                     key = ((Keyword) child).getValue();
                     value = new ArrayList<>();
                     i++;
-                } else if (key != null && holdsKeys(child)) {
-                    close(key, here, value, entries);
+                } else if (child instanceof UnorderedGroup) {
+                    close(key, optional, value, entries);
                     key = null;
-                    walk(child, here, entries);
+                    walk(child, entries);
                 } else if (key != null) {
                     value.add(child);
-                } else if (holdsKeys(child)) {
-                    walk(child, here, entries);
                 }
             }
-            close(key, here, value, entries);
+            close(key, optional, value, entries);
         }
     }
 
@@ -203,13 +181,15 @@ public final class Shapes {
     }
 
     private void scan(
-            AbstractElement element, boolean[] dash, List<AbstractRule> targets, List<String> literals, boolean assigned) {
+            AbstractElement element,
+            boolean[] dash,
+            List<AbstractRule> targets,
+            List<String> literals,
+            boolean assigned) {
         if (element instanceof Assignment assignment) {
             scan(assignment.getTerminal(), dash, targets, literals, true);
         } else if (element instanceof Keyword keyword) {
-            if (assigned) {
-                literals.add(keyword.getValue());
-            }
+            literals.add(keyword.getValue());
         } else if (element instanceof CrossReference) {
             targets.add(textRule());
         } else if (element instanceof RuleCall call) {
@@ -218,12 +198,8 @@ public final class Shapes {
             } else if ("DASH".equals(call.getRule().getName())) {
                 dash[0] = true;
             }
-        } else if (element instanceof Group group) {
-            group.getElements().forEach(e -> scan(e, dash, targets, literals, assigned));
-        } else if (element instanceof Alternatives alternatives) {
-            alternatives.getElements().forEach(e -> scan(e, dash, targets, literals, assigned));
-        } else if (element instanceof UnorderedGroup group) {
-            group.getElements().forEach(e -> scan(e, dash, targets, literals, assigned));
+        } else {
+            ((CompoundElement) element).getElements().forEach(e -> scan(e, dash, targets, literals, assigned));
         }
     }
 
@@ -274,7 +250,7 @@ public final class Shapes {
         }
         if (node.isScalar()) {
             for (Form form : shapes) {
-                if (form.plain() || node.text.equals(form.literal())) {
+                if (form.plain() || !node.quoted && node.text.equals(form.literal())) {
                     return;
                 }
             }
@@ -315,16 +291,14 @@ public final class Shapes {
             int before = out.size();
             value(pair.getValue(), entry.value(), child, out);
             Predicate<String> constraint = CONSTRAINTS.get(form.rule() + "." + pair.getKey());
-            if (out.size() == before
-                    && constraint != null
-                    && pair.getValue().isScalar()
-                    && !constraint.test(pair.getValue().text)) {
+            if (out.size() == before && constraint != null && !constraint.test(pair.getValue().text)) {
                 out.add(new Issue(child, "`" + pair.getKey() + "` is out of range"));
             }
         }
         for (Entry entry : form.entries().values()) {
             if (entry.required() && !node.map.containsKey(entry.key())) {
-                out.add(new Issue(path + "/" + pointer(entry.key()), "required field `" + entry.key() + "` is missing"));
+                out.add(new Issue(
+                        path + "/" + pointer(entry.key()), "required field `" + entry.key() + "` is missing"));
             }
         }
     }
