@@ -143,7 +143,7 @@ final class ShippedFiles {
                 Optional<String> uid = json.object(true);
                 json.space();
                 return json.at == json.text.length() ? uid.filter(value -> !value.isEmpty()) : Optional.empty();
-            } catch (IllegalStateException | IndexOutOfBoundsException | NumberFormatException e) {
+            } catch (IllegalStateException | IndexOutOfBoundsException e) {
                 return Optional.empty();
             }
         }
@@ -242,7 +242,11 @@ final class ShippedFiles {
                 if (c == '\\') {
                     char escaped = text.charAt(at++);
                     if (escaped == 'u') {
-                        out.append((char) Integer.parseInt(text.substring(at, at + 4), 16));
+                        try {
+                            out.append((char) Integer.parseInt(text.substring(at, at + 4), 16));
+                        } catch (NumberFormatException e) {
+                            throw new IllegalStateException("a \\u escape needs four hex digits", e);
+                        }
                         at += 4;
                     } else {
                         out.append(
