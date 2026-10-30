@@ -6,6 +6,7 @@ import {
   GPU_SHARES,
   NODE_PROJECT,
   type AgentImage,
+  type Memberlist,
   type ResolvedNodeAgent,
   type NodeAgent,
   type SpokenPool,
@@ -43,6 +44,10 @@ const GPU_RESOURCE = "nvidia.com/gpu";
 const CONTROLLER = "l4-controller";
 /** The metrics port of MetalLB's speaker and controller. */
 const METALLB_METRICS = 7472;
+/** The port the speakers' memberlist binds on the host, over TCP and UDP. */
+const MEMBERLIST_PORT = 7946;
+/** Where the speaker reads its memberlist key, as a file named for the key. */
+const MEMBERLIST_KEY_PATH = "/etc/ml_secret_key";
 
 /** What a catalog entry fixes for its container, beyond its image and request. */
 interface Privileges {
@@ -348,6 +353,42 @@ const podOf = (
   };
 };
 
+/**
+ * The speaker joined to its peers by memberlist: bound to its pod's address,
+ * finding the other speakers by their name label, its traffic keyed by the
+ * Secret the operator syncs from the Secret Store.
+ */
+const withMemberlist = (
+  spec: AgentPodSpec,
+  { secret }: Memberlist,
+): AgentPodSpec => ({
+  ...spec,
+  containers: spec.containers.map((container) => ({
+    ...container,
+    env: [
+      ...(container.env ?? []),
+      {
+        name: "METALLB_ML_BIND_ADDR",
+        valueFrom: { fieldRef: { fieldPath: "status.podIP" } },
+      },
+      {
+        name: "METALLB_ML_LABELS",
+        value: `app.kubernetes.io/name=${container.name}`,
+      },
+      { name: "METALLB_ML_BIND_PORT", value: String(MEMBERLIST_PORT) },
+      { name: "METALLB_ML_SECRET_KEY_PATH", value: MEMBERLIST_KEY_PATH },
+    ],
+    volumeMounts: [
+      ...(container.volumeMounts ?? []),
+      { name: "memberlist", mountPath: MEMBERLIST_KEY_PATH, readOnly: true },
+    ],
+  })),
+  volumes: [
+    ...(spec.volumes ?? []),
+    { name: "memberlist", secret: { secretName: secret } },
+  ],
+});
+
 const daemonSetOf = (name: string, spec: AgentPodSpec): AgentDaemonSet => ({
   apiVersion: "apps/v1",
   kind: "DaemonSet",
@@ -498,7 +539,7 @@ function agentDeliverables(agent: ResolvedNodeAgent): Deliverable[] {
   const directory = directoryOf(agent.agent);
   const gpu = agent.agent === "gpu-device";
   const limits = agent.agent === "gpu-metrics" ? { [GPU_RESOURCE]: "1" } : {};
-  const spec = podOf(
+  const pod = podOf(
     agent.agent,
     agent.nodes,
     containerOf(agent.agent, agent, privileges, limits, gpu),
@@ -511,6 +552,10 @@ function agentDeliverables(agent: ResolvedNodeAgent): Deliverable[] {
       ...(gpu ? { config: true as const } : {}),
     },
   );
+  const spec =
+    agent.memberlist === undefined
+      ? pod
+      : withMemberlist(pod, agent.memberlist);
   const speaker = agent.controller !== undefined;
   return [
     {

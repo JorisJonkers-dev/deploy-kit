@@ -207,7 +207,13 @@ A Project whose grants generate keys ([chapter 10](10-project-intent.md#generate
 adds one more document beside them, `apps/<project>/vault-policy/policies/<namespace>.generated.json`:
 `keys`, each a `path`, a `key`, its `bytes` and its `encoding`, the defaults
 filled in, and, for a key that adopts a value, `adopt`, the `path` and the
-`key` of the location, once each, in path then key order.
+`key` of the location, once each, in path then key order. The `node` Project
+holds no grant, and writes the same documents for the speaker's memberlist key
+([chapter 14](14-platform-intent.md#node-agents)): the `l4-speaker` identity's
+policy and role, and `node-system.generated.json`, beside its own job. Its
+connection, the speaker's `VaultAuth` and the `VaultStaticSecret`
+`l4-speaker-memberlist` are `vso`'s, in `apps/node/vaultconnection.yaml` and
+`apps/node/l4-speaker/vso.yaml`.
 
 **Rendered here, applied in the cluster.** Writing a policy into Vault is an act
 against a live system by an identity with privilege, which is delivery
