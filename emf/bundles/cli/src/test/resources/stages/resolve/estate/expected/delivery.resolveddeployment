@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:e24d3f74af4356e50f501ecbad074b86dbb19d44d5b70a632c8ca2532d667e8a" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="agents" digest="sha256:7a710b34e13d2be9c7ddfceb239b6c8e099137f760cb7a3ebb5a7d71dead88d9"/>
+    <inputDigests name="auth" digest="sha256:9ede7056e41341c9040da4b17b9e1fdcf074966ed07fff0c288a2f989614d0d8"/>
+    <inputDigests name="coverage" digest="sha256:d6f89699e8c6fcf984db3f040382068f09e930e283d39dea3ecbf2f78db80f31"/>
+    <inputDigests name="data" digest="sha256:d7a7a3bb48f3b4ae673f1b30c4bd8baafa398ee518566c98f410c3faf23292cf"/>
+    <inputDigests name="delivery" digest="sha256:7399f88a5ed5dae0a18971a1dbcfd79053e4dc69e5ea3106d63b58a45a064448"/>
+    <inputDigests name="edge" digest="sha256:b1445b93227a2a18990df93d691545276efe933c102357709d50fb4f3895b7af"/>
+    <inputDigests name="identity" digest="sha256:a495f34c57b72802be980417998d579bcf5ba63b1a3d3ca2df47819fdcc9eaf0"/>
+    <inputDigests name="knowledge" digest="sha256:09e444ec41eebbeec2e9f54401fbbe30a00e5037e5ba01e116d5a3f2656bfa48"/>
+    <inputDigests name="knowledge-platform" digest="sha256:bbd782977092ebeb77ec78072d4f005b9f8b3c010ae7d5d8e5341a90b7dcb2dd"/>
+    <inputDigests name="mail" digest="sha256:9de4af0e428eaf7eb94954392330f92dfefc4e93cc39a07f77ecfec241caf936"/>
+    <inputDigests name="notes" digest="sha256:7876ff722429a69629d175a67bf8c4199f5e12b84c4a237b171bbd9048411918"/>
+    <inputDigests name="observability" digest="sha256:a679d99bf62e83c6bef70b52d1b2bed7fbae6938a5a0cda2b5971a7ec70055fc"/>
+    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="utility" digest="sha256:a834788112fe0d6045472f11f9b9a87002ca9c3493547d6789e485a4f3d2983f"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0f9ff45ac8dc0eb4fae395f05f47a9d15548858e91778f15bda19791f2076612"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:b623d2ffe37d94ed3dfd601c8ef7aa011ef349912b4428d1071d72099e4c54a8"/>
+  </provenance>
+  <applications id="flagger" revision="sha256:e46cc6ea185eeccdae7b071e3b458f2f830dcce39ae296409cabc629dcced6a2" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="flagger" identity="flagger" lifecycle="application" image="ghcr.io/fluxcd/flagger@sha256:5d1b8f3e7a2c9d4b6e0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b" imageVersion="1.41.0" uid="10001" gid="10001" cutover="continuous" switchover="rolling" serving="flagger" servingLabel="app.kubernetes.io/instance" deadline="210s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app">
+      <api reason="Flagger switches every blue-green Process, so it scales its Deployment, generates its Services and copies, and records the Canary">
+        <rules group="flagger.app">
+          <objects>canaries</objects>
+          <objects>canaries/status</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+          <verbs>update</verbs>
+          <verbs>patch</verbs>
+        </rules>
+        <rules group="apps">
+          <objects>deployments</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+          <verbs>create</verbs>
+          <verbs>update</verbs>
+          <verbs>patch</verbs>
+          <verbs>delete</verbs>
+        </rules>
+        <rules group="autoscaling">
+          <objects>horizontalpodautoscalers</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+          <verbs>create</verbs>
+          <verbs>update</verbs>
+          <verbs>patch</verbs>
+          <verbs>delete</verbs>
+        </rules>
+        <rules group="core">
+          <objects>services</objects>
+          <objects>configmaps</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+          <verbs>create</verbs>
+          <verbs>update</verbs>
+          <verbs>patch</verbs>
+          <verbs>delete</verbs>
+        </rules>
+        <rules group="core">
+          <objects>secrets</objects>
+          <verbs>get</verbs>
+        </rules>
+        <rules group="core">
+          <objects>events</objects>
+          <verbs>create</verbs>
+          <verbs>update</verbs>
+          <verbs>patch</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <dependencies application="release-gate" surface="http" address="release-gate:8080">
+        <peers namespace="delivery-system" process="release-gate" port="8080"/>
+      </dependencies>
+      <consumes>release-gate.http</consumes>
+      <writablePaths path="/tmp" size="64Mi"/>
+    </processes>
+  </applications>
+  <applications id="release-gate" revision="sha256:4a87e539c1bfa7f8679fe75b3c22daf90227e1ac32740b8549792392d6d6a680" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
+    <scrape process="/0/@applications.1/@processes.0" surface="http" path="/metrics" interval="30s" timeout="10s">
+      <labels key="release" value="metrics-stack"/>
+    </scrape>
+    <processes name="release-gate" identity="release-gate" lifecycle="application" image="ghcr.io/jorisjonkers-dev/delivery/release-gate@sha256:3e7a9c1d5b2f8e4a6c0d9b7e5f3a1c8d6e4b2a0f9c7e5d3b1a8f6e4c2d0b9a7e" imageVersion="1.0.0" uid="1000" gid="1000" cutover="continuous" switchover="rolling" serving="release-gate" servingLabel="app.kubernetes.io/instance" deadline="150s" replicas="1" memory="64Mi" cpu="25m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app">
+      <api reason="the Release Gate answers Flagger from what the cluster holds, so it reads each gated Application's inputs, Canaries, Deployments, Jobs and pods; it finds the gated Applications by listing ConfigMaps, keeps each one's release record in a ConfigMap of its own, unsuspends the migration Jobs it starts, and deletes a gated Application's Vault sync objects of an older revision once it serves the new one">
+        <rules group="core">
+          <objects>configmaps</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+        </rules>
+        <rules group="core" scope="namespace">
+          <objects>configmaps</objects>
+          <verbs>create</verbs>
+          <verbs>update</verbs>
+        </rules>
+        <rules group="core">
+          <objects>pods</objects>
+          <verbs>list</verbs>
+        </rules>
+        <rules group="apps">
+          <objects>deployments</objects>
+          <verbs>get</verbs>
+        </rules>
+        <rules group="batch">
+          <objects>jobs</objects>
+          <verbs>list</verbs>
+          <verbs>patch</verbs>
+        </rules>
+        <rules group="flagger.app">
+          <objects>canaries</objects>
+          <verbs>get</verbs>
+        </rules>
+        <rules group="secrets.hashicorp.com">
+          <objects>vaultauths</objects>
+          <objects>vaultstaticsecrets</objects>
+          <objects>vaultdynamicsecrets</objects>
+          <verbs>list</verbs>
+          <verbs>delete</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/readyz" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="2">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <applications id="collector" revision="sha256:44540c54db6717fd87ee5c86282be69581e36795af25d1e85db6355fe8f494cd" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="collector" identity="collector" lifecycle="application" image="ghcr.io/jorisjonkers-dev/delivery/collector@sha256:7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d" imageVersion="1.0.0" uid="65532" gid="65532" cutover="interrupted" switchover="stop-start" serving="collector" servingLabel="app.kubernetes.io/instance" deadline="150s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app">
+      <api reason="the Collector captures where each bound claim and each rendered pod is, so it lists the three kinds that say so, cluster-wide, and writes nothing">
+        <rules group="core">
+          <objects>persistentvolumes</objects>
+          <objects>persistentvolumeclaims</objects>
+          <objects>pods</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/readyz" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/fresh" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="2">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/fresh" port="8080"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <applications id="reporter" revision="sha256:b8b9b17a702b362e6d0339234c8a8d580bd908c76f41d56da60feacb9c86ef3f" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="reporter" identity="reporter" lifecycle="application" image="ghcr.io/jorisjonkers-dev/delivery/reporter@sha256:4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f" imageVersion="1.0.0" uid="65532" gid="65532" cutover="interrupted" switchover="stop-start" serving="reporter" servingLabel="app.kubernetes.io/instance" deadline="150s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app">
+      <api reason="the Reporter reads every Project's unit and every Canary again on start and on an interval, to correct a status an event it missed left behind, and writes nothing">
+        <rules group="kustomize.toolkit.fluxcd.io">
+          <objects>kustomizations</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="flagger.app">
+          <objects>canaries</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/readyz" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="2">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-delivery"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+  </policyJob>
+  <catalogJobs identity="postgres-catalog" namespace="data-system" image="ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c" imageVersion="1.0.0" uid="65532" gid="65532" role="data-system-postgres-catalog" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <catalog host="primary.data-system.svc.cluster.local" port="5432" connection="postgres">
+      <admin path="secret/data/platform/postgres" user="postgres.user" password="postgres.password"/>
+      <databases name="knowledge-platform_db" owner="knowledge-platform-owner" data="knowledge-platform-data"/>
+    </catalog>
+    <consumes>platform-postgres.postgres</consumes>
+    <egress rule="datastore" namespace="data-system" process="primary" port="5432"/>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    <policy path="secret/data/platform/postgres">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/metadata/platform/postgres">
+      <allows>read</allows>
+    </policy>
+    <policy path="database/roles/knowledge-platform-owner">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+    <policy path="database/roles/knowledge-platform-data">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+  </catalogJobs>
+  <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/delivery/namespace.yaml" namespace="delivery-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/delivery/kustomization.yaml">
+    <resources>collector</resources>
+    <resources>flagger</resources>
+    <resources>namespace.yaml</resources>
+    <resources>release-gate</resources>
+    <resources>reporter</resources>
+    <resources>rollout-events</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/networkpolicy.yaml" adapter="networking"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/delivery/flagger/kustomization.yaml">
+    <resources>rbac.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/delivery/flagger/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/delivery/flagger/service.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/delivery/flagger/serviceaccount.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/delivery/flagger/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/flagger/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="consumer" consumes="flagger.http" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/delivery/release-gate/kustomization.yaml">
+    <resources>rbac.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>servicemonitor.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/delivery/release-gate/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/delivery/release-gate/service.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/delivery/release-gate/serviceaccount.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/delivery/release-gate/rbac.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:MonitorFile" path="apps/delivery/release-gate/servicemonitor.yaml" adapter="prometheus" process="/0/@applications.1/@processes.0" surface="http" scrapePath="/metrics" interval="30s" timeout="10s" kind="ServiceMonitor"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/release-gate/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.1/@processes.0">
+      <ingress rule="metrics-stack" namespace="observability-system" process="prometheus" port="8080"/>
+      <ingress rule="consumer" consumes="release-gate.http" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="gate-members"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/delivery/collector/kustomization.yaml">
+    <resources>rbac.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/delivery/collector/workload.yaml" processes="/0/@applications.2/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/delivery/collector/service.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/delivery/collector/serviceaccount.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/delivery/collector/rbac.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/collector/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.2/@processes.0">
+      <ingress rule="consumer" consumes="collector.http" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/delivery/reporter/kustomization.yaml">
+    <resources>rbac.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/delivery/reporter/workload.yaml" processes="/0/@applications.3/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/delivery/reporter/service.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/delivery/reporter/serviceaccount.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/delivery/reporter/rbac.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/reporter/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.3/@processes.0">
+      <ingress rule="consumer" consumes="reporter.http" port="8080"/>
+      <ingress rule="flux-events" namespace="flux-system" process="notification-controller" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/delivery/rollout-events/alert.yaml" part="alert" project="delivery" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/delivery/rollout-events/provider.yaml" part="provider" project="delivery" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/delivery/rollout-events/kustomization.yaml">
+    <resources>alert.yaml</resources>
+    <resources>provider.yaml</resources>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>

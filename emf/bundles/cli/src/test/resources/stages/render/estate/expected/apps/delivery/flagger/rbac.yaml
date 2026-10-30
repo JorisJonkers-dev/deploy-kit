@@ -1,0 +1,94 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: delivery-system-flagger
+  labels:
+    app.kubernetes.io/name: flagger
+    app.kubernetes.io/instance: flagger
+    app.kubernetes.io/part-of: flagger
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+rules:
+  - apiGroups:
+      - flagger.app
+    resources:
+      - canaries
+      - canaries/status
+    verbs:
+      - get
+      - list
+      - watch
+      - update
+      - patch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - autoscaling
+    resources:
+      - horizontalpodautoscalers
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - update
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: delivery-system-flagger
+  labels:
+    app.kubernetes.io/name: flagger
+    app.kubernetes.io/instance: flagger
+    app.kubernetes.io/part-of: flagger
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: delivery-system-flagger
+subjects:
+  - kind: ServiceAccount
+    name: flagger
+    namespace: delivery-system

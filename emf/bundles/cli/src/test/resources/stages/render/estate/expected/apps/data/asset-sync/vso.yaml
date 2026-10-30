@@ -1,0 +1,44 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: asset-sync
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: asset-sync
+    app.kubernetes.io/instance: asset-sync
+    app.kubernetes.io/part-of: asset-sync
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: data-system-asset-sync
+    serviceAccount: asset-sync
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: asset-sync-platform-garage-web-key
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: asset-sync
+    app.kubernetes.io/instance: asset-sync
+    app.kubernetes.io/part-of: asset-sync
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: asset-sync
+  mount: secret
+  type: kv-v2
+  path: platform/garage/web-key
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: asset-sync-platform-garage-web-key
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

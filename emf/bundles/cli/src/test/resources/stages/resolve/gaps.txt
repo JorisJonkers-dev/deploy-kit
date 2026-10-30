@@ -1,33 +1,8 @@
-AccessTier.custody is never used in a resolve case's input
-AccessTier.read is never used in a resolve case's input
-AccessTier.selfRenew is never used in a resolve case's input
-AccessTier.selfRoll is never used in a resolve case's input
-AcmePolicy is never instantiated in a resolve case's input
-AcmePolicy.dnsProvider is never set in a resolve case's input
-AcmePolicy.email is never set in a resolve case's input
-AcmePolicy.token is never set in a resolve case's input
-AdapterName.grafana is never used by a resolve case
-AdapterName.kubernetes is never used by a resolve case
-AdapterName.networking is never used by a resolve case
-AdapterName.prometheus is never used by a resolve case
-AdapterName.traefik is never used by a resolve case
-AdapterName.vaultPolicy is never used by a resolve case
-AdapterName.vso is never used by a resolve case
 AddressPoolFile is never instantiated by a resolve case
 AddressPoolFile.adapter is never set by a resolve case
 AddressPoolFile.namespace is never set by a resolve case
 AddressPoolFile.path is never set by a resolve case
 AddressPoolFile.pools is never set by a resolve case
-AdminLogin is never instantiated in a resolve case's input
-AdminLogin.password is never set in a resolve case's input
-AdminLogin.path is never set in a resolve case's input
-AdminLogin.user is never set in a resolve case's input
-AdminToken is never instantiated in a resolve case's input
-AdminToken.path is never set in a resolve case's input
-AdminToken.token is never set in a resolve case's input
-AdmittedRange is never instantiated by a resolve case
-AdmittedRange.cidr is never set by a resolve case
-AdmittedRange.port is never set by a resolve case
 AgentConfig is never instantiated by a resolve case
 AgentConfig.content is never set by a resolve case
 AgentConfig.file is never set by a resolve case
@@ -49,8 +24,6 @@ AlertRule.labels is never set by a resolve case
 AlertRuleGroup is never instantiated by a resolve case
 AlertRuleGroup.name is never set by a resolve case
 AlertRuleGroup.rules is never set by a resolve case
-AlertRules is never instantiated in a resolve case's input
-AlertRules.from is never set in a resolve case's input
 AlertRulesFile is never instantiated by a resolve case
 AlertRulesFile.adapter is never set by a resolve case
 AlertRulesFile.application is never set by a resolve case
@@ -59,128 +32,7 @@ AlertingFile is never instantiated by a resolve case
 AlertingFile.adapter is never set by a resolve case
 AlertingFile.application is never set by a resolve case
 AlertingFile.path is never set by a resolve case
-Alias is never instantiated by a resolve case
-Alias.name is never set by a resolve case
-Alias.target is never set by a resolve case
-AliasFile is never instantiated by a resolve case
-AliasFile.adapter is never set by a resolve case
-AliasFile.aliases is never set by a resolve case
-AliasFile.namespace is never set by a resolve case
-AliasFile.path is never set by a resolve case
-Allocatable is never instantiated in a resolve case's input
-Allocatable.cpu is never set in a resolve case's input
-Allocatable.memory is never set in a resolve case's input
-AnalysisCheck.errorRate is never used by a resolve case
-AnalysisCheck.latency is never used by a resolve case
-AnalysisPolicy is never instantiated in a resolve case's input
-AnalysisPolicy.errorRate is never set in a resolve case's input
-AnalysisPolicy.interval is never set in a resolve case's input
-AnalysisPolicy.iterations is never set in a resolve case's input
-AnalysisPolicy.latency is never set in a resolve case's input
-AnalysisPolicy.threshold is never set in a resolve case's input
-ApiAccess is never instantiated in a resolve case's input
-ApiAccess.reason is never set in a resolve case's input
-ApiAccess.rules is never set in a resolve case's input
-ApiAccessPolicy is never instantiated in a resolve case's input
-ApiAccessPolicy.holders is never set in a resolve case's input
-ApiAccessPolicy.namespaceHolders is never set in a resolve case's input
-ApiAccessPolicy.server is never set in a resolve case's input
-ApiRule is never instantiated in a resolve case's input
-ApiRule.group is never set in a resolve case's input
-ApiRule.objects is never set in a resolve case's input
-ApiRule.scope is never set in a resolve case's input
-ApiRule.verbs is never set in a resolve case's input
-ApiScope.cluster is never used in a resolve case's input
-ApiScope.namespace is never used in a resolve case's input
-ApiVerb.create is never used in a resolve case's input
-ApiVerb.delete is never used in a resolve case's input
-ApiVerb.get is never used in a resolve case's input
-ApiVerb.list is never used in a resolve case's input
-ApiVerb.patch is never used in a resolve case's input
-ApiVerb.update is never used in a resolve case's input
-ApiVerb.watch is never used in a resolve case's input
-Application is never instantiated in a resolve case's input
-Application.alertRules is never set in a resolve case's input
-Application.assets is never set in a resolve case's input
-Application.client is never set in a resolve case's input
-Application.cutover is never set in a resolve case's input
-Application.dashboards is never set in a resolve case's input
-Application.dependsOn is never set in a resolve case's input
-Application.description is never set in a resolve case's input
-Application.env is never set in a resolve case's input
-Application.exposure is never set in a resolve case's input
-Application.id is never set in a resolve case's input
-Application.l4Exposure is never set in a resolve case's input
-Application.migration is never set in a resolve case's input
-Application.observability is never set in a resolve case's input
-Application.placement is never set in a resolve case's input
-Application.processes is never set in a resolve case's input
-Application.secrets is never set in a resolve case's input
-Application.startupBudget is never set in a resolve case's input
-Application.writablePaths is never set in a resolve case's input
-Arch.amd64 is never used in a resolve case's input
-Arch.arm64 is never used in a resolve case's input
-ArtifactSigner is never instantiated in a resolve case's input
-ArtifactSigner.issuer is never set in a resolve case's input
-ArtifactSigner.subject is never set in a resolve case's input
-Asset is never instantiated in a resolve case's input
-Asset.from is never set in a resolve case's input
-Asset.mountAt is never set in a resolve case's input
-AssetFile is never instantiated in a resolve case's input
-AssetFile.content is never set in a resolve case's input
-AssetFile.from is never set in a resolve case's input
-AssetFile.project is never set in a resolve case's input
-Audience.anonymous is never used in a resolve case's input
-Audience.authenticated is never used in a resolve case's input
 Audience.internal is never used in a resolve case's input
-Audience.lan is never used in a resolve case's input
-BackupFile is never instantiated by a resolve case
-BackupFile.adapter is never set by a resolve case
-BackupFile.path is never set by a resolve case
-BackupFile.processes is never set by a resolve case
-BackupPeer is never instantiated by a resolve case
-BackupPeer.credential is never set by a resolve case
-BackupPeer.host is never set by a resolve case
-BackupPeer.port is never set by a resolve case
-BackupPlan is never instantiated by a resolve case
-BackupPlan.claim is never set by a resolve case
-BackupPlan.credential is never set by a resolve case
-BackupPlan.destinations is never set by a resolve case
-BackupPlan.egress is never set by a resolve case
-BackupPlan.gid is never set by a resolve case
-BackupPlan.identity is never set by a resolve case
-BackupPlan.method is never set by a resolve case
-BackupPlan.methodVersion is never set by a resolve case
-BackupPlan.offCluster is never set by a resolve case
-BackupPlan.offClusterPath is never set by a resolve case
-BackupPlan.offClusterRecipient is never set by a resolve case
-BackupPlan.peer is never set by a resolve case
-BackupPlan.retain is never set by a resolve case
-BackupPlan.schedule is never set by a resolve case
-BackupPlan.uid is never set by a resolve case
-Binding is never instantiated in a resolve case's input
-Binding.claim is never set in a resolve case's input
-Binding.node is never set in a resolve case's input
-Bootstrap is never instantiated in a resolve case's input
-Bootstrap.crds is never set in a resolve case's input
-Bootstrap.flux is never set in a resolve case's input
-Bootstrap.vault is never set in a resolve case's input
-BudgetFile is never instantiated by a resolve case
-BudgetFile.adapter is never set by a resolve case
-BudgetFile.path is never set by a resolve case
-BudgetFile.processes is never set by a resolve case
-Capacity is never instantiated in a resolve case's input
-Capacity.across is never set in a resolve case's input
-Capacity.count is never set in a resolve case's input
-Capacity.reason is never set in a resolve case's input
-CatalogAdmin is never instantiated by a resolve case
-CatalogAdmin.password is never set by a resolve case
-CatalogAdmin.path is never set by a resolve case
-CatalogAdmin.user is never set by a resolve case
-CatalogDatabase is never instantiated by a resolve case
-CatalogDatabase.data is never set by a resolve case
-CatalogDatabase.name is never set by a resolve case
-CatalogDatabase.owner is never set by a resolve case
 CatalogJobFile is never instantiated by a resolve case
 CatalogJobFile.adapter is never set by a resolve case
 CatalogJobFile.catalogJson is never set by a resolve case
@@ -188,90 +40,17 @@ CatalogJobFile.job is never set by a resolve case
 CatalogJobFile.name is never set by a resolve case
 CatalogJobFile.part is never set by a resolve case
 CatalogJobFile.path is never set by a resolve case
-CertificateSource.acme is never used in a resolve case's input
-CertificateSource.none is never used in a resolve case's input
-ClaimFile is never instantiated by a resolve case
-ClaimFile.adapter is never set by a resolve case
-ClaimFile.path is never set by a resolve case
-ClaimFile.processes is never set by a resolve case
-Client is never instantiated in a resolve case's input
-Client.backChannelLogoutPath is never set in a resolve case's input
-Client.credential is never set in a resolve case's input
-Client.description is never set in a resolve case's input
-Client.exposure is never set in a resolve case's input
-Client.iconPath is never set in a resolve case's input
-Client.label is never set in a resolve case's input
-Client.launchPath is never set in a resolve case's input
-Client.protectedPath is never set in a resolve case's input
-Client.redirectPaths is never set in a resolve case's input
-Client.roles is never set in a resolve case's input
-Client.signIn is never set in a resolve case's input
-ClientCredential.pkce is never used in a resolve case's input
-ClientCredential.secret is never used in a resolve case's input
 ClientFile is never instantiated by a resolve case
 ClientFile.adapter is never set by a resolve case
 ClientFile.application is never set by a resolve case
 ClientFile.path is never set by a resolve case
-ClusterState is never instantiated in a resolve case's input
-ClusterState.apiVersion is never set in a resolve case's input
-ClusterState.bindings is never set in a resolve case's input
-ClusterState.capturedAt is never set in a resolve case's input
-ClusterState.cluster is never set in a resolve case's input
-ClusterState.instances is never set in a resolve case's input
-ClusterState.kind is never set in a resolve case's input
-ClusterState.placements is never set in a resolve case's input
-ClusterState.schemaVersion is never set in a resolve case's input
-ConfigMapFile is never instantiated by a resolve case
-ConfigMapFile.adapter is never set by a resolve case
-ConfigMapFile.application is never set by a resolve case
-ConfigMapFile.externalChecks is never set by a resolve case
-ConfigMapFile.path is never set by a resolve case
-ConfigMapFile.processes is never set by a resolve case
-ConfigMapFile.releaseGate is never set by a resolve case
-ConnectionFile is never instantiated by a resolve case
-ConnectionFile.adapter is never set by a resolve case
-ConnectionFile.address is never set by a resolve case
-ConnectionFile.namespace is never set by a resolve case
-ConnectionFile.path is never set by a resolve case
-ContainerMount is never instantiated by a resolve case
-ContainerMount.mountAt is never set by a resolve case
-ContainerMount.name is never set by a resolve case
-ContainerMount.readOnly is never set by a resolve case
-ContainerMount.subPath is never set by a resolve case
 ContentPolicy.admin is never used in a resolve case's input
-ContentPolicy.strict is never used in a resolve case's input
 ContentPolicy.workflow is never used in a resolve case's input
 ContentPolicyHeaders is never instantiated by a resolve case
 ContentPolicyHeaders.contentSecurityPolicy is never set by a resolve case
 ContentPolicyHeaders.name is never set by a resolve case
-ControllerKind.cronJob is never used by a resolve case
 ControllerKind.daemonSet is never used by a resolve case
-ControllerKind.deployment is never used by a resolve case
 ControllerKind.statefulSet is never used by a resolve case
-Credentials is never instantiated in a resolve case's input
-Credentials.delivery is never set in a resolve case's input
-Credentials.fileMode is never set in a resolve case's input
-Credentials.mountAt is never set in a resolve case's input
-Credentials.rotation is never set in a resolve case's input
-CurrentPlacement is never instantiated in a resolve case's input
-CurrentPlacement.node is never set in a resolve case's input
-CurrentPlacement.process is never set in a resolve case's input
-Cutover.continuous is never used by a resolve case
-Cutover.continuous is never used in a resolve case's input
-Cutover.interrupted is never used by a resolve case
-Cutover.interrupted is never used in a resolve case's input
-Dashboard is never instantiated in a resolve case's input
-Dashboard.from is never set in a resolve case's input
-DashboardFile is never instantiated by a resolve case
-DashboardFile.adapter is never set by a resolve case
-DashboardFile.application is never set by a resolve case
-DashboardFile.path is never set by a resolve case
-DashboardInstance is never instantiated in a resolve case's input
-DashboardInstance.key is never set in a resolve case's input
-DashboardInstance.value is never set in a resolve case's input
-DashboardPolicy is never instantiated in a resolve case's input
-DashboardPolicy.datasource is never set in a resolve case's input
-DashboardPolicy.instance is never set in a resolve case's input
 DatabaseEngine.database is never used in a resolve case's input
 DatabaseGrant is never instantiated in a resolve case's input
 DatabaseGrant.delivery is never set in a resolve case's input
@@ -281,206 +60,35 @@ DatabaseGrant.mountAt is never set in a resolve case's input
 DatabaseGrant.role is never set in a resolve case's input
 DatabaseGrant.rotation is never set in a resolve case's input
 Datastore.etcd is never used in a resolve case's input
-Datastore.sqlite is never used in a resolve case's input
-Delivery.env is never used in a resolve case's input
-Delivery.file is never used in a resolve case's input
-Delivery.selfDelivery is never used in a resolve case's input
-DeliveryPolicy is never instantiated in a resolve case's input
-DeliveryPolicy.analysis is never set in a resolve case's input
-DeliveryPolicy.gate is never set in a resolve case's input
-DeliveryPolicy.machinery is never set in a resolve case's input
-DeliveryPolicy.move is never set in a resolve case's input
-DeliveryPolicy.reporter is never set in a resolve case's input
-DependencyEdge is never instantiated in a resolve case's input
-DependencyEdge.application is never set in a resolve case's input
-DependencyEdge.buckets is never set in a resolve case's input
-DependencyEdge.credentials is never set in a resolve case's input
-DependencyEdge.required is never set in a resolve case's input
-DependencyEdge.surface is never set in a resolve case's input
-DestinationRange is never instantiated in a resolve case's input
-DestinationRange.cidr is never set in a resolve case's input
-DestinationRange.port is never set in a resolve case's input
-DiscordReceiver is never instantiated in a resolve case's input
-DiscordReceiver.webhook is never set in a resolve case's input
-Disk is never instantiated in a resolve case's input
-Disk.media is never set in a resolve case's input
-Disk.usableGib is never set in a resolve case's input
-DiskRequest is never instantiated in a resolve case's input
-DiskRequest.media is never set in a resolve case's input
-DnsProvider.cloudflare is never used in a resolve case's input
-DurabilityClass.irreplaceable is never used by a resolve case
-DurabilityClass.irreplaceable is never used in a resolve case's input
-DurabilityClass.reconstructible is never used by a resolve case
-DurabilityClass.reconstructible is never used in a resolve case's input
-DurabilityClass.recoverable is never used by a resolve case
-DurabilityClass.recoverable is never used in a resolve case's input
-DurabilityPolicies is never instantiated in a resolve case's input
-DurabilityPolicies.irreplaceable is never set in a resolve case's input
-DurabilityPolicies.reconstructible is never set in a resolve case's input
-DurabilityPolicies.recoverable is never set in a resolve case's input
-DurabilityPolicy is never instantiated in a resolve case's input
-DurabilityPolicy.offCluster is never set in a resolve case's input
-DurabilityPolicy.retain is never set in a resolve case's input
-DurabilityPolicy.schedule is never set in a resolve case's input
-EffectiveApplication is never instantiated in a resolve case's input
-EffectiveApplication.alertRules is never set in a resolve case's input
-EffectiveApplication.client is never set in a resolve case's input
-EffectiveApplication.dashboards is never set in a resolve case's input
-EffectiveApplication.description is never set in a resolve case's input
-EffectiveApplication.exposure is never set in a resolve case's input
-EffectiveApplication.id is never set in a resolve case's input
-EffectiveApplication.l4Exposure is never set in a resolve case's input
-EffectiveApplication.migration is never set in a resolve case's input
-EffectiveApplication.observability is never set in a resolve case's input
-EffectiveApplication.processes is never set in a resolve case's input
-EffectiveProject is never instantiated in a resolve case's input
-EffectiveProject.applications is never set in a resolve case's input
-EffectiveProject.owner is never set in a resolve case's input
-EffectiveProject.project is never set in a resolve case's input
-Egress is never instantiated in a resolve case's input
-Egress.reason is never set in a resolve case's input
-Egress.to is never set in a resolve case's input
-EgressTarget.internet is never used in a resolve case's input
-Engine.files is never used in a resolve case's input
-Engine.mongo is never used in a resolve case's input
-Engine.postgres is never used in a resolve case's input
-Engine.rabbitmq is never used in a resolve case's input
-Engine.s3 is never used in a resolve case's input
 Engine.valkey is never used in a resolve case's input
-EnginePolicies is never instantiated in a resolve case's input
-EnginePolicies.files is never set in a resolve case's input
-EnginePolicies.mongo is never set in a resolve case's input
-EnginePolicies.postgres is never set in a resolve case's input
-EnginePolicies.rabbitmq is never set in a resolve case's input
-EnginePolicies.s3 is never set in a resolve case's input
-EnginePolicies.valkey is never set in a resolve case's input
-EnginePolicy is never instantiated in a resolve case's input
-EnginePolicy.backup is never set in a resolve case's input
-EnginePolicy.catalog is never set in a resolve case's input
-EnginePolicy.catalogSurface is never set in a resolve case's input
-EnginePolicy.move is never set in a resolve case's input
-EnginePolicy.surface is never set in a resolve case's input
-EnvEntry is never instantiated by a resolve case
 EnvEntry.field is never set by a resolve case
-EnvEntry.name is never set by a resolve case
-EnvEntry.secret is never set by a resolve case
-EnvEntry.value is never set by a resolve case
-EnvFile is never instantiated in a resolve case's input
-EnvFile.entries is never set in a resolve case's input
-EnvLiteral is never instantiated in a resolve case's input
-EnvLiteral.text is never set in a resolve case's input
-EnvVariable is never instantiated in a resolve case's input
-EnvVariable.name is never set in a resolve case's input
-EnvVariable.value is never set in a resolve case's input
-EphemeralPolicy is never instantiated in a resolve case's input
-EphemeralPolicy.size is never set in a resolve case's input
-EventsFile is never instantiated by a resolve case
-EventsFile.adapter is never set by a resolve case
-EventsFile.events is never set by a resolve case
-EventsFile.part is never set by a resolve case
-EventsFile.path is never set by a resolve case
-EventsFile.project is never set by a resolve case
-Exposure is never instantiated in a resolve case's input
-Exposure.audience is never set in a resolve case's input
-Exposure.contentPolicy is never set in a resolve case's input
-Exposure.host is never set in a resolve case's input
-Exposure.name is never set in a resolve case's input
-Exposure.proxied is never set in a resolve case's input
-Exposure.routes is never set in a resolve case's input
-ExposureDns is never instantiated by a resolve case
-ExposureDns.proxied is never set by a resolve case
-ExposureDns.target is never set by a resolve case
-FluxMetrics is never instantiated in a resolve case's input
-FluxMetrics.path is never set in a resolve case's input
-FluxMetrics.port is never set in a resolve case's input
 FluxMonitorFile is never instantiated by a resolve case
 FluxMonitorFile.adapter is never set by a resolve case
 FluxMonitorFile.application is never set by a resolve case
 FluxMonitorFile.path is never set by a resolve case
-FluxSource is never instantiated in a resolve case's input
-FluxSource.artifacts is never set in a resolve case's input
-FluxSource.metrics is never set in a resolve case's input
-FluxSource.sourceRef is never set in a resolve case's input
 FluxUnit is never instantiated by a resolve case
 FluxUnit.annotations is never set by a resolve case
 FluxUnit.dependsOn is never set by a resolve case
 FluxUnit.forcesDeployments is never set by a resolve case
 FluxUnit.name is never set by a resolve case
 FluxUnit.path is never set by a resolve case
-ForwardAuth is never instantiated in a resolve case's input
-ForwardAuth.path is never set in a resolve case's input
-ForwardAuth.provider is never set in a resolve case's input
-ForwardAuth.responseHeaders is never set in a resolve case's input
-ForwardAuth.surface is never set in a resolve case's input
 ForwardAuthEndpoint is never instantiated by a resolve case
 ForwardAuthEndpoint.address is never set by a resolve case
-GateAnalysis is never instantiated by a resolve case
-GateAnalysis.errorRate is never set by a resolve case
-GateAnalysis.interval is never set by a resolve case
-GateAnalysis.iterations is never set by a resolve case
-GateAnalysis.latency is never set by a resolve case
-GateAnalysis.threshold is never set by a resolve case
-GateMember is never instantiated by a resolve case
-GateMember.checks is never set by a resolve case
-GateMember.process is never set by a resolve case
-GateMember.readiness is never set by a resolve case
 GateMember.waitsFor is never set by a resolve case
-GateMigration is never instantiated by a resolve case
-GateMigration.identity is never set by a resolve case
-GateMigration.nonTransactional is never set by a resolve case
-GateMigration.testedAgainst is never set by a resolve case
 GateProvider is never instantiated by a resolve case
 GateProvider.application is never set by a resolve case
 GateProvider.process is never set by a resolve case
-Generate is never instantiated in a resolve case's input
 Generate.adopt is never set in a resolve case's input
-Generate.bytes is never set in a resolve case's input
-Generate.encoding is never set in a resolve case's input
-GeneratedKey is never instantiated in a resolve case's input
-GeneratedKey.generate is never set in a resolve case's input
-GeneratedKey.name is never set in a resolve case's input
 GeneratedKeysFile is never instantiated by a resolve case
 GeneratedKeysFile.adapter is never set by a resolve case
 GeneratedKeysFile.keys is never set by a resolve case
 GeneratedKeysFile.path is never set by a resolve case
-Gpu is never instantiated in a resolve case's input
-Gpu.class is never set in a resolve case's input
-Gpu.memoryMib is never set in a resolve case's input
-Gpu.model is never set in a resolve case's input
-Gpu.vendor is never set in a resolve case's input
-GpuRequest is never instantiated in a resolve case's input
-GpuRequest.class is never set in a resolve case's input
-GpuRequest.memory is never set in a resolve case's input
-GpuRequest.model is never set in a resolve case's input
-GpuRequest.vendor is never set in a resolve case's input
-GpuVendor is never instantiated in a resolve case's input
-GpuVendor.key is never set in a resolve case's input
-GpuVendor.value is never set in a resolve case's input
-GpuVendorPolicy is never instantiated in a resolve case's input
-GpuVendorPolicy.resource is never set in a resolve case's input
-GpuVendorPolicy.runtimeClass is never set in a resolve case's input
-HandoverLedger is never instantiated in a resolve case's input
-HandoverLedger.estate is never set in a resolve case's input
-HandoverLedger.legacy is never set in a resolve case's input
-HandoverLedger.retireBy is never set in a resolve case's input
-HandoverLedger.serving is never set in a resolve case's input
-HardeningClass.restricted is never used in a resolve case's input
 HostMount is never instantiated by a resolve case
 HostMount.hostPath is never set by a resolve case
 HostMount.mountAt is never set by a resolve case
 HostMount.name is never set by a resolve case
 HostMount.propagated is never set by a resolve case
 HostMount.readOnly is never set by a resolve case
-HttpProbe is never instantiated in a resolve case's input
-HttpProbe.path is never set in a resolve case's input
-HttpProbe.port is never set in a resolve case's input
-HttpTarget is never instantiated by a resolve case
-HttpTarget.path is never set by a resolve case
-HttpTarget.port is never set by a resolve case
-HumanGrant is never instantiated in a resolve case's input
-HumanGrant.clusterRole is never set in a resolve case's input
-HumanGrant.group is never set in a resolve case's input
-HumanGrant.reason is never set in a resolve case's input
 HumanGrantBinding is never instantiated by a resolve case
 HumanGrantBinding.clusterRole is never set by a resolve case
 HumanGrantBinding.group is never set by a resolve case
@@ -488,483 +96,38 @@ HumanGrantFile is never instantiated by a resolve case
 HumanGrantFile.adapter is never set by a resolve case
 HumanGrantFile.grants is never set by a resolve case
 HumanGrantFile.path is never set by a resolve case
-HumanGrantRole.admin is never used in a resolve case's input
-HumanGrantRole.clusterAdmin is never used in a resolve case's input
-HumanGrantRole.edit is never used in a resolve case's input
-HumanGrantRole.view is never used in a resolve case's input
-IdentityFile is never instantiated by a resolve case
-IdentityFile.adapter is never set by a resolve case
-IdentityFile.path is never set by a resolve case
-IdentityFile.processes is never set by a resolve case
-ImagesLock is never instantiated in a resolve case's input
-ImagesLock.apiVersion is never set in a resolve case's input
-ImagesLock.images is never set in a resolve case's input
-ImagesLock.kind is never set in a resolve case's input
-ImagesLock.name is never set in a resolve case's input
-ImagesLock.schemaVersion is never set in a resolve case's input
-IndexFile is never instantiated by a resolve case
-IndexFile.adapter is never set by a resolve case
 IndexFile.namespace is never set by a resolve case
-IndexFile.path is never set by a resolve case
-IndexFile.resources is never set by a resolve case
-IngressRouteFile is never instantiated by a resolve case
-IngressRouteFile.adapter is never set by a resolve case
-IngressRouteFile.certificateResolver is never set by a resolve case
-IngressRouteFile.entryPoint is never set by a resolve case
-IngressRouteFile.exposure is never set by a resolve case
-IngressRouteFile.path is never set by a resolve case
-IngressRouteFile.terminatesTls is never set by a resolve case
-InputDigest is never instantiated by a resolve case
-InputDigest.digest is never set by a resolve case
-InputDigest.input is never set by a resolve case
-InputDigest.name is never set by a resolve case
-InternetEgress is never instantiated by a resolve case
-InternetEgress.reason is never set by a resolve case
-KeyEncoding.base64 is never used in a resolve case's input
-KeyEncoding.base64url is never used in a resolve case's input
-KeyEncoding.hex is never used in a resolve case's input
-KeyValue is never instantiated by a resolve case
-KeyValue.key is never set by a resolve case
-KeyValue.value is never set by a resolve case
-KvGrant is never instantiated in a resolve case's input
-KvGrant.access is never set in a resolve case's input
-KvGrant.delivery is never set in a resolve case's input
-KvGrant.fileMode is never set in a resolve case's input
-KvGrant.keys is never set in a resolve case's input
-KvGrant.mountAt is never set in a resolve case's input
-KvGrant.path is never set in a resolve case's input
-KvGrant.rotation is never set in a resolve case's input
-L4Address is never instantiated in a resolve case's input
-L4Address.key is never set in a resolve case's input
-L4Address.value is never set in a resolve case's input
-L4Exposure is never instantiated in a resolve case's input
-L4Exposure.address is never set in a resolve case's input
-L4Exposure.port is never set in a resolve case's input
-L4Exposure.process is never set in a resolve case's input
-L4Exposure.protocol is never set in a resolve case's input
-L4Exposure.surface is never set in a resolve case's input
-L4Port is never instantiated by a resolve case
-L4Port.name is never set by a resolve case
-L4Port.port is never set by a resolve case
-L4Port.protocol is never set by a resolve case
-L4Port.targetPort is never set by a resolve case
-L4Protocol.tcp is never used in a resolve case's input
-L4Protocol.udp is never used in a resolve case's input
-Library is never instantiated in a resolve case's input
-Library.key is never set in a resolve case's input
-Library.value is never set in a resolve case's input
-LibraryAccess.read is never used in a resolve case's input
-LibraryAccess.write is never used in a resolve case's input
-LibraryDeclaration is never instantiated in a resolve case's input
-LibraryDeclaration.gid is never set in a resolve case's input
-LibraryDeclaration.grants is never set in a resolve case's input
-LibraryDeclaration.node is never set in a resolve case's input
-LibraryDeclaration.path is never set in a resolve case's input
-LibraryFile is never instantiated by a resolve case
-LibraryFile.adapter is never set by a resolve case
-LibraryFile.libraries is never set by a resolve case
-LibraryFile.namespace is never set by a resolve case
-LibraryFile.path is never set by a resolve case
-LibraryFile.size is never set by a resolve case
-LibraryGrant is never instantiated in a resolve case's input
-LibraryGrant.key is never set in a resolve case's input
-LibraryGrant.value is never set in a resolve case's input
-LibraryMount is never instantiated in a resolve case's input
-LibraryMount.access is never set in a resolve case's input
-LibraryMount.library is never set in a resolve case's input
-LibraryMount.mountAt is never set in a resolve case's input
-LibraryMount.subPath is never set in a resolve case's input
-Lifecycle.application is never used in a resolve case's input
-Lifecycle.job is never used in a resolve case's input
-Lifecycle.prepare is never used in a resolve case's input
-Lifecycle.scheduled is never used in a resolve case's input
-Listener.plain is never used in a resolve case's input
-Listener.tls is never used in a resolve case's input
-LockedImage is never instantiated in a resolve case's input
-LockedImage.alias is never set in a resolve case's input
-LockedImage.digest is never set in a resolve case's input
-LockedImage.gid is never set in a resolve case's input
-LockedImage.repository is never set in a resolve case's input
-LockedImage.uid is never set in a resolve case's input
-LockedImage.version is never set in a resolve case's input
-ManagedMigration is never instantiated in a resolve case's input
-ManagedMigration.changelog is never set in a resolve case's input
-Match.exact is never used by a resolve case
-Match.exact is never used in a resolve case's input
-Match.prefix is never used by a resolve case
-Match.prefix is never used in a resolve case's input
-Media.hdd is never used in a resolve case's input
-Media.nvme is never used in a resolve case's input
-Media.ssd is never used in a resolve case's input
-MemoryPath is never instantiated in a resolve case's input
-MemoryPath.memory is never set in a resolve case's input
-MemoryPath.path is never set in a resolve case's input
-Mesh is never instantiated in a resolve case's input
-Mesh.enrolled is never set in a resolve case's input
-MiddlewareKind.forwardAuth is never used by a resolve case
-MiddlewareKind.rateLimit is never used by a resolve case
-MiddlewareKind.redirect is never used by a resolve case
-MiddlewareKind.securityHeaders is never used by a resolve case
-MiddlewareStep is never instantiated by a resolve case
-MiddlewareStep.allowance is never set by a resolve case
-MiddlewareStep.burst is never set by a resolve case
-MiddlewareStep.clientAddress is never set by a resolve case
-MiddlewareStep.contentPolicy is never set by a resolve case
-MiddlewareStep.endpoint is never set by a resolve case
-MiddlewareStep.kind is never set by a resolve case
-MiddlewareStep.name is never set by a resolve case
-MiddlewareStep.namespace is never set by a resolve case
-MiddlewareStep.per is never set by a resolve case
-MiddlewareStep.redirectTo is never set by a resolve case
-MigratedDatabase is never instantiated by a resolve case
-MigratedDatabase.host is never set by a resolve case
-MigratedDatabase.name is never set by a resolve case
-MigratedDatabase.port is never set by a resolve case
-MigrationFile is never instantiated by a resolve case
-MigrationFile.adapter is never set by a resolve case
-MigrationFile.application is never set by a resolve case
-MigrationFile.downTag is never set by a resolve case
-MigrationFile.path is never set by a resolve case
-MigrationFile.role is never set by a resolve case
-MigrationFile.upTag is never set by a resolve case
-MigrationPolicy is never instantiated in a resolve case's input
-MigrationPolicy.cpu is never set in a resolve case's input
-MigrationPolicy.deadline is never set in a resolve case's input
-MigrationPolicy.memory is never set in a resolve case's input
-MigrationPolicy.runner is never set in a resolve case's input
-MigrationProof is never instantiated in a resolve case's input
-MigrationProof.apiVersion is never set in a resolve case's input
-MigrationProof.applications is never set in a resolve case's input
-MigrationProof.kind is never set in a resolve case's input
-MigrationProof.schemaVersion is never set in a resolve case's input
-MonitorCadence is never instantiated in a resolve case's input
-MonitorCadence.interval is never set in a resolve case's input
-MonitorCadence.labels is never set in a resolve case's input
-MonitorCadence.timeout is never set in a resolve case's input
-MonitorFile is never instantiated by a resolve case
-MonitorFile.adapter is never set by a resolve case
-MonitorFile.interval is never set by a resolve case
-MonitorFile.kind is never set by a resolve case
-MonitorFile.path is never set by a resolve case
-MonitorFile.process is never set by a resolve case
-MonitorFile.scrapePath is never set by a resolve case
-MonitorFile.surface is never set by a resolve case
-MonitorFile.timeout is never set by a resolve case
-MonitorKind.podMonitor is never used by a resolve case
-MonitorKind.serviceMonitor is never used by a resolve case
-MonitorLabel is never instantiated in a resolve case's input
-MonitorLabel.key is never set in a resolve case's input
-MonitorLabel.value is never set in a resolve case's input
-Monitoring is never instantiated in a resolve case's input
-Monitoring.alertmanager is never set in a resolve case's input
-Monitoring.grafana is never set in a resolve case's input
-Monitoring.prometheus is never set in a resolve case's input
-Monitoring.receivers is never set in a resolve case's input
-Monitoring.routes is never set in a resolve case's input
-MoveBreak.major is never used in a resolve case's input
-MoveBreak.minor is never used in a resolve case's input
 MoveFile is never instantiated by a resolve case
 MoveFile.adapter is never set by a resolve case
 MoveFile.path is never set by a resolve case
 MoveFile.process is never set by a resolve case
-MoveMethod is never instantiated in a resolve case's input
-MoveMethod.breaksOn is never set in a resolve case's input
-MoveMethod.image is never set in a resolve case's input
-MoveMethod.reverse is never set in a resolve case's input
-MovePolicy is never instantiated in a resolve case's input
-MovePolicy.cpu is never set in a resolve case's input
-MovePolicy.memory is never set in a resolve case's input
-MovePolicy.retention is never set in a resolve case's input
-MovePolicy.timeout is never set in a resolve case's input
-MoveReverse.always is never used in a resolve case's input
-MoveReverse.never is never used in a resolve case's input
-MoveReverse.sameMajor is never used in a resolve case's input
 MoveStep is never instantiated by a resolve case
 MoveStep.command is never set by a resolve case
-MoveStep.fence is never used in a resolve case's input
 MoveStep.lag is never used in a resolve case's input
 MoveStep.name is never set by a resolve case
 MoveStep.retire is never used in a resolve case's input
 MoveStep.reverse is never used in a resolve case's input
 MoveStep.sync is never used in a resolve case's input
 MoveStep.unfence is never used in a resolve case's input
-MoveTarget is never instantiated in a resolve case's input
-MoveTarget.name is never set in a resolve case's input
-MoveTarget.namespace is never set in a resolve case's input
-MoveTarget.node is never set in a resolve case's input
-MoveTarget.version is never set in a resolve case's input
-NamespaceFile is never instantiated by a resolve case
-NamespaceFile.adapter is never set by a resolve case
-NamespaceFile.namespace is never set by a resolve case
-NamespaceFile.path is never set by a resolve case
-NetworkPolicyFile is never instantiated by a resolve case
-NetworkPolicyFile.adapter is never set by a resolve case
-NetworkPolicyFile.migration is never set by a resolve case
-NetworkPolicyFile.path is never set by a resolve case
-NetworkPolicyFile.policies is never set by a resolve case
-NoMigration is never instantiated in a resolve case's input
-NoProbes is never instantiated in a resolve case's input
-Node is never instantiated in a resolve case's input
-Node.allocatable is never set in a resolve case's input
-Node.arch is never set in a resolve case's input
-Node.capabilities is never set in a resolve case's input
-Node.disks is never set in a resolve case's input
-Node.gpus is never set in a resolve case's input
-Node.name is never set in a resolve case's input
-Node.site is never set in a resolve case's input
-NodeAddress is never instantiated in a resolve case's input
-NodeAddress.kind is never set in a resolve case's input
-NodeAddress.node is never set in a resolve case's input
 NodeAgentFile is never instantiated by a resolve case
 NodeAgentFile.adapter is never set by a resolve case
 NodeAgentFile.agents is never set by a resolve case
 NodeAgentFile.part is never set by a resolve case
 NodeAgentFile.path is never set by a resolve case
-NodeAgentPolicy is never instantiated in a resolve case's input
-NodeAgentPolicy.cpu is never set in a resolve case's input
-NodeAgentPolicy.image is never set in a resolve case's input
-NodeAgentPolicy.memory is never set in a resolve case's input
-NodeAgents is never instantiated in a resolve case's input
-NodeAgents.gpuDevice is never set in a resolve case's input
-NodeAgents.gpuMetrics is never set in a resolve case's input
-NodeAgents.l4Speaker is never set in a resolve case's input
-NodeAgents.nodeMetrics is never set in a resolve case's input
-NodeContract is never instantiated in a resolve case's input
-NodeContract.apiVersion is never set in a resolve case's input
-NodeContract.cluster is never set in a resolve case's input
-NodeContract.kind is never set in a resolve case's input
-NodeContract.labelPrefix is never set in a resolve case's input
-NodeContract.nodes is never set in a resolve case's input
-NodeContract.schemaVersion is never set in a resolve case's input
-Observability is never instantiated in a resolve case's input
-Observability.scrape is never set in a resolve case's input
-OffClusterCopy is never instantiated in a resolve case's input
-OffClusterCopy.credential is never set in a resolve case's input
-OffClusterCopy.destination is never set in a resolve case's input
-OffClusterCopy.egress is never set in a resolve case's input
-OffClusterCopy.recipient is never set in a resolve case's input
-OptionalKey is never instantiated in a resolve case's input
-OptionalKey.name is never set in a resolve case's input
-OptionalKey.optional is never set in a resolve case's input
-Parked is never instantiated in a resolve case's input
-Parked.reason is never set in a resolve case's input
-PinnedInput.clusterState is never used by a resolve case
-PinnedInput.imagesLock is never used by a resolve case
-PinnedInput.intentFragment is never used by a resolve case
-PinnedInput.nodeContract is never used by a resolve case
-PinnedInput.platformIntent is never used by a resolve case
-PinnedInstance is never instantiated in a resolve case's input
-PinnedInstance.application is never set in a resolve case's input
-PinnedInstance.flippedAt is never set in a resolve case's input
-PinnedInstance.instance is never set in a resolve case's input
-PinnedInstance.name is never set in a resolve case's input
-PinnedInstance.namespace is never set in a resolve case's input
-PinnedInstance.node is never set in a resolve case's input
-PinnedInstance.phase is never set in a resolve case's input
-PinnedInstance.target is never set in a resolve case's input
-PinnedInstance.version is never set in a resolve case's input
-Placeholder is never instantiated in a resolve case's input
-Placeholder.kind is never set in a resolve case's input
-Placeholder.source is never set in a resolve case's input
-Placeholder.suffix is never set in a resolve case's input
-PlaceholderKind.client is never used in a resolve case's input
-PlaceholderKind.dependency is never used in a resolve case's input
-PlaceholderKind.exposure is never used in a resolve case's input
-PlaceholderKind.identity is never used in a resolve case's input
-PlaceholderKind.secret is never used in a resolve case's input
-Placement is never instantiated in a resolve case's input
-Placement.arch is never set in a resolve case's input
-Placement.capabilities is never set in a resolve case's input
-Placement.cpu is never set in a resolve case's input
-Placement.disk is never set in a resolve case's input
-Placement.gpu is never set in a resolve case's input
-Placement.memory is never set in a resolve case's input
-Placement.site is never set in a resolve case's input
-PlainKey is never instantiated in a resolve case's input
-PlainKey.name is never set in a resolve case's input
-PlainPath is never instantiated in a resolve case's input
-PlainPath.path is never set in a resolve case's input
-Platform is never instantiated in a resolve case's input
-Platform.acme is never set in a resolve case's input
-Platform.apiAccess is never set in a resolve case's input
-Platform.apiVersion is never set in a resolve case's input
-Platform.bootstrap is never set in a resolve case's input
-Platform.delivery is never set in a resolve case's input
-Platform.durability is never set in a resolve case's input
-Platform.engines is never set in a resolve case's input
-Platform.ephemeral is never set in a resolve case's input
-Platform.gpus is never set in a resolve case's input
-Platform.handover is never set in a resolve case's input
-Platform.hardening is never set in a resolve case's input
-Platform.humanGrants is never set in a resolve case's input
-Platform.kind is never set in a resolve case's input
-Platform.l4Addresses is never set in a resolve case's input
-Platform.libraries is never set in a resolve case's input
-Platform.mesh is never set in a resolve case's input
-Platform.metadata is never set in a resolve case's input
-Platform.migration is never set in a resolve case's input
-Platform.monitoring is never set in a resolve case's input
-Platform.monitors is never set in a resolve case's input
-Platform.nodeAgents is never set in a resolve case's input
-Platform.owner is never set in a resolve case's input
-Platform.policyJob is never set in a resolve case's input
-Platform.priority is never set in a resolve case's input
-Platform.probes is never set in a resolve case's input
-Platform.providers is never set in a resolve case's input
-Platform.schemaVersion is never set in a resolve case's input
-Platform.secretStore is never set in a resolve case's input
-Platform.seeder is never set in a resolve case's input
-Platform.signIn is never set in a resolve case's input
-Platform.substrate is never set in a resolve case's input
-Platform.telemetry is never set in a resolve case's input
-Platform.tiers is never set in a resolve case's input
-Platform.vpn is never set in a resolve case's input
-PlatformMetadata is never instantiated in a resolve case's input
-PlatformMetadata.cluster is never set in a resolve case's input
-PlatformMetadata.nodeContract is never set in a resolve case's input
-PlatformMetadata.project is never set in a resolve case's input
 PolicyController.cni is never used in a resolve case's input
-PolicyController.embedded is never used in a resolve case's input
 PolicyController.none is never used in a resolve case's input
-PolicyDocument is never instantiated by a resolve case
-PolicyDocument.file is never set by a resolve case
-PolicyDocument.json is never set by a resolve case
-PolicyJobFile is never instantiated by a resolve case
-PolicyJobFile.adapter is never set by a resolve case
-PolicyJobFile.documents is never set by a resolve case
-PolicyJobFile.job is never set by a resolve case
-PolicyJobFile.name is never set by a resolve case
-PolicyJobFile.namespace is never set by a resolve case
-PolicyJobFile.part is never set by a resolve case
-PolicyJobFile.path is never set by a resolve case
-PolicyPath is never instantiated by a resolve case
-PolicyPath.allows is never set by a resolve case
-PolicyPath.path is never set by a resolve case
-PolicyPeer is never instantiated by a resolve case
-PolicyPeer.cidr is never set by a resolve case
-PolicyPeer.consumes is never set by a resolve case
-PolicyPeer.namespace is never set by a resolve case
-PolicyPeer.port is never set by a resolve case
-PolicyPeer.process is never set by a resolve case
 PolicyPeer.protocol is never set by a resolve case
-PolicyPeer.rule is never set by a resolve case
-PoolAddress is never instantiated in a resolve case's input
-PoolAddress.kind is never set in a resolve case's input
-PoolAddress.range is never set in a resolve case's input
-PoolAddress.site is never set in a resolve case's input
-PriorityClass is never instantiated in a resolve case's input
-PriorityClass.name is never set in a resolve case's input
-PriorityClass.value is never set in a resolve case's input
 PriorityClassFile is never instantiated by a resolve case
 PriorityClassFile.adapter is never set by a resolve case
 PriorityClassFile.critical is never set by a resolve case
 PriorityClassFile.data is never set by a resolve case
 PriorityClassFile.path is never set by a resolve case
-PriorityPolicy is never instantiated in a resolve case's input
-PriorityPolicy.critical is never set in a resolve case's input
-PriorityPolicy.criticalApplications is never set in a resolve case's input
-PriorityPolicy.data is never set in a resolve case's input
-ProbeCadence is never instantiated in a resolve case's input
-ProbeCadence.failures is never set in a resolve case's input
-ProbeCadence.period is never set in a resolve case's input
-ProbeCadence.timeout is never set in a resolve case's input
-Probes is never instantiated in a resolve case's input
-Probes.liveness is never set in a resolve case's input
-Probes.readiness is never set in a resolve case's input
-Process is never instantiated in a resolve case's input
-Process.api is never set in a resolve case's input
-Process.args is never set in a resolve case's input
-Process.assets is never set in a resolve case's input
-Process.command is never set in a resolve case's input
-Process.cutover is never set in a resolve case's input
-Process.dependsOn is never set in a resolve case's input
-Process.description is never set in a resolve case's input
-Process.egress is never set in a resolve case's input
-Process.engine is never set in a resolve case's input
-Process.env is never set in a resolve case's input
-Process.image is never set in a resolve case's input
-Process.libraries is never set in a resolve case's input
-Process.lifecycle is never set in a resolve case's input
-Process.name is never set in a resolve case's input
-Process.parked is never set in a resolve case's input
-Process.placement is never set in a resolve case's input
-Process.probes is never set in a resolve case's input
-Process.provides is never set in a resolve case's input
-Process.replicas is never set in a resolve case's input
-Process.rollback is never set in a resolve case's input
-Process.runtime is never set in a resolve case's input
-Process.schedule is never set in a resolve case's input
-Process.secrets is never set in a resolve case's input
-Process.sidecars is never set in a resolve case's input
-Process.spawns is never set in a resolve case's input
-Process.startupBudget is never set in a resolve case's input
-Process.volumes is never set in a resolve case's input
-Process.vpn is never set in a resolve case's input
-Process.writablePaths is never set in a resolve case's input
-ProcessPolicy is never instantiated by a resolve case
-ProcessPolicy.egress is never set by a resolve case
-ProcessPolicy.ingress is never set by a resolve case
-ProcessPolicy.process is never set by a resolve case
-Project is never instantiated in a resolve case's input
-Project.apiVersion is never set in a resolve case's input
-Project.applications is never set in a resolve case's input
-Project.assets is never set in a resolve case's input
-Project.cutover is never set in a resolve case's input
-Project.dependsOn is never set in a resolve case's input
-Project.env is never set in a resolve case's input
-Project.kind is never set in a resolve case's input
-Project.owner is never set in a resolve case's input
-Project.placement is never set in a resolve case's input
-Project.project is never set in a resolve case's input
-Project.schemaVersion is never set in a resolve case's input
-Project.secrets is never set in a resolve case's input
-Project.startupBudget is never set in a resolve case's input
-Project.writablePaths is never set in a resolve case's input
-ProvenApplication is never instantiated in a resolve case's input
-ProvenApplication.id is never set in a resolve case's input
-ProvenApplication.nonTransactional is never set in a resolve case's input
-ProvenApplication.testedAgainst is never set in a resolve case's input
-Provenance is never instantiated by a resolve case
-Provenance.inputDigests is never set by a resolve case
-Provenance.renderHash is never set by a resolve case
-Provenance.schemaPackageIntegrity is never set by a resolve case
-Provider is never instantiated in a resolve case's input
-Provider.address is never set in a resolve case's input
-Provider.name is never set in a resolve case's input
-Provider.surfaces is never set in a resolve case's input
-ProviderSurface is never instantiated in a resolve case's input
-ProviderSurface.key is never set in a resolve case's input
-ProviderSurface.value is never set in a resolve case's input
-ProxiedBy.cloudflare is never used in a resolve case's input
-RateLimit is never instantiated in a resolve case's input
-RateLimit.per is never set in a resolve case's input
-RateLimit.requests is never set in a resolve case's input
-RbacFile is never instantiated by a resolve case
-RbacFile.adapter is never set by a resolve case
-RbacFile.path is never set by a resolve case
-RbacFile.processes is never set by a resolve case
-Receiver is never instantiated in a resolve case's input
-Receiver.discord is never set in a resolve case's input
-Receiver.name is never set in a resolve case's input
-ReconcileUnit is never instantiated by a resolve case
-ReconcileUnit.after is never set by a resolve case
-ReconcileUnit.name is never set by a resolve case
-ReleaseGate is never instantiated by a resolve case
-ReleaseGate.analysis is never set by a resolve case
-ReleaseGate.deadline is never set by a resolve case
-ReleaseGate.endpoint is never set by a resolve case
-ReleaseGate.members is never set by a resolve case
-ReleaseGate.migration is never set by a resolve case
 RenderSource is never instantiated by a resolve case
 RenderSource.digest is never set by a resolve case
 RenderSource.issuer is never set by a resolve case
 RenderSource.name is never set by a resolve case
 RenderSource.subject is never set by a resolve case
 RenderSource.url is never set by a resolve case
-RenderedArtifacts is never instantiated in a resolve case's input
-RenderedArtifacts.pullSecret is never set in a resolve case's input
-RenderedArtifacts.repository is never set in a resolve case's input
-RenderedArtifacts.signer is never set in a resolve case's input
 ResolvedAddressPool is never instantiated by a resolve case
 ResolvedAddressPool.name is never set by a resolve case
 ResolvedAddressPool.nodes is never set by a resolve case
@@ -975,62 +138,12 @@ ResolvedAlertRules.name is never set by a resolve case
 ResolvedAlerting is never instantiated by a resolve case
 ResolvedAlerting.receivers is never set by a resolve case
 ResolvedAlerting.routes is never set by a resolve case
-ResolvedApiAccess is never instantiated by a resolve case
-ResolvedApiAccess.reason is never set by a resolve case
-ResolvedApiAccess.rules is never set by a resolve case
-ResolvedApiAccess.server is never set by a resolve case
-ResolvedApiRule is never instantiated by a resolve case
-ResolvedApiRule.group is never set by a resolve case
-ResolvedApiRule.objects is never set by a resolve case
-ResolvedApiRule.scope is never set by a resolve case
-ResolvedApiRule.verbs is never set by a resolve case
-ResolvedApplication is never instantiated by a resolve case
 ResolvedApplication.alertClass is never set by a resolve case
 ResolvedApplication.alertRules is never set by a resolve case
 ResolvedApplication.alerting is never set by a resolve case
 ResolvedApplication.client is never set by a resolve case
-ResolvedApplication.dashboards is never set by a resolve case
-ResolvedApplication.exposure is never set by a resolve case
 ResolvedApplication.fluxScrape is never set by a resolve case
-ResolvedApplication.id is never set by a resolve case
-ResolvedApplication.migration is never set by a resolve case
-ResolvedApplication.namespace is never set by a resolve case
-ResolvedApplication.processes is never set by a resolve case
-ResolvedApplication.project is never set by a resolve case
-ResolvedApplication.reconcileUnit is never set by a resolve case
-ResolvedApplication.releaseGate is never set by a resolve case
-ResolvedApplication.revision is never set by a resolve case
-ResolvedApplication.scrape is never set by a resolve case
-ResolvedApplication.secretStore is never set by a resolve case
-ResolvedAsset is never instantiated by a resolve case
-ResolvedAsset.content is never set by a resolve case
-ResolvedAsset.from is never set by a resolve case
-ResolvedAsset.mountAt is never set by a resolve case
-ResolvedAsset.name is never set by a resolve case
 ResolvedAsset.seedAt is never set by a resolve case
-ResolvedCatalog is never instantiated by a resolve case
-ResolvedCatalog.admin is never set by a resolve case
-ResolvedCatalog.connection is never set by a resolve case
-ResolvedCatalog.databases is never set by a resolve case
-ResolvedCatalog.host is never set by a resolve case
-ResolvedCatalog.port is never set by a resolve case
-ResolvedCatalogJob is never instantiated by a resolve case
-ResolvedCatalogJob.address is never set by a resolve case
-ResolvedCatalogJob.catalog is never set by a resolve case
-ResolvedCatalogJob.consumes is never set by a resolve case
-ResolvedCatalogJob.cpu is never set by a resolve case
-ResolvedCatalogJob.deadline is never set by a resolve case
-ResolvedCatalogJob.egress is never set by a resolve case
-ResolvedCatalogJob.eligibleNodes is never set by a resolve case
-ResolvedCatalogJob.gid is never set by a resolve case
-ResolvedCatalogJob.identity is never set by a resolve case
-ResolvedCatalogJob.image is never set by a resolve case
-ResolvedCatalogJob.imageVersion is never set by a resolve case
-ResolvedCatalogJob.memory is never set by a resolve case
-ResolvedCatalogJob.namespace is never set by a resolve case
-ResolvedCatalogJob.policy is never set by a resolve case
-ResolvedCatalogJob.role is never set by a resolve case
-ResolvedCatalogJob.uid is never set by a resolve case
 ResolvedClient is never instantiated by a resolve case
 ResolvedClient.credential is never set by a resolve case
 ResolvedClient.description is never set by a resolve case
@@ -1042,47 +155,8 @@ ResolvedClient.redirectUris is never set by a resolve case
 ResolvedClient.roles is never set by a resolve case
 ResolvedClient.secretPath is never set by a resolve case
 ResolvedClient.signIn is never set by a resolve case
-ResolvedDashboard is never instantiated by a resolve case
-ResolvedDashboard.content is never set by a resolve case
-ResolvedDashboard.inputs is never set by a resolve case
-ResolvedDashboard.name is never set by a resolve case
-ResolvedDashboards is never instantiated by a resolve case
-ResolvedDashboards.datasource is never set by a resolve case
-ResolvedDashboards.files is never set by a resolve case
-ResolvedDashboards.folder is never set by a resolve case
-ResolvedDashboards.instance is never set by a resolve case
-ResolvedDeployment is never instantiated by a resolve case
 ResolvedDeployment.addressPools is never set by a resolve case
-ResolvedDeployment.apiVersion is never set by a resolve case
-ResolvedDeployment.applications is never set by a resolve case
-ResolvedDeployment.catalogJobs is never set by a resolve case
-ResolvedDeployment.deliverables is never set by a resolve case
-ResolvedDeployment.events is never set by a resolve case
-ResolvedDeployment.kind is never set by a resolve case
 ResolvedDeployment.nodeAgents is never set by a resolve case
-ResolvedDeployment.policyJob is never set by a resolve case
-ResolvedDeployment.provenance is never set by a resolve case
-ResolvedDeployment.reconcileUnits is never set by a resolve case
-ResolvedEdge is never instantiated by a resolve case
-ResolvedEdge.address is never set by a resolve case
-ResolvedEdge.application is never set by a resolve case
-ResolvedEdge.peers is never set by a resolve case
-ResolvedEdge.surface is never set by a resolve case
-ResolvedEdge.target is never set by a resolve case
-ResolvedEvents is never instantiated by a resolve case
-ResolvedEvents.address is never set by a resolve case
-ResolvedEvents.namespace is never set by a resolve case
-ResolvedExposure is never instantiated by a resolve case
-ResolvedExposure.certificates is never set by a resolve case
-ResolvedExposure.dns is never set by a resolve case
-ResolvedExposure.host is never set by a resolve case
-ResolvedExposure.ingressClass is never set by a resolve case
-ResolvedExposure.listener is never set by a resolve case
-ResolvedExposure.name is never set by a resolve case
-ResolvedExposure.proxyApplication is never set by a resolve case
-ResolvedExposure.proxyNamespace is never set by a resolve case
-ResolvedExposure.routes is never set by a resolve case
-ResolvedExposure.tier is never set by a resolve case
 ResolvedFluxScrape is never instantiated by a resolve case
 ResolvedFluxScrape.interval is never set by a resolve case
 ResolvedFluxScrape.labels is never set by a resolve case
@@ -1097,51 +171,7 @@ ResolvedGeneratedKey.bytes is never set by a resolve case
 ResolvedGeneratedKey.encoding is never set by a resolve case
 ResolvedGeneratedKey.key is never set by a resolve case
 ResolvedGeneratedKey.path is never set by a resolve case
-ResolvedGpu is never instantiated by a resolve case
-ResolvedGpu.resource is never set by a resolve case
-ResolvedGpu.runtimeClass is never set by a resolve case
-ResolvedGrant is never instantiated by a resolve case
-ResolvedGrant.access is never set by a resolve case
-ResolvedGrant.delivery is never set by a resolve case
-ResolvedGrant.destination is never set by a resolve case
-ResolvedGrant.engine is never set by a resolve case
-ResolvedGrant.fileMode is never set by a resolve case
 ResolvedGrant.generated is never set by a resolve case
-ResolvedGrant.keys is never set by a resolve case
-ResolvedGrant.mountAt is never set by a resolve case
-ResolvedGrant.path is never set by a resolve case
-ResolvedGrant.paths is never set by a resolve case
-ResolvedGrant.restartTargets is never set by a resolve case
-ResolvedL4Service is never instantiated by a resolve case
-ResolvedL4Service.name is never set by a resolve case
-ResolvedL4Service.pool is never set by a resolve case
-ResolvedL4Service.ports is never set by a resolve case
-ResolvedLibraryMount is never instantiated by a resolve case
-ResolvedLibraryMount.access is never set by a resolve case
-ResolvedLibraryMount.claim is never set by a resolve case
-ResolvedLibraryMount.gid is never set by a resolve case
-ResolvedLibraryMount.library is never set by a resolve case
-ResolvedLibraryMount.mountAt is never set by a resolve case
-ResolvedLibraryMount.node is never set by a resolve case
-ResolvedLibraryMount.path is never set by a resolve case
-ResolvedLibraryMount.subPath is never set by a resolve case
-ResolvedLibraryMount.volume is never set by a resolve case
-ResolvedMigration is never instantiated by a resolve case
-ResolvedMigration.consumes is never set by a resolve case
-ResolvedMigration.cpu is never set by a resolve case
-ResolvedMigration.credential is never set by a resolve case
-ResolvedMigration.database is never set by a resolve case
-ResolvedMigration.deadline is never set by a resolve case
-ResolvedMigration.egress is never set by a resolve case
-ResolvedMigration.gid is never set by a resolve case
-ResolvedMigration.identity is never set by a resolve case
-ResolvedMigration.memory is never set by a resolve case
-ResolvedMigration.nonTransactional is never set by a resolve case
-ResolvedMigration.runner is never set by a resolve case
-ResolvedMigration.runnerVersion is never set by a resolve case
-ResolvedMigration.scratch is never set by a resolve case
-ResolvedMigration.testedAgainst is never set by a resolve case
-ResolvedMigration.uid is never set by a resolve case
 ResolvedMove is never instantiated by a resolve case
 ResolvedMove.cpu is never set by a resolve case
 ResolvedMove.credentialsPath is never set by a resolve case
@@ -1191,98 +221,19 @@ ResolvedNodeAgent.rules is never set by a resolve case
 ResolvedNodeAgent.runtimeClass is never set by a resolve case
 ResolvedNodeAgent.surfaces is never set by a resolve case
 ResolvedNodeAgent.uid is never set by a resolve case
-ResolvedPlacement is never instantiated by a resolve case
 ResolvedPlacement.boundTo is never set by a resolve case
-ResolvedPlacement.eligibleNodes is never set by a resolve case
 ResolvedPlacement.from is never set by a resolve case
-ResolvedPolicyJob is never instantiated by a resolve case
-ResolvedPolicyJob.address is never set by a resolve case
-ResolvedPolicyJob.cpu is never set by a resolve case
-ResolvedPolicyJob.deadline is never set by a resolve case
-ResolvedPolicyJob.egress is never set by a resolve case
-ResolvedPolicyJob.eligibleNodes is never set by a resolve case
-ResolvedPolicyJob.gid is never set by a resolve case
-ResolvedPolicyJob.identity is never set by a resolve case
-ResolvedPolicyJob.image is never set by a resolve case
-ResolvedPolicyJob.imageVersion is never set by a resolve case
-ResolvedPolicyJob.memory is never set by a resolve case
-ResolvedPolicyJob.namespace is never set by a resolve case
-ResolvedPolicyJob.role is never set by a resolve case
-ResolvedPolicyJob.uid is never set by a resolve case
 ResolvedPriority is never instantiated by a resolve case
 ResolvedPriority.name is never set by a resolve case
 ResolvedPriority.value is never set by a resolve case
-ResolvedProbe is never instantiated by a resolve case
-ResolvedProbe.failures is never set by a resolve case
-ResolvedProbe.period is never set by a resolve case
-ResolvedProbe.target is never set by a resolve case
-ResolvedProbe.timeout is never set by a resolve case
-ResolvedProcess is never instantiated by a resolve case
-ResolvedProcess.api is never set by a resolve case
 ResolvedProcess.arguments is never set by a resolve case
-ResolvedProcess.assets is never set by a resolve case
-ResolvedProcess.component is never set by a resolve case
-ResolvedProcess.consumes is never set by a resolve case
-ResolvedProcess.cpu is never set by a resolve case
-ResolvedProcess.cutover is never set by a resolve case
-ResolvedProcess.deadline is never set by a resolve case
-ResolvedProcess.dependencies is never set by a resolve case
-ResolvedProcess.environment is never set by a resolve case
-ResolvedProcess.frozen is never set by a resolve case
-ResolvedProcess.gid is never set by a resolve case
-ResolvedProcess.gpu is never set by a resolve case
-ResolvedProcess.hardening is never set by a resolve case
-ResolvedProcess.identity is never set by a resolve case
-ResolvedProcess.identityToken is never set by a resolve case
-ResolvedProcess.image is never set by a resolve case
-ResolvedProcess.imageVersion is never set by a resolve case
 ResolvedProcess.instance is never set by a resolve case
-ResolvedProcess.internetEgress is never set by a resolve case
-ResolvedProcess.l4Services is never set by a resolve case
-ResolvedProcess.libraries is never set by a resolve case
-ResolvedProcess.lifecycle is never set by a resolve case
-ResolvedProcess.liveness is never set by a resolve case
-ResolvedProcess.memory is never set by a resolve case
 ResolvedProcess.move is never set by a resolve case
-ResolvedProcess.name is never set by a resolve case
 ResolvedProcess.nameservers is never set by a resolve case
 ResolvedProcess.nodePorts is never set by a resolve case
-ResolvedProcess.parked is never set by a resolve case
-ResolvedProcess.placement is never set by a resolve case
-ResolvedProcess.priorityClass is never set by a resolve case
-ResolvedProcess.readiness is never set by a resolve case
-ResolvedProcess.replicas is never set by a resolve case
-ResolvedProcess.schedule is never set by a resolve case
-ResolvedProcess.secrets is never set by a resolve case
 ResolvedProcess.seeder is never set by a resolve case
-ResolvedProcess.serving is never set by a resolve case
-ResolvedProcess.servingLabel is never set by a resolve case
-ResolvedProcess.sidecars is never set by a resolve case
 ResolvedProcess.spawns is never set by a resolve case
-ResolvedProcess.spread is never set by a resolve case
-ResolvedProcess.startDeadline is never set by a resolve case
-ResolvedProcess.startup is never set by a resolve case
-ResolvedProcess.surfaces is never set by a resolve case
-ResolvedProcess.switchover is never set by a resolve case
-ResolvedProcess.uid is never set by a resolve case
-ResolvedProcess.volumes is never set by a resolve case
 ResolvedProcess.vpn is never set by a resolve case
-ResolvedProcess.writablePaths is never set by a resolve case
-ResolvedRoute is never instantiated by a resolve case
-ResolvedRoute.audience is never set by a resolve case
-ResolvedRoute.match is never set by a resolve case
-ResolvedRoute.middleware is never set by a resolve case
-ResolvedRoute.path is never set by a resolve case
-ResolvedRoute.precedence is never set by a resolve case
-ResolvedRoute.process is never set by a resolve case
-ResolvedRoute.surface is never set by a resolve case
-ResolvedScrape is never instantiated by a resolve case
-ResolvedScrape.interval is never set by a resolve case
-ResolvedScrape.labels is never set by a resolve case
-ResolvedScrape.path is never set by a resolve case
-ResolvedScrape.process is never set by a resolve case
-ResolvedScrape.surface is never set by a resolve case
-ResolvedScrape.timeout is never set by a resolve case
 ResolvedSeeder is never instantiated by a resolve case
 ResolvedSeeder.command is never set by a resolve case
 ResolvedSeeder.cpu is never set by a resolve case
@@ -1290,30 +241,12 @@ ResolvedSeeder.image is never set by a resolve case
 ResolvedSeeder.imageVersion is never set by a resolve case
 ResolvedSeeder.memory is never set by a resolve case
 ResolvedSeeder.mounts is never set by a resolve case
-ResolvedSidecar is never instantiated by a resolve case
-ResolvedSidecar.cpu is never set by a resolve case
-ResolvedSidecar.image is never set by a resolve case
-ResolvedSidecar.imageVersion is never set by a resolve case
-ResolvedSidecar.init is never set by a resolve case
-ResolvedSidecar.memory is never set by a resolve case
-ResolvedSidecar.mounts is never set by a resolve case
-ResolvedSidecar.name is never set by a resolve case
 ResolvedSpawn is never instantiated by a resolve case
 ResolvedSpawn.dependencies is never set by a resolve case
 ResolvedSpawn.egress is never set by a resolve case
 ResolvedSpawn.internetEgress is never set by a resolve case
 ResolvedSpawn.name is never set by a resolve case
 ResolvedSpawn.surfaces is never set by a resolve case
-ResolvedSurface is never instantiated by a resolve case
-ResolvedSurface.hostPort is never set by a resolve case
-ResolvedSurface.name is never set by a resolve case
-ResolvedSurface.port is never set by a resolve case
-ResolvedVolume is never instantiated by a resolve case
-ResolvedVolume.backup is never set by a resolve case
-ResolvedVolume.claim is never set by a resolve case
-ResolvedVolume.durability is never set by a resolve case
-ResolvedVolume.mountAt is never set by a resolve case
-ResolvedVolume.size is never set by a resolve case
 ResolvedVpn is never instantiated by a resolve case
 ResolvedVpn.cpu is never set by a resolve case
 ResolvedVpn.credential is never set by a resolve case
@@ -1322,63 +255,6 @@ ResolvedVpn.forwardedPort is never set by a resolve case
 ResolvedVpn.image is never set by a resolve case
 ResolvedVpn.imageVersion is never set by a resolve case
 ResolvedVpn.memory is never set by a resolve case
-Rollback is never instantiated in a resolve case's input
-Rotation is never instantiated in a resolve case's input
-Rotation.maxAge is never set in a resolve case's input
-Rotation.tolerates is never set in a resolve case's input
-Route is never instantiated in a resolve case's input
-Route.audience is never set in a resolve case's input
-Route.match is never set in a resolve case's input
-Route.path is never set in a resolve case's input
-Route.process is never set in a resolve case's input
-Route.rateLimit is never set in a resolve case's input
-Route.redirectTo is never set in a resolve case's input
-Route.surface is never set in a resolve case's input
-RuleScope.cluster is never used by a resolve case
-RuleScope.namespace is never used by a resolve case
-Runtime.jvm is never used in a resolve case's input
-Runtime.node is never used in a resolve case's input
-Runtime.none is never used in a resolve case's input
-Runtime.python is never used in a resolve case's input
-Runtime.static is never used in a resolve case's input
-Scrape is never instantiated in a resolve case's input
-Scrape.path is never set in a resolve case's input
-Scrape.process is never set in a resolve case's input
-Scrape.surface is never set in a resolve case's input
-SecretFile is never instantiated by a resolve case
-SecretFile.adapter is never set by a resolve case
-SecretFile.application is never set by a resolve case
-SecretFile.holders is never set by a resolve case
-SecretFile.path is never set by a resolve case
-SecretHolder is never instantiated by a resolve case
-SecretHolder.component is never set by a resolve case
-SecretHolder.grants is never set by a resolve case
-SecretHolder.identity is never set by a resolve case
-SecretReference is never instantiated by a resolve case
-SecretReference.key is never set by a resolve case
-SecretReference.optional is never set by a resolve case
-SecretReference.path is never set by a resolve case
-SeededAsset is never instantiated in a resolve case's input
-SeededAsset.from is never set in a resolve case's input
-SeededAsset.seedAt is never set in a resolve case's input
-Seeder is never instantiated in a resolve case's input
-Seeder.cpu is never set in a resolve case's input
-Seeder.image is never set in a resolve case's input
-Seeder.memory is never set in a resolve case's input
-SelfMigration is never instantiated in a resolve case's input
-ServiceFile is never instantiated by a resolve case
-ServiceFile.adapter is never set by a resolve case
-ServiceFile.path is never set by a resolve case
-ServiceFile.processes is never set by a resolve case
-ServingLocation is never instantiated in a resolve case's input
-ServingLocation.admin is never set in a resolve case's input
-ServingLocation.application is never set in a resolve case's input
-ServingLocation.instance is never set in a resolve case's input
-ServingLocation.namespace is never set in a resolve case's input
-SeverityRoute is never instantiated in a resolve case's input
-SeverityRoute.receiver is never set in a resolve case's input
-SeverityRoute.repeat is never set in a resolve case's input
-SeverityRoute.severity is never set in a resolve case's input
 SharedMiddlewareFile is never instantiated by a resolve case
 SharedMiddlewareFile.adapter is never set by a resolve case
 SharedMiddlewareFile.application is never set by a resolve case
@@ -1386,167 +262,9 @@ SharedMiddlewareFile.forwardAuth is never set by a resolve case
 SharedMiddlewareFile.namespace is never set by a resolve case
 SharedMiddlewareFile.path is never set by a resolve case
 SharedMiddlewareFile.policies is never set by a resolve case
-Sidecar is never instantiated in a resolve case's input
-Sidecar.args is never set in a resolve case's input
-Sidecar.assets is never set in a resolve case's input
-Sidecar.command is never set in a resolve case's input
-Sidecar.cpu is never set in a resolve case's input
-Sidecar.image is never set in a resolve case's input
-Sidecar.init is never set in a resolve case's input
-Sidecar.memory is never set in a resolve case's input
-Sidecar.name is never set in a resolve case's input
-Sidecar.volumes is never set in a resolve case's input
-SidecarAsset is never instantiated in a resolve case's input
-SidecarAsset.from is never set in a resolve case's input
-SidecarAsset.mountAt is never set in a resolve case's input
-SidecarMount is never instantiated in a resolve case's input
-SidecarMount.claim is never set in a resolve case's input
-SidecarMount.mountAt is never set in a resolve case's input
-SignIn is never instantiated in a resolve case's input
-SignIn.contract is never set in a resolve case's input
-SignIn.issuer is never set in a resolve case's input
-SignIn.provider is never set in a resolve case's input
-SignInMode.gated is never used in a resolve case's input
-SignInMode.native is never used in a resolve case's input
-SignInMode.token is never used in a resolve case's input
 SourceFile is never instantiated by a resolve case
 SourceFile.adapter is never set by a resolve case
 SourceFile.path is never set by a resolve case
 SourceFile.source is never set by a resolve case
 SourceFile.units is never set by a resolve case
-SpawnPlacement is never instantiated in a resolve case's input
-SpawnPlacement.cpu is never set in a resolve case's input
-SpawnPlacement.memory is never set in a resolve case's input
-SpawnTemplate is never instantiated in a resolve case's input
-SpawnTemplate.dependsOn is never set in a resolve case's input
-SpawnTemplate.egress is never set in a resolve case's input
-SpawnTemplate.image is never set in a resolve case's input
-SpawnTemplate.name is never set in a resolve case's input
-SpawnTemplate.placement is never set in a resolve case's input
-SpawnTemplate.provides is never set in a resolve case's input
-SpeakerPolicy is never instantiated in a resolve case's input
-SpeakerPolicy.controller is never set in a resolve case's input
-SpeakerPolicy.cpu is never set in a resolve case's input
-SpeakerPolicy.image is never set in a resolve case's input
-SpeakerPolicy.memory is never set in a resolve case's input
-Spread.node is never used in a resolve case's input
-StableAddressFile is never instantiated by a resolve case
-StableAddressFile.adapter is never set by a resolve case
-StableAddressFile.addresses is never set by a resolve case
-StableAddressFile.namespace is never set by a resolve case
-StableAddressFile.path is never set by a resolve case
-StartupProbe is never instantiated by a resolve case
-StartupProbe.failures is never set by a resolve case
-StartupProbe.period is never set by a resolve case
-StartupProbe.target is never set by a resolve case
-StartupProbe.timeout is never set by a resolve case
-Substrate is never instantiated in a resolve case's input
-Substrate.clusterDns is never set in a resolve case's input
-Substrate.cni is never set in a resolve case's input
-Substrate.datastore is never set in a resolve case's input
-Substrate.imagePull is never set in a resolve case's input
-Substrate.kubernetesVersion is never set in a resolve case's input
-Substrate.networkPolicyController is never set in a resolve case's input
-Substrate.secretsEncryption is never set in a resolve case's input
-Substrate.serverCount is never set in a resolve case's input
-Substrate.upstreamNameservers is never set in a resolve case's input
-Surface is never instantiated in a resolve case's input
-Surface.key is never set in a resolve case's input
-Surface.value is never set in a resolve case's input
-Switchover.blueGreen is never used by a resolve case
-Switchover.rolling is never used by a resolve case
-Switchover.stopStart is never used by a resolve case
-SwitchoverFile is never instantiated by a resolve case
-SwitchoverFile.adapter is never set by a resolve case
-SwitchoverFile.path is never set by a resolve case
-SwitchoverFile.processes is never set by a resolve case
-TcpProbe is never instantiated in a resolve case's input
-TcpProbe.tcp is never set in a resolve case's input
-TcpTarget is never instantiated by a resolve case
-TcpTarget.tcp is never set by a resolve case
-TelemetryPolicy is never instantiated in a resolve case's input
-TelemetryPolicy.collector is never set in a resolve case's input
-TelemetryPolicy.dashboards is never set in a resolve case's input
-TelemetryPolicy.metrics is never set in a resolve case's input
-Tier is never instantiated in a resolve case's input
-Tier.address is never set in a resolve case's input
-Tier.audiences is never set in a resolve case's input
-Tier.certificates is never set in a resolve case's input
-Tier.dns is never set in a resolve case's input
-Tier.forwardAuth is never set in a resolve case's input
-Tier.ingressClass is never set in a resolve case's input
-Tier.listener is never set in a resolve case's input
-Tier.name is never set in a resolve case's input
-Tier.proxiedBy is never set in a resolve case's input
-Tier.traefik is never set in a resolve case's input
-TierDns is never instantiated in a resolve case's input
-TierDns.direct is never set in a resolve case's input
-TierDns.proxied is never set in a resolve case's input
-TierDns.target is never set in a resolve case's input
-Tolerance.reload is never used in a resolve case's input
-Tolerance.restart is never used in a resolve case's input
-TransitEngine.transit is never used in a resolve case's input
-TransitGrant is never instantiated in a resolve case's input
-TransitGrant.delivery is never set in a resolve case's input
-TransitGrant.engine is never set in a resolve case's input
-TransitGrant.fileMode is never set in a resolve case's input
-TransitGrant.key is never set in a resolve case's input
-TransitGrant.mountAt is never set in a resolve case's input
-TransitGrant.operations is never set in a resolve case's input
-TransitGrant.rotation is never set in a resolve case's input
-TransitOp.decrypt is never used in a resolve case's input
-TransitOp.encrypt is never used in a resolve case's input
-TransitOp.read is never used in a resolve case's input
-TransitOp.rotate is never used in a resolve case's input
-TransitOp.sign is never used in a resolve case's input
-TransitOp.verify is never used in a resolve case's input
-VaultPolicyFile is never instantiated by a resolve case
-VaultPolicyFile.adapter is never set by a resolve case
-VaultPolicyFile.grants is never set by a resolve case
-VaultPolicyFile.identity is never set by a resolve case
-VaultPolicyFile.namespace is never set by a resolve case
-VaultPolicyFile.path is never set by a resolve case
-VaultPolicyFile.paths is never set by a resolve case
-VaultPolicyJob is never instantiated in a resolve case's input
-VaultPolicyJob.cpu is never set in a resolve case's input
-VaultPolicyJob.deadline is never set in a resolve case's input
-VaultPolicyJob.image is never set in a resolve case's input
-VaultPolicyJob.memory is never set in a resolve case's input
-VaultPolicyJob.role is never set in a resolve case's input
-VaultRoleFile is never instantiated by a resolve case
-VaultRoleFile.adapter is never set by a resolve case
-VaultRoleFile.identity is never set by a resolve case
-VaultRoleFile.namespace is never set by a resolve case
-VaultRoleFile.path is never set by a resolve case
-VaultState is never instantiated in a resolve case's input
-VaultState.unsealed is never set in a resolve case's input
-VaultValue is never instantiated in a resolve case's input
-VaultValue.key is never set in a resolve case's input
-VaultValue.path is never set in a resolve case's input
-Volume is never instantiated in a resolve case's input
-Volume.claim is never set in a resolve case's input
-Volume.durability is never set in a resolve case's input
-Volume.mountAt is never set in a resolve case's input
-Volume.size is never set in a resolve case's input
-VpnAttachment is never instantiated in a resolve case's input
-VpnAttachment.forwardedPort is never set in a resolve case's input
-VpnPolicy is never instantiated in a resolve case's input
-VpnPolicy.cpu is never set in a resolve case's input
-VpnPolicy.credential is never set in a resolve case's input
-VpnPolicy.image is never set in a resolve case's input
-VpnPolicy.memory is never set in a resolve case's input
-VpnPolicy.settings is never set in a resolve case's input
-VpnSetting is never instantiated in a resolve case's input
-VpnSetting.key is never set in a resolve case's input
-VpnSetting.value is never set in a resolve case's input
-WorkloadFile is never instantiated by a resolve case
-WorkloadFile.adapter is never set by a resolve case
-WorkloadFile.controller is never set by a resolve case
 WorkloadFile.disruptionBudget is never set by a resolve case
-WorkloadFile.path is never set by a resolve case
-WorkloadFile.processes is never set by a resolve case
-WorkloadFile.strategy is never set by a resolve case
-WritablePath is never instantiated by a resolve case
-WritablePath.memory is never set by a resolve case
-WritablePath.path is never set by a resolve case
-WritablePath.size is never set by a resolve case

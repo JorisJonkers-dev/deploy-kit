@@ -1,9 +1,5 @@
 ControllerKind.statefulSet is never used in a render case's input
 GateMember.waitsFor is never set in a render case's input
-GateMigration is never instantiated in a render case's input
-GateMigration.identity is never set in a render case's input
-GateMigration.nonTransactional is never set in a render case's input
-GateMigration.testedAgainst is never set in a render case's input
 GateProvider is never instantiated in a render case's input
 GateProvider.application is never set in a render case's input
 GateProvider.process is never set in a render case's input
@@ -13,8 +9,6 @@ GeneratedKeysFile.adapter is never set in a render case's input
 GeneratedKeysFile.keys is never set in a render case's input
 GeneratedKeysFile.path is never set in a render case's input
 IndexFile.namespace is never set in a render case's input
-ReleaseGate.migration is never set in a render case's input
-ResolvedEdge.target is never set in a render case's input
 ResolvedGeneratedKey is never instantiated in a render case's input
 ResolvedGeneratedKey.adoptKey is never set in a render case's input
 ResolvedGeneratedKey.adoptPath is never set in a render case's input
@@ -23,7 +17,6 @@ ResolvedGeneratedKey.encoding is never set in a render case's input
 ResolvedGeneratedKey.key is never set in a render case's input
 ResolvedGeneratedKey.path is never set in a render case's input
 ResolvedGrant.generated is never set in a render case's input
-ResolvedMigration.testedAgainst is never set in a render case's input
 ResolvedPlacement.boundTo is never set in a render case's input
 ResolvedPlacement.from is never set in a render case's input
 WorkloadFile.disruptionBudget is never set in a render case's input
