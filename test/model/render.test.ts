@@ -148,6 +148,54 @@ describe("renderIntentSet", () => {
     );
   });
 
+  // REQ-153 (docs/requirements.md): deleting a namespace deletes every object
+  // in it, the kept claims included, so no namespace the render writes is
+  // ever pruned: a Project's, the node agents' and the Stable Addresses'.
+  it("marks every namespace it writes never to be pruned", () => {
+    const namespaces = render(undefined, [
+      "notes",
+      "data",
+      "delivery",
+      "edge",
+      "observability",
+      "node",
+    ]).flatMap(({ files: written }) =>
+      written
+        .filter(({ path }) => path.endsWith("namespace.yaml"))
+        .flatMap(({ text: body }) =>
+          parseAllDocuments(body).map(
+            (document) =>
+              document.toJSON() as {
+                metadata: {
+                  name: string;
+                  annotations?: Record<string, string>;
+                };
+              },
+          ),
+        ),
+    );
+    expect(
+      Object.fromEntries(
+        namespaces.map(({ metadata }) => [metadata.name, metadata.annotations]),
+      ),
+    ).toStrictEqual(
+      Object.fromEntries(
+        [
+          "notes-system",
+          "data-system",
+          "delivery-system",
+          "edge-system",
+          "observability-system",
+          "node-system",
+          "estate-system",
+        ].map((name) => [
+          name,
+          { "kustomize.toolkit.fluxcd.io/prune": "disabled" },
+        ]),
+      ),
+    );
+  });
+
   // REQ-113 (docs/requirements.md): platform-postgres moving from 16 to 17,
   // the worked Move, renders its frozen source beside its target, its step
   // Jobs and its move identity, and equals its committed tree.

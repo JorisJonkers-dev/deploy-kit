@@ -1094,11 +1094,13 @@ barrier waits only on the members that did change. No metric query is rendered, 
 given no threshold of the gate's: its `analysis` holds the cadence and the webhooks alone. Every rule, with the adapter that keeps it,
 is [chapter 30](30-deliverables.md#flagger-ready-objects)'s.
 
-Two marks keep Flux from undoing what it must not. A migration or prepare Job is
+Three marks keep Flux from undoing what it must not. A migration or prepare Job is
 created once and never updated ([Failure and undo](#failure-and-undo)). A claim
 whose Durability Class derives a backup is never pruned: a Process leaving the
 render does not delete the data it held, which is Durability Class gating kept
-by the applier ([Scope](#scope)).
+by the applier ([Scope](#scope)). And no namespace the render writes is ever
+pruned, because deleting it would delete every claim in it, the kept ones
+included ([chapter 30](30-deliverables.md#flagger-ready-objects)).
 
 ## Diagram sources
 
