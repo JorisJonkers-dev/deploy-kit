@@ -340,6 +340,8 @@ export interface CronJob {
       readonly metadata?: { readonly labels: Labels };
       readonly spec: {
         readonly backoffLimit?: number;
+        /** Each run's deadline, below the schedule's period. */
+        readonly activeDeadlineSeconds?: number;
         readonly template: {
           readonly metadata: { readonly labels: Labels };
           readonly spec: PodSpec;

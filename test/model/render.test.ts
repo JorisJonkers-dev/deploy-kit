@@ -588,6 +588,29 @@ describe("renderIntentSet", () => {
       expect(cron).toContain(`name: ${String(named)}\n`);
     });
 
+    // REQ-154 (docs/requirements.md), deploy-kit#742: an hourly run whose
+    // hashed ConfigMap a later render pruned can never succeed, and under
+    // Forbid it would hold off every later run.
+    it("gives up an hourly run within the hour, while the one-shot Job retries until it succeeds", () => {
+      const tree = asTree(artifact(render(undefined, ["data"]), "data"));
+      const [run] = parseAllDocuments(
+        tree["apps/data/vault-policy/job.yaml"] ?? "",
+      ).map((document) => document.toJS() as { spec: Record<string, unknown> });
+      const [hourly] = parseAllDocuments(
+        tree["apps/data/vault-policy/cronjob.yaml"] ?? "",
+      ).map(
+        (document) =>
+          document.toJS() as {
+            spec: { jobTemplate: { spec: Record<string, unknown> } };
+          },
+      );
+
+      expect(run?.spec["backoffLimit"]).toBe(2_147_483_647);
+      expect(run?.spec["activeDeadlineSeconds"]).toBeUndefined();
+      expect(hourly?.spec.jobTemplate.spec["backoffLimit"]).toBe(6);
+      expect(hourly?.spec.jobTemplate.spec["activeDeadlineSeconds"]).toBe(3000);
+    });
+
     it("is recreated when the compiler alone changes its pod template, which a Job never lets an update change", () => {
       const tree = asTree(artifact(render(undefined, ["data"]), "data"));
       const job = tree["apps/data/vault-policy/job.yaml"] ?? "";
@@ -1395,6 +1418,36 @@ describe("the database catalog", () => {
       user: "postgres.user",
       password: "postgres.password",
     });
+  });
+
+  // REQ-154 (docs/requirements.md): the method's hourly run gives up within
+  // the hour, as the Vault policy job's does; its one-shot Job does not.
+  it("gives up the method's hourly run within the hour, while its one-shot Job retries until it succeeds", () => {
+    const limits = parseAllDocuments(estate()[CATALOG] ?? "")
+      .map(
+        (document) =>
+          document.toJS() as {
+            kind: string;
+            spec?: {
+              backoffLimit?: number;
+              activeDeadlineSeconds?: number;
+              jobTemplate?: {
+                spec: { backoffLimit: number; activeDeadlineSeconds: number };
+              };
+            };
+          },
+      )
+      .flatMap(({ kind, spec }) => {
+        const job = spec?.jobTemplate?.spec ?? spec;
+        return kind === "Job" || kind === "CronJob"
+          ? [[kind, job?.backoffLimit, job?.activeDeadlineSeconds]]
+          : [];
+      });
+
+    expect(limits).toStrictEqual([
+      ["Job", 2_147_483_647, undefined],
+      ["CronJob", 6, 3000],
+    ]);
   });
 
   // deploy-kit#572: the method reaches the datastore as every consumer does,
