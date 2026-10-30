@@ -11,8 +11,10 @@ the fixture, and (for a rule) the ADR that decided it exists at all.
 
 ## Steps
 
-1. **Find the id.** A `RULE-NNN` in the failure text names a row in
-   [`docs/architecture-rules.md`](../../../docs/architecture-rules.md); a
+1. **Find the id.** A `RULE-NNN` in the failure text names a row in one of
+   the family files under
+   [`docs/architecture-rules/`](../../../docs/architecture-rules/)
+   (`grep -rn RULE-NNN docs/architecture-rules/` finds it); a
    `REQ-NNN` names a row in one of the area files under
    [`docs/requirements/`](../../../docs/requirements/)
    (`grep -rn REQ-NNN docs/requirements/` finds it). No id in the

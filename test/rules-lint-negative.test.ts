@@ -2,7 +2,8 @@
 //
 // A lint that has only ever run against a clean ledger is untested: nothing
 // proves it would fail. Each case builds a throwaway tree that violates
-// exactly one rule and asserts the lint reports it, naming the row.
+// exactly one rule and asserts the lint reports it, naming the file and the
+// row.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -52,18 +53,28 @@ const FAMILIES = "| family | covers |\n|---|---|\n| gates | the gates |";
 const HEADER =
   "| id | family | the rule | enforced by | proved by |\n|---|---|---|---|---|";
 
-/** A whole ledger document around `rows`, with `counts` as its stated totals. */
-function ledger(
-  rows: string,
-  counts = "**1** rules, **0** of them pending",
-): string {
-  return (
-    `# Rule ledger\n\n## Families\n\n${FAMILIES}\n\n` +
-    `## Rules\n\nThis ledger holds ${counts}.\n\n${HEADER}\n${rows}\n`
-  );
+/** A front page declaring `families`, with no row of its own. */
+const front = (families = FAMILIES): string =>
+  `# Rule ledger\n\n## Families\n\n${families}\n\n## Rules\n\nThe rows live in the family files.\n`;
+
+/** A family file holding `rows`, under its table head. */
+const familyFile = (rows: string): string =>
+  `# A family\n\n${HEADER}\n${rows}\n`;
+
+/** A front page declaring `gates`, and the gates file holding `rows`. */
+function ledger(rows: string): Files {
+  return {
+    "docs/architecture-rules.md": front(),
+    "docs/architecture-rules/gates.md": familyFile(rows),
+  };
 }
 
-const PROOF = "[test/a.test.ts](../test/a.test.ts) `a witness`";
+/** Two declared families, `gates` and `tests`. */
+const TWO_FAMILIES = `${FAMILIES}\n| tests | the tests |`;
+
+const GATES = "docs/architecture-rules/gates.md";
+
+const PROOF = "[test/a.test.ts](../../test/a.test.ts) `a witness`";
 const CLEAN = `| RULE-001 | gates | a rule holds | \`file:test/a.test.ts\` | ${PROOF} |`;
 
 // Built from two halves, so this file's own source does not carry a citation
@@ -72,35 +83,124 @@ const BOGUS_ID = ["RULE", "999"].join("-");
 
 describe("lintRules", () => {
   it("passes a clean, minimal ledger, so it is not simply forbidding everything", () => {
-    expect(
-      lintRules(fixture({ "docs/architecture-rules.md": ledger(CLEAN) })),
-    ).toStrictEqual({
+    expect(lintRules(fixture(ledger(CLEAN)))).toStrictEqual({
       rows: 1,
       pending: 0,
       errors: [],
     });
   });
 
-  it("fails, naming the file, when the ledger itself is missing", () => {
+  it("fails, naming the file, when the front page itself is missing", () => {
     expect(lintRules(fixture({})).errors).toStrictEqual([
-      "docs/architecture-rules.md: ledger missing",
+      "docs/architecture-rules.md: front page missing",
+    ]);
+  });
+
+  it("passes rows spread over the files of two families, counting them together", () => {
+    const root = fixture({
+      "docs/architecture-rules.md": front(TWO_FAMILIES),
+      [GATES]: familyFile(CLEAN),
+      "docs/architecture-rules/tests.md": familyFile(
+        `| RULE-002 | tests | a test rule holds | pending (#29): waiting for the compiler to land | pending |`,
+      ),
+    });
+    expect(lintRules(root)).toStrictEqual({ rows: 2, pending: 1, errors: [] });
+  });
+
+  it("fails a row on the front page, which holds none", () => {
+    const root = fixture({
+      ...ledger(CLEAN),
+      "docs/architecture-rules.md": `${front()}\n${HEADER}\n${CLEAN}\n`,
+    });
+    expect(lintRules(root).errors).toStrictEqual([
+      `docs/architecture-rules.md: holds a row, which belongs in its family's file under docs/architecture-rules/: ${CLEAN}`,
+    ]);
+  });
+
+  it("fails when no family file exists, as a declared family no rule uses", () => {
+    const root = fixture({ "docs/architecture-rules.md": front() });
+    expect(lintRules(root).errors).toStrictEqual([
+      "docs/architecture-rules.md: family 'gates' is declared and no rule uses it",
+    ]);
+  });
+
+  it("fails a family file that holds no row", () => {
+    const root = fixture({
+      "docs/architecture-rules.md": front(TWO_FAMILIES),
+      [GATES]: familyFile(CLEAN),
+      "docs/architecture-rules/tests.md": familyFile(""),
+    });
+    expect(lintRules(root).errors).toStrictEqual([
+      "docs/architecture-rules/tests.md: holds no row",
+      "docs/architecture-rules.md: family 'tests' is declared and no rule uses it",
+    ]);
+  });
+
+  it("fails a file named for no family the Families table declares", () => {
+    const root = fixture({
+      ...ledger(CLEAN),
+      "docs/architecture-rules/vibes.md": familyFile(
+        `| RULE-002 | vibes | a rule holds | \`file:test/a.test.ts\` | ${PROOF} |`,
+      ),
+    });
+    expect(lintRules(root).errors).toStrictEqual([
+      "docs/architecture-rules/vibes.md: is named for no family the Families table declares",
+      "docs/architecture-rules/vibes.md: RULE-002: family 'vibes' is not declared in the Families table",
+    ]);
+  });
+
+  it("fails a row filed under another family's file", () => {
+    const root = fixture({
+      "docs/architecture-rules.md": front(TWO_FAMILIES),
+      [GATES]: familyFile(
+        `${CLEAN}\n| RULE-003 | tests | a test rule holds | \`file:test/a.test.ts\` | ${PROOF} |`,
+      ),
+      "docs/architecture-rules/tests.md": familyFile(
+        `| RULE-002 | tests | another test rule holds | \`file:test/a.test.ts\` | ${PROOF} |`,
+      ),
+    });
+    expect(lintRules(root).errors).toStrictEqual([
+      `${GATES}: RULE-003: sits in the 'gates' file, and its family is 'tests'`,
+    ]);
+  });
+
+  it("fails two family files sharing one id, naming both files", () => {
+    const root = fixture({
+      "docs/architecture-rules.md": front(TWO_FAMILIES),
+      [GATES]: familyFile(CLEAN),
+      "docs/architecture-rules/tests.md": familyFile(
+        `| RULE-001 | tests | a test rule holds | \`file:test/a.test.ts\` | ${PROOF} |`,
+      ),
+    });
+    expect(lintRules(root).errors).toStrictEqual([
+      `docs/architecture-rules/tests.md: RULE-001: id used twice, also in ${GATES} for 'a rule holds'`,
+    ]);
+  });
+
+  it("fails a fixture link relative to docs/ rather than to its family file", () => {
+    const root = fixture(
+      ledger(
+        "| RULE-001 | gates | a rule holds | `file:test/a.test.ts` | " +
+          "[test/a.test.ts](../test/a.test.ts) `a witness` |",
+      ),
+    );
+    expect(lintRules(root).errors).toStrictEqual([
+      `${GATES}: RULE-001: link text 'test/a.test.ts' does not match its target '../test/a.test.ts'`,
     ]);
   });
 
   it("fails a row that does not parse as five cells", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
-        "| RULE-001 | gates | a rule holds |",
-      ),
+      ...ledger("| RULE-001 | gates | a rule holds |"),
     });
     expect(lintRules(root).errors).toContain(
-      "malformed row: | RULE-001 | gates | a rule holds |",
+      `${GATES}: malformed row: | RULE-001 | gates | a rule holds |`,
     );
   });
 
   it("fails an enforcer that is neither a kind:value token nor a pending entry", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         `| RULE-001 | gates | a rule holds | somebody reviews it | ${PROOF} |`,
       ),
     });
@@ -111,7 +211,7 @@ describe("lintRules", () => {
 
   it("fails an enforcer kind the lint cannot resolve against anything", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         `| RULE-001 | gates | a rule holds | \`vibes:strong\` | ${PROOF} |`,
       ),
     });
@@ -120,20 +220,20 @@ describe("lintRules", () => {
 
   it("fails a family the Families table does not declare", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         `| RULE-001 | vibes | a rule holds | \`file:test/a.test.ts\` | ${PROOF} |`,
       ),
     });
     expect(lintRules(root).errors).toContain(
-      "RULE-001: family 'vibes' is not declared in the Families table",
+      `${GATES}: RULE-001: family 'vibes' is not declared in the Families table`,
     );
   });
 
   it("fails a declared family no rule uses, so the taxonomy cannot grow dead entries", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(CLEAN).replace(
-        "| gates | the gates |",
-        "| gates | the gates |\n| vibes | nothing at all |",
+      ...ledger(CLEAN),
+      "docs/architecture-rules.md": front(
+        `${FAMILIES}\n| vibes | nothing at all |`,
       ),
     });
     expect(lintRules(root).errors).toStrictEqual([
@@ -143,68 +243,68 @@ describe("lintRules", () => {
 
   it("fails, naming the row, when the fixture it names does not exist", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | a rule holds | `file:test/a.test.ts` | " +
-          "[test/gone.test.ts](../test/gone.test.ts) `a witness` |",
+          "[test/gone.test.ts](../../test/gone.test.ts) `a witness` |",
       ),
     });
     expect(lintRules(root).errors).toStrictEqual([
-      "RULE-001: names fixture 'test/gone.test.ts', which does not exist",
+      `${GATES}: RULE-001: names fixture 'test/gone.test.ts', which does not exist`,
     ]);
   });
 
   it("fails a fixture that never mentions the witness, so nothing there proves the rule fires", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | a rule holds | `file:test/a.test.ts` | " +
-          "[test/a.test.ts](../test/a.test.ts) `another witness` |",
+          "[test/a.test.ts](../../test/a.test.ts) `another witness` |",
       ),
     });
     expect(lintRules(root).errors).toStrictEqual([
-      "RULE-001: fixture 'test/a.test.ts' never mentions 'another witness', " +
+      `${GATES}: RULE-001: fixture 'test/a.test.ts' never mentions 'another witness', ` +
         "so nothing in it proves this rule fires",
     ]);
   });
 
   it("fails a fixture that is not a test file, and one that holds no test", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | a rule holds | `file:test/a.test.ts` | " +
-          "[test/notes.txt](../test/notes.txt) `a witness` |",
+          "[test/notes.txt](../../test/notes.txt) `a witness` |",
       ),
       "test/notes.txt": "a witness, in a text file that it( never runs\n",
     });
     expect(lintRules(root).errors).toStrictEqual([
-      "RULE-001: fixture 'test/notes.txt' is not a test file",
+      `${GATES}: RULE-001: fixture 'test/notes.txt' is not a test file`,
     ]);
 
     const empty = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | a rule holds | `file:test/a.test.ts` | " +
-          "[test/empty.test.ts](../test/empty.test.ts) `a witness` |",
+          "[test/empty.test.ts](../../test/empty.test.ts) `a witness` |",
       ),
       "test/empty.test.ts": "// a witness, and no test\n",
     });
     expect(lintRules(empty).errors).toStrictEqual([
-      "RULE-001: fixture 'test/empty.test.ts' holds no test",
+      `${GATES}: RULE-001: fixture 'test/empty.test.ts' holds no test`,
     ]);
   });
 
   it("fails a row whose link text does not match its own target", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | a rule holds | `file:test/a.test.ts` | " +
-          "[test/wrong.test.ts](../test/a.test.ts) `a witness` |",
+          "[test/wrong.test.ts](../../test/a.test.ts) `a witness` |",
       ),
     });
     expect(lintRules(root).errors).toContain(
-      "RULE-001: link text 'test/wrong.test.ts' does not match its target '../test/a.test.ts'",
+      `${GATES}: RULE-001: link text 'test/wrong.test.ts' does not match its target '../../test/a.test.ts'`,
     );
   });
 
   it("fails an enforced row whose proof cell is not a linked fixture", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | a rule holds | `file:test/a.test.ts` | somewhere |",
       ),
     });
@@ -234,7 +334,7 @@ describe("lintRules", () => {
     ];
     for (const [enforcer, expected] of cases) {
       const root = fixture({
-        "docs/architecture-rules.md": ledger(
+        ...ledger(
           `| RULE-001 | gates | a rule holds | ${enforcer} | ${PROOF} |`,
         ),
       });
@@ -244,21 +344,19 @@ describe("lintRules", () => {
 
   it("fails a pending row that carries no reason", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | a rule holds | pending (#29): soon | pending |",
-        "**1** rules, **1** of them pending",
       ),
     });
     expect(lintRules(root).errors).toStrictEqual([
-      "RULE-001: is pending with no reason; a pending row says why it is not enforced yet",
+      `${GATES}: RULE-001: is pending with no reason; a pending row says why it is not enforced yet`,
     ]);
   });
 
   it("fails a pending row that names no ticket at all", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | a rule holds | pending: the compiler does not exist yet | pending |",
-        "**1** rules, **1** of them pending",
       ),
     });
     expect(lintRules(root).errors[0]).toMatch(/RULE-001: enforcer 'pending:/);
@@ -266,10 +364,9 @@ describe("lintRules", () => {
 
   it("fails a pending row that also claims a fixture, so pending never reads as proven", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | a rule holds | pending (#29): the compiler does not exist yet | " +
           `${PROOF} |`,
-        "**1** rules, **1** of them pending",
       ),
     });
     expect(lintRules(root).errors[0]).toMatch(
@@ -279,7 +376,7 @@ describe("lintRules", () => {
 
   it("fails a configured graph rule that no row claims", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(CLEAN),
+      ...ledger(CLEAN),
       ".dependency-cruiser.cjs":
         'module.exports = { forbidden: [{ name: "no-circular" }] };\n',
     });
@@ -291,9 +388,8 @@ describe("lintRules", () => {
 
   it("fails a configured rule a row has quietly moved to pending", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         "| RULE-001 | gates | no import cycle | pending (#29): waiting for the compiler to land | pending |",
-        "**1** rules, **1** of them pending",
       ),
       ".dependency-cruiser.cjs":
         'module.exports = { forbidden: [{ name: "no-circular" }] };\n',
@@ -306,7 +402,7 @@ describe("lintRules", () => {
 
   it("fails a configured ESLint rule that no row claims, and ignores one turned off", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(CLEAN),
+      ...ledger(CLEAN),
       "eslint.config.js":
         'export default [{ rules: {\n  "no-shadow": "error",\n  "no-undef": "off",\n} }];\n',
     });
@@ -318,10 +414,9 @@ describe("lintRules", () => {
 
   it("fails one enforcer claimed by two rows", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         `| RULE-001 | gates | a rule holds | \`eslint:no-shadow\` | ${PROOF} |\n` +
           `| RULE-002 | gates | another rule holds | \`eslint:no-shadow\` | ${PROOF} |`,
-        "**2** rules, **0** of them pending",
       ),
       "eslint.config.js":
         'export default [{ rules: { "no-shadow": "error" } }];\n',
@@ -334,65 +429,31 @@ describe("lintRules", () => {
 
   it("fails two rows sharing one id, naming both sentences", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(
+      ...ledger(
         `${CLEAN}\n| RULE-001 | gates | another rule holds | \`file:test/a.test.ts\` | ${PROOF} |`,
-        "**2** rules, **0** of them pending",
       ),
     });
     expect(lintRules(root).errors).toStrictEqual([
-      "RULE-001: id used twice, also for 'a rule holds'",
+      `${GATES}: RULE-001: id used twice, also in ${GATES} for 'a rule holds'`,
     ]);
   });
 
-  it("fails when a stated count disagrees with the rows it holds", () => {
-    const rows = fixture({
-      "docs/architecture-rules.md": ledger(
-        CLEAN,
-        "**2** rules, **0** of them pending",
-      ),
-    });
-    expect(lintRules(rows).errors).toStrictEqual([
-      "docs/architecture-rules.md: states 2 rules, holds 1",
-    ]);
-
-    const pending = fixture({
-      "docs/architecture-rules.md": ledger(
-        CLEAN,
-        "**1** rules, **1** of them pending",
-      ),
-    });
-    expect(lintRules(pending).errors).toStrictEqual([
-      "docs/architecture-rules.md: states 1 pending, holds 0",
-    ]);
-  });
-
-  it("fails a ledger that states neither count, and one with no Families table", () => {
+  it("fails a front page with no Families table", () => {
     const root = fixture({
-      "docs/architecture-rules.md": `# Rule ledger\n\n## Families\n\n${FAMILIES}\n\n## Rules\n\n${HEADER}\n${CLEAN}\n`,
+      ...ledger(CLEAN),
+      "docs/architecture-rules.md": "# Rule ledger\n\n## Rules\n",
     });
     expect(lintRules(root).errors).toStrictEqual([
-      "docs/architecture-rules.md: does not state how many rules it holds",
-      "docs/architecture-rules.md: does not state how many rules are pending",
-    ]);
-
-    const noFamilies = fixture({
-      "docs/architecture-rules.md":
-        "# Rule ledger\n\n## Rules\n\nThis ledger holds **1** rules, " +
-        `**0** of them pending.\n\n${HEADER}\n${CLEAN}\n`,
-    });
-    expect(lintRules(noFamilies).errors).toStrictEqual([
       "docs/architecture-rules.md: no Families table",
-      "RULE-001: family 'gates' is not declared in the Families table",
+      `${GATES}: is named for no family the Families table declares`,
+      `${GATES}: RULE-001: family 'gates' is not declared in the Families table`,
     ]);
   });
 
   it("fails a tree whose rule configurations are missing altogether", () => {
     const root = mkdtempSync(join(temporary(), "rules-bare-"));
     write(root, {
-      "docs/architecture-rules.md": ledger(
-        CLEAN,
-        "**0** rules, **0** of them pending",
-      ),
+      ...ledger(CLEAN),
     });
     execFileSync("git", ["init", "-q"], { cwd: root });
     execFileSync("git", ["add", "-A"], { cwd: root });
@@ -407,7 +468,7 @@ describe("lintRules", () => {
 
   it("fails when an id no row carries is cited elsewhere in the tree", () => {
     const root = fixture({
-      "docs/architecture-rules.md": ledger(CLEAN),
+      ...ledger(CLEAN),
       "scripts/note.ts": `// see ${BOGUS_ID} for context\n`,
     });
     expect(lintRules(root).errors).toStrictEqual([
@@ -416,7 +477,7 @@ describe("lintRules", () => {
   });
 
   it("ignores an untracked file's citation, the same way the em-dash ban ignores scratch files", () => {
-    const root = fixture({ "docs/architecture-rules.md": ledger(CLEAN) });
+    const root = fixture({ ...ledger(CLEAN) });
     writeFileSync(join(root, "scratch.md"), `${BOGUS_ID}, never staged\n`);
     expect(lintRules(root).errors).toStrictEqual([]);
   });

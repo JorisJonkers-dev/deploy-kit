@@ -1,4 +1,4 @@
-// The rule ledger, executed. docs/architecture-rules.md states which rules
+// The rule ledger, executed. docs/architecture-rules/*.md state which rules
 // this repository and the compiler are held to, scripts/lint-rules.ts enforces
 // that every row still resolves, and this is what makes that enforcement part
 // of the test run rather than a thing someone remembers to run. It also starts
@@ -8,7 +8,13 @@
 // REQ-014 (docs/requirements.md): every rule this repository enforces has a
 // ledger row with a greppable id and a fixture that proves it fires.
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it, test } from "vitest";
 import {
@@ -24,7 +30,17 @@ import { temporary } from "./setup.ts";
 
 const REPOSITORY = join(import.meta.dirname, "..");
 const LEDGER = join(REPOSITORY, "docs", "architecture-rules.md");
+const FAMILY_FILES = join(REPOSITORY, "docs", "architecture-rules");
 const ledgerText = (): string => readFileSync(LEDGER, "utf8");
+
+/** Every row of every committed family file. */
+function committedRows(): ReturnType<typeof parseRules>["rows"] {
+  return readdirSync(FAMILY_FILES)
+    .filter((name) => name.endsWith(".md"))
+    .flatMap(
+      (name) => parseRules(readFileSync(join(FAMILY_FILES, name), "utf8")).rows,
+    );
+}
 
 test("the rules lint, run as a command, passes over the committed ledger", () => {
   const out = execFileSync(
@@ -35,8 +51,8 @@ test("the rules lint, run as a command, passes over the committed ledger", () =>
   expect(out).toMatch(/^rules lint: \d+ rules clean, \d+ pending$/m);
 });
 
-test("the ledger is non-empty, and its stated counts match what it holds", () => {
-  const { rows } = parseRules(ledgerText());
+test("the ledger is non-empty, and the lint reads every row its family files hold", () => {
+  const rows = committedRows();
   expect(rows.length).toBeGreaterThanOrEqual(20);
   const pending = rows.filter(
     (row) => row.enforcement.kind === "pending",
@@ -49,13 +65,13 @@ test("the ledger is non-empty, and its stated counts match what it holds", () =>
 });
 
 test("every row's id is unique and shaped RULE-NNN", () => {
-  const ids = parseRules(ledgerText()).rows.map((row) => row.id);
+  const ids = committedRows().map((row) => row.id);
   for (const id of ids) expect(id).toMatch(/^RULE-\d{3}$/);
   expect(new Set(ids).size).toBe(ids.length);
 });
 
 test("every family the taxonomy declares carries at least one rule", () => {
-  const { rows } = parseRules(ledgerText());
+  const rows = committedRows();
   const families = parseFamilies(ledgerText());
   expect(families.length).toBeGreaterThan(5);
   const used = new Set(rows.map((row) => row.family));
@@ -67,7 +83,7 @@ test("every rule the graph ruleset configures is claimed by exactly one enforced
     readFileSync(join(REPOSITORY, ".dependency-cruiser.cjs"), "utf8"),
   );
   expect(configured.length).toBeGreaterThan(10);
-  const { rows } = parseRules(ledgerText());
+  const rows = committedRows();
   for (const name of configured) {
     const claimed = rows.filter(
       (row) =>
@@ -82,7 +98,7 @@ test("every ESLint rule this repository names is claimed by exactly one enforced
     readFileSync(join(REPOSITORY, "eslint.config.js"), "utf8"),
   );
   expect(configured.length).toBeGreaterThan(5);
-  const { rows } = parseRules(ledgerText());
+  const rows = committedRows();
   for (const id of configured) {
     const claimed = rows.filter(
       (row) =>
@@ -93,7 +109,7 @@ test("every ESLint rule this repository names is claimed by exactly one enforced
 });
 
 test("every enforced row's fixture is a real test that asserts on its witness", () => {
-  const { rows } = parseRules(ledgerText());
+  const rows = committedRows();
   const enforced = rows.filter((row) => row.fixture !== null);
   expect(enforced.length).toBeGreaterThanOrEqual(20);
   for (const row of enforced) {
@@ -105,7 +121,7 @@ test("every enforced row's fixture is a real test that asserts on its witness", 
 });
 
 test("every pending row names a ticket and a reason, and claims no fixture", () => {
-  const { rows } = parseRules(ledgerText());
+  const rows = committedRows();
   const pending = rows.filter((row) => row.enforcement.kind === "pending");
   expect(pending.length).toBeGreaterThan(0);
   for (const row of pending) {
@@ -118,22 +134,25 @@ test("every pending row names a ticket and a reason, and claims no fixture", () 
 });
 
 describe("the command", () => {
-  const LEDGER_BODY =
+  const FRONT_PAGE =
     "# Rule ledger\n\n" +
     "## Families\n\n" +
     "| family | covers |\n|---|---|\n| gates | the gates |\n\n" +
-    "## Rules\n\n" +
-    "This ledger holds **1** rules, **0** of them pending.\n\n" +
+    "## Rules\n";
+
+  const GATES =
+    "# The gates family\n\n" +
     "| id | family | the rule | enforced by | proved by |\n|---|---|---|---|---|\n" +
     "| RULE-001 | gates | a rule holds | `file:test/a.test.ts` | " +
-    "[test/a.test.ts](../test/a.test.ts) `a witness` |\n";
+    "[test/a.test.ts](../../test/a.test.ts) `a witness` |\n";
 
   /** A tree the lint can read: a ledger, a fixture, and empty configurations. */
-  function fixture(body: string): string {
+  function fixture(gates: string): string {
     const root = mkdtempSync(join(temporary(), "rules-command-"));
-    mkdirSync(join(root, "docs"), { recursive: true });
+    mkdirSync(join(root, "docs", "architecture-rules"), { recursive: true });
     mkdirSync(join(root, "test"), { recursive: true });
-    writeFileSync(join(root, "docs", "architecture-rules.md"), body);
+    writeFileSync(join(root, "docs", "architecture-rules.md"), FRONT_PAGE);
+    writeFileSync(join(root, "docs", "architecture-rules", "gates.md"), gates);
     writeFileSync(
       join(root, "test", "a.test.ts"),
       'import { expect, it } from "vitest";\n' +
@@ -152,16 +171,19 @@ describe("the command", () => {
 
   it("says how many rules are clean and how many are pending, and exits 0", () => {
     const output = collect();
-    expect(main([fixture(LEDGER_BODY)], output)).toBe(0);
+    expect(main([fixture(GATES)], output)).toBe(0);
     expect(output.text()).toBe("rules lint: 1 rules clean, 0 pending\n");
   });
 
   it("lists every violation under a count, and exits 1", () => {
     const output = collect();
-    const root = fixture("# Rule ledger\n\n## Families\n\n| a | b |\n");
+    const root = fixture("# The gates family\n");
     expect(main([root], output)).toBe(1);
-    expect(output.text()).toMatch(/^rules lint: \d+ error\(s\)\n/);
-    expect(output.text()).toContain("does not state how many rules it holds");
+    expect(output.text()).toBe(
+      "rules lint: 2 error(s)\n" +
+        "  - docs/architecture-rules/gates.md: holds no row\n" +
+        "  - docs/architecture-rules.md: family 'gates' is declared and no rule uses it\n",
+    );
   });
 
   it("checks this repository when no tree is named", () => {
@@ -169,13 +191,15 @@ describe("the command", () => {
   });
 
   it("runs when Node starts the script, which is how CI would run it", () => {
-    const root = fixture("# Rule ledger\n\nno rules here\n");
+    const root = fixture("# The gates family\n\nno rules here\n");
     const run = spawnSync(
       process.execPath,
       [join(REPOSITORY, "scripts", "lint-rules.ts"), root],
       { encoding: "utf8" },
     );
     expect(run.status).toBe(1);
-    expect(run.stderr).toContain("does not state how many rules it holds");
+    expect(run.stderr).toContain(
+      "docs/architecture-rules/gates.md: holds no row",
+    );
   });
 });

@@ -18,9 +18,9 @@ honest: every row parses and carries a declared family; every enforced row's
 enforcer resolves against the tree; every enforced row names a real test file
 that mentions the literal its fixture asserts on; every pending row carries a
 ticket and a reason and names no fixture; every rule this repository configures
-by name is claimed by exactly one enforced row; the stated counts match what the
-document holds; and every `RULE-NNN` cited anywhere in the tracked tree resolves
-to a row here.
+by name is claimed by exactly one enforced row; ids are unique across every
+family file; every family file holds a row of its own family and this page holds
+none; and every `RULE-NNN` cited anywhere in the tracked tree resolves to a row.
 
 ## The id
 
@@ -38,25 +38,26 @@ named, each normalised to one word. None was added and none dropped: what this
 repository's own enforcement changed is which families have enforced members:
 today every one of the eleven has at least one, `cli` and `registry` since the
 compiler landed. A family declared here and used by no rule
-fails the gate, so the taxonomy cannot grow entries nothing stands behind.
+fails the gate, so the taxonomy cannot grow entries nothing stands behind. Each
+family's rows live in its own file under
+[`docs/architecture-rules/`](architecture-rules/), named for the family, so pull
+requests adding rules to different families touch different files.
 
-| family | covers |
-|---|---|
-| layering | which ring may import which, on the module graph |
-| purity | ambient capability: what a ring may reach for beyond its own imports |
-| graph | the graph's shape: cycles, orphans, reachability, resolution |
-| dependencies | what may be imported from outside the tree |
-| naming | how modules, files and types are named |
-| tests | what a test may do, and must do |
-| toolchain | the compiler options, the lint presets, the coverage ratchet |
-| cli | the outermost ring's own conventions |
-| registry | the registries: adapters, and the estate-wide invariants |
-| diagnostics | the shape of a failure and the codes it carries |
-| gates | this repository's own documents and pipeline |
+| family | covers | rows |
+|---|---|---|
+| layering | which ring may import which, on the module graph | [`layering.md`](architecture-rules/layering.md) |
+| purity | ambient capability: what a ring may reach for beyond its own imports | [`purity.md`](architecture-rules/purity.md) |
+| graph | the graph's shape: cycles, orphans, reachability, resolution | [`graph.md`](architecture-rules/graph.md) |
+| dependencies | what may be imported from outside the tree | [`dependencies.md`](architecture-rules/dependencies.md) |
+| naming | how modules, files and types are named | [`naming.md`](architecture-rules/naming.md) |
+| tests | what a test may do, and must do | [`tests.md`](architecture-rules/tests.md) |
+| toolchain | the compiler options, the lint presets, the coverage ratchet | [`toolchain.md`](architecture-rules/toolchain.md) |
+| cli | the outermost ring's own conventions | [`cli.md`](architecture-rules/cli.md) |
+| registry | the registries: adapters, and the estate-wide invariants | [`registry.md`](architecture-rules/registry.md) |
+| diagnostics | the shape of a failure and the codes it carries | [`diagnostics.md`](architecture-rules/diagnostics.md) |
+| gates | this repository's own documents and pipeline | [`gates.md`](architecture-rules/gates.md) |
 
 ## Rules
-
-This ledger holds **76** rules, **2** of them pending.
 
 A row is enforced or pending, never both. An enforced row names its enforcer as
 `kind:value`: `depcruise:` a rule in
@@ -73,84 +74,20 @@ plan. It names no fixture: pending may never read as proven. And because every
 rule this repository configures by name must be claimed by an **enforced** row,
 moving a live rule to pending fails the gate rather than quietly retiring it.
 
-| id | family | the rule | enforced by | proved by |
-|---|---|---|---|---|
-| RULE-001 | layering | The metamodels import nothing else of the compiler: every step shares them, so they reach for no step | `depcruise:model-is-pure` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `model-is-pure` |
-| RULE-002 | layering | Zod is imported only by the metamodels and the reader: the schema is the authored metamodel, and a step past the reader reads its types | `depcruise:zod-is-the-metamodel-and-the-reader` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `zod-is-the-metamodel-and-the-reader` |
-| RULE-003 | layering | No step imports another step: the reader, the checks, the lowering, resolution and the generator each import the model and their own directory, and the use-case passes each model on | `depcruise:no-step-imports-another-step` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-step-imports-another-step` |
-| RULE-004 | layering | The typed Kubernetes object model imports nothing from the compiler: it is a shape, not a participant | `depcruise:objects-are-data` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `objects-are-data` |
-| RULE-005 | layering | No adapter imports another adapter; shared code goes to `src/adapters/shared/` | `depcruise:adapters-do-not-read-each-other` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `adapters-do-not-read-each-other` |
-| RULE-006 | layering | A use-case takes ports, never a concrete infrastructure implementation | `depcruise:application-takes-ports-not-adapters` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `application-takes-ports-not-adapters` |
-| RULE-007 | layering | Infrastructure implements ports: it does not orchestrate, parse or render | `depcruise:infrastructure-implements-ports-only` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `infrastructure-implements-ports-only` |
-| RULE-008 | layering | Nothing inside imports the CLI ring | `depcruise:nothing-depends-on-the-cli` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `nothing-depends-on-the-cli` |
-| RULE-009 | layering | Shipped code never imports a test file or anything under `dist/` | `depcruise:shipped-code-imports-no-test-or-build-output` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `shipped-code-imports-no-test-or-build-output` |
-| RULE-010 | purity | The metamodels and the steps reach for no filesystem, network, clock, environment, process or crypto: hashing arrives through a port | `depcruise:the-chain-reads-nothing-ambient` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `the-chain-reads-nothing-ambient` |
-| RULE-011 | purity | An adapter renders only: documents in, attributed Deliverables out, with no ambient read and no outward import | `depcruise:adapters-render-only` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `adapters-render-only` |
-| RULE-012 | purity | Environment, clock, randomness, console, spawning and synchronous filesystem calls are allowed only in the infrastructure and CLI rings | `eslint:no-restricted-syntax` | [test/seams.test.ts](../test/seams.test.ts) `no-restricted-syntax: RULE-012` |
-| RULE-013 | purity | Exiting the process and writing to stdout or stderr happen only in `src/cli/boundary.ts`, the one file excluded from coverage | `eslint:no-restricted-properties` | [test/seams.test.ts](../test/seams.test.ts) `RULE-013: the process is touched only in src/cli/boundary.ts` |
-| RULE-014 | graph | No import cycle between modules | `depcruise:no-circular` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-circular` |
-| RULE-015 | graph | No orphan module: every module but an entry point is imported by something | `depcruise:no-orphans` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-orphans` |
-| RULE-016 | graph | Every module is reachable from an entry point, which is the half a coverage gate cannot see | `depcruise:unreachable-from-an-entry-point` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `unreachable-from-an-entry-point` |
-| RULE-017 | graph | Every relative import in shipped code resolves to a file on disk; a bare specifier is the package manager's and the type checker's to answer for | `depcruise:no-unresolvable-import` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-unresolvable-import` |
-| RULE-018 | graph | No cycle between directories, which a module-level cycle check cannot see | `depcruise:no-circular-folders` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-circular-folders` |
-| RULE-019 | graph | No computed dynamic import: a specifier the graph cannot read is an edge no gate can check | `eslint:deploy-kit/no-computed-dynamic-import` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-019: a dynamic import names its module literally` |
-| RULE-020 | dependencies | Shipped code never imports a devDependency | `depcruise:no-dev-dependency-in-src` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-dev-dependency-in-src` |
-| RULE-021 | dependencies | No deprecated Node builtin: a deprecated import is a migration already overdue | `depcruise:not-to-deprecated-core` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `not-to-deprecated-core` |
-| RULE-022 | dependencies | No package an architecture decision already rejected: the Kubernetes client, a second JSON Schema validator, a Zod-to-JSON-Schema converter, or a text template engine | `depcruise:no-denied-dependency` | [test/boundary-contract.test.ts](../test/boundary-contract.test.ts) `no-denied-dependency` |
-| RULE-023 | dependencies | A Node builtin is imported under its `node:` prefix | `eslint:deploy-kit/node-builtin-prefix` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-023: import "node:` |
-| RULE-024 | naming | A module file is named in kebab-case | `eslint:deploy-kit/kebab-case-filename` | [test/code-rules.test.ts](../test/code-rules.test.ts) `is not named in kebab-case` |
-| RULE-025 | naming | No `I`-prefixed interface name: the interface is the noun, and the implementation carries the adjective | `eslint:@typescript-eslint/naming-convention` | [test/seams.test.ts](../test/seams.test.ts) `RULE-025 refuses an I-prefixed interface` |
-| RULE-026 | naming | A type-only import is written `import type`, so erasure is visible in the file rather than inferred | `eslint:@typescript-eslint/consistent-type-imports` | [test/seams.test.ts](../test/seams.test.ts) `RULE-026 refuses a type-only import` |
-| RULE-027 | tests | No committed `.only`: a focused test is a suite that is green for the wrong reason | `eslint:vitest/no-focused-tests` | [test/harness.test.ts](../test/harness.test.ts) `vitest/no-focused-tests` |
-| RULE-028 | tests | No committed `.skip`: a disabled test proves nothing and reads as covered | `eslint:vitest/no-disabled-tests` | [test/harness.test.ts](../test/harness.test.ts) `vitest/no-disabled-tests` |
-| RULE-029 | tests | No test without an assertion: a test that asserts nothing passes for ever | `eslint:vitest/expect-expect` | [test/harness.test.ts](../test/harness.test.ts) `vitest/expect-expect` |
-| RULE-030 | tests | No fixed sleep through a timer global: slow when it passes, flaky when the machine is busy | `eslint:no-restricted-globals` | [test/harness.test.ts](../test/harness.test.ts) `no-restricted-globals` |
-| RULE-031 | tests | No fixed sleep through the timers module either, which is the same defect under another import | `eslint:no-restricted-imports` | [test/harness.test.ts](../test/harness.test.ts) `no-restricted-imports` |
-| RULE-032 | tests | No test reaches the network: the capability is removed, and using it fails the test that tried | `file:test/setup.ts` | [test/harness.test.ts](../test/harness.test.ts) `tried to reach` |
-| RULE-033 | tests | A test never imports another test: a shared fixture belongs in `test/support/` | `eslint:deploy-kit/no-test-imports-test` | [test/code-rules.test.ts](../test/code-rules.test.ts) `a shared fixture belongs in test/support/` |
-| RULE-034 | tests | The rendered tree is compared byte for byte against a committed golden tree, and a double render inside one process and in a fresh one agrees with it | `file:test/model/render.test.ts` | [test/model/render.test.ts](../test/model/render.test.ts) `differs from the committed tree when one authored field moves` |
-| RULE-035 | toolchain | A TypeScript suppression carries a description and may never silence a whole file | `eslint:@typescript-eslint/ban-ts-comment` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/ban-ts-comment` |
-| RULE-036 | toolchain | No `any`: a value the compiler cannot describe is a check nobody runs | `eslint:@typescript-eslint/no-explicit-any` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/no-explicit-any` |
-| RULE-037 | toolchain | No unused binding, unless it is named with a leading underscore to say so | `eslint:@typescript-eslint/no-unused-vars` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/no-unused-vars` |
-| RULE-038 | toolchain | No object or nullable interpolated into a template literal: a number has one sensible string form, and those do not | `eslint:@typescript-eslint/restrict-template-expressions` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/restrict-template-expressions` |
-| RULE-039 | toolchain | The recommended and `strictTypeChecked` presets apply to every TypeScript file with type information, so a floating promise or an empty catch fails lint without this repository naming either rule | `file:eslint.config.js` | [test/eslint-rules.test.ts](../test/eslint-rules.test.ts) `@typescript-eslint/no-floating-promises` |
-| RULE-040 | toolchain | Coverage is a ratchet over an explicit include list, and no ignore comment exempts a line from it | `file:vitest.config.ts` | [test/harness.test.ts](../test/harness.test.ts) `an ignore is slack nobody decided` |
-| RULE-041 | toolchain | No default export outside a tool configuration file | `eslint:no-restricted-exports` | [test/seams.test.ts](../test/seams.test.ts) `RULE-041 refuses a default export` |
-| RULE-042 | toolchain | Shipped code is ESM, and the one CommonJS file is the dependency-cruiser configuration that cannot be anything else | `eslint:deploy-kit/esm-only` | [test/code-rules.test.ts](../test/code-rules.test.ts) `is CommonJS; this package is ESM` |
-| RULE-043 | toolchain | Generated artifacts are committed, and CI fails when regenerating one produces a diff | `file:src/model/json-schema.ts` | [test/model/descriptor.test.ts](../test/model/descriptor.test.ts) `regenerates without a diff` |
-| RULE-044 | cli | The CLI prints help on `--help` and `-h`, data on stdout and diagnostics on stderr, emits only data under `--json`, maps failures through one exit-code enum, honours `NO_COLOR`, and never prompts | `file:test/cli/conventions.test.ts` | [test/cli/conventions.test.ts](../test/cli/conventions.test.ts) `RULE-044 refuses a CLI that breaks its conventions` |
-| RULE-045 | registry | Every registered adapter satisfies the adapter port, attributes every Deliverable to itself, and renders deterministically | `file:test/adapters/contract.test.ts` | [test/adapters/contract.test.ts](../test/adapters/contract.test.ts) `names an adapter that attributes, places or renders wrongly` |
-| RULE-046 | registry | Every estate-wide invariant is registered with its code, its spec anchor and its test, so an unregistered one is detectable rather than merely absent | pending (#44): the invariant registry is that ticket's deliverable | pending |
-| RULE-047 | diagnostics | Every diagnostic carries a code, a document path, a message and a non-empty hint, enforced by its type rather than by review | pending (#38): the `Diagnostic` type is the enforcement, and it lands with the first parser | pending |
-| RULE-048 | diagnostics | Every `E_` code the specification defines is exercised by a test or a negative example, or listed as pending with a reason, and a code used in the tree that the specification does not define fails | `npm:lint:codes` | [test/codes-lint.test.ts](../test/codes-lint.test.ts) `exercised by no test, and not pending` |
-| RULE-049 | gates | Every decision record satisfies the frontmatter, register, citation and normative-anchor contract | `npm:lint:adrs` | [test/adr-lint-negative.test.ts](../test/adr-lint-negative.test.ts) `missing frontmatter block` |
-| RULE-050 | gates | Every relative link and heading anchor in Markdown git does not ignore, outside the frozen `emf/`, resolves | `npm:lint:links` | [test/link-contract.test.ts](../test/link-contract.test.ts) `anchor #the-old-name not found` |
-| RULE-051 | gates | Every rendered example object validates against its pinned Kubernetes or CRD schema | `npm:lint:manifests` | [test/manifest-contract.test.ts](../test/manifest-contract.test.ts) `no rendered examples found` |
-| RULE-052 | gates | Every behaviour ledger row sits in an area file, parses, carries an id no other row carries, names a real non-empty test, and is cited by no dangling id | `npm:lint:requirements` | [test/requirements-lint-negative.test.ts](../test/requirements-lint-negative.test.ts) `holds a row, which belongs in an area file` |
-| RULE-053 | gates | Every script, path, coverage number and Node version README.md and CONTRIBUTING.md name matches the repository | `npm:lint:docs` | [test/docs-contract.test.ts](../test/docs-contract.test.ts) `is not a script in package.json` |
-| RULE-054 | gates | Every rule ledger row parses, resolves its enforcer, names a fixture that mentions its witness, and every configured rule is claimed by exactly one enforced row | `npm:lint:rules` | [test/rules-lint-negative.test.ts](../test/rules-lint-negative.test.ts) `ledger missing` |
-| RULE-055 | gates | The npm package ships nothing outside `docs/adr/`, `spec/` and the JavaScript under `dist/`, checked against what npm would really pack | `file:scripts/check-package-contents.ts` | [test/package-contents-contract.test.ts](../test/package-contents-contract.test.ts) `ship files outside docs` |
-| RULE-056 | gates | A pull request title and every commit in it use a conventional-commit type release-please reads | `file:scripts/check-pr-title.ts` | [test/pr-title-contract.test.ts](../test/pr-title-contract.test.ts) `is not a Conventional Commit` |
-| RULE-057 | gates | No pull request title, body or commit carries agent attribution: no trailer, no banner, no link back to a session | `file:scripts/check-pr-title.ts` | [test/pr-title-contract.test.ts](../test/pr-title-contract.test.ts) `google-labs-jules` |
-| RULE-058 | gates | No em-dash enters tracked text outside `docs/mde/` and `CHANGELOG.md` | `file:test/emdash.test.ts` | [test/emdash.test.ts](../test/emdash.test.ts) `contains an em-dash` |
-| RULE-059 | gates | A gate's npm script and the CI job that runs it land together, or the script is listed pending with a reason | `file:test/pipeline-wiring.test.ts` | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) `every script either runs in some workflow` |
-| RULE-060 | gates | No committed secret matching the default gitleaks ruleset or this repository's own allowlist, checked locally by the same command CI runs | `npm:lint:secrets` | [test/secret-scan-contract.test.ts](../test/secret-scan-contract.test.ts) `secret scan: could not run` |
-| RULE-061 | gates | A workflow step that runs the Maven wrapper runs it in a directory holding a POM and the wrapper, and the model-driven reactor names only modules on disk | `file:test/emf-wiring.test.ts` | [test/emf-wiring.test.ts](../test/emf-wiring.test.ts) `which names a POM that does not exist` |
-| RULE-062 | gates | CodeQL analyses the model-driven implementation's Java without a build, ignoring build output and generated sources | `file:.github/codeql/codeql-config.yml` | [test/emf-wiring.test.ts](../test/emf-wiring.test.ts) `'language': 'java-kotlin'` |
-| RULE-063 | gates | A CodeQL finding of any severity fails `Pipeline Complete`, unless the finding is filtered in the CodeQL configuration | `file:.github/workflows/codeql.yml` | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) `'name': 'Fail on any finding'` |
-| RULE-064 | gates | A push to `main` re-tests each mutant under `src/` whose module or killing test changed since the last green `main` run, and a pull request runs none, in parallel shards, and a mutation score below the measured break threshold fails the build | `file:.github/workflows/ci.yml` | [test/mutation-contract.test.ts](../test/mutation-contract.test.ts) `npm run test:mutation -- --incremental` |
-| RULE-065 | gates | Every file a pull request changes falls into a named shape bucket; a path no rule claims fails the fallback test rather than joining one silently | `file:scripts/lib/change-buckets.ts` | [test/change-buckets.test.ts](../test/change-buckets.test.ts) `keeps every file this repository tracks inside a named bucket` |
-| RULE-066 | gates | A pull request's shape-and-coverage comment is found by its marker and updated in place, never posted twice for the same pull request | `file:scripts/pr-report.ts` | [test/pr-report.test.ts](../test/pr-report.test.ts) `updates the existing comment on a second run` |
-| RULE-067 | gates | A release candidate publishes nothing for a pull request from a fork, Dependabot or Renovate | `file:scripts/lib/rc-version.ts` | [test/rc-version.test.ts](../test/rc-version.test.ts) `is ineligible for a fork, since its token cannot publish for real` |
-| RULE-068 | gates | A term the model retired is not read as current outside a quotation, and a stated count matches the real collection it counts | `npm:lint:meaning` | [test/meaning-lint-negative.test.ts](../test/meaning-lint-negative.test.ts) `uses retired term 'Cluster Context' outside a quotation` |
-| RULE-069 | gates | AGENTS.md names every npm script package.json defines, verbatim, so a script gained there cannot go undocumented | `npm:lint:agents` | [test/agents-contract.test.ts](../test/agents-contract.test.ts) `does not appear in AGENTS.md` |
-| RULE-070 | gates | A decision record whose claim is settled carries `status: accepted`, in both registers, so the field distinguishes something | `npm:lint:adrs` | [test/adr-lint-negative.test.ts](../test/adr-lint-negative.test.ts) `requires status accepted, got 'proposed'` |
-| RULE-071 | dependencies | Every dependency in `package.json` is one exact version: no caret, tilde, wildcard, tag or range, so an install resolves to the version a reviewer saw | `file:test/supply-chain.test.ts` | [test/supply-chain.test.ts](../test/supply-chain.test.ts) `not an exact version; pin it` |
-| RULE-072 | dependencies | No install runs a dependency's lifecycle script: every workflow and action installs with `--ignore-scripts`, and `.npmrc` sets `ignore-scripts` for a local install | `file:test/supply-chain.test.ts` | [test/supply-chain.test.ts](../test/supply-chain.test.ts) `add --ignore-scripts` |
-| RULE-073 | toolchain | A schema in `src/` states only what its generated JSON Schema states too: no `refine`, `superRefine`, `check`, `overwrite`, `transform`, `preprocess`, `pipe` or `custom`, outside the one module that pairs a zod check with the JSON Schema keywords stating the same rule | `eslint:deploy-kit/no-unstated-rule` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-073 refuses a rule the published JSON Schema drops` |
-| RULE-074 | diagnostics | Shipped code throws only an `InternalFailure` of a named kind (unsupported, unchecked or a broken invariant), never a bare `Error` or `TypeError`, so every way the compiler fails is one enumerable list | `eslint:deploy-kit/no-bare-throw` | [test/code-rules.test.ts](../test/code-rules.test.ts) `RULE-074 refuses a bare error thrown in src/` |
-| RULE-075 | gates | `Pipeline Complete` needs the merging `mutation` job, which never skips and fails when the scope job or any mutation shard did not succeed; the shards run only where the scope job says the change reaches a mutant | `file:.github/workflows/ci.yml` | [test/pipeline-wiring.test.ts](../test/pipeline-wiring.test.ts) `'name': 'Fail: the scope or a shard did not succeed'` |
-| RULE-076 | gates | Every rendered pod template meets Pod Security's `restricted` profile and the posture's read-only root filesystem, save the platform's VPN native sidecar, which is outside the posture and may add only `NET_ADMIN` and `NET_RAW`; a rendered file that does not parse fails rather than passing unread; the check runs in-process, so a machine without kubeconform still runs it | `npm:lint:manifests` | [test/manifest-contract.test.ts](../test/manifest-contract.test.ts) `refuses a pod that breaks the restricted profile` |
+Each family file holds one table of five columns: `id`, `family`, `the rule`,
+`enforced by`, `proved by`. A row's family cell names the file it sits in. The
+fixture link's text is the test's path from the repository root
+(`test/x.test.ts`) and its target is that path from the family file
+(`../../test/x.test.ts`).
+
+### Adding a rule
+
+Put the row in its family's file, in id order, never on this page. Take the
+next free id across every family file: one above the highest `RULE-NNN` in
+`docs/architecture-rules/`, skipping any an open pull request already takes.
+A rule that fits no family is a new family: a line in the Families table above
+and a file of its own, which the gate requires together. A citation of a rule
+names this page, `docs/architecture-rules.md`, not its family file.
 
 ## Considered and rejected
 
@@ -159,7 +96,7 @@ Proposing one of these again starts from the argument, not from scratch.
 | rule | why not |
 |---|---|
 | A maximum file length, or a maximum function length | A number nobody can defend at the boundary. The rules that matter here are about edges in a graph, which have a truth value; a 41-line function does not |
-| Inline suppressions for boundary rules, the way an `eslint-disable` comment works | An exemption a reviewer never sees is an exemption nobody decided. Where an exception is genuinely needed it belongs in the ruleset, named, with the reason beside it, which is the form every rule above already takes |
+| Inline suppressions for boundary rules, the way an `eslint-disable` comment works | An exemption a reviewer never sees is an exemption nobody decided. Where an exception is genuinely needed it belongs in the ruleset, named, with the reason beside it, which is the form every rule in the ledger already takes |
 | One ESLint rule per layer, instead of the dependency-cruiser ruleset | ESLint sees one file at a time, so it can catch an import but never a cycle, an orphan or an unreachable subtree ([0060](adr/architecture/0060-boundaries-enforced-on-the-graph.md)). The fast local signal stays; the authority is the graph |
 | Folding this ledger into `docs/requirements.md` | A rule and a behaviour answer different questions, and merging them would make the per-rule enforcer story and the per-behaviour test story compete for one row ([0065](adr/architecture/0065-a-behaviour-ledger-names-what-a-test-proves.md)) |
 | A severity column, with `warn` as a value | A warning in CI is a rule nobody enforces. Every row above is an error, and a rule not worth failing a build for is a rule not worth a row |
