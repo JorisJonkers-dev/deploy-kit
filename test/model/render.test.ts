@@ -3947,6 +3947,18 @@ describe("the Node Agents", () => {
     });
   });
 
+  // REQ-156 (docs/requirements.md), deploy-kit#730: the hosts' CDI
+  // specification names each card by its index, so the plugin hands out that.
+  it("hand out each card by its index, the name the hosts' CDI specification gives it", () => {
+    const [plugin] = objectsOf("apps/node/gpu-device/workload.yaml") as {
+      spec: { template: { spec: { containers: { env: unknown[] }[] } } };
+    }[];
+    expect(plugin?.spec.template.spec.containers[0]?.env).toContainEqual({
+      name: "DEVICE_ID_STRATEGY",
+      value: "index",
+    });
+  });
+
   it("announce each pool from the nodes of its site, and assign none unasked", () => {
     const pools = objectsOf("apps/node/l4-speaker/pools.yaml");
     expect(
