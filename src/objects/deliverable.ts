@@ -19,6 +19,7 @@ import type {
   VaultDynamicSecret,
   VaultStaticSecret,
   GrafanaDashboard,
+  GrafanaInstance,
   Alertmanager,
   AlertmanagerConfig,
   Prometheus,
@@ -77,6 +78,7 @@ export type RenderedObject =
   | RoleBinding
   | PriorityClass
   | GrafanaDashboard
+  | GrafanaInstance
   | PrometheusRule
   | AlertmanagerConfig
   | Prometheus

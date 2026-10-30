@@ -57,6 +57,7 @@ import {
 } from "./policy.ts";
 import { resolveProcess, type ProcessContext } from "./process.ts";
 import { operatedOf } from "./operated.ts";
+import { datasourcesOf, grafanaAdminOf, grafanaInstanceOf } from "./grafana.ts";
 
 /** An Application's element: the projection without its document header and provenance. */
 export type ResolvedElement = Omit<
@@ -559,9 +560,11 @@ export function resolveApplication(
     // claim, egress and token, before anything reads the Process.
     const derived = deriveProxy(authored, application, context);
     const { process } = derived;
+    const admin = grafanaAdminOf(process, application, context);
     const clientGrants = [
       ...clientGrantsOf(process, application, context),
       ...derived.grants,
+      ...admin.grants,
     ];
     const exposures = l4ExposuresOf(
       {
@@ -595,14 +598,21 @@ export function resolveApplication(
       ...ingressOf(process, application, context),
       ...gateIngressOf(base, member, context),
     ];
+    const datasources = datasourcesOf(base, application, context);
     return {
       process,
       resolved: {
         ...base,
+        ...(datasources === undefined
+          ? {}
+          : { assets: [...(base.assets ?? []), datasources] }),
         ...(operated === undefined ? {} : { operated }),
         ...(l4Exposure.length === 0 ? {} : { l4Exposure }),
         ...(nameservers === undefined ? {} : { nameservers: [...nameservers] }),
-        ...withEnvironment(base, derived.environment),
+        ...withEnvironment(base, [
+          ...derived.environment,
+          ...admin.environment,
+        ]),
         ...(ingress.length === 0 ? {} : { ingress }),
         egress: [
           ...egressOf(process, context, clientGrants.length > 0).filter(
@@ -634,6 +644,7 @@ export function resolveApplication(
     reconcileUnit: unitOf(context.project),
     ...(after.length === 0 ? {} : { reconcileAfter: after }),
     ...dashboardsOf(application, context),
+    ...grafanaInstanceOf(application, processes, context),
     ...alertingOf(application, context),
     ...(scrape === undefined
       ? {}

@@ -525,6 +525,16 @@ const monitoring = z
     grafana: holder,
     prometheus: holder,
     alertmanager: holder,
+    // The stores Grafana reads beside the Prometheus and the Alertmanager,
+    // each a data source (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources).
+    stores: z
+      .strictObject({
+        loki: holder.exactOptional(),
+        tempo: holder.exactOptional(),
+        pyroscope: holder.exactOptional(),
+      })
+      .meta({ id: "MonitoringStores" })
+      .exactOptional(),
     receivers: z.array(receiver).min(1),
     routes: z.array(severityRoute).min(1),
   })

@@ -66,6 +66,55 @@
         "dashboards": {
           "$ref": "#/$defs/ResolvedDashboards"
         },
+        "grafana": {
+          "type": "object",
+          "properties": {
+            "labels": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1
+            },
+            "credential": {
+              "type": "object",
+              "properties": {
+                "secret": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "user": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "password": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "secret",
+                "user",
+                "password"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "labels",
+            "url",
+            "credential"
+          ],
+          "additionalProperties": false
+        },
         "releaseGate": {
           "$ref": "#/$defs/ReleaseGate"
         },
