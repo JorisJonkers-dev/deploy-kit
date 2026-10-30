@@ -1,0 +1,176 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth-api
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-api
+  autoscalerRef:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: auth-api
+  progressDeadlineSeconds: 1920
+  service:
+    port: 8080
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: auth
+          process: auth-api
+          revision: sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0
+          paths: /api /api/v1/users/register
+          readiness: /api/actuator/health/readiness
+          hostnames: auth.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: auth
+          process: auth-api
+          revision: sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0
+          paths: /api /api/v1/users/register
+          readiness: /api/actuator/health/readiness
+          hostnames: auth.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: auth
+          process: auth-api
+          revision: sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0
+          paths: /api /api/v1/users/register
+          readiness: /api/actuator/health/readiness
+          hostnames: auth.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: auth
+          process: auth-api
+          revision: sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0
+          paths: /api /api/v1/users/register
+          readiness: /api/actuator/health/readiness
+          hostnames: auth.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-api
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-api
+    app.kubernetes.io/instance: auth-api
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-api
+  minReplicas: 2
+  maxReplicas: 2
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: auth-ui
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/name: auth-ui
+    app.kubernetes.io/instance: auth-ui
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: static
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-ui
+  progressDeadlineSeconds: 210
+  service:
+    port: 80
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: auth
+          process: auth-ui
+          revision: sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0
+          paths: /
+          readiness: /
+          hostnames: auth.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: auth
+          process: auth-ui
+          revision: sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0
+          paths: /
+          readiness: /
+          hostnames: auth.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: auth
+          process: auth-ui
+          revision: sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0
+          paths: /
+          readiness: /
+          hostnames: auth.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: auth
+          process: auth-ui
+          revision: sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0
+          paths: /
+          readiness: /
+          hostnames: auth.jorisjonkers.dev
+          errorRate: 1%
+          latency: 500ms

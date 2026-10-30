@@ -1,0 +1,2 @@
+apps/identity/portal/client.yaml identity/rendered/apps/identity/portal/client.yaml
+apps/identity/whoami/client.yaml identity/rendered/apps/identity/whoami/client.yaml

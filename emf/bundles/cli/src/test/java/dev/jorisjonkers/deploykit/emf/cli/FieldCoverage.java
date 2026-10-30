@@ -67,7 +67,8 @@ final class FieldCoverage {
     /** Every gap of {@code stage} over its committed cases, sorted. */
     static List<String> gaps(String stage) throws IOException {
         TreeSet<String> gaps = new TreeSet<>();
-        List<String> cases = Stages.cases(stage);
+        // A given case is hand-written input, which says nothing of what its own stage writes.
+        List<String> cases = Stages.produced(stage);
         switch (stage) {
             case "parse" -> {
                 List<EObject> input = models(cases, "parse", Stages.INTENT_MODEL, "parse", Stages.PINNED_MODEL);

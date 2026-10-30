@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="traefik-lan" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="traefik-lan" identity="traefik-lan" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" deadline="180s" replicas="1" serving="traefik-lan" servingLabel="app.kubernetes.io/instance" memory="128Mi" cpu="50m" hardening="restricted" component="none" priorityClass="platform-critical-app">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="4">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </startup>
+      <surfaces name="web" port="8000"/>
+      <surfaces name="admin" port="8080"/>
+      <l4Services name="traefik-lan-lan-edge" pool="lan-edge">
+        <ports name="tcp-80" port="80" protocol="TCP" targetPort="8000"/>
+      </l4Services>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+      </placement>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <arguments>--entryPoints.web.address=:8000/tcp</arguments>
+      <arguments>--entryPoints.traefik.address=:8080/tcp</arguments>
+      <arguments>--ping=true</arguments>
+      <arguments>--ping.entryPoint=traefik</arguments>
+      <arguments>--metrics.prometheus=true</arguments>
+      <arguments>--metrics.prometheus.entryPoint=traefik</arguments>
+      <arguments>--providers.kubernetescrd=true</arguments>
+      <arguments>--providers.kubernetescrd.ingressClass=traefik-lan</arguments>
+      <arguments>--providers.kubernetescrd.allowCrossNamespace=true</arguments>
+      <arguments>--providers.kubernetescrd.allowEmptyServices=true</arguments>
+      <arguments>--log.format=json</arguments>
+      <arguments>--accesslog=true</arguments>
+      <arguments>--accesslog.format=json</arguments>
+    </processes>
+  </applications>
+  <applications id="traefik-public" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="traefik-public" identity="traefik-public" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" deadline="180s" replicas="1" serving="traefik-public" servingLabel="app.kubernetes.io/instance" memory="128Mi" cpu="50m" hardening="restricted" component="none" priorityClass="platform-critical-app">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="4">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </startup>
+      <surfaces name="web" port="8000"/>
+      <surfaces name="websecure" port="8443"/>
+      <surfaces name="admin" port="8080"/>
+      <nodePorts name="tcp-80" port="80" protocol="TCP" targetPort="8000"/>
+      <nodePorts name="tcp-443" port="443" protocol="TCP" targetPort="8443"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="acme" mountAt="/acme" size="1Gi" durability="reconstructible"/>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <secrets path="secret/data/platform/cloudflare" access="read" delivery="env" destination="traefik-public-platform-cloudflare">
+        <keys>value</keys>
+      </secrets>
+      <environment name="CF_DNS_API_TOKEN">
+        <secret path="secret/data/platform/cloudflare" key="CF_DNS_API_TOKEN"/>
+      </environment>
+      <arguments>--entryPoints.web.address=:8000/tcp</arguments>
+      <arguments>--entryPoints.websecure.address=:8443/tcp</arguments>
+      <arguments>--entryPoints.websecure.http.tls=true</arguments>
+      <arguments>--entryPoints.traefik.address=:8080/tcp</arguments>
+      <arguments>--ping=true</arguments>
+      <arguments>--ping.entryPoint=traefik</arguments>
+      <arguments>--metrics.prometheus=true</arguments>
+      <arguments>--metrics.prometheus.entryPoint=traefik</arguments>
+      <arguments>--providers.kubernetescrd=true</arguments>
+      <arguments>--providers.kubernetescrd.ingressClass=traefik-public</arguments>
+      <arguments>--providers.kubernetescrd.allowCrossNamespace=true</arguments>
+      <arguments>--providers.kubernetescrd.allowEmptyServices=true</arguments>
+      <arguments>--certificatesresolvers.public-frankfurt.acme.email=hostmaster@jorisjonkers.dev</arguments>
+      <arguments>--certificatesresolvers.public-frankfurt.acme.storage=/acme/public-frankfurt.json</arguments>
+      <arguments>--certificatesresolvers.public-frankfurt.acme.dnschallenge.provider=cloudflare</arguments>
+      <arguments>--log.format=json</arguments>
+      <arguments>--accesslog=true</arguments>
+      <arguments>--accesslog.format=json</arguments>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-edge"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/edge/traefik-lan/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/edge/traefik-lan/service.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:SharedMiddlewareFile" path="apps/edge/traefik-lan/middlewares.yaml" adapter="traefik" namespace="edge-system" application="traefik-lan">
+    <forwardAuth address="http://identity-http.estate-system.svc.cluster.local:8080/gate/forward"/>
+    <policies name="strict" contentSecurityPolicy="default-src 'self'"/>
+    <policies name="admin" contentSecurityPolicy="default-src 'self'; style-src 'self' 'unsafe-inline'"/>
+    <policies name="workflow" contentSecurityPolicy="default-src 'self'; connect-src 'self' https:"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/edge/traefik-public/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/edge/traefik-public/service.yaml" processes="/0/@applications.1/@processes.0"/>
+</resolveddeployment:ResolvedDeployment>

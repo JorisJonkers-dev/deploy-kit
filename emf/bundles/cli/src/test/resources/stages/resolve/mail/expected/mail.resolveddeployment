@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="stalwart" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="mail" namespace="mail-system" reconcileUnit="/0/@reconcileUnits.0">
+    <exposure name="admin" host="mail.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/" match="exact" audience="authenticated" precedence="1" process="/0/@applications.0/@processes.0" surface="http">
+        <middleware kind="forward-auth" name="forward-auth" namespace="edge-system" endpoint="http://identity-http.estate-system.svc.cluster.local:8080/gate/forward"/>
+        <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
+        <middleware kind="redirect" name="stalwart-admin-1-redirect" namespace="mail-system" redirectTo="/admin/"/>
+      </routes>
+      <routes path="/" audience="authenticated" precedence="2" process="/0/@applications.0/@processes.0" surface="http">
+        <middleware kind="forward-auth" name="forward-auth" namespace="edge-system" endpoint="http://identity-http.estate-system.svc.cluster.local:8080/gate/forward"/>
+        <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <processes name="stalwart" identity="stalwart" lifecycle="application" image="docker.io/stalwartlabs/stalwart@sha256:5a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f" imageVersion="v0.16.0" uid="2000" gid="2000" cutover="interrupted" switchover="stop-start" deadline="300s" replicas="1" serving="stalwart" servingLabel="app.kubernetes.io/instance" memory="512Mi" cpu="100m" hardening="restricted" component="none">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz/ready" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz/live" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz/live" port="8080"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <surfaces name="smtp" port="25" hostPort="25"/>
+      <surfaces name="imaps" port="993" hostPort="993"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <assets name="stalwart-manifest-json-f1813d8cee" from="config/manifest.json" mountAt="/etc/stalwart-provisioner/manifest.json" content='{&#10;  "domains": [{ "name": "jorisjonkers.dev" }],&#10;  "accounts": [{ "name": "postmaster", "domain": "jorisjonkers.dev" }]&#10;}&#10;'/>
+      <sidecars name="stalwart-apply" image="ghcr.io/jorisjonkers-dev/stalwart-provisioner@sha256:7d1f3b5a9c2e4f6b8d0a2c4e6f8b1d3a5c7e9f2b4d6a8c0e2f4b6d8a1c3e5f7b" imageVersion="0.22.0" memory="64Mi" cpu="10m">
+        <mounts name="stalwart-manifest-json-f1813d8cee" mountAt="/etc/stalwart-provisioner/manifest.json" subPath="manifest.json" readOnly="true"/>
+      </sidecars>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-mail"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/mail/stalwart/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/mail/stalwart/service.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/mail/stalwart/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="peer" namespace="edge-system" process="traefik-public" port="8080"/>
+      <ingress rule="consumer" consumes="stalwart.http" port="8080"/>
+      <ingress rule="consumer" consumes="stalwart.smtp" port="25"/>
+      <ingress rule="consumer" consumes="stalwart.imaps" port="993"/>
+      <ingress rule="l4" cidr="0.0.0.0/0" port="25"/>
+      <ingress rule="l4" cidr="0.0.0.0/0" port="993"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/mail/stalwart/route-admin.yaml" adapter="traefik" exposure="/0/@applications.0/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/mail/stalwart/configmap.yaml" application="/0/@applications.0" processes="/0/@applications.0/@processes.0" externalChecks='{"endpoints":[{"conditions":["[STATUS] &lt; 500"],"group":"mail","name":"stalwart-admin-1","url":"https://mail.jorisjonkers.dev/"},{"conditions":["[STATUS] &lt; 500"],"group":"mail","name":"stalwart-admin-2","url":"https://mail.jorisjonkers.dev/"}]}'/>
+</resolveddeployment:ResolvedDeployment>

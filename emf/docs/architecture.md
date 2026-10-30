@@ -449,6 +449,15 @@ of the estate together, beside a `coverage` project and a Platform document
 that write what the worked documents leave out. A `resolve` or `render` case
 names the projects it resolves in its `projects` file.
 
+A `resolve` case with no `lower` case of its name is *given*: its Resolved
+Deployment is written by hand, because no resolution writes that shape yet, and
+it drives the `render` case of the same name alone. A given model must validate
+against the metamodel, and its stage never rewrites it. A `render` case whose
+expected files are copies of the production implementation's oracles names
+each in an `oracles` file, one `<expected path> <oracle path>` pair a line, and
+each copy must equal its oracle byte for byte, so the copies cannot drift; a
+golden update leaves such a case alone.
+
 `Comparison` compares by content first and bytes last: JSON as a Jackson tree,
 YAML as every document of the stream through SnakeYAML's YAML 1.1 reader on both
 sides, and XMI loaded into EMF and walked feature by feature, with

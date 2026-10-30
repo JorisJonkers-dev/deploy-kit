@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="release-gate" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="release-gate" identity="release-gate" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="release-gate" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <api reason="It reads what it gates, and writes its own records.">
+        <rules group="core" scope="namespace">
+          <objects>configmaps</objects>
+          <verbs>create</verbs>
+          <verbs>update</verbs>
+        </rules>
+        <rules group="core">
+          <objects>configmaps</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+        </rules>
+        <rules group="core">
+          <objects>pods</objects>
+          <verbs>list</verbs>
+        </rules>
+        <rules group="apps">
+          <objects>deployments</objects>
+          <verbs>get</verbs>
+        </rules>
+        <rules group="batch">
+          <objects>jobs</objects>
+          <verbs>list</verbs>
+          <verbs>patch</verbs>
+        </rules>
+        <rules group="flagger.app">
+          <objects>canaries</objects>
+          <verbs>get</verbs>
+        </rules>
+        <rules group="secrets.hashicorp.com">
+          <objects>vaultauths</objects>
+          <objects>vaultstaticsecrets</objects>
+          <objects>vaultdynamicsecrets</objects>
+          <verbs>list</verbs>
+          <verbs>delete</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-delivery"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/delivery/release-gate/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/release-gate/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="peer" namespace="observability-system" process="prometheus" port="8080"/>
+      <ingress rule="consumer" consumes="release-gate.http" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="gate-members" port="0"/>
+    </policies>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>

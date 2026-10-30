@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="alertmanager" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="observability" namespace="observability-system" reconcileUnit="/0/@reconcileUnits.0">
+    <alerting>
+      <routes severity="critical" receiver="discord" repeat="4h"/>
+      <routes severity="warning" receiver="discord" repeat="12h"/>
+      <receivers name="discord" secret="alertmanager-platform-alertmanager-discord" key="webhook-url"/>
+    </alerting>
+    <processes name="alertmanager-main" identity="alertmanager-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="alertmanager-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <applications id="grafana" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="observability" namespace="observability-system" reconcileUnit="/0/@reconcileUnits.0">
+    <client signIn="native" host="grafana.jorisjonkers.dev" launchUrl="https://grafana.jorisjonkers.dev/" iconUrl="https://grafana.jorisjonkers.dev/public/img/grafana_icon.svg" credential="secret" secretPath="secret/data/observability-system/grafana/client" label="Grafana" description="Metrics and dashboards">
+      <redirectUris>https://grafana.jorisjonkers.dev/login/generic_oauth</redirectUris>
+      <roles>user</roles>
+      <roles>viewer</roles>
+      <roles>editor</roles>
+      <roles>admin</roles>
+    </client>
+    <processes name="grafana-main" identity="grafana-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="grafana-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <applications id="prometheus" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="observability" namespace="observability-system" reconcileUnit="/0/@reconcileUnits.0">
+    <alertRules name="prometheus-platform">
+      <groups name="platform">
+        <rules alert="JobFailed" expr="kube_job_status_failed &gt; 0" duration="5m">
+          <labels key="severity" value="warning"/>
+          <annotations key="summary" value="Job {{ $labels.namespace }}/{{ $labels.job_name }} failed"/>
+        </rules>
+        <rules alert="TargetDown" expr="up == 0" duration="10m">
+          <labels key="severity" value="critical"/>
+          <annotations key="summary" value="{{ $labels.job }} on {{ $labels.instance }} is down"/>
+        </rules>
+      </groups>
+    </alertRules>
+    <fluxScrape namespace="flux-system" port="8080" path="/metrics" interval="30s" timeout="10s">
+      <labels key="release" value="metrics-stack"/>
+    </fluxScrape>
+    <processes name="prometheus" identity="prometheus" lifecycle="application" image="quay.io/prometheus/prometheus@sha256:4c6e8a0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c" imageVersion="v3.2.1" uid="65534" gid="65534" cutover="continuous" switchover="blue-green" deadline="300s" replicas="1" serving="prometheus" servingLabel="app.kubernetes.io/instance" memory="512Mi" cpu="100m" hardening="restricted" component="none" priorityClass="platform-critical-app">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/-/ready" port="9090"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/-/healthy" port="9090"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/-/healthy" port="9090"/>
+      </startup>
+      <surfaces name="http" port="9090"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <writablePaths path="/prometheus" size="64Mi"/>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-observability"/>
+  <deliverables xsi:type="resolveddeployment:AlertingFile" path="apps/observability/alertmanager/alertmanagerconfig.yaml" adapter="prometheus" application="/0/@applications.0"/>
+  <deliverables xsi:type="resolveddeployment:ClientFile" path="apps/observability/grafana/client.yaml" application="/0/@applications.1"/>
+  <deliverables xsi:type="resolveddeployment:AlertRulesFile" path="apps/observability/prometheus/alertrules.yaml" adapter="prometheus" application="/0/@applications.2"/>
+  <deliverables xsi:type="resolveddeployment:FluxMonitorFile" path="apps/observability/prometheus/flux-podmonitor.yaml" adapter="prometheus" application="/0/@applications.2"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/observability/prometheus/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.2/@processes.0">
+      <ingress rule="consumer" consumes="prometheus.http" port="9090"/>
+      <ingress rule="peer" namespace="delivery-system" process="release-gate" port="9090"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="peer" namespace="data-system" process="postgres" port="9187"/>
+      <egress rule="peer" namespace="data-system" process="rabbitmq" port="15692"/>
+      <egress rule="peer" namespace="delivery-system" process="release-gate" port="8080"/>
+      <egress rule="peer" namespace="notes-system" process="notes-api" port="8080"/>
+      <egress rule="flux-metrics" namespace="flux-system" port="8080"/>
+    </policies>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>

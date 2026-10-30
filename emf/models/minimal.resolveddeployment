@@ -74,7 +74,8 @@
     </releaseGate>
 
     <exposure name="public" host="notes.jorisjonkers.dev" tier="public-frankfurt"
-        listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system">
+        listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system"
+        ingressClass="traefik-public">
       <!-- One prefix route, so precedence is 1 and nothing competes with it. -->
       <routes path="/" match="prefix" audience="anonymous" precedence="1"
           process="//@applications.0/@processes.0" surface="http">
