@@ -33,6 +33,15 @@ class OracleDistanceTest {
 
     /** The oracle comparisons expected to pass, as {@code <oracle> <case>}. Each catch-up slice adds to it. */
     static final Set<String> PASSING = Set.of(
+            "dependencies auth",
+            "dependencies data",
+            "dependencies delivery",
+            "dependencies edge",
+            "dependencies identity",
+            "dependencies knowledge-platform",
+            "dependencies minimal",
+            "dependencies observability",
+            "dependencies secrets",
             "descriptor expected",
             "effective auth",
             "effective data",
@@ -144,6 +153,8 @@ class OracleDistanceTest {
             "refusal unknown-telemetry-collector",
             "refusal unknown-tier-proxy",
             "refusal unresolved-placeholder",
+            "rendered minimal",
+            "rendered secrets",
             "schema-refusal credentials-file-without-mount",
             "schema-refusal egress-outside-vocabulary",
             "schema-refusal egress-with-range",
@@ -267,6 +278,36 @@ class OracleDistanceTest {
                                         ? Comparison.trees(rendered, Comparison.read(out))
                                         : refused(refusals);
                             }));
+        }
+        // A given resolve case is the Resolved Deployment main's rendered tree needs, written by hand.
+        for (String name : Stages.cases("resolve")) {
+            String example = name.replaceFirst("-main$", "");
+            Outputs.Resolving resolving = Outputs.RESOLVED.get(example);
+            if (!Stages.given("resolve", name)) {
+                continue;
+            }
+            for (String project : Stages.projects(name)) {
+                Path given = Stages.expected("resolve", name).resolve(project + Stages.RESOLVED_MODEL);
+                distances.put(
+                        "resolved " + name,
+                        resolving == null
+                                ? List.of("no union this implementation resolves")
+                                : attempt(() -> {
+                                    Resolved resolved = Pipeline.resolve(
+                                            resolving.documents().stream()
+                                                    .map(Examples::of)
+                                                    .toList(),
+                                            project,
+                                            Outputs.INTEGRITY);
+                                    return resolved.ok()
+                                            ? Comparison.files(
+                                                    given.getFileName().toString(),
+                                                    URI.createFileURI(given.toString()),
+                                                    Files.readAllBytes(given),
+                                                    Stages.xmi(given, resolved.deployment()))
+                                            : refused(resolved.diagnostics());
+                                }));
+            }
         }
         for (String kind : List.of("refusals", "schema-refusals")) {
             for (Path oracle : diagnosticsOracles(examples.resolve(kind))) {

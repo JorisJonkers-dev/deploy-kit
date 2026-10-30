@@ -43,6 +43,9 @@ property FORWARDED_PORT_FILE : String = '/run/vpn/forwarded-port';
 property TUNNEL_REASON : String = 'the VPN\'s tunnel reaches its provider\'s servers';
 -- The surface a Release Gate and a Secret Store answer on.
 property HTTP_SURFACE : String = 'http';
+
+-- Where every Stable Address lives (spec/v1/16-dependencies.md#the-stable-address).
+property STABLE_NAMESPACE : String = 'estate-system';
 -- The path of the Reporter's `http` surface that receives Flux's events.
 property EVENTS_PATH : String = '/flux';
 -- Flux's notification controller, by the `app` label its own install gives its pods.
@@ -124,8 +127,10 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	deliverables := self.projectFiles()
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
 		->union(self.vaultFiles())
-		->union(self.generatedKeysFiles());
+		->union(self.generatedKeysFiles())
+		->union(self.stableAddressFiles());
 	end {
+		self.edgeFiles(result);
 		-- Only a complete element has a revision: it is the digest of all of it.
 		result.reconcileUnits->first().after := result.reconcileUnits->excluding(result.reconcileUnits->first());
 		-- The revision is the production implementation's: the digest of the
@@ -306,7 +311,6 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 	id := self.id;
 	project := prj.project;
 	namespace := namespaceOf(prj.project);
-	if self.observability <> null then alertClass := self.observability.alertClass.spelling() endif;
 	reconcileUnit := prj.map unit();
 	-- The Processes first: everything below refers to them.
 	processes := self.processes->map process(self, prj);
@@ -318,9 +322,28 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 			path := self.observability.scrape.path;
 			interval := estate.monitors.interval;
 			timeout := estate.monitors.timeout;
+			-- What the metrics stack selects its monitors by, as the platform names it.
+			labels := estate.monitors.labels->sortedBy(l | l.key)
+				->collect(l | object KeyValue { key := l.key; value := l.value; });
 		}
 	endif;
 	releaseGate := if gated(self) then self.map gate() else null endif;
+	-- Each dashboard file as the set read it, in its Project's folder, for the Grafana
+	-- the Platform document names (spec/v1/10-project-intent.md#dashboards).
+	if self.dashboards->notEmpty() and estate.telemetry <> null and estate.telemetry.dashboards <> null then
+		dashboards := object ResolvedDashboards {
+			folder := prj.project;
+			instance := estate.telemetry.dashboards.instance->sortedBy(i | i.key)
+				->collect(i | object KeyValue { key := i.key; value := i.value; });
+			datasource := estate.telemetry.dashboards.datasource;
+			files := self.dashboards->collect(d | let read : String = fileOf(prj.project, d._from) in
+				object ResolvedDashboard {
+					name := self.id + '-' + uidOf(read);
+					content := read;
+					inputs := inputsOf(read);
+				});
+		}
+	endif;
 	if managed(self) then migration := self.map migrationOf(prj) endif;
 	-- The operator syncs from the Secret Store wherever a grant or a backup's
 	-- off-cluster or peer credential is delivered anywhere but to the Process itself,
@@ -495,8 +518,9 @@ query catalogJobOf(prj : String, application : String, p : PI::Process) : Resolv
 		and r.applications->exists(a | let d : Sequence(PolicyPeer) = datastoreOf(a) in
 			d->notEmpty() and d->first().namespace = ns and d->first().process = proc))
 		->collect(r | r.project)->sortedBy(n | n)->asSequence() in
-	let logins : Sequence(AdminLogin) = stated(application)->select(l | l.admin <> null)
-		->collect(l | l.admin)->asSequence() in
+	let logins : Sequence(AdminLogin) = stated(application)
+		->select(l | l.admin <> null and l.admin.oclIsKindOf(AdminLogin))
+		->collect(l | l.admin.oclAsType(AdminLogin))->asSequence() in
 	if readers->isEmpty() or (legacy(prj) and logins->isEmpty()) then null else
 	let own : LockedImage = locked(estate.engines.postgres.catalog) in
 	let surfacePort : Integer = p.provides->select(s | s.key = estate.engines.postgres.surface)->any(true).value in
@@ -672,15 +696,25 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	servingLabel := if self.servesFromPrimary(app) then 'app.kubernetes.io/name'
 		else 'app.kubernetes.io/instance' endif;
 	deadline := inSeconds(deadlineOf(self));
-	replicas := if self.replicas = null then 1 else self.replicas.count endif;
-	memory := self.placement.memory;
+	-- A scheduled run that starts more than the start deadline late is skipped.
+	if self.schedule <> null then schedule := self.schedule endif;
+	if self.schedule <> null then startDeadline := '300s' endif;
+	replicas := if self.parked <> null then 0 else if self.replicas = null then 1 else self.replicas.count endif endif;
+	parked := self.parked <> null;
+	spread := self.replicas <> null and self.replicas.oclAsType(ECORE::EObject).states('across');
+	arguments := self.args->asSequence()->union(edgeArgsOf(self));
+	-- A path held in memory is memory the container holds.
+	memory := let held : Real = self.writablePaths->select(w | w.oclIsKindOf(MemoryPath))
+			->collect(w | mebibytes(w.oclAsType(MemoryPath).memory))->sum() in
+		if held = 0 then self.placement.memory else memoryOf(mebibytes(self.placement.memory) + held) endif;
 	cpu := self.placement.cpu;
 	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
 	if self.vpn <> null then vpn := vpnOf(self) endif;
 	hardening := estate.hardening.spelling();
-	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj));
+	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
+	priorityClass := priorityOf(self, app, prj);
 	identityToken := self.api <> null or self.secrets->exists(g | g.delivery = Delivery::selfDelivery)
 		or self.edgeCredentials(app, prj)->exists(g | g.delivery = 'self');
 	-- The platform admits the holder, or E_PROCESS_RBAC_GRANT refused it, so the
@@ -691,6 +725,8 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			group := r.group;
 			objects := r.objects;
 			verbs := r.verbs->collect(v | v.toString());
+			-- A rule reaches the cluster unless it says its own namespace.
+			scope := if r.scope = ApiScope::_namespace then RuleScope::_namespace else RuleScope::cluster endif;
 		});
 		server := estate.apiAccess.server->collect(range | object AdmittedRange {
 			cidr := range.cidr;
@@ -698,6 +734,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		});
 	} endif;
 	if self.egress <> null then internetEgress := object InternetEgress { reason := self.egress.reason; } endif;
+	if self.egress = null and edgeAcme(self) then internetEgress := object InternetEgress { reason := ACME_REASON; } endif;
 	if self.egress = null and self.vpn <> null then internetEgress := object InternetEgress { reason := TUNNEL_REASON; } endif;
 	component := self.runtime.spelling();
 	if declared <> null and declared.readiness <> null then readiness := declared.readiness.cadenced() endif;
@@ -711,7 +748,16 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			failures := ceiling(seconds(self.startupBudget) / STARTUP_PERIOD);
 		}
 	endif;
-	surfaces := self.provides->collect(s | object ResolvedSurface { name := s.key; port := s.value; });
+	-- A surface exposed on a node's own address listens on the host's port too.
+	surfaces := self.provides->collect(s | object ResolvedSurface {
+		name := s.key;
+		port := s.value;
+		hostPort := l4Of(self)->select(e | e.surface = s and addressOf(e.address).oclIsKindOf(NodeAddress)
+				and e.port = s.value and e.protocol = L4Protocol::tcp)
+			->collect(e | e.port)->any(true);
+	});
+	l4Services := l4ServicesOf(self);
+	nodePorts := edgeNodePortsOf(self);
 	placement := object ResolvedPlacement {
 		eligibleNodes := contract.nodes->select(n | eligible(self, n))->collect(n | n.name);
 		-- A claim the snapshot records as bound holds the Process to that node.
@@ -720,26 +766,33 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			_from := PinnedInput::clusterState;
 		} endif;
 	};
-	volumes := self.volumes->collect(v | v.resolvedFor(self));
+	volumes := self.volumes->collect(v | v.resolvedFor(self))->union(edgeVolumesOf(self));
 	libraries := self.libraries->collect(m | m.resolvedFor(prj));
-	assets := self.assets->collect(a | a.resolvedFor(self, prj));
+	-- A seeded Asset lands on a volume through an init step the target does not model yet.
+	assets := self.assets->select(a | a.oclIsKindOf(Asset))
+		->collect(a | a.oclAsType(Asset).resolvedFor(self, prj));
 	sidecars := self.sidecars->collect(c | object ResolvedSidecar {
 		name := c.name;
 		image := locked(c.image).repository + '@' + locked(c.image).digest;
 		imageVersion := locked(c.image).version;
 		memory := c.memory;
 		cpu := c.cpu;
+		-- An init step runs to completion before the Process starts.
+		_init := c._init = true;
 	});
 	dependencies := self.dependsOn->collect(e | edgeOf(e, owner(self)));
 	-- An edge to an Application's surface reaches a pod, which admits the label; one to a
 	-- Registered Unmanaged Surface reaches an address.
 	consumes := result.dependencies->select(d | d.peers->notEmpty())
 		->collect(d | d.application + '.' + d.surface);
+	-- A path held in memory is sized by what it holds; every other by the ephemeral policy.
 	writablePaths := self.writablePaths->collect(w | object WritablePath {
-		path := w;
-		size := estate.ephemeral.size;
+		path := w.path;
+		size := if w.oclIsKindOf(MemoryPath) then w.oclAsType(MemoryPath).memory
+			else estate.ephemeral.size endif;
+		memory := w.oclIsKindOf(MemoryPath);
 	});
-	environment := environmentOf(self, prj)->sortedBy(e | e.name);
+	environment := environmentOf(self, prj)->union(edgeEnvOf(self))->sortedBy(e | e.name);
 }
 
 -- `progressDeadlineSeconds`: three budgets, floored to a whole second, or for a
@@ -759,7 +812,8 @@ query PI::Process::servesFromPrimary(app : EffectiveApplication) : Boolean =
 	self.lifecycle = Lifecycle::application and switchoverOf(app, self) = Switchover::blueGreen;
 
 query switchoverOf(app : EffectiveApplication, p : PI::Process) : Switchover =
-	if p.cutover = PI::Cutover::interrupted then Switchover::stopStart
+	-- A parked Process runs no pod, so it has no release to gate: it stops and starts.
+	if p.cutover = PI::Cutover::interrupted or p.parked <> null then Switchover::stopStart
 	else if estate.delivery <> null and estate.delivery.machinery->exists(m | m.id = app.id)
 		then Switchover::rolling
 	else Switchover::blueGreen endif endif;
@@ -848,10 +902,12 @@ query Grant::resolvedFor(p : PI::Process) : ResolvedGrant = object ResolvedGrant
 		endif;
 	} elif (self.oclIsKindOf(TransitGrant)) {
 		engine := 'transit';
+		-- `read` is the key's public part and versions, which the key itself serves.
 		paths := self.oclAsType(TransitGrant).operations->collect(o | object PolicyPath {
-			path := if o = TransitOp::rotate then 'transit/keys/' + self.oclAsType(TransitGrant).key + '/rotate'
-				else 'transit/' + o.spelling() + '/' + self.oclAsType(TransitGrant).key endif;
-			allows := Sequence{'update'};
+			path := if o = TransitOp::read then 'transit/keys/' + self.oclAsType(TransitGrant).key
+				else if o = TransitOp::rotate then 'transit/keys/' + self.oclAsType(TransitGrant).key + '/rotate'
+				else 'transit/' + o.spelling() + '/' + self.oclAsType(TransitGrant).key endif endif;
+			allows := Sequence{if o = TransitOp::read then 'read' else 'update' endif};
 		});
 	} else {
 		engine := 'database';
@@ -864,7 +920,9 @@ query Grant::resolvedFor(p : PI::Process) : ResolvedGrant = object ResolvedGrant
 	if self.fileMode <> null then fileMode := self.fileMode endif;
 	-- A synced value restarts its consumer once the operator syncs it, whatever the rotation
 	-- tolerates; read by the Process itself, a rotation restarts it, and a reload restarts nothing.
-	if self.delivery <> Delivery::selfDelivery or self.rotation.tolerates = Tolerance::restart then
+	-- A scheduled Process reads its values afresh on every run, so nothing restarts it.
+	if p.lifecycle <> Lifecycle::scheduled
+			and (self.delivery <> Delivery::selfDelivery or self.rotation.tolerates = Tolerance::restart) then
 		restartTargets := Sequence{p.name}
 	endif;
 };
@@ -939,6 +997,9 @@ query Volume::backupFor(p : PI::Process) : BackupPlan =
 				port := range.port;
 			});
 			offCluster := policy.offCluster.destination;
+			-- Where the copy lands below the destination, and the key it is encrypted to.
+			offClusterPath := owner(p) + '/' + p.name + '/' + self.claim;
+			offClusterRecipient := policy.offCluster.recipient;
 			credential := object ResolvedGrant {
 				path := policy.offCluster.credential;
 				_access := 'read';
@@ -978,10 +1039,16 @@ query backupEgress(p : PI::Process) : Sequence(PolicyPeer) =
 query dumpedSurface(p : PI::Process) : String =
 	if not p.oclAsType(ECORE::EObject).states('engine')
 		or not p.volumes->exists(v | v.durability <> PI::DurabilityClass::reconstructible) then null
-	else if p.engine = Engine::postgres then policySurface(estate.engines.postgres)
-	else if p.engine = Engine::rabbitmq then policySurface(estate.engines.rabbitmq)
-	else if p.engine = Engine::valkey then policySurface(estate.engines.valkey)
-	else policySurface(estate.engines.files) endif endif endif endif;
+	else policySurface(enginePolicyOf(p)) endif;
+
+-- The platform's policy for the Process's engine.
+query enginePolicyOf(p : PI::Process) : EnginePolicy =
+	if p.engine = Engine::postgres then estate.engines.postgres
+	else if p.engine = Engine::rabbitmq then estate.engines.rabbitmq
+	else if p.engine = Engine::valkey then estate.engines.valkey
+	else if p.engine = Engine::mongo then estate.engines.mongo
+	else if p.engine = Engine::s3 then estate.engines.s3
+	else estate.engines.files endif endif endif endif endif;
 
 query policySurface(policy : EnginePolicy) : String =
 	if policy = null then null else policy.surface endif;
@@ -1013,10 +1080,7 @@ query homeProcess(application : String, process : String) : String =
 
 query engineMethod(p : PI::Process) : String =
 	if not p.oclAsType(ECORE::EObject).states('engine') then unengined(p)
-	else if p.engine = Engine::postgres then estate.engines.postgres.backup
-	else if p.engine = Engine::rabbitmq then estate.engines.rabbitmq.backup
-	else if p.engine = Engine::valkey then estate.engines.valkey.backup
-	else estate.engines.files.backup endif endif endif endif;
+	else enginePolicyOf(p).backup endif;
 
 query unengined(p : PI::Process) : String {
 	assert fatal (false) with log(p.name + ' backs a volume up and declares no engine: E_DURABILITY_WITHOUT_ENGINE');
@@ -1040,6 +1104,38 @@ query Asset::resolvedFor(p : PI::Process, prj : EffectiveProject) : ResolvedAsse
 		mountAt := self.mountAt;
 		content := file.content;
 	} endif;
+
+-- The endpoint the edge asks a tier's forward-auth at: its provider's Stable
+-- Address on the surface, at the port its Process provides it on, and the path
+-- (spec/v1/14-platform-intent.md#tiers).
+query ForwardAuth::endpoint() : String =
+	let port : Integer = self.provider.processes.provides
+		->select(s | s.key = self.surface)->any(true).value in
+	'http://' + self.provider.id + '-' + self.surface + '.' + STABLE_NAMESPACE + '.svc.cluster.local:'
+		+ port.toString() + self.path;
+
+-- The content of a file the project names, read from beside it.
+query fileOf(project : String, source : String) : String =
+	let found : Sequence(AssetFile) =
+		assetFiles->select(f | f.project = project and f._from = source)->asSequence() in
+	if found->isEmpty() then unfiled(source).content else found->first().content endif;
+
+-- A dashboard's own uid: the top-level key of its JSON, as Grafana exports it.
+query uidOf(content : String) : String =
+	let at : Integer = content.indexOf('\n  "uid": "') in
+	if at <= 0 then null else
+	let rest : String = content.substring(at + 11, content.size()) in
+	rest.substring(1, rest.indexOf('"') - 1) endif;
+
+-- The data source inputs a vendored dashboard declares, by name.
+query inputsOf(content : String) : Sequence(String) =
+	let at : Integer = content.indexOf('"__inputs"') in
+	if at <= 0 then Sequence{} else
+	let rest : String = content.substring(at, content.size()) in
+	let segment : String = rest.substring(1, rest.indexOf(']')) in
+	segment.tokenize('}')->select(e | e.indexOf('"type": "datasource"') > 0 and e.indexOf('"name": "') > 0)
+		->collect(e | let named : String = e.substring(e.indexOf('"name": "') + 9, e.size()) in
+			named.substring(1, named.indexOf('"') - 1))->asSequence() endif;
 
 query unfiled(source : String) : AssetFile {
 	assert fatal (false) with log(source + ': an Asset whose file is not beside its project');
@@ -1075,7 +1171,7 @@ query edgeOf(e : DependencyEdge, consumer : String) : ResolvedEdge =
 			application := e.application;
 			surface := e.surface;
 			address := dialled(e, host, consumer) + ':' + at.toString();
-			target := aliasTarget(host, consumer);
+			target := aliasTarget(e, host, consumer);
 			peers := Sequence{object PolicyPeer {
 				namespace := homeNamespace(first.project, e.application);
 				process := homeProcess(e.application, first.process.name);
@@ -1092,9 +1188,55 @@ query edgeOf(e : DependencyEdge, consumer : String) : ResolvedEdge =
 			surface := e.surface;
 			address := dialled(e, host, consumer) + ':'
 				+ registered->first().surfaces->select(s | s.key = e.surface)->any(true).value.toString();
-			target := aliasTarget(host, consumer);
+			target := aliasTarget(e, host, consumer);
 		} endif
 	endif;
+
+-- Where a provider's surface is served, before any alias: its Process's Service in
+-- its home namespace, or the address the platform registers for it.
+query homeHostOf(e : DependencyEdge) : String =
+	let providers : Sequence(Tuple(project : String, process : PI::Process)) =
+		projects->collect(prj | prj.applications->select(a | a.id = e.application).processes
+			->select(p | p.provides->exists(s | s.key = e.surface))
+			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
+	if providers->notEmpty() then
+		homeProcess(e.application, providers->first().process.name) + '.'
+			+ homeNamespace(providers->first().project, e.application) + '.svc.cluster.local'
+	else
+		let registered : Sequence(Provider) = estate.providers
+			->select(r | r.name = e.application and r.surfaces->exists(s | s.key = e.surface))->asSequence() in
+		if registered->isEmpty() then null else registered->first().address endif
+	endif;
+
+-- The Stable Addresses the project's aliases point at
+-- (spec/v1/16-dependencies.md#the-stable-address): one ExternalName Service per
+-- surface, in the estate's own namespace, naming where the surface is served.
+query EffectiveProject::stableAddressFiles() : Sequence(Deliverable) =
+	let root : String = 'estate/stable-addresses/' in
+	let aliased : Sequence(DependencyEdge) =
+		self.applications.processes.dependsOn->asSequence()
+			->select(e | homeHostOf(e) <> null and aliasTarget(e, homeHostOf(e), self.project) <> null) in
+	let named : Sequence(DependencyEdge) =
+		aliased->select(e | aliased->select(o | o.application = e.application and o.surface = e.surface)
+			->first() = e)->sortedBy(e | e.application + '-' + e.surface) in
+	if named->isEmpty() then Sequence{} else
+	Sequence{
+		object StableAddressFile {
+			path := root + 'services.yaml';
+			adapter := AdapterName::kubernetes;
+			namespace := STABLE_NAMESPACE;
+			addresses := named->collect(e | object Alias { name := e.application + '-' + e.surface; target := homeHostOf(e); });
+		}.oclAsType(Deliverable),
+		object NamespaceFile {
+			path := root + 'namespace.yaml';
+			adapter := AdapterName::kubernetes;
+			namespace := STABLE_NAMESPACE;
+		}.oclAsType(Deliverable),
+		object IndexFile {
+			path := root + 'kustomization.yaml';
+			adapter := AdapterName::kubernetes;
+			resources := Sequence{'namespace.yaml', 'services.yaml'};
+		}.oclAsType(Deliverable)} endif;
 
 -- The name an edge's alias holds: what its consumer dials, up to the port.
 query aliasName(e : ResolvedEdge) : String = e.address.substring(1, e.address.lastIndexOf(':') - 1);
@@ -1115,9 +1257,12 @@ query dialled(e : DependencyEdge, host : String, consumer : String) : String =
 	else if isLiteral(host) then host
 	else aliasNameOf(e, consumer) endif endif;
 
--- Where an alias points, on an edge that derives one.
-query aliasTarget(host : String, consumer : String) : String =
-	if isLocal(host, consumer) or isLiteral(host) then null else host endif;
+-- Where an alias points, on an edge that derives one: the surface's Stable
+-- Address, so a provider that moves changes the Stable Address alone, never a
+-- consumer's render (spec/v1/16-dependencies.md#the-stable-address).
+query aliasTarget(e : DependencyEdge, host : String, consumer : String) : String =
+	if isLocal(host, consumer) or isLiteral(host) then null
+	else e.application + '-' + e.surface + '.' + STABLE_NAMESPACE + '.svc.cluster.local' endif;
 
 -- The alias's name: the Application Id, or the Id and the surface where the
 -- project's edges name several surfaces of it, since a name carries no port.
@@ -1158,7 +1303,39 @@ query eligible(p : PI::Process, n : Node) : Boolean =
 	and (p.placement.disk = null or n.disks->exists(d |
 		p.placement.disk.media->exists(m | m.spelling() = d.media)))
 	-- A library the Process mounts holds it to the library's node.
-	and p.libraries->forAll(m | libraryOf(m._library) <> null and libraryOf(m._library).node = n.name);
+	and p.libraries->forAll(m | libraryOf(m._library) <> null and libraryOf(m._library).node = n.name)
+	-- Its L4 exposures hold it to the sites of its pools and the nodes of its node addresses.
+	and l4Of(p)->forAll(e | let a : L4AddressDeclaration = addressOf(e.address) in
+		if a.oclIsKindOf(PoolAddress) then a.oclAsType(PoolAddress).site = n.site
+		else a.oclAsType(NodeAddress).node = n.name endif);
+
+-- The L4 exposures of the Process's Application that reach it.
+query l4Of(p : PI::Process) : Sequence(Tuple(address : String, port : Integer, protocol : L4Protocol, surface : Surface)) =
+	p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication).l4Exposure
+		->select(e | e.process = p)
+		->collect(e | Tuple{address = e.address, port = e.port, protocol = e.protocol, surface = e.surface})
+		->asSequence()->union(tierL4Of(p));
+
+-- The L4 Address the Platform document names.
+query addressOf(name : String) : L4AddressDeclaration =
+	estate.l4Addresses->select(a | a.key = name)->any(true).value;
+
+-- A Process's Services on the pools it is exposed on, one per address, each port by port
+-- (spec/v1/16-dependencies.md#l4-exposure).
+query l4ServicesOf(p : PI::Process) : Sequence(ResolvedL4Service) =
+	let pooled : Sequence(Tuple(address : String, port : Integer, protocol : L4Protocol, surface : Surface)) = l4Of(p)->select(e | addressOf(e.address).oclIsKindOf(PoolAddress)) in
+	pooled.address->asSet()->sortedBy(a | a)->collect(address | object ResolvedL4Service {
+		name := p.name + '-' + address;
+		pool := address;
+		ports := pooled->select(e | e.address = address)
+			->sortedBy(e | e.port * 2 + (if e.protocol = L4Protocol::tcp then 0 else 1 endif))
+			->collect(e | object L4Port {
+				name := e.protocol.toString() + '-' + e.port.toString();
+				port := e.port;
+				protocol := e.protocol.toString().toUpper();
+				targetPort := e.surface.value;
+			});
+	})->asSequence();
 
 -- The VPN container beside an attached Process (spec/v1/20-resolved-deployment.md#the-vpn-attachment):
 -- the platform's image and quantities, its settings with the three values derived from the
@@ -1237,11 +1414,7 @@ query unwritten(p : PI::Process) : Sequence(EnvEntry) {
 }
 
 query authoredOf(p : PI::Process) : Sequence(EnvVariable) =
-	let base : Sequence(EnvVariable) =
-			p.env->select(f | f.cluster = null)->collect(f | f.entries)->asSequence(),
-		overlay : Sequence(EnvVariable) =
-			p.env->select(f | f.cluster = estate.metadata.cluster)->collect(f | f.entries)->asSequence() in
-	base->select(b | overlay->forAll(o | o.name <> b.name))->union(overlay);
+	p.env->collect(f | f.entries)->asSequence();
 
 query EnvVariable::entry(prj : EffectiveProject) : EnvEntry =
 	if self.value.oclIsKindOf(EnvLiteral) then
@@ -1272,6 +1445,23 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 			}
 		else unresolved(variable, 'a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE') endif
 	else if self.kind = PlaceholderKind::dependency and self.source.lastIndexOf('.') > 0
+			and Sequence{'accessKeyId', 'secretAccessKey'}->includes(
+				self.source.substring(self.source.lastIndexOf('.') + 1, self.source.size())) then
+		-- A key to an object store is read from the project's key to the store the edge names
+		-- buckets in (spec/v1/16-dependencies.md#the-bucket-catalog).
+		let application : String = self.source.substring(1, self.source.lastIndexOf('.') - 1) in
+		let coordinate : String = self.source.substring(self.source.lastIndexOf('.') + 1, self.source.size()) in
+		let edge : DependencyEdge = owner.dependsOn->select(e | e.application = application)->any(true) in
+		let store : String = projects.applications->select(a | a.id = application).processes
+			->select(p | p.provides->exists(s | s.key = edge.surface))->any(true).name in
+		object EnvEntry {
+			name := variable;
+			secret := object SecretReference {
+				path := 'secret/data/' + prj.project + '/' + store + '/s3';
+				key := if coordinate = 'accessKeyId' then 'access-key-id' else 'secret-access-key' endif;
+			};
+		}
+	else if self.kind = PlaceholderKind::dependency and self.source.lastIndexOf('.') > 0
 			and Sequence{'username', 'password'}->includes(self.source.substring(self.source.lastIndexOf('.') + 1, self.source.size())) then
 		-- A login is read from the Secret the edge's credential is synced to, or
 		-- E_UNRESOLVED_PLACEHOLDER refused the placeholder.
@@ -1285,7 +1475,7 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 		}
 	else
 		object EnvEntry { name := variable; value := self.textFor(owner, prj) + suffix; }
-	endif endif endif;
+	endif endif endif endif;
 
 query Placeholder::textFor(owner : PI::Process, prj : EffectiveProject) : String =
 	if self.kind = PlaceholderKind::dependency then dependencyValue(self.source, owner)
@@ -1304,13 +1494,15 @@ query dependencyValue(source : String, owner : PI::Process) : String =
 	let application : String = source.substring(1, cut - 1) in
 	let coordinate : String = source.substring(cut + 1, source.size()) in
 	let edges : Sequence(DependencyEdge) = owner.dependsOn->select(e | e.application = application)->asSequence() in
-	if edges->size() <> 1 or (coordinate <> 'host' and coordinate <> 'port')
+	if edges->size() <> 1 or (coordinate <> 'host' and coordinate <> 'port' and coordinate <> 'endpoint')
 		then unresolvedText(source, 'a dependency placeholder names no one edge of the Process and no coordinate of it')
 	else
 		let address : String = edgeOf(edges->first(), owner(owner)).address in
 		let colon : Integer = address.lastIndexOf(':') in
-		if coordinate = 'host' then address.substring(1, colon - 1)
-		else address.substring(colon + 1, address.size()) endif
+		-- An object store is reached over HTTP at what the edge dials.
+		if coordinate = 'endpoint' then 'http://' + address
+		else if coordinate = 'host' then address.substring(1, colon - 1)
+		else address.substring(colon + 1, address.size()) endif endif
 	endif endif;
 
 -- `${exposure:<application>.<name>#<field>}`: one field of an exposure the union declares.
@@ -1384,6 +1576,37 @@ query surfaceAddress(application : String, surface : String) : String =
 
 -- ================================================================== exposure
 
+-- The priority class a Process runs at (spec/v1/14-platform-intent.md#priority): the
+-- data class for one that runs an engine, the critical class for the foundation and
+-- the Applications the platform names, none otherwise.
+query priorityOf(p : PI::Process, app : EffectiveApplication, prj : EffectiveProject) : String =
+	let policy : PriorityPolicy = estate.priority in
+	if policy = null then null
+	else if p.engine <> Engine::absent then policy.data.name
+	else if foundation()->includes(prj.project + '/' + app.id)
+			or policy.criticalApplications->exists(a | heldName(a) = prj.project + '/' + app.id)
+		then policy.critical.name
+	else null endif endif endif;
+
+-- `<project>/<application>` of an Application a document declares.
+query heldName(a : Application) : String =
+	a.oclAsType(ECORE::EObject).eContainer().oclAsType(Project).project + '/' + a.id;
+
+-- The Applications the Platform document names in a privileged role.
+query foundation() : Set(String) =
+	let none : Sequence(Application) = Sequence{} in
+	estate.tiers->collect(t | t.traefik)->asSequence()
+		->union(if estate.delivery = null then none
+			else estate.delivery.machinery->asSequence()->append(estate.delivery.gate) endif)
+		->union(if estate.delivery = null or estate.delivery.reporter = null then none
+			else Sequence{estate.delivery.reporter} endif)
+		->union(if estate.apiAccess = null then none else estate.apiAccess.holders->asSequence() endif)
+		->union(if estate.telemetry = null then none
+			else Sequence{estate.telemetry.collector, estate.telemetry.metrics} endif)
+		->union(if estate.secretStore = null then none else Sequence{estate.secretStore} endif)
+		->union(if estate.signIn = null then none else Sequence{estate.signIn.provider} endif)
+		->collect(a | heldName(a))->asSet();
+
 -- The tier carrying an audience, or E_NO_TIER_FOR_AUDIENCE refused the set.
 query tierFor(audience : Audience) : Tier =
 	estate.tiers->select(t | t.audiences->includes(audience))->first();
@@ -1398,6 +1621,13 @@ mapping Exposure::exposure(in app : EffectiveApplication, in prj : EffectiveProj
 	proxyApplication := tierFor(self.audience).traefik.id;
 	proxyNamespace := homeNamespace(projectOf(tierFor(self.audience).traefik.id),
 		tierFor(self.audience).traefik.id);
+	ingressClass := tierFor(self.audience).ingressClass;
+	-- The name the tier publishes the host behind, or, where the exposure is not
+	-- proxied, the tier's own address (spec/v1/14-platform-intent.md#tiers).
+	dns := let named : TierDns = tierFor(self.audience).dns in
+		if named = null then null
+		else if self.proxied = false then object ExposureDns { target := named.direct; proxied := false; }
+		else object ExposureDns { target := named.target; proxied := named.proxied; } endif endif;
 	routes := self.routes->collect(r | object ResolvedRoute {
 		path := r.path;
 		match := r.match.resolvedMatch();
@@ -1431,7 +1661,7 @@ query middlewareOf(r : Route, exposure : Exposure, app : EffectiveApplication, p
 	(if r.audienceOf(exposure) = Audience::authenticated
 		then Sequence{object MiddlewareStep {
 			kind := MiddlewareKind::forwardAuth;
-			endpoint := tierFor(r.audienceOf(exposure)).forwardAuth;
+			endpoint := tierFor(r.audienceOf(exposure)).forwardAuth.endpoint();
 			name := 'forward-auth';
 			namespace := proxy;
 		}}
@@ -1578,14 +1808,21 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				adapter := AdapterName::kubernetes;
 				processes := claimed;
 			}.oclAsType(Deliverable)} else Sequence{} endif)
-		->union(if configured->notEmpty() or gated(self) then Sequence{object ConfigMapFile {
+		->union(if configured->notEmpty() or gated(self) or self.exposure->notEmpty() then Sequence{object ConfigMapFile {
 				path := root + 'configmap.yaml';
 				adapter := AdapterName::kubernetes;
 				application := self.resolveone(ResolvedApplication);
 				processes := configured;
 				-- The element as the Release Gate reads it: canonical JSON, on one line.
 				releaseGate := if gated(self) then self.resolveone(ResolvedApplication).releaseGate.json() else null endif;
+				externalChecks := self.externalChecks(prj);
 			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if self.resolveone(ResolvedApplication).dashboards = null then Sequence{} else
+			Sequence{object DashboardFile {
+				path := root + 'dashboards.yaml';
+				adapter := AdapterName::grafana;
+				application := self.resolveone(ResolvedApplication);
+			}.oclAsType(Deliverable)} endif)
 		->union(if backedUp->notEmpty() then Sequence{object BackupFile {
 				path := root + 'backup.yaml';
 				adapter := AdapterName::kubernetes;
@@ -1641,7 +1878,7 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 query monitorOf(app : EffectiveApplication, root : String) : Sequence(Deliverable) =
 	if app.observability = null or app.observability.scrape = null then Sequence{} else
 	let scraped : ResolvedProcess = app.observability.scrape.process.resolveone(ResolvedProcess) in
-	let monitored : MonitorKind = if scraped.switchover = Switchover::stopStart
+	let monitored : MonitorKind = if scraped.switchover <> Switchover::blueGreen
 		then MonitorKind::serviceMonitor else MonitorKind::podMonitor endif in
 	Sequence{object MonitorFile {
 		path := root + (if monitored = MonitorKind::serviceMonitor then 'servicemonitor.yaml' else 'podmonitor.yaml' endif);
@@ -1694,10 +1931,13 @@ query backupOf(p : ResolvedProcess) : BackupPlan =
 
 -- The controller every serving Process runs under, and the strategy from
 -- `cutover`; the templates spell both.
-query controllerOf(p : PI::Process) : ControllerKind = ControllerKind::deployment;
+-- A scheduled Process runs from a CronJob, which has no rollout strategy.
+query controllerOf(p : PI::Process) : ControllerKind =
+	if p.lifecycle = Lifecycle::scheduled then ControllerKind::cronJob else ControllerKind::deployment endif;
 
 query strategyOf(p : PI::Process) : String =
-	if p.cutover = PI::Cutover::interrupted then 'Recreate' else 'RollingUpdate' endif;
+	if p.lifecycle = Lifecycle::scheduled then 'none'
+	else if p.cutover = PI::Cutover::interrupted then 'Recreate' else 'RollingUpdate' endif endif;
 
 -- Who may reach a Process (spec/v1/16-dependencies.md#the-derived-allow-set):
 -- the proxy of the tier each route's audience reaches, the metrics stack where
@@ -1713,7 +1953,22 @@ query ingressOf(p : PI::Process, app : EffectiveApplication) : Sequence(PolicyPe
 		then peersOf(estate.telemetry.metrics.id, app.observability.scrape.surface.value, 'metrics-stack')
 		else Sequence{} endif))
 	->union(consumersOf(p, app))
-	->union(named(backupsOf(p)->union(eventsOf(p, app))));
+	->union(named(backupsOf(p)->union(eventsOf(p, app))))
+	-- A blue-green Process that publishes readiness is a gate member, and admits the
+	-- Release Gate's own requests on its first surface
+	-- (spec/v1/16-dependencies.md#the-member-label).
+	->union(if switchesBlueGreen(app, p) and readinessOf(p) <> null and estate.delivery <> null
+			and p.provides->notEmpty()
+		then named(peersOf(estate.delivery.gate.id, p.provides->first().value, 'release-gate'))
+		else Sequence{} endif)
+	-- A port exposed on an L4 Address admits any client at the Process's own port.
+	->union(l4Of(p)->collect(e | Tuple{port = e.surface.value, udp = e.protocol = L4Protocol::udp})
+		->asOrderedSet()->collect(t | object PolicyPeer {
+			rule := 'l4';
+			cidr := '0.0.0.0/0';
+			port := t.port;
+			if t.udp then protocol := 'UDP' endif;
+		})->asSequence());
 
 -- Each peer a policy names, once, in the order first reached.
 query named(peers : Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)))
@@ -1762,8 +2017,20 @@ query consumersOf(p : PI::Process, app : EffectiveApplication) : Sequence(Policy
 -- What a Process may reach beyond its edges: the cluster's DNS, and the Secret
 -- Store where it holds a grant.
 query egressOf(p : PI::Process) : Sequence(PolicyPeer) =
-	Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }}
-	->union(if p.secrets->isEmpty() then Sequence{} else storePeers() endif);
+	let app : EffectiveApplication = p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication) in
+	-- A Process that serves DNS resolves through the upstream nameservers, never the cluster's DNS.
+	(if servesDns(p) then Sequence{} else
+		Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }} endif)
+	->union(if p.secrets->isEmpty() and not edgeAcme(p) then Sequence{} else storePeers() endif)
+	-- The Release Gate reaches every gate member's pods (spec/v1/16-dependencies.md#the-member-label).
+	->union(if estate.delivery <> null and estate.delivery.gate.id = app.id
+		then Sequence{object PolicyPeer { rule := 'gate-members'; port := 0; }} else Sequence{} endif);
+
+-- Whether a Process serves DNS on an L4 port and resolves through the platform's upstream nameservers.
+query servesDns(p : PI::Process) : Boolean =
+	estate.substrate.upstreamNameservers->notEmpty()
+		and p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication).l4Exposure
+			->exists(e | e.process = p and e.port = DNS_PORT);
 
 -- The one Process of the Secret Store that answers on `http`, at its own port.
 query storePeers() : Sequence(PolicyPeer) =
@@ -1808,8 +2075,21 @@ query EffectiveApplication::routeFiles(root : String) : Sequence(Deliverable) =
 			adapter := AdapterName::traefik;
 			exposure := e.resolveone(ResolvedExposure);
 			entryPoint := if tier.listener = Listener::tls then 'websecure' else 'web' endif;
-			if tier.certificates = CertificateSource::acme then certificateResolver := 'acme' endif;
+			-- A tier issuing through acme names its own resolver, and a tls listener ends TLS.
+			if tier.certificates = CertificateSource::acme then certificateResolver := tier.name endif;
+			terminatesTls := tier.listener = Listener::tls;
 		}.oclAsType(Deliverable))->asSequence();
+
+-- An Application's external checks (spec/v1/14-platform-intent.md#the-foundation-is-declared):
+-- one Gatus endpoint per route of each exposure, which fails on a 5xx or on no answer.
+query EffectiveApplication::externalChecks(prj : EffectiveProject) : String =
+	if self.exposure->isEmpty() then null else
+	obj(Sequence{Tuple{k = 'endpoints', v = arr(self.exposure->collect(e | e.routes->collect(r | obj(Sequence{
+		Tuple{k = 'name', v = str(self.id + '-' + e.name + '-' + e.routes->indexOf(r).toString())},
+		Tuple{k = 'group', v = str(prj.project)},
+		Tuple{k = 'url', v = str((if tierFor(e.audience).listener = Listener::tls then 'https' else 'http' endif)
+			+ '://' + e.host + r.path)},
+		Tuple{k = 'conditions', v = arr(Sequence{str('[STATUS] < 500')})}})))->flatten())}}) endif;
 
 -- Per identity that holds a grant, one Vault policy over every grant it holds
 -- and one Kubernetes auth role bound to it, estate-scoped by namespace: the
@@ -1923,6 +2203,11 @@ query millicores(q : String) : Integer =
 	if q.endsWith('m') then q.substring(1, q.size() - 1).toInteger() else q.toInteger() * 1000 endif;
 
 -- A memory quantity in MiB: `256Mi`, `2Gi`, `1Ti`, or bytes with no unit.
+-- A quantity in MiB, written as the production implementation writes it.
+query memoryOf(mib : Real) : String =
+	let whole : Integer = mib.round() in
+	if whole.mod(1024) = 0 then (whole.div(1024)).toString() + 'Gi' else whole.toString() + 'Mi' endif;
+
 query mebibytes(q : String) : Real =
 	if q.endsWith('Mi') then q.substring(1, q.size() - 2).toReal()
 	else if q.endsWith('Gi') then q.substring(1, q.size() - 2).toReal() * 1024
@@ -1936,9 +2221,6 @@ query PI::Cutover::resolvedCutover() : RD::Cutover =
 query PI::Match::resolvedMatch() : RD::Match =
 	if self = PI::Match::exact then RD::Match::exact else RD::Match::prefix endif;
 
-query AlertClass::spelling() : String =
-	if self = AlertClass::businessHours then 'business-hours'
-	else if self = AlertClass::urgent then 'urgent' else 'page' endif endif;
 
 query Audience::spelling() : String =
 	if self = Audience::anonymous then 'anonymous'
@@ -1959,7 +2241,8 @@ query Runtime::spelling() : String =
 query HardeningClass::spelling() : String = 'restricted';
 
 query Lifecycle::spelling() : String =
-	if self = Lifecycle::application then 'application' else if self = Lifecycle::job then 'job' else 'prepare' endif endif;
+	if self = Lifecycle::application then 'application' else if self = Lifecycle::job then 'job'
+	else if self = Lifecycle::scheduled then 'scheduled' else 'prepare' endif endif endif;
 
 query Delivery::spelling() : String =
 	if self = Delivery::env then 'env' else if self = Delivery::file then 'file' else 'self' endif endif;
@@ -2006,7 +2289,9 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 			Tuple{k = 'surface', v = str(self.scrape.surface)},
 			Tuple{k = 'path', v = str(self.scrape.path)},
 			Tuple{k = 'interval', v = str(self.scrape.interval)},
-			Tuple{k = 'timeout', v = str(self.scrape.timeout)}}) endif},
+			Tuple{k = 'timeout', v = str(self.scrape.timeout)},
+			Tuple{k = 'labels', v = if self.scrape.labels->isEmpty() then null
+				else obj(self.scrape.labels->collect(l | Tuple{k = l.key, v = str(l.value)})) endif}}) endif},
 		Tuple{k = 'releaseGate', v = if self.releaseGate = null then null else self.releaseGate.json() endif},
 		Tuple{k = 'migration', v = if self.migration = null then null else obj(Sequence{
 			Tuple{k = 'runner', v = str(self.migration.runner)},
@@ -2028,6 +2313,16 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 			Tuple{k = 'credential', v = self.migration.credential.json()},
 			Tuple{k = 'egress', v = arr(self.migration.egress->collect(x | x.json()))}}) endif},
 		Tuple{k = 'secretStore', v = opt(self.secretStore)},
+		Tuple{k = 'dashboards', v = if self.dashboards = null then null else obj(Sequence{
+			Tuple{k = 'folder', v = str(self.dashboards.folder)},
+			Tuple{k = 'datasource', v = str(self.dashboards.datasource)},
+			Tuple{k = 'instance', v = obj(self.dashboards.instance->collect(i | Tuple{k = i.key, v = str(i.value)}))},
+			Tuple{k = 'files', v = arr(src.dashboards->collect(d | let content : String = fileOf(prj.project, d._from) in
+				obj(Sequence{
+					Tuple{k = 'uid', v = str(uidOf(content))},
+					Tuple{k = 'from', v = str(d._from)},
+					Tuple{k = 'content', v = str(content)},
+					Tuple{k = 'inputs', v = arr(inputsOf(content)->collect(x | str(x)))}})))}}) endif},
 		Tuple{k = 'exposure', v = if self.exposure->isEmpty() then null
 			else arr(self.exposure->collect(e | e.json())) endif},
 		Tuple{k = 'processes', v = arr(self.processes->collect(p | p.json()))}
@@ -2080,6 +2375,10 @@ query ResolvedExposure::json() : String = obj(Sequence{
 	Tuple{k = 'tier', v = str(self.tier)},
 	Tuple{k = 'listener', v = str(self.listener)},
 	Tuple{k = 'certificates', v = str(self.certificates)},
+	Tuple{k = 'ingressClass', v = opt(self.ingressClass)},
+	Tuple{k = 'dns', v = if self.dns = null then null else obj(Sequence{
+		Tuple{k = 'target', v = str(self.dns.target)},
+		Tuple{k = 'proxied', v = bool(self.dns.proxied)}}) endif},
 	Tuple{k = 'proxy', v = obj(Sequence{
 		Tuple{k = 'application', v = str(self.proxyApplication)},
 		Tuple{k = 'namespace', v = str(self.proxyNamespace)}})},
@@ -2120,8 +2419,15 @@ query ResolvedProcess::json() : String =
 			then str(self.cutover.spelling()) else null endif},
 		Tuple{k = 'switchover', v = if self.oclAsType(ECORE::EObject).states('switchover')
 			then str(self.switchover.spelling()) else null endif},
+		Tuple{k = 'command', v = let src : PI::Process = self.invresolveone(PI::Process) in
+			if src = null or src.command->isEmpty() then null else arr(src.command->collect(x | str(x))) endif},
+		Tuple{k = 'args', v = if self.arguments->isEmpty() then null else arr(self.arguments->collect(x | str(x))) endif},
+		Tuple{k = 'schedule', v = opt(self.schedule)},
+		Tuple{k = 'startDeadline', v = opt(self.startDeadline)},
 		Tuple{k = 'deadline', v = str(self.deadline)},
 		Tuple{k = 'replicas', v = num(self.replicas)},
+		Tuple{k = 'parked', v = if self.parked then bool(true) else null endif},
+		Tuple{k = 'spreadAcross', v = if self.spread then str('node') else null endif},
 		Tuple{k = 'memory', v = str(self.memory)},
 		Tuple{k = 'cpu', v = str(self.cpu)},
 		Tuple{k = 'gpu', v = if self.gpu = null then null else obj(Sequence{
@@ -2138,6 +2444,7 @@ query ResolvedProcess::json() : String =
 				Tuple{k = 'value', v = str(x.value)}})))},
 			Tuple{k = 'credential', v = self.vpn.credential.json()}}) endif},
 		Tuple{k = 'hardening', v = str(self.hardening)},
+		Tuple{k = 'priorityClass', v = opt(self.priorityClass)},
 		Tuple{k = 'identityToken', v = bool(self.identityToken)},
 		Tuple{k = 'internetEgress', v = if self.internetEgress = null then null else obj(Sequence{
 			Tuple{k = 'reason', v = str(self.internetEgress.reason)}}) endif},
@@ -2146,7 +2453,8 @@ query ResolvedProcess::json() : String =
 			Tuple{k = 'rules', v = arr(self.api.rules->collect(r | obj(Sequence{
 				Tuple{k = 'group', v = str(r.group)},
 				Tuple{k = 'objects', v = arr(r.objects->collect(x | str(x)))},
-				Tuple{k = 'verbs', v = arr(r.verbs->collect(x | str(x)))}})))},
+				Tuple{k = 'verbs', v = arr(r.verbs->collect(x | str(x)))},
+				Tuple{k = 'scope', v = str(if r.scope = RuleScope::_namespace then 'namespace' else 'cluster' endif)}})))},
 			Tuple{k = 'server', v = arr(self.api.server->collect(x | obj(Sequence{
 				Tuple{k = 'cidr', v = str(x.cidr)},
 				Tuple{k = 'port', v = num(x.port)}})))}}) endif},
@@ -2236,7 +2544,10 @@ query ResolvedVolume::json() : String = obj(Sequence{
 	Tuple{k = 'backup', v = if self.backup = null then null else obj(Sequence{
 		Tuple{k = 'schedule', v = str(self.backup.schedule)},
 		Tuple{k = 'retain', v = num(self.backup.retain)},
-		Tuple{k = 'offCluster', v = opt(self.backup.offCluster)},
+		Tuple{k = 'offCluster', v = if self.backup.offCluster = null then null else obj(Sequence{
+			Tuple{k = 'destination', v = str(self.backup.offCluster)},
+			Tuple{k = 'path', v = str(self.backup.offClusterPath)},
+			Tuple{k = 'recipient', v = str(self.backup.offClusterRecipient)}}) endif},
 		Tuple{k = 'method', v = str(self.backup.method)},
 		Tuple{k = 'methodVersion', v = opt(self.backup.methodVersion)},
 		Tuple{k = 'uid', v = num(self.backup.uid)},
@@ -2484,3 +2795,143 @@ query PinnedInput::spelling() : String =
 
 query AnalysisCheck::spelling() : String =
 	if self = AnalysisCheck::errorRate then 'error-rate' else 'latency' endif;
+
+-- ================================================================== edge
+-- edge: a tier's proxy (spec/v1/14-platform-intent.md#tiers): the L4 ports, the claim, the token,
+-- the arguments and the shared Middlewares its tiers derive on it, which no project file writes.
+
+property ACME_REASON : String = 'ACME issuance and its DNS challenge';
+property ACME_CLAIM : String = 'acme';
+property ACME_MOUNT : String = '/acme';
+property ACME_SIZE : String = '16Mi';
+property DNS_TOKEN_KEY : String = 'CF_DNS_API_TOKEN';
+
+-- The surfaces a listener's ports are answered on.
+query listenerSurfaces(l : Listener) : Sequence(String) =
+	if l = Listener::tls then Sequence{'web', 'websecure'} else Sequence{'web'} endif;
+
+-- The Process of an Application that provides every surface a listener names, if any does.
+query listenedBy(app : EffectiveApplication, l : Listener) : String =
+	app.processes->select(q | listenerSurfaces(l)->forAll(s | q.provides->exists(e | e.key = s)))
+		->collect(q | q.name)->any(true);
+
+-- The tiers whose proxy is this Process.
+query edgeTiersOf(p : PI::Process) : Sequence(Tier) =
+	let app : EffectiveApplication = p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication) in
+	let prj : EffectiveProject = app.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveProject) in
+	estate.tiers->select(t | heldName(t.traefik) = prj.project + '/' + app.id
+		and listenedBy(app, t.listener) = p.name)->asSequence();
+
+-- Whether the Process answers an acme tier.
+query edgeAcme(p : PI::Process) : Boolean =
+	edgeTiersOf(p)->exists(t | t.certificates = CertificateSource::acme);
+
+-- The L4 exposures its tiers derive: each port the listener derives, on the tier's address.
+query tierL4Of(p : PI::Process) : Sequence(Tuple(address : String, port : Integer, protocol : L4Protocol, surface : Surface)) =
+	edgeTiersOf(p)->select(t | t.address <> null)->collect(t |
+		listenerSurfaces(t.listener)->collect(s | Tuple{address = t.address,
+			port = if s = 'web' then 80 else 443 endif, protocol = L4Protocol::tcp,
+			surface = p.provides->select(e | e.key = s)->any(true)}))->asSequence();
+
+-- The ports on a node's own address that are not a surface's own number over TCP.
+query edgeNodePortsOf(p : PI::Process) : Sequence(L4Port) =
+	l4Of(p)->select(e | addressOf(e.address).oclIsKindOf(NodeAddress)
+			and not (e.protocol = L4Protocol::tcp and e.port = e.surface.value))
+		->sortedBy(e | e.port * 2 + (if e.protocol = L4Protocol::tcp then 0 else 1 endif))
+		->collect(e | object L4Port {
+			name := e.protocol.toString() + '-' + e.port.toString();
+			port := e.port;
+			protocol := e.protocol.toString().toUpper();
+			targetPort := e.surface.value;
+		})->asSequence();
+
+query edgeVolumesOf(p : PI::Process) : Sequence(ResolvedVolume) =
+	if edgeAcme(p) then Sequence{object ResolvedVolume {
+		claim := ACME_CLAIM;
+		mountAt := ACME_MOUNT;
+		size := ACME_SIZE;
+		durability := RD::DurabilityClass::reconstructible;
+	}} else Sequence{} endif;
+
+query edgeGrantsOf(p : PI::Process) : Sequence(ResolvedGrant) =
+	if edgeAcme(p) then Sequence{object ResolvedGrant {
+		path := estate.acme.token;
+		keys := Sequence{DNS_TOKEN_KEY};
+		_access := 'read';
+		delivery := 'env';
+		destination := destinationOf(p.name, estate.acme.token);
+		restartTargets := Sequence{p.name};
+	}} else Sequence{} endif;
+
+query edgeEnvOf(p : PI::Process) : Sequence(EnvEntry) =
+	if edgeAcme(p) then Sequence{object EnvEntry {
+		name := DNS_TOKEN_KEY;
+		secret := object SecretReference { path := estate.acme.token; key := DNS_TOKEN_KEY; };
+	}} else Sequence{} endif;
+
+query edgeSurfacePort(p : PI::Process, name : String) : Integer =
+	p.provides->select(e | e.key = name)->collect(e | e.value)->any(true);
+
+-- A tier proxy's static configuration, as Traefik's arguments
+-- (spec/v1/30-deliverables.md#the-edge-proxy), after the authored ones.
+query edgeArgsOf(p : PI::Process) : Sequence(String) =
+	let app : EffectiveApplication = p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication) in
+	let prj : EffectiveProject = app.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveProject) in
+	let t : Tier = estate.tiers->select(x | heldName(x.traefik) = prj.project + '/' + app.id
+		and x.ingressClass <> null)->any(true) in
+	if t = null or edgeSurfacePort(p, 'web') = null then Sequence{} else
+	let websecure : Integer = edgeSurfacePort(p, 'websecure') in
+	let admin : Integer = edgeSurfacePort(p, 'admin') in
+	Sequence{'--entryPoints.web.address=:' + edgeSurfacePort(p, 'web').toString() + '/tcp'}
+	->union(if websecure = null then Sequence{}
+		else Sequence{'--entryPoints.websecure.address=:' + websecure.toString() + '/tcp'} endif)
+	->union(if t.listener = Listener::tls and websecure <> null
+		then Sequence{'--entryPoints.websecure.http.tls=true'} else Sequence{} endif)
+	->union(if admin = null then Sequence{} else Sequence{
+		'--entryPoints.traefik.address=:' + admin.toString() + '/tcp',
+		'--ping=true', '--ping.entryPoint=traefik',
+		'--metrics.prometheus=true', '--metrics.prometheus.entryPoint=traefik'} endif)
+	->union(Sequence{'--providers.kubernetescrd=true',
+		'--providers.kubernetescrd.ingressClass=' + t.ingressClass,
+		'--providers.kubernetescrd.allowCrossNamespace=true',
+		'--providers.kubernetescrd.allowEmptyServices=true'})
+	->union(if t.certificates = CertificateSource::acme then Sequence{
+		'--certificatesresolvers.' + t.name + '.acme.email=' + estate.acme.email,
+		'--certificatesresolvers.' + t.name + '.acme.storage=' + ACME_MOUNT + '/' + t.name + '.json',
+		'--certificatesresolvers.' + t.name + '.acme.dnschallenge.provider=' + estate.acme.dnsProvider.toString()}
+		else Sequence{} endif)
+	->union(Sequence{'--log.format=json', '--accesslog=true', '--accesslog.format=json'})
+	endif;
+
+-- The Middlewares every route names, in the namespace of the Project's tier proxies, rendered once
+-- by the first proxy by name, with the forward-auth the first tier of the namespace names; and its
+-- place in that Application's index.
+helper EffectiveProject::edgeFiles(inout plan : ResolvedDeployment) : OclVoid {
+	var proxies : Sequence(String) := estate.tiers->collect(t | heldName(t.traefik))
+		->select(h | h.startsWith(self.project + '/'))->asSet()->asSequence()->sortedBy(h | h);
+	if (proxies->notEmpty()) {
+		var home : String := proxies->first().substring(self.project.size() + 2, proxies->first().size());
+		var asked : Tier := estate.tiers->select(t | t.forwardAuth <> null
+			and heldName(t.traefik).startsWith(self.project + '/'))->any(true);
+		plan.deliverables += object SharedMiddlewareFile {
+			path := 'apps/' + self.project + '/' + home + '/middlewares.yaml';
+			adapter := AdapterName::traefik;
+			namespace := namespaceOf(self.project);
+			application := home;
+			if (asked <> null) {
+				forwardAuth := object ForwardAuthEndpoint { address := asked.forwardAuth.endpoint(); };
+			} endif;
+			policies := Sequence{
+				object ContentPolicyHeaders { name := 'strict'; contentSecurityPolicy := 'default-src \'self\''; },
+				object ContentPolicyHeaders { name := 'admin';
+					contentSecurityPolicy := 'default-src \'self\'; style-src \'self\' \'unsafe-inline\''; },
+				object ContentPolicyHeaders { name := 'workflow';
+					contentSecurityPolicy := 'default-src \'self\'; connect-src \'self\' https:'; }};
+		};
+		var index : IndexFile := plan.deliverables[IndexFile]
+			->select(i | i.path = 'apps/' + self.project + '/' + home + '/kustomization.yaml')->any(true);
+		if (index <> null) {
+			index.resources := index.resources->append('middlewares.yaml')->sortedBy(m | m);
+		};
+	};
+}

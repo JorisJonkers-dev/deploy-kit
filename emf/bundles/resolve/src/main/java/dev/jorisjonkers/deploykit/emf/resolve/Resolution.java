@@ -44,6 +44,7 @@ public final class Resolution {
                 Hashing.class.getSimpleName(),
                 new String[] {EcorePackage.eNS_URI, ResolvedDeploymentPackage.eNS_URI});
         ExecutionContextImpl context = new ExecutionContextImpl();
+        context.setLog(new org.eclipse.m2m.qvt.oml.util.WriterLog(new java.io.OutputStreamWriter(System.err)));
         context.setConfigProperty("project", project);
         context.setConfigProperty("integrity", schemaPackageIntegrity);
         BasicModelExtent target = new BasicModelExtent();
@@ -56,7 +57,10 @@ public final class Resolution {
                         new BasicModelExtent(new ArrayList<>(pinned)),
                         target);
         if (run.getSeverity() != Diagnostic.OK || target.getContents().isEmpty()) {
-            throw new IllegalStateException(project + " did not resolve: " + run);
+            // A transformation that does not compile says why only in its children.
+            StringBuilder why = new StringBuilder(project + " did not resolve: " + run);
+            run.getChildren().forEach(child -> why.append("\n  ").append(child.getMessage()));
+            throw new IllegalStateException(why.toString());
         }
         return (ResolvedDeployment) target.getContents().get(0);
     }

@@ -331,6 +331,13 @@ final class Stages {
                 URI.createFileURI(path.toAbsolutePath().normalize().toString()));
     }
 
+    /** {@code root} saved as the XMI file at {@code path} would hold it, without writing it. */
+    static byte[] xmi(Path path, EObject root) throws IOException {
+        Resource model = model(path);
+        model.getContents().add(root);
+        return bytes(model);
+    }
+
     private static byte[] bytes(Resource resource) throws IOException {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         resource.save(out, null);
