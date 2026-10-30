@@ -271,7 +271,10 @@ final class Stages {
         }
         Path out = Files.createTempDirectory("stage-render");
         try {
-            Pipeline.renderTogether(deployments, out);
+            List<Diagnostic> refused = Pipeline.renderTogether(deployments, out);
+            if (!refused.isEmpty()) {
+                throw new AssertionError("the render case " + name + " was refused: " + refused);
+            }
             return Comparison.read(out);
         } finally {
             try (Stream<Path> tree = Files.walk(out)) {

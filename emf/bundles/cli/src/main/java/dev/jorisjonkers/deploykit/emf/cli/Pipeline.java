@@ -227,14 +227,21 @@ public final class Pipeline {
             }
             deployments.add(resolved.deployment());
         }
-        renderTogether(deployments, root);
-        return List.of();
+        return renderTogether(deployments, root);
     }
 
-    /** {@code deployments} rendered together to {@code root}, the estate-scoped share they name written whole. */
-    static void renderTogether(List<ResolvedDeployment> deployments, Path root) {
+    /**
+     * {@code deployments} rendered together to {@code root}, the estate-scoped share they name written
+     * whole, unless a path, a Vault name or a ServiceAccount has two owners: then nothing is written,
+     * and the collisions are returned.
+     */
+    static List<Diagnostic> renderTogether(List<ResolvedDeployment> deployments, Path root) {
         oneStableAddressFile(deployments);
-        Rendering.render(deployments, root);
+        List<Diagnostic> planned = Collisions.ofPlan(deployments);
+        if (!planned.isEmpty()) {
+            return planned;
+        }
+        return Rendering.render(deployments, root, Collisions::ofAccounts);
     }
 
     /**

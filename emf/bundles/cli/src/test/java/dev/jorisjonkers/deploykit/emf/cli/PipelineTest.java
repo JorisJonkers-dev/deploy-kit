@@ -7,6 +7,7 @@ import dev.jorisjonkers.deploykit.emf.metamodel.json.CanonicalJson;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -230,5 +231,27 @@ class PipelineTest {
         assertThat(effective.ok()).isFalse();
         assertThat(effective.diagnostics()).extracting(Diagnostic::code).contains("schema");
         assertThat(effective.intent()).isEmpty();
+    }
+
+    @Test
+    void aSetWhosePlanClaimsAPathTwiceWritesNothing(@TempDir Path out) throws IOException {
+        List<Diagnostic> refused = Pipeline.renderTogether(List.of(ResolutionTest.minimal(), ResolutionTest.minimal()), out);
+
+        assertThat(refused).isNotEmpty().extracting(Diagnostic::code).containsOnly("E_PATH_COLLISION");
+        assertThat(out).isEmptyDirectory();
+    }
+
+    @Test
+    void aSetWhoseFilesHoldOneServiceAccountTwiceWritesNothing(@TempDir Path out) throws IOException {
+        ResolvedDeployment copy = ResolutionTest.minimal();
+        copy.getDeliverables().removeIf(deliverable -> deliverable.getPath().contains("/policies/"));
+        copy.getDeliverables().forEach(deliverable -> deliverable.setPath("copy/" + deliverable.getPath()));
+
+        List<Diagnostic> refused = Pipeline.renderTogether(List.of(ResolutionTest.minimal(), copy), out);
+
+        assertThat(refused)
+                .isNotEmpty()
+                .allSatisfy(diagnostic -> assertThat(diagnostic.message()).startsWith("the ServiceAccount "));
+        assertThat(out).isEmptyDirectory();
     }
 }

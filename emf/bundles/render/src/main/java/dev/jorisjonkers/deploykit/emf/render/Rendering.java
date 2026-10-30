@@ -10,6 +10,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import org.eclipse.acceleo.Module;
 import org.eclipse.acceleo.aql.AcceleoUtil;
@@ -51,18 +52,37 @@ public final class Rendering {
      * it was, rather than a partial tree to be read as whole.
      */
     public static void render(List<ResolvedDeployment> deployments, Path root) {
-        render(deployments, root, MODULE);
+        render(deployments, root, MODULE, aside -> List.of());
+    }
+
+    /**
+     * {@code deployments} rendered under {@code root} unless {@code refusals} finds something wrong
+     * with the files as written aside: then nothing is moved under {@code root}, and what it found is
+     * returned.
+     */
+    public static <T> List<T> render(
+            List<ResolvedDeployment> deployments, Path root, Function<Path, List<T>> refusals) {
+        return render(deployments, root, MODULE, refusals);
     }
 
     /** {@code deployments} rendered by the named module: the seam a test drives a broken one through. */
     static void render(List<ResolvedDeployment> deployments, Path root, String module) {
+        render(deployments, root, module, aside -> List.of());
+    }
+
+    private static <T> List<T> render(
+            List<ResolvedDeployment> deployments, Path root, String module, Function<Path, List<T>> refusals) {
         Path aside = asideOf(root);
         try {
             delete(aside);
             try {
                 Files.createDirectories(aside);
                 generate(deployments, aside, module);
-                moveUnder(aside, root);
+                List<T> refused = refusals.apply(aside);
+                if (refused.isEmpty()) {
+                    moveUnder(aside, root);
+                }
+                return refused;
             } finally {
                 delete(aside);
             }
