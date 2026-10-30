@@ -588,7 +588,7 @@ describe("renderIntentSet", () => {
       expect(cron).toContain(`name: ${String(named)}\n`);
     });
 
-    // REQ-154 (docs/requirements.md), deploy-kit#742: an hourly run whose
+    // REQ-159 (docs/requirements.md), deploy-kit#742: an hourly run whose
     // hashed ConfigMap a later render pruned can never succeed, and under
     // Forbid it would hold off every later run.
     it("gives up an hourly run within the hour, while the one-shot Job retries until it succeeds", () => {
@@ -1420,7 +1420,7 @@ describe("the database catalog", () => {
     });
   });
 
-  // REQ-154 (docs/requirements.md): the method's hourly run gives up within
+  // REQ-159 (docs/requirements.md): the method's hourly run gives up within
   // the hour, as the Vault policy job's does; its one-shot Job does not.
   it("gives up the method's hourly run within the hour, while its one-shot Job retries until it succeeds", () => {
     const limits = parseAllDocuments(estate()[CATALOG] ?? "")
@@ -3901,7 +3901,7 @@ describe("a route's TLS", () => {
     ).toStrictEqual({});
   });
 });
-// REQ-161 (docs/requirements.md): a tls tier that issues none serves the
+// REQ-162 (docs/requirements.md): a tls tier that issues none serves the
 // certificate it reads from the Secret Store: synced beside its proxy, which
 // reads it through the API, and named by the default TLS store.
 describe("a tier's certificate read from the Secret Store", () => {
@@ -4650,6 +4650,8 @@ describe("the metrics stack's scrapes", () => {
         },
         [8080, 8080],
       ],
+      // Prometheus discovers its targets through the API server.
+      [{ ipBlock: { cidr: "10.43.0.1/32" } }, [443]],
     ]);
   });
 
@@ -5066,5 +5068,217 @@ describe("a seeded Asset", () => {
         ({ mountPath }) => mountPath === "/etc/hermes/config.yaml",
       )?.readOnly,
     ).toBe(true);
+  });
+});
+
+// REQ-160 (docs/requirements.md): the monitoring stack's Prometheus and
+// Alertmanager render as the Prometheus operator's objects, carrying their
+// Process's pod, and select what the Platform document says.
+describe("the operator's objects", () => {
+  const PROJECT = "observability/observability.project.yml";
+  const PLATFORM = "platform/platform.intent.yml";
+  type Spec = Record<string, unknown>;
+  const specOf = (
+    application: string,
+    edits?: Readonly<Record<string, (text: string) => string>>,
+  ): Spec => {
+    const tree = asTree(
+      artifact(render(edits, ["observability"]), "observability"),
+    );
+    const [workload] = parseAllDocuments(
+      tree[`apps/observability/${application}/workload.yaml`] ?? "",
+    ).map((document) => document.toJS() as { kind: string; spec: Spec });
+    return { kind: workload?.kind, ...workload?.spec };
+  };
+  const withArgs =
+    (path: string, args: readonly string[]) =>
+    (text: string): string =>
+      text.replace(
+        `        writablePaths: [${path}]\n`,
+        `        writablePaths: [${path}]\n        args: [${args.map((arg) => JSON.stringify(arg)).join(", ")}]\n`,
+      );
+
+  it("renders the Prometheus as the operator's object, selecting the platform's monitors of every namespace, every rule the render writes, and its Alertmanager", () => {
+    const spec = specOf("prometheus");
+
+    expect(spec).toMatchObject({
+      kind: "Prometheus",
+      portName: "http",
+      scrapeInterval: "30s",
+      scrapeTimeout: "10s",
+      evaluationInterval: "30s",
+      serviceMonitorSelector: { matchLabels: { release: "metrics-stack" } },
+      serviceMonitorNamespaceSelector: {},
+      podMonitorSelector: { matchLabels: { release: "metrics-stack" } },
+      podMonitorNamespaceSelector: {},
+      ruleSelector: {
+        matchLabels: { "app.kubernetes.io/managed-by": "deploy-kit" },
+      },
+      ruleNamespaceSelector: {},
+      alerting: {
+        alertmanagers: [
+          {
+            namespace: "observability-system",
+            name: "alertmanager",
+            port: "http",
+            apiVersion: "v2",
+          },
+        ],
+      },
+    });
+    expect(spec).not.toHaveProperty("additionalArgs");
+    expect(spec["podMetadata"]).toStrictEqual({
+      labels: {
+        "app.kubernetes.io/part-of": "prometheus",
+        "app.kubernetes.io/component": "none",
+      },
+      annotations: { "image.jorisjonkers.dev/prometheus": "v3.2.1" },
+    });
+    expect(
+      (spec["containers"] as { name: string; volumeMounts: unknown }[])[0],
+    ).toMatchObject({
+      name: "prometheus",
+      volumeMounts: [{ name: "writable-prometheus", mountPath: "/prometheus" }],
+    });
+  });
+
+  it("selects every monitor where the cadence names no label", () => {
+    const spec = specOf("prometheus", {
+      [PLATFORM]: (text) =>
+        text.replace(
+          / {2}# The live Prometheus selects[\s\S]*?release: metrics-stack\n/,
+          "",
+        ),
+    });
+
+    expect([
+      spec["serviceMonitorSelector"],
+      spec["podMonitorSelector"],
+    ]).toStrictEqual([{}, {}]);
+  });
+
+  it("notifies no Alertmanager whose Project the render does not hold", () => {
+    const spec = specOf("prometheus", {
+      [PLATFORM]: (text) =>
+        text.replace(
+          "  alertmanager: observability/alertmanager\n",
+          "  alertmanager: elsewhere/alertmanager\n",
+        ),
+    });
+
+    expect(spec["kind"]).toBe("Prometheus");
+    expect(spec).not.toHaveProperty("alerting");
+  });
+
+  it("carries the flags the object holds as its fields, the last of each, and passes every other flag", () => {
+    const spec = specOf("prometheus", {
+      [PROJECT]: withArgs("/prometheus", [
+        "--storage.tsdb.retention.time=10d",
+        "--storage.tsdb.retention.time=15d",
+        "--storage.tsdb.retention.size=10GB",
+        "--web.enable-remote-write-receiver",
+        "--enable-feature=exemplar-storage,native-histograms",
+        "--enable-feature=exemplar-storage",
+        "--enable-feature=",
+        "--enable-feature",
+        "-query.timeout=1m",
+        "--log.format=json=strict",
+      ]),
+    });
+
+    expect(spec).toMatchObject({
+      retention: "15d",
+      retentionSize: "10GB",
+      enableRemoteWriteReceiver: true,
+      enableFeatures: ["exemplar-storage", "native-histograms"],
+      additionalArgs: [
+        { name: "query.timeout", value: "1m" },
+        { name: "log.format", value: "json=strict" },
+      ],
+    });
+  });
+
+  it("renders no field a flag would set where the Process names none", () => {
+    const spec = specOf("prometheus", {
+      [PROJECT]: withArgs("/prometheus", ["--query.timeout=1m"]),
+    });
+
+    expect(
+      [
+        "retention",
+        "retentionSize",
+        "enableRemoteWriteReceiver",
+        "enableFeatures",
+      ].filter((field) => field in spec),
+    ).toStrictEqual([]);
+    expect(spec["additionalArgs"]).toStrictEqual([
+      { name: "query.timeout", value: "1m" },
+    ]);
+  });
+
+  it("renders the Alertmanager as the operator's object, reading the one routing of its own namespace for every namespace's alerts", () => {
+    const spec = specOf("alertmanager", {
+      [PROJECT]: withArgs("/alertmanager", [
+        "--data.retention=120h",
+        "--log.level=debug",
+      ]),
+    });
+
+    expect(spec).toMatchObject({
+      kind: "Alertmanager",
+      portName: "http",
+      alertmanagerConfigSelector: {
+        matchLabels: { "app.kubernetes.io/managed-by": "deploy-kit" },
+      },
+      alertmanagerConfigMatcherStrategy: { type: "None" },
+      retention: "120h",
+      additionalArgs: [{ name: "log.level", value: "debug" }],
+    });
+    expect(spec).not.toHaveProperty("alertmanagerConfigNamespaceSelector");
+  });
+
+  it("restarts the StatefulSet the operator runs the Process in when a grant it holds rotates", () => {
+    const tree = asTree(
+      artifact(
+        render(
+          {
+            [PROJECT]: (text) =>
+              text.replace(
+                "        writablePaths: [/prometheus]\n",
+                '        writablePaths: [/prometheus]\n        secrets:\n          - { path: secret/data/platform/remote-write, keys: [token], access: read, delivery: file, mountAt: /etc/prometheus/secrets/token, fileMode: "0400", rotation: { tolerates: restart } }\n',
+              ),
+          },
+          ["observability"],
+        ),
+        "observability",
+      ),
+    );
+    const [, secret] = parseAllDocuments(
+      tree["apps/observability/prometheus/vso.yaml"] ?? "",
+    ).map(
+      (document) =>
+        document.toJS() as { spec: { rolloutRestartTargets?: unknown } },
+    );
+
+    expect(secret?.spec.rolloutRestartTargets).toStrictEqual([
+      { kind: "StatefulSet", name: "prometheus-prometheus" },
+    ]);
+  });
+
+  it("is not rendered yet for a Process that holds a sidecar", () => {
+    expect(() =>
+      render(
+        {
+          [PROJECT]: (text) =>
+            text.replace(
+              "        writablePaths: [/prometheus]\n",
+              "        writablePaths: [/prometheus]\n        sidecars:\n          - { name: reloader, image: prometheus, memory: 16Mi, cpu: 5m }\n",
+            ),
+        },
+        ["observability"],
+      ),
+    ).toThrow(
+      "prometheus: a Process the operator runs that holds a sidecar, a seeded Asset, a VPN, a GPU, a library, an L4 Address, a spawn template, a Move or a command, is not rendered yet",
+    );
   });
 });

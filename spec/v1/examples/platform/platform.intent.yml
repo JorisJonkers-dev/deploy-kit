@@ -257,7 +257,7 @@ delivery:
 # anyone else's declaration is E_PROCESS_RBAC_GRANT. `server` is what such a
 # Process's egress policy admits: the API server is no pod a selector reaches.
 apiAccess:
-  holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter, edge/external-dns, secrets/vault, secrets/vault-secrets-operator, observability/prometheus-operator, observability/kube-state-metrics, observability/grafana-operator, observability/gatus, observability/alloy, agents/kubernetes-mcp-server]
+  holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter, edge/external-dns, secrets/vault, secrets/vault-secrets-operator, observability/prometheus, observability/prometheus-operator, observability/kube-state-metrics, observability/grafana-operator, observability/gatus, observability/alloy, agents/kubernetes-mcp-server]
   # Admitted to their own namespace alone: no privileged role, so no foundation.
   namespaceHolders: [agents/agents-api, utility/headlamp]
   server:

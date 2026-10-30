@@ -31,7 +31,8 @@ documentation when exploring it. Single context, one layout, no
 ├── docs/
 │   ├── architecture.md       ← normative for code
 │   ├── architecture-rules.md ← the rule ledger
-│   ├── requirements.md       ← the behaviour ledger
+│   ├── requirements.md       ← the behaviour ledger's front page
+│   ├── requirements/         ← its rows, one file per area
 │   └── adr/
 │       ├── model/            ← v1 model decisions, point at spec/v1
 │       ├── architecture/     ← compiler decisions, point at docs/architecture.md

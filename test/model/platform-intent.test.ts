@@ -302,7 +302,7 @@ describe("parsePlatformIntent", () => {
     ]);
   });
 
-  // REQ-161 (docs/requirements.md): a tier's certificate read from the Secret
+  // REQ-162 (docs/requirements.md): a tier's certificate read from the Secret
   // Store needs a Secret Store to hold it.
   it("refuses a tier's certificate where no Secret Store holds it, at the field", () => {
     const text = WORKED.replace("secretStore: secrets/vault\n", "")

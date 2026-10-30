@@ -182,6 +182,11 @@ export interface PodSpec {
   /** `None` for a Process that resolves through its own nameservers. */
   readonly dnsPolicy?: "None";
   readonly dnsConfig?: { readonly nameservers: readonly string[] };
+  /** Names the pod resolves to an address of its own, before any DNS. */
+  readonly hostAliases?: readonly {
+    readonly ip: string;
+    readonly hostnames: readonly string[];
+  }[];
   /** The runtime class that exposes a GPU to the container that requests one. */
   readonly runtimeClassName?: string;
   readonly restartPolicy?: "OnFailure" | "Never";

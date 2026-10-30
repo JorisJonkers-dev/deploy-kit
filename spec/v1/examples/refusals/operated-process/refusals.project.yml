@@ -1,0 +1,51 @@
+# The project file this case's Platform document is read beside: a Prometheus
+# that switches blue-green and names its own configuration file, and an
+# Alertmanager that serves two surfaces.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: prometheus
+    processes:
+      - name: prometheus
+        lifecycle: application
+        image: prometheus
+        runtime: none
+        provides:
+          http: 9090
+        placement: { memory: 512Mi, cpu: 100m }
+        args: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.retention.time=15d]
+        probes:
+          readiness: { path: /-/ready, port: 9090 }
+        startupBudget: 60s
+        cutover: continuous
+  - id: alertmanager
+    processes:
+      - name: alertmanager
+        lifecycle: application
+        image: alertmanager
+        runtime: none
+        provides:
+          http: 9093
+          cluster: 9094
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { path: /-/ready, port: 9093 }
+        startupBudget: 30s
+        cutover: interrupted
+  - id: edge-proxy
+    processes:
+      - name: edge-proxy
+        lifecycle: application
+        image: traefik
+        runtime: none
+        provides:
+          http: 8080
+        placement: { memory: 128Mi, cpu: 50m }
+        probes:
+          readiness: { tcp: 8080 }
+        startupBudget: 30s
+        cutover: continuous

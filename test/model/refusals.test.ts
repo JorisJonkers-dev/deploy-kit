@@ -760,6 +760,7 @@ describe("the refusal fixtures", () => {
       "node-address-replicated",
       "node-port-taken",
       "non-kv-delivery",
+      "operated-process",
       "owner-role-granted",
       "placement-incomplete",
       "prepare-forward-only",
@@ -798,7 +799,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(99);
+    expect(refused).toHaveLength(100);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",
@@ -852,6 +853,133 @@ describe("the refusal fixtures", () => {
           .filter((diagnostic) => diagnostic.code === code)
           .map(({ path }) => path);
   };
+
+  // REQ-160 (docs/requirements.md): the operator runs a monitoring role's
+  // Process only as one interrupted Process with one surface and flags of its own.
+  it("refuses an argument of a monitoring role's Process that is not a flag", () => {
+    expect(
+      codeIn("operated-process", "E_OPERATED_PROCESS", (text) =>
+        text.replace("--storage.tsdb.retention.time=15d", "retention"),
+      ),
+    ).toStrictEqual([
+      "/applications/0/processes/0/cutover",
+      "/applications/0/processes/0/args/0",
+      "/applications/0/processes/0/args/1",
+      "/applications/1/processes/0/provides",
+    ]);
+  });
+
+  it("says what the operator cannot run of each monitoring role's Process, and how to fix it", () => {
+    const result = checkIntentSet(
+      filesOf("operated-process").map((file) => ({
+        ...file,
+        text: file.text.replace(
+          "--storage.tsdb.retention.time=15d",
+          "retention",
+        ),
+      })),
+    );
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics
+            .filter(({ code }) => code === "E_OPERATED_PROCESS")
+            .map(({ message, hint }) => [message, hint]),
+    ).toStrictEqual([
+      [
+        "prometheus: the operator replaces its Prometheus's one pod in place, so its Process is `interrupted`",
+        "The Prometheus operator runs the monitoring stack's Prometheus from one interrupted Process with one surface, and sets its configuration and data paths itself.",
+      ],
+      [
+        "prometheus: the operator sets --config.file itself",
+        "The Prometheus operator runs the monitoring stack's Prometheus from one interrupted Process with one surface, and sets its configuration and data paths itself.",
+      ],
+      [
+        "prometheus: retention is not a flag, and the operator passes its Prometheus flags alone",
+        "The Prometheus operator runs the monitoring stack's Prometheus from one interrupted Process with one surface, and sets its configuration and data paths itself.",
+      ],
+      [
+        "alertmanager: the operator serves its Alertmanager on one port, and alertmanager provides 2 surfaces",
+        "The Prometheus operator runs the monitoring stack's Alertmanager from one interrupted Process with one surface, and sets its configuration and data paths itself.",
+      ],
+    ]);
+  });
+
+  it("checks no Process of a monitoring role its Project does not declare", () => {
+    const result = checkIntentSet(
+      filesOf("operated-process").map((file) => ({
+        ...file,
+        text: file.text.replace(
+          "  prometheus: refusals/prometheus\n",
+          "  prometheus: refusals/absent\n",
+        ),
+      })),
+    );
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ code }) => code),
+    ).toStrictEqual(["E_OPERATED_PROCESS", "E_UNKNOWN_MONITORING_APPLICATION"]);
+    expect(
+      codeIn("operated-process", "E_OPERATED_PROCESS", (text) =>
+        text.replace(
+          "  prometheus: refusals/prometheus\n",
+          "  prometheus: refusals/absent\n",
+        ),
+      ),
+    ).toStrictEqual(["/applications/1/processes/0/provides"]);
+  });
+
+  it("accepts a monitoring role's interrupted Process with one surface and flags the operator does not set", () => {
+    expect(
+      codeIn("operated-process", "E_OPERATED_PROCESS", (text) =>
+        text
+          .replace(
+            "args: [--config.file=/etc/prometheus/prometheus.yml, ",
+            "args: [",
+          )
+          .replace(
+            "        cutover: continuous\n  - id: alertmanager",
+            "        cutover: interrupted\n  - id: alertmanager",
+          )
+          .replace("          cluster: 9094\n", ""),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("refuses a monitoring role's Application of more than one Process, at its processes", () => {
+    expect(
+      codeIn("operated-process", "E_OPERATED_PROCESS", (text) =>
+        text.replace(
+          "  - id: edge-proxy\n",
+          "      - name: alertmanager-peer\n        lifecycle: application\n        image: alertmanager\n        runtime: none\n        provides:\n          http: 9093\n        placement: { memory: 128Mi, cpu: 50m }\n        probes:\n          readiness: { path: /-/ready, port: 9093 }\n        startupBudget: 30s\n        cutover: interrupted\n  - id: edge-proxy\n",
+        ),
+      ),
+    ).toStrictEqual([
+      "/applications/0/processes/0/cutover",
+      "/applications/0/processes/0/args/0",
+      "/applications/1/processes",
+    ]);
+    expect(
+      (() => {
+        const result = checkIntentSet(
+          filesOf("operated-process").map((file) => ({
+            ...file,
+            text: file.text.replace(
+              "  - id: edge-proxy\n",
+              "      - name: alertmanager-peer\n        lifecycle: application\n        image: alertmanager\n        runtime: none\n        provides:\n          http: 9093\n        placement: { memory: 128Mi, cpu: 50m }\n        probes:\n          readiness: { path: /-/ready, port: 9093 }\n        startupBudget: 30s\n        cutover: interrupted\n  - id: edge-proxy\n",
+            ),
+          })),
+        );
+        return result.ok
+          ? []
+          : result.diagnostics
+              .filter(({ path }) => path === "/applications/1/processes")
+              .map(({ message }) => message);
+      })(),
+    ).toStrictEqual([
+      "alertmanager: the operator runs one Process as its Alertmanager, and the Application declares 2",
+    ]);
+  });
 
   it("lets a proxy replicate on a tier that issues no certificate through acme", () => {
     expect(
