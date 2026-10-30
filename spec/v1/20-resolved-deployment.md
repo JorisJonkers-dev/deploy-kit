@@ -107,7 +107,9 @@ carries, the surfaces they serve, what they consume and reach, and their DNS
 baseline ([chapter 16](16-dependencies.md#spawn-templates)). A Process that serves DNS
 records its `nameservers`, the platform's upstream nameservers it resolves
 through, and holds no `cluster-dns` peer
-([chapter 10](10-project-intent.md#l4-exposure)). An Application records
+([chapter 10](10-project-intent.md#l4-exposure)). A Process whose engine is
+`mongo` records its `selfNames`, the name of its own Service, which its pod
+resolves to itself ([A replica set member finds itself](#a-replica-set-member-finds-itself)). An Application records
 its `scrape`, the monitored surface at the Platform document's cadence, and
 the metrics stack its `fluxScrape`, Flux's controllers where the Platform
 document records their metrics
@@ -863,6 +865,24 @@ the lock records one, and its `memory` and `cpu`
 ([chapter 14](14-platform-intent.md#the-seeder)). Each seeded Asset is resolved
 as any Asset is, its content-hashed `name` and its `content`, with its `seedAt`
 in place of a `mountAt`. A Process that seeds nothing carries no `seeder`.
+
+### A replica set member finds itself
+
+A `mongo` runs as a replica set, because its consumers' transactions and change
+streams refuse to run on anything else, and a member is configured by a host
+name: the one its consumers reach it by, which is its Service's,
+`<process>.<namespace>.svc.cluster.local`. On every start `mongod` checks that
+the name in its configuration is its own, and a member whose name leads to any
+other address is removed from its own set, serving no write until the set is
+reconfigured by hand. Through the Service that check holds only where the
+substrate turns traffic back to the pod it left and the pod's policy admits it,
+neither of which the render can see. So a Process whose engine is `mongo`
+records `selfNames`, its Service's name, and its pod resolves each to its own
+loopback, `127.0.0.1`, before any DNS is asked
+([0145](../../docs/adr/model/0145-a-mongo-resolves-its-own-service-name-to-itself.md)).
+Every other pod resolves the name through the cluster's DNS to the Service, as
+for any Process. A Process of another engine, or of none, records no
+`selfNames`.
 
 ### The forward-auth endpoint
 
@@ -2032,6 +2052,7 @@ classDiagram
         +bool identityToken
         +string[] consumes
         +IPv4[] nameservers
+        +string[] selfNames
     }
     class ResolvedSpawn {
         +string name

@@ -129,6 +129,7 @@ and linted by the same script with `emf` as its root.
 | [0036](model/0036-path-authority-is-layer-2.md) | An adapter writes its own paths through one set of shared directory helpers, and the render refuses a path claimed twice | settled |
 | [0105](model/0105-every-derived-deadline-allows-the-substrates-image-pull.md) | Every derived deadline allows the substrate's image pull, which the Platform document states once | open |
 | [0106](model/0106-a-gpu-request-is-derived-from-placement.md) | A GPU request is derived from the placement that selects the card, and the Platform document names each vendor's resource and runtime class | open |
+| [0145](model/0145-a-mongo-resolves-its-own-service-name-to-itself.md) | A mongo resolves its own Service's name to itself, so the replica set member that name configures finds itself | open |
 
 ## Adapters and rendering
 

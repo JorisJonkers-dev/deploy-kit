@@ -584,6 +584,24 @@ function seederOf(
   };
 }
 
+/**
+ * A `mongo` resolves its own Service's name to itself: its replica set member
+ * is configured by the name its consumers reach it by, and a member whose name
+ * leads anywhere else is removed from its own set
+ * (spec/v1/20-resolved-deployment.md#a-replica-set-member-finds-itself).
+ */
+function selfNamesOf(
+  process: EffectiveProcess,
+  context: ProcessContext,
+): { readonly selfNames?: string[] } {
+  if (process.engine !== "mongo") return {};
+  return {
+    selfNames: [
+      `${process.name}.${namespaceOf(context.project)}.svc.cluster.local`,
+    ],
+  };
+}
+
 export function resolveProcess(
   process: EffectiveProcess,
   context: ProcessContext,
@@ -742,6 +760,7 @@ export function resolveProcess(
         }),
     ...(environment.length === 0 ? {} : { environment }),
     ...(surfaces.length === 0 ? {} : { surfaces }),
+    ...selfNamesOf(process, context),
     ...(spawns.length === 0 ? {} : { spawns }),
   };
 }

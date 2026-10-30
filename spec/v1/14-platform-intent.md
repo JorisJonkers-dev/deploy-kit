@@ -779,7 +779,9 @@ engines:
 over the network: `postgres` is dumped over its own protocol, `rabbitmq` through
 its management API, `mongo` over its wire protocol, because a copy of the files
 of a running `mongod` is not a consistent backup. A method that reads the volume alone, as `files` does, names
-none. An `s3` is backed up by the files method too: its data blocks are never
+none. A `mongo` serves as a replica set whose one member is named by its
+Service, a name its own pod resolves to itself
+([chapter 20](20-resolved-deployment.md#a-replica-set-member-finds-itself)). An `s3` is backed up by the files method too: its data blocks are never
 changed in place, and the metadata database it keeps open is left on a
 `reconstructible` volume of its own while the store writes consistent snapshots
 of it to another, so no backup reads a database being written. The platform says it, because the platform chose the image and only the
