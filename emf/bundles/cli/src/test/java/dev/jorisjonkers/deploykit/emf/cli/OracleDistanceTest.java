@@ -163,6 +163,7 @@ class OracleDistanceTest {
             "rendered data",
             "rendered delivery",
             "rendered edge",
+            "rendered knowledge-platform",
             "rendered mail",
             "rendered minimal",
             "rendered secrets",
@@ -287,7 +288,7 @@ class OracleDistanceTest {
                                         Outputs.INTEGRITY,
                                         out);
                                 return refusals.isEmpty()
-                                        ? Comparison.trees(rendered, Comparison.read(out))
+                                        ? Comparison.trees(rendered, ownShare(rendered, Comparison.read(out)))
                                         : refused(refusals);
                             }));
         }
@@ -393,6 +394,20 @@ class OracleDistanceTest {
         String name = oracle.getFileName().toString();
         return Comparison.files(name, URI.createFileURI(oracle.toString()), Files.readAllBytes(oracle), written);
     }
+
+    /**
+     * The share of a rendering a committed tree holds: the production implementation commits a
+     * project's own artifact, and its estate-scoped artifact only where the tree holds an {@code
+     * estate/} directory, so a tree without one is compared without the estate-scoped files.
+     */
+    private static Map<String, byte[]> ownShare(Path committed, Map<String, byte[]> rendered) {
+        if (!Files.isDirectory(committed.resolve(ESTATE))) {
+            rendered.keySet().removeIf(name -> name.startsWith(ESTATE + "/"));
+        }
+        return rendered;
+    }
+
+    private static final String ESTATE = "estate";
 
     private static List<String> refused(List<Diagnostic> diagnostics) {
         return diagnostics.stream()

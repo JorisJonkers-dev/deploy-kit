@@ -42,6 +42,19 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: release-gate-http
+  namespace: estate-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+spec:
+  type: ExternalName
+  externalName: release-gate.delivery-system.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: stalwart-smtp
   namespace: estate-system
   labels:

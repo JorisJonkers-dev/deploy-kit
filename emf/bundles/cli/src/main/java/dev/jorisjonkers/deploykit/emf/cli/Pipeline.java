@@ -12,7 +12,9 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.SharedIntent;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.Alias;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
+import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.StableAddressFile;
 import dev.jorisjonkers.deploykit.emf.render.Rendering;
 import dev.jorisjonkers.deploykit.emf.resolve.Lowering;
 import dev.jorisjonkers.deploykit.emf.resolve.Resolution;
@@ -35,6 +37,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
@@ -227,8 +230,35 @@ public final class Pipeline {
             }
             deployments.add(resolved.deployment());
         }
-        Rendering.render(deployments, root);
+        renderTogether(deployments, root);
         return List.of();
+    }
+
+    /** {@code deployments} rendered together to {@code root}, the estate-scoped share they name written whole. */
+    static void renderTogether(List<ResolvedDeployment> deployments, Path root) {
+        oneStableAddressFile(deployments);
+        Rendering.render(deployments, root);
+    }
+
+    /**
+     * The Stable Addresses are the estate's, delivered with the Projects that name them
+     * (spec/v1/16-dependencies.md#the-stable-address): each Project's resolution plans the file of
+     * those its own edges name, so a render of several writes one file of every one any of them
+     * names, once each and in name order.
+     */
+    private static void oneStableAddressFile(List<ResolvedDeployment> deployments) {
+        List<StableAddressFile> files = deployments.stream()
+                .flatMap(deployment -> deployment.getDeliverables().stream())
+                .filter(StableAddressFile.class::isInstance)
+                .map(StableAddressFile.class::cast)
+                .toList();
+        Map<String, Alias> named = new TreeMap<>();
+        files.forEach(file -> file.getAddresses().forEach(alias -> named.putIfAbsent(alias.getName(), alias)));
+        List<Alias> every = List.copyOf(named.values());
+        files.forEach(file -> {
+            file.getAddresses().clear();
+            file.getAddresses().addAll(EcoreUtil.copyAll(every));
+        });
     }
 
     /**

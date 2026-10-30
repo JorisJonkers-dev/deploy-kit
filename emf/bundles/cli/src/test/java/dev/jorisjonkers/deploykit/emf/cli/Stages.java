@@ -8,7 +8,6 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentPackage;
-import dev.jorisjonkers.deploykit.emf.render.Rendering;
 import dev.jorisjonkers.deploykit.emf.resolve.Lowering;
 import dev.jorisjonkers.deploykit.emf.resolve.Resolution;
 import java.io.ByteArrayOutputStream;
@@ -272,7 +271,7 @@ final class Stages {
         }
         Path out = Files.createTempDirectory("stage-render");
         try {
-            Rendering.render(deployments, out);
+            Pipeline.renderTogether(deployments, out);
             return Comparison.read(out);
         } finally {
             try (Stream<Path> tree = Files.walk(out)) {
