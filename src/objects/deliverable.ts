@@ -19,6 +19,10 @@ import type {
   VaultDynamicSecret,
   VaultStaticSecret,
   GrafanaDashboard,
+  ApiServerMonitor,
+  CoreDnsMonitor,
+  ScrapeConfig,
+  ServiceAccountToken,
   Alertmanager,
   AlertmanagerConfig,
   Prometheus,
@@ -77,6 +81,10 @@ export type RenderedObject =
   | RoleBinding
   | PriorityClass
   | GrafanaDashboard
+  | ApiServerMonitor
+  | CoreDnsMonitor
+  | ScrapeConfig
+  | ServiceAccountToken
   | PrometheusRule
   | AlertmanagerConfig
   | Prometheus

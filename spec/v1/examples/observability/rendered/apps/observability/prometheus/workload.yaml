@@ -101,6 +101,10 @@ spec:
     matchLabels:
       release: metrics-stack
   podMonitorNamespaceSelector: {}
+  scrapeConfigSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: deploy-kit
+  scrapeConfigNamespaceSelector: {}
   ruleSelector:
     matchLabels:
       app.kubernetes.io/managed-by: deploy-kit

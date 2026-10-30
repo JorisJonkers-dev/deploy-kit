@@ -35,13 +35,20 @@ export interface ClusterRole {
   readonly apiVersion: "rbac.authorization.k8s.io/v1";
   readonly kind: "ClusterRole";
   readonly metadata: ObjectMeta;
-  readonly rules: readonly {
-    readonly apiGroups: readonly string[];
-    readonly resources: readonly string[];
-    /** The objects a rule is narrowed to, by name, where it is narrowed. */
-    readonly resourceNames?: readonly string[];
-    readonly verbs: readonly string[];
-  }[];
+  readonly rules: readonly (
+    | {
+        readonly apiGroups: readonly string[];
+        readonly resources: readonly string[];
+        /** The objects a rule is narrowed to, by name, where it is narrowed. */
+        readonly resourceNames?: readonly string[];
+        readonly verbs: readonly string[];
+      }
+    | {
+        /** A path the API server serves that is no object, such as its metrics. */
+        readonly nonResourceURLs: readonly string[];
+        readonly verbs: readonly string[];
+      }
+  )[];
 }
 
 /** A Process's namespace-scoped rules, in its own namespace. */

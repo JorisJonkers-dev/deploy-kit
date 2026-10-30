@@ -451,6 +451,8 @@ export interface Prometheus {
     readonly serviceMonitorNamespaceSelector: LabelSelection;
     readonly podMonitorSelector: LabelSelection;
     readonly podMonitorNamespaceSelector: LabelSelection;
+    readonly scrapeConfigSelector: LabelSelection;
+    readonly scrapeConfigNamespaceSelector: LabelSelection;
     readonly ruleSelector: LabelSelection;
     readonly ruleNamespaceSelector: LabelSelection;
     readonly alerting?: {
@@ -478,4 +480,97 @@ export interface Alertmanager {
     readonly alertmanagerConfigMatcherStrategy: { readonly type: "None" };
     readonly retention?: string;
   };
+}
+
+/** A relabelling step of a scrape, as the Prometheus operator spells it. */
+export interface Relabeling {
+  readonly action?: "replace" | "drop";
+  readonly sourceLabels?: readonly string[];
+  readonly regex?: string;
+  readonly targetLabel?: string;
+  readonly replacement?: string;
+}
+
+/** How a scrape of a k3s component authenticates: as the metrics stack's ServiceAccount, by its token. */
+export interface ScrapeAuthorization {
+  readonly type: "Bearer";
+  readonly credentials: { readonly name: string; readonly key: "token" };
+}
+
+/** A scrape of something no Service or pod label names: here, every node's kubelet. */
+export interface ScrapeConfig {
+  readonly apiVersion: "monitoring.coreos.com/v1alpha1";
+  readonly kind: "ScrapeConfig";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly jobName: string;
+    readonly kubernetesSDConfigs: readonly { readonly role: "Node" }[];
+    readonly scheme: "HTTPS";
+    readonly metricsPath: string;
+    readonly scrapeInterval: string;
+    readonly scrapeTimeout: string;
+    readonly honorLabels: true;
+    readonly honorTimestamps: true;
+    readonly authorization: ScrapeAuthorization;
+    readonly tlsConfig: { readonly insecureSkipVerify: true };
+    readonly relabelings: readonly Relabeling[];
+    readonly metricRelabelings?: readonly Relabeling[];
+  };
+}
+
+/** The API server, scraped through its own Service over TLS. */
+export interface ApiServerMonitor {
+  readonly apiVersion: "monitoring.coreos.com/v1";
+  readonly kind: "ServiceMonitor";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly jobLabel: string;
+    readonly selector: { readonly matchLabels: Labels };
+    readonly namespaceSelector: { readonly matchNames: readonly string[] };
+    readonly endpoints: readonly {
+      readonly port: string;
+      readonly scheme: "https";
+      readonly interval: string;
+      readonly scrapeTimeout: string;
+      readonly authorization: ScrapeAuthorization;
+      readonly tlsConfig: {
+        readonly ca: {
+          readonly configMap: { readonly name: string; readonly key: string };
+        };
+        readonly serverName: string;
+      };
+      readonly metricRelabelings: readonly Relabeling[];
+    }[];
+  };
+}
+
+/** The cluster's DNS, scraped from its pods by port number under a job of its own. */
+export interface CoreDnsMonitor {
+  readonly apiVersion: "monitoring.coreos.com/v1";
+  readonly kind: "PodMonitor";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly jobLabel: string;
+    readonly selector: { readonly matchLabels: Labels };
+    readonly namespaceSelector: { readonly matchNames: readonly string[] };
+    readonly podMetricsEndpoints: readonly {
+      readonly portNumber: number;
+      readonly path: string;
+      readonly interval: string;
+      readonly scrapeTimeout: string;
+      readonly relabelings: readonly Relabeling[];
+    }[];
+  };
+}
+
+/** The long-lived token of a ServiceAccount, which Kubernetes fills in itself. */
+export interface ServiceAccountToken {
+  readonly apiVersion: "v1";
+  readonly kind: "Secret";
+  readonly metadata: ObjectMeta & {
+    readonly annotations: {
+      readonly "kubernetes.io/service-account.name": string;
+    };
+  };
+  readonly type: "kubernetes.io/service-account-token";
 }

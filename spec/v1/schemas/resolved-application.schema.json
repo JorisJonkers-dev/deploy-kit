@@ -63,6 +63,96 @@
         "fluxScrape": {
           "$ref": "#/$defs/ResolvedFluxScrape"
         },
+        "k3sScrape": {
+          "type": "object",
+          "properties": {
+            "identity": {
+              "type": "string",
+              "minLength": 1
+            },
+            "interval": {
+              "type": "string",
+              "pattern": "^\\d+(ms|s|m|h)$"
+            },
+            "timeout": {
+              "type": "string",
+              "pattern": "^\\d+(ms|s|m|h)$"
+            },
+            "labels": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "minLength": 1
+              },
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "kubelet": {
+              "type": "object",
+              "properties": {
+                "port": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              },
+              "required": [
+                "port"
+              ],
+              "additionalProperties": false
+            },
+            "apiServer": {
+              "type": "object",
+              "properties": {
+                "namespace": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "service": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "port": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "namespace",
+                "service",
+                "port"
+              ],
+              "additionalProperties": false
+            },
+            "coreDns": {
+              "type": "object",
+              "properties": {
+                "namespace": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "port": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              },
+              "required": [
+                "namespace",
+                "port"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "identity",
+            "interval",
+            "timeout"
+          ],
+          "additionalProperties": false
+        },
         "dashboards": {
           "$ref": "#/$defs/ResolvedDashboards"
         },

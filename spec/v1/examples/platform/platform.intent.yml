@@ -40,6 +40,13 @@ substrate:
 # enumerated, never declared; growing this table is a decision
 # (docs/adr/model/0046-the-foundation-is-declared.md).
 bootstrap:
+  # Where k3s serves its own metrics: the metrics stack scrapes each from its
+  # own namespace (spec/v1/14-platform-intent.md#k3ss-metrics).
+  k3s:
+    metrics:
+      kubelet: {port: 10250}
+      apiServer: {service: default/kubernetes, port: https}
+      coreDns: {port: 9153}
   flux:
     sourceRef: flux-system/platform
     # Where each Project's render is published, one artifact per Project at

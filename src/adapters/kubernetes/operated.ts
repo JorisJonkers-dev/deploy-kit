@@ -96,6 +96,9 @@ function prometheusOf(
     serviceMonitorNamespaceSelector: every,
     podMonitorSelector: selecting(operated.monitors),
     podMonitorNamespaceSelector: every,
+    // Every scrape of k3s the render writes, and only those.
+    scrapeConfigSelector: selecting(managedOnly()),
+    scrapeConfigNamespaceSelector: every,
     // Every rule group the render writes, and only those.
     ruleSelector: selecting(managedOnly()),
     ruleNamespaceSelector: every,

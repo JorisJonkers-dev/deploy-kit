@@ -13,6 +13,7 @@ import { instanceOf, labelsOf, managedOnly } from "../shared/labels.ts";
 import { applicationDirectory } from "../shared/paths.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 import { FLUX_CONTROLLERS } from "../../model/platform-intent.ts";
+import { k3sMonitorsOf } from "./k3s.ts";
 
 export const ADAPTER = "prometheus";
 
@@ -111,6 +112,7 @@ export function renderPrometheus(project: ResolvedProject): Deliverable[] {
   return [
     ...monitorsOf(project),
     ...fluxMonitorOf(project),
+    ...k3sMonitorsOf(project, ADAPTER),
     ...alertingOf(project),
   ];
 }

@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - alertrules.yaml
   - flux-podmonitor.yaml
+  - k3s-monitors.yaml
   - rbac.yaml
   - service.yaml
   - serviceaccount.yaml
