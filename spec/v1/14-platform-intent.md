@@ -1251,7 +1251,11 @@ project can:
   **`deadline`** how long **one attempt** may take, its start included, before
   that attempt is failed and another begins. A job never fails as a whole: it
   retries until an attempt succeeds, because its Project's unit is Ready only
-  once it has, and writing the documents again is harmless
+  once it has, and writing the documents again is harmless. Its hourly run is
+  the one exception: no unit waits on it, and its pod is fixed when the run
+  starts, so a run whose documents a later render replaced can never succeed.
+  It retries six times within fifty minutes and then fails, and the next hour's
+  run starts from the current documents
   ([0103](../../docs/adr/model/0103-a-derived-estate-job-retries-and-avoids-the-sd-cards.md)).
 
 A job runs on no node that holds an `sdcard` medium. Its Project's unit waits on
