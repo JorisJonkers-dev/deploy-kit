@@ -30,7 +30,11 @@ context Process
 	-- level up.
 	inv E_CUTOVER_UNHONOURABLE:
 		(runsToCompletion = false and effectiveCutover = Cutover::continuous)
-			implies volumes->isEmpty()
+			implies (volumes->isEmpty()
+				-- A host port holds one copy as a volume does, unless the delivery
+				-- machinery cuts the Process over rolling, never a pod more.
+				and (not onNode or Platform.allInstances()->exists(p | p.delivery <> null
+					and p.delivery.machinery->includes(oclContainer().oclAsType(Application)))))
 
 	-- The engine keys the backup method and, where it owns databases, the catalog
 	-- its consumers derive, so it names something nothing asks for only when no

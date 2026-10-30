@@ -97,6 +97,8 @@ class OracleDistanceTest {
             "refusal handover-serving",
             "refusal handover-unlisted",
             "refusal illegal-delivery-for-access",
+            "refusal image-runs-as-root",
+            "refusal l4-address-exhausted",
             "refusal library-not-granted",
             "refusal migration-owner-duplicated",
             "refusal migration-undeclared",
@@ -117,7 +119,9 @@ class OracleDistanceTest {
             "refusal no-tier-for-audience",
             "refusal no-upstream-nameservers",
             "refusal no-vpn-policy",
+            "refusal node-address-continuous",
             "refusal node-address-replicated",
+            "refusal node-port-taken",
             "refusal non-kv-delivery",
             "refusal owner-role-granted",
             "refusal placement-incomplete",
@@ -137,6 +141,7 @@ class OracleDistanceTest {
             "refusal shared-quantity",
             "refusal surface-label-invalid",
             "refusal tier-class-unfiltered",
+            "refusal tier-surface-missing",
             "refusal tier-without-ingress-class",
             "refusal unauthorised-secret-reference",
             "refusal unbound-secret-grant",
@@ -348,12 +353,14 @@ class OracleDistanceTest {
         }
     }
 
-    /** The documents of a refused set: its project files and its Platform document, sorted. */
+    /** The documents of a refused set: its project files, its Platform document and its images lock, sorted. */
     private static List<Path> documentsIn(Path set) throws IOException {
         try (Stream<Path> files = Files.list(set)) {
             return files.filter(file -> {
                         String name = file.getFileName().toString();
-                        return name.endsWith(".project.yml") || name.equals("platform.intent.yml");
+                        return name.endsWith(".project.yml")
+                                || name.equals("platform.intent.yml")
+                                || name.equals("images.lock.yml");
                     })
                     .sorted()
                     .toList();

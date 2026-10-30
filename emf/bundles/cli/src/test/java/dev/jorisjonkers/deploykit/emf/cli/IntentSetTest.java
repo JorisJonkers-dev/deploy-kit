@@ -160,6 +160,8 @@ class IntentSetTest {
                 "platform.intent.yml",
                 Examples.read("platform/platform.intent.yml")
                         .replace("secretsEncryption: false", "secretsEncryption: true")
+                        // notes provides no `web` surface, so its tiers name no address its proxy answers on.
+                        .replaceAll("\\n *address: (edge-frankfurt|lan-edge)[^\\n]*", "")
                         .replace("traefik: edge/traefik-public", "traefik: notes/notes")
                         .replace("traefik: edge/traefik-lan", "traefik: notes/notes")
                         .replace(
