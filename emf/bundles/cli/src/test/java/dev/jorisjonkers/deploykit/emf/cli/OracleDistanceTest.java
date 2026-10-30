@@ -166,9 +166,12 @@ class OracleDistanceTest {
             "rendered knowledge-platform",
             "rendered mail",
             "rendered minimal",
+            "rendered node",
             "rendered platform",
             "rendered secrets",
             "rendered utility",
+            "resolved edge",
+            "resolved node",
             "schema-refusal credentials-file-without-mount",
             "schema-refusal egress-outside-vocabulary",
             "schema-refusal egress-with-range",
@@ -316,6 +319,9 @@ class OracleDistanceTest {
                                                     .toList(),
                                             project,
                                             Outputs.INTEGRITY);
+                                    if (resolved.ok() && regiven(name)) {
+                                        Files.write(given, Stages.xmi(given, resolved.deployment()));
+                                    }
                                     return resolved.ok()
                                             ? Comparison.files(
                                                     given.getFileName().toString(),
@@ -413,7 +419,11 @@ class OracleDistanceTest {
                 .collect(Collectors.toSet());
         rendered.keySet().removeIf(name -> !held.contains(name.substring(0, name.indexOf('/') + 1)));
         Path platform = examples.resolve(PLATFORM).resolve("rendered");
-        if (!held.contains(ESTATE + "/") || committed.toAbsolutePath().normalize().equals(platform.toAbsolutePath().normalize())) {
+        if (!held.contains(ESTATE + "/")
+                || committed
+                        .toAbsolutePath()
+                        .normalize()
+                        .equals(platform.toAbsolutePath().normalize())) {
             return Comparison.trees(committed, rendered);
         }
         Set<String> everyRenders = Comparison.read(platform).keySet();
@@ -427,6 +437,17 @@ class OracleDistanceTest {
     }
 
     private static final String PLATFORM = "platform";
+
+    /**
+     * The property naming the given resolve cases a run rewrites from what this implementation
+     * resolves, comma-separated: a hand-written case is replaced once the rendered tree it drives
+     * equals main's, so it stops standing in for a resolution that now exists.
+     */
+    static final String REGIVEN = "given.update";
+
+    private static boolean regiven(String name) {
+        return List.of(System.getProperty(REGIVEN, "").split(",")).contains(name);
+    }
 
     private static final String ESTATE = "estate";
 
