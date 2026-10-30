@@ -2325,6 +2325,7 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 					Tuple{k = 'inputs', v = arr(inputsOf(content)->collect(x | str(x)))}})))}}) endif},
 		Tuple{k = 'exposure', v = if self.exposure->isEmpty() then null
 			else arr(self.exposure->collect(e | e.json())) endif},
+		Tuple{k = 'client', v = if self.client = null then null else self.client.json() endif},
 		Tuple{k = 'processes', v = arr(self.processes->collect(p | p.json()))}
 	});
 
@@ -2895,3 +2896,18 @@ query ReleaseGate::protectedByOf() : String =
 		and (if r.match = PI::Match::exact then path = r.path else path.startsWith(r.path) endif))->asSequence() in
 	if reaching->isEmpty() then null
 	else reaching->sortedBy(r | -r.path.size())->first().process.name endif endif;
+
+-- identity: the Client as the element records it.
+query ResolvedClient::json() : String = obj(Sequence{
+	Tuple{k = 'signIn', v = str(self.signIn)},
+	Tuple{k = 'host', v = str(self.host)},
+	Tuple{k = 'launchUrl', v = opt(self.launchUrl)},
+	Tuple{k = 'iconUrl', v = opt(self.iconUrl)},
+	Tuple{k = 'redirectUris', v = if self.redirectUris->isEmpty() then null
+		else arr(self.redirectUris->collect(u | str(u))) endif},
+	Tuple{k = 'credential', v = opt(self.credential)},
+	Tuple{k = 'secretPath', v = opt(self.secretPath)},
+	Tuple{k = 'roles', v = arr(self.roles->collect(r | str(r)))},
+	Tuple{k = 'label', v = opt(self.label)},
+	Tuple{k = 'description', v = opt(self.description)}
+});
