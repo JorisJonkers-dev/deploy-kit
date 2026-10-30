@@ -588,6 +588,29 @@ describe("renderIntentSet", () => {
       expect(cron).toContain(`name: ${String(named)}\n`);
     });
 
+    // REQ-154 (docs/requirements.md), deploy-kit#742: an hourly run whose
+    // hashed ConfigMap a later render pruned can never succeed, and under
+    // Forbid it would hold off every later run.
+    it("gives up an hourly run within the hour, while the one-shot Job retries until it succeeds", () => {
+      const tree = asTree(artifact(render(undefined, ["data"]), "data"));
+      const [run] = parseAllDocuments(
+        tree["apps/data/vault-policy/job.yaml"] ?? "",
+      ).map((document) => document.toJS() as { spec: Record<string, unknown> });
+      const [hourly] = parseAllDocuments(
+        tree["apps/data/vault-policy/cronjob.yaml"] ?? "",
+      ).map(
+        (document) =>
+          document.toJS() as {
+            spec: { jobTemplate: { spec: Record<string, unknown> } };
+          },
+      );
+
+      expect(run?.spec["backoffLimit"]).toBe(2_147_483_647);
+      expect(run?.spec["activeDeadlineSeconds"]).toBeUndefined();
+      expect(hourly?.spec.jobTemplate.spec["backoffLimit"]).toBe(6);
+      expect(hourly?.spec.jobTemplate.spec["activeDeadlineSeconds"]).toBe(3000);
+    });
+
     it("is recreated when the compiler alone changes its pod template, which a Job never lets an update change", () => {
       const tree = asTree(artifact(render(undefined, ["data"]), "data"));
       const job = tree["apps/data/vault-policy/job.yaml"] ?? "";
@@ -1395,6 +1418,36 @@ describe("the database catalog", () => {
       user: "postgres.user",
       password: "postgres.password",
     });
+  });
+
+  // REQ-154 (docs/requirements.md): the method's hourly run gives up within
+  // the hour, as the Vault policy job's does; its one-shot Job does not.
+  it("gives up the method's hourly run within the hour, while its one-shot Job retries until it succeeds", () => {
+    const limits = parseAllDocuments(estate()[CATALOG] ?? "")
+      .map(
+        (document) =>
+          document.toJS() as {
+            kind: string;
+            spec?: {
+              backoffLimit?: number;
+              activeDeadlineSeconds?: number;
+              jobTemplate?: {
+                spec: { backoffLimit: number; activeDeadlineSeconds: number };
+              };
+            };
+          },
+      )
+      .flatMap(({ kind, spec }) => {
+        const job = spec?.jobTemplate?.spec ?? spec;
+        return kind === "Job" || kind === "CronJob"
+          ? [[kind, job?.backoffLimit, job?.activeDeadlineSeconds]]
+          : [];
+      });
+
+    expect(limits).toStrictEqual([
+      ["Job", 2_147_483_647, undefined],
+      ["CronJob", 6, 3000],
+    ]);
   });
 
   // deploy-kit#572: the method reaches the datastore as every consumer does,
@@ -4002,6 +4055,67 @@ describe("the Node Agents", () => {
       expect.objectContaining({ kind: "L2Advertisement", name: "lan-edge" }),
       expect.objectContaining({ kind: "IPAddressPool", name: "lan-mqtt" }),
       expect.objectContaining({ kind: "L2Advertisement", name: "lan-mqtt" }),
+    ]);
+  });
+
+  // REQ-155 (docs/requirements.md), deploy-kit#729: MetalLB 0.15.3's speaker
+  // reads its own pod at start, and both copies watch their configuration
+  // states, the nodes, and their own namespace's Secrets and ConfigMaps.
+  it("hand the speaker its own pod's name, which it reads at start", () => {
+    const [speaker] = objectsOf("apps/node/l4-speaker/workload.yaml") as {
+      spec: { template: { spec: { containers: { env: unknown[] }[] } } };
+    }[];
+    expect(speaker?.spec.template.spec.containers[0]?.env).toContainEqual({
+      name: "METALLB_POD_NAME",
+      valueFrom: { fieldRef: { fieldPath: "metadata.name" } },
+    });
+  });
+
+  it("let the speaker and its controller read what MetalLB 0.15.3 always watches", () => {
+    const rbac = objectsOf("apps/node/l4-speaker/rbac.yaml") as {
+      kind: string;
+      metadata: { name: string; namespace?: string };
+      rules?: { apiGroups: string[]; resources: string[]; verbs: string[] }[];
+    }[];
+    const may = (kind: string, name: string, resource: string, verb: string) =>
+      rbac.some(
+        (object) =>
+          object.kind === kind &&
+          object.metadata.name === name &&
+          (object.rules ?? []).some(
+            ({ resources, verbs }) =>
+              resources.includes(resource) && verbs.includes(verb),
+          ),
+      );
+    for (const [cluster, local] of [
+      ["node:l4-speaker", "l4-speaker"],
+      ["node:l4-controller", "l4-controller"],
+    ] as const) {
+      expect(may("ClusterRole", cluster, "configurationstates", "list")).toBe(
+        true,
+      );
+      expect(may("ClusterRole", cluster, "nodes", "watch")).toBe(true);
+      for (const resource of ["secrets", "configmaps"])
+        expect(may("Role", local, resource, "watch")).toBe(true);
+    }
+    expect(may("Role", "l4-speaker", "servicebgpstatuses", "watch")).toBe(true);
+  });
+
+  it("read Secrets in the speaker's namespace alone, never cluster-wide", () => {
+    const rbac = objectsOf("apps/node/l4-speaker/rbac.yaml") as {
+      kind: string;
+      metadata: { namespace?: string };
+      rules?: { resources: string[] }[];
+    }[];
+    expect(
+      rbac
+        .filter(({ rules }) =>
+          (rules ?? []).some(({ resources }) => resources.includes("secrets")),
+        )
+        .map(({ kind, metadata }) => [kind, metadata.namespace]),
+    ).toStrictEqual([
+      ["Role", "node-system"],
+      ["Role", "node-system"],
     ]);
   });
 

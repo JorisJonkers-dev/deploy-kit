@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.4.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.3.1...v1.4.0) (2026-10-30)
+
+
+### Features
+
+* **emf:** bring the model-driven implementation level with main ([#745](https://github.com/JorisJonkers-dev/deploy-kit/issues/745)) ([ac8a3ec](https://github.com/JorisJonkers-dev/deploy-kit/commit/ac8a3ecf3777f1f7c1a4c9e9de5c27380a67baec))
+
+
+### Bug Fixes
+
+* **examples:** run the worked Secret Store as a raft Vault on its volume, never in dev mode ([#749](https://github.com/JorisJonkers-dev/deploy-kit/issues/749)) ([c4202c1](https://github.com/JorisJonkers-dev/deploy-kit/commit/c4202c164649eb748ac66d53879214d72b04b986))
+* **model:** mark every rendered namespace never to be pruned ([#746](https://github.com/JorisJonkers-dev/deploy-kit/issues/746)) ([828dbab](https://github.com/JorisJonkers-dev/deploy-kit/commit/828dbabf4254a37af82fff27ee3a2947075ba73e))
+
 ## [1.3.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.3.0...v1.3.1) (2026-10-30)
 
 

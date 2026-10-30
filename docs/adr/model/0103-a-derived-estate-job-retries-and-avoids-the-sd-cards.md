@@ -14,6 +14,8 @@ Each Vault policy job and every catalog method are Jobs that the Reconcile Unit
 applying them waits on: a Project's own unit, or, for a datastore the old path
 still runs, the estate-scoped one. Their deadline bounds one attempt, the start
 included, rather than the whole Job. The Job retries until an attempt succeeds.
+Its hourly run, which nothing waits on, retries a few times and gives up within
+the hour.
 It is placed on the nodes that fit what it asks for and that hold no `sdcard`
 medium.
 
@@ -49,6 +51,15 @@ Job.
 CronJob already does that with the same pod. A retry repeats an hourly run, so
 it adds nothing new.
 
+**An hourly run cannot outlive its documents.** A run's pod is fixed when the
+run starts, and names the ConfigMap of that hour's documents. Once a later
+render replaces them, the old ConfigMap is pruned, so that run can never start
+a pod again. Retrying it forever under `Forbid` held off every later run: auth's
+hourly run retried for two and a half days, leaving 367 failed pods
+([#742](https://github.com/JorisJonkers-dev/deploy-kit/issues/742)). No unit
+waits on the hourly run, so it gains nothing from retrying past the hour, and
+the next run starts from the current documents.
+
 **The deadline still bounds a hang.** On the pod, it fails one attempt that
 starts too slowly or stops responding, and the controller starts another. The
 unit then reports progress rather than a stall, and recovers by itself once an
@@ -64,6 +75,7 @@ keeps the one derived Job that everything waits on off those nodes.
 
 | option | cost if taken | why rejected |
 |---|---|---|
+| The hourly run retries until it succeeds, like the Job | one spelling for both | a run whose ConfigMap is pruned never succeeds, and under `Forbid` no later run starts |
 | Raise the deadline only | one platform value | a long enough stall still fails the Job for good, and only a person can clear it |
 | `ttlSecondsAfterFinished`, so the applier recreates the Job | no retry semantics | a completed Job is deleted too, so every interval reruns it and can wedge the units again |
 | Stop waiting on the Job's health | units never wedge | an Application can start before its policy exists, which is the ordering the unit gives |
@@ -79,7 +91,8 @@ something comes to read a Failed Job as the policy job's answer.
 ## Consequences
 
 - A policy or catalog Job is never `Failed`. While it retries, its unit shows a
-  health check that timed out, with the Job still in progress.
+  health check that timed out, with the Job still in progress. An hourly run
+  that cannot succeed is `Failed` within fifty minutes, and the next one runs.
 - Retried attempts leave their pods behind until the Job is replaced: at most
   one per `deadline`.
 - The render carries the job's eligible nodes. A node contract in which none of

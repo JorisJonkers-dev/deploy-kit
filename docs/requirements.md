@@ -19,7 +19,8 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **132** rows. The compiler's behaviours join it as they land.
+This ledger holds **134** rows. The compiler's behaviours join it as they land.
+This ledger holds **134** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -154,4 +155,6 @@ This ledger holds **132** rows. The compiler's behaviours join it as they land.
 | REQ-151 | A `native` Client may declare `backChannelLogoutPath`, a path on its exposure's host, which resolves to `backChannelLogoutUri` (`https://`, the host and the path) and renders on the `Client` object after its `redirectUris`; the same field on a `gated` or `token` Client is `E_CLIENT_FIELD_FOR_MODE` at the field | [test/model/sign-in.test.ts](../test/model/sign-in.test.ts) |
 | REQ-152 | Every rendered container that mounts a writable volume at `/tmp` itself (the Process's, each sidecar, the seeding step, the migration runner) gets `HOME=/tmp`, after its own variables, so a tool that writes under its home has somewhere to write on the read-only root; one whose variables already name `HOME` keeps the author's, and one with no writable `/tmp` gets none | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-153 | Every namespace the render writes, a Project's, the node agents' and the Stable Addresses', carries `kustomize.toolkit.fluxcd.io/prune: disabled`, so no prune deletes a namespace and the kept claims in it with it | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-154 | The hourly run of every Vault policy job and catalog method gives up within the hour, `backoffLimit: 6` and `activeDeadlineSeconds: 3000` on its CronJob's job template, so a run whose hashed ConfigMap a later render pruned never holds off the next under `Forbid`; the one-shot Job keeps `backoffLimit: 2147483647` and no deadline of its own, and retries until an attempt succeeds | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-155 | The `l4-speaker` Node Agent starts on MetalLB 0.15.3: the speaker is handed `METALLB_POD_NAME` from its pod's name; the speaker's and the controller's ClusterRoles hold `configurationstates` and its status and `get`, `list` and `watch` on `nodes`; and each holds a Role in `node-system` reading that namespace's Secrets and ConfigMaps, the speaker's also its `servicebgpstatuses`, so neither reads a Secret outside its namespace | [test/model/render.test.ts](../test/model/render.test.ts) |
 | REQ-156 | The `gpu-device` Node Agent hands out each card by its index (`DEVICE_ID_STRATEGY=index`), the name the hosts' CDI specification gives it, so a GPU consumer's `nvidia.com/gpu=<id>` resolves | [test/model/render.test.ts](../test/model/render.test.ts) |
