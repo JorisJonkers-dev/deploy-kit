@@ -47,12 +47,24 @@ class WorkedExamplesTest {
         }
     }
 
+    /**
+     * The accepted counterparts main's own validate refuses all the same, each with the codes it
+     * refuses them with: the README's row predates the rule. shared-intent-merged's worker holds a
+     * grant delivered self and wires no Vault client, which main refuses with
+     * E_SELF_WITHOUT_VAULT_CLIENT since that rule landed.
+     */
+    private static final java.util.Map<String, List<String>> REFUSED_BY_MAIN_TOO =
+            java.util.Map.of("shared-intent-merged.project.yml", List.of("E_SELF_WITHOUT_VAULT_CLIENT"));
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("acceptedCounterparts")
     void everyAcceptedCounterpartParses(Path file) {
         Parsed parsed = Pipeline.intent(file);
 
-        assertThat(parsed.diagnostics()).isEmpty();
+        assertThat(parsed.diagnostics())
+                .extracting(Diagnostic::code)
+                .containsExactlyElementsOf(
+                        REFUSED_BY_MAIN_TOO.getOrDefault(file.getFileName().toString(), List.of()));
     }
 
     @ParameterizedTest(name = "{0}")

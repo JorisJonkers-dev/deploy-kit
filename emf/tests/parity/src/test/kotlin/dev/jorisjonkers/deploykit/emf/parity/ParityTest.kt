@@ -126,11 +126,10 @@ class ParityTest {
         private const val RENDERED = "rendered"
 
         /**
-         * The cases whose committed rendered trees the composed union writes between them: every tree
-         * the production implementation renders. `auth`'s and `knowledge`'s trees are hand-written
-         * goal states it does not render yet.
+         * The cases whose committed rendered trees the composed union writes between them: minimal's
+         * and data's own, and the platform's estate-scoped share every render holds.
          */
-        private val RENDERED_CASES = listOf("minimal", "data")
+        private val RENDERED_CASES = listOf("minimal", "data", "platform")
 
         /** Every file under `root`, by its path below it, sorted; a tree's README is no rendered file. */
         private fun filesUnder(root: Path): List<String> =
