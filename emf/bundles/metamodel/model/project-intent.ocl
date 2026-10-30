@@ -22,11 +22,6 @@ context Application
 				and effectiveCutover = Cutover::continuous)
 			implies Platform.allInstances()->forAll(delivery <> null)
 
-context Observability
-	-- The block is whole or absent: a class states how loudly to wake someone,
-	-- and means nothing without a signal to wake them about.
-	inv E_ALERT_CLASS_WITHOUT_SIGNAL: scrape <> null
-
 context Process
 	-- A volume cannot attach to the second copy a continuous cutover starts
 	-- beside the old one, and a silent downgrade is what makes an owner believe
@@ -34,7 +29,7 @@ context Process
 	-- an Application declaring `continuous` is the same defect written one
 	-- level up.
 	inv E_CUTOVER_UNHONOURABLE:
-		(lifecycle <> Lifecycle::prepare and effectiveCutover = Cutover::continuous)
+		(runsToCompletion = false and effectiveCutover = Cutover::continuous)
 			implies volumes->isEmpty()
 
 	-- The engine keys the backup method and, where it owns databases, the catalog
@@ -139,7 +134,9 @@ context Process
 			(engine = Engine::postgres implies policies.postgres <> null)
 			and (engine = Engine::rabbitmq implies policies.rabbitmq <> null)
 			and (engine = Engine::valkey implies policies.valkey <> null)
-			and (engine = Engine::files implies policies.files <> null))
+			and (engine = Engine::mongo implies policies.mongo <> null)
+			and (engine = Engine::files implies policies.files <> null)
+			and (engine = Engine::s3 implies policies.s3 <> null))
 
 	-- Where the engine's method dumps over the network, the Process is what it
 	-- connects to, so the surface the platform names for the engine is one the
@@ -150,8 +147,10 @@ context Process
 				if engine = Engine::postgres then policies.postgres
 				else if engine = Engine::rabbitmq then policies.rabbitmq
 				else if engine = Engine::valkey then policies.valkey
+				else if engine = Engine::mongo then policies.mongo
 				else if engine = Engine::files then policies.files
-				else null endif endif endif endif in
+				else if engine = Engine::s3 then policies.s3
+				else null endif endif endif endif endif endif in
 			(named <> null and named.surface <> null)
 				implies provides->includes(named.surface))
 
@@ -271,7 +270,7 @@ context SharedIntent
 		levelsAbove->forAll(above |
 			(startupBudget <> null implies startupBudget <> above.startupBudget)
 			and (cutover <> Cutover::absent implies cutover <> above.cutover)
-			and writablePaths->excludesAll(above.writablePaths)
+			and writablePaths->forAll(w | above.writablePaths->forAll(o | not w.sameAs(o)))
 			and ((placement <> null and above.placement <> null) implies
 				(placement.arch->notEmpty() implies placement.arch <> above.placement.arch)
 				and (placement.site <> null implies placement.site <> above.placement.site)
@@ -293,7 +292,7 @@ context EnvVariable
 	inv E_SHARED_DECLARATION_DUPLICATED:
 		let mine : EnvFile = oclContainer().oclAsType(EnvFile) in
 		mine.oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
-			above.env->select(f | f.cluster = mine.cluster)->forAll(other |
+			above.env->forAll(other |
 				other.entries->forAll(entry |
 					not (entry.name = name and sameValue(entry.value, value)))))
 
@@ -315,11 +314,23 @@ context DependencyEdge
 				not (application = other.application and surface = other.surface
 					and required = other.required)))
 
-context Asset
-	-- The mount is the identity: two files cannot arrive at one path.
+context AssetDeclaration
+	-- Where an Asset lands, mounted or seeded, is the identity: two files cannot
+	-- arrive at one path.
+	def: landsAt : String =
+		if self.oclIsKindOf(Asset) then self.oclAsType(Asset).mountAt
+		else self.oclAsType(SeededAsset).seedAt endif
+
 	inv E_SHARED_DECLARATION_DUPLICATED:
 		oclContainer().oclAsType(SharedIntent).levelsAbove->forAll(above |
-			above.assets->forAll(other | not (mountAt = other.mountAt and from = other.from)))
+			above.assets->forAll(other | not (landsAt = other.landsAt and from = other.from)))
+
+context WritablePathDeclaration
+	-- The same path held the same way: on disk, or in memory at one size.
+	def: sameAs(other : WritablePathDeclaration) : Boolean =
+		path = other.path and oclType() = other.oclType()
+			and (self.oclIsKindOf(MemoryPath) implies
+				self.oclAsType(MemoryPath).memory = other.oclAsType(MemoryPath).memory)
 
 context KvKey
 	-- A key as a duplicate compares it: its name, and how it is generated if it is.
@@ -375,13 +386,34 @@ context Process
 	-- Required on every Process, and answerable above one, so what is refused is
 	-- a Process no level answers for.
 	inv E_CUTOVER_MISSING:
-		lifecycle = Lifecycle::prepare or effectiveCutover <> Cutover::absent
+		runsToCompletion or effectiveCutover <> Cutover::absent
 
 	-- A prepare Process runs to completion before the new version starts: it
 	-- listens on nothing, has no readiness, runs once and cuts over nothing.
 	inv E_PREPARE_PROCESS_SERVES:
 		lifecycle = Lifecycle::prepare implies
 			(provides->isEmpty() and probes = null and replicas = null and cutover = Cutover::absent)
+
+	-- A scheduled Process runs to completion on its schedule, so it serves
+	-- nothing either.
+	inv E_SCHEDULED_PROCESS_SERVES:
+		lifecycle = Lifecycle::scheduled implies
+			(provides->isEmpty() and probes = null and replicas = null and cutover = Cutover::absent)
+
+	-- A scheduled Process runs on the schedule it states, and only one does.
+	inv E_SCHEDULE_MISSING:
+		lifecycle = Lifecycle::scheduled implies schedule <> null
+
+	inv E_SCHEDULE_UNSCHEDULED:
+		schedule <> null implies lifecycle = Lifecycle::scheduled
+
+	-- Five cron fields (spec/v1/10-project-intent.md#scheduled-processes).
+	inv schema:
+		schedule = null or schedule.matches('[0-9A-Za-z*/,?-]+( [0-9A-Za-z*/,?-]+){4}')
+
+	-- A Process that runs to completion cuts over nothing.
+	def: runsToCompletion : Boolean =
+		lifecycle = Lifecycle::prepare or lifecycle = Lifecycle::scheduled
 
 -- Migration (spec/v1/10-project-intent.md#migration). A project's database has
 -- one owner role, which only its migration holds, and one Application of the
@@ -579,7 +611,7 @@ context Process
 	def: reachesDatabase : Boolean =
 		heldEdges->exists(e | Application.allInstances()->exists(a | a.id = e.application
 			and a.processes->exists(q | q.engine = Engine::postgres
-				and q.provides->exists(s | s.key = e.surface))))
+				and q.provides->keys()->includes(e.surface))))
 
 	-- A placeholder reads one key of a path an env grant of the Process lists.
 	inv E_UNAUTHORISED_SECRET_REFERENCE:
@@ -693,13 +725,23 @@ context Exposure
 	inv E_DUPLICATE_EXPOSURE_NAME:
 		oclContainer().oclAsType(Application).exposure->select(x | x.name = self.name)->size() = 1
 
+	-- A host is unique on a tier: inside one proxy two rules for one host have no
+	-- defined winner, while two tiers are two proxies, the split-horizon shape a
+	-- host served both on the LAN and in public takes. An audience no tier
+	-- carries claims its host on none.
+	def: tierName : String =
+		let tiers : Sequence(Tier) =
+			Tier.allInstances()->select(t | t.audiences->includes(audience))->asSequence() in
+		if tiers->isEmpty() then null else tiers->first().name endif
+
 	inv E_DUPLICATE_HOST:
-		Exposure.allInstances()->select(x | x.host = self.host)->size() = 1
+		tierName = null
+			or Exposure.allInstances()->select(x | x.host = host and x.tierName = tierName)->size() = 1
 
 context DependencyEdge
 	-- Every Process below the level the edge is written at holds it.
 	def: holders : Set(Process) =
-		let owner : OclElement = oclContainer() in
+		let owner : OclAny = oclContainer() in
 		if owner.oclIsKindOf(Process) then Set{owner.oclAsType(Process)}
 		else
 			if owner.oclIsKindOf(Application) then owner.oclAsType(Application).processes->asSet()
