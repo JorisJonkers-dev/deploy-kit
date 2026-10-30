@@ -85,7 +85,7 @@ query proxiesAfter(app : EffectiveApplication, prj : String) : Sequence(String) 
 -- resolution plans it.
 query ownedOnEstatePath(c : ResolvedCatalogJob) : Boolean =
 	projects->exists(prj | not legacy(prj.project) and prj.applications->exists(app |
-		app.processes->exists(p | ownsDatabases(p) and c.identity = p.name + '-catalog'
+		app.processes->exists(p | (ownsDatabases(p) or ownsBuckets(p)) and c.identity = p.name + '-catalog'
 			and c.namespace = homeNamespace(prj.project, app.id))));
 
 -- Where a Project's own Vault policy job lands, and the documents it writes beside it.
@@ -149,7 +149,7 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 		-- stay the policy job's, planned with it.
 		if (not legacy(self.project)) {
 			self.applications->forEach(app) {
-				app.processes->select(p | ownsDatabases(p))->forEach(p) {
+				app.processes->select(p | ownsDatabases(p) or ownsBuckets(p))->forEach(p) {
 					var root : String := 'apps/' + self.project + '/' + app.id + '/';
 					result.catalogJobs->select(c | c.identity = p.name + '-catalog'
 							and c.namespace = homeNamespace(self.project, app.id))->forEach(c) {
@@ -188,7 +188,8 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 		-- model (spec/v1/16-dependencies.md#applying-the-catalog). Every Project that reads it
 		-- plans the same files, so a render of several writes each once.
 		var legacyCatalogs : Sequence(ResolvedCatalogJob) := result.catalogJobs->select(c |
-			not ownedOnEstatePath(c) and c.catalog.databases->exists(db | db.name = self.project + '_db'))->asSequence();
+			not ownedOnEstatePath(c) and (c.catalog.databases->exists(db | db.name = self.project + '_db')
+				or c.catalog.keys->exists(k | k.name = self.project)))->asSequence();
 		if (legacyCatalogs->notEmpty()) {
 			-- One estate-scoped job writes one namespace's names: its writer is confined to them.
 			assert fatal (legacyCatalogs.namespace->asSet()->size() = 1)
@@ -444,6 +445,15 @@ query datastoreSurfacesOf(app : EffectiveApplication) : Sequence(String) =
 query ownsDatabases(p : PI::Process) : Boolean =
 	p.oclAsType(ECORE::EObject).states('engine') and p.engine = Engine::postgres;
 
+-- Whether a Process's inbound edges name buckets in it: an object store.
+query ownsBuckets(p : PI::Process) : Boolean =
+	p.oclAsType(ECORE::EObject).states('engine') and p.engine = Engine::s3;
+
+-- The surface a datastore's catalog is applied over: its own, or the one its engine serves.
+query catalogSurfaceOf(p : PI::Process) : String =
+	let policy : EnginePolicy = enginePolicyOf(p) in
+	if policy.catalogSurface <> null then policy.catalogSurface else policy.surface endif;
+
 -- Whether an Application runs a datastore whose engine applies a catalog, where the platform
 -- names the Vault policy job: the method's role is written first
 -- (spec/v1/16-dependencies.md#applying-the-catalog).
@@ -504,12 +514,73 @@ query estateJobNodes() : Sequence(String) =
 -- platform names the Vault policy job, which writes each method's own role. Every project's
 -- document carries the same ones, as it carries the policy job.
 query catalogJobsOf() : Sequence(ResolvedCatalogJob) =
-	if policyJobOf() = null or estate.engines.postgres = null
-		or estate.engines.postgres.catalog = null or estate.engines.postgres.surface = null
-	then Sequence{}
+	if policyJobOf() = null then Sequence{}
 	else projects->collect(prj | prj.applications->collect(app | app.processes
-		->select(p | ownsDatabases(p))->collect(p | catalogJobOf(prj.project, app.id, p))))
+		->select(p | (ownsDatabases(p) or ownsBuckets(p)) and enginePolicyOf(p) <> null
+			and enginePolicyOf(p).catalog <> null and catalogSurfaceOf(p) <> null)
+		->collect(p | if ownsBuckets(p) then bucketCatalogJobOf(prj.project, app.id, p)
+			else catalogJobOf(prj.project, app.id, p) endif)))
 		->flatten()->select(j | j <> null)->asSequence() endif;
+
+-- The projects on the estate path whose Processes name buckets in one object store, each with
+-- the buckets it names, as the store holds them (spec/v1/16-dependencies.md#the-bucket-catalog).
+query bucketReadersOf(application : String) : Sequence(Tuple(name : String, buckets : Sequence(String))) =
+	projects->select(r | not legacy(r.project))->sortedBy(r | r.project)->collect(r |
+		Tuple{name = r.project, buckets = r.applications.processes.dependsOn
+			->select(e | e.application = application)->collect(e | e.buckets)->flatten()
+			->collect(b | r.project + '-' + b)->asSet()->sortedBy(b | b)->asSequence()})
+		->select(k | k.buckets->notEmpty())->asSequence();
+
+-- An object store's method: its catalog is the key each reading project is given, written by
+-- an admin token, the derived one on the estate path or the ledger's while its project is legacy.
+query bucketCatalogJobOf(prj : String, application : String, p : PI::Process) : ResolvedCatalogJob =
+	let ns : String = homeNamespace(prj, application) in
+	let proc : String = homeProcess(application, p.name) in
+	let readers : Sequence(Tuple(name : String, buckets : Sequence(String))) = bucketReadersOf(application) in
+	let tokens : Sequence(AdminToken) = stated(application)
+		->select(l | l.admin <> null and l.admin.oclIsKindOf(AdminToken))
+		->collect(l | l.admin.oclAsType(AdminToken))->asSequence() in
+	if readers->isEmpty() or (legacy(prj) and tokens->isEmpty()) then null else
+	let own : LockedImage = locked(enginePolicyOf(p).catalog) in
+	let surface : String = catalogSurfaceOf(p) in
+	let surfacePort : Integer = p.provides->select(s | s.key = surface)->any(true).value in
+	let named : String = p.name + '-catalog' in
+	object ResolvedCatalogJob {
+		identity := named;
+		namespace := ns;
+		image := own.repository + '@' + own.digest;
+		imageVersion := own.version;
+		uid := own.uid;
+		gid := own.gid;
+		role := ns + '-' + named;
+		address := storeEndpoint();
+		memory := estate.policyJob.memory;
+		cpu := estate.policyJob.cpu;
+		deadline := inSeconds(seconds(estate.policyJob.deadline).floor());
+		eligibleNodes := estateJobNodes();
+		catalog := object ResolvedCatalog {
+			host := proc + '.' + ns + '.svc.cluster.local';
+			port := surfacePort;
+			admin := if legacy(prj) then object CatalogAdmin {
+					path := tokens->first().path;
+					token := tokens->first().token;
+				} else object CatalogAdmin {
+					path := 'secret/data/' + prj + '/' + p.name + '/catalog';
+					token := 'token';
+				} endif;
+			keys := readers->collect(k | object CatalogKey {
+				name := k.name;
+				path := 'secret/data/' + k.name + '/' + p.name + '/s3';
+				buckets := k.buckets;
+			});
+		};
+		consumes := Sequence{application + '.' + surface};
+		policy := catalog.policy();
+		egress := Sequence{object PolicyPeer {
+				rule := 'datastore'; namespace := ns; process := proc; port := surfacePort; }}
+			->union(storePeers())->append(object PolicyPeer {
+				rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; });
+	} endif;
 
 -- Whether a project's database is still the old path's.
 query legacy(prj : String) : Boolean =
@@ -717,7 +788,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
 	if self.vpn <> null then vpn := vpnOf(self) endif;
 	hardening := estate.hardening.spelling();
-	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self))->union(obsReceiverGrants(self, app))->union(self.clientGrants(app));
+	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self))->union(obsReceiverGrants(self, app))->union(self.clientGrants(app))->union(bucketKeysOf(self, prj));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
 	priorityClass := priorityOf(self, app, prj);
@@ -795,14 +866,16 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		cpu := c.cpu;
 		-- An init step runs to completion before the Process starts.
 		_init := c._init = true;
-		-- A file beside the project, mounted read-only from the Process's Asset ConfigMap.
-		mounts := c.assets->collect(a | let read : String = fileOf(prj.project, a._from) in object ContainerMount {
+		-- A volume of the Process, where the sidecar says; then a file beside the project,
+		-- mounted read-only from the Process's Asset ConfigMap.
+		mounts := c.volumes->collect(v | object ContainerMount { name := v.claim; mountAt := v.mountAt; })
+			->union(c.assets->collect(a | let read : String = fileOf(prj.project, a._from) in object ContainerMount {
 			name := self.name + '-' + spelled(a._from) + '-'
 				+ read.textDigestOf().substring(8, 7 + CONTENT_DIGITS);
 			mountAt := a.mountAt;
 			subPath := a._from.substring(a._from.lastIndexOf('/') + 1, a._from.size());
 			readOnly := true;
-		});
+		}));
 		if mountsTmp(self) and not namesHome(self, prj) then home := HOME_DIR endif;
 	});
 	dependencies := self.dependsOn->collect(e | edgeOf(e, owner(self)));
@@ -892,6 +965,22 @@ query boundOf(p : PI::Process) : Binding =
 -- ==================================================================== grants
 
 -- The Secret a grant's value is synced to: the Process, then the path below the mount.
+-- One grant per object store whose buckets the Process's edges name
+-- (spec/v1/16-dependencies.md#the-bucket-catalog): `read` on its project's key,
+-- synced to the environment its key coordinates read.
+query bucketKeysOf(p : PI::Process, prj : EffectiveProject) : Sequence(ResolvedGrant) =
+	p.dependsOn->select(e | e.buckets->notEmpty())
+		->collect(e | projects.applications->select(a | a.id = e.application).processes
+			->select(q | q.provides->exists(s | s.key = e.surface))->collect(q | q.name))->flatten()
+		->asOrderedSet()->collect(store | let keyPath : String = 'secret/data/' + prj.project + '/' + store + '/s3' in
+			object ResolvedGrant {
+				path := keyPath;
+				keys := Sequence{'access-key-id', 'secret-access-key'};
+				_access := 'read';
+				delivery := 'env';
+				destination := destinationOf(p.name, keyPath);
+			})->asSequence();
+
 query destinationOf(holder : String, path : String) : String =
 	holder + '-' + (if path.startsWith('secret/data/') and path.size() > 12 then path.substring(13, path.size()) else path endif)
 		.replaceAll('/', '-');
@@ -1303,7 +1392,7 @@ query EffectiveProject::stableAddressFiles() : Sequence(Deliverable) =
 	let root : String = 'estate/stable-addresses/' in
 	let aliased : Sequence(DependencyEdge) =
 		self.applications.processes.dependsOn->asSequence()
-			->select(e | homeHostOf(e) <> null and aliasTarget(e, homeHostOf(e), self.project) <> null) in
+			->select(e | homeHostOf(e) <> null and not isLiteral(homeHostOf(e))) in
 	let named : Sequence(DependencyEdge) =
 		aliased->select(e | aliased->select(o | o.application = e.application and o.surface = e.surface)
 			->first() = e)->sortedBy(e | e.application + '-' + e.surface) in
@@ -2801,7 +2890,8 @@ query ResolvedCatalog::policy() : Sequence(PolicyPath) =
 		allowing('secret/metadata/' + self.admin.path.substring(KV_DATA.size() + 1, self.admin.path.size()),
 			Sequence{'read'})}
 	->union(self.databases->collect(d | Sequence{d.owner, d.data})->flatten()
-		->collect(r | allowing('database/roles/' + r, Sequence{'create', 'read', 'update'}))->asSequence());
+		->collect(r | allowing('database/roles/' + r, Sequence{'create', 'read', 'update'}))->asSequence())
+	->union(self.keys->collect(k | allowing(k.path, Sequence{'create', 'read', 'update'}))->asSequence());
 
 -- What each grant may do: the paths a transit or database grant's engine derives, or `read` on
 -- a kv grant's path and on the same document's metadata.
@@ -2886,7 +2976,17 @@ query ResolvedCatalogJob::catalogFilesUnder(root : String) : Sequence(Deliverabl
 
 -- A catalog as its method is handed it.
 query ResolvedCatalog::catalogJson() : String =
-	obj(Sequence{
+	if self.keys->notEmpty() then obj(Sequence{
+		Tuple{k = 'admin', v = obj(Sequence{
+			Tuple{k = 'path', v = str(self.admin.path)},
+			Tuple{k = 'token', v = str(self.admin.token)}})},
+		Tuple{k = 'host', v = str(self.host)},
+		Tuple{k = 'keys', v = arr(self.keys->collect(x | obj(Sequence{
+			Tuple{k = 'buckets', v = arr(x.buckets->collect(b | str(b))->asSequence())},
+			Tuple{k = 'name', v = str(x.name)},
+			Tuple{k = 'path', v = str(x.path)}}))->asSequence())},
+		Tuple{k = 'port', v = self.port.toString()}})
+	else obj(Sequence{
 		Tuple{k = 'admin', v = obj(Sequence{
 			Tuple{k = 'path', v = str(self.admin.path)},
 			Tuple{k = 'user', v = str(self.admin.user)},
@@ -2897,7 +2997,7 @@ query ResolvedCatalog::catalogJson() : String =
 			Tuple{k = 'owner', v = str(d.owner)},
 			Tuple{k = 'data', v = str(d.data)}}))->asSequence())},
 		Tuple{k = 'host', v = str(self.host)},
-		Tuple{k = 'port', v = self.port.toString()}});
+		Tuple{k = 'port', v = self.port.toString()}}) endif;
 
 -- ===================================================== canonical JSON text
 

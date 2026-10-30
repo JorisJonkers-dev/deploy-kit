@@ -92,17 +92,29 @@
          and update each database role the catalog names, in the catalog's order. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="policy" lowerBound="1" upperBound="-1" eType="#//PolicyPath" containment="true"/>
   </eClassifiers>
+  <!-- A database catalog names its connection and its databases; an object store's bucket
+       catalog names neither, but the key each reading project is given and its buckets
+       (spec/v1/16-dependencies.md#the-bucket-catalog). -->
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedCatalog">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="host" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="connection" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="connection" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="admin" lowerBound="1" eType="#//CatalogAdmin" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="databases" lowerBound="1" upperBound="-1" eType="#//CatalogDatabase" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="databases" upperBound="-1" eType="#//CatalogDatabase" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="keys" upperBound="-1" eType="#//CatalogKey" containment="true"/>
   </eClassifiers>
+  <!-- A login to a database's admin, or a token to an object store's admin API. -->
   <eClassifiers xsi:type="ecore:EClass" name="CatalogAdmin">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="user" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="password" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="user" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="password" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="token" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- One reading project's key to an object store: where it is written, and its buckets. -->
+  <eClassifiers xsi:type="ecore:EClass" name="CatalogKey">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="buckets" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="CatalogDatabase">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

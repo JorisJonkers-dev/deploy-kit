@@ -102,6 +102,33 @@
       <allows>update</allows>
     </policy>
   </catalogJobs>
+  <catalogJobs identity="garage-catalog" namespace="data-system" image="ghcr.io/jorisjonkers-dev/delivery/garage-catalog@sha256:3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e" imageVersion="1.0.0" uid="65532" gid="65532" role="data-system-garage-catalog" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <catalog host="garage.data-system.svc.cluster.local" port="3903">
+      <admin path="secret/data/platform/garage" token="admin-token"/>
+      <keys name="knowledge-platform" path="secret/data/knowledge-platform/garage/s3">
+        <buckets>knowledge-platform-assets</buckets>
+      </keys>
+    </catalog>
+    <consumes>platform-garage.admin</consumes>
+    <egress rule="datastore" namespace="data-system" process="garage" port="3903"/>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    <policy path="secret/data/platform/garage">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/metadata/platform/garage">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/data/knowledge-platform/garage/s3">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+  </catalogJobs>
   <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
   <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/notes/namespace.yaml" namespace="notes-system"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/notes/kustomization.yaml">
