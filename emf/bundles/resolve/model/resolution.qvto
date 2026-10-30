@@ -1897,8 +1897,20 @@ query consumersOf(p : PI::Process, app : EffectiveApplication) : Sequence(Policy
 -- What a Process may reach beyond its edges: the cluster's DNS, and the Secret
 -- Store where it holds a grant.
 query egressOf(p : PI::Process) : Sequence(PolicyPeer) =
-	Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }}
-	->union(if p.secrets->isEmpty() then Sequence{} else storePeers() endif);
+	let app : EffectiveApplication = p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication) in
+	-- A Process that serves DNS resolves through the upstream nameservers, never the cluster's DNS.
+	(if servesDns(p) then Sequence{} else
+		Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }} endif)
+	->union(if p.secrets->isEmpty() then Sequence{} else storePeers() endif)
+	-- The Release Gate reaches every gate member's pods (spec/v1/16-dependencies.md#the-member-label).
+	->union(if estate.delivery <> null and estate.delivery.gate.id = app.id
+		then Sequence{object PolicyPeer { rule := 'gate-members'; port := 0; }} else Sequence{} endif);
+
+-- Whether a Process serves DNS on an L4 port and resolves through the platform's upstream nameservers.
+query servesDns(p : PI::Process) : Boolean =
+	estate.substrate.upstreamNameservers->notEmpty()
+		and p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication).l4Exposure
+			->exists(e | e.process = p and e.port = DNS_PORT);
 
 -- The one Process of the Secret Store that answers on `http`, at its own port.
 query storePeers() : Sequence(PolicyPeer) =
