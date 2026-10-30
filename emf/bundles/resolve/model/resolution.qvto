@@ -127,7 +127,8 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	deliverables := self.projectFiles()
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
 		->union(self.vaultFiles())
-		->union(self.generatedKeysFiles());
+		->union(self.generatedKeysFiles())
+		->union(self.stableAddressFiles());
 	end {
 		-- Only a complete element has a revision: it is the digest of all of it.
 		result.reconcileUnits->first().after := result.reconcileUnits->excluding(result.reconcileUnits->first());
@@ -1119,6 +1120,52 @@ query edgeOf(e : DependencyEdge, consumer : String) : ResolvedEdge =
 			target := aliasTarget(e, host, consumer);
 		} endif
 	endif;
+
+-- Where a provider's surface is served, before any alias: its Process's Service in
+-- its home namespace, or the address the platform registers for it.
+query homeHostOf(e : DependencyEdge) : String =
+	let providers : Sequence(Tuple(project : String, process : PI::Process)) =
+		projects->collect(prj | prj.applications->select(a | a.id = e.application).processes
+			->select(p | p.provides->exists(s | s.key = e.surface))
+			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
+	if providers->notEmpty() then
+		homeProcess(e.application, providers->first().process.name) + '.'
+			+ homeNamespace(providers->first().project, e.application) + '.svc.cluster.local'
+	else
+		let registered : Sequence(Provider) = estate.providers
+			->select(r | r.name = e.application and r.surfaces->exists(s | s.key = e.surface))->asSequence() in
+		if registered->isEmpty() then null else registered->first().address endif
+	endif;
+
+-- The Stable Addresses the project's aliases point at
+-- (spec/v1/16-dependencies.md#the-stable-address): one ExternalName Service per
+-- surface, in the estate's own namespace, naming where the surface is served.
+query EffectiveProject::stableAddressFiles() : Sequence(Deliverable) =
+	let root : String = 'estate/stable-addresses/' in
+	let aliased : Sequence(DependencyEdge) =
+		self.applications.processes.dependsOn->asSequence()
+			->select(e | homeHostOf(e) <> null and aliasTarget(e, homeHostOf(e), self.project) <> null) in
+	let named : Sequence(DependencyEdge) =
+		aliased->select(e | aliased->select(o | o.application = e.application and o.surface = e.surface)
+			->first() = e)->sortedBy(e | e.application + '-' + e.surface) in
+	if named->isEmpty() then Sequence{} else
+	Sequence{
+		object StableAddressFile {
+			path := root + 'services.yaml';
+			adapter := AdapterName::kubernetes;
+			namespace := STABLE_NAMESPACE;
+			addresses := named->collect(e | object Alias { name := e.application + '-' + e.surface; target := homeHostOf(e); });
+		}.oclAsType(Deliverable),
+		object NamespaceFile {
+			path := root + 'namespace.yaml';
+			adapter := AdapterName::kubernetes;
+			namespace := STABLE_NAMESPACE;
+		}.oclAsType(Deliverable),
+		object IndexFile {
+			path := root + 'kustomization.yaml';
+			adapter := AdapterName::kubernetes;
+			resources := Sequence{'namespace.yaml', 'services.yaml'};
+		}.oclAsType(Deliverable)} endif;
 
 -- The name an edge's alias holds: what its consumer dials, up to the port.
 query aliasName(e : ResolvedEdge) : String = e.address.substring(1, e.address.lastIndexOf(':') - 1);
