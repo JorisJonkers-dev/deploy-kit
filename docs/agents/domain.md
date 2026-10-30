@@ -30,7 +30,8 @@ documentation when exploring it. Single context, one layout, no
 ├── spec/v1/                  ← normative for the model
 ├── docs/
 │   ├── architecture.md       ← normative for code
-│   ├── architecture-rules.md ← the rule ledger
+│   ├── architecture-rules.md ← the rule ledger's front page
+│   ├── architecture-rules/   ← its rows, one file per family
 │   ├── requirements.md       ← the behaviour ledger's front page
 │   ├── requirements/         ← its rows, one file per area
 │   └── adr/

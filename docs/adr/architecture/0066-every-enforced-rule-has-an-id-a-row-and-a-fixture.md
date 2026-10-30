@@ -61,6 +61,18 @@ a separate namespace on purpose: that ledger answers what a person can rely on,
 this one answers what a tool enforces, and one rule can serve several
 behaviours.
 
+The rows live in one file per family under `docs/architecture-rules/`, and
+`docs/architecture-rules.md` is the front page: the id scheme, the Families
+table, the shape of a row, and the one address every citation names. Several
+pull requests add rules at once; one table they all append to, under totals
+they all change, made every one of them conflict with every other. A family
+is already the reading unit, so it is also the file: two pull requests adding
+rules to two families touch two files, and the ids stay one sequence the gate
+holds unique across all of them. The gate refuses a row on the front page, a
+family file with no row, a file no family declares and a row filed under
+another family's file, so the shape cannot drift back. A pending row still
+sits in its family's table beside the enforced ones.
+
 ## Alternatives
 
 | option | cost if taken | why rejected |
@@ -68,12 +80,14 @@ behaviours.
 | No ledger; trust each rule's own negative fixture | Nothing to write or maintain | A fixture proves a rule fires while the fixture exists. Nothing notices the rule and its fixture leaving together, which is exactly how a ruleset decays |
 | Fold the rules into `docs/requirements.md` | One document instead of two | A rule and a behaviour answer different questions, and one row cannot carry both an enforcer and a proof of a guarantee without one of them becoming decoration |
 | A family-prefixed id, such as `LAY-004` | The family is readable in the id | Every reclassification breaks a citation, and the pressure is then to leave a rule in the wrong family rather than renumber. The family is a column, which can be revised for free |
-| Pending rows in a separate file, out of the table | The enforced table stays short and clean | The point of a pending row is to be read beside the enforced ones. A second file is a list nobody opens |
+| One table in `docs/architecture-rules.md`, under stated totals of rules and pending rules the gate checks | One file to read, and totals that say how big the ledger is | Every pull request that adds a rule changes the same totals line and appends to the same last line, so pull requests in parallel always conflict; the totals catch nothing the per-row checks miss |
+| Pending rows in a separate file, out of the table | The enforced table stays short and clean | The point of a pending row is to be read beside the enforced ones of its family. A second file is a list nobody opens |
 | A severity column, so a rule can land as a warning first | A gentler path for a new rule | A warning in CI is a rule nobody enforces. A rule not worth failing a build for is a pending row with a reason, which is the same information without the false green |
 
 ## Reversibility
 
-Undo cost today: deleting one document, one gate script and two test files.
+Undo cost today: deleting the front page, its family files, one gate script
+and two test files.
 Becomes irreversible once: never; the ledger describes this repository's own
 tree, and nothing outside it reads either.
 
@@ -85,6 +99,11 @@ tree, and nothing outside it reads either.
 - An enforced row must name a fixture that asserts on a literal, so a rule
   whose failure output nobody has ever looked at cannot be written down as
   enforced. Paid once per rule.
+- A new rule goes in its family's file and takes the next free id across
+  every family file, so two pull requests adding rules at once conflict only
+  when they take the same id, and then the gate names both files. The ledger
+  no longer states its totals; `npm run lint:rules` reports them. Paid once
+  per rule.
 - The ledger knows only about rules this repository names. The two presets
   (`recommended` and `strictTypeChecked`) carry far more rules than any row
   here, and they are one row between them; a preset silently narrowing in a

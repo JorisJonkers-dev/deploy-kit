@@ -1,15 +1,22 @@
-// The rule ledger, docs/architecture-rules.md: what keeps it honest.
+// The rule ledger, docs/architecture-rules/*.md: what keeps it honest.
 //
-// docs/architecture-rules.md holds one row per rule the compiler and this
-// repository are held to: a greppable id, its family, the sentence, the
-// enforcer that runs it, and the fixture that proves it fires. This is what
-// notices when a row and the tree stop agreeing.
+// The ledger holds one row per rule the compiler and this repository are held
+// to: a greppable id, its family, the sentence, the enforcer that runs it, and
+// the fixture that proves it fires. The rows live in one file per family
+// under docs/architecture-rules/, so pull requests adding rules to different
+// families touch different files; docs/architecture-rules.md is the front
+// page, with the Families table, and holds no row. This is what notices when
+// a row and the tree stop agreeing.
 //
 // The checks, in the order a reader meets them:
 //
-//   - every row parses, its id is unique and shaped RULE-NNN, and its family
-//     is one the document's own Families table declares (and every declared
-//     family is used, so the taxonomy cannot grow dead entries);
+//   - every row parses, its id is unique across every family file and shaped
+//     RULE-NNN, and its family is one the front page's Families table
+//     declares (and every declared family is used, so the taxonomy cannot
+//     grow dead entries);
+//   - the shape: the front page holds no row, every family file is named for
+//     a declared family, holds at least one row, and only rows of its own
+//     family;
 //   - an enforced row's enforcer resolves: a dependency-cruiser rule name
 //     that .dependency-cruiser.cjs configures, an ESLint rule id that
 //     eslint.config.js configures, an npm script package.json defines, or a
@@ -24,10 +31,9 @@
 //     A rule enforced with no row fails, and so does a rule quietly moved to
 //     pending while its configuration still runs. That is what stops pending
 //     becoming where rules go to be forgotten;
-//   - the stated totals (rows, and how many are pending) match what the
-//     document holds, and every RULE-NNN cited in the tracked tree resolves.
+//   - every RULE-NNN cited in the tracked tree resolves.
 //
-// This is not docs/requirements.md. That ledger lists the behaviours a person
+// This is not the behaviour ledger, docs/requirements.md. That ledger lists the behaviours a person
 // depends on, keyed to the test that fails when one stops being true; this
 // one lists the rules a tool enforces, keyed to the enforcer that runs them.
 // A behaviour can rest on several rules and a rule can serve several
@@ -36,7 +42,7 @@
 //
 // A library first, like the other gates: tests call lintRules() in-process,
 // and `node scripts/lint-rules.ts [root]` is the command.
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isEntrypoint } from "./lib/entrypoint.ts";
 import { processOutput, type GateOutput } from "./lib/output.ts";
@@ -62,11 +68,14 @@ export interface RulesLintResult {
 }
 
 const REPOSITORY = join(import.meta.dirname, "..");
-const LEDGER = join("docs", "architecture-rules.md");
+const LEDGER = "docs/architecture-rules.md";
+const FAMILY_FILES = "docs/architecture-rules";
 
 const CITATION = /\bRULE-\d{3}\b/g;
-const STATED_ROWS = /this ledger holds \*\*(\d+)\*\* rules?\b/i;
-const STATED_PENDING = /\*\*(\d+)\*\* of them pending\b/i;
+
+// A fixture link's text is the test path from the repository root; its target
+// is that path from the family file holding the row.
+const FAMILY_FILE_PREFIX = "../../";
 
 /** The enforcer kinds a row may name, each resolvable against the tree. */
 const KINDS = ["depcruise", "eslint", "npm", "file"] as const;
@@ -105,7 +114,7 @@ function candidateLines(text: string): string[] {
   return text.split("\n").filter((line) => /^\|\s*RULE-\d{3}\s*\|/.test(line));
 }
 
-/** The families the document's own Families table declares, in order. */
+/** The families the front page's Families table declares, in order. */
 export function parseFamilies(text: string): string[] {
   const section = text.split("\n## Families\n")[1]?.split("\n## ")[0] ?? "";
   const families: string[] = [];
@@ -132,7 +141,7 @@ function parseEnforcement(cell: string): Enforcement | null {
 }
 
 /**
- * Parse the ledger body into rows. Pure and synchronous, so a malformed row
+ * Parse one family file's body into rows. Pure and synchronous, so a malformed row
  * is testable against a string with no filesystem involved. A line that opens
  * like a row but does not match it is reported and dropped, not guessed at.
  */
@@ -195,7 +204,7 @@ export function parseRules(text: string): {
       );
       continue;
     }
-    if (linkText !== href.replace(/^\.\.\//, ""))
+    if (href !== `${FAMILY_FILE_PREFIX}${linkText}`)
       errors.push(
         `${id}: link text '${linkText}' does not match its target '${href}'`,
       );
@@ -353,27 +362,74 @@ function converseErrors(
   return errors;
 }
 
+/** A row, and the family file it was read from. */
+interface PlacedRule extends RuleRow {
+  readonly file: string;
+}
+
+/** Every family file under `root`, as a path relative to it, sorted. */
+function familyFiles(root: string): string[] {
+  try {
+    return readdirSync(join(root, FAMILY_FILES))
+      .filter((name) => name.endsWith(".md"))
+      .sort()
+      .map((name) => `${FAMILY_FILES}/${name}`);
+  } catch {
+    return [];
+  }
+}
+
 /** Lint the rule ledger under `root`. */
 export function lintRules(root: string): RulesLintResult {
   const text = read(root, LEDGER);
   if (text === null)
-    return { rows: 0, pending: 0, errors: [`${LEDGER}: ledger missing`] };
+    return { rows: 0, pending: 0, errors: [`${LEDGER}: front page missing`] };
 
-  const { rows, errors: parseErrors } = parseRules(text);
-  const errors = [...parseErrors];
+  const errors: string[] = [];
+  for (const line of candidateLines(text))
+    errors.push(
+      `${LEDGER}: holds a row, which belongs in its family's file under ${FAMILY_FILES}/: ${line}`,
+    );
+
+  const families = parseFamilies(text);
+  if (families.length === 0) errors.push(`${LEDGER}: no Families table`);
+  const declared = new Set(families);
+
+  // -- the family files: each named for a declared family, holding its rows
+  const rows: PlacedRule[] = [];
+  const at = (row: PlacedRule, error: string): string =>
+    `${row.file}: ${error}`;
+  for (const file of familyFiles(root)) {
+    const family = file.slice(FAMILY_FILES.length + 1, -".md".length);
+    if (!declared.has(family))
+      errors.push(
+        `${file}: is named for no family the Families table declares`,
+      );
+    const parsed = parseRules(readFileSync(join(root, file), "utf8"));
+    errors.push(...parsed.errors.map((error) => `${file}: ${error}`));
+    if (parsed.rows.length === 0 && parsed.errors.length === 0)
+      errors.push(`${file}: holds no row`);
+    for (const row of parsed.rows) {
+      if (row.family !== family)
+        errors.push(
+          `${file}: ${row.id}: sits in the '${family}' file, and its family is '${row.family}'`,
+        );
+      rows.push({ ...row, file });
+    }
+  }
   const pending = rows.filter(
     (row) => row.enforcement.kind === "pending",
   ).length;
 
   // -- families: a row names a declared one, and every declared one is used
-  const families = parseFamilies(text);
-  if (families.length === 0) errors.push(`${LEDGER}: no Families table`);
-  const declared = new Set(families);
   const used = new Set(rows.map((row) => row.family));
   for (const row of rows)
     if (!declared.has(row.family))
       errors.push(
-        `${row.id}: family '${row.family}' is not declared in the Families table`,
+        at(
+          row,
+          `${row.id}: family '${row.family}' is not declared in the Families table`,
+        ),
       );
   for (const family of families)
     if (!used.has(family))
@@ -382,11 +438,16 @@ export function lintRules(root: string): RulesLintResult {
       );
 
   // -- ids are unique
-  const byId = new Map<string, RuleRow>();
+  const byId = new Map<string, PlacedRule>();
   for (const row of rows) {
     const seen = byId.get(row.id);
     if (seen)
-      errors.push(`${row.id}: id used twice, also for '${seen.sentence}'`);
+      errors.push(
+        at(
+          row,
+          `${row.id}: id used twice, also in ${seen.file} for '${seen.sentence}'`,
+        ),
+      );
     else byId.set(row.id, row);
   }
 
@@ -405,13 +466,19 @@ export function lintRules(root: string): RulesLintResult {
   };
 
   for (const row of rows) {
-    errors.push(...enforcerErrors(row, configured, root));
-    errors.push(...fixtureErrors(row, root));
+    for (const error of [
+      ...enforcerErrors(row, configured, root),
+      ...fixtureErrors(row, root),
+    ])
+      errors.push(at(row, error));
     if (row.enforcement.kind === "pending") {
       if (row.enforcement.reason.length < MIN_REASON)
         errors.push(
-          `${row.id}: is pending with no reason; a pending row says why it is ` +
-            `not enforced yet`,
+          at(
+            row,
+            `${row.id}: is pending with no reason; a pending row says why it is ` +
+              `not enforced yet`,
+          ),
         );
     }
   }
@@ -420,23 +487,6 @@ export function lintRules(root: string): RulesLintResult {
     ...converseErrors(depcruise, rows, "depcruise", ".dependency-cruiser.cjs"),
   );
   errors.push(...converseErrors(eslint, rows, "eslint", "eslint.config.js"));
-
-  // -- the stated totals match what the document holds
-  const statedRows = STATED_ROWS.exec(text)?.[1];
-  if (statedRows === undefined)
-    errors.push(`${LEDGER}: does not state how many rules it holds`);
-  else if (Number(statedRows) !== rows.length)
-    errors.push(
-      `${LEDGER}: states ${statedRows} rules, holds ${String(rows.length)}`,
-    );
-
-  const statedPending = STATED_PENDING.exec(text)?.[1];
-  if (statedPending === undefined)
-    errors.push(`${LEDGER}: does not state how many rules are pending`);
-  else if (Number(statedPending) !== pending)
-    errors.push(
-      `${LEDGER}: states ${statedPending} pending, holds ${String(pending)}`,
-    );
 
   errors.push(
     ...danglingCitations(trackedText(root), new Set(byId.keys()), CITATION),
