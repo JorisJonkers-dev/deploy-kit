@@ -38,6 +38,7 @@ const WORKED = [
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
+  "secrets/config/vault.hcl",
   // The Asset data's Process mounts, read beside its project file.
   "data/config/postgresql.conf",
   "data/config/garage.toml",

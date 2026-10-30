@@ -40,6 +40,7 @@ function minimal(): ResolvedProject {
       "observability/observability.project.yml",
       "observability/rules/platform.yaml",
       "secrets/secrets.project.yml",
+      "secrets/config/vault.hcl",
       "identity/identity.project.yml",
       "observability/env/grafana/base.env",
     ].map((name) => ({

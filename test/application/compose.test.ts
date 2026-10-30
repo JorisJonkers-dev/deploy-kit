@@ -63,7 +63,7 @@ const PROJECTS: Readonly<Record<string, readonly [string, readonly string[]]>> =
       "observability",
       ["observability.project.yml", "rules/platform.yaml"],
     ],
-    secrets: ["secrets", ["secrets.project.yml"]],
+    secrets: ["secrets", ["secrets.project.yml", "config/vault.hcl"]],
   };
 
 /** The ledger these tests compose under: the Projects whose render the adapters spell, delivered. */
