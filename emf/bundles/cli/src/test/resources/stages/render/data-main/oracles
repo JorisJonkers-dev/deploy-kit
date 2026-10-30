@@ -1,3 +1,4 @@
 apps/data/asset-sync/workload.yaml data/rendered/apps/data/asset-sync/workload.yaml
+apps/data/platform-mongo/workload.yaml data/rendered/apps/data/platform-mongo/workload.yaml
 apps/data/platform-postgres/move.yaml data/moving/move.yaml
 apps/data/platform-rabbitmq/dashboards.yaml data/rendered/apps/data/platform-rabbitmq/dashboards.yaml

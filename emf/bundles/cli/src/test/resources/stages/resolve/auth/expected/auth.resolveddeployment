@@ -26,7 +26,7 @@
         <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
       </routes>
     </exposure>
-    <migration runner="ghcr.io/jorisjonkers-dev/auth/auth-migration@sha256:5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e" runnerVersion="2.3.0" nonTransactional="false" uid="1000" gid="1000" identity="auth-migration" deadline="600s" memory="256Mi" cpu="100m" scratch="64Mi">
+    <migration runner="ghcr.io/jorisjonkers-dev/auth/auth-migration@sha256:5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e" runnerVersion="2.3.0" home="/tmp" nonTransactional="false" uid="1000" gid="1000" identity="auth-migration" deadline="600s" memory="256Mi" cpu="100m" scratch="64Mi">
       <database host="postgres.data-system.svc.cluster.local" port="5432" name="auth_db"/>
       <consumes>platform-postgres.postgres</consumes>
       <credential engine="database" delivery="self">
@@ -38,7 +38,7 @@
       <egress rule="peer" namespace="secrets-system" process="vault" port="8200"/>
       <egress rule="cluster-dns" namespace="kube-system" port="53"/>
     </migration>
-    <processes name="auth-api" identity="auth-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/auth/auth-api@sha256:3e5a7c9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3c5b7d9f1e3a5c7b9d1f3e5a" imageVersion="2.3.0" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="1920s" replicas="2" serving="auth-api-primary" servingLabel="app.kubernetes.io/name" memory="768Mi" cpu="250m" hardening="restricted" identityToken="true" component="jvm" priorityClass="platform-critical-app">
+    <processes name="auth-api" identity="auth-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/auth/auth-api@sha256:3e5a7c9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3c5b7d9f1e3a5c7b9d1f3e5a" imageVersion="2.3.0" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="1920s" replicas="2" serving="auth-api-primary" servingLabel="app.kubernetes.io/name" memory="768Mi" cpu="250m" hardening="restricted" identityToken="true" component="jvm" priorityClass="platform-critical-app" home="/tmp">
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/readiness" port="8081"/>
       </readiness>
@@ -116,6 +116,7 @@
       </placement>
       <writablePaths path="/var/cache/nginx" size="64Mi"/>
       <writablePaths path="/var/run" size="64Mi"/>
+      <addedPrivileges>NET_BIND_SERVICE</addedPrivileges>
     </processes>
   </applications>
   <reconcileUnits name="apps-auth"/>

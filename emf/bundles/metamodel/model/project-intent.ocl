@@ -979,4 +979,40 @@ context DependencyEdge
 			Application.allInstances()->exists(a | a.id = application
 				and a.processes->exists(p | p.engine = Engine::s3 and p.provides->keys()->includes(surface)))
 
+context Process
+	-- `self` is for a Process that talks to Vault itself, which it shows by wiring
+	-- its own Vault client with the role the platform derived for it
+	-- (spec/v1/10-project-intent.md#which-tier-may-use-which-delivery).
+	inv E_SELF_WITHOUT_VAULT_CLIENT:
+		secrets->exists(g | g.delivery = Delivery::selfDelivery)
+			implies placeholdersOf(PlaceholderKind::identity)->exists(p | p.source = 'vaultRole')
+
+	-- Only a native Client declaring `credential: secret` holds a secret to read
+	-- (spec/v1/17-sign-in.md#what-is-checked).
+	inv E_CLIENT_PLACEHOLDER_WITHOUT_SECRET:
+		let client : Client = oclContainer().oclAsType(Application).client in
+		(client <> null and (client.signIn <> SignInMode::native or client.credential = ClientCredential::pkce))
+			implies placeholdersOf(PlaceholderKind::client)->forAll(p | p.source <> 'secret')
+
+context Client
+	-- The exposure the Client signs people in on: the one it names, or the
+	-- Application's only one.
+	def: signsInOn : Exposure =
+		let exposures : OrderedSet(Exposure) = oclContainer().oclAsType(Application).exposure in
+		if exposure <> null then exposures->select(x | x.name = exposure)->first()
+		else if exposures->size() = 1 then exposures->first() else null endif endif
+
+	-- A native Client's protected path reaches a gate member, which the Release
+	-- Gate asks for it: the Process the longest Route reaching it takes it to, the
+	-- first declared on a tie, publishing readiness (spec/v1/17-sign-in.md#what-is-checked).
+	inv E_CLIENT_PATH_UNROUTED__protectedPath:
+		(protectedPath <> null and signsInOn <> null) implies
+			let reaching : OrderedSet(Route) = signsInOn.routes->select(r | r.redirectTo = null
+				and (if r.match = Match::exact then protectedPath = r.path
+					else protectedPath.startsWith(r.path) endif)) in
+			reaching->notEmpty()
+			and reaching->select(r | reaching->forAll(o | o.path.size() <= r.path.size()))->first().process
+				->forAll(p | p.probes <> null and p.probes.oclIsKindOf(Probes)
+					and p.probes.oclAsType(Probes).readiness <> null)
+
 endpackage

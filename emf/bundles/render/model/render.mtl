@@ -671,6 +671,9 @@
                 value: [d.role/]
               - name: VAULT_CREDENTIALS_PATH
                 value: [d.application.migration.credential.paths->first().path/]
+  [if (d.application.migration.home <> null)]
+                [d.application.migration.home.homeEntry()/]
+  [/if]
             resources:
               requests:
                 memory: [d.application.migration.memory/]
@@ -1109,9 +1112,14 @@
 [template private sidecar(c : resolveddeployment::ResolvedSidecar, p : resolveddeployment::ResolvedProcess)]
   - name: [c.name/]
     image: [c.image/]
-  [if (p.environment->notEmpty())]
+  [if (p.environment->notEmpty() or c.home <> null)]
       env:
-        [p.env()/]
+    [if (p.environment->notEmpty())]
+          [p.env()/]
+    [/if]
+    [if (c.home <> null)]
+          [c.home.homeEntry()/]
+    [/if]
   [/if]
     resources:
       requests:
@@ -1140,6 +1148,12 @@
             readOnly: true
     [/for]
   [/if]
+[/template]
+
+[comment The home a container with a writable /tmp is handed, last among its variables. /]
+[template private homeEntry(home : String)]
+  - name: HOME
+    value: [home.scalar()/]
 [/template]
 
 [comment A variable as written, or a secret reference as one key of the Secret its grant syncs to. /]
@@ -1227,9 +1241,14 @@
             protocol: [x.protocol/]
     [/for]
   [/if]
-  [if (p.environment->notEmpty())]
+  [if (p.environment->notEmpty() or p.home <> null)]
       env:
-        [p.env()/]
+    [if (p.environment->notEmpty())]
+          [p.env()/]
+    [/if]
+    [if (p.home <> null)]
+          [p.home.homeEntry()/]
+    [/if]
   [/if]
     resources:
       requests:
@@ -1245,6 +1264,12 @@
       allowPrivilegeEscalation: false
       readOnlyRootFilesystem: true
       capabilities:
+  [if (p.addedPrivileges->notEmpty())]
+          add:
+    [for (c : String | p.addedPrivileges)]
+              - [c/]
+    [/for]
+  [/if]
         drop:
           - ALL
   [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->exists(a | a.seedAt = null) or p.writablePaths->notEmpty() or p.files()->notEmpty() or (p.vpn <> null and p.vpn.forwardedPort))]

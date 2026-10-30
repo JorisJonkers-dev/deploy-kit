@@ -197,6 +197,9 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumes" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="credential" lowerBound="1" eType="#//ResolvedGrant" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+    <!-- The home its variables point at, where it mounts a writable /tmp and names no HOME of its
+         own (docs/adr/model/0141); none for a container with no writable /tmp. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="home" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- The database a migration moves: where the project's datastore answers, and
@@ -340,6 +343,12 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="schedule" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="parked" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="startDeadline" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The home its variables point at, where it mounts a writable /tmp and names no HOME of its
+         own (docs/adr/model/0141); none for a container with no writable /tmp. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="home" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The capabilities its container adds back to the restricted posture: `NET_BIND_SERVICE`
+         where it listens below 1024. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="addedPrivileges" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- The seeder: the platform's image, run first as the Process's own user, with the command that seeds each Asset and the mounts it reads and writes. -->
@@ -622,6 +631,9 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="init" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <!-- The Process's volumes and Assets it names, each where it says. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="mounts" upperBound="-1" eType="#//ContainerMount" containment="true"/>
+    <!-- The home its variables point at, where it mounts a writable /tmp and names no HOME of its
+         own (docs/adr/model/0141); none for a container with no writable /tmp. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="home" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!--

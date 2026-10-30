@@ -2,5 +2,6 @@ apps/agents/agents-api/networkpolicy.yaml agents/rendered/apps/agents/agents-api
 apps/agents/agents-api/rbac.yaml agents/rendered/apps/agents/agents-api/rbac.yaml
 apps/agents/agents-api/service.yaml agents/rendered/apps/agents/agents-api/service.yaml
 apps/agents/agents-api/workload.yaml agents/rendered/apps/agents/agents-api/workload.yaml
+apps/agents/agents-ui/workload.yaml agents/rendered/apps/agents/agents-ui/workload.yaml
 apps/agents/hermes/client.yaml agents/rendered/apps/agents/hermes/client.yaml
 apps/agents/hermes/workload.yaml agents/rendered/apps/agents/hermes/workload.yaml

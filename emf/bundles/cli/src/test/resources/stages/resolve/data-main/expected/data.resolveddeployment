@@ -21,7 +21,7 @@
       <placement>
         <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
       </placement>
-      <secrets path="secret/data/data-system/garage/web-key" access="read" delivery="file" destination="asset-sync-platform-garage-web-key" mountAt="/run/secrets/garage/credentials" fileMode="0400">
+      <secrets path="secret/data/asset-sync-platform-garage-web-key" access="read" delivery="file" destination="asset-sync-platform-garage-web-key" mountAt="/run/secrets/garage/credentials" fileMode="0400">
         <keys>credentials</keys>
       </secrets>
     </processes>
@@ -42,7 +42,34 @@
       </placement>
     </processes>
   </applications>
+  <applications id="platform-mongo" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="mongo" identity="mongo" lifecycle="application" image="docker.io/library/mongo@sha256:5f7b9d1a3c5e7f9b1d3a5c7e9f1b3d5a7c9e1f3b5d7a9c1e3f5b7d9a1c3e5f7b" imageVersion="8.0.15" uid="999" gid="999" cutover="interrupted" switchover="stop-start" deadline="300s" replicas="1" serving="mongo" servingLabel="app.kubernetes.io/instance" memory="2Gi" cpu="200m" hardening="restricted" component="none" priorityClass="platform-data" home="/tmp">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="27017"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="27017"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="27017"/>
+      </startup>
+      <surfaces name="mongo" port="27017"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="mongo-data" mountAt="/data/db" size="1Gi" durability="reconstructible"/>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <writablePaths path="/data/configdb" size="64Mi"/>
+    </processes>
+  </applications>
   <reconcileUnits name="apps-data"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/platform-mongo/workload.yaml" processes="/0/@applications.3/@processes.0" strategy="Recreate"/>
   <deliverables xsi:type="resolveddeployment:MoveFile" path="apps/data/platform-postgres/move.yaml" process="/0/@applications.2/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/asset-sync/workload.yaml" processes="/0/@applications.1/@processes.0" controller="CronJob" strategy="none"/>
   <deliverables xsi:type="resolveddeployment:DashboardFile" path="apps/data/platform-rabbitmq/dashboards.yaml" adapter="grafana" application="/0/@applications.0"/>

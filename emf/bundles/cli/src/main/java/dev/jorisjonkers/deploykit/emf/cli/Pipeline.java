@@ -23,6 +23,10 @@ import dev.jorisjonkers.deploykit.emf.syntax.NodeContractStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.PlatformIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.ProjectIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.linking.UnlinkedNames;
+import dev.jorisjonkers.deploykit.emf.syntax.schema.Shapes;
+import org.eclipse.xtext.Grammar;
+import org.eclipse.xtext.IGrammarAccess;
+import org.eclipse.xtext.resource.XtextResource;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -70,6 +74,13 @@ public final class Pipeline {
     /** The code an env file earns whose scope directory names no level of the project file. */
     private static final String UNKNOWN_ENV_SCOPE = "E_UNKNOWN_ENV_SCOPE";
 
+    /** The codes of what a Process holds across its levels and its env files, asked of a document that holds. */
+    private static final java.util.Set<String> ACROSS_THE_UNION =
+            java.util.Set.of("E_SELF_WITHOUT_VAULT_CLIENT", "E_CLIENT_PLACEHOLDER_WITHOUT_SECRET");
+
+    /** The code a Project the mesh enrols earns where no project file declares it. */
+    private static final String UNKNOWN_ENROLLED_PROJECT = "E_UNKNOWN_ENROLLED_PROJECT";
+
     private static final String PLATFORM = "platform.intent.yml";
     private static final String PROJECT = ".project.yml";
     private static final String YAML = ".yml";
@@ -88,10 +99,14 @@ public final class Pipeline {
 
     /** The parsed intent of the one authored file at {@code path}, or the diagnostics refusing it. */
     public static Parsed intent(Path path) {
-        Resource resource = read(List.of(path)).get(0);
-        List<Diagnostic> refusals = refusals(resource, false);
+        // Checked with the env files beside it, since what a Process reads through them is part of what
+        // is checked of it; the intent is the authored document alone.
+        Resource checked = read(List.of(path)).get(0);
+        withEnv(checked, path);
+        List<Diagnostic> refusals = refusals(checked, false);
         return refusals.isEmpty()
-                ? Parsed.of(IntentJson.of(resource.getContents().get(0)))
+                ? Parsed.of(
+                        IntentJson.of(read(List.of(path)).get(0).getContents().get(0)))
                 : Parsed.refused(refusals);
     }
 
@@ -102,25 +117,33 @@ public final class Pipeline {
      */
     public static Parsed effective(Path path) throws IOException {
         Resource resource = read(List.of(path)).get(0);
-        List<Diagnostic> refusals = new ArrayList<>(refusals(resource, false));
         EnvFiles.Read env = EnvFiles.read(envBeside(path));
+        List<Diagnostic> refusals = new ArrayList<>();
+        // The env files reach their levels before the document is checked: what a Process reads
+        // through them is part of what is checked of it.
+        if (env.diagnostics().isEmpty()
+                && resource.getErrors().isEmpty()
+                && !resource.getContents().isEmpty()
+                && resource.getContents().get(0) instanceof Project project) {
+            for (EnvFiles.Scoped scoped : env.files()) {
+                Optional<SharedIntent> level = levelOf(project, scoped.scope());
+                if (level.isEmpty()) {
+                    refusals.add(new Diagnostic(
+                            UNKNOWN_ENV_SCOPE,
+                            scoped.path(),
+                            scoped.path(),
+                            "this scope directory names nothing the project file declares"));
+                } else {
+                    level.get().getEnv().add(scoped.file());
+                }
+            }
+        }
+        refusals.addAll(0, refusals(resource, false));
         refusals.addAll(env.diagnostics());
         if (!refusals.isEmpty()) {
             return Parsed.refused(refusals);
         }
         Project project = (Project) resource.getContents().get(0);
-        for (EnvFiles.Scoped scoped : env.files()) {
-            Optional<SharedIntent> level = levelOf(project, scoped.scope());
-            if (level.isEmpty()) {
-                refusals.add(new Diagnostic(
-                        UNKNOWN_ENV_SCOPE,
-                        scoped.path(),
-                        scoped.path(),
-                        "this scope directory names nothing the project file declares"));
-            } else {
-                level.get().getEnv().add(scoped.file());
-            }
-        }
         return refusals.isEmpty() ? Parsed.of(IntentJson.of(Lowering.lower(project))) : Parsed.refused(refusals);
     }
 
@@ -352,23 +375,77 @@ public final class Pipeline {
                 .toList();
         List<Diagnostic> refusals = new ArrayList<>();
         for (Path document : documents) {
-            refusals.addAll(refusals(read(List.of(document)).get(0), false));
+            Resource alone = read(List.of(document)).get(0);
+            withEnv(alone, document);
+            refusals.addAll(refusals(alone, false));
         }
         if (!refusals.isEmpty()) {
             return refusals;
         }
         List<Resource> read = read(documents);
+        List<ShippedFiles.Placed> placed = new ArrayList<>();
+        List<String> projects = new ArrayList<>();
+        Optional<Platform> platform = Optional.empty();
         for (int i = 0; i < documents.size(); i++) {
+            Path file = documents.get(i);
             if (read.get(i).getContents().get(0) instanceof Project project) {
                 // What a Process holds reaches it through the env files beside its project too.
-                attachEnv(project, documents.get(i));
-                refusals.addAll(unreadAssets(project, documents.get(i)));
+                attachEnv(project, file);
+                refusals.addAll(unreadAssets(project, file));
+                refusals.addAll(ShippedFiles.check(
+                        project, file.getFileName().toString(), from -> textBeside(file, from), placed));
+                projects.add(project.getProject());
+            } else if (read.get(i).getContents().get(0) instanceof Platform document) {
+                platform = Optional.of(document);
             }
         }
+        refusals.addAll(ShippedFiles.acrossTheEstate(placed, platform));
+        platform.ifPresent(document -> refusals.addAll(unknownEnrolled(document, projects)));
         for (Resource document : read) {
             refusals.addAll(refusals(document, true));
         }
         return refusals;
+    }
+
+    /**
+     * Every Project the mesh enrols that no project file of the set declares
+     * (spec/v1/14-platform-intent.md#the-mesh).
+     */
+    private static List<Diagnostic> unknownEnrolled(Platform platform, List<String> projects) {
+        List<Diagnostic> unknown = new ArrayList<>();
+        if (platform.getMesh() != null) {
+            List<String> enrolled = platform.getMesh().getEnrolled();
+            for (int i = 0; i < enrolled.size(); i++) {
+                if (!projects.contains(enrolled.get(i))) {
+                    unknown.add(new Diagnostic(
+                            UNKNOWN_ENROLLED_PROJECT,
+                            platform.eResource().getURI().lastSegment(),
+                            Pointer.of(platform.getMesh()) + "/enrolled/" + i,
+                            "no project file declares the Project " + enrolled.get(i) + " the mesh enrols"));
+                }
+            }
+        }
+        return unknown;
+    }
+
+    /** The env files beside {@code file} on the levels they name, where {@code resource} holds a project. */
+    private static void withEnv(Resource resource, Path file) {
+        if (resource.getErrors().isEmpty()
+                && !resource.getContents().isEmpty()
+                && resource.getContents().get(0) instanceof Project project) {
+            attachEnv(project, file);
+        }
+    }
+
+    /** The text of the file {@code from} names beside {@code file}, if one is there. */
+    private static Optional<String> textBeside(Path file, String from) {
+        return besideProject(file, from).map(path -> {
+            try {
+                return Files.readString(path, StandardCharsets.UTF_8);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        });
     }
 
     /** The env files beside {@code file}, each on the level its scope directory names. */
@@ -478,22 +555,61 @@ public final class Pipeline {
     private static List<Diagnostic> refusals(Resource resource, boolean together) {
         String file = resource.getURI().lastSegment();
         List<Diagnostic> refusals = new ArrayList<>();
+        List<Resource.Diagnostic> syntax = new ArrayList<>();
         for (Resource.Diagnostic error : resource.getErrors()) {
             if (!(error instanceof XtextLinkingDiagnostic)) {
-                refusals.add(new Diagnostic(
-                        Diagnostic.SCHEMA, file, "", "line " + error.getLine() + ": " + error.getMessage()));
+                syntax.add(error);
             }
         }
-        if (resource.getContents().isEmpty()) {
+        refusals.addAll(shape(resource, file, syntax));
+        if (refusals.isEmpty() && resource.getContents().isEmpty()) {
             refusals.add(new Diagnostic(Diagnostic.SCHEMA, file, "", file + " holds no document"));
         }
         if (!refusals.isEmpty()) {
             return refusals;
         }
-        refusals.addAll(Constraints.check(
-                resource.getContents().get(0), Constraints.beside(ProjectIntentPackage.class, CONSTRAINTS)));
+        List<Diagnostic> constraints = Constraints.check(
+                resource.getContents().get(0), Constraints.beside(ProjectIntentPackage.class, CONSTRAINTS));
+        // What a Process holds across its levels and env files is asked only of a document that holds
+        // on its own, as the production implementation asks it of the union after each document.
+        boolean holds = constraints.stream().allMatch(refusal -> ACROSS_THE_UNION.contains(refusal.code()));
+        refusals.addAll(
+                holds
+                        ? constraints
+                        : constraints.stream()
+                                .filter(refusal -> !ACROSS_THE_UNION.contains(refusal.code()))
+                                .toList());
         refusals.addAll(unlinked(resource, together));
         return refusals;
+    }
+
+    /**
+     * Where a document's shape is wrong, as the schema's refusals say it: one diagnostic for every node
+     * that is wrong, at its JSON pointer. The parser stops at its first error and cannot say where in
+     * the document that is, so the grammar's own rules are read against the whole file; what the
+     * parser said stands only when they find nothing.
+     */
+    private static List<Diagnostic> shape(Resource resource, String file, List<Resource.Diagnostic> syntax) {
+        List<Diagnostic> shape = new ArrayList<>();
+        if (resource instanceof XtextResource xtext) {
+            try (java.io.InputStream in = resource.getResourceSet().getURIConverter().createInputStream(resource.getURI())) {
+                String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                Grammar grammar = xtext.getResourceServiceProvider().get(IGrammarAccess.class).getGrammar();
+                for (Shapes.Issue issue : Shapes.check(text, grammar)) {
+                    shape.add(new Diagnostic(Diagnostic.SCHEMA, file, issue.path(), issue.message()));
+                }
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        if (!shape.isEmpty()) {
+            return shape;
+        }
+        List<Diagnostic> parsed = new ArrayList<>();
+        for (Resource.Diagnostic error : syntax) {
+            parsed.add(new Diagnostic(Diagnostic.SCHEMA, file, "", "line " + error.getLine() + ": " + error.getMessage()));
+        }
+        return parsed;
     }
 
     /**
