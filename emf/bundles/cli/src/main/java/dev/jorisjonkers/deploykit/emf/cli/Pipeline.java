@@ -128,9 +128,34 @@ public final class Pipeline {
      * the checks refuse is refused here with their diagnostics, before anything is resolved.
      */
     public static Resolved resolve(List<Path> files, String project, String schemaPackageIntegrity) throws IOException {
+        Authored authored = authored(files);
+        if (!authored.ok()) {
+            return Resolved.refused(authored.diagnostics());
+        }
+        List<EObject> intent = new ArrayList<>();
+        for (EObject root : authored.intent()) {
+            intent.add(root);
+            // The authored Project stays in the extent beside its lowering: the Platform document's
+            // links point into it, and the transformation reads the lowering.
+            if (root instanceof Project document) {
+                intent.add(Lowering.lower(document));
+            }
+        }
+        return Resolved.of(
+                Resolution.resolve(intent, authored.pinned(), project, schemaPackageIntegrity),
+                intent,
+                authored.pinned());
+    }
+
+    /**
+     * {@code files} read together as the resolution reads them, before any project is lowered: every
+     * authored Project with the env files beside it on the levels they name, the Platform document, and
+     * the pinned inputs with the file each Asset names. A set the checks refuse is refused here.
+     */
+    public static Authored authored(List<Path> files) throws IOException {
         List<Diagnostic> refusals = new ArrayList<>(check(files));
         if (!refusals.isEmpty()) {
-            return Resolved.refused(refusals);
+            return Authored.refused(refusals);
         }
         List<Resource> documents = read(files);
         List<EObject> intent = new ArrayList<>();
@@ -145,19 +170,14 @@ public final class Pipeline {
                         levelOf(authored, scoped.scope())
                                 .ifPresent(level -> level.getEnv().add(scoped.file()));
                     }
-                    // The authored Project stays in the extent beside its lowering: the Platform
-                    // document's links point into it, and the transformation reads the lowering.
                     intent.add(authored);
-                    intent.add(Lowering.lower(authored));
                     pinned.addAll(assetFiles(authored, files.get(i)));
                 }
                 case Platform platform -> intent.add(platform);
                 default -> pinned.add(root);
             }
         }
-        return refusals.isEmpty()
-                ? Resolved.of(Resolution.resolve(intent, pinned, project, schemaPackageIntegrity), intent, pinned)
-                : Resolved.refused(refusals);
+        return refusals.isEmpty() ? Authored.of(intent, pinned) : Authored.refused(refusals);
     }
 
     /**
