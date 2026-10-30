@@ -5,9 +5,9 @@
 // holds the Maven side to the same rule 0064 states for npm: the job CI runs is
 // the build the tree contains. It also holds CodeQL to scanning that build.
 //
-// Deleted with emf/ at its sunset (emf/docs/adr/emf/0107). emf/ is frozen at
-// the tag mde-task-3 until a catch-up PR after 1.0.0: until then the build
-// runs by hand only and gates nothing.
+// Deleted with emf/ at its sunset (emf/docs/adr/emf/0107). The build runs on
+// every change that reaches emf/, the worked examples or the workflow, and
+// gates nothing.
 //
 // REQ-015 (docs/requirements.md): the model-driven build CI runs is the build
 // in the tree.
@@ -131,7 +131,7 @@ describe("the model-driven build CI runs is the build in the tree", () => {
   });
 });
 
-describe("the frozen model-driven build gates nothing", () => {
+describe("the model-driven build runs where a change reaches it, and gates nothing", () => {
   const ci = readFileSync(
     join(REPOSITORY, ".github", "workflows", "ci.yml"),
     "utf8",
@@ -142,8 +142,12 @@ describe("the frozen model-driven build gates nothing", () => {
       ci,
     )?.[1] ?? "";
 
-  it("runs only when dispatched by hand", () => {
-    expect(job).toContain(`'if': "github.event_name == 'workflow_dispatch'"`);
+  it("runs on every change to emf/, the worked examples or the workflow, and on dispatch", () => {
+    expect(ci).toContain(
+      "grep -qE '^(emf/|spec/v1/examples/|\\.github/workflows/ci\\.yml$)'",
+    );
+    expect(ci).toContain(`if [ "\${EVENT}" = 'workflow_dispatch' ]; then`);
+    expect(job).not.toContain("github.event_name == 'workflow_dispatch'");
   });
 
   it("is not a job Pipeline Complete needs", () => {
