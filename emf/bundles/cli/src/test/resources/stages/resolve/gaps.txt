@@ -1258,6 +1258,7 @@ ResolvedProcess.seeder is never set by a resolve case
 ResolvedProcess.serving is never set by a resolve case
 ResolvedProcess.servingLabel is never set by a resolve case
 ResolvedProcess.sidecars is never set by a resolve case
+ResolvedProcess.spawns is never set by a resolve case
 ResolvedProcess.spread is never set by a resolve case
 ResolvedProcess.startDeadline is never set by a resolve case
 ResolvedProcess.startup is never set by a resolve case
@@ -1297,6 +1298,12 @@ ResolvedSidecar.init is never set by a resolve case
 ResolvedSidecar.memory is never set by a resolve case
 ResolvedSidecar.mounts is never set by a resolve case
 ResolvedSidecar.name is never set by a resolve case
+ResolvedSpawn is never instantiated by a resolve case
+ResolvedSpawn.dependencies is never set by a resolve case
+ResolvedSpawn.egress is never set by a resolve case
+ResolvedSpawn.internetEgress is never set by a resolve case
+ResolvedSpawn.name is never set by a resolve case
+ResolvedSpawn.surfaces is never set by a resolve case
 ResolvedSurface is never instantiated by a resolve case
 ResolvedSurface.hostPort is never set by a resolve case
 ResolvedSurface.name is never set by a resolve case

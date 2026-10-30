@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agents-api
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/name: agents-api
+    app.kubernetes.io/instance: agents-api
+    app.kubernetes.io/part-of: agents-api
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: jvm
+spec:
+  selector:
+    app.kubernetes.io/instance: agents-api
+  ports:
+    - name: http
+      port: 8082
+      targetPort: http

@@ -326,6 +326,8 @@
          that are not a surface's own number over TCP. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="l4Services" upperBound="-1" eType="#//ResolvedL4Service" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="nodePorts" upperBound="-1" eType="#//L4Port" containment="true"/>
+    <!-- The templates it makes pods from through the Kubernetes API (spec/v1/16-dependencies.md#spawned-pods). -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="spawns" upperBound="-1" eType="#//ResolvedSpawn" containment="true"/>
     <!-- Set on an Instance a Move starts: the Process it is an Instance of, whose instance label
          its pods carry while its name label names the Instance. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="instance" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -401,6 +403,15 @@
   <eClassifiers xsi:type="ecore:EClass" name="MoveStep">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- A template a Process makes pods from: the label its pods carry, the surfaces they serve the Process on, their edges, what their baseline reaches, and the public internet where the template declares it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedSpawn">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="surfaces" upperBound="-1" eType="#//ResolvedSurface" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dependencies" upperBound="-1" eType="#//ResolvedEdge" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="internetEgress" eType="#//InternetEgress" containment="true"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedSurface">

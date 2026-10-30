@@ -4,7 +4,32 @@
     <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
   </provenance>
   <applications id="agents-api" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="agents" namespace="agents-system" reconcileUnit="/0/@reconcileUnits.0">
-    <processes name="agents-api" identity="agents-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="agents-api" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="jvm">
+    <processes name="agents-api" identity="agents-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/agents/agents-api@sha256:7a1c3e5b9d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e6b8d0f" imageVersion="2.3.0" uid="1000" gid="1000" cutover="interrupted" switchover="stop-start" deadline="300s" replicas="0" serving="agents-api" servingLabel="app.kubernetes.io/instance" memory="512Mi" cpu="100m" hardening="restricted" identityToken="true" component="jvm">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/actuator/health/readiness" port="8082"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/actuator/health/liveness" port="8082"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/actuator/health/liveness" port="8082"/>
+      </startup>
+      <surfaces name="http" port="8082"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="agents-api"/>
+      <environment name="PORT" value="8082"/>
+      <environment name="SPAWN_RUNNER_IMAGE" value="ghcr.io/jorisjonkers-dev/agents/agent-runner@sha256:8b2d4f6e8a0c2e4b6d8f5a2c4e6b8d0f7a1c3e5b9d2f4a6c8e0b2d4f7e1f3c5a"/>
+      <environment name="SPAWN_RUNNER_LABELS" value="deploy-kit.jorisjonkers.dev/spawned-from=agents-api-runner,consumes.deploy-kit.jorisjonkers.dev/agents-api.http=true"/>
       <api reason="It starts and watches an agent's pods.">
         <rules group="core" scope="namespace">
           <objects>configmaps</objects>
@@ -26,9 +51,14 @@
         </rules>
         <server cidr="10.43.0.1/32" port="443"/>
       </api>
-      <placement>
-        <eligibleNodes>enschede-t1000-1</eligibleNodes>
-      </placement>
+      <spawns name="agents-api-runner">
+        <surfaces name="http" port="8090"/>
+        <dependencies application="agents-api" surface="http" address="agents-api.agents-system.svc.cluster.local">
+          <peers namespace="agents-system" process="agents-api" port="8082"/>
+        </dependencies>
+        <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+        <internetEgress reason="An agent reaches its model's API."/>
+      </spawns>
     </processes>
   </applications>
   <applications id="hermes" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="agents" namespace="agents-system" reconcileUnit="/0/@reconcileUnits.0">
@@ -109,5 +139,13 @@
   <reconcileUnits name="apps-agents"/>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/agents/hermes/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="Recreate"/>
   <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/agents/agents-api/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/agents/agents-api/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="consumer" consumes="agents-api.http" port="8082"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/agents/agents-api/workload.yaml" processes="/0/@applications.0/@processes.0" controller="Deployment" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/agents/agents-api/service.yaml" processes="/0/@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:ClientFile" path="apps/agents/hermes/client.yaml" application="/0/@applications.1"/>
 </resolveddeployment:ResolvedDeployment>
