@@ -21,7 +21,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **29** witnesses, and **1** pending.
+This list holds **31** witnesses, and **46** pending.
 
 | id | JUnit test |
 |---|---|
@@ -54,9 +54,56 @@ This list holds **29** witnesses, and **1** pending.
 | REQ-070 | `RenderedTreeTest#aProjectsShareIsItsCommittedTreeByteForByte` |
 | REQ-071 | `RenderedTreeTest#theKnowledgePlatformsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
 | REQ-072 | `RenderedTreeTest#authsShareAndTheEstateShareItDerivesAreItsCommittedTreeByteForByte` |
+| REQ-079 | `PipelineRefusalsTest#anImageTheLockHoldsAsRootIsRefusedAtTheLock` |
+| REQ-102 | `PipelineRefusalsTest#aProcessIsCheckedWithTheEnvFilesBesideItsProjectFile` |
 
 ## Pending
 
 | id | why no witness yet | ticket |
 |---|---|---|
 | REQ-035 | `resolved.json` binds the production implementation only, so the shared claim is the rendered tree, which REQ-040's witness holds; the row's own last clause, knowledge's resolved edges, is resolved by neither implementation, and leaves with the example when knowledge-system retires ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #272 |
+| REQ-075 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-076 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-077 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-078 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-080 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-081 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-082 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-084 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-085 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-087 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-089 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-090 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-091 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-092 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-093 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-094 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-095 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-096 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-097 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-098 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-099 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-100 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-101 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-104 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-105 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-107 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-108 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-109 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-110 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-111 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-112 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-113 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-117 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-118 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-119 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-120 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-121 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-123 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-124 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-125 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-127 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-130 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-140 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-151 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
+| REQ-152 | the catch-up to main ([#666](https://github.com/JorisJonkers-dev/deploy-kit/issues/666)) has not landed it from intent to rendered tree yet; where it renders a shape, a render stage case proves the template on a given Resolved Deployment | #666 |
