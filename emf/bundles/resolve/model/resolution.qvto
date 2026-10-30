@@ -1868,9 +1868,11 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 	let served : Sequence(ResolvedProcess) = self.processes->collect(p | p.resolveone(ResolvedProcess)) in
 	let blueGreen : Sequence(ResolvedProcess) =
 		self.processes->select(p | switchesBlueGreen(self, p))->collect(p | p.resolveone(ResolvedProcess)) in
+	-- A blue-green Process's Services are Flagger's, save the L4 Services of its pools.
 	let reached : Sequence(ResolvedProcess) = served->select(p |
-		p.switchover <> Switchover::blueGreen and p.surfaces->notEmpty()) in
-	let holding : Sequence(ResolvedProcess) = served->select(p | p.api <> null) in
+		(p.switchover <> Switchover::blueGreen and p.surfaces->notEmpty()) or p.l4Services->notEmpty()) in
+	-- An api block with no rules binds no role: the token alone finds the API.
+	let holding : Sequence(ResolvedProcess) = served->select(p | p.api <> null and p.api.rules->notEmpty()) in
 	let claimed : Sequence(ResolvedProcess) = served->select(p | p.volumes->notEmpty()) in
 	let configured : Sequence(ResolvedProcess) = served->select(p | p.assets->notEmpty()) in
 	let backedUp : Sequence(ResolvedProcess) = served->select(p | p.volumes->exists(v | v.backup <> null)) in
@@ -2643,7 +2645,8 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'consumes', v = if self.consumes->isEmpty() then null else arr(self.consumes->collect(c | str(c))) endif},
 		Tuple{k = 'writablePaths', v = if self.writablePaths->isEmpty() then null else arr(self.writablePaths->collect(x | obj(Sequence{
 			Tuple{k = 'path', v = str(x.path)},
-			Tuple{k = 'size', v = str(x.size)}}))) endif},
+			Tuple{k = 'size', v = str(x.size)},
+			Tuple{k = 'medium', v = if x.memory then str('memory') else null endif}}))) endif},
 		Tuple{k = 'environment', v = if self.environment->isEmpty() then null else arr(self.environment->collect(x | obj(Sequence{
 			Tuple{k = 'name', v = str(x.name)},
 			Tuple{k = 'value', v = opt(x.value)},

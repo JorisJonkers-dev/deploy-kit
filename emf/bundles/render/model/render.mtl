@@ -1416,23 +1416,26 @@
   blue-green one's. /]
 [template private objects(d : resolveddeployment::ServiceFile)]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
-    ---
-    apiVersion: v1
-    kind: Service
-    metadata:
-      [p.metadata()/]
-    spec:
-      selector:
-    [if (p.instance <> null or p.move <> null)]
-          app.kubernetes.io/name: [p.name/]
+    [comment A blue-green Process's own Services are Flagger's: only its L4 Services are here. /]
+    [if (p.l4Services->isEmpty() or not (p.switchover.toString() = 'blue-green'))]
+      ---
+      apiVersion: v1
+      kind: Service
+      metadata:
+        [p.metadata()/]
+      spec:
+        selector:
+      [if (p.instance <> null or p.move <> null)]
+            app.kubernetes.io/name: [p.name/]
+      [/if]
+          app.kubernetes.io/instance: [p.instanceName()/]
+        ports:
+      [for (s : resolveddeployment::ResolvedSurface | p.surfaces)]
+            - name: [s.name/]
+              port: [s.port/]
+              targetPort: [s.name/]
+      [/for]
     [/if]
-        app.kubernetes.io/instance: [p.instanceName()/]
-      ports:
-    [for (s : resolveddeployment::ResolvedSurface | p.surfaces)]
-          - name: [s.name/]
-            port: [s.port/]
-            targetPort: [s.name/]
-    [/for]
     [for (l : resolveddeployment::ResolvedL4Service | p.l4Services)]
       [l.l4Service(p)/]
     [/for]

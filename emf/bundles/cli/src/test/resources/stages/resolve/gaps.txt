@@ -172,7 +172,6 @@ ResolvedGeneratedKey.encoding is never set by a resolve case
 ResolvedGeneratedKey.key is never set by a resolve case
 ResolvedGeneratedKey.path is never set by a resolve case
 ResolvedGrant.generated is never set by a resolve case
-ResolvedMigration.home is never set by a resolve case
 ResolvedMove is never instantiated by a resolve case
 ResolvedMove.cpu is never set by a resolve case
 ResolvedMove.credentialsPath is never set by a resolve case
@@ -227,9 +226,7 @@ ResolvedPlacement.from is never set by a resolve case
 ResolvedPriority is never instantiated by a resolve case
 ResolvedPriority.name is never set by a resolve case
 ResolvedPriority.value is never set by a resolve case
-ResolvedProcess.addedPrivileges is never set by a resolve case
 ResolvedProcess.arguments is never set by a resolve case
-ResolvedProcess.home is never set by a resolve case
 ResolvedProcess.instance is never set by a resolve case
 ResolvedProcess.move is never set by a resolve case
 ResolvedProcess.nameservers is never set by a resolve case
@@ -244,7 +241,6 @@ ResolvedSeeder.image is never set by a resolve case
 ResolvedSeeder.imageVersion is never set by a resolve case
 ResolvedSeeder.memory is never set by a resolve case
 ResolvedSeeder.mounts is never set by a resolve case
-ResolvedSidecar.home is never set by a resolve case
 ResolvedSpawn is never instantiated by a resolve case
 ResolvedSpawn.dependencies is never set by a resolve case
 ResolvedSpawn.egress is never set by a resolve case

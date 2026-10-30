@@ -166,6 +166,7 @@ class OracleDistanceTest {
             "rendered mail",
             "rendered minimal",
             "rendered secrets",
+            "rendered utility",
             "schema-refusal credentials-file-without-mount",
             "schema-refusal egress-outside-vocabulary",
             "schema-refusal egress-with-range",
