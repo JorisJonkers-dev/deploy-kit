@@ -501,9 +501,9 @@
   # test/emf-wiring.test.ts proves this step names a real build.
   #
   # The model-driven build under emf/ (Maven and Tycho) runs its tests and its
-  # 100% JaCoCo gate on every change that reaches it: its sources, the worked
-  # examples and oracles it is held to, or this workflow. Any other change skips
-  # its steps. Its 100% PIT gate takes too long for every change, so it runs
+  # 100% JaCoCo gate on every change to its sources or to this workflow. Any
+  # other change skips its steps: a model change lands in TypeScript first and
+  # moves the oracles, and the model-driven build catches up in its own change. Its 100% PIT gate takes too long for every change, so it runs
   # periodically: on the nightly run and on a dispatch. It is not one of
   # Pipeline Complete's needs.
   'emf':
@@ -530,7 +530,7 @@
           if [ "${EVENT}" = 'workflow_dispatch' ] || [ "${EVENT}" = 'schedule' ]; then
             needed='true'
             mutation='true'
-          elif git diff --name-only HEAD^1 HEAD | grep -qE '^(emf/|spec/v1/examples/|\.github/workflows/ci\.yml$)'; then
+          elif git diff --name-only HEAD^1 HEAD | grep -qE '^(emf/|\.github/workflows/ci\.yml$)'; then
             needed='true'
           else
             needed='false'
@@ -539,7 +539,7 @@
           echo "mutation=${mutation}" >> "$GITHUB_OUTPUT"
       - 'name': 'Nothing the build reads changed'
         'if': "steps.scope.outputs.needed != 'true'"
-        'run': 'echo "No model-driven build: this change reaches neither emf/, the worked examples nor this workflow."'
+        'run': 'echo "No model-driven build: this change reaches neither emf/ nor this workflow."'
       - 'uses': 'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6' # v6.0.1
         'if': "steps.scope.outputs.needed == 'true'"
         'with':

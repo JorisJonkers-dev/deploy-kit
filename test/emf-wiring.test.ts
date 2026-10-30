@@ -6,8 +6,7 @@
 // the build the tree contains. It also holds CodeQL to scanning that build.
 //
 // Deleted with emf/ at its sunset (emf/docs/adr/emf/0107). The build runs on
-// every change that reaches emf/, the worked examples or the workflow, and
-// gates nothing.
+// every change to emf/ or the workflow, and gates nothing.
 //
 // REQ-015 (docs/requirements.md): the model-driven build CI runs is the build
 // in the tree.
@@ -142,10 +141,8 @@ describe("the model-driven build runs where a change reaches it, and gates nothi
       ci,
     )?.[1] ?? "";
 
-  it("runs on every change to emf/, the worked examples or the workflow, and on dispatch", () => {
-    expect(ci).toContain(
-      "grep -qE '^(emf/|spec/v1/examples/|\\.github/workflows/ci\\.yml$)'",
-    );
+  it("runs on every change to emf/ or the workflow, and on dispatch", () => {
+    expect(ci).toContain("grep -qE '^(emf/|\\.github/workflows/ci\\.yml$)'");
     expect(job).not.toContain("github.event_name == 'workflow_dispatch'");
   });
 
