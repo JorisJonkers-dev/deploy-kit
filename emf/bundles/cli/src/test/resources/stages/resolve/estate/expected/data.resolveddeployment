@@ -24,7 +24,7 @@
     <scrape process="/0/@applications.0/@processes.0" surface="metrics" path="/metrics" interval="30s" timeout="10s">
       <labels key="release" value="metrics-stack"/>
     </scrape>
-    <processes name="postgres" identity="postgres" lifecycle="application" image="docker.io/pgvector/pgvector@sha256:9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e" imageVersion="17.2.0" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="postgres" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="2Gi" cpu="500m" hardening="restricted" component="none" priorityClass="platform-data">
+    <processes name="postgres" identity="postgres" lifecycle="application" image="docker.io/pgvector/pgvector@sha256:9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e" imageVersion="17.2.0" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="postgres" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="2Gi" cpu="500m" hardening="restricted" component="none" priorityClass="platform-data" home="/tmp">
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
       </readiness>
@@ -58,7 +58,7 @@
         <restartTargets>postgres</restartTargets>
       </secrets>
       <assets name="postgres-postgresql-conf-765c16a293" from="config/postgresql.conf" mountAt="/etc/postgresql/postgresql.conf" content="# collections/data/platform/config/postgresql.conf&#xA;#&#xA;# The Asset platform-postgres mounts at /etc/postgresql/postgresql.conf&#xA;# (docs/adr/model/0014-file-shaped-configuration-is-an-asset.md). Fully&#xA;# static: no placeholder and no derived value, so the file is carried into&#xA;# the projection as written, under a name its content digest decides.&#xA;&#xA;# ------------------------------------------------------------ connections&#xA;listen_addresses = '*'&#xA;port = 5432&#xA;max_connections = 100&#xA;unix_socket_directories = '/var/run/postgresql'&#xA;&#xA;# ----------------------------------------------------------------- memory&#xA;shared_buffers = 512MB&#xA;effective_cache_size = 1536MB&#xA;work_mem = 8MB&#xA;maintenance_work_mem = 128MB&#xA;&#xA;# -------------------------------------------------------------------- WAL&#xA;wal_level = replica&#xA;max_wal_size = 2GB&#xA;min_wal_size = 256MB&#xA;checkpoint_completion_target = 0.9&#xA;&#xA;# -------------------------------------------------------------- extensions&#xA;shared_preload_libraries = 'vector'&#xA;&#xA;# ---------------------------------------------------------------- logging&#xA;log_destination = 'stderr'&#xA;logging_collector = off&#xA;log_min_duration_statement = 1000&#xA;log_line_prefix = '%m [%p] %q%u@%d '&#xA;&#xA;# ---------------------------------------------------------------- locale&#xA;datestyle = 'iso, mdy'&#xA;timezone = 'UTC'&#xA;lc_messages = 'en_US.utf8'&#xA;default_text_search_config = 'pg_catalog.english'&#xA;"/>
-      <sidecars name="postgres-exporter" image="quay.io/prometheuscommunity/postgres-exporter@sha256:4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d" imageVersion="v0.17.1" memory="64Mi" cpu="10m"/>
+      <sidecars name="postgres-exporter" image="quay.io/prometheuscommunity/postgres-exporter@sha256:4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d" imageVersion="v0.17.1" memory="64Mi" cpu="10m" home="/tmp"/>
       <writablePaths path="/var/run/postgresql" size="64Mi"/>
       <writablePaths path="/tmp" size="64Mi"/>
       <environment name="DATA_SOURCE_NAME">
@@ -151,7 +151,7 @@
     </processes>
   </applications>
   <applications id="platform-mongo" revision="sha256:0e23e72c99264987f5787c3b1bff45bf19c8bd7d902a5119098a6d444644b657" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
-    <processes name="mongo" identity="mongo" lifecycle="application" image="docker.io/library/mongo@sha256:5f7b9d1a3c5e7f9b1d3a5c7e9f1b3d5a7c9e1f3b5d7a9c1e3f5b7d9a1c3e5f7b" imageVersion="8.0.15" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="mongo" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="2Gi" cpu="200m" hardening="restricted" component="none" priorityClass="platform-data">
+    <processes name="mongo" identity="mongo" lifecycle="application" image="docker.io/library/mongo@sha256:5f7b9d1a3c5e7f9b1d3a5c7e9f1b3d5a7c9e1f3b5d7a9c1e3f5b7d9a1c3e5f7b" imageVersion="8.0.15" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="mongo" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="2Gi" cpu="200m" hardening="restricted" component="none" priorityClass="platform-data" home="/tmp">
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:TcpTarget" tcp="27017"/>
       </readiness>

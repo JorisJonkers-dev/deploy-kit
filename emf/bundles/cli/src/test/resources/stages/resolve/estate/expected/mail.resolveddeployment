@@ -53,6 +53,7 @@
       <sidecars name="stalwart-apply" image="ghcr.io/jorisjonkers-dev/stalwart-provisioner@sha256:7d1f3b5a9c2e4f6b8d0a2c4e6f8b1d3a5c7e9f2b4d6a8c0e2f4b6d8a1c3e5f7b" imageVersion="0.22.0" memory="64Mi" cpu="10m">
         <mounts name="stalwart-manifest-json-f1813d8cee" mountAt="/etc/stalwart-provisioner/manifest.json" subPath="manifest.json" readOnly="true"/>
       </sidecars>
+      <addedPrivileges>NET_BIND_SERVICE</addedPrivileges>
     </processes>
   </applications>
   <reconcileUnits name="apps-mail" after="/0/@reconcileUnits.1"/>

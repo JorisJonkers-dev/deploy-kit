@@ -21,7 +21,7 @@
     <inputDigests input="cluster-state" name="production" digest="sha256:b623d2ffe37d94ed3dfd601c8ef7aa011ef349912b4428d1071d72099e4c54a8"/>
   </provenance>
   <applications id="flagger" revision="sha256:e46cc6ea185eeccdae7b071e3b458f2f830dcce39ae296409cabc629dcced6a2" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
-    <processes name="flagger" identity="flagger" lifecycle="application" image="ghcr.io/fluxcd/flagger@sha256:5d1b8f3e7a2c9d4b6e0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b" imageVersion="1.41.0" uid="10001" gid="10001" cutover="continuous" switchover="rolling" serving="flagger" servingLabel="app.kubernetes.io/instance" deadline="210s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app">
+    <processes name="flagger" identity="flagger" lifecycle="application" image="ghcr.io/fluxcd/flagger@sha256:5d1b8f3e7a2c9d4b6e0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b" imageVersion="1.41.0" uid="10001" gid="10001" cutover="continuous" switchover="rolling" serving="flagger" servingLabel="app.kubernetes.io/instance" deadline="210s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app" home="/tmp">
       <api reason="Flagger switches every blue-green Process, so it scales its Deployment, generates its Services and copies, and records the Canary">
         <rules group="flagger.app">
           <objects>canaries</objects>
