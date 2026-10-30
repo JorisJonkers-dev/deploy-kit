@@ -269,6 +269,9 @@
     "Bootstrap": {
       "type": "object",
       "properties": {
+        "k3s": {
+          "$ref": "#/$defs/K3sInstall"
+        },
         "flux": {
           "$ref": "#/$defs/FluxSource"
         },
@@ -288,6 +291,79 @@
         "flux",
         "vault",
         "crds"
+      ],
+      "additionalProperties": false
+    },
+    "K3sInstall": {
+      "type": "object",
+      "properties": {
+        "metrics": {
+          "$ref": "#/$defs/K3sMetrics"
+        }
+      },
+      "required": [
+        "metrics"
+      ],
+      "additionalProperties": false
+    },
+    "K3sMetrics": {
+      "type": "object",
+      "properties": {
+        "kubelet": {
+          "$ref": "#/$defs/KubeletMetrics"
+        },
+        "apiServer": {
+          "$ref": "#/$defs/ApiServerMetrics"
+        },
+        "coreDns": {
+          "$ref": "#/$defs/CoreDnsMetrics"
+        }
+      },
+      "additionalProperties": false
+    },
+    "KubeletMetrics": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "port"
+      ],
+      "additionalProperties": false
+    },
+    "ApiServerMetrics": {
+      "type": "object",
+      "properties": {
+        "service": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$"
+        },
+        "port": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "service",
+        "port"
+      ],
+      "additionalProperties": false
+    },
+    "CoreDnsMetrics": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        }
+      },
+      "required": [
+        "port"
       ],
       "additionalProperties": false
     },

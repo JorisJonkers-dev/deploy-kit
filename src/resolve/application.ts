@@ -33,6 +33,7 @@ import {
 } from "../model/project-intent-queries.ts";
 import { unitOf } from "../model/reconcile-units.ts";
 import {
+  applicationOf,
   fluxNamespaceOf,
   holds,
   type PlatformIntentDocument,
@@ -182,6 +183,59 @@ function fluxScrapeOf(
       ...(platform.monitors.labels === undefined
         ? {}
         : { labels: platform.monitors.labels }),
+    },
+  };
+}
+
+/**
+ * k3s's own components, on the metrics stack the Platform document names,
+ * where the bootstrap set records them (spec/v1/14-platform-intent.md#k3ss-metrics),
+ * scraped as the stack's first Process.
+ */
+function k3sScrapeOf(
+  application: EffectiveApplication,
+  context: ApplicationContext,
+): {
+  readonly k3sScrape?: NonNullable<ResolvedApplicationDocument["k3sScrape"]>;
+} {
+  const { platform } = context;
+  const metrics = platform.bootstrap.k3s?.metrics;
+  if (
+    metrics === undefined ||
+    !holds(platform.telemetry?.metrics, context.project, application.id)
+  )
+    return {};
+  const { kubelet, apiServer, coreDns } = metrics;
+  return {
+    k3sScrape: {
+      identity: (application.processes[0] as EffectiveProcess).name,
+      interval: platform.monitors.interval,
+      timeout: platform.monitors.timeout,
+      ...(platform.monitors.labels === undefined
+        ? {}
+        : { labels: platform.monitors.labels }),
+      ...(kubelet === undefined ? {} : { kubelet: { port: kubelet.port } }),
+      ...(apiServer === undefined
+        ? {}
+        : {
+            apiServer: {
+              // A holder-shaped reference, or the schema refused it.
+              namespace: apiServer.service.slice(
+                0,
+                apiServer.service.indexOf("/"),
+              ),
+              service: applicationOf(apiServer.service),
+              port: apiServer.port,
+            },
+          }),
+      ...(coreDns === undefined
+        ? {}
+        : {
+            coreDns: {
+              namespace: platform.substrate.clusterDns,
+              port: coreDns.port,
+            },
+          }),
     },
   };
 }
@@ -661,6 +715,7 @@ export function resolveApplication(
           },
         }),
     ...fluxScrapeOf(application, context),
+    ...k3sScrapeOf(application, context),
     ...(gate === undefined ? {} : { releaseGate: gate }),
     ...(plan === undefined ? {} : { migration: plan }),
     // A migration reads its owner credential from the store itself.

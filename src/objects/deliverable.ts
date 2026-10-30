@@ -21,6 +21,10 @@ import type {
   VaultStaticSecret,
   GrafanaDashboard,
   GrafanaInstance,
+  ApiServerMonitor,
+  CoreDnsMonitor,
+  ScrapeConfig,
+  ServiceAccountToken,
   Alertmanager,
   AlertmanagerConfig,
   Prometheus,
@@ -81,6 +85,10 @@ export type RenderedObject =
   | PriorityClass
   | GrafanaDashboard
   | GrafanaInstance
+  | ApiServerMonitor
+  | CoreDnsMonitor
+  | ScrapeConfig
+  | ServiceAccountToken
   | PrometheusRule
   | AlertmanagerConfig
   | Prometheus

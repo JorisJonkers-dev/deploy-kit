@@ -5632,3 +5632,228 @@ describe("Grafana's instance and data sources", () => {
     ]);
   });
 });
+
+// REQ-164 (docs/requirements.md): the metrics stack scrapes k3s's kubelet,
+// cAdvisor and probes, its API server and the cluster's DNS where the bootstrap
+// set records them, as its own ServiceAccount with the read that takes.
+describe("the metrics stack's scrapes of k3s", () => {
+  const PLATFORM = "platform/platform.intent.yml";
+  const MONITORS = "apps/observability/prometheus/k3s-monitors.yaml";
+  const objects = (edit?: (text: string) => string) =>
+    parseAllDocuments(
+      asTree(
+        artifact(
+          render(edit === undefined ? undefined : { [PLATFORM]: edit }, [
+            "observability",
+          ]),
+          "observability",
+        ),
+      )[MONITORS] ?? "",
+    ).map(
+      (document) =>
+        document.toJS() as {
+          kind: string;
+          metadata: { name: string };
+          spec?: Record<string, unknown>;
+        },
+    );
+  const without = (line: string) => (text: string) =>
+    text.replace(`      ${line}\n`, "");
+
+  it("scrapes each kubelet endpoint of every node over TLS as the stack's ServiceAccount, by the port the bootstrap set records", () => {
+    const configs = objects().filter(({ kind }) => kind === "ScrapeConfig");
+
+    expect(
+      configs.map(({ metadata, spec }) => [
+        metadata.name,
+        spec?.["jobName"],
+        spec?.["metricsPath"],
+      ]),
+    ).toStrictEqual([
+      ["kubelet", "kubelet", "/metrics"],
+      ["kubelet-cadvisor", "kubelet", "/metrics/cadvisor"],
+      ["kubelet-probes", "kubelet", "/metrics/probes"],
+    ]);
+    expect(configs[0]?.spec).toMatchObject({
+      kubernetesSDConfigs: [{ role: "Node" }],
+      scheme: "HTTPS",
+      scrapeInterval: "30s",
+      scrapeTimeout: "10s",
+      honorLabels: true,
+      honorTimestamps: true,
+      authorization: {
+        type: "Bearer",
+        credentials: { name: "prometheus-token", key: "token" },
+      },
+      tlsConfig: { insecureSkipVerify: true },
+      relabelings: [
+        {
+          sourceLabels: ["__address__"],
+          regex: "(.+):\\d+",
+          replacement: "$1:10250",
+          targetLabel: "__address__",
+        },
+        { sourceLabels: ["__meta_kubernetes_node_name"], targetLabel: "node" },
+        { sourceLabels: ["__metrics_path__"], targetLabel: "metrics_path" },
+      ],
+    });
+    expect(configs[0]?.spec).not.toHaveProperty("metricRelabelings");
+    expect(
+      (configs[1]?.spec?.["metricRelabelings"] as { regex: string }[]).map(
+        ({ regex }) => regex,
+      ),
+    ).toContain("container_spec.*");
+  });
+
+  it("scrapes the API server through the Service the bootstrap set records, and the cluster's DNS from its pods", () => {
+    const [monitor, dns] = objects().filter(({ kind }) =>
+      ["ServiceMonitor", "PodMonitor"].includes(kind),
+    );
+
+    expect(monitor).toMatchObject({
+      kind: "ServiceMonitor",
+      metadata: { name: "apiserver" },
+      spec: {
+        jobLabel: "component",
+        selector: {
+          matchLabels: { component: "apiserver", provider: "kubernetes" },
+        },
+        namespaceSelector: { matchNames: ["default"] },
+        endpoints: [
+          {
+            port: "https",
+            scheme: "https",
+            interval: "30s",
+            scrapeTimeout: "10s",
+            tlsConfig: {
+              ca: { configMap: { name: "kube-root-ca.crt", key: "ca.crt" } },
+              serverName: "kubernetes",
+            },
+          },
+        ],
+      },
+    });
+    expect(dns).toMatchObject({
+      kind: "PodMonitor",
+      metadata: { name: "coredns" },
+      spec: {
+        jobLabel: "k8s-app",
+        selector: { matchLabels: { "k8s-app": "kube-dns" } },
+        namespaceSelector: { matchNames: ["kube-system"] },
+        podMetricsEndpoints: [
+          {
+            portNumber: 9153,
+            path: "/metrics",
+            interval: "30s",
+            scrapeTimeout: "10s",
+            relabelings: [{ targetLabel: "job", replacement: "coredns" }],
+          },
+        ],
+      },
+    });
+  });
+
+  it("grants the stack's ServiceAccount the nodes, their kubelets' metrics and the API server's, through a token Kubernetes fills in", () => {
+    const [token, role, binding] = objects();
+
+    expect(token).toStrictEqual({
+      apiVersion: "v1",
+      kind: "Secret",
+      metadata: {
+        name: "prometheus-token",
+        namespace: "observability-system",
+        labels: {
+          "app.kubernetes.io/part-of": "prometheus",
+          "app.kubernetes.io/managed-by": "deploy-kit",
+        },
+        annotations: { "kubernetes.io/service-account.name": "prometheus" },
+      },
+      type: "kubernetes.io/service-account-token",
+    });
+    expect(role).toMatchObject({
+      kind: "ClusterRole",
+      metadata: { name: "observability-system-prometheus-k3s" },
+      rules: [
+        {
+          apiGroups: [""],
+          resources: ["nodes"],
+          verbs: ["get", "list", "watch"],
+        },
+        { apiGroups: [""], resources: ["nodes/metrics"], verbs: ["get"] },
+        { nonResourceURLs: ["/metrics"], verbs: ["get"] },
+      ],
+    });
+    expect(binding).toMatchObject({
+      kind: "ClusterRoleBinding",
+      roleRef: { name: "observability-system-prometheus-k3s" },
+      subjects: [
+        {
+          kind: "ServiceAccount",
+          name: "prometheus",
+          namespace: "observability-system",
+        },
+      ],
+    });
+  });
+
+  it("scrapes only the components the bootstrap set records", () => {
+    expect(
+      objects((text) =>
+        without("apiServer: {service: default/kubernetes, port: https}")(
+          without("coreDns: {port: 9153}")(text),
+        ),
+      ).map(({ kind }) => kind),
+    ).toStrictEqual([
+      "Secret",
+      "ClusterRole",
+      "ClusterRoleBinding",
+      "ScrapeConfig",
+      "ScrapeConfig",
+      "ScrapeConfig",
+    ]);
+    expect(
+      objects(without("kubelet: {port: 10250}")).map(({ kind }) => kind),
+    ).toStrictEqual([
+      "Secret",
+      "ClusterRole",
+      "ClusterRoleBinding",
+      "ServiceMonitor",
+      "PodMonitor",
+    ]);
+  });
+
+  it("scrapes nothing of k3s where the bootstrap set records none", () => {
+    expect(
+      objects((text) =>
+        text.replace(
+          / {2}# Where k3s serves its own metrics[\s\S]*?coreDns: \{port: 9153\}\n/,
+          "",
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("carries the monitors' labels, and has the Prometheus select every scrape the render writes", () => {
+    const [, , , kubelet] = objects();
+    const files = asTree(
+      artifact(render(undefined, ["observability"]), "observability"),
+    );
+    const [prometheus] = parseAllDocuments(
+      files["apps/observability/prometheus/workload.yaml"] ?? "",
+    ).map((document) => document.toJS() as { spec: Record<string, unknown> });
+
+    expect(kubelet?.metadata).toMatchObject({
+      labels: {
+        release: "metrics-stack",
+        "app.kubernetes.io/part-of": "prometheus",
+        "app.kubernetes.io/managed-by": "deploy-kit",
+      },
+    });
+    expect(prometheus?.spec).toMatchObject({
+      scrapeConfigSelector: {
+        matchLabels: { "app.kubernetes.io/managed-by": "deploy-kit" },
+      },
+      scrapeConfigNamespaceSelector: {},
+    });
+  });
+});

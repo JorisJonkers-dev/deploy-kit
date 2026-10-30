@@ -1167,6 +1167,23 @@ const application = {
   alerting: resolvedAlerting.exactOptional(),
   scrape: resolvedScrape.exactOptional(),
   fluxScrape: resolvedFluxScrape.exactOptional(),
+  // Where the metrics stack scrapes k3s itself
+  // (spec/v1/14-platform-intent.md#k3ss-metrics): the identity it scrapes as,
+  // its cadence and monitor labels, and each component the bootstrap set
+  // records.
+  k3sScrape: z
+    .strictObject({
+      identity: text,
+      interval: duration,
+      timeout: duration,
+      labels: z.record(text, text).exactOptional(),
+      kubelet: z.strictObject({ port }).exactOptional(),
+      apiServer: z
+        .strictObject({ namespace: text, service: text, port: text })
+        .exactOptional(),
+      coreDns: z.strictObject({ namespace: text, port }).exactOptional(),
+    })
+    .exactOptional(),
   dashboards: resolvedDashboards.exactOptional(),
   // The monitoring stack's Grafana, as the Grafana operator reaches it
   // (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources): the

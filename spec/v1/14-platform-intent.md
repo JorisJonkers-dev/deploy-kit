@@ -214,6 +214,11 @@ enumerated here so that growing it is a decision:
 
 ```yaml
 bootstrap:
+  k3s:
+    metrics:                                 # optional: where k3s serves its own metrics
+      kubelet: {port: 10250}
+      apiServer: {service: default/kubernetes, port: https}
+      coreDns: {port: 9153}
   flux:
     sourceRef: flux-system/platform          # the source that pulls the tree
     artifacts:                               # where each Project's render is fetched from
@@ -276,6 +281,46 @@ label Flux's install gives them, on that port and path, at the platform's
 egress admits that port in that namespace and nothing wider
 ([chapter 16](16-dependencies.md#the-derived-allow-set)). Flux's own install
 admits the scrape on its side, so nothing is rendered into Flux's namespace.
+
+### k3s's metrics
+
+k3s is in the set, so neither its kubelet, nor its API server, nor the
+cluster's DNS is a Process a scrape surface can name. `k3s.metrics` records
+where each serves its metrics, as k3s's install sets them
+([0150](../../docs/adr/model/0150-k3s-is-scraped-where-the-bootstrap-set-records-its-metrics.md)).
+Optional, as is each entry: an absent one is not scraped.
+
+- **`kubelet`** is the port every node's kubelet serves on, over TLS.
+- **`apiServer`** is the Service the API server answers behind, as
+  `<namespace>/<name>`, and the name of its port.
+- **`coreDns`** is the port the cluster's DNS serves its metrics on, from its
+  pods in `substrate.clusterDns`, labelled `k8s-app: kube-dns` by k3s's
+  install.
+
+Where it is set and the Platform document names a metrics stack
+([Telemetry](#telemetry)), the metrics stack's Project renders in its own
+namespace, at the platform's [monitor cadence](#monitor-cadence) and with its
+labels:
+
+- a `ScrapeConfig` per kubelet endpoint, `/metrics`, `/metrics/cadvisor` and
+  `/metrics/probes`, each under the job `kubelet`, discovering every node and
+  scraping it on the recorded port. cAdvisor's series no default rule or
+  dashboard reads are dropped;
+- a `ServiceMonitor` of the API server's Service, under the job `apiserver`,
+  verified against the cluster's own certificate authority;
+- a `PodMonitor` of the cluster's DNS by its port number, under the job
+  `coredns`.
+
+Each scrape of the kubelet and the API server authenticates as the metrics
+stack's first Process's ServiceAccount, by a long-lived token Secret of it the
+render writes and Kubernetes fills in. One `ClusterRole` and its binding grant
+that ServiceAccount `get`, `list` and `watch` on nodes, `get` on their
+kubelets' metrics, and `get` on the API server's `/metrics`: the read the
+scrape takes, derived rather than declared, because the stack's Process names
+no Process it scrapes. The kubelet and the API server answer on addresses no
+selector reaches, and while the policy stage renders and applies nothing
+([chapter 16](16-dependencies.md#audit-before-enforce)), the metrics stack's
+egress names neither.
 
 ## The foundation is declared
 

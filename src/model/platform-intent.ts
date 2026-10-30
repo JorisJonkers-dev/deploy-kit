@@ -145,8 +145,33 @@ const fluxMetrics = z
   .strictObject({ port, path: text })
   .meta({ id: "FluxMetrics" });
 
+// Where k3s serves its own metrics, as its install sets them
+// (spec/v1/14-platform-intent.md#k3ss-metrics): the kubelet on every node, the
+// API server behind its Service, and the cluster's DNS in its namespace, none
+// of them a Process a scrape surface can name.
+const k3sMetrics = z
+  .strictObject({
+    kubelet: z
+      .strictObject({ port })
+      .meta({ id: "KubeletMetrics" })
+      .exactOptional(),
+    apiServer: z
+      .strictObject({ service: z.string().regex(HOLDER), port: text })
+      .meta({ id: "ApiServerMetrics" })
+      .exactOptional(),
+    coreDns: z
+      .strictObject({ port })
+      .meta({ id: "CoreDnsMetrics" })
+      .exactOptional(),
+  })
+  .meta({ id: "K3sMetrics" });
+
 const bootstrap = z
   .strictObject({
+    k3s: z
+      .strictObject({ metrics: k3sMetrics })
+      .meta({ id: "K3sInstall" })
+      .exactOptional(),
     flux: z
       .strictObject({
         sourceRef: text,
