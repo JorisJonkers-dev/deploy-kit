@@ -15,3 +15,7 @@ apps/node/namespace.yaml node/rendered/apps/node/namespace.yaml
 apps/node/node-metrics/kustomization.yaml node/rendered/apps/node/node-metrics/kustomization.yaml
 apps/node/node-metrics/serviceaccount.yaml node/rendered/apps/node/node-metrics/serviceaccount.yaml
 apps/node/node-metrics/workload.yaml node/rendered/apps/node/node-metrics/workload.yaml
+estate/human-grants/clusterrolebindings.yaml platform/rendered/estate/human-grants/clusterrolebindings.yaml
+estate/human-grants/kustomization.yaml platform/rendered/estate/human-grants/kustomization.yaml
+estate/priority-classes/kustomization.yaml platform/rendered/estate/priority-classes/kustomization.yaml
+estate/priority-classes/priorityclasses.yaml platform/rendered/estate/priority-classes/priorityclasses.yaml

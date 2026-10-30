@@ -363,6 +363,9 @@
         <writablePaths xsi:type="projectintent:MemoryPath" path="/var/cache/coverage" memory="64Mi"/>
         <writablePaths xsi:type="projectintent:PlainPath" path="/tmp"/>
         <env>
+          <entries name="VAULT_ROLE">
+            <value xsi:type="projectintent:Placeholder" kind="identity" source="vaultRole"/>
+          </entries>
           <entries name="LEVEL">
             <value xsi:type="projectintent:EnvLiteral" text="info"/>
           </entries>

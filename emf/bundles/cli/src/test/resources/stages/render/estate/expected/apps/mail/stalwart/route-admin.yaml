@@ -1,0 +1,60 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: stalwart-admin
+  namespace: mail-system
+  labels:
+    app.kubernetes.io/part-of: stalwart
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kubernetes.io/ingress.class: traefik-public
+    external-dns.alpha.kubernetes.io/target: ingress.jorisjonkers.dev
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`mail.jorisjonkers.dev`) && Path(`/`)
+      priority: 999
+      middlewares:
+        - name: forward-auth
+          namespace: edge-system
+        - name: security-headers
+          namespace: edge-system
+        - name: stalwart-admin-1-redirect
+          namespace: mail-system
+      services:
+        - name: stalwart
+          namespace: mail-system
+          port: 8080
+    - kind: Rule
+      match: Host(`mail.jorisjonkers.dev`) && PathPrefix(`/`)
+      priority: 998
+      middlewares:
+        - name: forward-auth
+          namespace: edge-system
+        - name: security-headers
+          namespace: edge-system
+      services:
+        - name: stalwart
+          namespace: mail-system
+          port: 8080
+  tls:
+    certResolver: public-frankfurt
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: stalwart-admin-1-redirect
+  namespace: mail-system
+  labels:
+    app.kubernetes.io/part-of: stalwart
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  redirectRegex:
+    regex: ^(https?://[^/]+)(/.*)?$
+    replacement: ${1}/admin/
+    permanent: false

@@ -1,0 +1,75 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: asset-sync
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: asset-sync
+    app.kubernetes.io/instance: asset-sync
+    app.kubernetes.io/part-of: asset-sync
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: asset-sync
+            app.kubernetes.io/instance: asset-sync
+            app.kubernetes.io/part-of: asset-sync
+            app.kubernetes.io/managed-by: deploy-kit
+            app.kubernetes.io/component: none
+          annotations:
+            image.jorisjonkers.dev/asset-sync: 1.0.0
+        spec:
+          serviceAccountName: asset-sync
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values:
+                          - frankfurt-contabo-1
+          containers:
+            - name: asset-sync
+              image: ghcr.io/jorisjonkers-dev/platform/asset-sync@sha256:5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e
+              resources:
+                requests:
+                  memory: 64Mi
+                  cpu: 25m
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: secret-asset-sync-platform-garage-web-key
+                  mountPath: /run/secrets/garage
+                  readOnly: true
+          volumes:
+            - name: secret-asset-sync-platform-garage-web-key
+              secret:
+                secretName: asset-sync-platform-garage-web-key
+                items:
+                  - key: credentials
+                    path: credentials
+                defaultMode: 256

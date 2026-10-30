@@ -44,7 +44,6 @@ public final class Resolution {
                 Hashing.class.getSimpleName(),
                 new String[] {EcorePackage.eNS_URI, ResolvedDeploymentPackage.eNS_URI});
         ExecutionContextImpl context = new ExecutionContextImpl();
-        context.setLog(new org.eclipse.m2m.qvt.oml.util.WriterLog(new java.io.OutputStreamWriter(System.err)));
         context.setConfigProperty("project", project);
         context.setConfigProperty("integrity", schemaPackageIntegrity);
         BasicModelExtent target = new BasicModelExtent();

@@ -1,0 +1,11 @@
+{
+  "bound_service_account_names": [
+    "traefik-public"
+  ],
+  "bound_service_account_namespaces": [
+    "edge-system"
+  ],
+  "token_policies": [
+    "edge-system-traefik-public"
+  ]
+}

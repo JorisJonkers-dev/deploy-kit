@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  <provenance renderHash="sha256:20f3a11d4708c9876e83dab4c4db764a29b8cdd0a7fc4e5ddec9eaa2576c3636" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
+    <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
+    <inputDigests name="delivery" digest="sha256:31f4d21b3c877943fecd855a160f8e339bce5c46f1ba9264c6256d37c4124767"/>
+    <inputDigests name="edge" digest="sha256:b1445b93227a2a18990df93d691545276efe933c102357709d50fb4f3895b7af"/>
+    <inputDigests name="identity" digest="sha256:c7e40e058d9b9a19572313f69d5c00859f1b30a6b36c91db290b9903cf9a11e7"/>
+    <inputDigests name="mail" digest="sha256:94fada2c3ecb8b3433bdc676e677e7d5d732509b31f6980f8352cdb25590a5c8"/>
+    <inputDigests name="observability" digest="sha256:d5098265009c4d1ef5a75d9e7035d4af64f7e16c6e1983185a0d469869cc6639"/>
+    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:f7490b93e1893a6e9269c8b6f9ad9b4ae0b5ee0842b2dd870bbaf7a50da7fbe6"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
-  <applications id="node" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="node" namespace="node-system" reconcileUnit="/0/@reconcileUnits.0">
-    <processes name="node-main" identity="node-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="node-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
-      <placement>
-        <eligibleNodes>enschede-t1000-1</eligibleNodes>
-      </placement>
-    </processes>
-  </applications>
   <reconcileUnits name="apps-node"/>
-  <nodeAgents name="gpu-device" namespace="node-system" application="node" controller="DaemonSet" image="nvcr.io/nvidia/k8s-device-plugin@sha256:eeaf499dbb6f09bb79d95f788d3d87ca6ffa0ae36ed63210d5672e08ba266ff4" memory="64Mi" cpu="10m" priorityClass="system-node-critical" runtimeClass="nvidia-cdi" hostProcesses="true" privileged="true">
+  <nodeAgents name="gpu-device" namespace="node-system" application="node" controller="DaemonSet" image="nvcr.io/nvidia/k8s-device-plugin@sha256:eeaf499dbb6f09bb79d95f788d3d87ca6ffa0ae36ed63210d5672e08ba266ff4" memory="64Mi" cpu="10m" runtimeClass="nvidia-cdi" priorityClass="system-node-critical" hostProcesses="true" privileged="true">
     <eligibleNodes>enschede-t1000-1</eligibleNodes>
     <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
     <environment name="CONFIG_FILE" value="/config/config.yaml"/>
@@ -20,9 +25,9 @@
     <environment name="PASS_DEVICE_SPECS" value="true"/>
     <mounts name="device-plugins" hostPath="/var/lib/kubelet/device-plugins" mountAt="/var/lib/kubelet/device-plugins"/>
     <mounts name="cdi" hostPath="/var/run/cdi" mountAt="/var/run/cdi"/>
-    <config file="config.yaml" mountAt="/config" content="version: v1&#10;sharing:&#10;  timeSlicing:&#10;    resources:&#10;      - name: nvidia.com/gpu&#10;        replicas: 4&#10;"/>
+    <config file="config.yaml" mountAt="/config" content="version: v1&#xA;sharing:&#xA;  timeSlicing:&#xA;    resources:&#xA;      - name: nvidia.com/gpu&#xA;        replicas: 4&#xA;"/>
   </nodeAgents>
-  <nodeAgents name="gpu-metrics" namespace="node-system" application="node" controller="DaemonSet" image="nvcr.io/nvidia/k8s/dcgm-exporter@sha256:6faf8666aeffe3aa674aa33eb59433addf6b8d5ec267ac1a096892d1ffab6a0b" memory="256Mi" cpu="50m" priorityClass="system-node-critical" deviceShare="nvidia.com/gpu" runtimeClass="nvidia-cdi" nonRoot="false" uid="0">
+  <nodeAgents name="gpu-metrics" namespace="node-system" application="node" controller="DaemonSet" image="nvcr.io/nvidia/k8s/dcgm-exporter@sha256:6faf8666aeffe3aa674aa33eb59433addf6b8d5ec267ac1a096892d1ffab6a0b" memory="256Mi" cpu="50m" deviceShare="nvidia.com/gpu" runtimeClass="nvidia-cdi" priorityClass="system-node-critical" nonRoot="false" uid="0">
     <eligibleNodes>enschede-t1000-1</eligibleNodes>
     <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
     <environment name="DCGM_EXPORTER_KUBERNETES" value="true"/>
@@ -87,7 +92,7 @@
       <verbs>patch</verbs>
     </rules>
   </nodeAgents>
-  <nodeAgents name="l4-controller" namespace="node-system" application="node" controller="Deployment" image="quay.io/metallb/controller@sha256:8bd722cbf5d88cf8b9c82fed1ab069dc1a2f8e5ee383dcf57e49c359ee9d27a3" memory="64Mi" cpu="10m" priorityClass="system-cluster-critical" replicas="1" identityToken="true" nonRoot="true" uid="65534" gid="65534" confined="true">
+  <nodeAgents name="l4-controller" namespace="node-system" application="node" replicas="1" image="quay.io/metallb/controller@sha256:8bd722cbf5d88cf8b9c82fed1ab069dc1a2f8e5ee383dcf57e49c359ee9d27a3" memory="64Mi" cpu="10m" priorityClass="system-cluster-critical" identityToken="true" nonRoot="true" uid="65534" gid="65534" confined="true">
     <eligibleNodes>enschede-t1000-1</eligibleNodes>
     <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
     <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
@@ -180,34 +185,47 @@
     <resources>namespace.yaml</resources>
     <resources>node-metrics</resources>
   </deliverables>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-device/configmap.yaml" part="configmap" agents="/0/@nodeAgents.0"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-device/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.0"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-device/workload.yaml" part="workload" agents="/0/@nodeAgents.0"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/gpu-device/kustomization.yaml">
     <resources>configmap.yaml</resources>
     <resources>serviceaccount.yaml</resources>
     <resources>workload.yaml</resources>
   </deliverables>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-device/configmap.yaml" part="configmap" agents="/0/@nodeAgents.0"/>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-device/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.0"/>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-device/workload.yaml" part="workload" agents="/0/@nodeAgents.0"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-metrics/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.1"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-metrics/workload.yaml" part="workload" agents="/0/@nodeAgents.1"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/gpu-metrics/kustomization.yaml">
     <resources>serviceaccount.yaml</resources>
     <resources>workload.yaml</resources>
   </deliverables>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-metrics/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.1"/>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-metrics/workload.yaml" part="workload" agents="/0/@nodeAgents.1"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/rbac.yaml" part="rbac" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/workload.yaml" part="workload" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
+  <deliverables xsi:type="resolveddeployment:AddressPoolFile" path="apps/node/l4-speaker/pools.yaml" namespace="node-system" pools="/0/@addressPools.0 /0/@addressPools.1 /0/@addressPools.2"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/l4-speaker/kustomization.yaml">
     <resources>pools.yaml</resources>
     <resources>rbac.yaml</resources>
     <resources>serviceaccount.yaml</resources>
     <resources>workload.yaml</resources>
   </deliverables>
-  <deliverables xsi:type="resolveddeployment:AddressPoolFile" path="apps/node/l4-speaker/pools.yaml" namespace="node-system" pools="/0/@addressPools.0 /0/@addressPools.1 /0/@addressPools.2"/>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/rbac.yaml" part="rbac" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/workload.yaml" part="workload" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/node-metrics/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.4"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/node-metrics/workload.yaml" part="workload" agents="/0/@nodeAgents.4"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/node-metrics/kustomization.yaml">
     <resources>serviceaccount.yaml</resources>
     <resources>workload.yaml</resources>
   </deliverables>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/node-metrics/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.4"/>
-  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/node-metrics/workload.yaml" part="workload" agents="/0/@nodeAgents.4"/>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
 </resolveddeployment:ResolvedDeployment>

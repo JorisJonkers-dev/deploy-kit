@@ -1,0 +1,51 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: edge-system-external-dns
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/instance: external-dns
+    app.kubernetes.io/part-of: external-dns
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - endpoints
+      - pods
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - traefik.io
+    resources:
+      - ingressroutes
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: edge-system-external-dns
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/instance: external-dns
+    app.kubernetes.io/part-of: external-dns
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edge-system-external-dns
+subjects:
+  - kind: ServiceAccount
+    name: external-dns
+    namespace: edge-system

@@ -43,10 +43,6 @@ class OracleDistanceTest {
             "dependencies observability",
             "dependencies secrets",
             "descriptor expected",
-            "rendered auth",
-            "rendered data",
-            "rendered delivery",
-            "rendered edge",
             "effective auth",
             "effective data",
             "effective identity",
@@ -162,8 +158,20 @@ class OracleDistanceTest {
             "refusal unknown-telemetry-collector",
             "refusal unknown-tier-proxy",
             "refusal unresolved-placeholder",
+            "rendered agents",
+            "rendered auth",
+            "rendered data",
+            "rendered delivery",
+            "rendered edge",
+            "rendered knowledge-platform",
+            "rendered mail",
             "rendered minimal",
+            "rendered node",
+            "rendered platform",
             "rendered secrets",
+            "rendered utility",
+            "resolved edge",
+            "resolved node",
             "schema-refusal credentials-file-without-mount",
             "schema-refusal egress-outside-vocabulary",
             "schema-refusal egress-with-range",
@@ -268,7 +276,10 @@ class OracleDistanceTest {
         }
         for (Path directory : casesWith(examples, "rendered")) {
             Path rendered = directory.resolve("rendered");
-            Outputs.Resolving resolving = Outputs.RESOLVED.get(name(examples, directory));
+            // The platform's tree is the estate-scoped share every render holds, which a render of
+            // notes, naming nothing estate-scoped of its own, holds alone.
+            Outputs.Resolving resolving = Outputs.RESOLVED.get(
+                    name(examples, directory).equals(PLATFORM) ? "minimal" : name(examples, directory));
             Path out = scratch.resolve("rendered").resolve(name(examples, directory));
             distances.put(
                     "rendered " + name(examples, directory),
@@ -284,7 +295,7 @@ class OracleDistanceTest {
                                         Outputs.INTEGRITY,
                                         out);
                                 return refusals.isEmpty()
-                                        ? Comparison.trees(rendered, Comparison.read(out))
+                                        ? share(examples, rendered, Comparison.read(out))
                                         : refused(refusals);
                             }));
         }
@@ -308,6 +319,9 @@ class OracleDistanceTest {
                                                     .toList(),
                                             project,
                                             Outputs.INTEGRITY);
+                                    if (resolved.ok() && regiven(name)) {
+                                        Files.write(given, Stages.xmi(given, resolved.deployment()));
+                                    }
                                     return resolved.ok()
                                             ? Comparison.files(
                                                     given.getFileName().toString(),
@@ -390,6 +404,52 @@ class OracleDistanceTest {
         String name = oracle.getFileName().toString();
         return Comparison.files(name, URI.createFileURI(oracle.toString()), Files.readAllBytes(oracle), written);
     }
+
+    /**
+     * The distance of a rendering from the share a committed tree holds. The production
+     * implementation commits a Project's own artifact under {@code apps/}, the estate-scoped
+     * artifact under {@code estate/} and the pinned sources under {@code projects/}, each only in
+     * the trees that hold its directory, so a rendering is compared on the directories its tree
+     * holds. A Project's tree that holds the estate-scoped share holds it beside the platform's own
+     * share, which the platform's tree holds for every render.
+     */
+    private static List<String> share(Path examples, Path committed, Map<String, byte[]> rendered) {
+        Set<String> held = Comparison.read(committed).keySet().stream()
+                .map(name -> name.substring(0, name.indexOf('/') + 1))
+                .collect(Collectors.toSet());
+        rendered.keySet().removeIf(name -> !held.contains(name.substring(0, name.indexOf('/') + 1)));
+        Path platform = examples.resolve(PLATFORM).resolve("rendered");
+        if (!held.contains(ESTATE + "/")
+                || committed
+                        .toAbsolutePath()
+                        .normalize()
+                        .equals(platform.toAbsolutePath().normalize())) {
+            return Comparison.trees(committed, rendered);
+        }
+        Set<String> everyRenders = Comparison.read(platform).keySet();
+        Map<String, byte[]> own = new TreeMap<>(rendered);
+        own.keySet().removeAll(everyRenders);
+        Map<String, byte[]> platformShare = new TreeMap<>(rendered);
+        platformShare.keySet().retainAll(everyRenders);
+        List<String> distance = new ArrayList<>(Comparison.trees(committed, own));
+        distance.addAll(Comparison.trees(platform, platformShare));
+        return distance;
+    }
+
+    private static final String PLATFORM = "platform";
+
+    /**
+     * The property naming the given resolve cases a run rewrites from what this implementation
+     * resolves, comma-separated: a hand-written case is replaced once the rendered tree it drives
+     * equals main's, so it stops standing in for a resolution that now exists.
+     */
+    static final String REGIVEN = "given.update";
+
+    private static boolean regiven(String name) {
+        return List.of(System.getProperty(REGIVEN, "").split(",")).contains(name);
+    }
+
+    private static final String ESTATE = "estate";
 
     private static List<String> refused(List<Diagnostic> diagnostics) {
         return diagnostics.stream()
