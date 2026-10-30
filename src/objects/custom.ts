@@ -111,6 +111,16 @@ export interface IngressRoute {
   };
 }
 
+/** Traefik's TLS store: the certificate every proxy serves a route that names none of its own. */
+export interface TlsStore {
+  readonly apiVersion: "traefik.io/v1alpha1";
+  readonly kind: "TLSStore";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly defaultCertificate: { readonly secretName: string };
+  };
+}
+
 /** Traefik's Middleware, as a route's own `rateLimit` or `redirectRegex`, or a shared `headers` one. */
 export interface Middleware {
   readonly apiVersion: "traefik.io/v1alpha1";
@@ -479,6 +489,20 @@ export interface Alertmanager {
     readonly alertmanagerConfigSelector: LabelSelection;
     readonly alertmanagerConfigMatcherStrategy: { readonly type: "None" };
     readonly retention?: string;
+  };
+}
+
+/** The Grafana operator's handle on a Grafana it does not run: where it is, and how to sign in. */
+export interface GrafanaInstance {
+  readonly apiVersion: "grafana.integreatly.org/v1beta1";
+  readonly kind: "Grafana";
+  readonly metadata: ObjectMeta;
+  readonly spec: {
+    readonly external: {
+      readonly url: string;
+      readonly adminUser: { readonly name: string; readonly key: string };
+      readonly adminPassword: { readonly name: string; readonly key: string };
+    };
   };
 }
 

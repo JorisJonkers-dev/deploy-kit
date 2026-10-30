@@ -6,6 +6,7 @@ resources:
   - canary.yaml
   - client.yaml
   - configmap.yaml
+  - grafana.yaml
   - route-public.yaml
   - serviceaccount.yaml
   - vso.yaml

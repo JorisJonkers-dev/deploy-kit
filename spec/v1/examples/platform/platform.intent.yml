@@ -180,6 +180,12 @@ monitoring:
   grafana: observability/grafana
   prometheus: observability/prometheus
   alertmanager: observability/alertmanager
+  # The stores Grafana reads beside them, each a data source its edges derive
+  # (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources).
+  stores:
+    loki: observability/loki
+    tempo: observability/tempo
+    pyroscope: observability/pyroscope
   receivers:
     - name: discord
       discord:

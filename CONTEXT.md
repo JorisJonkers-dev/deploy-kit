@@ -180,6 +180,12 @@ derived from its surfaces and its tier.
 proxies them, and the direct address a host taken out of the proxy points at;
 every route on the tier carries its record for the DNS controller.
 
+**Held certificate**: the certificate a `tls` tier that issues none serves,
+read from the Secret Store path its `certificateFrom` names and served from the
+default TLS store by every proxy
+([chapter 14](spec/v1/14-platform-intent.md#tiers)). Not issued by the model:
+whatever writes the path issues it.
+
 **Ingress class**: the name a tier's proxy admits routes by, declared on the
 tier. Every route rendered for the tier carries it, so a route reaches the one
 proxy its audience selects.
@@ -190,7 +196,8 @@ project file, rendered into its Project's folder; vendored, never fetched.
 **Monitoring stack**: the Grafana, Prometheus and Alertmanager the Platform
 document names by role; the only Applications that carry alert rules. The
 Prometheus operator runs its Prometheus and Alertmanager from objects the
-render writes for their Processes.
+render writes for their Processes; the stores it names beside them are the
+data sources Grafana's edges derive.
 
 **Receiver**: a named place an alert is delivered, declared in the Platform
 document, its credential read from Vault.

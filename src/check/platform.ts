@@ -134,6 +134,45 @@ function tierRefusals(document: PlatformIntentDocument): Diagnostic[] {
           },
         ]
       : []),
+    // A certificate read from the Secret Store is what a tls tier that issues
+    // none serves; on a plain tier nothing would serve it, and on an acme
+    // tier the resolver issues what its routes serve.
+    ...(tier.certificateFrom !== undefined &&
+    (tier.listener === "plain" || tier.certificates === "acme")
+      ? [
+          {
+            code: "E_CERTIFICATE_FROM_UNSERVED" as const,
+            path: `/tiers/${String(index)}/certificateFrom`,
+            message: `tier ${tier.name} reads a certificate from ${tier.certificateFrom}, and ${tier.listener === "plain" ? "terminates no TLS" : "issues its own through acme"}, so its proxy would serve it for nothing`,
+            hint: "Name `certificateFrom` on a `tls` tier whose `certificates` is `none`, or drop it.",
+          },
+        ]
+      : []),
+    ...(tier.certificateFrom !== undefined && document.secretStore === undefined
+      ? [
+          {
+            code: "E_NO_SECRET_STORE" as const,
+            path: `/tiers/${String(index)}/certificateFrom`,
+            message: `tier ${tier.name} reads its certificate from ${tier.certificateFrom}, and no Secret Store holds it`,
+            hint: "Name the platform's `secretStore`, or drop `certificateFrom`.",
+          },
+        ]
+      : []),
+    // Every proxy serves the one default store, so two tiers naming a
+    // certificate would both name the certificate every proxy serves.
+    ...(tier.certificateFrom !== undefined &&
+    document.tiers.findIndex(
+      ({ certificateFrom }) => certificateFrom !== undefined,
+    ) < index
+      ? [
+          {
+            code: "E_CERTIFICATE_FROM_REPEATED" as const,
+            path: `/tiers/${String(index)}/certificateFrom`,
+            message: `tier ${tier.name} names a certificate, and an earlier tier already names the one every proxy serves`,
+            hint: "Name `certificateFrom` on one tier alone.",
+          },
+        ]
+      : []),
     ...(tier.certificates === "acme" && document.acme === undefined
       ? [
           {

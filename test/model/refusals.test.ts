@@ -701,6 +701,8 @@ describe("the refusal fixtures", () => {
       "backup-surface-not-provided",
       "buckets-without-object-store",
       "catalog-surface-not-provided",
+      "certificate-from-repeated",
+      "certificate-from-unserved",
       "client-crd-not-bootstrapped",
       "client-path-unrouted",
       "client-placeholder-without-secret",
@@ -797,7 +799,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(98);
+    expect(refused).toHaveLength(100);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",
@@ -977,6 +979,35 @@ describe("the refusal fixtures", () => {
     ).toStrictEqual([
       "alertmanager: the operator runs one Process as its Alertmanager, and the Application declares 2",
     ]);
+  });
+
+  // REQ-163 (docs/requirements.md): a store the monitoring stack names is an
+  // Application its Project declares, and carries no alert rules.
+  it("refuses a store of the monitoring stack its Project does not declare, at the store", () => {
+    expect(
+      codeIn(
+        "unknown-monitoring-application",
+        "E_UNKNOWN_MONITORING_APPLICATION",
+        (text) =>
+          text.replace(
+            "  receivers:\n",
+            "  stores:\n    loki: refusals/loki\n    tempo: refusals/api\n  receivers:\n",
+          ),
+      ),
+    ).toStrictEqual(["/monitoring/grafana", "/monitoring/stores/loki"]);
+  });
+
+  it("refuses alert rules on a store of the monitoring stack, which only its three roles carry", () => {
+    expect(
+      codeIn(
+        "alert-rules-outside-monitoring",
+        "E_ALERT_RULES_OUTSIDE_MONITORING",
+        (text) =>
+          text.includes("kind: Platform")
+            ? `${text}monitoring:\n  grafana: observability/grafana\n  prometheus: observability/prometheus\n  alertmanager: observability/alertmanager\n  stores:\n    loki: refusals/api\n  receivers:\n    - name: discord\n      discord:\n        webhook: {path: secret/data/refusals/discord, key: webhook-url}\n  routes:\n    - {severity: warning, receiver: discord, repeat: 12h}\n`
+            : text,
+      ),
+    ).toStrictEqual(["/applications/0/alertRules"]);
   });
 
   it("lets a proxy replicate on a tier that issues no certificate through acme", () => {

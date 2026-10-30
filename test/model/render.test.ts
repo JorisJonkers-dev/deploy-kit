@@ -3901,6 +3901,126 @@ describe("a route's TLS", () => {
     ).toStrictEqual({});
   });
 });
+// REQ-162 (docs/requirements.md): a tls tier that issues none serves the
+// certificate it reads from the Secret Store: synced beside its proxy, which
+// reads it through the API, and named by the default TLS store.
+describe("a tier's certificate read from the Secret Store", () => {
+  const PATH = "secret/data/platform/tls/wildcard";
+  const held = () =>
+    asTree(
+      artifact(
+        render(
+          {
+            "platform/platform.intent.yml": (platform) =>
+              platform.replace(
+                "listener: plain\n    certificates: none",
+                `listener: tls\n    certificates: none\n    certificateFrom: ${PATH}`,
+              ),
+            "edge/edge.project.yml": (project) =>
+              project.replace(
+                "          web: 8000\n          admin: 8080",
+                "          web: 8000\n          websecure: 8443\n          admin: 8080",
+              ),
+          },
+          ["edge"],
+        ),
+        "edge",
+      ),
+    );
+  const objectsOf = (tree: Record<string, string>, path: string) =>
+    parseAllDocuments(tree[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+
+  it("names the synced certificate in the default TLS store, beside the tier's proxy", () => {
+    expect(
+      objectsOf(held(), "apps/edge/traefik-lan/tlsstore.yaml"),
+    ).toStrictEqual([
+      {
+        apiVersion: "traefik.io/v1alpha1",
+        kind: "TLSStore",
+        metadata: {
+          name: "default",
+          namespace: "edge-system",
+          labels: {
+            "app.kubernetes.io/part-of": "traefik-lan",
+            "app.kubernetes.io/managed-by": "deploy-kit",
+          },
+        },
+        spec: {
+          defaultCertificate: {
+            secretName: "traefik-lan-platform-tls-wildcard",
+          },
+        },
+      },
+    ]);
+  });
+
+  it("syncs the certificate as the proxy, restarting nothing when it renews", () => {
+    const synced = objectsOf(held(), "apps/edge/traefik-lan/vso.yaml").find(
+      ({ kind }) => kind === "VaultStaticSecret",
+    ) as { spec: Record<string, unknown> } | undefined;
+    expect(synced?.spec["path"]).toBe("platform/tls/wildcard");
+    expect(synced?.spec["vaultAuthRef"]).toBe("traefik-lan");
+    expect(synced?.spec).not.toHaveProperty("rolloutRestartTargets");
+  });
+
+  it("injects nothing of the certificate into the proxy's container", () => {
+    expect(held()["apps/edge/traefik-lan/workload.yaml"]).not.toContain(
+      "traefik-lan-platform-tls-wildcard",
+    );
+  });
+
+  const lanTls = (platform: string) =>
+    platform.replace(
+      "listener: plain\n    certificates: none",
+      `listener: tls\n    certificates: none\n    certificateFrom: ${PATH}`,
+    );
+  const stores = (artifacts: readonly RenderedArtifact[]) =>
+    artifacts.flatMap(({ files: written }) =>
+      written.filter(({ path }) => path.endsWith("/tlsstore.yaml")),
+    );
+
+  it("renders no TLS store in the share of a Project that declares no proxy", () => {
+    expect(
+      stores(
+        render(
+          {
+            "platform/platform.intent.yml": lanTls,
+            "edge/edge.project.yml": (project) =>
+              project.replace(
+                "          web: 8000\n          admin: 8080",
+                "          web: 8000\n          websecure: 8443\n          admin: 8080",
+              ),
+          },
+          ["notes"],
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("renders no TLS store where no Process of the tier's proxy answers its listener", () => {
+    expect(
+      stores(
+        render(
+          {
+            // The LAN proxy provides no websecure, so the tier names no address.
+            "platform/platform.intent.yml": (platform) =>
+              lanTls(platform).replace(/\n {4}address: lan-edge[^\n]*/, ""),
+          },
+          ["edge"],
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("renders no TLS store where no tier names a certificate", () => {
+    expect(
+      asTree(artifact(render(undefined, ["edge"]), "edge")),
+    ).not.toHaveProperty(["apps/edge/traefik-lan/tlsstore.yaml"]);
+  });
+});
+
 // REQ-091 (docs/requirements.md): a tier's proxy takes its static
 // configuration from the model: entry points from its surfaces, the CRD
 // provider filtered on its tier's ingress class, ping and metrics on `admin`.
@@ -5160,6 +5280,356 @@ describe("the operator's objects", () => {
     ).toThrow(
       "prometheus: a Process the operator runs that holds a sidecar, a seeded Asset, a VPN, a GPU, a library, an L4 Address, a spawn template, a Move or a command, is not rendered yet",
     );
+  });
+});
+
+// REQ-163 (docs/requirements.md): the monitoring stack's Grafana renders the
+// instance the Grafana operator imports every dashboard into, signed in to
+// with a credential it generates, and its data sources derive from its edges
+// into the monitoring stack.
+describe("Grafana's instance and data sources", () => {
+  const PROJECT = "observability/observability.project.yml";
+  const PLATFORM = "platform/platform.intent.yml";
+  const tree = (edits?: Readonly<Record<string, (text: string) => string>>) =>
+    asTree(artifact(render(edits, ["observability"]), "observability"));
+  const objectsAt = (files: Record<string, string>, path: string) =>
+    parseAllDocuments(files[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+  const reading =
+    (...applications: readonly string[]) =>
+    (text: string): string =>
+      text.replace(
+        "        writablePaths: [/var/lib/grafana]\n",
+        `        writablePaths: [/var/lib/grafana]\n        dependsOn:\n${applications.map((application) => `          - { application: ${application}, surface: http }\n`).join("")}`,
+      );
+  const datasourcesOf = (files: Record<string, string>) => {
+    const map = objectsAt(
+      files,
+      "apps/observability/grafana/configmap.yaml",
+    ).find(({ metadata }) =>
+      (metadata as { name: string }).name.startsWith("grafana-datasources-"),
+    ) as { data: Record<string, string> } | undefined;
+    return map === undefined
+      ? undefined
+      : (JSON.parse(map.data["datasources.yaml"] as string) as {
+          datasources: Record<string, unknown>[];
+        });
+  };
+
+  it("renders the Grafana the operator imports into, at its http surface, signed in to with its generated credential", () => {
+    const files = tree();
+
+    expect(
+      objectsAt(files, "apps/observability/grafana/grafana.yaml"),
+    ).toStrictEqual([
+      {
+        apiVersion: "grafana.integreatly.org/v1beta1",
+        kind: "Grafana",
+        metadata: {
+          name: "grafana",
+          namespace: "observability-system",
+          labels: {
+            dashboards: "grafana",
+            "app.kubernetes.io/part-of": "grafana",
+            "app.kubernetes.io/managed-by": "deploy-kit",
+          },
+        },
+        spec: {
+          external: {
+            url: "http://grafana.observability-system:3000",
+            adminUser: {
+              name: "grafana-observability-system-grafana-admin",
+              key: "user",
+            },
+            adminPassword: {
+              name: "grafana-observability-system-grafana-admin",
+              key: "password",
+            },
+          },
+        },
+      },
+    ]);
+    expect(
+      JSON.parse(
+        files[
+          "apps/observability/vault-policy/policies/observability-system.generated.json"
+        ] ?? "",
+      ),
+    ).toStrictEqual({
+      keys: [
+        {
+          path: "secret/data/observability-system/grafana-admin",
+          key: "password",
+          bytes: 32,
+          encoding: "hex",
+        },
+        {
+          path: "secret/data/observability-system/grafana-admin",
+          key: "user",
+          bytes: 32,
+          encoding: "hex",
+        },
+      ],
+    });
+  });
+
+  it("renders no instance where the platform names no Grafana dashboards select", () => {
+    const files = tree({
+      [PLATFORM]: (text) =>
+        text.replace(
+          / {2}dashboards:\n {4}instance: \{dashboards: grafana\}\n {4}datasource: prometheus\n/,
+          "",
+        ),
+      // Nothing ships a dashboard, so the platform needs no policy for one.
+      "data/data.project.yml": (text) =>
+        text.replace(
+          "    dashboards:\n      - {from: dashboards/rabbitmq.json}\n",
+          "",
+        ),
+    });
+
+    expect(Object.keys(files)).not.toContain(
+      "apps/observability/grafana/grafana.yaml",
+    );
+  });
+
+  it("renders no instance for a Grafana that serves no http surface", () => {
+    const files = tree({
+      [PROJECT]: (text) =>
+        text
+          .replace("          http: 3000\n", "          web: 3000\n")
+          .replace(
+            "{ path: /, match: prefix, process: grafana, surface: http }",
+            "{ path: /, match: prefix, process: grafana, surface: web }",
+          ),
+    });
+
+    expect(Object.keys(files)).not.toContain(
+      "apps/observability/grafana/grafana.yaml",
+    );
+  });
+
+  it("derives no data source where Grafana reads no store of the monitoring stack", () => {
+    expect(datasourcesOf(tree())).toBeUndefined();
+  });
+
+  it("derives one data source per store Grafana reads, at the edge's address, linked to the others", () => {
+    const files = tree({
+      [PROJECT]: reading(
+        "alertmanager",
+        "pyroscope",
+        "tempo",
+        "loki",
+        "prometheus",
+        "gatus",
+      ),
+    });
+    const [container] = (
+      objectsAt(files, "apps/observability/grafana/workload.yaml")[0] as {
+        spec: {
+          template: {
+            spec: { containers: { volumeMounts: { mountPath: string }[] }[] };
+          };
+        };
+      }
+    ).spec.template.spec.containers;
+    const tags = [{ key: "service.name", value: "service_name" }];
+
+    expect(container?.volumeMounts.map(({ mountPath }) => mountPath)).toContain(
+      "/etc/grafana/provisioning/datasources/datasources.yaml",
+    );
+    expect(datasourcesOf(files)).toStrictEqual({
+      apiVersion: 1,
+      datasources: [
+        {
+          name: "Prometheus",
+          type: "prometheus",
+          uid: "prometheus",
+          access: "proxy",
+          url: "http://prometheus:9090",
+          isDefault: true,
+          editable: false,
+          jsonData: {
+            httpMethod: "POST",
+            exemplarTraceIdDestinations: [
+              { name: "traceID", datasourceUid: "tempo" },
+            ],
+          },
+        },
+        {
+          name: "Loki",
+          type: "loki",
+          uid: "loki",
+          access: "proxy",
+          url: "http://loki:3100",
+          isDefault: false,
+          editable: false,
+          jsonData: {
+            derivedFields: [
+              {
+                name: "trace_id",
+                matcherRegex: String.raw`"trace_id"\s*:\s*"([0-9a-f]+)"`,
+                datasourceUid: "tempo",
+                url: "$${__value.raw}",
+              },
+            ],
+          },
+        },
+        {
+          name: "Tempo",
+          type: "tempo",
+          uid: "tempo",
+          access: "proxy",
+          url: "http://tempo:3200",
+          isDefault: false,
+          editable: false,
+          jsonData: {
+            nodeGraph: { enabled: true },
+            tracesToLogsV2: {
+              datasourceUid: "loki",
+              filterByTraceID: true,
+              tags,
+            },
+            tracesToMetrics: { datasourceUid: "prometheus", tags },
+            serviceMap: { datasourceUid: "prometheus" },
+            tracesToProfilesV2: {
+              datasourceUid: "pyroscope",
+              profileTypeId: "process_cpu:cpu:nanoseconds:cpu:nanoseconds",
+              tags,
+            },
+          },
+        },
+        {
+          name: "Pyroscope",
+          type: "grafana-pyroscope-datasource",
+          uid: "pyroscope",
+          access: "proxy",
+          url: "http://pyroscope:4040",
+          isDefault: false,
+          editable: false,
+          jsonData: {},
+        },
+        {
+          name: "Alertmanager",
+          type: "alertmanager",
+          uid: "alertmanager",
+          access: "proxy",
+          url: "http://alertmanager:9093",
+          isDefault: false,
+          editable: false,
+          jsonData: {
+            implementation: "prometheus",
+            handleGrafanaManagedAlerts: false,
+          },
+        },
+      ],
+    });
+  });
+
+  it("derives no data source from an edge into an Application the monitoring stack does not name", () => {
+    expect(
+      datasourcesOf(tree({ [PROJECT]: reading("gatus") })),
+    ).toBeUndefined();
+  });
+
+  it("names the data sources' ConfigMap for its content, as every Asset's is", () => {
+    const files = tree({ [PROJECT]: reading("prometheus") });
+
+    expect(
+      objectsAt(files, "apps/observability/grafana/configmap.yaml")
+        .map(({ metadata }) => (metadata as { name: string }).name)
+        .filter((name) => name.startsWith("grafana-datasources-")),
+    ).toStrictEqual([
+      expect.stringMatching(/^grafana-datasources-yaml-[0-9a-f]{10}$/),
+    ]);
+  });
+
+  it("types only the roles where the platform names no store", () => {
+    const files = tree({
+      [PROJECT]: reading("prometheus", "loki", "alertmanager"),
+      [PLATFORM]: (text) =>
+        text.replace(
+          / {2}# The stores Grafana reads beside them[^\n]*\n[^\n]*\n {2}stores:\n( {4}[a-z]+: observability\/[a-z]+\n)+/,
+          "",
+        ),
+    });
+
+    expect(
+      datasourcesOf(files)?.datasources.map(({ uid }) => uid),
+    ).toStrictEqual(["prometheus", "alertmanager"]);
+  });
+
+  it("holds the admin credential on the Grafana's first Process alone", () => {
+    const files = tree({
+      [PROJECT]: (text) =>
+        text.replace(
+          "  # The loki store, which keeps what it is sent on a claim of its own.\n",
+          "      - name: grafana-renderer\n        lifecycle: application\n        image: grafana\n        runtime: none\n        provides:\n          render: 8081\n        placement:\n          memory: 64Mi\n          cpu: 10m\n        probes:\n          readiness: { tcp: 8081 }\n        startupBudget: 30s\n        cutover: continuous\n\n  # The loki store, which keeps what it is sent on a claim of its own.\n",
+        ),
+    });
+    const secrets = objectsAt(files, "apps/observability/grafana/vso.yaml")
+      .filter(({ kind }) => kind === "VaultStaticSecret")
+      .map(({ metadata }) => (metadata as { name: string }).name);
+
+    expect(secrets).toContain("grafana-observability-system-grafana-admin");
+    expect(secrets).not.toContain(
+      "grafana-renderer-observability-system-grafana-admin",
+    );
+  });
+
+  it("links no data source to a store Grafana does not read", () => {
+    const files = tree({ [PROJECT]: reading("tempo", "loki") });
+
+    expect(
+      datasourcesOf(files)?.datasources.map(({ uid, jsonData }) => [
+        uid,
+        jsonData,
+      ]),
+    ).toStrictEqual([
+      [
+        "loki",
+        {
+          derivedFields: [
+            {
+              name: "trace_id",
+              matcherRegex: String.raw`"trace_id"\s*:\s*"([0-9a-f]+)"`,
+              datasourceUid: "tempo",
+              url: "$${__value.raw}",
+            },
+          ],
+        },
+      ],
+      [
+        "tempo",
+        {
+          nodeGraph: { enabled: true },
+          tracesToLogsV2: {
+            datasourceUid: "loki",
+            filterByTraceID: true,
+            tags: [{ key: "service.name", value: "service_name" }],
+          },
+        },
+      ],
+    ]);
+  });
+
+  it("links neither the metrics nor the logs to traces where Grafana reads no trace store", () => {
+    const files = tree({
+      [PROJECT]: reading("prometheus", "loki"),
+      [PLATFORM]: (text) =>
+        text.replace("    tempo: observability/tempo\n", ""),
+    });
+
+    expect(
+      datasourcesOf(files)?.datasources.map(({ uid, jsonData }) => [
+        uid,
+        jsonData,
+      ]),
+    ).toStrictEqual([
+      ["prometheus", { httpMethod: "POST" }],
+      ["loki", {}],
+    ]);
   });
 });
 

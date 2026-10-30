@@ -477,6 +477,10 @@
         "certificates": {
           "$ref": "#/$defs/CertificateSource"
         },
+        "certificateFrom": {
+          "type": "string",
+          "minLength": 1
+        },
         "forwardAuth": {
           "$ref": "#/$defs/ForwardAuth"
         },
@@ -857,6 +861,9 @@
           "pattern": "^[^/\\s]+\\/[^/\\s]+$",
           "reference": "Application"
         },
+        "stores": {
+          "$ref": "#/$defs/MonitoringStores"
+        },
         "receivers": {
           "minItems": 1,
           "type": "array",
@@ -879,6 +886,27 @@
         "receivers",
         "routes"
       ],
+      "additionalProperties": false
+    },
+    "MonitoringStores": {
+      "type": "object",
+      "properties": {
+        "loki": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
+          "reference": "Application"
+        },
+        "tempo": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
+          "reference": "Application"
+        },
+        "pyroscope": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\/[^/\\s]+$",
+          "reference": "Application"
+        }
+      },
       "additionalProperties": false
     },
     "Receiver": {

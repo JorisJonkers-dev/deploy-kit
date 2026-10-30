@@ -87,7 +87,7 @@ spec:
           volumes:
             - name: policies
               configMap:
-                name: vault-policy-9a0717fe1106
+                name: vault-policy-b2e608d67c17
                 items:
                   - key: observability-system-alertmanager.policy.json
                     path: observability-system-alertmanager.policy.json
@@ -97,3 +97,5 @@ spec:
                     path: observability-system-grafana.policy.json
                   - key: observability-system-grafana.role.json
                     path: observability-system-grafana.role.json
+                  - key: observability-system.generated.json
+                    path: observability-system.generated.json

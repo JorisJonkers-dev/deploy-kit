@@ -8,6 +8,7 @@ import type {
   FluxProvider,
   IngressRoute,
   Middleware,
+  TlsStore,
   OciRepository,
   PodMonitor,
   ServiceMonitor,
@@ -19,6 +20,7 @@ import type {
   VaultDynamicSecret,
   VaultStaticSecret,
   GrafanaDashboard,
+  GrafanaInstance,
   ApiServerMonitor,
   CoreDnsMonitor,
   ScrapeConfig,
@@ -74,6 +76,7 @@ export type RenderedObject =
   | ServiceMonitor
   | IngressRoute
   | Middleware
+  | TlsStore
   | ConfigMap
   | ClusterRole
   | ClusterRoleBinding
@@ -81,6 +84,7 @@ export type RenderedObject =
   | RoleBinding
   | PriorityClass
   | GrafanaDashboard
+  | GrafanaInstance
   | ApiServerMonitor
   | CoreDnsMonitor
   | ScrapeConfig

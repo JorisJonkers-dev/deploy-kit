@@ -4134,13 +4134,14 @@ describe("the Vault policy job", () => {
       // What the set does derive is where Flux's events go, since the worked
       // platform names a Reporter, the tiers' proxies, the groups it grants a
       // cluster role, its priority classes and each tier's forward-auth. The
-      // catalogs' homes and the Node Agents are always there, and the homes
-      // hold none.
+      // catalogs' homes, the held certificates and the Node Agents are always
+      // there, and the homes hold none.
     ).toStrictEqual([
       "projects",
       "catalogHomes",
       "events",
       "tierProxies",
+      "heldCertificates",
       "stableAddresses",
       "nodeAgents",
       "humanGrants",

@@ -34,6 +34,8 @@ import {
   type CatalogHome,
 } from "../resolve/catalog-job.ts";
 import { resolvePolicyJob } from "../resolve/policy-job.ts";
+import { resolveHeldCertificates } from "../resolve/tier-proxy.ts";
+import type { ResolvedHeldCertificate } from "../model/tier-proxy.ts";
 import { resolveUnion } from "../resolve/union.ts";
 import type {
   ResolvedApplicationDocument,
@@ -75,6 +77,8 @@ export interface ResolvedSet {
   readonly events?: ResolvedEvents;
   /** Every tier's proxy, as `<project>/<application>`: where the shared Middlewares live. */
   readonly tierProxies: readonly string[];
+  /** The default TLS store a tier's `certificateFrom` derives, beside its proxy. */
+  readonly heldCertificates: readonly ResolvedHeldCertificate[];
   /** The groups the platform grants a built-in cluster role. */
   readonly humanGrants?: readonly HumanGrant[];
   /** The priority classes the platform declares. */
@@ -375,6 +379,7 @@ export function resolveIntentSet(
       catalogHomes: homes,
       ...(events === undefined ? {} : { events }),
       tierProxies: set.platform.tiers.map(({ traefik }) => traefik),
+      heldCertificates: resolveHeldCertificates(set.platform, set.projects),
       stableAddresses: resolveStableAddresses(
         set.projects,
         set.platform,

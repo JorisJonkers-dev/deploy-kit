@@ -1185,6 +1185,17 @@ const application = {
     })
     .exactOptional(),
   dashboards: resolvedDashboards.exactOptional(),
+  // The monitoring stack's Grafana, as the Grafana operator reaches it
+  // (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources): the
+  // labels every dashboard selects it by, its address, and the Secret and keys
+  // of the admin credential it generates.
+  grafana: z
+    .strictObject({
+      labels: z.record(text, text),
+      url: text,
+      credential: z.strictObject({ secret: text, user: text, password: text }),
+    })
+    .exactOptional(),
   // Absent on an `interrupted` Application: it stops before it starts, so no
   // switch waits on a gate (docs/adr/model/0021-runtime-mechanics-derive-from-cutover.md).
   releaseGate: releaseGate.exactOptional(),

@@ -708,10 +708,14 @@ function monitoringRefusals(
   const roles = new Map<string, string>(
     monitoring === undefined
       ? undefined
-      : (["grafana", "prometheus", "alertmanager"] as const).map((role) => [
-          role,
-          monitoring[role],
-        ]),
+      : [
+          ...(["grafana", "prometheus", "alertmanager"] as const).map(
+            (role): [string, string] => [role, monitoring[role]],
+          ),
+          ...Object.entries(monitoring.stores ?? {}).map(
+            ([store, name]): [string, string] => [`stores/${store}`, name],
+          ),
+        ],
   );
   // A set that holds no file of a role's Project, such as one Project's own
   // check, cannot tell; the composition, which holds every Project, does.
@@ -729,7 +733,12 @@ function monitoringRefusals(
           },
         ],
   );
-  const stack = new Set(roles.values());
+  // The stores carry no alert rules: only the three roles do.
+  const stack = new Set(
+    [...roles]
+      .filter(([role]) => !role.startsWith("stores/"))
+      .map(([, name]) => name),
+  );
   const outside = projects.flatMap(({ name, document }) =>
     document.applications.flatMap((application, a): Diagnostic[] =>
       application.alertRules === undefined ||

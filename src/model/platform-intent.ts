@@ -208,6 +208,10 @@ const tier = z
     audiences: z.array(audience).min(1),
     listener,
     certificates: certificateSource,
+    // Where a tls tier that issues none reads the certificate its proxy
+    // serves: a Secret Store path holding `tls.crt` and `tls.key`
+    // (spec/v1/14-platform-intent.md#tiers).
+    certificateFrom: text.exactOptional(),
     forwardAuth: forwardAuth.exactOptional(),
     // Absent where clients connect to the edge themselves.
     proxiedBy: forwarder.exactOptional(),
@@ -550,6 +554,16 @@ const monitoring = z
     grafana: holder,
     prometheus: holder,
     alertmanager: holder,
+    // The stores Grafana reads beside the Prometheus and the Alertmanager,
+    // each a data source (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources).
+    stores: z
+      .strictObject({
+        loki: holder.exactOptional(),
+        tempo: holder.exactOptional(),
+        pyroscope: holder.exactOptional(),
+      })
+      .meta({ id: "MonitoringStores" })
+      .exactOptional(),
     receivers: z.array(receiver).min(1),
     routes: z.array(severityRoute).min(1),
   })
