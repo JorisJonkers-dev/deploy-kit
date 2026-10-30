@@ -134,5 +134,4 @@ ResolvedVpn.forwardedPort is never set in a render case's input
 ResolvedVpn.image is never set in a render case's input
 ResolvedVpn.imageVersion is never set in a render case's input
 ResolvedVpn.memory is never set in a render case's input
-Switchover.rolling is never used in a render case's input
 WorkloadFile.disruptionBudget is never set in a render case's input

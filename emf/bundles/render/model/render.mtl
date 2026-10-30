@@ -903,6 +903,12 @@
               hostPort: [s.hostPort/]
       [/if]
     [/for]
+    [for (x : resolveddeployment::L4Port | p.nodePorts)]
+          - name: [x.name/]
+            containerPort: [x.targetPort/]
+            hostPort: [x.port/]
+            protocol: [x.protocol/]
+    [/for]
   [/if]
   [if (p.environment->notEmpty())]
       env:
@@ -1082,6 +1088,36 @@
             port: [s.port/]
             targetPort: [s.name/]
     [/for]
+    [for (l : resolveddeployment::ResolvedL4Service | p.l4Services)]
+      [l.l4Service(p)/]
+    [/for]
+  [/for]
+[/template]
+
+[comment The Service of a pool L4 Address: a load balancer whose `Local` traffic policy keeps the
+  client's address, and so sends a connection only to a pod on the node that announces it. /]
+[template private l4Service(l : resolveddeployment::ResolvedL4Service, p : resolveddeployment::ResolvedProcess)]
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: [l.name/]
+    namespace: [p.application().namespace/]
+    labels:
+      [p.labels()/]
+    annotations:
+      metallb.io/address-pool: [l.pool/]
+  spec:
+    type: LoadBalancer
+    externalTrafficPolicy: Local
+    selector:
+      app.kubernetes.io/instance: [p.name/]
+    ports:
+  [for (x : resolveddeployment::L4Port | l.ports)]
+        - name: [x.name/]
+          port: [x.port/]
+          protocol: [x.protocol/]
+          targetPort: [x.targetPort/]
   [/for]
 [/template]
 
@@ -1940,6 +1976,59 @@
         sourceCriterion:
           requestHeaderName: CF-Connecting-IP
   [/if]
+[/template]
+
+[comment The shared Middlewares of a tier proxy's namespace: its forward-auth, the security-headers
+  baseline every route carries, and the baseline with each content policy. /]
+[template private objects(d : resolveddeployment::SharedMiddlewareFile)]
+  [if (d.forwardAuth <> null)]
+    ---
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      [d.sharedMetadata('forward-auth')/]
+    spec:
+      forwardAuth:
+        address: [d.forwardAuth.address/]
+        trustForwardHeader: true
+  [/if]
+  ---
+  apiVersion: traefik.io/v1alpha1
+  kind: Middleware
+  metadata:
+    [d.sharedMetadata('security-headers')/]
+  spec:
+    headers:
+      [d.baseline()/]
+  [for (c : resolveddeployment::ContentPolicy | d.policies)]
+    ---
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      [d.sharedMetadata('security-headers-' + c.name)/]
+    spec:
+      headers:
+        [d.baseline()/]
+        contentSecurityPolicy: [c.contentSecurityPolicy.scalar()/]
+  [/for]
+[/template]
+
+[template private sharedMetadata(d : resolveddeployment::SharedMiddlewareFile, name : String)]
+  name: [name/]
+  namespace: [d.namespace/]
+  labels:
+    app.kubernetes.io/part-of: [d.application/]
+    app.kubernetes.io/managed-by: deploy-kit
+[/template]
+
+[comment The baseline every route carries: no sniffing, no framing, HTTPS remembered. /]
+[template private baseline(d : resolveddeployment::SharedMiddlewareFile)]
+  contentTypeNosniff: true
+  frameDeny: true
+  referrerPolicy: strict-origin-when-cross-origin
+  permissionsPolicy: camera=(), microphone=(), geolocation=()
+  stsSeconds: 31536000
+  stsIncludeSubdomains: true
 [/template]
 
 [comment A route's redirect, its own Middleware beside its IngressRoute: the scheme and host the

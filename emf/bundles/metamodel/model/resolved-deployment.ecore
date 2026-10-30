@@ -321,6 +321,11 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="spread" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <!-- The step that seeds its Assets onto its volumes before each start. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="seeder" eType="#//ResolvedSeeder" containment="true"/>
+    <!-- The L4 Addresses it is exposed on (spec/v1/14-platform-intent.md#l4-addresses): a pool's,
+         as a load balancer Service of its own, and a node's, as ports of the node's own address
+         that are not a surface's own number over TCP. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="l4Services" upperBound="-1" eType="#//ResolvedL4Service" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodePorts" upperBound="-1" eType="#//L4Port" containment="true"/>
     <!-- A `scheduled` Process's schedule, whether it is parked, and how late a run may still start. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="schedule" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="parked" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
@@ -342,6 +347,20 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="subPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="readOnly" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+
+  <!-- The load balancer Service a pool L4 Address asks its address from, under its own name. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedL4Service">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="pool" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ports" lowerBound="1" upperBound="-1" eType="#//L4Port" containment="true"/>
+  </eClassifiers>
+  <!-- A port a client dials on an L4 Address, its protocol, and the port of the container it reaches. -->
+  <eClassifiers xsi:type="ecore:EClass" name="L4Port">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="protocol" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="targetPort" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedSurface">
@@ -1086,6 +1105,22 @@
   <!-- One GrafanaDashboard per dashboard file of an Application. -->
   <eClassifiers xsi:type="ecore:EClass" name="DashboardFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
+  <!-- The shared Middlewares of a tier proxy's namespace, in the directory of the first proxy there by name: its forward-auth, where a tier there names one, the security-headers baseline, and the baseline with each content policy's Content-Security-Policy. -->
+  <eClassifiers xsi:type="ecore:EClass" name="SharedMiddlewareFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="forwardAuth" eType="#//ForwardAuth" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="policies" lowerBound="1" upperBound="-1" eType="#//ContentPolicy" containment="true"/>
+  </eClassifiers>
+  <!-- The endpoint a forward-auth asks. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ForwardAuth">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- A content policy, by name, and what it lets a page load. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ContentPolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="contentSecurityPolicy" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <!-- ==================================================== vocabularies -->
 

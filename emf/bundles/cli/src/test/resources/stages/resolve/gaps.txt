@@ -98,7 +98,10 @@ ContainerMount.mountAt is never set by a resolve case
 ContainerMount.name is never set by a resolve case
 ContainerMount.readOnly is never set by a resolve case
 ContainerMount.subPath is never set by a resolve case
+ContentPolicy is never instantiated by a resolve case
 ContentPolicy.admin is never used in a resolve case's input
+ContentPolicy.contentSecurityPolicy is never set by a resolve case
+ContentPolicy.name is never set by a resolve case
 ContentPolicy.workflow is never used in a resolve case's input
 ControllerKind.cronJob is never used by a resolve case
 ControllerKind.daemonSet is never used by a resolve case
@@ -147,6 +150,8 @@ FluxMonitorFile is never instantiated by a resolve case
 FluxMonitorFile.adapter is never set by a resolve case
 FluxMonitorFile.application is never set by a resolve case
 FluxMonitorFile.path is never set by a resolve case
+ForwardAuth is never instantiated by a resolve case
+ForwardAuth.address is never set by a resolve case
 GateMember.waitsFor is never set by a resolve case
 GateMigration is never instantiated by a resolve case
 GateMigration.identity is never set by a resolve case
@@ -193,6 +198,11 @@ KeyValue.key is never set by a resolve case
 KeyValue.value is never set by a resolve case
 KvGrant.fileMode is never set in a resolve case's input
 KvGrant.mountAt is never set in a resolve case's input
+L4Port is never instantiated by a resolve case
+L4Port.name is never set by a resolve case
+L4Port.port is never set by a resolve case
+L4Port.protocol is never set by a resolve case
+L4Port.targetPort is never set by a resolve case
 Lifecycle.job is never used in a resolve case's input
 Lifecycle.prepare is never used in a resolve case's input
 ManagedMigration is never instantiated in a resolve case's input
@@ -365,6 +375,10 @@ ResolvedGrant.fileMode is never set by a resolve case
 ResolvedGrant.generated is never set by a resolve case
 ResolvedGrant.mountAt is never set by a resolve case
 ResolvedGrant.paths is never set by a resolve case
+ResolvedL4Service is never instantiated by a resolve case
+ResolvedL4Service.name is never set by a resolve case
+ResolvedL4Service.pool is never set by a resolve case
+ResolvedL4Service.ports is never set by a resolve case
 ResolvedMigration is never instantiated by a resolve case
 ResolvedMigration.consumes is never set by a resolve case
 ResolvedMigration.cpu is never set by a resolve case
@@ -419,7 +433,9 @@ ResolvedProcess.arguments is never set by a resolve case
 ResolvedProcess.consumes is never set by a resolve case
 ResolvedProcess.dependencies is never set by a resolve case
 ResolvedProcess.internetEgress is never set by a resolve case
+ResolvedProcess.l4Services is never set by a resolve case
 ResolvedProcess.nameservers is never set by a resolve case
+ResolvedProcess.nodePorts is never set by a resolve case
 ResolvedProcess.priorityClass is never set by a resolve case
 ResolvedProcess.schedule is never set by a resolve case
 ResolvedProcess.seeder is never set by a resolve case
@@ -458,6 +474,13 @@ Runtime.python is never used in a resolve case's input
 Runtime.static is never used in a resolve case's input
 SelfMigration is never instantiated in a resolve case's input
 ServingLocation.instance is never set in a resolve case's input
+SharedMiddlewareFile is never instantiated by a resolve case
+SharedMiddlewareFile.adapter is never set by a resolve case
+SharedMiddlewareFile.application is never set by a resolve case
+SharedMiddlewareFile.forwardAuth is never set by a resolve case
+SharedMiddlewareFile.namespace is never set by a resolve case
+SharedMiddlewareFile.path is never set by a resolve case
+SharedMiddlewareFile.policies is never set by a resolve case
 Switchover.rolling is never used by a resolve case
 Tolerance.reload is never used in a resolve case's input
 TransitEngine.transit is never used in a resolve case's input
