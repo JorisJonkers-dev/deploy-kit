@@ -3811,8 +3811,8 @@ describe("a tier's proxy's API access", () => {
       subjects?: unknown[];
     }[];
     expect(role?.kind).toBe("ClusterRole");
-    const routes = role?.rules?.find(({ apiGroups }) =>
-      apiGroups.includes("traefik.io"),
+    const routes = role?.rules?.find(
+      ({ apiGroups }) => apiGroups[0] === "traefik.io",
     );
     expect(routes?.resources).toEqual(
       expect.arrayContaining(["ingressroutes", "tlsstores"]),
