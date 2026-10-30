@@ -50,6 +50,7 @@ import {
   scaled,
 } from "./capacity.ts";
 import { migrationOf } from "./migration.ts";
+import { operatedWorkloadOf } from "./operated.ts";
 import { RESTRICTED, postureOf, withHome } from "./posture.ts";
 import {
   asInstance,
@@ -1615,7 +1616,16 @@ const plain = (instance: Instance, process: ResolvedProcess): boolean =>
 function instanceWorkloadsOf(
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
-): (Deployment | CronJob)[] {
+): RenderedObject[] {
+  // The operator runs the monitoring stack's Prometheus and Alertmanager.
+  if (process.operated !== undefined)
+    return [
+      operatedWorkloadOf(
+        process,
+        application,
+        podTemplateOf(process, application),
+      ),
+    ];
   return instancesOf(process, application).map((instance) => {
     const workload = asInstance(
       workloadOf(instance.process, application),

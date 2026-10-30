@@ -30,6 +30,7 @@ import {
 import { collectorEndpoint, exports } from "../model/runtime-profiles.ts";
 import { dumpedSurfaceOf } from "../model/backup.ts";
 import { reachOf, servedOf } from "../model/aliases.ts";
+import { OPERATOR, flagOf, type OperatedKind } from "../model/operated.ts";
 
 export interface Fragment {
   readonly name: string;
@@ -471,6 +472,70 @@ function profileKeys(
     ["PORT", Object.keys(process.provides ?? {}).length === 1],
   ];
   return new Set(injected.filter(([, is]) => is).map(([key]) => key));
+}
+
+/**
+ * What keeps a monitoring role's Process one the Prometheus operator can run
+ * (spec/v1/14-platform-intent.md#the-operators-objects): its Application's
+ * only Process, `interrupted`, with one surface, and no argument that is not
+ * a flag or that the operator sets itself.
+ */
+function operatedRefusals(
+  { name, document }: Fragment,
+  kind: OperatedKind,
+  a: number,
+): Diagnostic[] {
+  const application = document.applications[a] as Application;
+  const at = `/applications/${String(a)}`;
+  const refuse = (path: string, message: string): Diagnostic =>
+    refusal(
+      "E_OPERATED_PROCESS",
+      { document: name, path, value: undefined },
+      `${application.id}: ${message}`,
+      `The Prometheus operator runs the monitoring stack's ${kind} from one interrupted Process with one surface, and sets its configuration and data paths itself.`,
+    );
+  if (application.processes.length > 1)
+    return [
+      refuse(
+        `${at}/processes`,
+        `the operator runs one Process as its ${kind}, and the Application declares ${String(application.processes.length)}`,
+      ),
+    ];
+  const process = application.processes[0] as Process;
+  const path = `${at}/processes/0`;
+  const owned = new Set(OPERATOR[kind].owned);
+  const surfaces = Object.keys(process.provides ?? {}).length;
+  return [
+    ...(process.cutover === "interrupted"
+      ? []
+      : [
+          refuse(
+            `${path}/cutover`,
+            `the operator replaces its ${kind}'s one pod in place, so its Process is \`interrupted\``,
+          ),
+        ]),
+    ...(surfaces === 1
+      ? []
+      : [
+          refuse(
+            `${path}/provides`,
+            `the operator serves its ${kind} on one port, and ${process.name} provides ${String(surfaces)} surfaces`,
+          ),
+        ]),
+    // Stryker disable next-line ArrayDeclaration: no list and an empty one hold no argument alike.
+    ...(process.args ?? []).flatMap((argument, i): Diagnostic[] => {
+      const flag = flagOf(argument);
+      if (flag !== undefined && !owned.has(flag.name)) return [];
+      return [
+        refuse(
+          `${path}/args/${String(i)}`,
+          flag === undefined
+            ? `${argument} is not a flag, and the operator passes its ${kind} flags alone`
+            : `the operator sets --${flag.name} itself`,
+        ),
+      ];
+    }),
+  ];
 }
 
 export const INVARIANTS: readonly Invariant[] = [
@@ -1081,6 +1146,31 @@ export const INVARIANTS: readonly Invariant[] = [
                   ],
             ),
           ),
+  },
+  {
+    code: "E_OPERATED_PROCESS",
+    needsPlatform: true,
+    answer: (union, platform) =>
+      (["prometheus", "alertmanager"] as const).flatMap((role) => {
+        const reference = platform.monitoring?.[role];
+        if (reference === undefined) return [];
+        const project = reference.slice(0, reference.indexOf("/"));
+        const id = reference.slice(project.length + 1);
+        return union
+          .filter(({ document }) => document.project === project)
+          .flatMap((fragment) => {
+            const a = fragment.document.applications.findIndex(
+              (application) => application.id === id,
+            );
+            return a === -1
+              ? []
+              : operatedRefusals(
+                  fragment,
+                  role === "prometheus" ? "Prometheus" : "Alertmanager",
+                  a,
+                );
+          });
+      }),
   },
 ];
 
