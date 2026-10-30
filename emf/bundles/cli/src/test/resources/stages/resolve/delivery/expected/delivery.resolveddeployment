@@ -47,6 +47,36 @@
       </placement>
     </processes>
   </applications>
+  <applications id="reporter" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="reporter" identity="reporter" lifecycle="application" image="ghcr.io/jorisjonkers-dev/delivery/reporter@sha256:4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f" imageVersion="1.0.0" uid="65532" gid="65532" cutover="interrupted" switchover="stop-start" deadline="150s" replicas="1" serving="reporter" servingLabel="app.kubernetes.io/instance" memory="64Mi" cpu="10m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/readyz" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="2">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="8080"/>
+      </startup>
+      <surfaces name="http" port="8080"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <api reason="It reads rollout events.">
+        <rules group="core">
+          <objects>events</objects>
+          <verbs>list</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+    </processes>
+  </applications>
   <reconcileUnits name="apps-delivery"/>
   <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/delivery/release-gate/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/release-gate/networkpolicy.yaml" adapter="networking">
@@ -55,6 +85,13 @@
       <ingress rule="consumer" consumes="release-gate.http" port="8080"/>
       <egress rule="cluster-dns" namespace="kube-system" port="53"/>
       <egress rule="gate-members" port="0"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/delivery/reporter/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.1/@processes.0">
+      <ingress rule="consumer" consumes="reporter.http" port="8080"/>
+      <ingress rule="flux-events" namespace="flux-system" process="notification-controller" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
     </policies>
   </deliverables>
 </resolveddeployment:ResolvedDeployment>

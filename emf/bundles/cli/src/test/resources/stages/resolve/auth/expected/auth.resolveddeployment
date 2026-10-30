@@ -3,7 +3,7 @@
   <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
     <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
   </provenance>
-  <applications id="auth" revision="sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0" project="auth" namespace="auth-system" reconcileUnit="/0/@reconcileUnits.0">
+  <applications id="auth" revision="sha256:08b008c7a1958d1108992d6404c9dcf96ee298beaee25ddba0095a89e42187d0" project="auth" namespace="auth-system" secretStore="http://vault.secrets-system.svc.cluster.local:8200" reconcileUnit="/0/@reconcileUnits.0">
     <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="1920s">
       <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
       <members process="/0/@applications.0/@processes.0">
@@ -26,6 +26,18 @@
         <middleware kind="security-headers" contentPolicy="strict" name="security-headers-strict" namespace="edge-system"/>
       </routes>
     </exposure>
+    <migration runner="ghcr.io/jorisjonkers-dev/auth/auth-migration@sha256:5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e" runnerVersion="2.3.0" nonTransactional="false" uid="1000" gid="1000" identity="auth-migration" deadline="600s" memory="256Mi" cpu="100m" scratch="64Mi">
+      <database host="postgres.data-system.svc.cluster.local" port="5432" name="auth_db"/>
+      <consumes>platform-postgres.postgres</consumes>
+      <credential engine="database" delivery="self">
+        <paths path="database/creds/auth-owner">
+          <allows>read</allows>
+        </paths>
+      </credential>
+      <egress rule="peer" namespace="data-system" process="postgres" port="5432"/>
+      <egress rule="peer" namespace="secrets-system" process="vault" port="8200"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </migration>
     <processes name="auth-api" identity="auth-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/auth/auth-api@sha256:3e5a7c9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3c5b7d9f1e3a5c7b9d1f3e5a" imageVersion="2.3.0" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="1920s" replicas="2" serving="auth-api-primary" servingLabel="app.kubernetes.io/name" memory="768Mi" cpu="250m" hardening="restricted" identityToken="true" component="jvm" priorityClass="platform-critical-app">
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:HttpTarget" path="/api/actuator/health/readiness" port="8081"/>
@@ -66,6 +78,21 @@
       <consumes>platform-valkey.redis</consumes>
       <consumes>platform-rabbitmq.amqp</consumes>
       <consumes>stalwart.smtp</consumes>
+      <dependencies application="postgres" surface="http" address="postgres.data-system.svc.cluster.local">
+        <peers namespace="data-system" process="postgres" port="5432"/>
+      </dependencies>
+      <dependencies application="valkey" surface="http" address="valkey.data-system.svc.cluster.local">
+        <peers namespace="data-system" process="valkey" port="6379"/>
+      </dependencies>
+      <dependencies application="rabbitmq" surface="http" address="rabbitmq.data-system.svc.cluster.local">
+        <peers namespace="data-system" process="rabbitmq" port="5672"/>
+      </dependencies>
+      <dependencies application="stalwart" surface="http" address="stalwart.mail-system.svc.cluster.local">
+        <peers namespace="mail-system" process="stalwart" port="25"/>
+      </dependencies>
+      <secrets path="secret/data/platform/postgres/auth" access="read" delivery="self">
+        <keys>password</keys>
+      </secrets>
     </processes>
     <processes name="auth-ui" identity="auth-ui" lifecycle="application" image="ghcr.io/jorisjonkers-dev/auth/auth-ui@sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d" imageVersion="2.3.0" uid="101" gid="101" cutover="continuous" switchover="blue-green" deadline="210s" replicas="1" serving="auth-ui-primary" servingLabel="app.kubernetes.io/name" memory="64Mi" cpu="10m" hardening="restricted" component="static" priorityClass="platform-critical-app">
       <readiness period="10s" timeout="5s" failures="3">
@@ -92,6 +119,14 @@
     </processes>
   </applications>
   <reconcileUnits name="apps-auth"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+      <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+      <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+      <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policyJob>
   <deliverables xsi:type="resolveddeployment:AliasFile" path="apps/auth/aliases.yaml" namespace="auth-system">
     <aliases name="platform-postgres" target="platform-postgres-postgres.estate-system.svc.cluster.local"/>
     <aliases name="platform-rabbitmq" target="platform-rabbitmq-amqp.estate-system.svc.cluster.local"/>
@@ -112,4 +147,90 @@
   <deliverables xsi:type="resolveddeployment:SwitchoverFile" path="apps/auth/auth/canary.yaml" processes="/0/@applications.0/@processes.0 /0/@applications.0/@processes.1"/>
   <deliverables xsi:type="resolveddeployment:BudgetFile" path="apps/auth/auth/pdb.yaml" processes="/0/@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/auth/auth/route-public.yaml" adapter="traefik" exposure="/0/@applications.0/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/auth/auth/networkpolicy.yaml" adapter="networking" migration="/0/@applications.0/@migration">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="peer" namespace="edge-system" process="traefik-public" port="8080"/>
+      <ingress rule="peer" namespace="observability-system" process="prometheus" port="8080"/>
+      <ingress rule="consumer" consumes="auth.http" port="8080"/>
+      <ingress rule="peer" namespace="delivery-system" process="release-gate" port="8080"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="peer" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+    <policies process="/0/@applications.0/@processes.1">
+      <ingress rule="peer" namespace="edge-system" process="traefik-public" port="80"/>
+      <ingress rule="consumer" consumes="auth.http" port="80"/>
+      <ingress rule="peer" namespace="delivery-system" process="release-gate" port="80"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:MigrationFile" path="apps/auth/auth/migration.yaml" application="/0/@applications.0" upTag="08b008c7a195" downTag="2f4a6c8e0b2d" role="auth-system-auth-migration"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/auth/vault-policy/policies/auth-system-auth-api.policy.json" adapter="vault-policy" namespace="auth-system" identity="auth-api" grants="/0/@applications.0/@processes.0/@secrets.0">
+    <paths path="secret/data/platform/postgres/auth">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/postgres/auth">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/data/auth-api">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/auth-api">
+      <allows>read</allows>
+    </paths>
+    <paths path="transit/sign/auth-api-jwt">
+      <allows>update</allows>
+    </paths>
+    <paths path="transit/keys/auth-api-jwt/rotate">
+      <allows>update</allows>
+    </paths>
+    <paths path="transit/keys/auth-api-jwt">
+      <allows>read</allows>
+    </paths>
+    <paths path="database/creds/auth-data">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/auth/vault-policy/policies/auth-system-auth-api.role.json" adapter="vault-policy" namespace="auth-system" identity="auth-api"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/auth/vault-policy/policies/auth-system-auth-migration.policy.json" adapter="vault-policy" namespace="auth-system" identity="auth-migration" grants="/0/@applications.0/@migration/@credential">
+    <paths path="database/creds/auth-owner">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/auth/vault-policy/policies/auth-system-auth-migration.role.json" adapter="vault-policy" namespace="auth-system" identity="auth-migration"/>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/configmap.yaml" adapter="vault-policy" namespace="auth-system" part="configmap" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json='{"path":{"database/creds/auth-data":{"capabilities":["read"]},"secret/data/auth-api":{"capabilities":["read"]},"secret/data/platform/postgres/auth":{"capabilities":["read"]},"secret/metadata/auth-api":{"capabilities":["read"]},"secret/metadata/platform/postgres/auth":{"capabilities":["read"]},"transit/keys/auth-api-jwt":{"capabilities":["read"]},"transit/keys/auth-api-jwt/rotate":{"capabilities":["update"]},"transit/sign/auth-api-jwt":{"capabilities":["update"]}}}'/>
+    <documents file="auth-system-auth-api.role.json" json='{"bound_service_account_names":["auth-api"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-api"]}'/>
+    <documents file="auth-system-auth-migration.policy.json" json='{"path":{"database/creds/auth-owner":{"capabilities":["read"]}}}'/>
+    <documents file="auth-system-auth-migration.role.json" json='{"bound_service_account_names":["auth-migration"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-migration"]}'/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/cronjob.yaml" adapter="vault-policy" namespace="auth-system" part="cronjob" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json='{"path":{"database/creds/auth-data":{"capabilities":["read"]},"secret/data/auth-api":{"capabilities":["read"]},"secret/data/platform/postgres/auth":{"capabilities":["read"]},"secret/metadata/auth-api":{"capabilities":["read"]},"secret/metadata/platform/postgres/auth":{"capabilities":["read"]},"transit/keys/auth-api-jwt":{"capabilities":["read"]},"transit/keys/auth-api-jwt/rotate":{"capabilities":["update"]},"transit/sign/auth-api-jwt":{"capabilities":["update"]}}}'/>
+    <documents file="auth-system-auth-api.role.json" json='{"bound_service_account_names":["auth-api"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-api"]}'/>
+    <documents file="auth-system-auth-migration.policy.json" json='{"path":{"database/creds/auth-owner":{"capabilities":["read"]}}}'/>
+    <documents file="auth-system-auth-migration.role.json" json='{"bound_service_account_names":["auth-migration"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-migration"]}'/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/job.yaml" adapter="vault-policy" namespace="auth-system" part="job" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json='{"path":{"database/creds/auth-data":{"capabilities":["read"]},"secret/data/auth-api":{"capabilities":["read"]},"secret/data/platform/postgres/auth":{"capabilities":["read"]},"secret/metadata/auth-api":{"capabilities":["read"]},"secret/metadata/platform/postgres/auth":{"capabilities":["read"]},"transit/keys/auth-api-jwt":{"capabilities":["read"]},"transit/keys/auth-api-jwt/rotate":{"capabilities":["update"]},"transit/sign/auth-api-jwt":{"capabilities":["update"]}}}'/>
+    <documents file="auth-system-auth-api.role.json" json='{"bound_service_account_names":["auth-api"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-api"]}'/>
+    <documents file="auth-system-auth-migration.policy.json" json='{"path":{"database/creds/auth-owner":{"capabilities":["read"]}}}'/>
+    <documents file="auth-system-auth-migration.role.json" json='{"bound_service_account_names":["auth-migration"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-migration"]}'/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/networkpolicy.yaml" adapter="vault-policy" namespace="auth-system" part="networkpolicy" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json='{"path":{"database/creds/auth-data":{"capabilities":["read"]},"secret/data/auth-api":{"capabilities":["read"]},"secret/data/platform/postgres/auth":{"capabilities":["read"]},"secret/metadata/auth-api":{"capabilities":["read"]},"secret/metadata/platform/postgres/auth":{"capabilities":["read"]},"transit/keys/auth-api-jwt":{"capabilities":["read"]},"transit/keys/auth-api-jwt/rotate":{"capabilities":["update"]},"transit/sign/auth-api-jwt":{"capabilities":["update"]}}}'/>
+    <documents file="auth-system-auth-api.role.json" json='{"bound_service_account_names":["auth-api"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-api"]}'/>
+    <documents file="auth-system-auth-migration.policy.json" json='{"path":{"database/creds/auth-owner":{"capabilities":["read"]}}}'/>
+    <documents file="auth-system-auth-migration.role.json" json='{"bound_service_account_names":["auth-migration"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-migration"]}'/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/serviceaccount.yaml" adapter="vault-policy" namespace="auth-system" part="serviceaccount" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
+    <documents file="auth-system-auth-api.policy.json" json='{"path":{"database/creds/auth-data":{"capabilities":["read"]},"secret/data/auth-api":{"capabilities":["read"]},"secret/data/platform/postgres/auth":{"capabilities":["read"]},"secret/metadata/auth-api":{"capabilities":["read"]},"secret/metadata/platform/postgres/auth":{"capabilities":["read"]},"transit/keys/auth-api-jwt":{"capabilities":["read"]},"transit/keys/auth-api-jwt/rotate":{"capabilities":["update"]},"transit/sign/auth-api-jwt":{"capabilities":["update"]}}}'/>
+    <documents file="auth-system-auth-api.role.json" json='{"bound_service_account_names":["auth-api"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-api"]}'/>
+    <documents file="auth-system-auth-migration.policy.json" json='{"path":{"database/creds/auth-owner":{"capabilities":["read"]}}}'/>
+    <documents file="auth-system-auth-migration.role.json" json='{"bound_service_account_names":["auth-migration"],"bound_service_account_namespaces":["auth-system"],"token_policies":["auth-system-auth-migration"]}'/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/auth/vault-policy/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>cronjob.yaml</resources>
+    <resources>job.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+  </deliverables>
 </resolveddeployment:ResolvedDeployment>

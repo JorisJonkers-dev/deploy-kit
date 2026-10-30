@@ -50,6 +50,7 @@ import {
   scaled,
 } from "./capacity.ts";
 import { migrationOf } from "./migration.ts";
+import { RESTRICTED, postureOf, withHome } from "./posture.ts";
 import {
   asInstance,
   instanceSelectorOf,
@@ -316,12 +317,6 @@ const gpuShareOf = (
         limits: { ...resources.limits, [process.gpu.resource]: "1" },
       };
 
-export const RESTRICTED: Container["securityContext"] = {
-  allowPrivilegeEscalation: false,
-  readOnlyRootFilesystem: true,
-  capabilities: { drop: ["ALL"] },
-};
-
 /** The volume the VPN writes the forwarded port to, and how much it may hold. */
 const VPN_VOLUME = "vpn";
 const VPN_VOLUME_SIZE = "1Mi";
@@ -420,6 +415,23 @@ const seederContainerOf = (
   const seeded = seededOf(process);
   const landsBelow = (directory: string): boolean =>
     seeded.some(({ seedAt }) => below(seedAt, directory));
+  const mounts: VolumeMount[] = [
+    ...seeded.map(({ name }) => ({
+      name,
+      mountPath: `${SEED_SOURCE}/${name}`,
+      readOnly: true as const,
+    })),
+    // Each Asset lands below a volume or a writable path: E_SEED_OUTSIDE_VOLUME.
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.volumes ?? [])
+      .filter(({ mountAt }) => landsBelow(mountAt))
+      .map(({ claim, mountAt }) => ({ name: claim, mountPath: mountAt })),
+    // Stryker disable next-line ArrayDeclaration
+    ...(process.writablePaths ?? [])
+      .filter(({ path }) => landsBelow(path))
+      .map(({ path }) => ({ name: writableOf(path), mountPath: path })),
+  ];
+  const env = withHome([], mounts);
   return {
     name: SEEDER_CONTAINER,
     image: seeder.image,
@@ -428,24 +440,10 @@ const seederContainerOf = (
       "-c",
       ["set -eu", "umask 077", ...seeded.flatMap(seedScriptOf)].join("\n"),
     ],
+    ...(env.length === 0 ? {} : { env }),
     resources: resourcesOf(seeder.memory, seeder.cpu),
     securityContext: RESTRICTED,
-    volumeMounts: [
-      ...seeded.map(({ name }) => ({
-        name,
-        mountPath: `${SEED_SOURCE}/${name}`,
-        readOnly: true as const,
-      })),
-      // Each Asset lands below a volume or a writable path: E_SEED_OUTSIDE_VOLUME.
-      // Stryker disable next-line ArrayDeclaration
-      ...(process.volumes ?? [])
-        .filter(({ mountAt }) => landsBelow(mountAt))
-        .map(({ claim, mountAt }) => ({ name: claim, mountPath: mountAt })),
-      // Stryker disable next-line ArrayDeclaration
-      ...(process.writablePaths ?? [])
-        .filter(({ path }) => landsBelow(path))
-        .map(({ path }) => ({ name: writableOf(path), mountPath: path })),
-    ],
+    volumeMounts: mounts,
   };
 };
 
@@ -553,7 +551,6 @@ function sidecarOf(
   sidecar: NonNullable<ResolvedProcess["sidecars"]>[number],
   process: ResolvedProcess,
 ): Container {
-  const env = envOf(process);
   const mounts = [
     // A sidecar that names no volume and one with an empty list mount none alike.
     // Stryker disable next-line ArrayDeclaration
@@ -574,6 +571,7 @@ function sidecarOf(
     ...writableMountsOf(process),
     ...fileMountsOf(process),
   ];
+  const env = withHome(envOf(process), mounts);
   return {
     name: sidecar.name,
     image: sidecar.image,
@@ -685,8 +683,12 @@ function edgeProxyArgsOf({ edgeProxy, surfaces }: ResolvedProcess): string[] {
 }
 
 function containerOf(process: ResolvedProcess): Container {
-  const env = envOf(process);
   const mounts = mountsOf(process);
+  const env = withHome(envOf(process), mounts);
+  const ports =
+    process.surfaces === undefined
+      ? undefined
+      : portsOf(process.surfaces, process.l4Exposure);
   // The authored arguments, then those a tier's proxy derives.
   const args = [...(process.args ?? []), ...edgeProxyArgsOf(process)];
   return {
@@ -694,12 +696,10 @@ function containerOf(process: ResolvedProcess): Container {
     image: process.image,
     ...(process.command === undefined ? {} : { command: process.command }),
     ...(args.length === 0 ? {} : { args }),
-    ...(process.surfaces === undefined
-      ? {}
-      : { ports: portsOf(process.surfaces, process.l4Exposure) }),
+    ...(ports === undefined ? {} : { ports }),
     ...(env.length === 0 ? {} : { env }),
     resources: gpuShareOf(process, resourcesOf(process.memory, process.cpu)),
-    securityContext: RESTRICTED,
+    securityContext: postureOf(ports),
     ...(mounts.length === 0 ? {} : { volumeMounts: mounts }),
     ...(process.readiness === undefined
       ? {}

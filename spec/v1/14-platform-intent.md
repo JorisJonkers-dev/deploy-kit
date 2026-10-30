@@ -195,8 +195,11 @@ One fact holds on this substrate without a field, because nothing varies it:
 `net.ipv4.ip_unprivileged_port_start` to 0 in every such pod, so a non-root
 container with every capability dropped listens on port 80; a drill on the
 estate's cluster bound it. No authored Process runs on the host network, so a
-low port is never refused and never earns a capability
-([chapter 10](10-project-intent.md#a-low-port-needs-no-capability)).
+low port is never refused. Binding is not executing: an image whose binary
+carries the file capability `cap_net_bind_service+ep` cannot start with that
+capability dropped, so a container that listens below 1024 adds back
+`NET_BIND_SERVICE` alone, and never a sysctl
+([chapter 10](10-project-intent.md#a-low-port-earns-net_bind_service)).
 
 ## The bootstrap set
 

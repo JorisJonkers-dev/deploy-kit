@@ -2424,6 +2424,8 @@ describe("what a migration plan and a count above one render", () => {
                   name: "VAULT_CREDENTIALS_PATH",
                   value: "database/creds/notes-owner",
                 },
+                // The runner's home is the scratch it writes to.
+                { name: "HOME", value: "/tmp" },
               ],
               resources: {
                 requests: { memory: "256Mi", cpu: "100m" },

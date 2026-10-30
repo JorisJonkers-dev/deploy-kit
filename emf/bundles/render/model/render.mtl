@@ -82,8 +82,14 @@
   [else]
     [for (p : resolveddeployment::ProcessPolicy | d.policies)]
       [p.policy()/]
+      [for (s : resolveddeployment::ResolvedSpawn | p.process.spawns)]
+        [s.spawnPolicy(p.process)/]
+      [/for]
       [if (p.process.backups()->notEmpty())]
         [p.process.backupPolicy()/]
+      [/if]
+      [if (p.process.move <> null)]
+        [p.process.move.movePolicy(p.process)/]
       [/if]
     [/for]
     [if (d.migration <> null)]
@@ -121,6 +127,113 @@
     [/if]
             - protocol: TCP
               port: [peer.port/]
+  [/for]
+[/template]
+
+[comment A spawned pod's own policy: the Process that made it reaches it on what it serves, and it
+  reaches its edges, its baseline and, where its template declares it, the public internet. /]
+[template private spawnPolicy(s : resolveddeployment::ResolvedSpawn, p : resolveddeployment::ResolvedProcess)]
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: [s.name/]
+    namespace: [p.application().namespace/]
+    labels:
+      [p.labels()/]
+  spec:
+    podSelector:
+      matchLabels:
+        deploy-kit.jorisjonkers.dev/spawned-from: [s.name/]
+    policyTypes:
+      - Ingress
+      - Egress
+  [if (s.surfaces->notEmpty())]
+      ingress:
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: [p.application().namespace/]
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: [p.name/]
+          ports:
+    [for (x : resolveddeployment::ResolvedSurface | s.surfaces)]
+              - protocol: TCP
+                port: [x.port/]
+    [/for]
+  [/if]
+    egress:
+  [for (peer : resolveddeployment::PolicyPeer | s.dependencies.peers)]
+        - to:
+            [peer.peer()/]
+          ports:
+            - protocol: TCP
+              port: [peer.port/]
+  [/for]
+  [for (peer : resolveddeployment::PolicyPeer | s.egress)]
+        - to:
+            [peer.peer()/]
+          ports:
+    [if (peer.rule = 'cluster-dns')]
+              - protocol: UDP
+                port: [peer.port/]
+    [/if]
+            - protocol: TCP
+              port: [peer.port/]
+  [/for]
+  [if (s.internetEgress <> null)]
+        - to:
+            - ipBlock:
+                cidr: 0.0.0.0/0
+                except:
+                  - 10.0.0.0/8
+                  - 172.16.0.0/12
+                  - 192.168.0.0/16
+                  - 100.64.0.0/10
+                  - 169.254.0.0/16
+                  - 127.0.0.0/8
+  [/if]
+[/template]
+
+[comment The move identity's own policy: what its Jobs reach, the Instances on the engine's surface,
+  the Secret Store and the cluster's DNS, and where the Kubernetes API answers, which the flip writes
+  to; and nothing in. /]
+[template private movePolicy(m : resolveddeployment::ResolvedMove, p : resolveddeployment::ResolvedProcess)]
+  ---
+  apiVersion: networking.k8s.io/v1
+  kind: NetworkPolicy
+  metadata:
+    name: [m.identity/]
+    namespace: [p.application().namespace/]
+    labels:
+      [m.identity.labelSet('none', p.application().id)/]
+  spec:
+    podSelector:
+      matchLabels:
+        app.kubernetes.io/instance: [m.identity/]
+    policyTypes:
+      - Ingress
+      - Egress
+    egress:
+  [for (peer : resolveddeployment::PolicyPeer | m.egress)]
+        - to:
+            [peer.peer()/]
+          ports:
+    [if (peer.rule = 'cluster-dns')]
+              - protocol: UDP
+                port: [peer.port/]
+    [/if]
+            - protocol: TCP
+              port: [peer.port/]
+  [/for]
+  [for (range : resolveddeployment::AdmittedRange | m.server)]
+        - to:
+            - ipBlock:
+                cidr: [range.cidr/]
+          ports:
+            - protocol: TCP
+              port: [range.port/]
   [/for]
 [/template]
 
@@ -188,6 +301,21 @@
               - protocol: [if (peer.protocol <> null)][peer.protocol/][else]TCP[/if]
                 port: [peer.port/]
     [/for]
+    [if (p.process.move <> null)]
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    kubernetes.io/metadata.name: [p.process.application().namespace/]
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/instance: [p.process.move.identity/]
+      [for (peer : resolveddeployment::PolicyPeer | p.process.move.instancePeers)]
+                [peer.peer()/]
+      [/for]
+            ports:
+              - protocol: TCP
+                port: [p.process.move.port/]
+    [/if]
   [/if]
     egress:
   [comment Every peer of every edge, in one loop: a loop within a loop indents its lines by
@@ -198,6 +326,21 @@
           ports:
             - protocol: TCP
               port: [peer.port/]
+  [/for]
+  [comment The pods it makes from its templates, on the surfaces they serve it. /]
+  [for (s : resolveddeployment::ResolvedSpawn | p.process.spawns->select(s | s.surfaces->notEmpty()))]
+        - to:
+            - namespaceSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: [p.process.application().namespace/]
+              podSelector:
+                matchLabels:
+                  deploy-kit.jorisjonkers.dev/spawned-from: [s.name/]
+          ports:
+    [for (x : resolveddeployment::ResolvedSurface | s.surfaces)]
+              - protocol: TCP
+                port: [x.port/]
+    [/for]
   [/for]
   [comment The cluster's DNS answers on UDP, and on TCP for a truncated response. The gate's own
     requests reach every member's pods, on whichever port the member's own policy admits them. /]
@@ -220,6 +363,16 @@
                 port: [peer.port/]
     [/if]
   [/for]
+  [comment An open Move's Instances reach each other on the engine's surface. /]
+  [if (p.process.move <> null)]
+        - to:
+    [for (peer : resolveddeployment::PolicyPeer | p.process.move.instancePeers)]
+              [peer.peer()/]
+    [/for]
+          ports:
+            - protocol: TCP
+              port: [p.process.move.port/]
+  [/if]
   [comment The nameservers a Process that serves DNS resolves through, by address: off the
     cluster, and answering on UDP and on TCP. /]
   [if (p.process.nameservers->notEmpty())]
@@ -308,8 +461,13 @@
     [p.labels()/]
 [/template]
 
+[comment An Instance a Move starts carries its Process's instance label, and its own name. /]
 [template private labels(p : resolveddeployment::ResolvedProcess)]
-  [p.name.labelSet(p.component, p.application().id)/]
+  app.kubernetes.io/name: [p.name/]
+  app.kubernetes.io/instance: [p.instanceName()/]
+  app.kubernetes.io/part-of: [p.application().id/]
+  app.kubernetes.io/managed-by: deploy-kit
+  app.kubernetes.io/component: [p.component/]
 [/template]
 
 [comment The fixed label set: the name twice, the Application, the manager and the runtime. /]
@@ -722,6 +880,10 @@
   kind: [d.controller.toString()/]
   metadata:
     [p.metadata()/]
+  [if (p.frozen)]
+      annotations:
+        kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+  [/if]
   spec:
   [if (p.switchover.toString() = 'blue-green')]
       strategy:
@@ -745,7 +907,7 @@
     selector:
       matchLabels:
         app.kubernetes.io/name: [p.name/]
-        app.kubernetes.io/instance: [p.name/]
+        app.kubernetes.io/instance: [p.instanceName()/]
     template:
       [p.pod('')/]
 [/template]
@@ -1041,7 +1203,7 @@
 [/template]
 
 [template private container(p : resolveddeployment::ResolvedProcess)]
-  - name: [p.name/]
+  - name: [p.instanceName()/]
     image: [p.image/]
   [if (p.arguments->notEmpty())]
       args:
@@ -1236,7 +1398,10 @@
       [p.metadata()/]
     spec:
       selector:
-        app.kubernetes.io/instance: [p.name/]
+    [if (p.instance <> null or p.move <> null)]
+          app.kubernetes.io/name: [p.name/]
+    [/if]
+        app.kubernetes.io/instance: [p.instanceName()/]
       ports:
     [for (s : resolveddeployment::ResolvedSurface | p.surfaces)]
           - name: [s.name/]
@@ -1507,6 +1672,14 @@
   [if (b.offCluster <> null)]
                     - name: BACKUP_OFF_CLUSTER
                       value: [b.offCluster.scalar()/]
+  [/if]
+  [if (b.offClusterPath <> null)]
+                    - name: BACKUP_OFF_CLUSTER_PATH
+                      value: [b.offClusterPath.scalar()/]
+  [/if]
+  [if (b.offClusterRecipient <> null)]
+                    - name: BACKUP_OFF_CLUSTER_RECIPIENT
+                      value: [b.offClusterRecipient.scalar()/]
   [/if]
   [if (b.peer <> null)]
                     - name: BACKUP_HOST
@@ -2856,17 +3029,21 @@
 
 [comment The containers of a Process's pod whose image the lock records a version for, by name. /]
 [query private versioned(p : resolveddeployment::ResolvedProcess) : Sequence(String) =
-  (if p.imageVersion = null then Sequence{} else Sequence{p.name} endif)
+  (if p.imageVersion = null then Sequence{} else Sequence{p.instanceName()} endif)
     ->concat(p.sidecars->select(c | c.imageVersion <> null)->collect(c | c.name))
     ->concat(if p.vpn = null or p.vpn.imageVersion = null then Sequence{} else Sequence{'vpn'} endif)
     ->concat(if p.seeder = null or p.seeder.imageVersion = null then Sequence{} else Sequence{'seed'} endif)
     ->sortedBy(n | n) /]
 
 [query private versionOf(p : resolveddeployment::ResolvedProcess, n : String) : String =
-  if n = p.name then p.imageVersion
+  if n = p.instanceName() then p.imageVersion
   else if p.sidecars->exists(c | c.name = n) then p.sidecars->select(c | c.name = n)->first().imageVersion
   else if n = 'seed' and p.seeder <> null then p.seeder.imageVersion
   else p.vpn.imageVersion endif endif endif /]
+
+[comment The Process an Instance is of, or the Process itself. /]
+[query private instanceName(p : resolveddeployment::ResolvedProcess) : String =
+  if p.instance = null then p.name else p.instance endif /]
 
 [comment Whether the Process is a member of its Application's release gate, whose pods carry the label
   the Release Gate's policy admits. /]

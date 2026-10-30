@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:b1861bf1613f71bad0e2188e65cee7a1dd5479a5f27395facb67a47230a8ffdc" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="data" digest="sha256:ed41bc4e94f67099342b003d896ee5f220e796cc0efe3e63accd07b684143b11"/>
+    <inputDigests name="delivery" digest="sha256:a14e199b014c8f0dfe285f05d43f5d04929faecc22d2b02c5c938eb9e9a93e07"/>
+    <inputDigests name="edge" digest="sha256:273c64ecd8c35ab69918664735661764e44e8e3ad04a58a11ab92dcb52ec1f4a"/>
+    <inputDigests name="observability" digest="sha256:aac790f0f921ce56ea5fb7af1f5a85c48c2122fbcbd99923124aafe063f6594c"/>
+    <inputDigests name="secrets" digest="sha256:3b6b608aa89a7beebed377772c9905705861c2609f1c262a5ddcb757b70bcecc"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:466a836dcafb0bb696dfda0bcc4ceacfed02dbb0acfe347b54d505483c0e136e"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:2d345ca79ba1ac222e75e72cda38ee6babdc7b4a2cd4c58d55018112278d4042"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
+  </provenance>
+  <applications id="platform-postgres" revision="sha256:94169025f894aa00c2ffb3828c600e0584c7012515a9b80ced7b308eebf89b7c" project="data" namespace="data-system" alertClass="page" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <scrape process="/0/@applications.0/@processes.0" surface="metrics" path="/metrics" interval="30s" timeout="10s">
+      <labels key="release" value="metrics-stack"/>
+    </scrape>
+    <processes name="postgres" frozen="true" priorityClass="platform-data" identity="postgres" lifecycle="application" image="docker.io/pgvector/pgvector@sha256:9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e" imageVersion="17.2.0" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="postgres" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="2Gi" cpu="500m" hardening="restricted" component="none">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
+      </startup>
+      <surfaces name="postgres" port="5432"/>
+      <surfaces name="metrics" port="9187"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+      <volumes claim="postgres-data" mountAt="/var/lib/postgresql/data" size="20Gi" durability="irreplaceable">
+        <backup schedule="45 2 * * *" retain="90" offCluster="s3://backup-storage/jorisjonkers-dev" offClusterPath="data/postgres/postgres-data" offClusterRecipient="age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8" method="ghcr.io/jorisjonkers-dev/platform/postgres-backup@sha256:6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f" methodVersion="1.2.0" uid="999" gid="999" identity="postgres-backup" claim="postgres-data-backup">
+          <credential path="secret/data/platform/backup/off-cluster" access="read" delivery="env" destination="postgres-backup-platform-backup-off-cluster"/>
+          <peer host="postgres.data-system.svc.cluster.local" port="5432">
+            <credential path="secret/data/data/postgres/backup" access="read" delivery="env" destination="postgres-backup-data-postgres-backup"/>
+          </peer>
+          <egress rule="datastore" namespace="data-system" process="postgres" port="5432"/>
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+          <destinations cidr="203.0.113.0/24" port="443"/>
+        </backup>
+      </volumes>
+      <secrets path="secret/data/platform/postgres/exporter" access="read" delivery="env" destination="postgres-platform-postgres-exporter">
+        <keys>datasource</keys>
+        <restartTargets>postgres</restartTargets>
+      </secrets>
+      <assets name="postgres-postgresql-conf-765c16a293" from="config/postgresql.conf" mountAt="/etc/postgresql/postgresql.conf" content="# collections/data/platform/config/postgresql.conf&#xA;#&#xA;# The Asset platform-postgres mounts at /etc/postgresql/postgresql.conf&#xA;# (docs/adr/model/0014-file-shaped-configuration-is-an-asset.md). Fully&#xA;# static: no placeholder and no derived value, so the file is carried into&#xA;# the projection as written, under a name its content digest decides.&#xA;&#xA;# ------------------------------------------------------------ connections&#xA;listen_addresses = '*'&#xA;port = 5432&#xA;max_connections = 100&#xA;unix_socket_directories = '/var/run/postgresql'&#xA;&#xA;# ----------------------------------------------------------------- memory&#xA;shared_buffers = 512MB&#xA;effective_cache_size = 1536MB&#xA;work_mem = 8MB&#xA;maintenance_work_mem = 128MB&#xA;&#xA;# -------------------------------------------------------------------- WAL&#xA;wal_level = replica&#xA;max_wal_size = 2GB&#xA;min_wal_size = 256MB&#xA;checkpoint_completion_target = 0.9&#xA;&#xA;# -------------------------------------------------------------- extensions&#xA;shared_preload_libraries = 'vector'&#xA;&#xA;# ---------------------------------------------------------------- logging&#xA;log_destination = 'stderr'&#xA;logging_collector = off&#xA;log_min_duration_statement = 1000&#xA;log_line_prefix = '%m [%p] %q%u@%d '&#xA;&#xA;# ---------------------------------------------------------------- locale&#xA;datestyle = 'iso, mdy'&#xA;timezone = 'UTC'&#xA;lc_messages = 'en_US.utf8'&#xA;default_text_search_config = 'pg_catalog.english'&#xA;"/>
+      <sidecars name="postgres-exporter" image="quay.io/prometheuscommunity/postgres-exporter@sha256:4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d" imageVersion="v0.17.1" memory="64Mi" cpu="10m"/>
+      <writablePaths path="/var/run/postgresql" size="64Mi"/>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <environment name="DATA_SOURCE_NAME">
+        <secret path="secret/data/platform/postgres/exporter" key="datasource"/>
+      </environment>
+      <environment name="POSTGRES_DB" value="postgres"/>
+      <environment name="POSTGRES_USER" value="postgres"/>
+      <move identity="postgres-move" tag="fe331b712e81" image="ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f" imageVersion="1.0.0" uid="999" gid="999" memory="128Mi" cpu="100m" sourceHost="postgres.data-system.svc.cluster.local" targetHost="postgres-fe331b712e81.data-system.svc.cluster.local" port="5432" flips="platform-postgres-postgres" flipNamespace="estate-system" role="data-system-postgres-move" credentialsPath="secret/data/data/postgres/move" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <steps name="start" command="start"/>
+    <steps name="sync" command="sync"/>
+    <steps name="lag" command="lag"/>
+    <steps name="fence" command="fence"/>
+    <steps name="final-lag" command="lag"/>
+    <steps name="flip" command="flip"/>
+    <steps name="unfence" command="unfence"/>
+    <instancePeers rule="datastore" namespace="data-system" process="postgres" port="5432"/>
+    <egress rule="datastore" namespace="data-system" process="postgres" port="5432"/>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    <server cidr="10.43.0.1/32" port="443"/>
+  </move>
+    </processes>
+    <processes name="postgres-fe331b712e81" instance="postgres" priorityClass="platform-data" identity="postgres" lifecycle="application" image="docker.io/pgvector/pgvector@sha256:9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e" imageVersion="17.2.0" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="postgres-fe331b712e81" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="2Gi" cpu="500m" hardening="restricted" component="none">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
+      </startup>
+      <surfaces name="postgres" port="5432"/>
+      <surfaces name="metrics" port="9187"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="postgres-data-fe331b712e81" mountAt="/var/lib/postgresql/data" size="20Gi" durability="irreplaceable">
+        <backup schedule="45 2 * * *" retain="90" offCluster="s3://backup-storage/jorisjonkers-dev" offClusterPath="data/postgres/postgres-data" offClusterRecipient="age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8" method="ghcr.io/jorisjonkers-dev/platform/postgres-backup@sha256:6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f" methodVersion="1.2.0" uid="999" gid="999" identity="postgres-backup" claim="postgres-data-backup-fe331b712e81">
+          <credential path="secret/data/platform/backup/off-cluster" access="read" delivery="env" destination="postgres-backup-platform-backup-off-cluster"/>
+          <peer host="postgres.data-system.svc.cluster.local" port="5432">
+            <credential path="secret/data/data/postgres/backup" access="read" delivery="env" destination="postgres-backup-data-postgres-backup"/>
+          </peer>
+          <egress rule="datastore" namespace="data-system" process="postgres" port="5432"/>
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+          <destinations cidr="203.0.113.0/24" port="443"/>
+        </backup>
+      </volumes>
+      <secrets path="secret/data/platform/postgres/exporter" access="read" delivery="env" destination="postgres-platform-postgres-exporter">
+        <keys>datasource</keys>
+        <restartTargets>postgres</restartTargets>
+      </secrets>
+      <assets name="postgres-postgresql-conf-765c16a293" from="config/postgresql.conf" mountAt="/etc/postgresql/postgresql.conf" content="# collections/data/platform/config/postgresql.conf&#xA;#&#xA;# The Asset platform-postgres mounts at /etc/postgresql/postgresql.conf&#xA;# (docs/adr/model/0014-file-shaped-configuration-is-an-asset.md). Fully&#xA;# static: no placeholder and no derived value, so the file is carried into&#xA;# the projection as written, under a name its content digest decides.&#xA;&#xA;# ------------------------------------------------------------ connections&#xA;listen_addresses = '*'&#xA;port = 5432&#xA;max_connections = 100&#xA;unix_socket_directories = '/var/run/postgresql'&#xA;&#xA;# ----------------------------------------------------------------- memory&#xA;shared_buffers = 512MB&#xA;effective_cache_size = 1536MB&#xA;work_mem = 8MB&#xA;maintenance_work_mem = 128MB&#xA;&#xA;# -------------------------------------------------------------------- WAL&#xA;wal_level = replica&#xA;max_wal_size = 2GB&#xA;min_wal_size = 256MB&#xA;checkpoint_completion_target = 0.9&#xA;&#xA;# -------------------------------------------------------------- extensions&#xA;shared_preload_libraries = 'vector'&#xA;&#xA;# ---------------------------------------------------------------- logging&#xA;log_destination = 'stderr'&#xA;logging_collector = off&#xA;log_min_duration_statement = 1000&#xA;log_line_prefix = '%m [%p] %q%u@%d '&#xA;&#xA;# ---------------------------------------------------------------- locale&#xA;datestyle = 'iso, mdy'&#xA;timezone = 'UTC'&#xA;lc_messages = 'en_US.utf8'&#xA;default_text_search_config = 'pg_catalog.english'&#xA;"/>
+      <sidecars name="postgres-exporter" image="quay.io/prometheuscommunity/postgres-exporter@sha256:4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d" imageVersion="v0.17.1" memory="64Mi" cpu="10m"/>
+      <writablePaths path="/var/run/postgresql" size="64Mi"/>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <environment name="DATA_SOURCE_NAME">
+        <secret path="secret/data/platform/postgres/exporter" key="datasource"/>
+      </environment>
+      <environment name="POSTGRES_DB" value="postgres"/>
+      <environment name="POSTGRES_USER" value="postgres"/>
+    </processes>
+  </applications>
+  <applications id="platform-rabbitmq" revision="sha256:002c429b1763cd127bfeedfb8dfe40edcd7e53b3c4491082a17b06315d5aa388" project="data" namespace="data-system" alertClass="urgent" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <exposure name="management" host="rabbitmq.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/" audience="authenticated" precedence="1" process="/0/@applications.1/@processes.0" surface="management">
+        <middleware endpoint="http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward" name="forward-auth" namespace="edge-system"/>
+        <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <scrape process="/0/@applications.1/@processes.0" surface="metrics" path="/metrics" interval="30s" timeout="10s">
+      <labels key="release" value="metrics-stack"/>
+    </scrape>
+    <processes name="rabbitmq" priorityClass="platform-data" identity="rabbitmq" lifecycle="application" image="docker.io/library/rabbitmq@sha256:2d4f6b8a0c2e4d6f8b0a2c4e6d8f0b2a4c6e8d0f2b4a6c8e0d2f4b6a8c0e2d4f" imageVersion="4.0.7" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="rabbitmq" servingLabel="app.kubernetes.io/instance" deadline="480s" replicas="1" memory="2Gi" cpu="500m" hardening="restricted" component="none">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5672"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5672"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="24">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5672"/>
+      </startup>
+      <surfaces name="amqp" port="5672"/>
+      <surfaces name="management" port="15672"/>
+      <surfaces name="metrics" port="15692"/>
+      <surfaces name="mqtt" port="1883"/>
+      <l4Services name="rabbitmq-lan-mqtt" pool="lan-mqtt">
+        <ports name="tcp-1883" port="1883" protocol="TCP" targetPort="1883"/>
+      </l4Services>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+      </placement>
+      <volumes claim="rabbitmq-data" mountAt="/var/lib/rabbitmq" size="20Gi" durability="recoverable">
+        <backup schedule="15 3 * * *" retain="14" method="ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2" methodVersion="1.2.0" uid="999" gid="999" identity="rabbitmq-backup" claim="rabbitmq-data-backup">
+          <peer host="rabbitmq.data-system.svc.cluster.local" port="15672">
+            <credential path="secret/data/data/rabbitmq/backup" access="read" delivery="env" destination="rabbitmq-backup-data-rabbitmq-backup"/>
+          </peer>
+          <egress rule="datastore" namespace="data-system" process="rabbitmq" port="15672"/>
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+        </backup>
+      </volumes>
+    </processes>
+  </applications>
+  <applications id="platform-valkey" revision="sha256:e2eb779cf409ec67cfe163f60e1116f3f8453d58ec2004ce8d08be9c3fa24ffa" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="valkey" identity="valkey" lifecycle="application" image="docker.io/valkey/valkey@sha256:6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c" imageVersion="8.1.0" uid="999" gid="1000" cutover="interrupted" switchover="stop-start" serving="valkey" servingLabel="app.kubernetes.io/instance" deadline="210s" replicas="1" memory="256Mi" cpu="50m" hardening="restricted" component="none">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="6379"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="6379"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="6379"/>
+      </startup>
+      <surfaces name="redis" port="6379"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="valkey-data" mountAt="/data" size="2Gi"/>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-data" after="/0/@reconcileUnits.1 /0/@reconcileUnits.2"/>
+  <reconcileUnits name="apps-edge"/>
+  <reconcileUnits name="apps-secrets"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+  </policyJob>
+  <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/platform-postgres/kustomization.yaml">
+    <resources>move.yaml</resources>
+    <resources>backup.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>pvc.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>servicemonitor.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/platform-postgres/workload.yaml" processes="/0/@applications.0/@processes.0 /0/@applications.0/@processes.1" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/data/platform-postgres/service.yaml" processes="/0/@applications.0/@processes.0 /0/@applications.0/@processes.1"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/data/platform-postgres/serviceaccount.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/data/platform-postgres/pvc.yaml" processes="/0/@applications.0/@processes.0 /0/@applications.0/@processes.1"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/data/platform-postgres/configmap.yaml" processes="/0/@applications.0/@processes.0" application="/0/@applications.0"/>
+  <deliverables xsi:type="resolveddeployment:BackupFile" path="apps/data/platform-postgres/backup.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:MonitorFile" path="apps/data/platform-postgres/servicemonitor.yaml" adapter="prometheus" process="/0/@applications.0/@processes.0" surface="metrics" scrapePath="/metrics" interval="30s" timeout="10s" kind="ServiceMonitor"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/data/platform-postgres/vso.yaml" adapter="vso" application="/0/@applications.0">
+    <holders identity="postgres" component="none" grants="/0/@applications.0/@processes.0/@secrets.0"/>
+    <holders identity="postgres-backup" component="none" grants="/0/@applications.0/@processes.0/@volumes.0/@backup/@credential /0/@applications.0/@processes.0/@volumes.0/@backup/@peer/@credential"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/data/platform-postgres/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="metrics-stack" namespace="observability-system" process="prometheus" port="9187"/>
+      <ingress rule="consumer" consumes="platform-postgres.postgres" port="5432"/>
+      <ingress rule="consumer" consumes="platform-postgres.metrics" port="9187"/>
+      <ingress rule="backup" namespace="data-system" process="postgres-backup" port="5432"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:MoveFile" path="apps/data/platform-postgres/move.yaml" process="/0/@applications.0/@processes.0"/>
+</resolveddeployment:ResolvedDeployment>

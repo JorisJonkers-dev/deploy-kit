@@ -326,6 +326,14 @@
          that are not a surface's own number over TCP. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="l4Services" upperBound="-1" eType="#//ResolvedL4Service" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="nodePorts" upperBound="-1" eType="#//L4Port" containment="true"/>
+    <!-- The templates it makes pods from through the Kubernetes API (spec/v1/16-dependencies.md#spawned-pods). -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="spawns" upperBound="-1" eType="#//ResolvedSpawn" containment="true"/>
+    <!-- Set on an Instance a Move starts: the Process it is an Instance of, whose instance label
+         its pods carry while its name label names the Instance. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="instance" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Whether its workload is created once and never rewritten: the source a Move carries data
+         out of, which still serves. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="frozen" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <!-- An open Move of the Process (spec/v1/55-delivery.md#the-move), where one is open. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="move" eType="#//ResolvedMove" containment="true"/>
     <!-- A `scheduled` Process's schedule, whether it is parked, and how late a run may still start. -->
@@ -384,11 +392,26 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="credentialsPath" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="secretStore" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="steps" lowerBound="1" upperBound="-1" eType="#//MoveStep" containment="true"/>
+    <!-- The Instances the method reaches on the engine's surface, which each Instance also reaches,
+         and what the move identity's own policy admits: those, the Secret Store, the cluster's DNS,
+         and where the Kubernetes API answers, which the flip writes to. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="instancePeers" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="server" upperBound="-1" eType="#//AdmittedRange" containment="true"/>
   </eClassifiers>
   <!-- One step of a Move, by the name of its Job and the step it runs. -->
   <eClassifiers xsi:type="ecore:EClass" name="MoveStep">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- A template a Process makes pods from: the label its pods carry, the surfaces they serve the Process on, their edges, what their baseline reaches, and the public internet where the template declares it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedSpawn">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="surfaces" upperBound="-1" eType="#//ResolvedSurface" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dependencies" upperBound="-1" eType="#//ResolvedEdge" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" upperBound="-1" eType="#//PolicyPeer" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="internetEgress" eType="#//InternetEgress" containment="true"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedSurface">
@@ -481,6 +504,10 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="schedule" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="retain" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="offCluster" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Where below the destination an off-cluster copy lands, and the recipient it is encrypted to
+         before it leaves the cluster. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="offClusterPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="offClusterRecipient" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="method" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="methodVersion" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- The method image's own user, the identity it runs as, the claim its

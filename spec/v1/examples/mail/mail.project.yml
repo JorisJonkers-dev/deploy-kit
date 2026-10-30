@@ -20,6 +20,19 @@
 # localhost. The manifest is the Process's Asset, rendered as its one
 # content-hashed ConfigMap, and the sidecar names it by `from` to mount it; an
 # Asset the Process does not hold is E_UNKNOWN_SIDECAR_ASSET.
+#
+# Also exercises: a container that listens below 1024
+# (spec/v1/10-project-intent.md#a-low-port-earns-net_bind_service). Stalwart
+# binds 25 and 993, and its binary carries the file capability
+# cap_net_bind_service+ep, which it cannot execute with every capability
+# dropped, so its container adds NET_BIND_SERVICE back and nothing else. The
+# sidecar listens on nothing and adds nothing.
+#
+# Also exercises: a home on the writable /tmp
+# (spec/v1/10-project-intent.md#home-is-the-writable-tmp). The provisioner's CLI
+# writes under $HOME, and its image names no user with one, so on a read-only
+# root its home would be an unwritable /. The Process declares /tmp, which
+# every container of its pod mounts, so each gets HOME=/tmp.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project
@@ -57,6 +70,7 @@ applications:
           liveness: { path: /healthz/live, port: 8080 }
         startupBudget: 60s
         cutover: interrupted
+        writablePaths: [/tmp]
         assets:
           - from: config/manifest.json
             mountAt: /etc/stalwart-provisioner/manifest.json
