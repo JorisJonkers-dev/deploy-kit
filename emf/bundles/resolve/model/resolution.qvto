@@ -1112,7 +1112,8 @@ query AssetDeclaration::resolvedFor(p : PI::Process, prj : EffectiveProject) : R
 	let found : Sequence(AssetFile) =
 		assetFiles->select(f | f.project = prj.project and f._from = self._from)->asSequence() in
 	let file : AssetFile = if found->isEmpty() then unfiled(self._from) else found->first() endif in
-	if file.content.indexOf('${') > 0 then unplaced(self._from) else
+	-- Only a placeholder of a kind the model reads is one; a `${VAR}` the image itself expands is text.
+	if file.content.matches('(?s).*\\$\\{(secret|dependency|exposure|identity|client):.*') then unplaced(self._from) else
 	object ResolvedAsset {
 		name := p.name + '-' + spelled(self._from) + '-'
 			+ file.content.textDigestOf().substring(8, 7 + CONTENT_DIGITS);
