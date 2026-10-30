@@ -90,6 +90,7 @@ other resolves and every policy one asks for the other offers:
 | a tier issues through `acme`, and `acme` is absent | `E_NO_ACME_POLICY` |
 | a tier issues through `acme`, and `secretStore` is absent | `E_NO_SECRET_STORE` |
 | a Process of an acme tier's proxy declares `replicas` | `E_ACME_PROXY_REPLICATED` |
+| a Process answers a tier, and `apiAccess` is absent | `E_NO_API_ACCESS_POLICY` |
 | two exposures dial the same port and protocol on one node through its node addresses | `E_NODE_PORT_TAKEN` |
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
@@ -360,8 +361,9 @@ routes ([0117](../../docs/adr/model/0117-an-external-check-is-rendered-by-its-ow
   admitted holders write ConfigMaps in a Project's namespace, so a check comes
   from a render composition checked, or from a holder the platform named.
 - **No edge catalog is rendered.** The Traefik Applications read every
-  `IngressRoute` through their Kubernetes provider, and each Project's routes
-  are already in its own namespace.
+  `IngressRoute` through their Kubernetes provider, with the access their tier
+  derives ([Tiers](#tiers)), and each Project's routes are already in its own
+  namespace.
 
 A route or exposure change therefore re-renders only its own Project's share.
 No platform Application's Assets, pod template or pin move with it.
@@ -484,6 +486,18 @@ or hand-written TLS store is rendered. An acme tier under a document with no
 `E_NO_SECRET_STORE`. The ACME state sits on one claim, so the proxy runs one
 copy: `replicas` on any of its Processes is `E_ACME_PROXY_REPLICATED`. An edge
 proxy is delivery machinery, whose rolling switchover never runs two copies.
+
+**A tier's proxy reads its routes through the Kubernetes API**, so the tier
+derives the access its provider needs on each Process that answers it: `get`,
+`list` and `watch` on Services, Secrets, nodes, ConfigMaps and namespaces, on
+EndpointSlices and on every route, middleware, transport, TLS and service kind
+the proxy serves, and `get` on pods, as cluster-scoped rules, with a mounted
+token and egress to where the API answers. Naming the Application in a tier
+is the platform's admission, so it needs no place in `apiAccess.holders`, and
+rules the proxy declares itself are held beside the derived ones, admitted as
+any holder's are. A proxy under a document with no `apiAccess` has no address
+to reach the API at: `E_NO_API_ACCESS_POLICY`
+([0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)).
 
 **The issuance allowance is shared.** Tiers that issue the same names draw on
 one allowance at the certificate authority. Both of the estate's tiers issue
@@ -1172,7 +1186,8 @@ The list is not `delivery.machinery`. Machinery is what performs a switch and
 is therefore never gated; a holder is what calls the API. Flagger and the
 Release Gate are both, the Collector
 ([chapter 20](20-resolved-deployment.md#the-collector)) is a holder that switches
-nothing, and an edge proxy is machinery that holds no access.
+nothing, and an edge proxy is machinery that holds the access its tier derives
+without being listed ([Tiers](#tiers)).
 
 The block is optional. A Platform document without it admits nobody, and every
 `api` declaration read beside it is refused.

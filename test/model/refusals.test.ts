@@ -741,6 +741,7 @@ describe("the refusal fixtures", () => {
       "mongo-credentials-without-database",
       "mongo-without-durability",
       "no-acme-policy",
+      "no-api-access-policy",
       "no-dashboard-policy",
       "no-delivery-policy",
       "no-direct-target",
@@ -795,7 +796,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(96);
+    expect(refused).toHaveLength(97);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

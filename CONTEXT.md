@@ -721,7 +721,8 @@ which reads the cluster's state for composition and writes nowhere.
 switched by one: the Release Gate, Flagger and the edge proxies, listed in the
 Platform document. Their continuous Processes roll in place
 ([chapter 14](spec/v1/14-platform-intent.md#delivery-policy)). Not the same
-list as the API Holders: an edge proxy is machinery and holds no access.
+list as the API Holders: an edge proxy is machinery, and the access it holds
+is its tier's to derive, not a listed holder's.
 
 **API access**: what a Process may ask of the Kubernetes API: rules of a
 group, its objects and verbs, declared on the Process with a reason

@@ -63,3 +63,8 @@ acme:
   dnsProvider: cloudflare
   token: secret/data/platform/cloudflare
 secretStore: refusals/edge-proxy
+# The proxy reads its routes through the API, so the document says where it answers.
+apiAccess:
+  holders: [refusals/edge-proxy]
+  server:
+    - { cidr: 10.43.0.1/32, port: 443 }

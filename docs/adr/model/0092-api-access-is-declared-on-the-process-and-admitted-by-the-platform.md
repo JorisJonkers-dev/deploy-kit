@@ -17,7 +17,9 @@ that states none reaches the cluster. An admitted declaration derives a Role of
 its namespace-scoped rules and a ClusterRole of its cluster-scoped rules, each
 bound to the Process's one ServiceAccount, a mounted token, and egress to the
 API by address. A declaration in an Application the platform does not name is
-refused.
+refused. A tier's proxy is the one Process whose access is derived rather than
+declared: the platform names it in the tier, and the tier fixes the rules its
+provider reads routes with.
 
 ## Rests on
 
@@ -62,7 +64,18 @@ grant. Admission answers that: the platform lists the Applications that may
 hold access, and every other declaration is `E_PROCESS_RBAC_GRANT`. The list is
 not the delivery machinery's. Machinery is what performs a switch and is
 therefore never gated; the Collector switches nothing and still reads the
-cluster, and an edge proxy is machinery that holds no access.
+cluster, and an edge proxy is machinery whose access its tier derives.
+
+**A tier's proxy derives its access.** The proxy reads every route, middleware
+and TLS object, and the Services, endpoints and Secrets they name, through its
+Kubernetes provider. What it asks follows from the provider the adapter
+starts, which the tier already derives, not from code the proxy's repository
+writes, so there is no author whose diff a rule would sit beside. And the
+platform has already admitted it by name: a tier's `traefik` names the
+Application. A proxy rendered without them loads no route and serves nothing,
+and an estate that adds them by hand restates the provider's rules in its edge
+file and lists each proxy again as a holder. A rule the proxy declares itself
+is still held beside the derived ones, admitted like any holder's.
 
 **A rule says how far it reaches.** Most holders read across the Projects'
 namespaces, and one reads a kind no namespace holds, so a rule reaches the
@@ -112,6 +125,7 @@ saying where the API is are one block.
 | A fixed table in the specification, derived per machinery role | no authored vocabulary at all | every new verb is a specification change and a release in both implementations, and the Collector is no machinery role |
 | Keep the grants applied by hand, recorded in a ledger | no model change | the delivery path is the one part of the estate the render would not cover, and Flagger's grant would have no home |
 | Any Process may declare `api`, with no admission | one block fewer in the Platform document | a project grants itself access to a cluster it shares, which is what [0041](0041-no-process-rbac-in-v1.md) exists to refuse |
+| A tier's proxy declares `api` and is listed as a holder, like any other | no derivation | the rules are the adapter's provider's, restated in every estate's edge file, and the tier already names the proxy; a proxy whose author forgets them renders, and serves nothing |
 | Admit by `delivery.machinery` | no new list | the Collector would have to be called machinery, and an edge proxy would be admitted for nothing |
 | Every rule a `ClusterRole`, as before scopes | one object kind fewer | the Release Gate's writes to its own records, and `agents-api`'s pod creation in its own namespace, would reach every namespace |
 | A `Role` per Project namespace for every rule | no cluster-wide grant | every holder reads across namespaces, PersistentVolumes have none, and a Role per namespace per holder is the object count 0041 refused |
@@ -142,6 +156,9 @@ platform would have to take back.
   so the rule that constrains a Project's name constrains these too.
 - `agents-api` has a declaring site: its Application is admitted and its
   Process declares its rules, when its Project is handed over.
+- A tier's proxy renders a `ClusterRole`, its binding, a mounted token and egress
+  to the API, under a Platform document that declares `apiAccess`; one that
+  declares none has no address for the egress, and refuses the proxy.
 - The egress rule is rendered and, like every policy, applied by nothing until
   the policy stage is enforced
   ([0035](0035-network-policy-is-default-deny-and-render-only.md)).

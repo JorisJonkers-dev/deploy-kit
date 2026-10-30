@@ -944,6 +944,13 @@ on a pool.
 
 ### A tier's proxy
 
+On every tier, the Process of the tier's proxy carries an `api` the tier
+derives: the rules its provider reads routes with, after any it declares
+itself, with the reason it declares or the tier's own, and the Platform
+document's `apiAccess.server`
+([chapter 14](14-platform-intent.md#tiers)). So it mounts its token and holds
+a `ClusterRole`, as an admitted holder does.
+
 On an acme tier, the Process of the tier's proxy carries a `resolver` in its
 `edgeProxy` ([chapter 30](30-deliverables.md#the-edge-proxy)), which the tier
 derives and no author writes ([chapter 14](14-platform-intent.md#tiers)): named
