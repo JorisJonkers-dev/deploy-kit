@@ -91,7 +91,10 @@ public final class Outputs {
             Map.entry("identity", new Resolving("identity", withFoundation())),
             Map.entry("agents", new Resolving("agents", withFoundation())),
             Map.entry("mail", new Resolving("mail", withFoundation())),
-            Map.entry("utility", new Resolving("utility", withFoundation())));
+            Map.entry("utility", new Resolving("utility", withFoundation())),
+            // The Node Agents, which no project file declares: the Platform document and the node
+            // contract derive them.
+            Map.entry("node", new Resolving("node", withFoundation())));
 
     /** The Platform document, its pinned inputs and the foundation every case composes with, then {@code own}. */
     private static List<String> withFoundation(String... own) {

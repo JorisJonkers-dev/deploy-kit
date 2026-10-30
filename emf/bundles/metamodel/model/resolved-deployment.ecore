@@ -25,7 +25,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiVersion" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="provenance" lowerBound="1" eType="#//Provenance" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="applications" lowerBound="1" upperBound="-1" eType="#//ResolvedApplication" containment="true"/>
+    <!-- None for the `node` Project, which no project file declares: its Node Agents alone. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="applications" upperBound="-1" eType="#//ResolvedApplication" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="reconcileUnits" lowerBound="1" upperBound="-1" eType="#//ReconcileUnit" containment="true"/>
     <!-- The Vault policy job, where the platform names one and a Secret Store answers
          (spec/v1/20-resolved-deployment.md#the-vault-policy-job). -->

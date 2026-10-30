@@ -103,7 +103,12 @@ query secretsAfter(prj : String) : Sequence(String) =
 main() {
 	assert fatal (unversioned()->isEmpty())
 		with log(unversioned()->first() + ' records no version: E_IMAGE_VERSION_MISSING');
-	projects->select(p | p.project = project)->any(true).map deployment();
+	-- The `node` Project is the Node Agents, which no project file declares.
+	if (project = NODE_PROJECT and not projects->exists(p | p.project = NODE_PROJECT)) {
+		estate.map nodeDeployment();
+	} else {
+		projects->select(p | p.project = project)->any(true).map deployment();
+	} endif;
 }
 
 -- Every alias the lock records no version for, sorted
@@ -120,7 +125,7 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 	-- document carries so `after` is a reference and never a name.
 	reconcileUnits := Sequence{self.map unit()}->union(afterOf(self)->collect(n | object ReconcileUnit { name := n; }));
 	applications := self.applications->map application(self);
-	provenance := self.map provenance();
+	provenance := estate.map provenance();
 	policyJob := policyJobOf();
 	catalogJobs := catalogJobsOf();
 	events := eventsRouteOf();
@@ -273,7 +278,7 @@ query projectOf(application : String) : String =
 
 -- One digest per pinned input, then the render hash over them and the schema
 -- package's integrity (spec/v1/20-resolved-deployment.md#pinned-inputs).
-mapping EffectiveProject::provenance() : Provenance {
+mapping Platform::provenance() : Provenance {
 	schemaPackageIntegrity := integrity;
 	inputDigests := projects->collect(p | object InputDigest {
 			input := PinnedInput::intentFragment;
@@ -306,6 +311,207 @@ mapping EffectiveProject::provenance() : Provenance {
 		result.renderHash := result.oclAsType(ECORE::EObject).digestOf();
 	}
 }
+
+-- ========================================================= the Node Agents
+
+-- The Project the Node Agents are (spec/v1/14-platform-intent.md#node-agents).
+property NODE_PROJECT : String = 'node';
+-- The time-sliced shares gpu-device advertises per GPU, of which gpu-metrics holds one.
+property GPU_SHARES : Integer = 4;
+-- The vendor whose cards the GPU agents serve.
+property GPU_AGENT_VENDOR : String = 'nvidia';
+-- The address the speaker and its controller serve their metrics on.
+property SPEAKER_PORT : Integer = 7472;
+
+-- The `node` Project: every agent the node contract and the Platform document derive, and the
+-- pools its speaker announces, under its own namespace.
+mapping Platform::nodeDeployment() : ResolvedDeployment {
+	apiVersion := 'resolved.jorisjonkers.dev/v1';
+	kind := 'ResolvedDeployment';
+	reconcileUnits := Sequence{object ReconcileUnit { name := unitOf(NODE_PROJECT); }};
+	provenance := estate.map provenance();
+	addressPools := speakerPools()->collect(t | object ResolvedAddressPool {
+		name := t.name; range := t.range; nodes := t.nodes; });
+	nodeAgents := gpuAgents()->union(speakerAgents())->union(metricsAgents());
+	end {
+		result.deliverables := nodeFiles(result)->union(platformFiles());
+	}
+}
+
+-- Each pool, announced from the nodes of its site, in the order the Platform document names them.
+query speakerPools() : Sequence(Tuple(name : String, range : String, nodes : Sequence(String))) =
+	estate.l4Addresses->select(a | a.value.oclIsKindOf(PoolAddress))->collect(a |
+		Tuple{name = a.key, range = a.value.oclAsType(PoolAddress).range,
+			nodes = contract.nodes->select(n | n.site = a.value.oclAsType(PoolAddress).site)
+				->collect(n | n.name)->asSequence()})->asSequence();
+
+query pinned(alias : String) : String = locked(alias).repository + '@' + locked(alias).digest;
+
+query gpuNodes() : Sequence(String) =
+	contract.nodes->select(n | n.gpus->exists(g | g.vendor = GPU_AGENT_VENDOR))->collect(n | n.name)->asSequence();
+
+query gpuVendor() : GpuVendorPolicy = estate.gpus->select(g | g.key = GPU_AGENT_VENDOR)->any(true).value;
+
+query plainEntry(n : String, v : String) : EnvEntry = object EnvEntry { name := n; value := v; };
+
+-- The device plugin, which advertises each card as its shares, and the exporter, which holds one.
+query gpuAgents() : Sequence(ResolvedNodeAgent) =
+	if gpuNodes()->isEmpty() or estate.nodeAgents = null then Sequence{} else
+	Sequence{
+		object ResolvedNodeAgent {
+			name := 'gpu-device'; namespace := namespaceOf(NODE_PROJECT); application := NODE_PROJECT;
+			controller := ControllerKind::daemonSet;
+			image := pinned(estate.nodeAgents.gpuDevice.image);
+			memory := estate.nodeAgents.gpuDevice.memory; cpu := estate.nodeAgents.gpuDevice.cpu;
+			priorityClass := 'system-node-critical';
+			runtimeClass := gpuVendor().runtimeClass;
+			hostProcesses := true; privileged := true;
+			eligibleNodes := gpuNodes();
+			environment := Sequence{plainEntry('CONFIG_FILE', '/config/config.yaml'),
+				plainEntry('FAIL_ON_INIT_ERROR', 'true'), plainEntry('NVIDIA_VISIBLE_DEVICES', 'all'),
+				plainEntry('PASS_DEVICE_SPECS', 'true')};
+			mounts := Sequence{
+				object HostMount { name := 'device-plugins'; hostPath := '/var/lib/kubelet/device-plugins'; mountAt := '/var/lib/kubelet/device-plugins'; },
+				object HostMount { name := 'cdi'; hostPath := '/var/run/cdi'; mountAt := '/var/run/cdi'; }};
+			config := object AgentConfig { file := 'config.yaml'; mountAt := '/config';
+				content := 'version: v1\nsharing:\n  timeSlicing:\n    resources:\n      - name: ' + gpuVendor().resource
+					+ '\n        replicas: ' + GPU_SHARES.toString() + '\n'; };
+		},
+		object ResolvedNodeAgent {
+			name := 'gpu-metrics'; namespace := namespaceOf(NODE_PROJECT); application := NODE_PROJECT;
+			controller := ControllerKind::daemonSet;
+			image := pinned(estate.nodeAgents.gpuMetrics.image);
+			memory := estate.nodeAgents.gpuMetrics.memory; cpu := estate.nodeAgents.gpuMetrics.cpu;
+			priorityClass := 'system-node-critical';
+			deviceShare := gpuVendor().resource;
+			runtimeClass := gpuVendor().runtimeClass;
+			nonRoot := false; uid := 0;
+			eligibleNodes := gpuNodes();
+			environment := Sequence{plainEntry('DCGM_EXPORTER_KUBERNETES', 'true'), plainEntry('DCGM_EXPORTER_LISTEN', ':9400')};
+			surfaces := Sequence{object ResolvedSurface { name := 'metrics'; port := 9400; }};
+			addedPrivileges := Sequence{'SYS_ADMIN'};
+			mounts := Sequence{object HostMount { name := 'pod-resources'; hostPath := '/var/lib/kubelet/pod-resources';
+				mountAt := '/var/lib/kubelet/pod-resources'; readOnly := true; }};
+		}} endif;
+
+-- The node exporter, on every node, reading the host itself.
+query metricsAgents() : Sequence(ResolvedNodeAgent) =
+	if contract.nodes->isEmpty() or estate.nodeAgents = null then Sequence{} else
+	Sequence{object ResolvedNodeAgent {
+		name := 'node-metrics'; namespace := namespaceOf(NODE_PROJECT); application := NODE_PROJECT;
+		controller := ControllerKind::daemonSet;
+		image := pinned(estate.nodeAgents.nodeMetrics.image);
+		memory := estate.nodeAgents.nodeMetrics.memory; cpu := estate.nodeAgents.nodeMetrics.cpu;
+		priorityClass := 'system-node-critical';
+		hostNetwork := true; hostProcesses := true; nonRoot := true; confined := true;
+		eligibleNodes := contract.nodes->collect(n | n.name)->asSequence();
+		arguments := Sequence{'--path.procfs=/host/proc', '--path.sysfs=/host/sys', '--path.rootfs=/host/root',
+			'--web.listen-address=:9100'};
+		surfaces := Sequence{object ResolvedSurface { name := 'metrics'; port := 9100; }};
+		mounts := Sequence{
+			object HostMount { name := 'proc'; hostPath := '/proc'; mountAt := '/host/proc'; readOnly := true; },
+			object HostMount { name := 'sys'; hostPath := '/sys'; mountAt := '/host/sys'; readOnly := true; },
+			object HostMount { name := 'root'; hostPath := '/'; mountAt := '/host/root'; readOnly := true; propagated := true; }};
+	}} endif;
+
+query apiRule(g : String, o : Sequence(String), v : Sequence(String)) : ResolvedApiRule =
+	object ResolvedApiRule { group := g; objects := o; verbs := v; };
+
+-- The speaker, on every node of a pool's site, and its controller, which runs once.
+query speakerAgents() : Sequence(ResolvedNodeAgent) =
+	let speakers : Sequence(String) = contract.nodes
+		->select(n | speakerPools()->exists(t | t.nodes->includes(n.name)))->collect(n | n.name)->asSequence() in
+	let reads : Sequence(String) = Sequence{'get', 'list', 'watch'} in
+	let crds : Sequence(String) = Sequence{'ipaddresspools', 'l2advertisements', 'bgppeers', 'bgpadvertisements',
+		'communities', 'bfdprofiles'} in
+	if speakers->isEmpty() or estate.nodeAgents = null or estate.nodeAgents.l4Speaker = null then Sequence{} else
+	Sequence{
+		object ResolvedNodeAgent {
+			name := 'l4-speaker'; namespace := namespaceOf(NODE_PROJECT); application := NODE_PROJECT;
+			controller := ControllerKind::daemonSet;
+			image := pinned(estate.nodeAgents.l4Speaker.image);
+			memory := estate.nodeAgents.l4Speaker.memory; cpu := estate.nodeAgents.l4Speaker.cpu;
+			priorityClass := 'system-node-critical';
+			identityToken := true; hostNetwork := true; confined := true;
+			eligibleNodes := speakers;
+			arguments := Sequence{'--port=' + SPEAKER_PORT.toString(), '--namespace=' + namespaceOf(NODE_PROJECT), '--log-level=info'};
+			environment := Sequence{object EnvEntry { name := 'METALLB_NODE_NAME'; field := 'spec.nodeName'; },
+				object EnvEntry { name := 'METALLB_HOST'; field := 'status.hostIP'; }};
+			surfaces := Sequence{object ResolvedSurface { name := 'metrics'; port := SPEAKER_PORT; }};
+			addedPrivileges := Sequence{'NET_RAW'};
+			rules := Sequence{
+				apiRule('core', Sequence{'services', 'endpoints', 'nodes', 'namespaces', 'pods'}, reads),
+				apiRule('discovery.k8s.io', Sequence{'endpointslices'}, reads),
+				apiRule('core', Sequence{'events'}, Sequence{'create', 'patch'}),
+				apiRule('metallb.io', crds->append('servicel2statuses'), reads),
+				apiRule('metallb.io', Sequence{'servicel2statuses', 'servicel2statuses/status'},
+					Sequence{'create', 'delete', 'update', 'patch'})};
+		},
+		object ResolvedNodeAgent {
+			name := 'l4-controller'; namespace := namespaceOf(NODE_PROJECT); application := NODE_PROJECT;
+			controller := ControllerKind::deployment; replicas := 1;
+			image := pinned(estate.nodeAgents.l4Speaker.controller.image);
+			memory := estate.nodeAgents.l4Speaker.controller.memory; cpu := estate.nodeAgents.l4Speaker.controller.cpu;
+			priorityClass := 'system-cluster-critical';
+			identityToken := true; nonRoot := true; confined := true;
+			uid := locked(estate.nodeAgents.l4Speaker.controller.image).uid;
+			gid := locked(estate.nodeAgents.l4Speaker.controller.image).gid;
+			eligibleNodes := speakers;
+			arguments := Sequence{'--port=' + SPEAKER_PORT.toString(), '--namespace=' + namespaceOf(NODE_PROJECT),
+				'--webhook-mode=disabled', '--log-level=info'};
+			surfaces := Sequence{object ResolvedSurface { name := 'metrics'; port := SPEAKER_PORT; }};
+			rules := Sequence{
+				apiRule('core', Sequence{'services', 'namespaces'}, reads),
+				apiRule('core', Sequence{'services/status'}, Sequence{'update'}),
+				apiRule('core', Sequence{'events'}, Sequence{'create', 'patch'}),
+				apiRule('metallb.io', crds, reads),
+				apiRule('metallb.io', Sequence{'ipaddresspools/status'}, Sequence{'update'})};
+		}} endif;
+
+-- The `node` Project's tree: a directory per agent, the speaker's holding its controller and the
+-- pools it announces, each with the parts its agents need.
+query nodeFiles(d : ResolvedDeployment) : Sequence(Deliverable) =
+	let root : String = 'apps/' + NODE_PROJECT + '/' in
+	let dirs : Sequence(String) = d.nodeAgents->reject(a | a.name = 'l4-controller')->collect(a | a.name)->asSequence() in
+	Sequence{
+		object NamespaceFile {
+			path := root + 'namespace.yaml';
+			adapter := AdapterName::kubernetes;
+			namespace := namespaceOf(NODE_PROJECT);
+		}.oclAsType(Deliverable),
+		object IndexFile {
+			path := root + 'kustomization.yaml';
+			adapter := AdapterName::kubernetes;
+			resources := dirs->append('namespace.yaml')->sortedBy(r | r);
+		}.oclAsType(Deliverable)}
+	->union(dirs->collect(dir | d.agentFilesOf(root + dir + '/',
+		d.nodeAgents->select(a | a.name = dir or (dir = 'l4-speaker' and a.name = 'l4-controller'))->asSequence()))
+		->flatten()->asSequence());
+
+query ResolvedDeployment::agentFilesOf(dir : String, held : Sequence(ResolvedNodeAgent)) : Sequence(Deliverable) =
+	let parts : Sequence(String) = (if held->exists(a | a.config <> null) then Sequence{'configmap'} else Sequence{} endif)
+		->union(if held->exists(a | a.rules->notEmpty()) then Sequence{'rbac'} else Sequence{} endif)
+		->union(Sequence{'serviceaccount', 'workload'}) in
+	let announced : Sequence(ResolvedAddressPool) = self.addressPools->asSequence() in
+	let pooled : Boolean = held->exists(a | a.name = 'l4-speaker') and announced->notEmpty() in
+	parts->collect(piece | object NodeAgentFile {
+		path := dir + piece + '.yaml';
+		adapter := AdapterName::kubernetes;
+		part := piece;
+		agents := held;
+	}.oclAsType(Deliverable))
+	->union(if pooled then Sequence{object AddressPoolFile {
+		path := dir + 'pools.yaml';
+		adapter := AdapterName::kubernetes;
+		namespace := namespaceOf(NODE_PROJECT);
+		pools := announced;
+	}.oclAsType(Deliverable)} else Sequence{} endif)
+	->append(object IndexFile {
+		path := dir + 'kustomization.yaml';
+		adapter := AdapterName::kubernetes;
+		resources := parts->collect(p | p + '.yaml')->union(if pooled then Sequence{'pools.yaml'} else Sequence{} endif)
+			->sortedBy(r | r);
+	}.oclAsType(Deliverable));
 
 -- =========================================================== the Application
 
