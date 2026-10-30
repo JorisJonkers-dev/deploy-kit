@@ -3794,7 +3794,7 @@ describe("a tier's proxy", () => {
   });
 });
 
-// REQ-160 (docs/requirements.md): a tier's proxy reads its routes through the
+// REQ-161 (docs/requirements.md): a tier's proxy reads its routes through the
 // Kubernetes API, so it holds the access its provider needs without declaring
 // any: a ClusterRole bound to its ServiceAccount, and a mounted token.
 describe("a tier's proxy's API access", () => {
@@ -3811,8 +3811,8 @@ describe("a tier's proxy's API access", () => {
       subjects?: unknown[];
     }[];
     expect(role?.kind).toBe("ClusterRole");
-    const routes = role?.rules?.find(({ apiGroups }) =>
-      apiGroups.includes("traefik.io"),
+    const routes = role?.rules?.find(
+      ({ apiGroups }) => apiGroups[0] === "traefik.io",
     );
     expect(routes?.resources).toEqual(
       expect.arrayContaining(["ingressroutes", "tlsstores"]),
