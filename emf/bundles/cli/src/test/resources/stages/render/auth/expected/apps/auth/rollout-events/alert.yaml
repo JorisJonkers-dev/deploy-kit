@@ -1,0 +1,18 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: rollouts-auth
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  providerRef:
+    name: reporter-auth
+  eventSeverity: info
+  eventSources:
+    - kind: Kustomization
+      name: apps-auth
+      matchLabels:
+        app.kubernetes.io/managed-by: deploy-kit

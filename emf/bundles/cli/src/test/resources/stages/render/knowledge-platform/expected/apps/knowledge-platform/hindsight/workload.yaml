@@ -1,0 +1,391 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hindsight-api
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-api
+    app.kubernetes.io/instance: hindsight-api
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  progressDeadlineSeconds: 480
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hindsight-api
+      app.kubernetes.io/instance: hindsight-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hindsight-api
+        app.kubernetes.io/instance: hindsight-api
+        app.kubernetes.io/part-of: hindsight
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: python
+        consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
+        consumes.deploy-kit.jorisjonkers.dev/hindsight-embedding.embeddings: "true"
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+      annotations:
+        image.jorisjonkers.dev/hindsight-api: 0.4.0
+    spec:
+      serviceAccountName: hindsight-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - enschede-pi-1
+                      - enschede-pi-2
+                      - enschede-pi-3
+      containers:
+        - name: hindsight-api
+          image: ghcr.io/vectorize-io/hindsight-api@sha256:7b14a1f4062252992d0176758753615e0a2071d9a269995be007be223ab01812
+          ports:
+            - name: api
+              containerPort: 8888
+          env:
+            - name: DEPLOYMENT_ENVIRONMENT
+              value: production
+            - name: HINDSIGHT_API_EMBEDDINGS_PROVIDER
+              value: tei
+            - name: HINDSIGHT_API_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-api-platform-hindsight
+                  key: llm-api-key
+            - name: HINDSIGHT_API_LLM_BASE_URL
+              value: https://eu.openrouter.ai/api/v1
+            - name: HINDSIGHT_API_LLM_MODEL
+              value: mistralai/mistral-small-2603
+            - name: HINDSIGHT_API_LLM_PROVIDER
+              value: openai
+            - name: HINDSIGHT_API_PORT
+              value: "8888"
+            - name: HINDSIGHT_API_WORKER_ENABLED
+              value: "false"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observability-system.svc.cluster.local:4317
+            - name: OTEL_SERVICE_NAME
+              value: hindsight-api
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-api-database-creds-knowledge-platform-owner
+                  key: password
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-api-database-creds-knowledge-platform-owner
+                  key: username
+            - name: PORT
+              value: "8888"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8888
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8888
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: 8888
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 24
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hindsight-worker
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-worker
+    app.kubernetes.io/instance: hindsight-worker
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: python
+spec:
+  replicas: 0
+  strategy:
+    type: Recreate
+  progressDeadlineSeconds: 480
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hindsight-worker
+      app.kubernetes.io/instance: hindsight-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hindsight-worker
+        app.kubernetes.io/instance: hindsight-worker
+        app.kubernetes.io/part-of: hindsight
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: python
+        consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
+        consumes.deploy-kit.jorisjonkers.dev/hindsight-embedding.embeddings: "true"
+      annotations:
+        image.jorisjonkers.dev/hindsight-worker: 0.4.0
+    spec:
+      serviceAccountName: hindsight-worker
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - enschede-pi-1
+                      - enschede-pi-2
+                      - enschede-pi-3
+      containers:
+        - name: hindsight-worker
+          image: ghcr.io/vectorize-io/hindsight-api@sha256:7b14a1f4062252992d0176758753615e0a2071d9a269995be007be223ab01812
+          ports:
+            - name: worker
+              containerPort: 8889
+          env:
+            - name: DEPLOYMENT_ENVIRONMENT
+              value: production
+            - name: HINDSIGHT_API_EMBEDDINGS_PROVIDER
+              value: tei
+            - name: HINDSIGHT_API_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-worker-platform-hindsight
+                  key: llm-api-key
+            - name: HINDSIGHT_API_LLM_BASE_URL
+              value: https://eu.openrouter.ai/api/v1
+            - name: HINDSIGHT_API_LLM_MODEL
+              value: mistralai/mistral-small-2603
+            - name: HINDSIGHT_API_LLM_PROVIDER
+              value: openai
+            - name: HINDSIGHT_API_PORT
+              value: "8889"
+            - name: HINDSIGHT_API_WORKER_BATCH_SIZE
+              value: "10"
+            - name: HINDSIGHT_API_WORKER_HTTP_PORT
+              value: "8889"
+            - name: HINDSIGHT_API_WORKER_MAX_RETRIES
+              value: "3"
+            - name: HINDSIGHT_API_WORKER_POLL_INTERVAL_MS
+              value: "500"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observability-system.svc.cluster.local:4317
+            - name: OTEL_SERVICE_NAME
+              value: hindsight-worker
+            - name: PORT
+              value: "8889"
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: secret-hindsight-worker-database-creds-knowledge-platform-owner
+              mountPath: /run/secrets/database
+              readOnly: true
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8889
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8889
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: 8889
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 24
+      volumes:
+        - name: secret-hindsight-worker-database-creds-knowledge-platform-owner
+          secret:
+            secretName: hindsight-worker-database-creds-knowledge-platform-owner
+            items:
+              - key: username
+                path: username
+              - key: password
+                path: password
+            defaultMode: 256
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hindsight-control-plane
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-control-plane
+    app.kubernetes.io/instance: hindsight-control-plane
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  progressDeadlineSeconds: 300
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hindsight-control-plane
+      app.kubernetes.io/instance: hindsight-control-plane
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hindsight-control-plane
+        app.kubernetes.io/instance: hindsight-control-plane
+        app.kubernetes.io/part-of: hindsight
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: node
+        consumes.deploy-kit.jorisjonkers.dev/hindsight.api: "true"
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+      annotations:
+        image.jorisjonkers.dev/hindsight-control-plane: 0.4.0
+    spec:
+      serviceAccountName: hindsight-control-plane
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - enschede-pi-1
+                      - enschede-pi-2
+                      - enschede-pi-3
+      containers:
+        - name: hindsight-control-plane
+          image: ghcr.io/vectorize-io/hindsight-control-plane@sha256:d9bf57083f7cb0a53ee5011bdfde6aae2490dbf5c360d2d1bff10473b45eb112
+          ports:
+            - name: console
+              containerPort: 3000
+          env:
+            - name: DEPLOYMENT_ENVIRONMENT
+              value: production
+            - name: HINDSIGHT_CP_HOSTNAME
+              value: 0.0.0.0
+            - name: HINDSIGHT_CP_PORT
+              value: "3000"
+            - name: NODE_ENV
+              value: production
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.observability-system.svc.cluster.local:4317
+            - name: OTEL_SERVICE_NAME
+              value: hindsight-control-plane
+            - name: PORT
+              value: "3000"
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 250m
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            tcpSocket:
+              port: 3000
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 12

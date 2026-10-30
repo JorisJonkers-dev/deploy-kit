@@ -1,0 +1,19 @@
+{
+  "path": {
+    "secret/data/platform/hindsight": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/hindsight": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "database/creds/knowledge-platform-owner": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

@@ -1,49 +1,152 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  <provenance renderHash="sha256:20f3a11d4708c9876e83dab4c4db764a29b8cdd0a7fc4e5ddec9eaa2576c3636" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
+    <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
+    <inputDigests name="delivery" digest="sha256:31f4d21b3c877943fecd855a160f8e339bce5c46f1ba9264c6256d37c4124767"/>
+    <inputDigests name="edge" digest="sha256:b1445b93227a2a18990df93d691545276efe933c102357709d50fb4f3895b7af"/>
+    <inputDigests name="identity" digest="sha256:c7e40e058d9b9a19572313f69d5c00859f1b30a6b36c91db290b9903cf9a11e7"/>
+    <inputDigests name="mail" digest="sha256:94fada2c3ecb8b3433bdc676e677e7d5d732509b31f6980f8352cdb25590a5c8"/>
+    <inputDigests name="observability" digest="sha256:d5098265009c4d1ef5a75d9e7035d4af64f7e16c6e1983185a0d469869cc6639"/>
+    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:f7490b93e1893a6e9269c8b6f9ad9b4ae0b5ee0842b2dd870bbaf7a50da7fbe6"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
-  <applications id="platform-rabbitmq" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
+  <applications id="platform-postgres" revision="sha256:102d7f337255807c4abd6449e1dcc0490bdd516afe9a4c566d572361fe5b9fa8" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <scrape process="/0/@applications.0/@processes.0" surface="metrics" path="/metrics" interval="30s" timeout="10s">
+      <labels key="release" value="metrics-stack"/>
+    </scrape>
+    <processes name="postgres" identity="postgres" lifecycle="application" image="docker.io/pgvector/pgvector@sha256:9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e" imageVersion="17.2.0" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="postgres" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="2Gi" cpu="500m" hardening="restricted" component="none" priorityClass="platform-data" home="/tmp">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5432"/>
+      </startup>
+      <surfaces name="postgres" port="5432"/>
+      <surfaces name="metrics" port="9187"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="postgres-data" mountAt="/var/lib/postgresql/data" size="20Gi" durability="irreplaceable">
+        <backup schedule="45 2 * * *" retain="90" offCluster="s3://backup-storage/jorisjonkers-dev" offClusterPath="data/postgres/postgres-data" offClusterRecipient="age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8" method="ghcr.io/jorisjonkers-dev/platform/postgres-backup@sha256:6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f" methodVersion="1.2.0" uid="999" gid="999" identity="postgres-backup" claim="postgres-data-backup">
+          <credential path="secret/data/platform/backup/off-cluster" access="read" delivery="env" destination="postgres-backup-platform-backup-off-cluster"/>
+          <peer host="postgres.data-system.svc.cluster.local" port="5432">
+            <credential path="secret/data/data/postgres/backup" access="read" delivery="env" destination="postgres-backup-data-postgres-backup"/>
+          </peer>
+          <egress rule="datastore" namespace="data-system" process="postgres" port="5432"/>
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+          <destinations cidr="203.0.113.0/24" port="443"/>
+        </backup>
+      </volumes>
+      <secrets path="secret/data/platform/postgres/exporter" access="read" delivery="env" destination="postgres-platform-postgres-exporter">
+        <keys>datasource</keys>
+        <restartTargets>postgres</restartTargets>
+      </secrets>
+      <assets name="postgres-postgresql-conf-765c16a293" from="config/postgresql.conf" mountAt="/etc/postgresql/postgresql.conf" content="# collections/data/platform/config/postgresql.conf&#xA;#&#xA;# The Asset platform-postgres mounts at /etc/postgresql/postgresql.conf&#xA;# (docs/adr/model/0014-file-shaped-configuration-is-an-asset.md). Fully&#xA;# static: no placeholder and no derived value, so the file is carried into&#xA;# the projection as written, under a name its content digest decides.&#xA;&#xA;# ------------------------------------------------------------ connections&#xA;listen_addresses = '*'&#xA;port = 5432&#xA;max_connections = 100&#xA;unix_socket_directories = '/var/run/postgresql'&#xA;&#xA;# ----------------------------------------------------------------- memory&#xA;shared_buffers = 512MB&#xA;effective_cache_size = 1536MB&#xA;work_mem = 8MB&#xA;maintenance_work_mem = 128MB&#xA;&#xA;# -------------------------------------------------------------------- WAL&#xA;wal_level = replica&#xA;max_wal_size = 2GB&#xA;min_wal_size = 256MB&#xA;checkpoint_completion_target = 0.9&#xA;&#xA;# -------------------------------------------------------------- extensions&#xA;shared_preload_libraries = 'vector'&#xA;&#xA;# ---------------------------------------------------------------- logging&#xA;log_destination = 'stderr'&#xA;logging_collector = off&#xA;log_min_duration_statement = 1000&#xA;log_line_prefix = '%m [%p] %q%u@%d '&#xA;&#xA;# ---------------------------------------------------------------- locale&#xA;datestyle = 'iso, mdy'&#xA;timezone = 'UTC'&#xA;lc_messages = 'en_US.utf8'&#xA;default_text_search_config = 'pg_catalog.english'&#xA;"/>
+      <sidecars name="postgres-exporter" image="quay.io/prometheuscommunity/postgres-exporter@sha256:4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d" imageVersion="v0.17.1" memory="64Mi" cpu="10m" home="/tmp"/>
+      <writablePaths path="/var/run/postgresql" size="64Mi"/>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <environment name="DATA_SOURCE_NAME">
+        <secret path="secret/data/platform/postgres/exporter" key="datasource"/>
+      </environment>
+      <environment name="POSTGRES_DB" value="postgres"/>
+      <environment name="POSTGRES_USER" value="postgres"/>
+    </processes>
+  </applications>
+  <applications id="platform-rabbitmq" revision="sha256:844ccba33700d44cd5975bbaa062322cded54fb62093be26d67ea572bef4ef4f" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <exposure name="management" host="rabbitmq.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
+      <dns target="ingress.jorisjonkers.dev" proxied="true"/>
+      <routes path="/" audience="authenticated" precedence="1" process="/0/@applications.1/@processes.0" surface="management">
+        <middleware endpoint="http://identity-http.estate-system.svc.cluster.local:8080/gate/forward" name="forward-auth" namespace="edge-system"/>
+        <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <exposure name="lan" host="rabbitmq.jorisjonkers.dev" tier="lan" listener="plain" certificates="none" proxyApplication="traefik-lan" proxyNamespace="edge-system" ingressClass="traefik-lan">
+      <routes path="/" audience="lan" precedence="1" process="/0/@applications.1/@processes.0" surface="management">
+        <middleware kind="security-headers" name="security-headers" namespace="edge-system"/>
+      </routes>
+    </exposure>
+    <scrape process="/0/@applications.1/@processes.0" surface="metrics" path="/metrics" interval="30s" timeout="10s">
+      <labels key="release" value="metrics-stack"/>
+    </scrape>
     <dashboards folder="data" datasource="prometheus">
       <instance key="dashboards" value="grafana"/>
-      <files name="platform-rabbitmq-rabbitmq" content='{&#10;  "__inputs": [&#10;    {&#10;      "name": "DS_PROMETHEUS",&#10;      "label": "Prometheus",&#10;      "type": "datasource",&#10;      "pluginId": "prometheus"&#10;    }&#10;  ],&#10;  "uid": "rabbitmq",&#10;  "title": "RabbitMQ",&#10;  "tags": ["rabbitmq", "messaging"],&#10;  "editable": false,&#10;  "refresh": "30s",&#10;  "time": { "from": "now-1h", "to": "now" },&#10;  "panels": [&#10;    {&#10;      "id": 1,&#10;      "title": "Queue Messages (Ready)",&#10;      "type": "timeseries",&#10;      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },&#10;      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },&#10;      "targets": [&#10;        { "expr": "rabbitmq_queue_messages_ready", "legendFormat": "{{queue}} ready" }&#10;      ]&#10;    }&#10;  ],&#10;  "schemaVersion": 39&#10;}&#10;'>
+      <files name="platform-rabbitmq-rabbitmq" content="{&#xA;  &quot;__inputs&quot;: [&#xA;    {&#xA;      &quot;name&quot;: &quot;DS_PROMETHEUS&quot;,&#xA;      &quot;label&quot;: &quot;Prometheus&quot;,&#xA;      &quot;type&quot;: &quot;datasource&quot;,&#xA;      &quot;pluginId&quot;: &quot;prometheus&quot;&#xA;    }&#xA;  ],&#xA;  &quot;uid&quot;: &quot;rabbitmq&quot;,&#xA;  &quot;title&quot;: &quot;RabbitMQ&quot;,&#xA;  &quot;tags&quot;: [&quot;rabbitmq&quot;, &quot;messaging&quot;],&#xA;  &quot;editable&quot;: false,&#xA;  &quot;refresh&quot;: &quot;30s&quot;,&#xA;  &quot;time&quot;: { &quot;from&quot;: &quot;now-1h&quot;, &quot;to&quot;: &quot;now&quot; },&#xA;  &quot;panels&quot;: [&#xA;    {&#xA;      &quot;id&quot;: 1,&#xA;      &quot;title&quot;: &quot;Queue Messages (Ready)&quot;,&#xA;      &quot;type&quot;: &quot;timeseries&quot;,&#xA;      &quot;gridPos&quot;: { &quot;h&quot;: 8, &quot;w&quot;: 12, &quot;x&quot;: 0, &quot;y&quot;: 0 },&#xA;      &quot;datasource&quot;: { &quot;type&quot;: &quot;prometheus&quot;, &quot;uid&quot;: &quot;${DS_PROMETHEUS}&quot; },&#xA;      &quot;targets&quot;: [&#xA;        { &quot;expr&quot;: &quot;rabbitmq_queue_messages_ready&quot;, &quot;legendFormat&quot;: &quot;{{queue}} ready&quot; }&#xA;      ]&#xA;    }&#xA;  ],&#xA;  &quot;schemaVersion&quot;: 39&#xA;}&#xA;">
         <inputs>DS_PROMETHEUS</inputs>
       </files>
     </dashboards>
-    <processes name="platform-rabbitmq-main" identity="platform-rabbitmq-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="platform-rabbitmq-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+    <processes name="rabbitmq" identity="rabbitmq" lifecycle="application" image="docker.io/library/rabbitmq@sha256:2d4f6b8a0c2e4d6f8b0a2c4e6d8f0b2a4c6e8d0f2b4a6c8e0d2f4b6a8c0e2d4f" imageVersion="4.0.7" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="rabbitmq" servingLabel="app.kubernetes.io/instance" deadline="480s" replicas="1" memory="2Gi" cpu="500m" hardening="restricted" component="none" priorityClass="platform-data">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5672"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5672"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="24">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="5672"/>
+      </startup>
+      <surfaces name="amqp" port="5672"/>
+      <surfaces name="management" port="15672"/>
+      <surfaces name="metrics" port="15692"/>
+      <surfaces name="mqtt" port="1883"/>
       <placement>
         <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
       </placement>
+      <volumes claim="rabbitmq-data" mountAt="/var/lib/rabbitmq" size="20Gi" durability="recoverable">
+        <backup schedule="15 3 * * *" retain="14" method="ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup@sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2" methodVersion="1.2.0" uid="999" gid="999" identity="rabbitmq-backup" claim="rabbitmq-data-backup">
+          <peer host="rabbitmq.data-system.svc.cluster.local" port="15672">
+            <credential path="secret/data/data/rabbitmq/backup" access="read" delivery="env" destination="rabbitmq-backup-data-rabbitmq-backup"/>
+          </peer>
+          <egress rule="datastore" namespace="data-system" process="rabbitmq" port="15672"/>
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+        </backup>
+      </volumes>
+      <l4Services name="rabbitmq-lan-mqtt" pool="lan-mqtt">
+        <ports name="tcp-1883" port="1883" protocol="TCP" targetPort="1883"/>
+      </l4Services>
     </processes>
   </applications>
-  <applications id="asset-sync" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
-    <processes name="asset-sync" identity="asset-sync" lifecycle="scheduled" image="ghcr.io/jorisjonkers-dev/platform/asset-sync@sha256:5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e" imageVersion="1.0.0" uid="65532" gid="65532" deadline="60s" replicas="1" schedule="*/15 * * * *" startDeadline="300s" serving="asset-sync" servingLabel="app.kubernetes.io/instance" memory="64Mi" cpu="25m" hardening="restricted" component="none">
+  <applications id="platform-valkey" revision="sha256:e2eb779cf409ec67cfe163f60e1116f3f8453d58ec2004ce8d08be9c3fa24ffa" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="valkey" identity="valkey" lifecycle="application" image="docker.io/valkey/valkey@sha256:6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c" imageVersion="8.1.0" uid="999" gid="1000" cutover="interrupted" switchover="stop-start" serving="valkey" servingLabel="app.kubernetes.io/instance" deadline="210s" replicas="1" memory="256Mi" cpu="50m" hardening="restricted" component="none">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="6379"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="6379"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="6379"/>
+      </startup>
+      <surfaces name="redis" port="6379"/>
       <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
         <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
       </placement>
-      <secrets path="secret/data/asset-sync-platform-garage-web-key" access="read" delivery="file" destination="asset-sync-platform-garage-web-key" mountAt="/run/secrets/garage/credentials" fileMode="0400">
-        <keys>credentials</keys>
-      </secrets>
+      <volumes claim="valkey-data" mountAt="/data" size="2Gi"/>
     </processes>
   </applications>
-  <applications id="platform-postgres" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
-    <processes name="postgres" identity="postgres" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="postgres" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
-      <move identity="postgres-move" tag="fe331b712e81" image="ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f" imageVersion="1.0.0" uid="999" gid="999" memory="128Mi" cpu="100m" sourceHost="postgres.data-system.svc.cluster.local" targetHost="postgres-fe331b712e81.data-system.svc.cluster.local" port="5432" flips="platform-postgres-postgres" flipNamespace="estate-system" role="data-system-postgres-move" credentialsPath="secret/data/data/postgres/move" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
-        <steps name="start" command="start"/>
-        <steps name="sync" command="sync"/>
-        <steps name="lag" command="lag"/>
-        <steps name="fence" command="fence"/>
-        <steps name="final-lag" command="lag"/>
-        <steps name="flip" command="flip"/>
-        <steps name="unfence" command="unfence"/>
-      </move>
-      <placement>
-        <eligibleNodes>enschede-t1000-1</eligibleNodes>
-      </placement>
-    </processes>
-  </applications>
-  <applications id="platform-mongo" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
-    <processes name="mongo" identity="mongo" lifecycle="application" image="docker.io/library/mongo@sha256:5f7b9d1a3c5e7f9b1d3a5c7e9f1b3d5a7c9e1f3b5d7a9c1e3f5b7d9a1c3e5f7b" imageVersion="8.0.15" uid="999" gid="999" cutover="interrupted" switchover="stop-start" deadline="300s" replicas="1" serving="mongo" servingLabel="app.kubernetes.io/instance" memory="2Gi" cpu="200m" hardening="restricted" component="none" priorityClass="platform-data" home="/tmp">
+  <applications id="platform-mongo" revision="sha256:0e23e72c99264987f5787c3b1bff45bf19c8bd7d902a5119098a6d444644b657" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <processes name="mongo" identity="mongo" lifecycle="application" image="docker.io/library/mongo@sha256:5f7b9d1a3c5e7f9b1d3a5c7e9f1b3d5a7c9e1f3b5d7a9c1e3f5b7d9a1c3e5f7b" imageVersion="8.0.15" uid="999" gid="999" cutover="interrupted" switchover="stop-start" serving="mongo" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="2Gi" cpu="200m" hardening="restricted" component="none" priorityClass="platform-data" home="/tmp">
       <readiness period="10s" timeout="5s" failures="3">
         <target xsi:type="resolveddeployment:TcpTarget" tcp="27017"/>
       </readiness>
@@ -63,14 +166,411 @@
         <eligibleNodes>enschede-pi-3</eligibleNodes>
         <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
       </placement>
-      <volumes claim="mongo-data" mountAt="/data/db" size="1Gi" durability="reconstructible"/>
+      <volumes claim="mongo-data" mountAt="/data/db" size="20Gi" durability="irreplaceable">
+        <backup schedule="45 2 * * *" retain="90" offCluster="s3://backup-storage/jorisjonkers-dev" offClusterPath="data/mongo/mongo-data" offClusterRecipient="age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8" method="ghcr.io/jorisjonkers-dev/platform/mongo-backup@sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d" methodVersion="1.0.0" uid="999" gid="999" identity="mongo-backup" claim="mongo-data-backup">
+          <credential path="secret/data/platform/backup/off-cluster" access="read" delivery="env" destination="mongo-backup-platform-backup-off-cluster"/>
+          <peer host="mongo.data-system.svc.cluster.local" port="27017">
+            <credential path="secret/data/data/mongo/backup" access="read" delivery="env" destination="mongo-backup-data-mongo-backup"/>
+          </peer>
+          <egress rule="datastore" namespace="data-system" process="mongo" port="27017"/>
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+          <destinations cidr="203.0.113.0/24" port="443"/>
+        </backup>
+      </volumes>
       <writablePaths path="/tmp" size="64Mi"/>
       <writablePaths path="/data/configdb" size="64Mi"/>
     </processes>
   </applications>
-  <reconcileUnits name="apps-data"/>
+  <applications id="asset-sync" revision="sha256:e963f32617c3c4629531666d7a0f89a4d7a4d0bf75d2763b5f2834361e114805" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <processes name="asset-sync" identity="asset-sync" lifecycle="scheduled" image="ghcr.io/jorisjonkers-dev/platform/asset-sync@sha256:5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e" imageVersion="1.0.0" uid="65532" gid="65532" serving="asset-sync" servingLabel="app.kubernetes.io/instance" deadline="720s" replicas="1" memory="64Mi" cpu="25m" hardening="restricted" component="none" schedule="*/15 * * * *" startDeadline="300s">
+      <internetEgress reason="reads the latest release from GitHub and uploads it to the public assets bucket"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <secrets path="secret/data/platform/garage/web-key" access="read" delivery="file" destination="asset-sync-platform-garage-web-key" mountAt="/run/secrets/garage/credentials" fileMode="0400">
+        <keys>credentials</keys>
+      </secrets>
+    </processes>
+  </applications>
+  <applications id="platform-garage" revision="sha256:318b516ee699a4c5f02dd9b1a7b9a156e2962980274a92a5e95970a105c2370b" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <processes name="garage" identity="garage" lifecycle="application" image="docker.io/dxflrs/garage@sha256:8d0f2b4c6e8a0d2f4b6c8e0a2d4f6b8c0e2a4d6f8b0c2e4a6d8f0b2c4e6a8d0f" imageVersion="2.3.0" uid="1000" gid="1000" cutover="interrupted" switchover="stop-start" serving="garage" servingLabel="app.kubernetes.io/instance" deadline="300s" replicas="1" memory="1Gi" cpu="200m" hardening="restricted" component="none" priorityClass="platform-data">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/health" port="3903"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="3900"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="12">
+        <target xsi:type="resolveddeployment:TcpTarget" tcp="3900"/>
+      </startup>
+      <surfaces name="s3" port="3900"/>
+      <surfaces name="admin" port="3903"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="garage-meta" mountAt="/var/lib/garage/meta" size="2Gi"/>
+      <volumes claim="garage-snapshots" mountAt="/var/lib/garage/snapshots" size="4Gi" durability="recoverable">
+        <backup schedule="15 3 * * *" retain="14" method="ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d" methodVersion="1.2.0" uid="1000" gid="1000" identity="garage-backup" claim="garage-snapshots-backup">
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+        </backup>
+      </volumes>
+      <volumes claim="garage-data" mountAt="/var/lib/garage/data" size="20Gi" durability="recoverable">
+        <backup schedule="15 3 * * *" retain="14" method="ghcr.io/jorisjonkers-dev/platform/file-backup@sha256:2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d" methodVersion="1.2.0" uid="1000" gid="1000" identity="garage-backup" claim="garage-data-backup">
+          <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+        </backup>
+      </volumes>
+      <secrets path="secret/data/platform/garage" access="read" delivery="env" destination="garage-platform-garage">
+        <keys>rpc-secret</keys>
+        <keys>admin-token</keys>
+        <restartTargets>garage</restartTargets>
+      </secrets>
+      <assets name="garage-garage-toml-120c7a969e" from="config/garage.toml" mountAt="/etc/garage.toml" content="# Garage's own configuration, an Asset: nothing in it is derived. The RPC&#xA;# secret and the admin token come from the environment.&#xA;metadata_dir = &quot;/var/lib/garage/meta&quot;&#xA;data_dir = &quot;/var/lib/garage/data&quot;&#xA;db_engine = &quot;lmdb&quot;&#xA;&#xA;# A consistent copy of the metadata database, which the backup archives in&#xA;# place of the live one.&#xA;metadata_snapshots_dir = &quot;/var/lib/garage/snapshots&quot;&#xA;metadata_auto_snapshot_interval = &quot;6h&quot;&#xA;&#xA;replication_factor = 1&#xA;rpc_bind_addr = &quot;[::]:3901&quot;&#xA;&#xA;[s3_api]&#xA;s3_region = &quot;garage&quot;&#xA;api_bind_addr = &quot;[::]:3900&quot;&#xA;&#xA;[admin]&#xA;api_bind_addr = &quot;[::]:3903&quot;&#xA;"/>
+      <environment name="GARAGE_ADMIN_TOKEN">
+        <secret path="secret/data/platform/garage" key="admin-token"/>
+      </environment>
+      <environment name="GARAGE_RPC_SECRET">
+        <secret path="secret/data/platform/garage" key="rpc-secret"/>
+      </environment>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-data" after="/0/@reconcileUnits.1 /0/@reconcileUnits.2"/>
+  <reconcileUnits name="apps-edge"/>
+  <reconcileUnits name="apps-secrets"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+  </policyJob>
+  <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/data/namespace.yaml" namespace="data-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/kustomization.yaml">
+    <resources>asset-sync</resources>
+    <resources>namespace.yaml</resources>
+    <resources>platform-garage</resources>
+    <resources>platform-mongo</resources>
+    <resources>platform-postgres</resources>
+    <resources>platform-rabbitmq</resources>
+    <resources>platform-valkey</resources>
+    <resources>rollout-events</resources>
+    <resources>vault-policy</resources>
+    <resources>vaultconnection.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/data/networkpolicy.yaml" adapter="networking"/>
+  <deliverables xsi:type="resolveddeployment:ConnectionFile" path="apps/data/vaultconnection.yaml" adapter="vso" namespace="data-system" address="http://vault.secrets-system.svc.cluster.local:8200"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/platform-postgres/kustomization.yaml">
+    <resources>backup.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>pvc.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>servicemonitor.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/platform-postgres/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/data/platform-postgres/service.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/data/platform-postgres/serviceaccount.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/data/platform-postgres/pvc.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/data/platform-postgres/configmap.yaml" processes="/0/@applications.0/@processes.0" application="/0/@applications.0"/>
+  <deliverables xsi:type="resolveddeployment:BackupFile" path="apps/data/platform-postgres/backup.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:MonitorFile" path="apps/data/platform-postgres/servicemonitor.yaml" adapter="prometheus" process="/0/@applications.0/@processes.0" surface="metrics" scrapePath="/metrics" interval="30s" timeout="10s" kind="ServiceMonitor"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/data/platform-postgres/vso.yaml" adapter="vso" application="/0/@applications.0">
+    <holders identity="postgres" component="none" grants="/0/@applications.0/@processes.0/@secrets.0"/>
+    <holders identity="postgres-backup" component="none" grants="/0/@applications.0/@processes.0/@volumes.0/@backup/@credential /0/@applications.0/@processes.0/@volumes.0/@backup/@peer/@credential"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/data/platform-postgres/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="metrics-stack" namespace="observability-system" process="prometheus" port="9187"/>
+      <ingress rule="consumer" consumes="platform-postgres.postgres" port="5432"/>
+      <ingress rule="consumer" consumes="platform-postgres.metrics" port="9187"/>
+      <ingress rule="backup" namespace="data-system" process="postgres-backup" port="5432"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/platform-rabbitmq/kustomization.yaml">
+    <resources>backup.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>dashboards.yaml</resources>
+    <resources>pvc.yaml</resources>
+    <resources>route-lan.yaml</resources>
+    <resources>route-management.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>servicemonitor.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/data/platform-rabbitmq/route-management.yaml" adapter="traefik" exposure="/0/@applications.1/@exposure.0" entryPoint="websecure" certificateResolver="public-frankfurt" terminatesTls="true"/>
+  <deliverables xsi:type="resolveddeployment:IngressRouteFile" path="apps/data/platform-rabbitmq/route-lan.yaml" adapter="traefik" exposure="/0/@applications.1/@exposure.1" entryPoint="web"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/platform-rabbitmq/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/data/platform-rabbitmq/service.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/data/platform-rabbitmq/serviceaccount.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/data/platform-rabbitmq/pvc.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/data/platform-rabbitmq/configmap.yaml" application="/0/@applications.1" externalChecks="{&quot;endpoints&quot;:[{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;data&quot;,&quot;name&quot;:&quot;platform-rabbitmq-management-1&quot;,&quot;url&quot;:&quot;https://rabbitmq.jorisjonkers.dev/&quot;},{&quot;conditions&quot;:[&quot;[STATUS] &lt; 500&quot;],&quot;group&quot;:&quot;data&quot;,&quot;name&quot;:&quot;platform-rabbitmq-lan-1&quot;,&quot;url&quot;:&quot;http://rabbitmq.jorisjonkers.dev/&quot;}]}"/>
+  <deliverables xsi:type="resolveddeployment:DashboardFile" path="apps/data/platform-rabbitmq/dashboards.yaml" adapter="grafana" application="/0/@applications.1"/>
+  <deliverables xsi:type="resolveddeployment:BackupFile" path="apps/data/platform-rabbitmq/backup.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:MonitorFile" path="apps/data/platform-rabbitmq/servicemonitor.yaml" adapter="prometheus" process="/0/@applications.1/@processes.0" surface="metrics" scrapePath="/metrics" interval="30s" timeout="10s" kind="ServiceMonitor"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/data/platform-rabbitmq/vso.yaml" adapter="vso" application="/0/@applications.1">
+    <holders identity="rabbitmq-backup" component="none" grants="/0/@applications.1/@processes.0/@volumes.0/@backup/@peer/@credential"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/data/platform-rabbitmq/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.1/@processes.0">
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-public" port="15672"/>
+      <ingress rule="tier-proxy" namespace="edge-system" process="traefik-lan" port="15672"/>
+      <ingress rule="metrics-stack" namespace="observability-system" process="prometheus" port="15692"/>
+      <ingress rule="consumer" consumes="platform-rabbitmq.amqp" port="5672"/>
+      <ingress rule="consumer" consumes="platform-rabbitmq.management" port="15672"/>
+      <ingress rule="consumer" consumes="platform-rabbitmq.metrics" port="15692"/>
+      <ingress rule="consumer" consumes="platform-rabbitmq.mqtt" port="1883"/>
+      <ingress rule="backup" namespace="data-system" process="rabbitmq-backup" port="15672"/>
+      <ingress rule="l4" port="1883" cidr="0.0.0.0/0"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/platform-valkey/kustomization.yaml">
+    <resources>pvc.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/platform-valkey/workload.yaml" processes="/0/@applications.2/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/data/platform-valkey/service.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/data/platform-valkey/serviceaccount.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/data/platform-valkey/pvc.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/data/platform-valkey/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.2/@processes.0">
+      <ingress rule="consumer" consumes="platform-valkey.redis" port="6379"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/platform-mongo/kustomization.yaml">
+    <resources>backup.yaml</resources>
+    <resources>pvc.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
   <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/platform-mongo/workload.yaml" processes="/0/@applications.3/@processes.0" strategy="Recreate"/>
-  <deliverables xsi:type="resolveddeployment:MoveFile" path="apps/data/platform-postgres/move.yaml" process="/0/@applications.2/@processes.0"/>
-  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/asset-sync/workload.yaml" processes="/0/@applications.1/@processes.0" controller="CronJob" strategy="none"/>
-  <deliverables xsi:type="resolveddeployment:DashboardFile" path="apps/data/platform-rabbitmq/dashboards.yaml" adapter="grafana" application="/0/@applications.0"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/data/platform-mongo/service.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/data/platform-mongo/serviceaccount.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/data/platform-mongo/pvc.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:BackupFile" path="apps/data/platform-mongo/backup.yaml" processes="/0/@applications.3/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/data/platform-mongo/vso.yaml" adapter="vso" application="/0/@applications.3">
+    <holders identity="mongo-backup" component="none" grants="/0/@applications.3/@processes.0/@volumes.0/@backup/@credential /0/@applications.3/@processes.0/@volumes.0/@backup/@peer/@credential"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/data/platform-mongo/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.3/@processes.0">
+      <ingress rule="consumer" consumes="platform-mongo.mongo" port="27017"/>
+      <ingress rule="backup" namespace="data-system" process="mongo-backup" port="27017"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/asset-sync/kustomization.yaml">
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/asset-sync/workload.yaml" processes="/0/@applications.4/@processes.0" controller="CronJob" strategy="none"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/data/asset-sync/serviceaccount.yaml" processes="/0/@applications.4/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/data/asset-sync/vso.yaml" adapter="vso" application="/0/@applications.4">
+    <holders identity="asset-sync" component="none" grants="/0/@applications.4/@processes.0/@secrets.0"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/data/asset-sync/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.4/@processes.0">
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/platform-garage/kustomization.yaml">
+    <resources>backup.yaml</resources>
+    <resources>configmap.yaml</resources>
+    <resources>pvc.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/platform-garage/workload.yaml" processes="/0/@applications.5/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/data/platform-garage/service.yaml" processes="/0/@applications.5/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/data/platform-garage/serviceaccount.yaml" processes="/0/@applications.5/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/data/platform-garage/pvc.yaml" processes="/0/@applications.5/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ConfigMapFile" path="apps/data/platform-garage/configmap.yaml" processes="/0/@applications.5/@processes.0" application="/0/@applications.5"/>
+  <deliverables xsi:type="resolveddeployment:BackupFile" path="apps/data/platform-garage/backup.yaml" processes="/0/@applications.5/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/data/platform-garage/vso.yaml" adapter="vso" application="/0/@applications.5">
+    <holders identity="garage" component="none" grants="/0/@applications.5/@processes.0/@secrets.0"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/data/platform-garage/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.5/@processes.0">
+      <ingress rule="consumer" consumes="platform-garage.s3" port="3900"/>
+      <ingress rule="consumer" consumes="platform-garage.admin" port="3903"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/data/vault-policy/policies/data-system-postgres.policy.json" adapter="vault-policy" namespace="data-system" identity="postgres" grants="/0/@applications.0/@processes.0/@secrets.0">
+    <paths path="secret/data/platform/postgres/exporter">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/postgres/exporter">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/data/vault-policy/policies/data-system-postgres.role.json" adapter="vault-policy" namespace="data-system" identity="postgres"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/data/vault-policy/policies/data-system-postgres-backup.policy.json" adapter="vault-policy" namespace="data-system" identity="postgres-backup" grants="/0/@applications.0/@processes.0/@volumes.0/@backup/@credential /0/@applications.0/@processes.0/@volumes.0/@backup/@peer/@credential">
+    <paths path="secret/data/platform/backup/off-cluster">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/backup/off-cluster">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/data/data/postgres/backup">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/data/postgres/backup">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/data/vault-policy/policies/data-system-postgres-backup.role.json" adapter="vault-policy" namespace="data-system" identity="postgres-backup"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/data/vault-policy/policies/data-system-rabbitmq-backup.policy.json" adapter="vault-policy" namespace="data-system" identity="rabbitmq-backup" grants="/0/@applications.1/@processes.0/@volumes.0/@backup/@peer/@credential">
+    <paths path="secret/data/data/rabbitmq/backup">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/data/rabbitmq/backup">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/data/vault-policy/policies/data-system-rabbitmq-backup.role.json" adapter="vault-policy" namespace="data-system" identity="rabbitmq-backup"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/data/vault-policy/policies/data-system-mongo-backup.policy.json" adapter="vault-policy" namespace="data-system" identity="mongo-backup" grants="/0/@applications.3/@processes.0/@volumes.0/@backup/@credential /0/@applications.3/@processes.0/@volumes.0/@backup/@peer/@credential">
+    <paths path="secret/data/platform/backup/off-cluster">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/backup/off-cluster">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/data/data/mongo/backup">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/data/mongo/backup">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/data/vault-policy/policies/data-system-mongo-backup.role.json" adapter="vault-policy" namespace="data-system" identity="mongo-backup"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/data/vault-policy/policies/data-system-asset-sync.policy.json" adapter="vault-policy" namespace="data-system" identity="asset-sync" grants="/0/@applications.4/@processes.0/@secrets.0">
+    <paths path="secret/data/platform/garage/web-key">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/garage/web-key">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/data/vault-policy/policies/data-system-asset-sync.role.json" adapter="vault-policy" namespace="data-system" identity="asset-sync"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/data/vault-policy/policies/data-system-garage.policy.json" adapter="vault-policy" namespace="data-system" identity="garage" grants="/0/@applications.5/@processes.0/@secrets.0">
+    <paths path="secret/data/platform/garage">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/garage">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/data/vault-policy/policies/data-system-garage.role.json" adapter="vault-policy" namespace="data-system" identity="garage"/>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/data/vault-policy/configmap.yaml" adapter="vault-policy" namespace="data-system" part="configmap" name="vault-policy-e9176474966e" job="/0/@policyJob">
+    <documents file="data-system-asset-sync.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-asset-sync.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;asset-sync&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-asset-sync&quot;]}"/>
+    <documents file="data-system-garage.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage&quot;]}"/>
+    <documents file="data-system-mongo-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-mongo-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;mongo-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-mongo-backup&quot;]}"/>
+    <documents file="data-system-postgres-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-backup&quot;]}"/>
+    <documents file="data-system-postgres.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres&quot;]}"/>
+    <documents file="data-system-rabbitmq-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-rabbitmq-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;rabbitmq-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-rabbitmq-backup&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/data/vault-policy/job.yaml" adapter="vault-policy" namespace="data-system" part="job" name="vault-policy-e9176474966e" job="/0/@policyJob">
+    <documents file="data-system-asset-sync.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-asset-sync.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;asset-sync&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-asset-sync&quot;]}"/>
+    <documents file="data-system-garage.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage&quot;]}"/>
+    <documents file="data-system-mongo-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-mongo-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;mongo-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-mongo-backup&quot;]}"/>
+    <documents file="data-system-postgres-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-backup&quot;]}"/>
+    <documents file="data-system-postgres.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres&quot;]}"/>
+    <documents file="data-system-rabbitmq-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-rabbitmq-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;rabbitmq-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-rabbitmq-backup&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/data/vault-policy/cronjob.yaml" adapter="vault-policy" namespace="data-system" part="cronjob" name="vault-policy-e9176474966e" job="/0/@policyJob">
+    <documents file="data-system-asset-sync.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-asset-sync.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;asset-sync&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-asset-sync&quot;]}"/>
+    <documents file="data-system-garage.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage&quot;]}"/>
+    <documents file="data-system-mongo-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-mongo-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;mongo-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-mongo-backup&quot;]}"/>
+    <documents file="data-system-postgres-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-backup&quot;]}"/>
+    <documents file="data-system-postgres.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres&quot;]}"/>
+    <documents file="data-system-rabbitmq-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-rabbitmq-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;rabbitmq-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-rabbitmq-backup&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/data/vault-policy/serviceaccount.yaml" adapter="vault-policy" namespace="data-system" part="serviceaccount" name="vault-policy-e9176474966e" job="/0/@policyJob">
+    <documents file="data-system-asset-sync.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-asset-sync.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;asset-sync&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-asset-sync&quot;]}"/>
+    <documents file="data-system-garage.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage&quot;]}"/>
+    <documents file="data-system-mongo-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-mongo-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;mongo-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-mongo-backup&quot;]}"/>
+    <documents file="data-system-postgres-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-backup&quot;]}"/>
+    <documents file="data-system-postgres.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres&quot;]}"/>
+    <documents file="data-system-rabbitmq-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-rabbitmq-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;rabbitmq-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-rabbitmq-backup&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/data/vault-policy/networkpolicy.yaml" adapter="networking" namespace="data-system" part="networkpolicy" name="vault-policy-e9176474966e" job="/0/@policyJob">
+    <documents file="data-system-asset-sync.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-asset-sync.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;asset-sync&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-asset-sync&quot;]}"/>
+    <documents file="data-system-garage.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-garage.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage&quot;]}"/>
+    <documents file="data-system-mongo-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/mongo/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-mongo-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;mongo-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-mongo-backup&quot;]}"/>
+    <documents file="data-system-postgres-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/postgres/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/backup/off-cluster&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-backup&quot;]}"/>
+    <documents file="data-system-postgres.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/exporter&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-postgres.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres&quot;]}"/>
+    <documents file="data-system-rabbitmq-backup.policy.json" json="{&quot;path&quot;:{&quot;secret/data/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/data/rabbitmq/backup&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="data-system-rabbitmq-backup.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;rabbitmq-backup&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-rabbitmq-backup&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/vault-policy/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>cronjob.yaml</resources>
+    <resources>job.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/data/rollout-events/alert.yaml" part="alert" project="data" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/data/rollout-events/provider.yaml" part="provider" project="data" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/rollout-events/kustomization.yaml">
+    <resources>alert.yaml</resources>
+    <resources>provider.yaml</resources>
+  </deliverables>
 </resolveddeployment:ResolvedDeployment>

@@ -1,0 +1,18 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Alert
+metadata:
+  name: rollouts-mail
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  providerRef:
+    name: reporter-mail
+  eventSeverity: info
+  eventSources:
+    - kind: Kustomization
+      name: apps-mail
+      matchLabels:
+        app.kubernetes.io/managed-by: deploy-kit

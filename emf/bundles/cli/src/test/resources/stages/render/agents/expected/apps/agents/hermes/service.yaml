@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hermes
+  namespace: agents-system
+  labels:
+    app.kubernetes.io/name: hermes
+    app.kubernetes.io/instance: hermes
+    app.kubernetes.io/part-of: hermes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: hermes
+  ports:
+    - name: dashboard
+      port: 9119
+      targetPort: dashboard

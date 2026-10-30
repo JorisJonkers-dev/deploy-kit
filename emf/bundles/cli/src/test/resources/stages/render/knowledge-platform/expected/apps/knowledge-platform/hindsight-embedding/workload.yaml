@@ -1,0 +1,109 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hindsight-tei-embedding
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-tei-embedding
+    app.kubernetes.io/instance: hindsight-tei-embedding
+    app.kubernetes.io/part-of: hindsight-embedding
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  progressDeadlineSeconds: 1020
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hindsight-tei-embedding
+      app.kubernetes.io/instance: hindsight-tei-embedding
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hindsight-tei-embedding
+        app.kubernetes.io/instance: hindsight-tei-embedding
+        app.kubernetes.io/part-of: hindsight-embedding
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/hindsight-tei-embedding: 1.7.0
+    spec:
+      serviceAccountName: hindsight-tei-embedding
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - enschede-pi-1
+      containers:
+        - name: hindsight-tei-embedding
+          image: ghcr.io/huggingface/text-embeddings-inference@sha256:8de25e75ce39617f17f2f6c77d60a4f75b65e779ed5005420eb1400072a15c1c
+          ports:
+            - name: embeddings
+              containerPort: 8091
+          env:
+            - name: MAX_CLIENT_BATCH_SIZE
+              value: "256"
+            - name: PAYLOAD_LIMIT
+              value: "10000000"
+            - name: PORT
+              value: "8091"
+          resources:
+            requests:
+              memory: 6Gi
+              cpu: 500m
+            limits:
+              memory: 6Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: hindsight-tei-model-cache
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8091
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8091
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8091
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+      volumes:
+        - name: hindsight-tei-model-cache
+          persistentVolumeClaim:
+            claimName: hindsight-tei-model-cache

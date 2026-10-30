@@ -571,7 +571,8 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedApiAccess">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" lowerBound="1" upperBound="-1" eType="#//ResolvedApiRule" containment="true"/>
+    <!-- None where the Process acts on the API only with each signed-in user's own token. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" upperBound="-1" eType="#//ResolvedApiRule" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="server" lowerBound="1" upperBound="-1" eType="#//AdmittedRange" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedApiRule">

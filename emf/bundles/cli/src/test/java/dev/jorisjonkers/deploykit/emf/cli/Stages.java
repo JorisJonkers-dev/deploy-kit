@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
@@ -263,6 +264,22 @@ final class Stages {
         return written;
     }
 
+    /**
+     * What a case of copied oracles compares: main commits a Project's own artifact, the
+     * estate-scoped artifact and the pinned sources each only in the trees holding its top-level
+     * directory, so the rendering is compared on the directories the case's copies hold.
+     */
+    private static Map<String, byte[]> copiedShare(String name, Map<String, byte[]> written) {
+        if (!Files.exists(root().resolve("render").resolve(name).resolve(ORACLES))) {
+            return written;
+        }
+        Set<String> held = Comparison.read(expected("render", name)).keySet().stream()
+                .map(path -> path.substring(0, path.indexOf('/') + 1))
+                .collect(Collectors.toSet());
+        written.keySet().removeIf(path -> !held.contains(path.substring(0, path.indexOf('/') + 1)));
+        return written;
+    }
+
     private static Map<String, byte[]> render(String name) throws IOException {
         List<ResolvedDeployment> deployments = new ArrayList<>();
         for (String project : projects(name)) {
@@ -272,7 +289,7 @@ final class Stages {
         Path out = Files.createTempDirectory("stage-render");
         try {
             Pipeline.renderTogether(deployments, out);
-            return Comparison.read(out);
+            return copiedShare(name, Comparison.read(out));
         } finally {
             try (Stream<Path> tree = Files.walk(out)) {
                 for (Path path : tree.sorted(Comparator.reverseOrder()).toList()) {

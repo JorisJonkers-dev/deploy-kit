@@ -1,0 +1,23 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-garage
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  type: ExternalName
+  externalName: platform-garage-s3.estate-system.svc.cluster.local
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform-postgres
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  type: ExternalName
+  externalName: platform-postgres-postgres.estate-system.svc.cluster.local
