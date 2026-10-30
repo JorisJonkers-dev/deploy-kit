@@ -376,6 +376,11 @@
           <operations>decrypt</operations>
           <operations>verify</operations>
         </secrets>
+        <env>
+          <entries name="VAULT_ROLE">
+            <value xsi:type="projectintent:Placeholder" kind="identity" source="vaultRole"/>
+          </entries>
+        </env>
         <placement memory="64Mi" cpu="10m">
           <arch>arm64</arch>
           <disk>

@@ -148,7 +148,8 @@ public final class Shapes {
         if (element instanceof Group group) {
             List<AbstractElement> children = group.getElements();
             for (int i = 0; i < children.size(); i++) {
-                if (startsKey(children, i) || holdsKeys(children.get(i)) && !(children.get(i) instanceof Alternatives)) {
+                if (startsKey(children, i)
+                        || holdsKeys(children.get(i)) && !(children.get(i) instanceof Alternatives)) {
                     return true;
                 }
             }
@@ -203,7 +204,11 @@ public final class Shapes {
     }
 
     private void scan(
-            AbstractElement element, boolean[] dash, List<AbstractRule> targets, List<String> literals, boolean assigned) {
+            AbstractElement element,
+            boolean[] dash,
+            List<AbstractRule> targets,
+            List<String> literals,
+            boolean assigned) {
         if (element instanceof Assignment assignment) {
             scan(assignment.getTerminal(), dash, targets, literals, true);
         } else if (element instanceof Keyword keyword) {
@@ -324,7 +329,8 @@ public final class Shapes {
         }
         for (Entry entry : form.entries().values()) {
             if (entry.required() && !node.map.containsKey(entry.key())) {
-                out.add(new Issue(path + "/" + pointer(entry.key()), "required field `" + entry.key() + "` is missing"));
+                out.add(new Issue(
+                        path + "/" + pointer(entry.key()), "required field `" + entry.key() + "` is missing"));
             }
         }
     }
