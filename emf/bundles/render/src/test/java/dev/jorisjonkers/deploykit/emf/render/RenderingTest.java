@@ -188,7 +188,8 @@ class RenderingTest {
 
     @Test
     void aRenderingWhoseFilesAreNotRefusedIsWritten(@TempDir Path out) {
-        assertThat(Rendering.render(List.of(namespaceOnly()), out, aside -> List.<String>of())).isEmpty();
+        assertThat(Rendering.render(List.of(namespaceOnly()), out, aside -> List.<String>of()))
+                .isEmpty();
         assertThat(out.resolve("apps/notes/namespace.yaml")).exists();
     }
 }

@@ -235,7 +235,8 @@ class PipelineTest {
 
     @Test
     void aSetWhosePlanClaimsAPathTwiceWritesNothing(@TempDir Path out) throws IOException {
-        List<Diagnostic> refused = Pipeline.renderTogether(List.of(ResolutionTest.minimal(), ResolutionTest.minimal()), out);
+        List<Diagnostic> refused =
+                Pipeline.renderTogether(List.of(ResolutionTest.minimal(), ResolutionTest.minimal()), out);
 
         assertThat(refused).isNotEmpty().extracting(Diagnostic::code).containsOnly("E_PATH_COLLISION");
         assertThat(out).isEmptyDirectory();

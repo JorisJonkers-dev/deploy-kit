@@ -53,19 +53,19 @@ class CollisionsTest {
                         planning(AdapterName.KUBERNETES, "apps/a/namespace.yaml"),
                         planning(AdapterName.TRAEFIK, "apps/a/namespace.yaml")))))
                 .containsExactly("apps/a/namespace.yaml is claimed by kubernetes and traefik");
-        assertThat(messages(Collisions.ofPlan(
-                        List.of(planning(AdapterName.KUBERNETES, "apps/a/x.yaml", "apps/a/x.yaml")))))
+        assertThat(messages(
+                        Collisions.ofPlan(List.of(planning(AdapterName.KUBERNETES, "apps/a/x.yaml", "apps/a/x.yaml")))))
                 .containsExactly("apps/a/x.yaml is claimed by kubernetes and kubernetes");
     }
 
     @Test
     void anEstateFileEveryProjectPlansIsOneFileUnlessTwoAdaptersWriteIt() {
         String estate = "estate/priority-classes/priorityclasses.yaml";
-        assertThat(Collisions.ofPlan(List.of(
-                        planning(AdapterName.KUBERNETES, estate), planning(AdapterName.KUBERNETES, estate))))
+        assertThat(Collisions.ofPlan(
+                        List.of(planning(AdapterName.KUBERNETES, estate), planning(AdapterName.KUBERNETES, estate))))
                 .isEmpty();
-        assertThat(messages(Collisions.ofPlan(List.of(
-                        planning(AdapterName.KUBERNETES, estate), planning(AdapterName.VSO, estate)))))
+        assertThat(messages(Collisions.ofPlan(
+                        List.of(planning(AdapterName.KUBERNETES, estate), planning(AdapterName.VSO, estate)))))
                 .containsExactly(estate + " is claimed by kubernetes and vso");
     }
 
@@ -76,11 +76,12 @@ class CollisionsTest {
                         "apps/a-b/policies/a-b-c.policy.json",
                         "apps/a/policies/a-b-c.policy.json",
                         "apps/a/policies/a-b-c.role.json")))))
-                .containsExactly(
-                        "the Vault name a-b-c.policy.json is claimed by apps/a-b/policies/a-b-c.policy.json"
-                                + " and apps/a/policies/a-b-c.policy.json");
+                .containsExactly("the Vault name a-b-c.policy.json is claimed by apps/a-b/policies/a-b-c.policy.json"
+                        + " and apps/a/policies/a-b-c.policy.json");
         assertThat(Collisions.ofPlan(List.of(planning(
-                        AdapterName.VAULT_POLICY, "apps/a/policies/x.policy.json", "apps/a/policies/x.policy.json.bak"))))
+                        AdapterName.VAULT_POLICY,
+                        "apps/a/policies/x.policy.json",
+                        "apps/a/policies/x.policy.json.bak"))))
                 .isEmpty();
     }
 
@@ -98,7 +99,10 @@ class CollisionsTest {
     @Test
     void aServiceAccountIsReadAtAnyIndentationAndOnlyFromItsOwnMetadata(@TempDir Path root) throws IOException {
         write(root, "apps/a/one.yaml", indented(account("a", "ns")) + "kind: ConfigMap\nmetadata:\n  name: a\n");
-        write(root, "apps/a/two.yaml", "kind: ServiceAccount\nmetadata:\n  labels:\n    x: y\n  namespace: ns\n  name: a\n");
+        write(
+                root,
+                "apps/a/two.yaml",
+                "kind: ServiceAccount\nmetadata:\n  labels:\n    x: y\n  namespace: ns\n  name: a\n");
 
         assertThat(messages(Collisions.ofAccounts(root)))
                 .containsExactly("the ServiceAccount ns/a is claimed by apps/a/one.yaml and apps/a/two.yaml");
@@ -109,7 +113,8 @@ class CollisionsTest {
         write(root, "a.yaml", "kind: ServiceAccount\nmetadata:\n  labels:\n    x: y\n");
         write(root, "b.yaml", "kind: ServiceAccount\nmetadata:\n  labels:\n    z: w\n");
 
-        assertThat(messages(Collisions.ofAccounts(root))).containsExactly("the ServiceAccount / is claimed by a.yaml and b.yaml");
+        assertThat(messages(Collisions.ofAccounts(root)))
+                .containsExactly("the ServiceAccount / is claimed by a.yaml and b.yaml");
     }
 
     @Test

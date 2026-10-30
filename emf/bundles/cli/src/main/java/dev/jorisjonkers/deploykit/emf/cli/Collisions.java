@@ -37,8 +37,8 @@ final class Collisions {
     private static final Pattern VAULT_DOCUMENT = Pattern.compile("/policies/([^/]+\\.(?:policy|role)\\.json)$");
 
     /** A ServiceAccount as the templates write one: its kind, then its metadata's name and namespace. */
-    private static final Pattern ACCOUNT = Pattern.compile(
-            "(?m)^ *kind: ServiceAccount\\n( *)metadata:\\n((?:\\1  .*\\n)+)");
+    private static final Pattern ACCOUNT =
+            Pattern.compile("(?m)^ *kind: ServiceAccount\\n( *)metadata:\\n((?:\\1  .*\\n)+)");
 
     private static final Pattern NAME = Pattern.compile("(?m)^ *name: (.+)$");
     private static final Pattern NAMESPACE = Pattern.compile("(?m)^ *namespace: (.+)$");
@@ -56,7 +56,8 @@ final class Collisions {
                         .add(deliverable.getAdapter().getLiteral());
                 Matcher vault = VAULT_DOCUMENT.matcher(path);
                 if (vault.find()) {
-                    names.computeIfAbsent(vault.group(1), key -> new LinkedHashSet<>()).add(path);
+                    names.computeIfAbsent(vault.group(1), key -> new LinkedHashSet<>())
+                            .add(path);
                 }
             }
         }
