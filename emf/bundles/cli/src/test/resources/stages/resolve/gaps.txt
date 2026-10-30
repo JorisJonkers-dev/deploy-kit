@@ -40,10 +40,6 @@ CatalogJobFile.job is never set by a resolve case
 CatalogJobFile.name is never set by a resolve case
 CatalogJobFile.part is never set by a resolve case
 CatalogJobFile.path is never set by a resolve case
-ClientFile is never instantiated by a resolve case
-ClientFile.adapter is never set by a resolve case
-ClientFile.application is never set by a resolve case
-ClientFile.path is never set by a resolve case
 ContentPolicy.admin is never used in a resolve case's input
 ContentPolicy.workflow is never used in a resolve case's input
 ContentPolicyHeaders is never instantiated by a resolve case
@@ -89,13 +85,6 @@ HostMount.mountAt is never set by a resolve case
 HostMount.name is never set by a resolve case
 HostMount.propagated is never set by a resolve case
 HostMount.readOnly is never set by a resolve case
-HumanGrantBinding is never instantiated by a resolve case
-HumanGrantBinding.clusterRole is never set by a resolve case
-HumanGrantBinding.group is never set by a resolve case
-HumanGrantFile is never instantiated by a resolve case
-HumanGrantFile.adapter is never set by a resolve case
-HumanGrantFile.grants is never set by a resolve case
-HumanGrantFile.path is never set by a resolve case
 IndexFile.namespace is never set by a resolve case
 MoveFile is never instantiated by a resolve case
 MoveFile.adapter is never set by a resolve case
@@ -117,11 +106,6 @@ NodeAgentFile.path is never set by a resolve case
 PolicyController.cni is never used in a resolve case's input
 PolicyController.none is never used in a resolve case's input
 PolicyPeer.protocol is never set by a resolve case
-PriorityClassFile is never instantiated by a resolve case
-PriorityClassFile.adapter is never set by a resolve case
-PriorityClassFile.critical is never set by a resolve case
-PriorityClassFile.data is never set by a resolve case
-PriorityClassFile.path is never set by a resolve case
 RenderSource is never instantiated by a resolve case
 RenderSource.digest is never set by a resolve case
 RenderSource.issuer is never set by a resolve case
@@ -141,20 +125,9 @@ ResolvedAlerting.routes is never set by a resolve case
 ResolvedApplication.alertClass is never set by a resolve case
 ResolvedApplication.alertRules is never set by a resolve case
 ResolvedApplication.alerting is never set by a resolve case
-ResolvedApplication.client is never set by a resolve case
 ResolvedApplication.fluxScrape is never set by a resolve case
 ResolvedAsset.seedAt is never set by a resolve case
-ResolvedClient is never instantiated by a resolve case
-ResolvedClient.credential is never set by a resolve case
-ResolvedClient.description is never set by a resolve case
-ResolvedClient.host is never set by a resolve case
-ResolvedClient.iconUrl is never set by a resolve case
-ResolvedClient.label is never set by a resolve case
-ResolvedClient.launchUrl is never set by a resolve case
-ResolvedClient.redirectUris is never set by a resolve case
-ResolvedClient.roles is never set by a resolve case
 ResolvedClient.secretPath is never set by a resolve case
-ResolvedClient.signIn is never set by a resolve case
 ResolvedDeployment.addressPools is never set by a resolve case
 ResolvedDeployment.nodeAgents is never set by a resolve case
 ResolvedFluxScrape is never instantiated by a resolve case
@@ -223,9 +196,6 @@ ResolvedNodeAgent.surfaces is never set by a resolve case
 ResolvedNodeAgent.uid is never set by a resolve case
 ResolvedPlacement.boundTo is never set by a resolve case
 ResolvedPlacement.from is never set by a resolve case
-ResolvedPriority is never instantiated by a resolve case
-ResolvedPriority.name is never set by a resolve case
-ResolvedPriority.value is never set by a resolve case
 ResolvedProcess.arguments is never set by a resolve case
 ResolvedProcess.instance is never set by a resolve case
 ResolvedProcess.move is never set by a resolve case

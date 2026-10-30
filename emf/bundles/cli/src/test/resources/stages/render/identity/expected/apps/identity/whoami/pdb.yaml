@@ -1,0 +1,18 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: whoami
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/name: whoami
+    app.kubernetes.io/instance: whoami
+    app.kubernetes.io/part-of: whoami
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: whoami-primary

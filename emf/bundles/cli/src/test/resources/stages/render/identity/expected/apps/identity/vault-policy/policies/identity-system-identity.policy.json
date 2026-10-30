@@ -1,0 +1,11 @@
+{
+  "path": {
+    "secret/data/observability-system/grafana/client": {
+      "capabilities": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  }
+}

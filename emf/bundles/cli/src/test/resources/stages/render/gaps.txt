@@ -1,8 +1,4 @@
 ControllerKind.statefulSet is never used in a render case's input
-GateMember.waitsFor is never set in a render case's input
-GateProvider is never instantiated in a render case's input
-GateProvider.application is never set in a render case's input
-GateProvider.process is never set in a render case's input
 GeneratedKeysFile is never instantiated in a render case's input
 GeneratedKeysFile is never instantiated in a render case's input (render.mtl dispatches on it)
 GeneratedKeysFile.adapter is never set in a render case's input

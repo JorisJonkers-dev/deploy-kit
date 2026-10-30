@@ -176,6 +176,7 @@ class OracleDistanceTest {
             "resolved data-main",
             "resolved delivery",
             "resolved edge",
+            "resolved identity",
             "resolved knowledge-platform",
             "resolved mail",
             "resolved minimal-main",
