@@ -21,6 +21,10 @@ spec/
 .github/actions/
 .github/codeql/
 
+# The model-driven implementation's stage goldens are canonical JSON its own
+# writer produces, compared byte for byte, so prettier must not reflow them.
+emf/bundles/cli/src/test/resources/stages/
+
 # Scratch. `.tmp/` is a working directory, not a deliverable, and its contents
 # are whatever a tool last dropped there.
 .tmp/

@@ -36,7 +36,8 @@ deletes: this directory; the `emf` CI job and the `ADR contract (emf)` step in
 `RULE-062` and `REQ-015`; the `emf` domain entry in `scripts/lint-adrs.ts` and
 the two `emf/` cases in `test/adr-contract.test.ts`; the `emf` exclusion in
 `release-please-config.json`, the `emf maven` rule in `renovate.json`, the
-`/emf/` line in `.github/CODEOWNERS` and the `mvnw` line in `.gitattributes`;
+`/emf/` line in `.github/CODEOWNERS`, the `mvnw` line in `.gitattributes` and
+the stage goldens' line in `.prettierignore`;
 and the `emf/` mentions in `docs/architecture.md`, `docs/requirements.md`,
 `docs/adr/README.md`, `README.md`, `CONTEXT.md` and `CLAUDE.md`.
 
