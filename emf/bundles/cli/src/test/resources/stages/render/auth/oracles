@@ -1,0 +1,4 @@
+apps/auth/aliases.yaml auth/rendered/apps/auth/aliases.yaml
+estate/stable-addresses/kustomization.yaml auth/rendered/estate/stable-addresses/kustomization.yaml
+estate/stable-addresses/namespace.yaml auth/rendered/estate/stable-addresses/namespace.yaml
+estate/stable-addresses/services.yaml auth/rendered/estate/stable-addresses/services.yaml

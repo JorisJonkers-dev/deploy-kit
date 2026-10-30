@@ -1174,6 +1174,26 @@
   [/for]
 [/template]
 
+[comment Every Stable Address, an ExternalName Service in the estate's namespace. Created once and
+  never overwritten by a later apply, so the flip of a Move is what moves it. /]
+[template private objects(d : resolveddeployment::StableAddressFile)]
+  [for (a : resolveddeployment::Alias | d.addresses)]
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: [a.name/]
+      namespace: [d.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+      annotations:
+        kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+    spec:
+      type: ExternalName
+      externalName: [a.target/]
+  [/for]
+[/template]
+
 [comment Per library the project mounts, the local volume onto its directory, held to its node,
   and the claim bound to it; neither is ever pruned. /]
 [template private objects(d : resolveddeployment::LibraryFile)]

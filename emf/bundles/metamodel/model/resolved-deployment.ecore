@@ -1126,6 +1126,11 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="contentSecurityPolicy" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
+  <!-- Every Stable Address the render's Projects resolve, estate-scoped: each a name of the estate's own namespace that holds where its provider answers, created once and then moved by the flip of a Move alone (spec/v1/16-dependencies.md#the-stable-address). -->
+  <eClassifiers xsi:type="ecore:EClass" name="StableAddressFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="addresses" lowerBound="1" upperBound="-1" eType="#//Alias" containment="true"/>
+  </eClassifiers>
   <!-- ==================================================== vocabularies -->
 
   <eClassifiers xsi:type="ecore:EEnum" name="PinnedInput">

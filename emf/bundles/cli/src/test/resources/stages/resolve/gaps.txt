@@ -483,6 +483,11 @@ SharedMiddlewareFile.forwardAuth is never set by a resolve case
 SharedMiddlewareFile.namespace is never set by a resolve case
 SharedMiddlewareFile.path is never set by a resolve case
 SharedMiddlewareFile.policies is never set by a resolve case
+StableAddressFile is never instantiated by a resolve case
+StableAddressFile.adapter is never set by a resolve case
+StableAddressFile.addresses is never set by a resolve case
+StableAddressFile.namespace is never set by a resolve case
+StableAddressFile.path is never set by a resolve case
 Switchover.rolling is never used by a resolve case
 Tolerance.reload is never used in a resolve case's input
 TransitEngine.transit is never used in a resolve case's input

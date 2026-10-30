@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="auth" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="auth" namespace="auth-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="auth-main" identity="auth-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="auth-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-auth"/>
+  <deliverables xsi:type="resolveddeployment:AliasFile" path="apps/auth/aliases.yaml" namespace="auth-system">
+    <aliases name="platform-postgres" target="platform-postgres-postgres.estate-system.svc.cluster.local"/>
+    <aliases name="platform-rabbitmq" target="platform-rabbitmq-amqp.estate-system.svc.cluster.local"/>
+    <aliases name="platform-valkey" target="platform-valkey-redis.estate-system.svc.cluster.local"/>
+    <aliases name="stalwart" target="stalwart-smtp.estate-system.svc.cluster.local"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:StableAddressFile" path="estate/stable-addresses/services.yaml" namespace="estate-system">
+    <addresses name="platform-postgres-postgres" target="postgres.data-system.svc.cluster.local"/>
+    <addresses name="platform-rabbitmq-amqp" target="rabbitmq.data-system.svc.cluster.local"/>
+    <addresses name="platform-valkey-redis" target="valkey.data-system.svc.cluster.local"/>
+    <addresses name="stalwart-smtp" target="stalwart.mail-system.svc.cluster.local"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="estate/stable-addresses/namespace.yaml" namespace="estate-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/stable-addresses/kustomization.yaml">
+    <resources>namespace.yaml</resources>
+    <resources>services.yaml</resources>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>
