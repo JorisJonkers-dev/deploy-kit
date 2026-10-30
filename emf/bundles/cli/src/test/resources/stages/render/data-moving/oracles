@@ -1,0 +1,11 @@
+apps/data/platform-postgres/backup.yaml data/moving/backup.yaml
+apps/data/platform-postgres/configmap.yaml data/moving/configmap.yaml
+apps/data/platform-postgres/kustomization.yaml data/moving/kustomization.yaml
+apps/data/platform-postgres/move.yaml data/moving/move.yaml
+apps/data/platform-postgres/networkpolicy.yaml data/moving/networkpolicy.yaml
+apps/data/platform-postgres/pvc.yaml data/moving/pvc.yaml
+apps/data/platform-postgres/service.yaml data/moving/service.yaml
+apps/data/platform-postgres/serviceaccount.yaml data/moving/serviceaccount.yaml
+apps/data/platform-postgres/servicemonitor.yaml data/moving/servicemonitor.yaml
+apps/data/platform-postgres/vso.yaml data/moving/vso.yaml
+apps/data/platform-postgres/workload.yaml data/moving/workload.yaml

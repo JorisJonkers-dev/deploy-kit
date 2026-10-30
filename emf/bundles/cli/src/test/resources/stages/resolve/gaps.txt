@@ -1145,16 +1145,19 @@ ResolvedMigration.uid is never set by a resolve case
 ResolvedMove is never instantiated by a resolve case
 ResolvedMove.cpu is never set by a resolve case
 ResolvedMove.credentialsPath is never set by a resolve case
+ResolvedMove.egress is never set by a resolve case
 ResolvedMove.flipNamespace is never set by a resolve case
 ResolvedMove.flips is never set by a resolve case
 ResolvedMove.gid is never set by a resolve case
 ResolvedMove.identity is never set by a resolve case
 ResolvedMove.image is never set by a resolve case
 ResolvedMove.imageVersion is never set by a resolve case
+ResolvedMove.instancePeers is never set by a resolve case
 ResolvedMove.memory is never set by a resolve case
 ResolvedMove.port is never set by a resolve case
 ResolvedMove.role is never set by a resolve case
 ResolvedMove.secretStore is never set by a resolve case
+ResolvedMove.server is never set by a resolve case
 ResolvedMove.sourceHost is never set by a resolve case
 ResolvedMove.steps is never set by a resolve case
 ResolvedMove.tag is never set by a resolve case
@@ -1225,6 +1228,7 @@ ResolvedProcess.cutover is never set by a resolve case
 ResolvedProcess.deadline is never set by a resolve case
 ResolvedProcess.dependencies is never set by a resolve case
 ResolvedProcess.environment is never set by a resolve case
+ResolvedProcess.frozen is never set by a resolve case
 ResolvedProcess.gid is never set by a resolve case
 ResolvedProcess.gpu is never set by a resolve case
 ResolvedProcess.hardening is never set by a resolve case
@@ -1232,6 +1236,7 @@ ResolvedProcess.identity is never set by a resolve case
 ResolvedProcess.identityToken is never set by a resolve case
 ResolvedProcess.image is never set by a resolve case
 ResolvedProcess.imageVersion is never set by a resolve case
+ResolvedProcess.instance is never set by a resolve case
 ResolvedProcess.internetEgress is never set by a resolve case
 ResolvedProcess.l4Services is never set by a resolve case
 ResolvedProcess.libraries is never set by a resolve case
