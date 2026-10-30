@@ -389,6 +389,22 @@
     <resources>namespace.yaml</resources>
     <resources>services.yaml</resources>
   </deliverables>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-operators" clusterRole="admin"/>
+    <grants group="oidc:k8s-developers" clusterRole="edit"/>
+    <grants group="oidc:k8s-readers" clusterRole="view"/>
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
   <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/delivery/rollout-events/alert.yaml" part="alert" project="delivery" events="/0/@events"/>
   <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/delivery/rollout-events/provider.yaml" part="provider" project="delivery" events="/0/@events"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/delivery/rollout-events/kustomization.yaml">

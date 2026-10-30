@@ -128,7 +128,8 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 		->union(self.applications->collect(a | a.applicationFiles(self))->flatten())
 		->union(self.vaultFiles())
 		->union(self.generatedKeysFiles())
-		->union(self.stableAddressFiles());
+		->union(self.stableAddressFiles())
+		->union(platformFiles());
 	end {
 		self.edgeFiles(result);
 		-- Only a complete element has a revision: it is the digest of all of it.
@@ -1384,6 +1385,42 @@ query homeHostOf(e : DependencyEdge) : String =
 			->select(r | r.name = e.application and r.surfaces->exists(s | s.key = e.surface))->asSequence() in
 		if registered->isEmpty() then null else registered->first().address endif
 	endif;
+
+-- The platform's own estate-scoped share, which every render holds: the two priority classes
+-- (spec/v1/14-platform-intent.md#priority) and a binding per Human Grant
+-- (spec/v1/14-platform-intent.md#human-grants).
+query platformFiles() : Sequence(Deliverable) =
+	(if estate.priority = null then Sequence{} else Sequence{
+		object PriorityClassFile {
+			path := 'estate/priority-classes/priorityclasses.yaml';
+			adapter := AdapterName::kubernetes;
+			data := object ResolvedPriority { name := estate.priority.data.name; value := estate.priority.data.value; };
+			critical := object ResolvedPriority { name := estate.priority.critical.name; value := estate.priority.critical.value; };
+		}.oclAsType(Deliverable),
+		object IndexFile {
+			path := 'estate/priority-classes/kustomization.yaml';
+			adapter := AdapterName::kubernetes;
+			resources := Sequence{'priorityclasses.yaml'};
+		}.oclAsType(Deliverable)} endif)
+	->union(if estate.humanGrants->isEmpty() then Sequence{} else Sequence{
+		object HumanGrantFile {
+			path := 'estate/human-grants/clusterrolebindings.yaml';
+			adapter := AdapterName::kubernetes;
+			grants := estate.humanGrants->collect(g | object HumanGrantBinding {
+				group := g.group;
+				clusterRole := g.clusterRole.spelling();
+			});
+		}.oclAsType(Deliverable),
+		object IndexFile {
+			path := 'estate/human-grants/kustomization.yaml';
+			adapter := AdapterName::kubernetes;
+			resources := Sequence{'clusterrolebindings.yaml'};
+		}.oclAsType(Deliverable)} endif);
+
+query HumanGrantRole::spelling() : String =
+	if self = HumanGrantRole::clusterAdmin then 'cluster-admin'
+	else if self = HumanGrantRole::admin then 'admin'
+	else if self = HumanGrantRole::edit then 'edit' else 'view' endif endif endif;
 
 -- The Stable Addresses the project's aliases point at
 -- (spec/v1/16-dependencies.md#the-stable-address): one ExternalName Service per

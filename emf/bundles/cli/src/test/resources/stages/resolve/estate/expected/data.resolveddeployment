@@ -540,6 +540,22 @@
     </paths>
   </deliverables>
   <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/data/vault-policy/policies/data-system-garage.role.json" adapter="vault-policy" namespace="data-system" identity="garage"/>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-operators" clusterRole="admin"/>
+    <grants group="oidc:k8s-developers" clusterRole="edit"/>
+    <grants group="oidc:k8s-readers" clusterRole="view"/>
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
   <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/data/vault-policy/configmap.yaml" adapter="vault-policy" namespace="data-system" part="configmap" name="vault-policy-e9176474966e" job="/0/@policyJob">
     <documents file="data-system-asset-sync.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage/web-key&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
     <documents file="data-system-asset-sync.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;asset-sync&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-asset-sync&quot;]}"/>

@@ -331,6 +331,22 @@
     <resources>namespace.yaml</resources>
     <resources>services.yaml</resources>
   </deliverables>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-operators" clusterRole="admin"/>
+    <grants group="oidc:k8s-developers" clusterRole="edit"/>
+    <grants group="oidc:k8s-readers" clusterRole="view"/>
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
   <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/auth/vault-policy/configmap.yaml" adapter="vault-policy" namespace="auth-system" part="configmap" name="vault-policy-e56b08fd2da1" job="/0/@policyJob">
     <documents file="auth-system-auth-api.policy.json" json="{&quot;path&quot;:{&quot;database/creds/auth-data&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/data/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/auth-api&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres/auth&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;transit/keys/auth-api-jwt/rotate&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]},&quot;transit/sign/auth-api-jwt&quot;:{&quot;capabilities&quot;:[&quot;update&quot;]}}}"/>
     <documents file="auth-system-auth-api.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;auth-api&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;auth-system&quot;],&quot;token_policies&quot;:[&quot;auth-system-auth-api&quot;]}"/>
