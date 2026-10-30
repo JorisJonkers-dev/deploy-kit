@@ -44,8 +44,6 @@ AliasFile.adapter is never set by a resolve case
 AliasFile.aliases is never set by a resolve case
 AliasFile.namespace is never set by a resolve case
 AliasFile.path is never set by a resolve case
-ApiScope.cluster is never used by a resolve case
-ApiScope.namespace is never used by a resolve case
 Application.assets is never set in a resolve case's input
 Application.cutover is never set in a resolve case's input
 Application.dependsOn is never set in a resolve case's input
@@ -98,11 +96,11 @@ ContainerMount.mountAt is never set by a resolve case
 ContainerMount.name is never set by a resolve case
 ContainerMount.readOnly is never set by a resolve case
 ContainerMount.subPath is never set by a resolve case
-ContentPolicy is never instantiated by a resolve case
 ContentPolicy.admin is never used in a resolve case's input
-ContentPolicy.contentSecurityPolicy is never set by a resolve case
-ContentPolicy.name is never set by a resolve case
 ContentPolicy.workflow is never used in a resolve case's input
+ContentPolicyHeaders is never instantiated by a resolve case
+ContentPolicyHeaders.contentSecurityPolicy is never set by a resolve case
+ContentPolicyHeaders.name is never set by a resolve case
 ControllerKind.cronJob is never used by a resolve case
 ControllerKind.daemonSet is never used by a resolve case
 ControllerKind.statefulSet is never used by a resolve case
@@ -150,20 +148,14 @@ FluxMonitorFile is never instantiated by a resolve case
 FluxMonitorFile.adapter is never set by a resolve case
 FluxMonitorFile.application is never set by a resolve case
 FluxMonitorFile.path is never set by a resolve case
-FluxSource is never instantiated by a resolve case
-FluxSource.digest is never set by a resolve case
-FluxSource.issuer is never set by a resolve case
-FluxSource.name is never set by a resolve case
-FluxSource.subject is never set by a resolve case
-FluxSource.url is never set by a resolve case
 FluxUnit is never instantiated by a resolve case
 FluxUnit.annotations is never set by a resolve case
 FluxUnit.dependsOn is never set by a resolve case
 FluxUnit.forcesDeployments is never set by a resolve case
 FluxUnit.name is never set by a resolve case
 FluxUnit.path is never set by a resolve case
-ForwardAuth is never instantiated by a resolve case
-ForwardAuth.address is never set by a resolve case
+ForwardAuthEndpoint is never instantiated by a resolve case
+ForwardAuthEndpoint.address is never set by a resolve case
 GateMember.waitsFor is never set by a resolve case
 GateMigration is never instantiated by a resolve case
 GateMigration.identity is never set by a resolve case
@@ -191,9 +183,9 @@ HostMount.mountAt is never set by a resolve case
 HostMount.name is never set by a resolve case
 HostMount.propagated is never set by a resolve case
 HostMount.readOnly is never set by a resolve case
-HumanGrant is never instantiated by a resolve case
-HumanGrant.clusterRole is never set by a resolve case
-HumanGrant.group is never set by a resolve case
+HumanGrantBinding is never instantiated by a resolve case
+HumanGrantBinding.clusterRole is never set by a resolve case
+HumanGrantBinding.group is never set by a resolve case
 HumanGrantFile is never instantiated by a resolve case
 HumanGrantFile.adapter is never set by a resolve case
 HumanGrantFile.grants is never set by a resolve case
@@ -297,6 +289,12 @@ RbacFile.adapter is never set by a resolve case
 RbacFile.path is never set by a resolve case
 RbacFile.processes is never set by a resolve case
 ReleaseGate.migration is never set by a resolve case
+RenderSource is never instantiated by a resolve case
+RenderSource.digest is never set by a resolve case
+RenderSource.issuer is never set by a resolve case
+RenderSource.name is never set by a resolve case
+RenderSource.subject is never set by a resolve case
+RenderSource.url is never set by a resolve case
 RenderedArtifacts.pullSecret is never set in a resolve case's input
 ResolvedAddressPool is never instantiated by a resolve case
 ResolvedAddressPool.name is never set by a resolve case
@@ -509,6 +507,8 @@ Rotation.maxAge is never set in a resolve case's input
 Route.audience is never set in a resolve case's input
 Route.rateLimit is never set in a resolve case's input
 Route.redirectTo is never set in a resolve case's input
+RuleScope.cluster is never used by a resolve case
+RuleScope.namespace is never used by a resolve case
 Runtime.jvm is never used in a resolve case's input
 Runtime.python is never used in a resolve case's input
 Runtime.static is never used in a resolve case's input

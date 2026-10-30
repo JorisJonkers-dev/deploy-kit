@@ -530,7 +530,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="objects" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="verbs" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- Whether the rule holds in the Process's own namespace or across the cluster. -->
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scope" lowerBound="1" eType="#//ApiScope"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="scope" lowerBound="1" eType="#//RuleScope"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="AdmittedRange">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cidr" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -1099,9 +1099,9 @@
   <!-- Every Human Grant the Platform document declares, each a group of the sign-in provider bound
        to a cluster role, estate-scoped (spec/v1/14-platform-intent.md#human-grants). -->
   <eClassifiers xsi:type="ecore:EClass" name="HumanGrantFile" eSuperTypes="#//Deliverable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//HumanGrant" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//HumanGrantBinding" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="HumanGrant">
+  <eClassifiers xsi:type="ecore:EClass" name="HumanGrantBinding">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="group" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="clusterRole" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
@@ -1142,15 +1142,15 @@
   <eClassifiers xsi:type="ecore:EClass" name="SharedMiddlewareFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="forwardAuth" eType="#//ForwardAuth" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="policies" lowerBound="1" upperBound="-1" eType="#//ContentPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="forwardAuth" eType="#//ForwardAuthEndpoint" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="policies" lowerBound="1" upperBound="-1" eType="#//ContentPolicyHeaders" containment="true"/>
   </eClassifiers>
   <!-- The endpoint a forward-auth asks. -->
-  <eClassifiers xsi:type="ecore:EClass" name="ForwardAuth">
+  <eClassifiers xsi:type="ecore:EClass" name="ForwardAuthEndpoint">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <!-- A content policy, by name, and what it lets a page load. -->
-  <eClassifiers xsi:type="ecore:EClass" name="ContentPolicy">
+  <eClassifiers xsi:type="ecore:EClass" name="ContentPolicyHeaders">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="contentSecurityPolicy" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
@@ -1165,11 +1165,11 @@
   </eClassifiers>
   <!-- What Flux pulls one Project's pinned render from, and the units it applies from it (spec/v1/55-delivery.md): the OCI repository at the pinned digest, verified as the estate's own composition signed it, and each unit's path, order and rollout facts. -->
   <eClassifiers xsi:type="ecore:EClass" name="SourceFile" eSuperTypes="#//Deliverable">
-    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1" eType="#//FluxSource" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" lowerBound="1" eType="#//RenderSource" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="units" lowerBound="1" upperBound="-1" eType="#//FluxUnit" containment="true"/>
   </eClassifiers>
   <!-- An OCI repository of a pinned render: its name, where it is, its digest, and the identity its signature must carry. -->
-  <eClassifiers xsi:type="ecore:EClass" name="FluxSource">
+  <eClassifiers xsi:type="ecore:EClass" name="RenderSource">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="url" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="digest" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -1195,7 +1195,7 @@
   </eClassifiers>
 
   <!-- Where an API rule holds: across the cluster, or in the Process's own namespace. -->
-  <eClassifiers xsi:type="ecore:EEnum" name="ApiScope">
+  <eClassifiers xsi:type="ecore:EEnum" name="RuleScope">
     <eLiterals name="cluster" literal="cluster"/>
     <eLiterals name="namespace" value="1" literal="namespace"/>
   </eClassifiers>

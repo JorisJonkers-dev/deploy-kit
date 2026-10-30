@@ -2175,7 +2175,7 @@
   spec:
     headers:
       [d.baseline()/]
-  [for (c : resolveddeployment::ContentPolicy | d.policies)]
+  [for (c : resolveddeployment::ContentPolicyHeaders | d.policies)]
     ---
     apiVersion: traefik.io/v1alpha1
     kind: Middleware
@@ -2747,7 +2747,7 @@
   [/for]
 [/template]
 
-[template private unit(u : resolveddeployment::FluxUnit, s : resolveddeployment::FluxSource)]
+[template private unit(u : resolveddeployment::FluxUnit, s : resolveddeployment::RenderSource)]
   ---
   apiVersion: kustomize.toolkit.fluxcd.io/v1
   kind: Kustomization
@@ -2819,7 +2819,7 @@
 
 [comment A Human Grant: the sign-in provider's group bound to a cluster role, under a name both make. /]
 [template private objects(d : resolveddeployment::HumanGrantFile)]
-  [for (g : resolveddeployment::HumanGrant | d.grants)]
+  [for (g : resolveddeployment::HumanGrantBinding | d.grants)]
     ---
     apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
