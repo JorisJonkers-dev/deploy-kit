@@ -1,0 +1,41 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-data
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: mongo
+    app.kubernetes.io/instance: mongo
+    app.kubernetes.io/part-of: platform-mongo
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongo-data-backup
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: mongo
+    app.kubernetes.io/instance: mongo
+    app.kubernetes.io/part-of: platform-mongo
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi

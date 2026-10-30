@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hindsight-tei-embedding
+  namespace: knowledge-platform-system
+  labels:
+    app.kubernetes.io/name: hindsight-tei-embedding
+    app.kubernetes.io/instance: hindsight-tei-embedding
+    app.kubernetes.io/part-of: hindsight-embedding
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: hindsight-tei-embedding
+  ports:
+    - name: embeddings
+      port: 8091
+      targetPort: embeddings

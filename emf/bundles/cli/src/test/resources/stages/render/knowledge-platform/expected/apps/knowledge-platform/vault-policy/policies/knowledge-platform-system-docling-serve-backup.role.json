@@ -1,0 +1,11 @@
+{
+  "bound_service_account_names": [
+    "docling-serve-backup"
+  ],
+  "bound_service_account_namespaces": [
+    "knowledge-platform-system"
+  ],
+  "token_policies": [
+    "knowledge-platform-system-docling-serve-backup"
+  ]
+}

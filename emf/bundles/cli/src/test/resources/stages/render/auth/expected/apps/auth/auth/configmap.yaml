@@ -1,0 +1,26 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-release-gate
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"500ms","threshold":3},"deadline":"1920s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"checks":["error-rate","latency"],"process":"auth-api","readiness":{"path":"/api/actuator/health/readiness","port":8081}},{"process":"auth-ui","readiness":{"path":"/","port":80}}],"migration":{"identity":"auth-migration","nonTransactional":false,"testedAgainst":"sha256:2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a"}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-external-checks
+  namespace: auth-system
+  labels:
+    app.kubernetes.io/part-of: auth
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  auth-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"auth","name":"auth-public-1","url":"https://auth.jorisjonkers.dev/api/v1/users/register"},{"conditions":["[STATUS] < 500"],"group":"auth","name":"auth-public-2","url":"https://auth.jorisjonkers.dev/api"},{"conditions":["[STATUS] < 500"],"group":"auth","name":"auth-public-3","url":"https://auth.jorisjonkers.dev/"}]}

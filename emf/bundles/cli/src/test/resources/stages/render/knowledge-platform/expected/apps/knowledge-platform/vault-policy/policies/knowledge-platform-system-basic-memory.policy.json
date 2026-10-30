@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/knowledge-system/vault-deploy-key": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/knowledge-system/vault-deploy-key": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

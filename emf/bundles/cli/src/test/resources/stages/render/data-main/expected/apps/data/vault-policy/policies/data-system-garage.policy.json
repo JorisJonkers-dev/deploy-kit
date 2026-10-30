@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/platform/garage": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/garage": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

@@ -1,0 +1,92 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: adguard
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/name: adguard
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/part-of: adguard
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: adguard
+  autoscalerRef:
+    apiVersion: autoscaling/v2
+    kind: HorizontalPodAutoscaler
+    name: adguard
+  progressDeadlineSeconds: 210
+  service:
+    port: 3000
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: adguard
+          process: adguard
+          revision: sha256:9f34923070e19389d1e83a5f4945cdc100cac60e541ac4650a550ce6d5670d55
+          readiness: /login.html
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: adguard
+          process: adguard
+          revision: sha256:9f34923070e19389d1e83a5f4945cdc100cac60e541ac4650a550ce6d5670d55
+          readiness: /login.html
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: adguard
+          process: adguard
+          revision: sha256:9f34923070e19389d1e83a5f4945cdc100cac60e541ac4650a550ce6d5670d55
+          readiness: /login.html
+          errorRate: 1%
+          latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: adguard
+          process: adguard
+          revision: sha256:9f34923070e19389d1e83a5f4945cdc100cac60e541ac4650a550ce6d5670d55
+          readiness: /login.html
+          errorRate: 1%
+          latency: 500ms
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: adguard
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/name: adguard
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/part-of: adguard
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: adguard
+  minReplicas: 2
+  maxReplicas: 2

@@ -1,0 +1,18 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: adguard
+  namespace: utility-system
+  labels:
+    app.kubernetes.io/name: adguard
+    app.kubernetes.io/instance: adguard
+    app.kubernetes.io/part-of: adguard
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: adguard-primary
