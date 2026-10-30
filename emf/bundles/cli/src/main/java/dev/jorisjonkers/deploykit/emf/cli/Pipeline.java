@@ -371,6 +371,7 @@ public final class Pipeline {
         List<Resource> read = read(documents);
         List<ShippedFiles.Placed> placed = new ArrayList<>();
         List<String> projects = new ArrayList<>();
+        Map<Project, String> named = new LinkedHashMap<>();
         Optional<Platform> platform = Optional.empty();
         for (int i = 0; i < documents.size(); i++) {
             Path file = documents.get(i);
@@ -381,12 +382,14 @@ public final class Pipeline {
                 refusals.addAll(ShippedFiles.check(
                         project, file.getFileName().toString(), from -> textBeside(file, from), placed));
                 projects.add(project.getProject());
+                named.put(project, file.getFileName().toString());
             } else if (read.get(i).getContents().get(0) instanceof Platform document) {
                 platform = Optional.of(document);
             }
         }
         refusals.addAll(ShippedFiles.acrossTheEstate(placed, platform));
         platform.ifPresent(document -> refusals.addAll(unknownEnrolled(document, projects)));
+        platform.ifPresent(document -> refusals.addAll(L4Checks.check(document, named)));
         for (Resource document : read) {
             refusals.addAll(refusals(document, true));
         }
