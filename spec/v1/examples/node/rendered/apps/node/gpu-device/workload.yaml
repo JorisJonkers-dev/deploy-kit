@@ -48,6 +48,8 @@ spec:
           env:
             - name: CONFIG_FILE
               value: /config/config.yaml
+            - name: DEVICE_ID_STRATEGY
+              value: index
             - name: FAIL_ON_INIT_ERROR
               value: "true"
             - name: NVIDIA_VISIBLE_DEVICES

@@ -4000,6 +4000,18 @@ describe("the Node Agents", () => {
     });
   });
 
+  // REQ-156 (docs/requirements.md), deploy-kit#730: the hosts' CDI
+  // specification names each card by its index, so the plugin hands out that.
+  it("hand out each card by its index, the name the hosts' CDI specification gives it", () => {
+    const [plugin] = objectsOf("apps/node/gpu-device/workload.yaml") as {
+      spec: { template: { spec: { containers: { env: unknown[] }[] } } };
+    }[];
+    expect(plugin?.spec.template.spec.containers[0]?.env).toContainEqual({
+      name: "DEVICE_ID_STRATEGY",
+      value: "index",
+    });
+  });
+
   it("announce each pool from the nodes of its site, and assign none unasked", () => {
     const pools = objectsOf("apps/node/l4-speaker/pools.yaml");
     expect(
@@ -4043,6 +4055,67 @@ describe("the Node Agents", () => {
       expect.objectContaining({ kind: "L2Advertisement", name: "lan-edge" }),
       expect.objectContaining({ kind: "IPAddressPool", name: "lan-mqtt" }),
       expect.objectContaining({ kind: "L2Advertisement", name: "lan-mqtt" }),
+    ]);
+  });
+
+  // REQ-155 (docs/requirements.md), deploy-kit#729: MetalLB 0.15.3's speaker
+  // reads its own pod at start, and both copies watch their configuration
+  // states, the nodes, and their own namespace's Secrets and ConfigMaps.
+  it("hand the speaker its own pod's name, which it reads at start", () => {
+    const [speaker] = objectsOf("apps/node/l4-speaker/workload.yaml") as {
+      spec: { template: { spec: { containers: { env: unknown[] }[] } } };
+    }[];
+    expect(speaker?.spec.template.spec.containers[0]?.env).toContainEqual({
+      name: "METALLB_POD_NAME",
+      valueFrom: { fieldRef: { fieldPath: "metadata.name" } },
+    });
+  });
+
+  it("let the speaker and its controller read what MetalLB 0.15.3 always watches", () => {
+    const rbac = objectsOf("apps/node/l4-speaker/rbac.yaml") as {
+      kind: string;
+      metadata: { name: string; namespace?: string };
+      rules?: { apiGroups: string[]; resources: string[]; verbs: string[] }[];
+    }[];
+    const may = (kind: string, name: string, resource: string, verb: string) =>
+      rbac.some(
+        (object) =>
+          object.kind === kind &&
+          object.metadata.name === name &&
+          (object.rules ?? []).some(
+            ({ resources, verbs }) =>
+              resources.includes(resource) && verbs.includes(verb),
+          ),
+      );
+    for (const [cluster, local] of [
+      ["node:l4-speaker", "l4-speaker"],
+      ["node:l4-controller", "l4-controller"],
+    ] as const) {
+      expect(may("ClusterRole", cluster, "configurationstates", "list")).toBe(
+        true,
+      );
+      expect(may("ClusterRole", cluster, "nodes", "watch")).toBe(true);
+      for (const resource of ["secrets", "configmaps"])
+        expect(may("Role", local, resource, "watch")).toBe(true);
+    }
+    expect(may("Role", "l4-speaker", "servicebgpstatuses", "watch")).toBe(true);
+  });
+
+  it("read Secrets in the speaker's namespace alone, never cluster-wide", () => {
+    const rbac = objectsOf("apps/node/l4-speaker/rbac.yaml") as {
+      kind: string;
+      metadata: { namespace?: string };
+      rules?: { resources: string[] }[];
+    }[];
+    expect(
+      rbac
+        .filter(({ rules }) =>
+          (rules ?? []).some(({ resources }) => resources.includes("secrets")),
+        )
+        .map(({ kind, metadata }) => [kind, metadata.namespace]),
+    ).toStrictEqual([
+      ["Role", "node-system"],
+      ["Role", "node-system"],
     ]);
   });
 
