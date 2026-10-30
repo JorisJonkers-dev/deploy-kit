@@ -116,8 +116,8 @@ class PipelineTest {
                 .allSatisfy(diagnostic -> {
                     assertThat(diagnostic.code()).isEqualTo(Diagnostic.SCHEMA);
                     assertThat(diagnostic.document()).isEqualTo("notes.project.yml");
-                    assertThat(diagnostic.path()).isEmpty();
-                    assertThat(diagnostic.message()).startsWith("line ");
+                    assertThat(diagnostic.path()).isEqualTo("/applications/0/processes/0/runtime");
+                    assertThat(diagnostic.message()).isEqualTo("does not match any shape the schema allows here");
                 })
                 .isNotEmpty();
     }
@@ -160,8 +160,9 @@ class PipelineTest {
         Parsed parsed = Pipeline.intent(file(directory, ""));
 
         assertThat(parsed.diagnostics())
-                .extracting(Diagnostic::message)
-                .contains("notes.project.yml holds no document");
+                .extracting(Diagnostic::code, Diagnostic::path, Diagnostic::message)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(
+                        Diagnostic.SCHEMA, "", "outside the YAML subset: no document"));
     }
 
     @Test

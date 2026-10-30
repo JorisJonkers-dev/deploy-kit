@@ -249,4 +249,43 @@ class YamlTest {
         assertThat(read("a: \"")).isEqualTo("{a='\"'}");
         assertThat(read("a: ''")).isEqualTo("{a=''}");
     }
+
+    @Test
+    void aFlowCollectionMayHoldOnlySpaces() {
+        assertThat(read("a: { }\nb: [ ]")).isEqualTo("{a={},b=[]}");
+        assertThat(Yaml.read("a: [ ]").map.get("a").list).isEmpty();
+    }
+
+    @Test
+    void spacesMayStandBeforeACommaOrAfterATrailingOne() {
+        assertThat(read("a: {b: [x] , c: d}")).isEqualTo("{a={b=[x],c=d}}");
+        assertThat(read("a: {b: c, }\nd: [x, ]")).isEqualTo("{a={b=c},d=[x]}");
+    }
+
+    @Test
+    void aFlowValueEndsItsOwnLine() {
+        assertThat(read("a: [x]\nb: y")).isEqualTo("{a=[x],b=y}");
+    }
+
+    @Test
+    void aHashGluedToAWordOpensNoComment() {
+        assertThat(read("a: b# c")).isEqualTo("{a=b# c}");
+        assertThat(read("a: b #c")).isEqualTo("{a=b}");
+    }
+
+    @Test
+    void anEmptyDashBeforeASiblingIsAnEmptyItem() {
+        assertThat(read("-\n- b")).isEqualTo("[,b]");
+    }
+
+    @Test
+    void aKeyMayBeEmpty() {
+        assertThat(read(": x\na: 1")).isEqualTo("{=x,a=1}");
+        assertThat(read("- : x")).isEqualTo("[{=x}]");
+    }
+
+    @Test
+    void aFlowCollectionCannotStandForAKey() {
+        assertThatThrownBy(() -> Yaml.read("a: 1\n{b: 2}")).isInstanceOf(Yaml.Unsupported.class);
+    }
 }

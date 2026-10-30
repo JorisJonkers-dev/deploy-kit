@@ -130,6 +130,13 @@ class ShapesTest {
     }
 
     @Test
+    void ofTwoEquallyCloseFormsTheFirstTheGrammarWritesRefuses() {
+        assertThat(check(HEAD + PROCESS + indented("assets:\n  - from: a")))
+                .containsExactly(new Issue(
+                        "/applications/0/processes/0/assets/0/mountAt", "required field `mountAt` is missing"));
+    }
+
+    @Test
     void aSequenceIsExpectedWhereTheGrammarWritesADash() {
         assertThat(paths(indented("command: foo"))).containsExactly("/applications/0/processes/0/command");
         assertThat(check(HEAD + PROCESS + indented("command: foo")))
@@ -234,6 +241,7 @@ class ShapesTest {
         assertThat(check("a: 1\n---\nb: 2"))
                 .containsExactly(new Issue("", "outside the YAML subset: more than one document"));
         assertThat(check("")).containsExactly(new Issue("", "outside the YAML subset: no document"));
+        assertThat(check("")).extracting(Issue::message).containsExactly("outside the YAML subset: no document");
     }
 
     @Test

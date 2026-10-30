@@ -657,9 +657,6 @@ public final class Pipeline {
             }
         }
         refusals.addAll(shape(resource, file, syntax));
-        if (refusals.isEmpty() && resource.getContents().isEmpty()) {
-            refusals.add(new Diagnostic(Diagnostic.SCHEMA, file, "", file + " holds no document"));
-        }
         if (!refusals.isEmpty()) {
             return refusals;
         }
