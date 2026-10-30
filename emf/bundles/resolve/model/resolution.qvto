@@ -255,7 +255,7 @@ query afterOf(prj : EffectiveProject) : Sequence(String) =
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
-	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
+	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty() or holdsClientGrants(p) or p.vpn <> null
 				or p.dependsOn->exists(e | reachesDatabase(e)))
 			or prj.applications->exists(a | managed(a) or appliesCatalog(a))
 		then secretsAfter(prj.project) else Sequence{} endif)
@@ -327,6 +327,7 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 		}
 	endif;
 	releaseGate := if gated(self) then self.map gate() else null endif;
+	if self.client <> null then client := self.map clientOf(prj) endif;
 	-- Each dashboard file as the set read it, in its Project's folder, for the Grafana
 	-- the Platform document names (spec/v1/10-project-intent.md#dashboards).
 	if self.dashboards->notEmpty() and estate.telemetry <> null and estate.telemetry.dashboards <> null then
@@ -710,12 +711,13 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
 	if self.vpn <> null then vpn := vpnOf(self) endif;
 	hardening := estate.hardening.spelling();
-	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj));
+	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(self.clientGrants(app));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
 	priorityClass := priorityOf(self, app, prj);
 	identityToken := self.api <> null or self.secrets->exists(g | g.delivery = Delivery::selfDelivery)
-		or self.edgeCredentials(app, prj)->exists(g | g.delivery = 'self');
+		or self.edgeCredentials(app, prj)->exists(g | g.delivery = 'self')
+		or self.clientGrants(app)->notEmpty();
 	-- The platform admits the holder, or E_PROCESS_RBAC_GRANT refused it, so the
 	-- block that says where the API answers is there.
 	if self.api <> null then api := object ResolvedApiAccess {
@@ -1652,7 +1654,7 @@ query middlewareOf(r : Route, exposure : Exposure, app : EffectiveApplication, p
 	let proxy : String = homeNamespace(projectOf(tierFor(exposure.audience).traefik.id),
 		tierFor(exposure.audience).traefik.id) in
 	let own : String = app.id + '-' + exposure.name + '-' + exposure.routes->indexOf(r).toString() in
-	(if r.audienceOf(exposure) = Audience::authenticated
+	(if r.audienceOf(exposure) = Audience::authenticated and asksTheGate(app, exposure)
 		then Sequence{object MiddlewareStep {
 			kind := MiddlewareKind::forwardAuth;
 			endpoint := tierFor(r.audienceOf(exposure)).forwardAuth.endpoint();
@@ -1811,6 +1813,10 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				releaseGate := if gated(self) then self.resolveone(ResolvedApplication).releaseGate.json() else null endif;
 				externalChecks := self.externalChecks(prj);
 			}.oclAsType(Deliverable)} else Sequence{} endif)
+		->union(if self.client = null then Sequence{} else Sequence{object ClientFile {
+				path := root + 'client.yaml';
+				application := moved;
+			}.oclAsType(Deliverable)} endif)
 		->union(if self.resolveone(ResolvedApplication).dashboards = null then Sequence{} else
 			Sequence{object DashboardFile {
 				path := root + 'dashboards.yaml';
@@ -2015,7 +2021,7 @@ query egressOf(p : PI::Process) : Sequence(PolicyPeer) =
 	-- A Process that serves DNS resolves through the upstream nameservers, never the cluster's DNS.
 	(if servesDns(p) then Sequence{} else
 		Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }} endif)
-	->union(if p.secrets->isEmpty() then Sequence{} else storePeers() endif)
+	->union(if p.secrets->isEmpty() and not holdsClientGrants(p) then Sequence{} else storePeers() endif)
 	-- The Release Gate reaches every gate member's pods (spec/v1/16-dependencies.md#the-member-label).
 	->union(if estate.delivery <> null and estate.delivery.gate.id = app.id
 		then Sequence{object PolicyPeer { rule := 'gate-members'; port := 0; }} else Sequence{} endif);
@@ -2332,7 +2338,7 @@ query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
-	->union(if app.processes->exists(p | p.secrets->notEmpty() or p.vpn <> null
+	->union(if app.processes->exists(p | p.secrets->notEmpty() or holdsClientGrants(p) or p.vpn <> null
 			or p.dependsOn->exists(e | reachesDatabase(e)))
 			or managed(app) or appliesCatalog(app)
 		then secretsAfter(prj.project) else Sequence{} endif)
@@ -2360,7 +2366,9 @@ query ReleaseGate::json() : String = obj(Sequence{
 	Tuple{k = 'migration', v = if self.migration = null then null else obj(Sequence{
 		Tuple{k = 'identity', v = str(self.migration.identity)},
 		Tuple{k = 'testedAgainst', v = opt(self.migration.testedAgainst)},
-		Tuple{k = 'nonTransactional', v = bool(self.migration.nonTransactional)}}) endif}
+		Tuple{k = 'nonTransactional', v = bool(self.migration.nonTransactional)}}) endif},
+	Tuple{k = 'protectedPath', v = opt(self.protectedPathOf())},
+	Tuple{k = 'protectedBy', v = opt(self.protectedByOf())}
 });
 
 query ResolvedExposure::json() : String = obj(Sequence{
@@ -2563,6 +2571,7 @@ query ResolvedGrant::json() : String = obj(Sequence{
 	Tuple{k = 'path', v = opt(self.path)},
 	Tuple{k = 'keys', v = if self.keys->isEmpty() then null else arr(self.keys->collect(x | str(x))) endif},
 	Tuple{k = 'access', v = opt(self._access)},
+	Tuple{k = 'client', v = opt(self.clientNamed())},
 	Tuple{k = 'engine', v = opt(self.engine)},
 	Tuple{k = 'paths', v = if self.paths->isEmpty() then null else arr(self.paths->collect(x | obj(Sequence{
 		Tuple{k = 'path', v = str(x.path)},
@@ -2655,7 +2664,7 @@ query pathsJson(paths : Collection(PolicyPath)) : String =
 -- What a grant allows: its engine's own paths, or `read` on a kv grant's document and on the same
 -- document's metadata.
 query ResolvedGrant::allowedPaths() : Sequence(PolicyPath) =
-	if self.engine <> null then self.paths->collect(p | allowing(p.path, p.allows->asSequence()))
+	if self.engine <> null or self.paths->notEmpty() then self.paths->collect(p | allowing(p.path, p.allows->asSequence()))
 	else Sequence{allowing(self.path, Sequence{'read'}),
 		allowing('secret/metadata/' + self.path.substring(KV_DATA.size() + 1, self.path.size()),
 			Sequence{'read'})} endif;
@@ -2789,3 +2798,100 @@ query PinnedInput::spelling() : String =
 
 query AnalysisCheck::spelling() : String =
 	if self = AnalysisCheck::errorRate then 'error-rate' else 'latency' endif;
+
+-- ============================================================ identity: sign-in
+
+-- identity: the exposure an Application's Client names, or the only one it declares.
+query clientExposureOf(app : EffectiveApplication) : Exposure =
+	if app.client.oclAsType(ECORE::EObject).states('exposure')
+		then app.exposure->select(e | e.name = app.client.exposure)->any(true)
+		else app.exposure->any(true) endif;
+
+-- identity: the Client an Application's `client` block derives (spec/v1/17-sign-in.md#the-client).
+mapping EffectiveApplication::clientOf(in prj : EffectiveProject) : ResolvedClient {
+	init {
+		var hostName : String := clientExposureOf(self).host;
+	}
+	signIn := self.client.signIn.toString();
+	host := hostName;
+	-- A token Client has no tile, so nothing launches it.
+	if self.client.signIn <> SignInMode::token then
+		launchUrl := 'https://' + hostName + (if self.client.oclAsType(ECORE::EObject).states('launchPath')
+			then self.client.launchPath else '/' endif)
+	endif;
+	if self.client.oclAsType(ECORE::EObject).states('iconPath') then
+		iconUrl := 'https://' + hostName + self.client.iconPath endif;
+	redirectUris := self.client.redirectPaths->collect(p | 'https://' + hostName + p);
+	if self.client.oclAsType(ECORE::EObject).states('credential') then
+		credential := self.client.credential.toString() endif;
+	if self.client.oclAsType(ECORE::EObject).states('credential') and self.client.credential = ClientCredential::secret then
+		secretPath := clientSecretPath(prj.project, self.id) endif;
+	roles := Sequence{'user'}->union(self.client.roles->asSequence());
+	if self.client.oclAsType(ECORE::EObject).states('label') then label := self.client.label endif;
+	if self.client.oclAsType(ECORE::EObject).states('description') then description := self.client.description endif;
+}
+
+-- identity: where a Client holding a secret keeps it, in its Application's own namespace subtree.
+query clientSecretPath(prj : String, application : String) : String =
+	'secret/data/' + namespaceOf(prj) + '/' + application + '/client';
+
+-- identity: every Client of the union holding a secret, by its credential path, in path order.
+query clientSecrets() : Sequence(Tuple(client : String, path : String)) =
+	projects->collect(prj | prj.applications->select(a | a.client <> null
+			and a.client.oclAsType(ECORE::EObject).states('credential')
+			and a.client.credential = ClientCredential::secret)
+		->collect(a | Tuple{client = a.id, path = clientSecretPath(prj.project, a.id)}))
+	->flatten()->sortedBy(c | c.path)->asSequence();
+
+-- identity: whether an Application is the sign-in provider, whose Processes write every Client credential.
+query providerHolds(app : EffectiveApplication) : Boolean =
+	estate.signIn <> null and projects->exists(prj | prj.applications->includes(app)
+		and prj.project + '/' + app.id = heldName(estate.signIn.provider));
+
+query holdsClientGrants(p : PI::Process) : Boolean =
+	providerHolds(p.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication))
+		and clientSecrets()->notEmpty();
+
+-- identity: the grants a Client derives on a Process of its provider: write on every client
+-- credential of the union, delivered to no one (the provider reads it through its own token).
+query PI::Process::clientGrants(app : EffectiveApplication) : Sequence(ResolvedGrant) =
+	if not providerHolds(app) then Sequence{} else
+	clientSecrets()->collect(c | object ResolvedGrant {
+		delivery := 'self';
+		paths := Sequence{object PolicyPath { path := c.path; allows := Sequence{'create', 'read', 'update'}; }};
+	}) endif;
+
+-- identity: the Client a grant of the provider writes, found by the path it holds.
+query ResolvedGrant::clientNamed() : String =
+	if self.engine <> null or self.path <> null or self.paths->size() <> 1 then null else
+	let found : Sequence(Tuple(client : String, path : String)) =
+		clientSecrets()->select(c | c.path = self.paths->first().path) in
+	if found->isEmpty() then null else found->first().client endif endif;
+
+-- identity: whether an exposure's authenticated routes ask the tier's forward-auth: only where the
+-- Client that names the exposure is gated.
+query asksTheGate(app : EffectiveApplication, exposure : Exposure) : Boolean =
+	if app.client = null then true
+	else if clientExposureOf(app) <> exposure then true
+	else app.client.signIn = SignInMode::gated endif endif;
+
+-- identity: the Application a gate belongs to, as the source reads it.
+query ReleaseGate::sourceOf() : EffectiveApplication =
+	let id : String = self.oclAsType(ECORE::EObject).eContainer().oclAsType(ResolvedApplication).id in
+	projects->select(p | p.project = project).applications->select(a | a.id = id)->any(true);
+
+-- identity: a native Client's protected path, which the gate asks anonymously before it switches.
+query ReleaseGate::protectedPathOf() : String =
+	let app : EffectiveApplication = self.sourceOf() in
+	if app.client = null or app.client.signIn <> SignInMode::native then null
+	else app.client.protectedPath endif;
+
+-- identity: the Process the longest Route of the Client's exposure takes that path to.
+query ReleaseGate::protectedByOf() : String =
+	let app : EffectiveApplication = self.sourceOf() in
+	if self.protectedPathOf() = null then null else
+	let path : String = self.protectedPathOf() in
+	let reaching : Sequence(Route) = clientExposureOf(app).routes->select(r | r.redirectTo = null
+		and (if r.match = PI::Match::exact then path = r.path else path.startsWith(r.path) endif))->asSequence() in
+	if reaching->isEmpty() then null
+	else reaching->sortedBy(r | -r.path.size())->first().process.name endif endif;
