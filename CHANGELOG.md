@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.6.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.5.0...v1.6.0) (2026-10-30)
+
+
+### Features
+
+* **model:** let a tier that issues no certificate read the one it serves from the Secret Store ([#762](https://github.com/JorisJonkers-dev/deploy-kit/issues/762)) ([1f885e6](https://github.com/JorisJonkers-dev/deploy-kit/commit/1f885e6f7339a0484eceb5727d9d198cd3386ce1))
+* **model:** render Grafana's instance and derive its admin credential and data sources ([#769](https://github.com/JorisJonkers-dev/deploy-kit/issues/769)) ([e191607](https://github.com/JorisJonkers-dev/deploy-kit/commit/e1916074dd6b012fd6157f3c1535baef883a6359))
+* **model:** render the monitoring stack's Prometheus and Alertmanager as the operator's objects ([#767](https://github.com/JorisJonkers-dev/deploy-kit/issues/767)) ([d918a1d](https://github.com/JorisJonkers-dev/deploy-kit/commit/d918a1da53fd590d0bce710326cb03da94239b88))
+* **model:** scrape k3s's kubelet, API server and DNS where the bootstrap set records them ([#770](https://github.com/JorisJonkers-dev/deploy-kit/issues/770)) ([4e3364c](https://github.com/JorisJonkers-dev/deploy-kit/commit/4e3364cc90bddb7a7013bf7d39f007e0c4b71104))
+
+
+### Bug Fixes
+
+* **model:** derive the API access a tier's proxy reads its routes with ([#756](https://github.com/JorisJonkers-dev/deploy-kit/issues/756)) ([0a68b3d](https://github.com/JorisJonkers-dev/deploy-kit/commit/0a68b3def60ebcde6bd64fe0d88fa08211ca7486))
+* **model:** resolve a mongo's own Service name to itself, so its replica set member finds itself ([#757](https://github.com/JorisJonkers-dev/deploy-kit/issues/757)) ([5bc9819](https://github.com/JorisJonkers-dev/deploy-kit/commit/5bc9819c92dbd7558692605cbbc8c3c81e376ac6))
+
 ## [1.5.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.4.0...v1.5.0) (2026-10-30)
 
 
