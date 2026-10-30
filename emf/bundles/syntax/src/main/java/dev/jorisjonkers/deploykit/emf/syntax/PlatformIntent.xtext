@@ -34,7 +34,16 @@ Platform returns Platform:
 	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?
 	& ('libraries' ':' BEGIN libraries+=Library+ END)?
 	& ('gpus' ':' BEGIN gpus+=GpuVendor+ END)?
-	& ('vpn' ':' BEGIN vpn=VpnPolicy END)?);
+	& ('vpn' ':' BEGIN vpn=VpnPolicy END)?
+	& ('monitoring' ':' BEGIN monitoring=Monitoring END)?
+	& ('signIn' ':' BEGIN signIn=SignIn END)?
+	& ('mesh' ':' BEGIN mesh=Mesh END)?
+	& ('seeder' ':' BEGIN seeder=Seeder END)?
+	& ('nodeAgents' ':' BEGIN nodeAgents=NodeAgents END)?
+	& ('acme' ':' BEGIN acme=AcmePolicy END)?
+	& ('humanGrants' ':' BEGIN (DASH BEGIN humanGrants+=HumanGrant END)+ END)?
+	& ('priority' ':' BEGIN priority=PriorityPolicy END)?
+	& ('l4Addresses' ':' BEGIN l4Addresses+=L4Address+ END)?);
 
 PlatformMetadata returns PlatformMetadata:
 	(('cluster' ':' cluster=Text)
@@ -49,7 +58,8 @@ Substrate returns Substrate:
 	& ('cni' ':' cni=Text)
 	& ('networkPolicyController' ':' networkPolicyController=PolicyController)
 	& ('clusterDns' ':' clusterDns=Text)
-	& ('imagePull' ':' imagePull=Text)?);
+	& ('imagePull' ':' imagePull=Text)?
+	& ('upstreamNameservers' ':' BEGIN (DASH BEGIN upstreamNameservers+=Text END | upstreamNameservers+=Text)+ END)?);
 
 Bootstrap returns Bootstrap:
 	(('flux' ':' BEGIN flux=FluxSource END)
@@ -66,17 +76,29 @@ ServingLocation returns ServingLocation:
 	(('application' ':' application=Text)
 	& ('namespace' ':' namespace=Text)
 	& ('instance' ':' instance=Text)?
-	& ('admin' ':' BEGIN admin=AdminLogin END)?);
+	& ('admin' ':' BEGIN admin=AdminCredential END)?);
 
-// Where the old path keeps a datastore's administrative login.
-AdminLogin returns AdminLogin:
-	(('path' ':' path=Text)
-	& ('user' ':' user=Text)
-	& ('password' ':' password=Text));
+// Where the old path keeps a datastore's administrative login: a user and password, or a token.
+// Spelled out key order by key order: both open on `path`.
+AdminCredential returns AdminCredential:
+	{AdminLogin} 'path' ':' path=Text 'user' ':' user=Text 'password' ':' password=Text
+	| {AdminLogin} 'path' ':' path=Text 'password' ':' password=Text 'user' ':' user=Text
+	| {AdminLogin} 'user' ':' user=Text 'path' ':' path=Text 'password' ':' password=Text
+	| {AdminLogin} 'user' ':' user=Text 'password' ':' password=Text 'path' ':' path=Text
+	| {AdminLogin} 'password' ':' password=Text 'path' ':' path=Text 'user' ':' user=Text
+	| {AdminLogin} 'password' ':' password=Text 'user' ':' user=Text 'path' ':' path=Text
+	| {AdminToken} 'path' ':' path=Text 'token' ':' token=Text
+	| {AdminToken} 'token' ':' token=Text 'path' ':' path=Text;
 
 FluxSource returns FluxSource:
 	(('sourceRef' ':' sourceRef=Text)
-	& ('artifacts' ':' BEGIN artifacts=RenderedArtifacts END));
+	& ('artifacts' ':' BEGIN artifacts=RenderedArtifacts END)
+	& ('metrics' ':' BEGIN metrics=FluxMetrics END)?);
+
+// Where Flux's controllers serve their metrics, as its install sets them.
+FluxMetrics returns FluxMetrics:
+	(('port' ':' port=Port)
+	& ('path' ':' path=Text));
 
 RenderedArtifacts returns RenderedArtifacts:
 	(('repository' ':' repository=Text)
@@ -97,9 +119,24 @@ Tier returns Tier:
 	& ('audiences' ':' BEGIN (DASH BEGIN audiences+=Audience END | audiences+=Audience)+ END)
 	& ('listener' ':' listener=Listener)
 	& ('certificates' ':' certificates=CertificateSource)
-	& ('forwardAuth' ':' forwardAuth=Text)?
+	& ('forwardAuth' ':' BEGIN forwardAuth=ForwardAuth END)?
 	& ('proxiedBy' ':' proxiedBy=ProxiedBy)?
-	& ('traefik' ':' traefik=[Application|Text]));
+	& ('traefik' ':' traefik=[Application|Text])
+	& ('ingressClass' ':' ingressClass=Text)?
+	& ('dns' ':' BEGIN dns=TierDns END)?
+	& ('address' ':' address=Text)?);
+
+// The sign-in provider's endpoint a tier asks before a gated route.
+ForwardAuth returns ForwardAuth:
+	(('provider' ':' provider=[Application|Text])
+	& ('surface' ':' surface=Text)
+	& ('path' ':' path=Text)
+	& ('responseHeaders' ':' BEGIN (DASH BEGIN responseHeaders+=Text END | responseHeaders+=Text)+ END)?);
+
+TierDns returns TierDns:
+	(('target' ':' target=Text)
+	& ('proxied' ':' proxied=Bool)
+	& ('direct' ':' direct=Text)?);
 
 DurabilityPolicies returns DurabilityPolicies:
 	{DurabilityPolicies}
@@ -116,6 +153,7 @@ DurabilityPolicy returns DurabilityPolicy:
 OffClusterCopy returns OffClusterCopy:
 	(('destination' ':' destination=Text)
 	& ('credential' ':' credential=Text)
+	& ('recipient' ':' recipient=Text)
 	& ('egress' ':' BEGIN (DASH BEGIN egress+=DestinationRange END)+ END));
 
 // Where an off-cluster copy goes, as a network policy can say it: a range and a port.
@@ -128,24 +166,45 @@ EnginePolicies returns EnginePolicies:
 	(('postgres' ':' BEGIN postgres=EnginePolicy END)?
 	& ('rabbitmq' ':' BEGIN rabbitmq=EnginePolicy END)?
 	& ('valkey' ':' BEGIN valkey=EnginePolicy END)?
-	& ('files' ':' BEGIN files=EnginePolicy END)?);
+	& ('mongo' ':' BEGIN mongo=EnginePolicy END)?
+	& ('files' ':' BEGIN files=EnginePolicy END)?
+	& ('s3' ':' BEGIN s3=EnginePolicy END)?);
 
 // The method image, and the surface of the Process it dumps where it dumps over the network; and
 // for an engine that owns databases, the method that applies their catalog.
 EnginePolicy returns EnginePolicy:
 	(('backup' ':' backup=Text)
 	& ('surface' ':' surface=Text)?
-	& ('catalog' ':' catalog=Text)?);
+	& ('catalog' ':' catalog=Text)?
+	& ('catalogSurface' ':' catalogSurface=Text)?
+	& ('move' ':' BEGIN move=MoveMethod END)?);
+
+MoveMethod returns MoveMethod:
+	(('image' ':' image=Text)
+	& ('breaksOn' ':' breaksOn=MoveBreak)
+	& ('reverse' ':' reverse=MoveReverse));
 
 MonitorCadence returns MonitorCadence:
 	(('interval' ':' interval=Text)
-	& ('timeout' ':' timeout=Text));
+	& ('timeout' ':' timeout=Text)
+	& ('labels' ':' BEGIN labels+=MonitorLabel+ END)?);
+
+MonitorLabel returns MonitorLabel:
+	key=Text ':' value=Text;
 
 // The collector names an Application a project file declares, linked across the
 // documents read together, as a tier's proxy is.
 TelemetryPolicy returns TelemetryPolicy:
 	(('collector' ':' collector=[Application|Text])
-	& ('metrics' ':' metrics=[Application|Text]));
+	& ('metrics' ':' metrics=[Application|Text])
+	& ('dashboards' ':' BEGIN dashboards=DashboardPolicy END)?);
+
+DashboardPolicy returns DashboardPolicy:
+	(('instance' ':' BEGIN instance+=DashboardInstance+ END)
+	& ('datasource' ':' datasource=Text));
+
+DashboardInstance returns DashboardInstance:
+	key=Text ':' value=Text;
 
 ProbeCadence returns ProbeCadence:
 	(('period' ':' period=Text)
@@ -160,6 +219,7 @@ EphemeralPolicy returns EphemeralPolicy:
 // machinery is.
 ApiAccessPolicy returns ApiAccessPolicy:
 	(('holders' ':' BEGIN (DASH BEGIN holders+=[Application|Text] END | holders+=[Application|Text])+ END)
+	& ('namespaceHolders' ':' BEGIN (DASH BEGIN namespaceHolders+=[Application|Text] END | namespaceHolders+=[Application|Text])+ END)?
 	& ('server' ':' BEGIN (DASH BEGIN server+=DestinationRange END)+ END));
 
 // The machinery names Applications a project file declares, linked across the
@@ -168,7 +228,14 @@ DeliveryPolicy returns DeliveryPolicy:
 	(('machinery' ':' BEGIN (DASH BEGIN machinery+=[Application|Text] END | machinery+=[Application|Text])+ END)
 	& ('gate' ':' gate=[Application|Text])
 	& ('reporter' ':' reporter=[Application|Text])?
-	& ('analysis' ':' BEGIN analysis=AnalysisPolicy END));
+	& ('analysis' ':' BEGIN analysis=AnalysisPolicy END)
+	& ('move' ':' BEGIN move=MovePolicy END)?);
+
+MovePolicy returns MovePolicy:
+	(('timeout' ':' timeout=Text)
+	& ('retention' ':' retention=Text)
+	& ('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text));
 
 AnalysisPolicy returns AnalysisPolicy:
 	(('interval' ':' interval=Text)
@@ -232,18 +299,117 @@ VpnPolicy returns VpnPolicy:
 VpnSetting returns VpnSetting:
 	key=Text ':' value=Text;
 
+// The monitoring stack and where its alerts go.
+Monitoring returns Monitoring:
+	(('grafana' ':' grafana=[Application|Text])
+	& ('prometheus' ':' prometheus=[Application|Text])
+	& ('alertmanager' ':' alertmanager=[Application|Text])
+	& ('receivers' ':' BEGIN (DASH BEGIN receivers+=Receiver END)+ END)
+	& ('routes' ':' BEGIN (DASH BEGIN routes+=SeverityRoute END)+ END));
+
+Receiver returns Receiver:
+	(('name' ':' name=Text)
+	& ('discord' ':' BEGIN discord=DiscordReceiver END));
+
+DiscordReceiver returns DiscordReceiver:
+	'webhook' ':' BEGIN webhook=VaultValue END;
+
+VaultValue returns VaultValue:
+	(('path' ':' path=Text)
+	& ('key' ':' key=Text));
+
+SeverityRoute returns SeverityRoute:
+	(('severity' ':' severity=Text)
+	& ('receiver' ':' receiver=Text)
+	& ('repeat' ':' repeat=Text));
+
+SignIn returns SignIn:
+	(('issuer' ':' issuer=Text)
+	& ('provider' ':' provider=[Application|Text])
+	& ('contract' ':' contract=Text)?);
+
+Mesh returns Mesh:
+	'enrolled' ':' BEGIN (DASH BEGIN enrolled+=Text END | enrolled+=Text)+ END;
+
+Seeder returns Seeder:
+	(('image' ':' image=Text)
+	& ('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text));
+
+NodeAgents returns NodeAgents:
+	{NodeAgents}
+	(('gpu-device' ':' BEGIN gpuDevice=NodeAgentPolicy END)?
+	& ('gpu-metrics' ':' BEGIN gpuMetrics=NodeAgentPolicy END)?
+	& ('node-metrics' ':' BEGIN nodeMetrics=NodeAgentPolicy END)?
+	& ('l4-speaker' ':' BEGIN l4Speaker=SpeakerPolicy END)?);
+
+NodeAgentPolicy returns NodeAgentPolicy:
+	(('image' ':' image=Text)
+	& ('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text));
+
+SpeakerPolicy returns SpeakerPolicy:
+	(('image' ':' image=Text)
+	& ('memory' ':' memory=Text)
+	& ('cpu' ':' cpu=Text)
+	& ('controller' ':' BEGIN controller=NodeAgentPolicy END));
+
+AcmePolicy returns AcmePolicy:
+	(('email' ':' email=Text)
+	& ('dnsProvider' ':' dnsProvider=DnsProvider)
+	& ('token' ':' token=Text));
+
+HumanGrant returns HumanGrant:
+	(('group' ':' group=Text)
+	& ('clusterRole' ':' clusterRole=HumanGrantRole)
+	& ('reason' ':' reason=Text));
+
+PriorityPolicy returns PriorityPolicy:
+	(('data' ':' BEGIN data=PriorityClass END)
+	& ('critical' ':' BEGIN critical=PriorityClass END)
+	& ('criticalApplications' ':' BEGIN (DASH BEGIN criticalApplications+=[Application|Text] END | criticalApplications+=[Application|Text])+ END)?);
+
+PriorityClass returns PriorityClass:
+	(('name' ':' name=Text)
+	& ('value' ':' value=Port));
+
+// An address an L4 port is served on, keyed by its name: a range of a site's pool, or one node's.
+L4Address returns L4Address:
+	key=Text ':' BEGIN value=L4AddressDeclaration END;
+
+// Spelled out key order by key order: `kind` says which, wherever it is written.
+L4AddressDeclaration returns L4AddressDeclaration:
+	{PoolAddress} 'kind' ':' kind='pool' 'site' ':' site=Text 'range' ':' range=Text
+	| {PoolAddress} 'kind' ':' kind='pool' 'range' ':' range=Text 'site' ':' site=Text
+	| {PoolAddress} 'site' ':' site=Text 'kind' ':' kind='pool' 'range' ':' range=Text
+	| {PoolAddress} 'site' ':' site=Text 'range' ':' range=Text 'kind' ':' kind='pool'
+	| {PoolAddress} 'range' ':' range=Text 'kind' ':' kind='pool' 'site' ':' site=Text
+	| {PoolAddress} 'range' ':' range=Text 'site' ':' site=Text 'kind' ':' kind='pool'
+	| {NodeAddress} 'kind' ':' kind='node' 'node' ':' node=Text
+	| {NodeAddress} 'node' ':' node=Text 'kind' ':' kind='node';
+
 // Every keyword this document adds is also a scalar, as the project language's are.
 @Override
 Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'address' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' | 'catalog' | 'certificates' | 'cidr' | 'cloudflare' | 'cluster' | 'clusterDns' | 'cni' | 'collector' |
-	'crds' | 'credential' | 'datastore' | 'deadline' | 'destination' | 'egress' | 'embedded' | 'engines' | 'ephemeral' | 'errorRate' | 'estate' | 'etcd' |
-	'failures' | 'flux' | 'forwardAuth' | 'gate' | 'gid' | 'gpus' | 'grants' | 'handover' | 'hardening' | 'holders' | 'imagePull' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'metadata' |
-	'metrics' | 'monitors' | 'namespace' | 'networkPolicyController' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' | 'providers' | 'proxiedBy' | 'pullSecret' | 'restricted' | 'retireBy' |
-	'reporter' | 'repository' | 'resource' | 'retain' | 'runner' | 'runtimeClass' | 'schedule' | 'secretStore' | 'secretsEncryption' | 'server' | 'serverCount' | 'serving' | 'settings' | 'signer' | 'size' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' |
-	'surfaces' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'user' | 'vault';
+	'acme' | 'alertmanager' | 'always' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' |
+	'breaksOn' | 'catalog' | 'catalogSurface' | 'certificates' | 'cidr' | 'cloudflare' | 'cluster-admin' | 'clusterDns' |
+	'clusterRole' | 'cni' | 'collector' | 'contract' | 'controller' | 'crds' | 'critical' | 'criticalApplications' | 'data' |
+	'datasource' | 'datastore' | 'deadline' | 'destination' | 'direct' | 'discord' | 'dns' | 'dnsProvider' | 'edit' | 'email' |
+	'embedded' | 'engines' | 'enrolled' | 'ephemeral' | 'errorRate' | 'estate' | 'etcd' | 'failures' | 'flux' | 'forwardAuth' |
+	'gate' | 'gid' | 'gpu-device' | 'gpu-metrics' | 'gpus' | 'grafana' | 'grants' | 'handover' | 'hardening' | 'holders' |
+	'humanGrants' | 'imagePull' | 'ingressClass' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' |
+	'l4-speaker' | 'l4Addresses' | 'labels' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'major' | 'mesh' | 'metadata' |
+	'metrics' | 'minor' | 'monitoring' | 'monitors' | 'move' | 'namespaceHolders' | 'networkPolicyController' | 'never' |
+	'node-metrics' | 'nodeAgents' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' | 'pool' |
+	'priority' | 'prometheus' | 'provider' | 'providers' | 'proxiedBy' | 'pullSecret' | 'range' | 'receiver' | 'receivers' |
+	'recipient' | 'repeat' | 'reporter' | 'repository' | 'resource' | 'responseHeaders' | 'restricted' | 'retain' | 'retention' |
+	'retireBy' | 'reverse' | 'runner' | 'runtimeClass' | 'same-major' | 'secretStore' | 'secretsEncryption' | 'seeder' | 'server' |
+	'serverCount' | 'serving' | 'settings' | 'severity' | 'signer' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' | 'surfaces' |
+	'target' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'upstreamNameservers' | 'user' |
+	'value' | 'vault' | 'view' | 'webhook';
 
 enum Datastore returns Datastore:
 	sqlite='sqlite' | etcd='etcd';
@@ -259,6 +425,18 @@ enum Listener returns Listener:
 
 enum CertificateSource returns CertificateSource:
 	acme='acme' | none='none';
+
+enum DnsProvider returns DnsProvider:
+	cloudflare='cloudflare';
+
+enum HumanGrantRole returns HumanGrantRole:
+	clusterAdmin='cluster-admin' | admin='admin' | edit='edit' | view='view';
+
+enum MoveBreak returns MoveBreak:
+	major='major' | minor='minor';
+
+enum MoveReverse returns MoveReverse:
+	always='always' | sameMajor='same-major' | never='never';
 
 enum HardeningClass returns HardeningClass:
 	restricted='restricted';

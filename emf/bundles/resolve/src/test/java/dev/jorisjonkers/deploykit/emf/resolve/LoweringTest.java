@@ -17,12 +17,14 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ManagedMigration;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Placement;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.PlainKey;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.PlainPath;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Rotation;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Tolerance;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.WritablePathDeclaration;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -44,7 +46,7 @@ class LoweringTest {
         project.setProject("refusals");
         project.setOwner("joris");
         project.getSecrets().add(grant("secret/data/refusals/estate-ca"));
-        project.getWritablePaths().add("/tmp");
+        project.getWritablePaths().add(path("/tmp"));
         project.setPlacement(dimensions("enschede"));
 
         Application application = MODEL.createApplication();
@@ -54,7 +56,7 @@ class LoweringTest {
 
         Process api = process("shared-intent-merged-api", "128Mi", "25m");
         api.getSecrets().add(grant("secret/data/refusals/bearer"));
-        api.getWritablePaths().add("/var/cache/api");
+        api.getWritablePaths().add(path("/var/cache/api"));
 
         Process worker = process("shared-intent-merged-worker", "64Mi", "10m");
         worker.getPlacement().setSite("frankfurt");
@@ -72,6 +74,12 @@ class LoweringTest {
         key.setName("token");
         grant.getKeys().add(key);
         return grant;
+    }
+
+    private static PlainPath path(String written) {
+        PlainPath path = MODEL.createPlainPath();
+        path.setPath(written);
+        return path;
     }
 
     private static Placement dimensions(String site) {
@@ -194,13 +202,25 @@ class LoweringTest {
         EffectiveProject lowered = lower(source());
 
         assertThat(lowered(lowered, "shared-intent-merged-api").getWritablePaths())
+                .extracting(WritablePathDeclaration::getPath)
                 .containsExactly("/var/cache/api", "/tmp");
         assertThat(lowered(lowered, "shared-intent-merged-worker").getWritablePaths())
+                .extracting(WritablePathDeclaration::getPath)
                 .containsExactly("/tmp");
         // No SharedIntent at all, which is what makes the wrong level unreadable.
         assertThat(ProjectIntentPackage.eINSTANCE.getEffectiveApplication().getEAllStructuralFeatures())
                 .extracting(feature -> feature.getName())
-                .containsExactlyInAnyOrder("id", "migration", "observability", "exposure", "processes");
+                .containsExactlyInAnyOrder(
+                        "id",
+                        "description",
+                        "client",
+                        "l4Exposure",
+                        "dashboards",
+                        "alertRules",
+                        "migration",
+                        "observability",
+                        "exposure",
+                        "processes");
     }
 
     @Test
@@ -226,7 +246,6 @@ class LoweringTest {
         Process api = lowered(lower(project), "shared-intent-merged-api");
 
         assertThat(api.getEnv()).singleElement().satisfies(lowered -> {
-            assertThat(lowered.getCluster()).isNull();
             assertThat(lowered.getEntries()).singleElement().satisfies(entry -> {
                 assertThat(entry.getName()).isEqualTo("NODE_ENV");
                 assertThat(((EnvLiteral) entry.getValue()).getText()).isEqualTo("production");

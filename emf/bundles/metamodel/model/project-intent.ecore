@@ -28,6 +28,11 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Application" eSuperTypes="#//SharedIntent">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="id" lowerBound="1" iD="true" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="client" eType="#//Client" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="l4Exposure" upperBound="-1" eType="#//L4Exposure" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dashboards" upperBound="-1" eType="#//Dashboard" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="alertRules" upperBound="-1" eType="#//AlertRules" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="migration" eType="#//Migration" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
@@ -50,8 +55,7 @@
     </eAnnotations>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Observability">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alertClass" lowerBound="1" eType="#//AlertClass"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="scrape" eType="#//Scrape" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="scrape" lowerBound="1" eType="#//Scrape" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Scrape">
     <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//Process"/>
@@ -64,6 +68,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="audience" lowerBound="1" eType="#//Audience"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="contentPolicy" eType="#//ContentPolicy"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="routes" lowerBound="1" upperBound="-1" eType="#//Route" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="proxied" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Route">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -84,8 +89,8 @@
   <eClassifiers xsi:type="ecore:EClass" name="SharedIntent" abstract="true">
     <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//Grant" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="dependsOn" upperBound="-1" eType="#//DependencyEdge" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//Asset" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="writablePaths" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//AssetDeclaration" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="writablePaths" upperBound="-1" eType="#//WritablePathDeclaration" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="env" upperBound="-1" eType="#//EnvFile" containment="true">
       <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
         <details key="document" value="no"/>
@@ -110,6 +115,13 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//LibraryMount" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" eType="#//Egress" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="vpn" eType="#//VpnAttachment" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="schedule" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parked" eType="#//Parked" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="args" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="spawns" upperBound="-1" eType="#//SpawnTemplate" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rollback" eType="#//Rollback" containment="true"/>
   </eClassifiers>
   <!-- A Process whose traffic leaves through the platform's VPN, and whether it
        receives the forwarded port (spec/v1/10-project-intent.md#vpn-attachment). -->
@@ -155,6 +167,11 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="observability" eType="#//Observability" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" upperBound="-1" eType="#//Exposure" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//Process" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="client" eType="#//Client" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="l4Exposure" upperBound="-1" eType="#//L4Exposure" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dashboards" upperBound="-1" eType="#//Dashboard" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="alertRules" upperBound="-1" eType="#//AlertRules" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Surface" instanceClassName="java.util.Map$Entry">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -185,12 +202,18 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="args" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="volumes" upperBound="-1" eType="#//SidecarMount" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//SidecarAsset" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="init" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="DependencyEdge">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="required" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="credentials" eType="#//Credentials" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="buckets" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <!-- Only on an edge to a database: how the credential it derives is delivered and rotates;
        delivered to a file, the directory its username and password land in, and their mode. -->
@@ -201,7 +224,6 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="rotation" lowerBound="1" eType="#//Rotation" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EnvFile">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="cluster" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="entries" upperBound="-1" eType="#//EnvVariable" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EnvVariable">
@@ -218,8 +240,15 @@
     <!-- Literal text after the placeholder: a path after a host, never after a secret. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="suffix" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString" unsettable="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="Asset">
+  <!-- A file beside the project mounted read-only, or seeded once onto a volume
+       where the Process may change it (spec/v1/10-project-intent.md#assets). -->
+  <eClassifiers xsi:type="ecore:EClass" name="AssetDeclaration" abstract="true">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SeededAsset" eSuperTypes="#//AssetDeclaration">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="seedAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Asset" eSuperTypes="#//AssetDeclaration">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ProbePolicy" abstract="true"/>
@@ -250,16 +279,18 @@
        what it may ask of which objects, and why. `core` names the API's core group. -->
   <eClassifiers xsi:type="ecore:EClass" name="ApiAccess">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" lowerBound="1" upperBound="-1" eType="#//ApiRule" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" upperBound="-1" eType="#//ApiRule" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ApiRule">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="group" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="objects" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="verbs" lowerBound="1" upperBound="-1" eType="#//ApiVerb"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="scope" eType="#//ApiScope"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Capacity">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="count" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="across" eType="#//Spread"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Grant" abstract="true">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="delivery" lowerBound="1" eType="#//Delivery"/>
@@ -282,6 +313,9 @@
     <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
       <details key="value" value="name"/>
     </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="OptionalKey" eSuperTypes="#//KvKey">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="optional" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="GeneratedKey" eSuperTypes="#//KvKey">
     <eStructuralFeatures xsi:type="ecore:EReference" name="generate" lowerBound="1" eType="#//Generate" containment="true"/>
@@ -313,10 +347,103 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="tolerates" lowerBound="1" eType="#//Tolerance"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="maxAge" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
+  <!-- A path a Process may write: on its ephemeral disk, or held in memory at a size
+       (spec/v1/10-project-intent.md#writable-paths). -->
+  <eClassifiers xsi:type="ecore:EClass" name="WritablePathDeclaration" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PlainPath" eSuperTypes="#//WritablePathDeclaration">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="value" value="path"/>
+    </eAnnotations>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MemoryPath" eSuperTypes="#//WritablePathDeclaration">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- A Process kept declared and scaled to nothing, and why. -->
+  <eClassifiers xsi:type="ecore:EClass" name="Parked">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- A Process whose release is never rolled back: only `forward-only` is written. -->
+  <eClassifiers xsi:type="ecore:EClass" name="Rollback">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="scalar" value="forward-only"/>
+    </eAnnotations>
+  </eClassifiers>
+  <!-- A pod a Process creates through the API, from a template the platform renders. -->
+  <eClassifiers xsi:type="ecore:EClass" name="SpawnTemplate">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="placement" lowerBound="1" eType="#//SpawnPlacement" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="provides" upperBound="-1" eType="#//Surface" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dependsOn" upperBound="-1" eType="#//DependencyEdge" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="egress" eType="#//Egress" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SpawnPlacement">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SidecarMount">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="claim" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SidecarAsset">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- How an Application signs its users in through the platform's provider (spec/v1/10-project-intent.md#clients). -->
+  <eClassifiers xsi:type="ecore:EClass" name="Client">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="signIn" lowerBound="1" eType="#//SignInMode"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="exposure" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="label" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="description" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="iconPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="launchPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="redirectPaths" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="protectedPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="backChannelLogoutPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="credential" eType="#//ClientCredential"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="roles" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- A port an Application serves on an address outside HTTP routing. -->
+  <eClassifiers xsi:type="ecore:EClass" name="L4Exposure">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="protocol" lowerBound="1" eType="#//L4Protocol"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//Process"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="surface" lowerBound="1" eType="#//Surface"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Dashboard">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AlertRules">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ApiScope">
+    <eLiterals name="namespace" literal="namespace"/>
+    <eLiterals name="cluster" value="1" literal="cluster"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="Spread">
+    <eLiterals name="node" literal="node"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="L4Protocol">
+    <eLiterals name="tcp" literal="tcp"/>
+    <eLiterals name="udp" value="1" literal="udp"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="SignInMode">
+    <eLiterals name="native" literal="native"/>
+    <eLiterals name="gated" value="1" literal="gated"/>
+    <eLiterals name="token" value="2" literal="token"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="ClientCredential">
+    <eLiterals name="secret" literal="secret"/>
+    <eLiterals name="pkce" value="1" literal="pkce"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Lifecycle">
     <eLiterals name="application" literal="application"/>
     <eLiterals name="job" value="1" literal="job"/>
     <eLiterals name="prepare" value="2" literal="prepare"/>
+    <eLiterals name="scheduled" value="3" literal="scheduled"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Runtime">
     <eLiterals name="jvm" literal="jvm"/>
@@ -333,13 +460,16 @@
     <eLiterals name="postgres" value="1" literal="postgres"/>
     <eLiterals name="rabbitmq" value="2" literal="rabbitmq"/>
     <eLiterals name="valkey" value="3" literal="valkey"/>
-    <eLiterals name="files" value="4" literal="files"/>
+    <eLiterals name="mongo" value="4" literal="mongo"/>
+    <eLiterals name="files" value="5" literal="files"/>
+    <eLiterals name="s3" value="6" literal="s3"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="PlaceholderKind">
     <eLiterals name="secret" literal="secret"/>
     <eLiterals name="dependency" value="1" literal="dependency"/>
     <eLiterals name="exposure" value="2" literal="exposure"/>
     <eLiterals name="identity" value="3" literal="identity"/>
+    <eLiterals name="client" value="4" literal="client"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Cutover">
     <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
@@ -362,11 +492,6 @@
     <eLiterals name="nvme" literal="nvme"/>
     <eLiterals name="ssd" value="1" literal="ssd"/>
     <eLiterals name="hdd" value="2" literal="hdd"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="AlertClass">
-    <eLiterals name="businessHours" literal="business-hours"/>
-    <eLiterals name="urgent" value="1" literal="urgent"/>
-    <eLiterals name="page" value="2" literal="page"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Audience">
     <eLiterals name="absent" literal=""/>
@@ -411,6 +536,7 @@
     <eLiterals name="encrypt" value="2" literal="encrypt"/>
     <eLiterals name="decrypt" value="3" literal="decrypt"/>
     <eLiterals name="rotate" value="4" literal="rotate"/>
+    <eLiterals name="read" value="5" literal="read"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Delivery">
     <eLiterals name="env" literal="env"/>
@@ -449,6 +575,15 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//Library" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="gpus" upperBound="-1" eType="#//GpuVendor" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="vpn" eType="#//VpnPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="monitoring" eType="#//Monitoring" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="signIn" eType="#//SignIn" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="mesh" eType="#//Mesh" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="seeder" eType="#//Seeder" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodeAgents" eType="#//NodeAgents" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="acme" eType="#//AcmePolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="humanGrants" upperBound="-1" eType="#//HumanGrant" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="priority" eType="#//PriorityPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="l4Addresses" upperBound="-1" eType="#//L4Address" containment="true"/>
   </eClassifiers>
   <!-- The VPN beside every attached Process (spec/v1/14-platform-intent.md#vpn). -->
   <eClassifiers xsi:type="ecore:EClass" name="VpnPolicy">
@@ -504,6 +639,7 @@
     <!-- The longest an image pull takes on the slowest node a pod may land on, which every
          derived deadline allows (spec/v1/14-platform-intent.md#substrate-facts). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="imagePull" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upstreamNameservers" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Bootstrap">
     <eStructuralFeatures xsi:type="ecore:EReference" name="flux" lowerBound="1" eType="#//FluxSource" containment="true"/>
@@ -525,16 +661,23 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="instance" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="admin" eType="#//AdminLogin" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="admin" eType="#//AdminCredential" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="AdminLogin">
+  <!-- How the policy job signs in to a legacy datastore: a user and password, or a token. -->
+  <eClassifiers xsi:type="ecore:EClass" name="AdminCredential" abstract="true">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AdminToken" eSuperTypes="#//AdminCredential">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="token" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AdminLogin" eSuperTypes="#//AdminCredential">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="user" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="password" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="FluxSource">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceRef" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="artifacts" lowerBound="1" eType="#//RenderedArtifacts" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="metrics" eType="#//FluxMetrics" containment="true"/>
   </eClassifiers>
   <!-- Where each Project's render is published, one artifact per Project, and the
        keyless identity Flux verifies it against (spec/v1/55-delivery.md#rendered-artifacts-and-pins). -->
@@ -555,11 +698,14 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="audiences" lowerBound="1" upperBound="-1" eType="#//Audience"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="listener" lowerBound="1" eType="#//Listener"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="certificates" lowerBound="1" eType="#//CertificateSource"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="forwardAuth" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="forwardAuth" eType="#//ForwardAuth" containment="true"/>
     <!-- Who forwards clients' requests to the edge, where anyone does
          (spec/v1/14-platform-intent.md#tiers). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="proxiedBy" eType="#//ProxiedBy"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="traefik" lowerBound="1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="ingressClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dns" eType="#//TierDns" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="address" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="DurabilityPolicies">
     <eStructuralFeatures xsi:type="ecore:EReference" name="reconstructible" eType="#//DurabilityPolicy" containment="true"/>
@@ -575,6 +721,7 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="destination" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="credential" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="egress" lowerBound="1" upperBound="-1" eType="#//DestinationRange" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="recipient" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="DestinationRange">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cidr" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -585,19 +732,25 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="rabbitmq" eType="#//EnginePolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="valkey" eType="#//EnginePolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="files" eType="#//EnginePolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="mongo" eType="#//EnginePolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="s3" eType="#//EnginePolicy" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="EnginePolicy">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="backup" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="catalog" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="catalogSurface" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="move" eType="#//MoveMethod" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="MonitorCadence">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//MonitorLabel" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="TelemetryPolicy">
     <eStructuralFeatures xsi:type="ecore:EReference" name="collector" lowerBound="1" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="metrics" lowerBound="1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dashboards" eType="#//DashboardPolicy" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ProbeCadence">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="period" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -619,6 +772,7 @@
          `http` surface (spec/v1/55-delivery.md#rollouts); a platform may name none. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="reporter" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="analysis" lowerBound="1" eType="#//AnalysisPolicy" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="move" eType="#//MovePolicy" containment="true"/>
   </eClassifiers>
   <!-- Who may hold Kubernetes API access, and where the API answers
        (spec/v1/14-platform-intent.md#kubernetes-api-access): the Applications whose Processes
@@ -627,6 +781,7 @@
   <eClassifiers xsi:type="ecore:EClass" name="ApiAccessPolicy">
     <eStructuralFeatures xsi:type="ecore:EReference" name="holders" lowerBound="1" upperBound="-1" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="server" lowerBound="1" upperBound="-1" eType="#//DestinationRange" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="namespaceHolders" upperBound="-1" eType="#//Application"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="AnalysisPolicy">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -660,6 +815,172 @@
   <eClassifiers xsi:type="ecore:EClass" name="ProviderSurface" instanceClassName="java.util.Map$Entry">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <!-- The sign-in provider's endpoint a tier asks before a gated route (spec/v1/14-platform-intent.md#tiers). -->
+  <eClassifiers xsi:type="ecore:EClass" name="ForwardAuth">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="provider" lowerBound="1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="responseHeaders" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="TierDns">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="target" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="proxied" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="direct" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="FluxMetrics">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MoveMethod">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="breaksOn" lowerBound="1" eType="#//MoveBreak"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reverse" lowerBound="1" eType="#//MoveReverse"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MovePolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retention" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="MonitorLabel" instanceClassName="java.util.Map$Entry">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="entry" value="undefined"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DashboardPolicy">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="instance" lowerBound="1" upperBound="-1" eType="#//DashboardInstance" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="datasource" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DashboardInstance" instanceClassName="java.util.Map$Entry">
+    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+      <details key="entry" value="undefined"/>
+    </eAnnotations>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- The monitoring stack and where its alerts go (spec/v1/14-platform-intent.md#monitoring). -->
+  <eClassifiers xsi:type="ecore:EClass" name="Monitoring">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grafana" lowerBound="1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="prometheus" lowerBound="1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="alertmanager" lowerBound="1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="receivers" lowerBound="1" upperBound="-1" eType="#//Receiver" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="routes" lowerBound="1" upperBound="-1" eType="#//SeverityRoute" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Receiver">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="discord" lowerBound="1" eType="#//DiscordReceiver" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DiscordReceiver">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="webhook" lowerBound="1" eType="#//VaultValue" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="VaultValue">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SeverityRoute">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="severity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="receiver" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="repeat" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SignIn">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="issuer" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="provider" lowerBound="1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="contract" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Mesh">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="enrolled" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="Seeder">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NodeAgents">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="gpuDevice" eType="#//NodeAgentPolicy" containment="true">
+      <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+        <details key="key" value="gpu-device"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="gpuMetrics" eType="#//NodeAgentPolicy" containment="true">
+      <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+        <details key="key" value="gpu-metrics"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodeMetrics" eType="#//NodeAgentPolicy" containment="true">
+      <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+        <details key="key" value="node-metrics"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="l4Speaker" eType="#//SpeakerPolicy" containment="true">
+      <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
+        <details key="key" value="l4-speaker"/>
+      </eAnnotations>
+    </eStructuralFeatures>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NodeAgentPolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="SpeakerPolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="controller" lowerBound="1" eType="#//NodeAgentPolicy" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="AcmePolicy">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="email" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="dnsProvider" lowerBound="1" eType="#//DnsProvider"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="token" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="HumanGrant">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="group" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="clusterRole" lowerBound="1" eType="#//HumanGrantRole"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PriorityPolicy">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="data" lowerBound="1" eType="#//PriorityClass" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="critical" lowerBound="1" eType="#//PriorityClass" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="criticalApplications" upperBound="-1" eType="#//Application"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PriorityClass">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="L4Address" instanceClassName="java.util.Map$Entry">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="value" lowerBound="1" eType="#//L4AddressDeclaration" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="L4AddressDeclaration" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="PoolAddress" eSuperTypes="#//L4AddressDeclaration">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="site" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="range" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="NodeAddress" eSuperTypes="#//L4AddressDeclaration">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="node" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="DnsProvider">
+    <eLiterals name="cloudflare" literal="cloudflare"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="HumanGrantRole">
+    <eLiterals name="clusterAdmin" literal="cluster-admin"/>
+    <eLiterals name="admin" value="1" literal="admin"/>
+    <eLiterals name="edit" value="2" literal="edit"/>
+    <eLiterals name="view" value="3" literal="view"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="MoveBreak">
+    <eLiterals name="major" literal="major"/>
+    <eLiterals name="minor" value="1" literal="minor"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="MoveReverse">
+    <eLiterals name="always" literal="always"/>
+    <eLiterals name="sameMajor" value="1" literal="same-major"/>
+    <eLiterals name="never" value="2" literal="never"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Datastore">
     <eLiterals name="sqlite" literal="sqlite"/>

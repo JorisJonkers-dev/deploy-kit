@@ -44,4 +44,4 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | NodeContractKeyword;
 
 NodeContractKeyword:
-	'allocatable' | 'cluster' | 'disks' | 'gpus' | 'labelPrefix' | 'memory_mib' | 'model' | 'nodes' | 'usable_gib' | 'vendor';
+	'allocatable' | 'disks' | 'gpus' | 'labelPrefix' | 'memory_mib' | 'nodes' | 'usable_gib';

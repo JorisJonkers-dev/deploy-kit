@@ -43,5 +43,5 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | ClusterStateKeyword;
 
 ClusterStateKeyword:
-	'backups' | 'bindings' | 'capturedAt' | 'cluster' | 'failed' | 'finishedAt' | 'outcome'
+	'backups' | 'bindings' | 'capturedAt' | 'failed' | 'finishedAt' | 'outcome'
 	| 'placements' | 'request' | 'succeeded';

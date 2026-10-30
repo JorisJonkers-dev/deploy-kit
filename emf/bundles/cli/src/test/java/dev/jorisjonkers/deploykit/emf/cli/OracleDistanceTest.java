@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,27 @@ import org.junit.jupiter.api.io.TempDir;
 class OracleDistanceTest {
 
     /** The oracle comparisons expected to pass, as {@code <oracle> <case>}. Each catch-up slice adds to it. */
-    static final Set<String> PASSING = Set.of("intent secrets");
+    static final Set<String> PASSING = Set.of(
+            "descriptor expected",
+            "effective auth",
+            "effective data",
+            "effective identity",
+            "effective knowledge-platform",
+            "effective minimal",
+            "intent agents",
+            "intent auth",
+            "intent data",
+            "intent delivery",
+            "intent edge",
+            "intent identity",
+            "intent knowledge",
+            "intent knowledge-platform",
+            "intent mail",
+            "intent minimal",
+            "intent observability",
+            "intent platform",
+            "intent secrets",
+            "intent utility");
 
     @Test
     void theListedOraclesMatchAndEveryOtherSaysHowFarItIs(@TempDir Path scratch) throws IOException {
@@ -49,6 +70,13 @@ class OracleDistanceTest {
                 summary.add(comparison + ": " + differences.size() + " differences; first: " + differences.get(0));
             }
         });
+        // Every difference of every comparison, for the reader of one case's distance.
+        Files.writeString(
+                Path.of("target", "oracle-distance.txt"),
+                distances.entrySet().stream()
+                        .map(entry -> entry.getKey() + ": " + entry.getValue().size() + "\n  "
+                                + String.join("\n  ", entry.getValue()))
+                        .collect(Collectors.joining("\n")));
         System.out.println("Oracle distance, " + (distances.size() - summary.size()) + " of " + distances.size()
                 + " passing:\n  " + String.join("\n  ", summary));
 
@@ -153,8 +181,8 @@ class OracleDistanceTest {
 
     private static List<String> refused(List<Diagnostic> diagnostics) {
         return diagnostics.stream()
-                .map(diagnostic ->
-                        "refused: " + diagnostic.code() + " " + diagnostic.document() + " " + diagnostic.path())
+                .map(diagnostic -> "refused: " + diagnostic.code() + " " + diagnostic.document() + " "
+                        + diagnostic.path() + " (" + diagnostic.message() + ")")
                 .toList();
     }
 
