@@ -166,6 +166,7 @@ class OracleDistanceTest {
             "rendered knowledge-platform",
             "rendered mail",
             "rendered minimal",
+            "rendered platform",
             "rendered secrets",
             "rendered utility",
             "schema-refusal credentials-file-without-mount",
@@ -272,7 +273,10 @@ class OracleDistanceTest {
         }
         for (Path directory : casesWith(examples, "rendered")) {
             Path rendered = directory.resolve("rendered");
-            Outputs.Resolving resolving = Outputs.RESOLVED.get(name(examples, directory));
+            // The platform's tree is the estate-scoped share every render holds, which a render of
+            // notes, naming nothing estate-scoped of its own, holds alone.
+            Outputs.Resolving resolving = Outputs.RESOLVED.get(
+                    name(examples, directory).equals(PLATFORM) ? "minimal" : name(examples, directory));
             Path out = scratch.resolve("rendered").resolve(name(examples, directory));
             distances.put(
                     "rendered " + name(examples, directory),
@@ -288,7 +292,7 @@ class OracleDistanceTest {
                                         Outputs.INTEGRITY,
                                         out);
                                 return refusals.isEmpty()
-                                        ? Comparison.trees(rendered, ownShare(rendered, Comparison.read(out)))
+                                        ? share(examples, rendered, Comparison.read(out))
                                         : refused(refusals);
                             }));
         }
@@ -396,16 +400,33 @@ class OracleDistanceTest {
     }
 
     /**
-     * The share of a rendering a committed tree holds: the production implementation commits a
-     * project's own artifact, and its estate-scoped artifact only where the tree holds an {@code
-     * estate/} directory, so a tree without one is compared without the estate-scoped files.
+     * The distance of a rendering from the share a committed tree holds. The production
+     * implementation commits a Project's own artifact under {@code apps/}, the estate-scoped
+     * artifact under {@code estate/} and the pinned sources under {@code projects/}, each only in
+     * the trees that hold its directory, so a rendering is compared on the directories its tree
+     * holds. A Project's tree that holds the estate-scoped share holds it beside the platform's own
+     * share, which the platform's tree holds for every render.
      */
-    private static Map<String, byte[]> ownShare(Path committed, Map<String, byte[]> rendered) {
-        if (!Files.isDirectory(committed.resolve(ESTATE))) {
-            rendered.keySet().removeIf(name -> name.startsWith(ESTATE + "/"));
+    private static List<String> share(Path examples, Path committed, Map<String, byte[]> rendered) {
+        Set<String> held = Comparison.read(committed).keySet().stream()
+                .map(name -> name.substring(0, name.indexOf('/') + 1))
+                .collect(Collectors.toSet());
+        rendered.keySet().removeIf(name -> !held.contains(name.substring(0, name.indexOf('/') + 1)));
+        Path platform = examples.resolve(PLATFORM).resolve("rendered");
+        if (!held.contains(ESTATE + "/") || committed.toAbsolutePath().normalize().equals(platform.toAbsolutePath().normalize())) {
+            return Comparison.trees(committed, rendered);
         }
-        return rendered;
+        Set<String> everyRenders = Comparison.read(platform).keySet();
+        Map<String, byte[]> own = new TreeMap<>(rendered);
+        own.keySet().removeAll(everyRenders);
+        Map<String, byte[]> platformShare = new TreeMap<>(rendered);
+        platformShare.keySet().retainAll(everyRenders);
+        List<String> distance = new ArrayList<>(Comparison.trees(committed, own));
+        distance.addAll(Comparison.trees(platform, platformShare));
+        return distance;
     }
+
+    private static final String PLATFORM = "platform";
 
     private static final String ESTATE = "estate";
 
