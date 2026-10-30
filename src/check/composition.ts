@@ -8,6 +8,7 @@ import {
   LISTENER_PORTS,
   proxyProcessOf,
   tierExposuresOf,
+  tiersAnsweredBy,
 } from "../model/tier-proxy.ts";
 import { catalogSurfaceOf, dumpedSurfaceOf } from "../model/backup.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
@@ -936,6 +937,21 @@ function projectRefusals(
             "Name the Application in the Platform document's `apiAccess.holders` as `<project>/<application>`, under an id no other Application carries, or drop `" +
             asks +
             "`.",
+        });
+      // A tier's proxy reads its routes through the API, which the platform
+      // must say where to reach.
+      const proxied = tiersAnsweredBy(
+        platform,
+        project.project,
+        application,
+        process.name,
+      );
+      if (proxied.length > 0 && platform.apiAccess === undefined)
+        refusals.push({
+          code: "E_NO_API_ACCESS_POLICY",
+          path: processAt,
+          message: `${process.name} is the proxy of the tier ${proxied.map(({ name }) => name).join(", ")}, which reads its routes through the Kubernetes API, and the platform says nowhere where the API answers`,
+          hint: "Declare the Platform document's `apiAccess`, with the `server` the API answers at.",
         });
       for (const [v, volume] of volumes.entries())
         if (platform.durability[volume.durability] === undefined)
