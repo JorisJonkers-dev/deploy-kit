@@ -173,4 +173,22 @@ class RenderingTest {
         assertThat(Files.readString(out)).isEqualTo("a file, not a directory");
         assertThat(Rendering.asideOf(out)).doesNotExist();
     }
+
+    @Test
+    void aRenderingWhoseFilesAreRefusedWritesNothingAndSaysWhy(@TempDir Path out) {
+        List<String> refused = Rendering.render(List.of(namespaceOnly()), out, aside -> {
+            assertThat(aside.resolve("apps/notes/namespace.yaml")).exists();
+            return List.of("refused");
+        });
+
+        assertThat(refused).containsExactly("refused");
+        assertThat(out).isEmptyDirectory();
+        assertThat(Rendering.asideOf(out)).doesNotExist();
+    }
+
+    @Test
+    void aRenderingWhoseFilesAreNotRefusedIsWritten(@TempDir Path out) {
+        assertThat(Rendering.render(List.of(namespaceOnly()), out, aside -> List.<String>of())).isEmpty();
+        assertThat(out.resolve("apps/notes/namespace.yaml")).exists();
+    }
 }

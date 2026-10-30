@@ -142,7 +142,7 @@ public final class Yaml {
 
     /** Whether {@code text} opens with {@code key:}. */
     private static boolean keyed(String text) {
-        return keyEnd(text) > 0;
+        return keyEnd(text) >= 0;
     }
 
     private static int keyEnd(String text) {
@@ -152,7 +152,7 @@ public final class Yaml {
         int i = 0;
         if (text.startsWith("\"") || text.startsWith("'")) {
             int close = text.indexOf(text.charAt(0), 1);
-            if (close < 0) {
+            if (close == -1) {
                 return -1;
             }
             i = close + 1;
@@ -199,7 +199,7 @@ public final class Yaml {
     private Node value(String rest, int indent) {
         if (rest.startsWith("{") || rest.startsWith("[")) {
             StringBuilder flow = new StringBuilder(rest);
-            while (depth(flow) > 0 && at < lines.size()) {
+            while (depth(flow) > 0 && at != lines.size()) {
                 flow.append(' ').append(lines.get(at++).strip());
             }
             int[] pos = {0};
@@ -255,8 +255,12 @@ public final class Yaml {
         return t;
     }
 
+    // The flow readers scan without an end check: value() reads lines until its brackets balance, so a
+    // closing bracket always stops a scan, and an unbalanced text runs off its end into an exception
+    // that leaves the verdict to the parser.
+
     private static void skip(String s, int[] pos) {
-        while (pos[0] < s.length() && s.charAt(pos[0]) == ' ') {
+        while (s.charAt(pos[0]) == ' ') {
             pos[0]++;
         }
     }
@@ -307,7 +311,7 @@ public final class Yaml {
             pos[0] = close + 1;
             return s.substring(start, pos[0]);
         }
-        while (pos[0] < s.length() && stops.indexOf(s.charAt(pos[0])) < 0) {
+        while (stops.indexOf(s.charAt(pos[0])) < 0) {
             pos[0]++;
         }
         return s.substring(start, pos[0]);
