@@ -1,0 +1,93 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: whoami
+  namespace: identity-system
+  labels:
+    app.kubernetes.io/name: whoami
+    app.kubernetes.io/instance: whoami
+    app.kubernetes.io/part-of: whoami
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  progressDeadlineSeconds: 720
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: whoami
+      app.kubernetes.io/instance: whoami
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: whoami
+        app.kubernetes.io/instance: whoami
+        app.kubernetes.io/part-of: whoami
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+      annotations:
+        image.jorisjonkers.dev/whoami: v1.11.0
+    spec:
+      serviceAccountName: whoami
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+                      - enschede-rx7900xtx-1
+                      - enschede-gtx-960m-1
+                      - enschede-pi-1
+                      - enschede-pi-2
+                      - enschede-pi-3
+                      - frankfurt-contabo-1
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: whoami
+              matchLabelKeys:
+                - pod-template-hash
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: whoami
+          image: docker.io/traefik/whoami@sha256:4e6a8c0d2f4b6e8a0c2d4f6b8e0a2c4d6f8b0e2a4c6d8f0b2e4a6c8d0f2b4e6a
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              memory: 32Mi
+              cpu: 10m
+            limits:
+              memory: 32Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0

@@ -738,9 +738,19 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="audience" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- Specificity alone, smallest evaluated first (docs/adr/model/0093). -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="precedence" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" eType="#//ResolvedProcess"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="middleware" upperBound="-1" eType="#//MiddlewareStep" containment="true"/>
+    <!-- A gated Client's derived /.auth/ route names the Gate that answers it instead of a Process and
+         surface of its own Application (spec/v1/17-sign-in.md#what-the-edge-derives). -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="gate" eType="#//GateRoute" containment="true"/>
+  </eClassifiers>
+
+  <!-- The Service a gated route is served by: the sign-in provider's, in its namespace and on its port. -->
+  <eClassifiers xsi:type="ecore:EClass" name="GateRoute">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="MiddlewareStep">

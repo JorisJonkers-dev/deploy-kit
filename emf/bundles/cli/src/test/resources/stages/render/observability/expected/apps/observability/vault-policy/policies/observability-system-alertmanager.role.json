@@ -1,0 +1,11 @@
+{
+  "bound_service_account_names": [
+    "alertmanager"
+  ],
+  "bound_service_account_namespaces": [
+    "observability-system"
+  ],
+  "token_policies": [
+    "observability-system-alertmanager"
+  ]
+}

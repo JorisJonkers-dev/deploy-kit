@@ -2438,9 +2438,15 @@
           namespace: [m.namespace/]
   [/for]
     services:
-      - name: [r.process.name/]
-        namespace: [e.application().namespace/]
-        port: [r.process.surfaces->select(s | s.name = r.surface)->first().port/]
+  [if (r.gate <> null)]
+        - name: [r.gate.name/]
+          namespace: [r.gate.namespace/]
+          port: [r.gate.port/]
+  [else]
+        - name: [r.process.name/]
+          namespace: [e.application().namespace/]
+          port: [r.process.surfaces->select(s | s.name = r.surface)->first().port/]
+  [/if]
 [/template]
 
 [comment ====================================================== sign-in and monitoring /]

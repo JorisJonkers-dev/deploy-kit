@@ -1,0 +1,11 @@
+{
+  "bound_service_account_names": [
+    "identity"
+  ],
+  "bound_service_account_namespaces": [
+    "identity-system"
+  ],
+  "token_policies": [
+    "identity-system-identity"
+  ]
+}

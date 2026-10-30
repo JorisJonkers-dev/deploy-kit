@@ -40,10 +40,6 @@ CatalogJobFile.job is never set by a resolve case
 CatalogJobFile.name is never set by a resolve case
 CatalogJobFile.part is never set by a resolve case
 CatalogJobFile.path is never set by a resolve case
-ClientFile is never instantiated by a resolve case
-ClientFile.adapter is never set by a resolve case
-ClientFile.application is never set by a resolve case
-ClientFile.path is never set by a resolve case
 ContentPolicy.admin is never used in a resolve case's input
 ContentPolicy.workflow is never used in a resolve case's input
 ContentPolicyHeaders is never instantiated by a resolve case
@@ -129,20 +125,9 @@ ResolvedAlerting.routes is never set by a resolve case
 ResolvedApplication.alertClass is never set by a resolve case
 ResolvedApplication.alertRules is never set by a resolve case
 ResolvedApplication.alerting is never set by a resolve case
-ResolvedApplication.client is never set by a resolve case
 ResolvedApplication.fluxScrape is never set by a resolve case
 ResolvedAsset.seedAt is never set by a resolve case
-ResolvedClient is never instantiated by a resolve case
-ResolvedClient.credential is never set by a resolve case
-ResolvedClient.description is never set by a resolve case
-ResolvedClient.host is never set by a resolve case
-ResolvedClient.iconUrl is never set by a resolve case
-ResolvedClient.label is never set by a resolve case
-ResolvedClient.launchUrl is never set by a resolve case
-ResolvedClient.redirectUris is never set by a resolve case
-ResolvedClient.roles is never set by a resolve case
 ResolvedClient.secretPath is never set by a resolve case
-ResolvedClient.signIn is never set by a resolve case
 ResolvedDeployment.addressPools is never set by a resolve case
 ResolvedDeployment.nodeAgents is never set by a resolve case
 ResolvedFluxScrape is never instantiated by a resolve case
