@@ -86,6 +86,7 @@ const FOUNDATION = [
   OBSERVABILITY,
   "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
+  "secrets/config/vault.hcl",
 ].map((name): AuthoredFile => ({
   name,
   text:
@@ -1886,7 +1887,9 @@ describe("what a grant derives", () => {
     const result = resolveIntentSet(
       [
         { name: "platform/platform.intent.yml", text: PLATFORM },
-        ...FOUNDATION.filter(({ name }) => !name.startsWith("secrets/")),
+        ...FOUNDATION.filter(
+          ({ name }) => name !== "secrets/secrets.project.yml",
+        ),
         { name: "secrets/secrets.project.yml", text: secrets },
         { name: "minimal/notes.project.yml", text: HEADER + granted(SELF) },
         ...(CLIENT.env ?? []),
@@ -4112,14 +4115,20 @@ describe("the Vault policy job", () => {
               // With no Secret Store, no tier issues through acme either.
               .replace("certificates: acme", "certificates: none"),
           // Without the monitoring stack, whose Alertmanager reads its
-          // receivers' webhooks from the Secret Store, and so its rules.
+          // receivers' webhooks from the Secret Store, and so its rules; and
+          // without Vault's off-cluster copy, whose credential it reads there.
           (name, text) =>
             name === "observability/observability.project.yml"
               ? text.replace(
                   "    alertRules:\n      - {from: rules/platform.yaml}\n",
                   "",
                 )
-              : text,
+              : name === "secrets/secrets.project.yml"
+                ? text.replace(
+                    "durability: irreplaceable\n        engine: files\n",
+                    "durability: reconstructible\n",
+                  )
+                : text,
         ),
       ),
       // What the set does derive is where Flux's events go, since the worked

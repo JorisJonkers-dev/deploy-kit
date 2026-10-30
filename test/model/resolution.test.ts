@@ -47,6 +47,7 @@ const MINIMAL_SET = [
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
+  "secrets/config/vault.hcl",
   "identity/identity.project.yml",
   "mail/mail.project.yml",
   "mail/config/manifest.json",

@@ -45,6 +45,7 @@ const FOUNDATION: AuthoredFile[] = [
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
+  "secrets/config/vault.hcl",
   "identity/identity.project.yml",
   "observability/env/grafana/base.env",
 ].map((name) => ({ name, text: readFileSync(join(EXAMPLES, name), "utf8") }));

@@ -49,6 +49,7 @@ const SET = [
   "observability/observability.project.yml",
   "observability/rules/platform.yaml",
   "secrets/secrets.project.yml",
+  "secrets/config/vault.hcl",
   "identity/identity.project.yml",
   "mail/mail.project.yml",
   "mail/config/manifest.json",
@@ -1087,6 +1088,14 @@ describe("renderIntentSet", () => {
     expect(
       asTree(artifact(render(undefined, ["agents"]), "agents")),
     ).toStrictEqual(committed("agents/rendered"));
+  });
+
+  // The worked Secret Store runs a raft server from its configuration, on its
+  // volume, never the image's dev-mode default.
+  it("renders the secrets project's share of the tree to its committed tree, byte for byte", () => {
+    expect(
+      asTree(artifact(render(undefined, ["secrets"]), "secrets")),
+    ).toStrictEqual(committed("secrets/rendered"));
   });
 
   it("renders the utility project's share of the tree to its committed tree, byte for byte", () => {
