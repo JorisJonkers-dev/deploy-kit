@@ -19,7 +19,7 @@ test file and holds at least one test; ids are unique; the count this
 document states matches the number of rows it holds; and every id cited
 anywhere in the tracked tree resolves to a row here.
 
-This ledger holds **130** rows. The compiler's behaviours join it as they land.
+This ledger holds **131** rows. The compiler's behaviours join it as they land.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
@@ -153,3 +153,4 @@ This ledger holds **130** rows. The compiler's behaviours join it as they land.
 | REQ-150 | Every Application with a route renders one `<application>-external-checks` ConfigMap in its own namespace, carrying `estate.jorisjonkers.dev/external-checks: "true"` beside `part-of` and `managed-by`, with one Gatus endpoint per route of each exposure: named `<application>-<exposure>-<n>`, grouped by its Project, requesting the tier's scheme, the host and the route's path, and failing only on a 5xx or no answer; an Application with no route renders none, and no other object carries the label | [test/adapters/spelling.test.ts](../test/adapters/spelling.test.ts) |
 | REQ-151 | A `native` Client may declare `backChannelLogoutPath`, a path on its exposure's host, which resolves to `backChannelLogoutUri` (`https://`, the host and the path) and renders on the `Client` object after its `redirectUris`; the same field on a `gated` or `token` Client is `E_CLIENT_FIELD_FOR_MODE` at the field | [test/model/sign-in.test.ts](../test/model/sign-in.test.ts) |
 | REQ-152 | Every rendered container that mounts a writable volume at `/tmp` itself (the Process's, each sidecar, the seeding step, the migration runner) gets `HOME=/tmp`, after its own variables, so a tool that writes under its home has somewhere to write on the read-only root; one whose variables already name `HOME` keeps the author's, and one with no writable `/tmp` gets none | [test/model/render.test.ts](../test/model/render.test.ts) |
+| REQ-153 | Every namespace the render writes, a Project's, the node agents' and the Stable Addresses', carries `kustomize.toolkit.fluxcd.io/prune: disabled`, so no prune deletes a namespace and the kept claims in it with it | [test/model/render.test.ts](../test/model/render.test.ts) |

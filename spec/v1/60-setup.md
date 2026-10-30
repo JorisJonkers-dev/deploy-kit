@@ -594,9 +594,11 @@ moment do two sources apply it:
    the pin moves.
    The estate source's own prune mark is not in the render and is dropped on
    that first apply, so from then on the estate path prunes the Project
-   normally; a claim whose Durability Class derives a backup keeps its own
-   prune-disabled mark and is never pruned
-   ([chapter 30](30-deliverables.md#flagger-ready-objects)). A `blue-green`
+   normally; a claim whose Durability Class derives a backup, and the Project's
+   namespace, each keep their own prune-disabled mark and are never pruned
+   ([chapter 30](30-deliverables.md#flagger-ready-objects)). A mark the old path
+   put on the namespace is replaced by the render's own, so the namespace is
+   never unmarked across the handover. A `blue-green`
    Process's pods are then replaced once, by the primary Flagger generates
    ([chapter 55](55-delivery.md#what-the-render-leaves-to-flagger)).
 

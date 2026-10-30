@@ -594,6 +594,7 @@ adapter renders so that Flux and Flagger never own the same field
 | a gated Application's sync objects are kept by Flux and name their revision | `vso` | [chapter 55](55-delivery.md#a-removed-grant-outlives-its-release) |
 | the migration and prepare Jobs are named by Application revision and created once, never force-replaced; their pods keep a stable `instance`, `<application>-migration` or the Process name, so a network policy can select them | `kubernetes` | the Release Gate writes their `suspend`, which a replacement would reset ([0026](../../docs/adr/model/0026-migration-is-declared-on-the-application.md), [chapter 55](55-delivery.md#failure-and-undo)) |
 | a claim whose Durability Class derives a backup carries `kustomize.toolkit.fluxcd.io/prune: disabled` | `kubernetes` | removing a Process from the render never deletes the data it held: Durability Class gating kept by the applier ([chapter 55](55-delivery.md#scope)) |
+| every `Namespace` the render writes carries `kustomize.toolkit.fluxcd.io/prune: disabled`: each Project's, the node agents' and `estate-system` | `kubernetes` | deleting a namespace deletes everything in it, the kept claims, the claims a controller creates and objects other appliers own included, so a claim's own mark holds only while its namespace is never pruned ([0142](../../docs/adr/model/0142-a-rendered-namespace-is-never-pruned.md)) |
 
 ## Delivery reads this tree
 

@@ -12,7 +12,7 @@ import type { AliasService, Namespace } from "../../objects/kubernetes.ts";
 import { CREATED_ONCE, managedOnly } from "../shared/labels.ts";
 import { STABLE_ADDRESSES_DIRECTORY } from "../shared/paths.ts";
 // Attributed to this adapter, which speaks the Kubernetes core vocabulary.
-import { ADAPTER } from "./render.ts";
+import { ADAPTER, NEVER_PRUNED } from "./render.ts";
 
 export function renderStableAddresses(
   addresses: readonly ResolvedStableAddress[],
@@ -21,7 +21,11 @@ export function renderStableAddresses(
   const namespace: Namespace = {
     apiVersion: "v1",
     kind: "Namespace",
-    metadata: { name: STABLE_NAMESPACE, labels: managedOnly() },
+    metadata: {
+      name: STABLE_NAMESPACE,
+      labels: managedOnly(),
+      annotations: NEVER_PRUNED,
+    },
   };
   const services = addresses.map(({ name, target }): AliasService => ({
     apiVersion: "v1",

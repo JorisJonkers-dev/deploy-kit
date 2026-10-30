@@ -31,7 +31,7 @@ import type {
 import { managedOnly } from "../shared/labels.ts";
 import { projectDirectory } from "../shared/paths.ts";
 import { nodeAffinityOf } from "../shared/placement.ts";
-import { ADAPTER } from "./render.ts";
+import { ADAPTER, NEVER_PRUNED } from "./render.ts";
 
 export const NODE_NAMESPACE = `${NODE_PROJECT}-system`;
 
@@ -519,7 +519,11 @@ export function renderNodeAgents(
   const namespace: Namespace = {
     apiVersion: "v1",
     kind: "Namespace",
-    metadata: { name: NODE_NAMESPACE, labels: managedOnly() },
+    metadata: {
+      name: NODE_NAMESPACE,
+      labels: managedOnly(),
+      annotations: NEVER_PRUNED,
+    },
   };
   return [
     {

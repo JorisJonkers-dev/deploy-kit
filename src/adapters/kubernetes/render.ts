@@ -94,7 +94,10 @@ const WEBHOOKS = [
   ["rollback", "rollback"],
 ] as const;
 
-/** The mark that keeps the applier from ever deleting a claim (spec/v1/30-deliverables.md#flagger-ready-objects). */
+/**
+ * The mark that keeps the applier from ever deleting a claim, or a namespace
+ * and every claim in it (spec/v1/30-deliverables.md#flagger-ready-objects).
+ */
 export const NEVER_PRUNED = { "kustomize.toolkit.fluxcd.io/prune": "disabled" };
 
 /** Where a backup's method reads the volume, and where it writes its copies. */
@@ -1670,6 +1673,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
               ...managedOnly(),
               ...(first === undefined ? {} : meshLabelOf(first)),
             },
+            annotations: NEVER_PRUNED,
           },
         },
       ],
