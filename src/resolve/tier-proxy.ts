@@ -6,16 +6,20 @@
 import type {
   EffectiveApplication,
   EffectiveProcess,
+  EffectiveProject,
 } from "../model/effective-intent.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import {
   ACME_CLAIM,
+  CERTIFICATE_KEYS,
   ACME_MOUNT,
   ACME_SIZE,
   DNS_TOKEN_KEYS,
   PROXY_API,
+  proxyProcessOf,
   tiersAnsweredBy,
+  type ResolvedHeldCertificate,
 } from "../model/tier-proxy.ts";
 import { destinationOf } from "./secrets.ts";
 
@@ -25,7 +29,7 @@ type EnvEntry = NonNullable<ResolvedProcess["environment"]>[number];
 export interface ProxyDerivation {
   /** The Process as resolution reads it: its API access, and an acme tier's claim and egress, added. */
   readonly process: EffectiveProcess;
-  /** The grants the tier derives: an acme tier's DNS token. */
+  /** The grants the tier derives: an acme tier's DNS token, and the certificate a tier reads. */
   readonly grants: readonly ResolvedGrant[];
   /** The variables the token arrives as, under the name its client reads. */
   readonly environment: readonly EnvEntry[];
@@ -47,8 +51,9 @@ export function deriveProxy(
   );
   if (tiers.length === 0) return { process, grants: [], environment: [] };
   const read = withProxyApi(process);
+  const held = heldCertificateOf(process.name, tiers);
   const acme = tiers.some(({ certificates }) => certificates === "acme");
-  if (!acme) return { process: read, grants: [], environment: [] };
+  if (!acme) return { process: read, grants: held, environment: [] };
   // Every acme tier has the platform's account, or E_NO_ACME_POLICY refused it.
   const account = context.platform.acme as NonNullable<
     PlatformIntentDocument["acme"]
@@ -86,6 +91,7 @@ export function deriveProxy(
         destination: destinationOf(process.name, account.token),
         restartTargets: [process.name],
       },
+      ...held,
     ],
     environment: [{ name: key, secret: { path: account.token, key } }],
   };
@@ -108,4 +114,53 @@ function withProxyApi(process: EffectiveProcess): EffectiveProcess {
       rules: [...rules, ...(process.api?.rules ?? [])],
     },
   };
+}
+
+/**
+ * The certificate a tier reads from the Secret Store, synced beside its proxy
+ * for the default TLS store to name. The proxy reads it through the API, so
+ * nothing is injected and a new certificate restarts nothing.
+ */
+const heldCertificateOf = (
+  process: string,
+  tiers: readonly { readonly certificateFrom?: string | undefined }[],
+): ResolvedGrant[] =>
+  tiers.flatMap(({ certificateFrom }) =>
+    certificateFrom === undefined
+      ? []
+      : [
+          {
+            path: certificateFrom,
+            keys: [...CERTIFICATE_KEYS],
+            access: "read" as const,
+            delivery: "env" as const,
+            destination: destinationOf(process, certificateFrom),
+          },
+        ],
+  );
+
+/**
+ * The default TLS store a tier's certificate derives, where the union declares
+ * its proxy: one tier at most names one (E_CERTIFICATE_FROM_REPEATED).
+ */
+export function resolveHeldCertificates(
+  platform: Pick<PlatformIntentDocument, "tiers">,
+  projects: readonly EffectiveProject[],
+): ResolvedHeldCertificate[] {
+  return platform.tiers.flatMap(
+    ({ traefik, listener, certificateFrom }): ResolvedHeldCertificate[] => {
+      if (certificateFrom === undefined) return [];
+      const [project, application] = traefik.split("/");
+      // The union declares every tier's proxy, or E_UNKNOWN_TIER_PROXY refused it.
+      const declared = projects
+        .find((candidate) => candidate.project === project)
+        ?.applications.find(
+          ({ id }) => id === application,
+        ) as EffectiveApplication;
+      const process = proxyProcessOf(declared, listener);
+      return process === undefined
+        ? []
+        : [{ proxy: traefik, secret: destinationOf(process, certificateFrom) }];
+    },
+  );
 }

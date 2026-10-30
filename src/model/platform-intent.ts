@@ -183,6 +183,10 @@ const tier = z
     audiences: z.array(audience).min(1),
     listener,
     certificates: certificateSource,
+    // Where a tls tier that issues none reads the certificate its proxy
+    // serves: a Secret Store path holding `tls.crt` and `tls.key`
+    // (spec/v1/14-platform-intent.md#tiers).
+    certificateFrom: text.exactOptional(),
     forwardAuth: forwardAuth.exactOptional(),
     // Absent where clients connect to the edge themselves.
     proxiedBy: forwarder.exactOptional(),

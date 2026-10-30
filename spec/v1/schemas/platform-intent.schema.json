@@ -401,6 +401,10 @@
         "certificates": {
           "$ref": "#/$defs/CertificateSource"
         },
+        "certificateFrom": {
+          "type": "string",
+          "minLength": 1
+        },
         "forwardAuth": {
           "$ref": "#/$defs/ForwardAuth"
         },
