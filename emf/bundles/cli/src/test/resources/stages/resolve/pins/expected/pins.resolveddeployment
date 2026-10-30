@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="pins" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="pins" namespace="pins-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="pins-main" identity="pins-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="pins-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-pins"/>
+  <deliverables xsi:type="resolveddeployment:SourceFile" path="projects/_estate/source.yaml">
+    <source name="estate" url="oci://ghcr.io/jorisjonkers-dev/render-estate" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000" issuer="^https://token\.actions\.githubusercontent\.com$" subject="^https://github\.com/JorisJonkers-dev/estate/\.github/workflows/compose\.yml@refs/heads/main$"/>
+    <units name="estate-human-grants" path="./estate/human-grants"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:SourceFile" path="projects/data/source.yaml">
+    <source name="project-data" url="oci://ghcr.io/jorisjonkers-dev/render/data" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000" issuer="^https://token\.actions\.githubusercontent\.com$" subject="^https://github\.com/JorisJonkers-dev/estate/\.github/workflows/compose\.yml@refs/heads/main$"/>
+    <units name="apps-data" path="./apps/data" forcesDeployments="true">
+      <dependsOn>apps-edge</dependsOn>
+      <dependsOn>apps-secrets</dependsOn>
+      <annotations key="event.toolkit.fluxcd.io/repository" value="JorisJonkers-dev/data"/>
+      <annotations key="event.toolkit.fluxcd.io/sha" value="184d01a04f11edbc96f56e9a7811ece7cd3bcd39"/>
+      <annotations key="event.toolkit.fluxcd.io/environment" value="production"/>
+      <annotations key="event.toolkit.fluxcd.io/version" value="1.0.0"/>
+      <annotations key="event.toolkit.fluxcd.io/url" value="https://rabbitmq.jorisjonkers.dev"/>
+    </units>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:SourceFile" path="projects/delivery/source.yaml">
+    <source name="project-delivery" url="oci://ghcr.io/jorisjonkers-dev/render/delivery" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000" issuer="^https://token\.actions\.githubusercontent\.com$" subject="^https://github\.com/JorisJonkers-dev/estate/\.github/workflows/compose\.yml@refs/heads/main$"/>
+    <units name="apps-delivery" path="./apps/delivery" forcesDeployments="true">
+      <annotations key="event.toolkit.fluxcd.io/repository" value="JorisJonkers-dev/delivery"/>
+      <annotations key="event.toolkit.fluxcd.io/sha" value="f735bfe482448637bc6c64d584717817fa63879f"/>
+      <annotations key="event.toolkit.fluxcd.io/environment" value="production"/>
+      <annotations key="event.toolkit.fluxcd.io/version" value="1.0.0"/>
+    </units>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:SourceFile" path="projects/edge/source.yaml">
+    <source name="project-edge" url="oci://ghcr.io/jorisjonkers-dev/render/edge" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000" issuer="^https://token\.actions\.githubusercontent\.com$" subject="^https://github\.com/JorisJonkers-dev/estate/\.github/workflows/compose\.yml@refs/heads/main$"/>
+    <units name="apps-edge" path="./apps/edge" forcesDeployments="true">
+      <annotations key="event.toolkit.fluxcd.io/repository" value="JorisJonkers-dev/edge"/>
+      <annotations key="event.toolkit.fluxcd.io/sha" value="f55b42d170365dbdd946c0a2ca5688b09ee6c011"/>
+      <annotations key="event.toolkit.fluxcd.io/environment" value="production"/>
+      <annotations key="event.toolkit.fluxcd.io/version" value="1.0.0"/>
+    </units>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:SourceFile" path="projects/node/source.yaml">
+    <source name="project-node" url="oci://ghcr.io/jorisjonkers-dev/render/node" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000" issuer="^https://token\.actions\.githubusercontent\.com$" subject="^https://github\.com/JorisJonkers-dev/estate/\.github/workflows/compose\.yml@refs/heads/main$"/>
+    <units name="apps-node" path="./apps/node" forcesDeployments="true"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:SourceFile" path="projects/notes/source.yaml">
+    <source name="project-notes" url="oci://ghcr.io/jorisjonkers-dev/render/notes" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000" issuer="^https://token\.actions\.githubusercontent\.com$" subject="^https://github\.com/JorisJonkers-dev/estate/\.github/workflows/compose\.yml@refs/heads/main$"/>
+    <units name="apps-notes" path="./apps/notes" forcesDeployments="true">
+      <dependsOn>apps-edge</dependsOn>
+      <annotations key="event.toolkit.fluxcd.io/repository" value="JorisJonkers-dev/notes"/>
+      <annotations key="event.toolkit.fluxcd.io/sha" value="bda7ae704e0fa239fc4dba8286cc498c1fa9c144"/>
+      <annotations key="event.toolkit.fluxcd.io/environment" value="production"/>
+      <annotations key="event.toolkit.fluxcd.io/version" value="1.0.0"/>
+      <annotations key="event.toolkit.fluxcd.io/url" value="https://notes.jorisjonkers.dev"/>
+    </units>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:SourceFile" path="projects/observability/source.yaml">
+    <source name="project-observability" url="oci://ghcr.io/jorisjonkers-dev/render/observability" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000" issuer="^https://token\.actions\.githubusercontent\.com$" subject="^https://github\.com/JorisJonkers-dev/estate/\.github/workflows/compose\.yml@refs/heads/main$"/>
+    <units name="apps-observability" path="./apps/observability" forcesDeployments="true">
+      <dependsOn>apps-edge</dependsOn>
+      <annotations key="event.toolkit.fluxcd.io/repository" value="JorisJonkers-dev/observability"/>
+      <annotations key="event.toolkit.fluxcd.io/sha" value="138df822137d4bef66e2456320647060ea59819f"/>
+      <annotations key="event.toolkit.fluxcd.io/environment" value="production"/>
+      <annotations key="event.toolkit.fluxcd.io/version" value="1.0.0"/>
+      <annotations key="event.toolkit.fluxcd.io/url" value="https://grafana.jorisjonkers.dev"/>
+    </units>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:SourceFile" path="projects/secrets/source.yaml">
+    <source name="project-secrets" url="oci://ghcr.io/jorisjonkers-dev/render/secrets" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000" issuer="^https://token\.actions\.githubusercontent\.com$" subject="^https://github\.com/JorisJonkers-dev/estate/\.github/workflows/compose\.yml@refs/heads/main$"/>
+    <units name="apps-secrets" path="./apps/secrets" forcesDeployments="true">
+      <annotations key="event.toolkit.fluxcd.io/repository" value="JorisJonkers-dev/secrets"/>
+      <annotations key="event.toolkit.fluxcd.io/sha" value="7b205dcdab030cdbef923acd7535f9a76f4a0d3b"/>
+      <annotations key="event.toolkit.fluxcd.io/environment" value="production"/>
+      <annotations key="event.toolkit.fluxcd.io/version" value="1.0.0"/>
+    </units>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>

@@ -185,7 +185,7 @@
           - from:
               [peer.peer()/]
             ports:
-              - protocol: TCP
+              - protocol: [if (peer.protocol <> null)][peer.protocol/][else]TCP[/if]
                 port: [peer.port/]
     [/for]
   [/if]
@@ -199,16 +199,41 @@
             - protocol: TCP
               port: [peer.port/]
   [/for]
-  [comment The cluster's DNS answers on UDP, and on TCP for a truncated response. /]
+  [comment The cluster's DNS answers on UDP, and on TCP for a truncated response. The gate's own
+    requests reach every member's pods, on whichever port the member's own policy admits them. /]
   [for (peer : resolveddeployment::PolicyPeer | p.egress)]
+    [if (peer.rule = 'gate-members')]
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    app.kubernetes.io/managed-by: deploy-kit
+                podSelector:
+                  matchLabels:
+                    gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+    [else]
+          - to:
+              [peer.peer()/]
+            ports:
+              - protocol: UDP
+                port: [peer.port/]
+              - protocol: TCP
+                port: [peer.port/]
+    [/if]
+  [/for]
+  [comment The nameservers a Process that serves DNS resolves through, by address: off the
+    cluster, and answering on UDP and on TCP. /]
+  [if (p.process.nameservers->notEmpty())]
         - to:
-            [peer.peer()/]
+    [for (n : String | p.process.nameservers)]
+              - ipBlock:
+                  cidr: [n/]/32
+    [/for]
           ports:
             - protocol: UDP
-              port: [peer.port/]
+              port: 53
             - protocol: TCP
-              port: [peer.port/]
-  [/for]
+              port: 53
+  [/if]
   [comment Where the Kubernetes API answers, for a Process that holds access to it: an address,
     because the API server is no pod a selector reaches. /]
   [if (p.process.api <> null)]
@@ -247,6 +272,16 @@
       podSelector:
         matchLabels:
           [peer.consumes.consumerLabel()/]
+  [elseif (peer.cidr <> null)]
+    - ipBlock:
+        cidr: [peer.cidr/]
+  [elseif (peer.rule = 'flux-metrics')]
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: [peer.namespace/]
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: flux
   [else]
     - namespaceSelector:
         matchLabels:
@@ -316,7 +351,13 @@
   apiVersion: monitoring.coreos.com/v1
   kind: [d.kind.toString()/]
   metadata:
-    [d.process.metadata()/]
+    name: [d.process.name/]
+    namespace: [d.process.application().namespace/]
+    labels:
+  [for (l : resolveddeployment::KeyValue | d.process.application().scrape.labels)]
+        [l.key/]: [l.value.scalar()/]
+  [/for]
+      [d.process.labels()/]
   spec:
     jobLabel: app.kubernetes.io/instance
     selector:
@@ -364,6 +405,7 @@
           [p.webhook('may-start', 'confirm-rollout')/]
           [p.webhook('checks', 'rollout')/]
           [p.webhook('may-promote', 'confirm-promotion')/]
+          [p.webhook('rollback', 'rollback')/]
     [if (p.replicas > 1)]
       ---
       apiVersion: autoscaling/v2
@@ -492,6 +534,126 @@
               sizeLimit: [d.application.migration.scratch/]
 [/template]
 
+[comment An open Move: its identity, the Role in the estate's namespace that lets it update the one
+  Stable Address its flip moves, and one Job per step, named by the Move's tag, suspended and created
+  once: what runs a step writes `suspend` afterwards. /]
+[template private objects(d : resolveddeployment::MoveFile)]
+  ---
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: [d.process.move.identity/]
+    namespace: [d.process.application().namespace/]
+    labels:
+      [d.process.move.identity.labelSet('none', d.process.application().id)/]
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: [d.process.application().namespace/]-[d.process.move.identity/]
+    namespace: [d.process.move.flipNamespace/]
+    labels:
+      [d.process.move.identity.labelSet('none', d.process.application().id)/]
+  rules:
+    - apiGroups:
+        - ""
+      resources:
+        - services
+      resourceNames:
+        - [d.process.move.flips/]
+      verbs:
+        - get
+        - update
+        - patch
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: [d.process.application().namespace/]-[d.process.move.identity/]
+    namespace: [d.process.move.flipNamespace/]
+    labels:
+      [d.process.move.identity.labelSet('none', d.process.application().id)/]
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: [d.process.application().namespace/]-[d.process.move.identity/]
+  subjects:
+    - kind: ServiceAccount
+      name: [d.process.move.identity/]
+      namespace: [d.process.application().namespace/]
+  [for (s : resolveddeployment::MoveStep | d.process.move.steps)]
+    [d.process.moveJob(s)/]
+  [/for]
+[/template]
+
+[template private moveJob(p : resolveddeployment::ResolvedProcess, s : resolveddeployment::MoveStep)]
+  ---
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: [p.move.identity/]-[s.name/]-[p.move.tag/]
+    namespace: [p.application().namespace/]
+    labels:
+      [p.move.identity.labelSet('none', p.application().id)/]
+    annotations:
+      kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+  spec:
+    suspend: true
+    backoffLimit: 0
+    template:
+      metadata:
+        labels:
+          [p.move.identity.labelSet('none', p.application().id)/]
+  [if (p.move.imageVersion <> null)]
+          annotations:
+            image.jorisjonkers.dev/move: [p.move.imageVersion.scalar()/]
+  [/if]
+      spec:
+        serviceAccountName: [p.move.identity/]
+        automountServiceAccountToken: true
+        restartPolicy: Never
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: [p.move.uid/]
+          runAsGroup: [p.move.gid/]
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+          - name: move
+            image: [p.move.image/]
+            env:
+              - name: MOVE_STEP
+                value: [s.command.scalar()/]
+              - name: MOVE_SOURCE_HOST
+                value: [p.move.sourceHost/]
+              - name: MOVE_TARGET_HOST
+                value: [p.move.targetHost/]
+              - name: MOVE_PORT
+                value: [p.move.port.toString().scalar()/]
+              - name: MOVE_FLIPS
+                value: [p.move.flips/]
+              - name: MOVE_FLIP_NAMESPACE
+                value: [p.move.flipNamespace/]
+              - name: VAULT_ADDR
+                value: [p.move.secretStore/]
+              - name: VAULT_ROLE
+                value: [p.move.role/]
+              - name: VAULT_CREDENTIALS_PATH
+                value: [p.move.credentialsPath/]
+            resources:
+              requests:
+                memory: [p.move.memory/]
+                cpu: [p.move.cpu/]
+              limits:
+                memory: [p.move.memory/]
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+[/template]
+
 [template private webhook(p : resolveddeployment::ResolvedProcess, name : String, type : String)]
   - name: [name/]
     type: [type/]
@@ -525,6 +687,36 @@
   with no leader election cannot run two copies; a stop-start one keeps its count and stops
   before it starts again. /]
 [template private workload(p : resolveddeployment::ResolvedProcess, d : resolveddeployment::WorkloadFile)]
+  [if (d.controller.toString() = 'CronJob')]
+    [p.scheduled()/]
+  [else]
+    [p.deployment(d)/]
+  [/if]
+[/template]
+
+[comment A scheduled Process's CronJob: at its own schedule, never two runs at once, and a run that
+  cannot start within its start deadline is skipped. A parked schedule starts no run. A failed run is
+  retried in its pod. /]
+[template private scheduled(p : resolveddeployment::ResolvedProcess)]
+  ---
+  apiVersion: batch/v1
+  kind: CronJob
+  metadata:
+    [p.metadata()/]
+  spec:
+    schedule: [p.schedule.scalar()/]
+  [if (p.parked)]
+      suspend: true
+  [/if]
+    concurrencyPolicy: Forbid
+    startingDeadlineSeconds: [p.startDeadline.seconds()/]
+    jobTemplate:
+      spec:
+        template:
+          [p.pod('OnFailure')/]
+[/template]
+
+[template private deployment(p : resolveddeployment::ResolvedProcess, d : resolveddeployment::WorkloadFile)]
   ---
   apiVersion: apps/v1
   kind: [d.controller.toString()/]
@@ -555,118 +747,203 @@
         app.kubernetes.io/name: [p.name/]
         app.kubernetes.io/instance: [p.name/]
     template:
-      metadata:
-        labels:
-          [p.labels()/]
+      [p.pod('')/]
+[/template]
+
+[comment The pod a Process runs in, whatever controller starts it, unindented: `restart` is the
+  policy a run to completion restarts by, and nothing for a pod that serves. /]
+[template private pod(p : resolveddeployment::ResolvedProcess, restart : String)]
+  metadata:
+    labels:
+      [p.labels()/]
   [for (c : String | p.consumes)]
-            [c.consumerLabel()/]
+        [c.consumerLabel()/]
   [/for]
+  [if (p.member())]
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+  [/if]
   [if (p.versioned()->notEmpty())]
-          annotations:
+      annotations:
     [for (n : String | p.versioned())]
-              image.jorisjonkers.dev/[n/]: [p.versionOf(n).scalar()/]
+          image.jorisjonkers.dev/[n/]: [p.versionOf(n).scalar()/]
     [/for]
   [/if]
-      spec:
-        serviceAccountName: [p.identity/]
-        automountServiceAccountToken: [p.identityToken/]
-  [if (p.gpu <> null)]
-          runtimeClassName: [p.gpu.runtimeClass/]
+  spec:
+    serviceAccountName: [p.identity/]
+  [if (p.priorityClass <> null)]
+      priorityClassName: [p.priorityClass/]
   [/if]
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: [p.uid/]
-          runAsGroup: [p.gid/]
+    automountServiceAccountToken: [p.identityToken/]
+  [if (p.nameservers->notEmpty())]
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+    [for (n : String | p.nameservers)]
+            - [n/]
+    [/for]
+  [/if]
+  [if (restart <> '')]
+      restartPolicy: [restart/]
+  [/if]
+  [if (p.gpu <> null)]
+      runtimeClassName: [p.gpu.runtimeClass/]
+  [/if]
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: [p.uid/]
+      runAsGroup: [p.gid/]
   [comment A volume is written as the image's group, and only a volume is. A library's group is
     its own, and an fsGroup would re-own the whole library. /]
   [if (p.volumes->notEmpty() and p.libraries->isEmpty())]
-            fsGroup: [p.gid/]
+        fsGroup: [p.gid/]
   [/if]
   [if (p.libraries->notEmpty())]
-            supplementalGroups:
+        supplementalGroups:
     [for (g : Integer | p.libraries.gid->asOrderedSet()->sortedBy(x | x))]
-                - [g/]
+            - [g/]
     [/for]
   [/if]
-          seccompProfile:
-            type: RuntimeDefault
-  [comment The node its volume is bound to, or every node eligible for it, each by name. /]
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: kubernetes.io/hostname
-                      operator: In
-                      values:
+      seccompProfile:
+        type: RuntimeDefault
+  [comment The node its volume is bound to, or every node eligible for it, each by name; and where
+    its replicas spread, each repelling the others of its own revision. /]
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
   [if (p.placement.boundTo <> null)]
-                          - [p.placement.boundTo/]
+                      - [p.placement.boundTo/]
   [else]
     [for (n : String | p.placement.eligibleNodes)]
-                            - [n/]
+                        - [n/]
     [/for]
   [/if]
-  [if (p.vpn <> null)]
-          initContainers:
-            [p.vpn.vpnContainer()/]
+  [if (p.spread)]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: [p.name/]
+              matchLabelKeys:
+                - pod-template-hash
+              topologyKey: kubernetes.io/hostname
   [/if]
-        containers:
-          [p.container()/]
-  [for (c : resolveddeployment::ResolvedSidecar | p.sidecars)]
-            [c.sidecar(p)/]
+  [comment The seeder first, so every later step reads the seeded files; then the VPN, which starts
+    and stays; then each init step. /]
+  [if (p.seeder <> null or p.vpn <> null or p.sidecars->exists(c | c.init))]
+      initContainers:
+    [if (p.seeder <> null)]
+          [p.seeder.seederContainer()/]
+    [/if]
+    [if (p.vpn <> null)]
+          [p.vpn.vpnContainer()/]
+    [/if]
+    [for (c : resolveddeployment::ResolvedSidecar | p.sidecars->select(c | c.init))]
+          [c.sidecar(p)/]
+    [/for]
+  [/if]
+    containers:
+      [p.container()/]
+  [for (c : resolveddeployment::ResolvedSidecar | p.sidecars->reject(c | c.init))]
+        [c.sidecar(p)/]
   [/for]
   [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty() or p.vpn <> null)]
-          volumes:
+      volumes:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
-              - name: [v.claim/]
-                persistentVolumeClaim:
-                  claimName: [v.claim/]
+          - name: [v.claim/]
+            persistentVolumeClaim:
+              claimName: [v.claim/]
     [/for]
     [comment Two mounts of one library below two directories share its one claim. /]
     [for (c : String | p.libraries.claim->asOrderedSet())]
-              - name: [c/]
-                persistentVolumeClaim:
-                  claimName: [c/]
+          - name: [c/]
+            persistentVolumeClaim:
+              claimName: [c/]
     [/for]
     [for (a : resolveddeployment::ResolvedAsset | p.assets)]
-              - name: [a.name/]
-                configMap:
-                  name: [a.name/]
-                  items:
-                    - key: [a._from.fileOf()/]
-                      path: [a._from.fileOf()/]
+          - name: [a.name/]
+            configMap:
+              name: [a.name/]
+              items:
+                - key: [a._from.fileOf()/]
+                  path: [a._from.fileOf()/]
     [/for]
     [for (w : resolveddeployment::WritablePath | p.writablePaths)]
-              - name: [w.path.writableOf()/]
-                emptyDir:
-                  sizeLimit: [w.size/]
+          - name: [w.path.writableOf()/]
+            emptyDir:
+      [if (w.memory)]
+                medium: Memory
+      [/if]
+              sizeLimit: [w.size/]
     [/for]
     [for (g : resolveddeployment::ResolvedGrant | p.files())]
-              - name: secret-[g.destination/]
-                secret:
-                  secretName: [g.destination/]
-                  items:
+          - name: secret-[g.destination/]
+            secret:
+              secretName: [g.destination/]
+              items:
       [if (g.engine = 'database')]
-                      - key: username
-                        path: username
-                      - key: password
-                        path: password
+                  - key: username
+                    path: username
+                  - key: password
+                    path: password
       [else]
-                      - key: [g.keys->first()/]
-                        path: [g.mountAt.fileOf()/]
+                  - key: [g.keys->first()/]
+                    path: [g.mountAt.fileOf()/]
       [/if]
-                  defaultMode: [g.fileMode.octal()/]
+              defaultMode: [g.fileMode.octal()/]
     [/for]
     [if (p.vpn <> null)]
-              - name: vpn
-                emptyDir:
-                  sizeLimit: 1Mi
+          - name: vpn
+            emptyDir:
+              sizeLimit: 1Mi
     [/if]
   [/if]
 [/template]
 
-[comment A container beside the Process, under the same posture, the same variables, the same
-  writable paths and the same file grants: every container of its pod is the Process. /]
+[comment The step that seeds a Process's Assets, under the posture and as the Process's own user. /]
+[template private seederContainer(s : resolveddeployment::ResolvedSeeder)]
+  - name: seed
+    image: [s.image/]
+    command:
+  [for (c : String | s.command)]
+        [c.listItem()/]
+  [/for]
+    resources:
+      requests:
+        memory: [s.memory/]
+        cpu: [s.cpu/]
+      limits:
+        memory: [s.memory/]
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+    volumeMounts:
+  [for (m : resolveddeployment::ContainerMount | s.mounts)]
+        [m.mount()/]
+  [/for]
+[/template]
+
+[template private mount(m : resolveddeployment::ContainerMount)]
+  - name: [m.name/]
+    mountPath: [m.mountAt/]
+  [if (m.subPath <> null)]
+      subPath: [m.subPath/]
+  [/if]
+  [if (m.readOnly)]
+      readOnly: true
+  [/if]
+[/template]
+
+[comment A container beside the Process or before it, under the same posture, the same variables,
+  the same writable paths and the same file grants: every container of its pod is the Process. It
+  mounts the Process's volumes and Assets it names, each where it says. /]
 [template private sidecar(c : resolveddeployment::ResolvedSidecar, p : resolveddeployment::ResolvedProcess)]
   - name: [c.name/]
     image: [c.image/]
@@ -686,8 +963,11 @@
       capabilities:
         drop:
           - ALL
-  [if (p.writablePaths->notEmpty() or p.files()->notEmpty())]
+  [if (c.mounts->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
       volumeMounts:
+    [for (m : resolveddeployment::ContainerMount | c.mounts)]
+          [m.mount()/]
+    [/for]
     [for (w : resolveddeployment::WritablePath | p.writablePaths)]
           - name: [w.path.writableOf()/]
             mountPath: [w.path/]
@@ -712,6 +992,9 @@
           secretKeyRef:
             name: [p.destinationOf(e.secret.path)/]
             key: [e.secret.key/]
+      [if (e.secret.optional)]
+              optional: true
+      [/if]
     [/if]
   [/for]
 [/template]
@@ -760,11 +1043,26 @@
 [template private container(p : resolveddeployment::ResolvedProcess)]
   - name: [p.name/]
     image: [p.image/]
+  [if (p.arguments->notEmpty())]
+      args:
+    [for (x : String | p.arguments)]
+          [x.listItem()/]
+    [/for]
+  [/if]
   [if (p.surfaces->notEmpty())]
       ports:
     [for (s : resolveddeployment::ResolvedSurface | p.surfaces)]
           - name: [s.name/]
             containerPort: [s.port/]
+      [if (s.hostPort <> null)]
+              hostPort: [s.hostPort/]
+      [/if]
+    [/for]
+    [for (x : resolveddeployment::L4Port | p.nodePorts)]
+          - name: [x.name/]
+            containerPort: [x.targetPort/]
+            hostPort: [x.port/]
+            protocol: [x.protocol/]
     [/for]
   [/if]
   [if (p.environment->notEmpty())]
@@ -787,7 +1085,7 @@
       capabilities:
         drop:
           - ALL
-  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty() or (p.vpn <> null and p.vpn.forwardedPort))]
+  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->exists(a | a.seedAt = null) or p.writablePaths->notEmpty() or p.files()->notEmpty() or (p.vpn <> null and p.vpn.forwardedPort))]
       volumeMounts:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
           - name: [v.claim/]
@@ -803,7 +1101,7 @@
               readOnly: true
       [/if]
     [/for]
-    [for (a : resolveddeployment::ResolvedAsset | p.assets)]
+    [for (a : resolveddeployment::ResolvedAsset | p.assets->select(a | a.seedAt = null))]
           - name: [a.name/]
             mountPath: [a.mountAt/]
             subPath: [a._from.fileOf()/]
@@ -860,46 +1158,70 @@
   [/if]
 [/template]
 
-[comment What a Process that holds Kubernetes API access may ask of it: a ClusterRole of its
-  declared rules, bound to its one ServiceAccount, both under the name its namespace and
-  identity make. `core` is the group Kubernetes itself spells as no name at all. /]
+[comment What a Process that holds Kubernetes API access may ask of it: its namespace's rules as a
+  Role in its own namespace under its identity, and its cluster's as a ClusterRole under the name its
+  namespace and identity make, each bound to its one ServiceAccount. A scope with no rule renders
+  nothing. /]
 [template private objects(d : resolveddeployment::RbacFile)]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
-    ---
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRole
-    metadata:
-      name: [p.application().namespace/]-[p.identity/]
-      labels:
-        [p.labels()/]
-    rules:
-    [for (r : resolveddeployment::ResolvedApiRule | p.api.rules)]
-        - apiGroups:
-            - [if (r.group = 'core')]""[else][r.group/][/if]
-          resources:
-      [for (o : String | r.objects)]
-              - [o/]
-      [/for]
-          verbs:
-      [for (v : String | r.verbs)]
-              - [v/]
-      [/for]
-    [/for]
-    ---
-    apiVersion: rbac.authorization.k8s.io/v1
-    kind: ClusterRoleBinding
-    metadata:
-      name: [p.application().namespace/]-[p.identity/]
-      labels:
-        [p.labels()/]
-    roleRef:
-      apiGroup: rbac.authorization.k8s.io
-      kind: ClusterRole
-      name: [p.application().namespace/]-[p.identity/]
-    subjects:
-      - kind: ServiceAccount
+    [if (p.api.rules->exists(r | r.scope.toString() = 'namespace'))]
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
         name: [p.identity/]
         namespace: [p.application().namespace/]
+        labels:
+          [p.labels()/]
+      rules:
+      [for (r : resolveddeployment::ResolvedApiRule | p.api.rules->select(r | r.scope.toString() = 'namespace'))]
+          [r.rule()/]
+      [/for]
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: RoleBinding
+      metadata:
+        name: [p.identity/]
+        namespace: [p.application().namespace/]
+        labels:
+          [p.labels()/]
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: Role
+        name: [p.identity/]
+      subjects:
+        - kind: ServiceAccount
+          name: [p.identity/]
+          namespace: [p.application().namespace/]
+    [/if]
+    [if (p.api.rules->exists(r | r.scope.toString() = 'cluster'))]
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        name: [p.application().namespace/]-[p.identity/]
+        labels:
+          [p.labels()/]
+      rules:
+      [for (r : resolveddeployment::ResolvedApiRule | p.api.rules->select(r | r.scope.toString() = 'cluster'))]
+          [r.rule()/]
+      [/for]
+      ---
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: [p.application().namespace/]-[p.identity/]
+        labels:
+          [p.labels()/]
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: [p.application().namespace/]-[p.identity/]
+      subjects:
+        - kind: ServiceAccount
+          name: [p.identity/]
+          namespace: [p.application().namespace/]
+    [/if]
   [/for]
 [/template]
 
@@ -921,6 +1243,36 @@
             port: [s.port/]
             targetPort: [s.name/]
     [/for]
+    [for (l : resolveddeployment::ResolvedL4Service | p.l4Services)]
+      [l.l4Service(p)/]
+    [/for]
+  [/for]
+[/template]
+
+[comment The Service of a pool L4 Address: a load balancer whose `Local` traffic policy keeps the
+  client's address, and so sends a connection only to a pod on the node that announces it. /]
+[template private l4Service(l : resolveddeployment::ResolvedL4Service, p : resolveddeployment::ResolvedProcess)]
+  ---
+  apiVersion: v1
+  kind: Service
+  metadata:
+    name: [l.name/]
+    namespace: [p.application().namespace/]
+    labels:
+      [p.labels()/]
+    annotations:
+      metallb.io/address-pool: [l.pool/]
+  spec:
+    type: LoadBalancer
+    externalTrafficPolicy: Local
+    selector:
+      app.kubernetes.io/instance: [p.name/]
+    ports:
+  [for (x : resolveddeployment::L4Port | l.ports)]
+        - name: [x.name/]
+          port: [x.port/]
+          protocol: [x.protocol/]
+          targetPort: [x.targetPort/]
   [/for]
 [/template]
 
@@ -936,6 +1288,26 @@
       namespace: [d.namespace/]
       labels:
         app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      type: ExternalName
+      externalName: [a.target/]
+  [/for]
+[/template]
+
+[comment Every Stable Address, an ExternalName Service in the estate's namespace. Created once and
+  never overwritten by a later apply, so the flip of a Move is what moves it. /]
+[template private objects(d : resolveddeployment::StableAddressFile)]
+  [for (a : resolveddeployment::Alias | d.addresses)]
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: [a.name/]
+      namespace: [d.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+      annotations:
+        kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
     spec:
       type: ExternalName
       externalName: [a.target/]
@@ -1048,6 +1420,21 @@
     data:
       releaseGate.json: |
         [d.releaseGate/]
+  [/if]
+  [if (d.externalChecks <> null)]
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: [d.application.id/]-external-checks
+      namespace: [d.application.namespace/]
+      labels:
+        app.kubernetes.io/part-of: [d.application.id/]
+        app.kubernetes.io/managed-by: deploy-kit
+        estate.jorisjonkers.dev/external-checks: "true"
+    data:
+      [d.application.id/]-external-checks.yaml: |
+        [d.externalChecks/]
   [/if]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
     [for (a : resolveddeployment::ResolvedAsset | p.assets)]
@@ -1712,6 +2099,12 @@
     labels:
       app.kubernetes.io/part-of: [d.exposure.application().id/]
       app.kubernetes.io/managed-by: deploy-kit
+    annotations:
+      kubernetes.io/ingress.class: [d.exposure.ingressClass/]
+  [if (d.exposure.dns <> null)]
+        external-dns.alpha.kubernetes.io/target: [d.exposure.dns.target/]
+        external-dns.alpha.kubernetes.io/cloudflare-proxied: "[d.exposure.dns.proxied/]"
+  [/if]
   spec:
     entryPoints:
       - [d.entryPoint/]
@@ -1722,10 +2115,16 @@
   [if (d.certificateResolver <> null)]
       tls:
         certResolver: [d.certificateResolver/]
+  [elseif (d.terminatesTls)]
+      tls: {}
   [/if]
   [for (r : resolveddeployment::ResolvedRoute | d.exposure.routes)]
-    [for (m : resolveddeployment::MiddlewareStep | r.middleware->select(s | s.kind.toString() = 'rate-limit'))]
-      [m.rateLimit(d.exposure)/]
+    [for (m : resolveddeployment::MiddlewareStep | r.middleware->select(s | s.kind.toString() = 'rate-limit' or s.kind.toString() = 'redirect'))]
+      [if (m.kind.toString() = 'redirect')]
+        [m.redirect(d.exposure)/]
+      [else]
+        [m.rateLimit(d.exposure)/]
+      [/if]
     [/for]
   [/for]
 [/template]
@@ -1754,6 +2153,79 @@
   [/if]
 [/template]
 
+[comment The shared Middlewares of a tier proxy's namespace: its forward-auth, the security-headers
+  baseline every route carries, and the baseline with each content policy. /]
+[template private objects(d : resolveddeployment::SharedMiddlewareFile)]
+  [if (d.forwardAuth <> null)]
+    ---
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      [d.sharedMetadata('forward-auth')/]
+    spec:
+      forwardAuth:
+        address: [d.forwardAuth.address/]
+        trustForwardHeader: true
+  [/if]
+  ---
+  apiVersion: traefik.io/v1alpha1
+  kind: Middleware
+  metadata:
+    [d.sharedMetadata('security-headers')/]
+  spec:
+    headers:
+      [d.baseline()/]
+  [for (c : resolveddeployment::ContentPolicyHeaders | d.policies)]
+    ---
+    apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      [d.sharedMetadata('security-headers-' + c.name)/]
+    spec:
+      headers:
+        [d.baseline()/]
+        contentSecurityPolicy: [c.contentSecurityPolicy.scalar()/]
+  [/for]
+[/template]
+
+[template private sharedMetadata(d : resolveddeployment::SharedMiddlewareFile, name : String)]
+  name: [name/]
+  namespace: [d.namespace/]
+  labels:
+    app.kubernetes.io/part-of: [d.application/]
+    app.kubernetes.io/managed-by: deploy-kit
+[/template]
+
+[comment The baseline every route carries: no sniffing, no framing, HTTPS remembered. /]
+[template private baseline(d : resolveddeployment::SharedMiddlewareFile)]
+  contentTypeNosniff: true
+  frameDeny: true
+  referrerPolicy: strict-origin-when-cross-origin
+  permissionsPolicy: camera=(), microphone=(), geolocation=()
+  stsSeconds: 31536000
+  stsIncludeSubdomains: true
+[/template]
+
+[comment A route's redirect, its own Middleware beside its IngressRoute: the scheme and host the
+  request came on, and the path the route names. Not permanent, so a client caches no landing path
+  that may change; the route's own match decides which requests reach it. /]
+[template private redirect(m : resolveddeployment::MiddlewareStep, e : resolveddeployment::ResolvedExposure)]
+  ---
+  apiVersion: traefik.io/v1alpha1
+  kind: Middleware
+  metadata:
+    name: [m.name/]
+    namespace: [m.namespace/]
+    labels:
+      app.kubernetes.io/part-of: [e.application().id/]
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    redirectRegex:
+      regex: ^(https?://['['/]^/]+)(/.*)?$
+      replacement: ${1}[m.redirectTo/]
+      permanent: false
+[/template]
+
 [comment Traefik tries the higher priority first, and precedence 1 is matched first. /]
 [template private route(r : resolveddeployment::ResolvedRoute, e : resolveddeployment::ResolvedExposure)]
   - kind: Rule
@@ -1770,6 +2242,616 @@
         port: [r.process.surfaces->select(s | s.name = r.surface)->first().port/]
 [/template]
 
+[comment ====================================================== sign-in and monitoring /]
+
+[comment The Client an Application declares: cluster-scoped, so it names no namespace, and named by
+  the Application Id, which is its Client id. /]
+[template private objects(d : resolveddeployment::ClientFile)]
+  ---
+  apiVersion: identity.jorisjonkers.dev/v1
+  kind: Client
+  metadata:
+    name: [d.application.id/]
+    labels:
+      app.kubernetes.io/part-of: [d.application.id/]
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    signIn: [d.application.client.signIn/]
+    host: [d.application.client.host/]
+  [if (d.application.client.launchUrl <> null)]
+      launchUrl: [d.application.client.launchUrl/]
+  [/if]
+  [if (d.application.client.iconUrl <> null)]
+      iconUrl: [d.application.client.iconUrl/]
+  [/if]
+  [if (d.application.client.redirectUris->notEmpty())]
+      redirectUris:
+    [for (u : String | d.application.client.redirectUris)]
+          - [u/]
+    [/for]
+  [/if]
+  [if (d.application.client.credential <> null)]
+      credential: [d.application.client.credential/]
+  [/if]
+  [if (d.application.client.secretPath <> null)]
+      secretPath: [d.application.client.secretPath/]
+  [/if]
+    roles:
+  [for (r : String | d.application.client.roles)]
+        - [r/]
+  [/for]
+  [if (d.application.client.label <> null)]
+      label: [d.application.client.label.scalar()/]
+  [/if]
+  [if (d.application.client.description <> null)]
+      description: [d.application.client.description.scalar()/]
+  [/if]
+[/template]
+
+[comment The labels of an object that belongs to an Application and to none of its Processes. /]
+[template private applicationLabels(a : resolveddeployment::ResolvedApplication)]
+  app.kubernetes.io/part-of: [a.id/]
+  app.kubernetes.io/managed-by: deploy-kit
+[/template]
+
+[comment One PrometheusRule per rule file, its groups as written. /]
+[template private objects(d : resolveddeployment::AlertRulesFile)]
+  [for (f : resolveddeployment::ResolvedAlertRules | d.application.alertRules)]
+    ---
+    apiVersion: monitoring.coreos.com/v1
+    kind: PrometheusRule
+    metadata:
+      name: [f.name/]
+      namespace: [d.application.namespace/]
+      labels:
+        [d.application.applicationLabels()/]
+    spec:
+      groups:
+    [for (g : resolveddeployment::AlertRuleGroup | f.groups)]
+          - name: [g.name.scalar()/]
+            rules:
+      [for (r : resolveddeployment::AlertRule | g.rules)]
+                [r.alertRule()/]
+      [/for]
+    [/for]
+  [/for]
+[/template]
+
+[template private alertRule(r : resolveddeployment::AlertRule)]
+  - alert: [r.alert.scalar()/]
+    expr: [r.expr.scalar()/]
+  [if (r.duration <> null)]
+      for: [r.duration.scalar()/]
+  [/if]
+  [if (r.labels->notEmpty())]
+      labels:
+    [for (l : resolveddeployment::KeyValue | r.labels)]
+          [l.key/]: [l.value.scalar()/]
+    [/for]
+  [/if]
+  [if (r.annotations->notEmpty())]
+      annotations:
+    [for (l : resolveddeployment::KeyValue | r.annotations)]
+          [l.key/]: [l.value.scalar()/]
+    [/for]
+  [/if]
+[/template]
+
+[comment The one routing of every alert: by severity to its receiver, and an alert that matches no
+  severity to the receiver that delivers nothing. /]
+[template private objects(d : resolveddeployment::AlertingFile)]
+  ---
+  apiVersion: monitoring.coreos.com/v1alpha1
+  kind: AlertmanagerConfig
+  metadata:
+    name: estate-alerts
+    namespace: [d.application.namespace/]
+    labels:
+      [d.application.applicationLabels()/]
+  spec:
+    route:
+      receiver: "null"
+      groupBy:
+        - alertname
+        - namespace
+      groupWait: 1m
+      groupInterval: 5m
+      repeatInterval: 12h
+      routes:
+  [for (r : resolveddeployment::AlertRoute | d.application.alerting.routes)]
+          - matchers:
+              - name: severity
+                value: [r.severity.scalar()/]
+            receiver: [r.receiver.scalar()/]
+            repeatInterval: [r.repeat/]
+  [/for]
+    receivers:
+      - name: "null"
+  [for (r : resolveddeployment::AlertReceiver | d.application.alerting.receivers)]
+        - name: [r.name.scalar()/]
+          discordConfigs:
+            - apiURL:
+                name: [r.secret/]
+                key: [r.key/]
+              sendResolved: true
+  [/for]
+[/template]
+
+[comment Flux's controllers, selected by the label Flux's install gives them and reached by number. /]
+[template private objects(d : resolveddeployment::FluxMonitorFile)]
+  ---
+  apiVersion: monitoring.coreos.com/v1
+  kind: PodMonitor
+  metadata:
+    name: flux-controllers
+    namespace: [d.application.namespace/]
+    labels:
+  [for (l : resolveddeployment::KeyValue | d.application.fluxScrape.labels)]
+        [l.key/]: [l.value.scalar()/]
+  [/for]
+      [d.application.applicationLabels()/]
+  spec:
+    jobLabel: app
+    selector:
+      matchLabels:
+        app.kubernetes.io/part-of: flux
+    namespaceSelector:
+      matchNames:
+        - [d.application.fluxScrape.namespace/]
+    podMetricsEndpoints:
+      - portNumber: [d.application.fluxScrape.port/]
+        path: [d.application.fluxScrape.path/]
+        interval: [d.application.fluxScrape.interval/]
+        scrapeTimeout: [d.application.fluxScrape.timeout/]
+[/template]
+
+[comment One GrafanaDashboard per dashboard file, for the Grafana in its own Project's namespace. /]
+[template private objects(d : resolveddeployment::DashboardFile)]
+  [for (f : resolveddeployment::ResolvedDashboard | d.application.dashboards.files)]
+    ---
+    apiVersion: grafana.integreatly.org/v1beta1
+    kind: GrafanaDashboard
+    metadata:
+      name: [f.name/]
+      namespace: [d.application.namespace/]
+      labels:
+        [d.application.applicationLabels()/]
+    spec:
+      instanceSelector:
+        matchLabels:
+    [for (l : resolveddeployment::KeyValue | d.application.dashboards.instance)]
+            [l.key/]: [l.value.scalar()/]
+    [/for]
+      allowCrossNamespaceImport: true
+      folder: [d.application.dashboards.folder/]
+      json: [f.content.chomping()/]
+    [f.content.blockOf('    ')/]
+    [if (f.inputs->notEmpty())]
+        datasources:
+      [for (i : String | f.inputs)]
+            - inputName: [i/]
+              datasourceName: [d.application.dashboards.datasource/]
+      [/for]
+    [/if]
+  [/for]
+[/template]
+
+[comment ======================================================== the node agents /]
+
+[comment One part of the Node Agents: their workloads, their ServiceAccounts, their cluster roles and
+  bindings, or the settings file of each that reads one. Each carries the labels a node agent
+  carries, which name no instance and no component. /]
+[template private objects(d : resolveddeployment::NodeAgentFile)]
+  [for (a : resolveddeployment::ResolvedNodeAgent | d.agents)]
+    [if (d.part = 'workload')]
+      [a.agentWorkload()/]
+    [elseif (d.part = 'serviceaccount')]
+      ---
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        [a.agentMetadata()/]
+    [elseif (d.part = 'rbac')]
+      [a.agentRbac()/]
+    [else]
+      ---
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        [a.agentMetadata()/]
+      data:
+        [a.config.file/]: [a.config.content.chomping()/]
+      [a.config.content.blockOf('    ')/]
+    [/if]
+  [/for]
+[/template]
+
+[template private agentMetadata(a : resolveddeployment::ResolvedNodeAgent)]
+  name: [a.name/]
+  namespace: [a.namespace/]
+  labels:
+    [a.agentLabels()/]
+[/template]
+
+[template private agentLabels(a : resolveddeployment::ResolvedNodeAgent)]
+  app.kubernetes.io/managed-by: deploy-kit
+  app.kubernetes.io/name: [a.name/]
+  app.kubernetes.io/part-of: [a.application/]
+[/template]
+
+[comment A DaemonSet agent replaces one node's pod at a time; the controller of a fixed count stops
+  before it starts again. /]
+[template private agentWorkload(a : resolveddeployment::ResolvedNodeAgent)]
+  ---
+  apiVersion: apps/v1
+  kind: [a.controller.toString()/]
+  metadata:
+    [a.agentMetadata()/]
+  spec:
+  [if (a.replicas <> null)]
+      replicas: [a.replicas/]
+      strategy:
+        type: Recreate
+  [/if]
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: [a.name/]
+  [if (a.replicas = null)]
+      updateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+  [/if]
+    template:
+      metadata:
+        labels:
+          [a.agentLabels()/]
+      spec:
+        serviceAccountName: [a.name/]
+        automountServiceAccountToken: [a.identityToken/]
+        priorityClassName: [a.priorityClass/]
+        securityContext:
+          seccompProfile:
+            type: RuntimeDefault
+  [if (a.hostNetwork)]
+          hostNetwork: true
+  [/if]
+  [if (a.hostProcesses)]
+          hostPID: true
+  [/if]
+  [if (a.runtimeClass <> null)]
+          runtimeClassName: [a.runtimeClass/]
+  [/if]
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: kubernetes.io/hostname
+                      operator: In
+                      values:
+  [for (n : String | a.eligibleNodes)]
+                          - [n/]
+  [/for]
+        containers:
+          [a.agentContainer()/]
+  [if (a.mounts->notEmpty() or a.config <> null)]
+          volumes:
+    [for (m : resolveddeployment::HostMount | a.mounts)]
+              - name: [m.name/]
+                hostPath:
+                  path: [m.hostPath/]
+    [/for]
+    [if (a.config <> null)]
+              - name: config
+                configMap:
+                  name: [a.name/]
+    [/if]
+  [/if]
+[/template]
+
+[template private agentContainer(a : resolveddeployment::ResolvedNodeAgent)]
+  - name: [a.name/]
+    image: [a.image/]
+  [if (a.arguments->notEmpty())]
+      args:
+    [for (g : String | a.arguments)]
+          - [g.scalar()/]
+    [/for]
+  [/if]
+  [if (a.environment->notEmpty())]
+      env:
+    [for (e : resolveddeployment::EnvEntry | a.environment)]
+      [if (e.field <> null)]
+            - name: [e.name/]
+              valueFrom:
+                fieldRef:
+                  fieldPath: [e.field/]
+      [else]
+            - name: [e.name/]
+              value: [e.value.scalar()/]
+      [/if]
+    [/for]
+  [/if]
+  [if (a.surfaces->notEmpty())]
+      ports:
+    [for (s : resolveddeployment::ResolvedSurface | a.surfaces)]
+          - name: [s.name/]
+            containerPort: [s.port/]
+    [/for]
+  [/if]
+    resources:
+      requests:
+        memory: [a.memory/]
+        cpu: [a.cpu/]
+      limits:
+        memory: [a.memory/]
+  [if (a.deviceShare <> null)]
+          [a.deviceShare/]: "1"
+  [/if]
+    securityContext:
+  [if (a.privileged)]
+        privileged: true
+  [else]
+    [if (a.nonRoot <> null)]
+          runAsNonRoot: [a.nonRoot/]
+    [/if]
+    [if (a.uid <> null)]
+          runAsUser: [a.uid/]
+    [/if]
+    [if (a.gid <> null)]
+          runAsGroup: [a.gid/]
+    [/if]
+    [if (a.confined)]
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+    [/if]
+        capabilities:
+    [if (a.addedPrivileges->notEmpty())]
+            add:
+      [for (c : String | a.addedPrivileges)]
+                - [c/]
+      [/for]
+    [/if]
+          drop:
+            - ALL
+  [/if]
+  [if (a.mounts->notEmpty() or a.config <> null)]
+      volumeMounts:
+    [for (m : resolveddeployment::HostMount | a.mounts)]
+          - name: [m.name/]
+            mountPath: [m.mountAt/]
+      [if (m.readOnly)]
+              readOnly: true
+      [/if]
+      [if (m.propagated)]
+              mountPropagation: HostToContainer
+      [/if]
+    [/for]
+    [if (a.config <> null)]
+          - name: config
+            mountPath: [a.config.mountAt/]
+            readOnly: true
+    [/if]
+  [/if]
+[/template]
+
+[comment An agent's cluster role and its binding, both named for the agent's Project and the agent. /]
+[template private agentRbac(a : resolveddeployment::ResolvedNodeAgent)]
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: [a.application/]:[a.name/]
+    labels:
+      [a.agentLabels()/]
+  rules:
+  [for (r : resolveddeployment::ResolvedApiRule | a.rules)]
+      [r.rule()/]
+  [/for]
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: [a.application/]:[a.name/]
+    labels:
+      [a.agentLabels()/]
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: [a.application/]:[a.name/]
+  subjects:
+    - kind: ServiceAccount
+      name: [a.name/]
+      namespace: [a.namespace/]
+[/template]
+
+[comment One rule of a role. `core` is the group Kubernetes itself spells as no name at all. /]
+[template private rule(r : resolveddeployment::ResolvedApiRule)]
+  - apiGroups:
+      - [if (r.group = 'core')]""[else][r.group/][/if]
+    resources:
+  [for (o : String | r.objects)]
+        - [o/]
+  [/for]
+    verbs:
+  [for (v : String | r.verbs)]
+        - [v/]
+  [/for]
+[/template]
+
+[comment Each pool the speaker answers for, an address no Service takes unless it names the pool, and
+  its advertisement from the nodes named. /]
+[template private objects(d : resolveddeployment::AddressPoolFile)]
+  [for (p : resolveddeployment::ResolvedAddressPool | d.pools)]
+    ---
+    apiVersion: metallb.io/v1beta1
+    kind: IPAddressPool
+    metadata:
+      name: [p.name/]
+      namespace: [d.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      addresses:
+        - [p.range/]
+      autoAssign: false
+    ---
+    apiVersion: metallb.io/v1beta1
+    kind: L2Advertisement
+    metadata:
+      name: [p.name/]
+      namespace: [d.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      ipAddressPools:
+        - [p.name/]
+      nodeSelectors:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+    [for (n : String | p.nodes)]
+                  - [n/]
+    [/for]
+  [/for]
+[/template]
+
+[comment ========================================================== the sources /]
+
+[comment What Flux pulls a Project's pinned render from, verified as the composition signed it, and
+  each unit it applies from it: pruned, waited on, and healthy once every claim is bound or waits
+  for its first consumer. /]
+[template private objects(d : resolveddeployment::SourceFile)]
+  ---
+  apiVersion: source.toolkit.fluxcd.io/v1
+  kind: OCIRepository
+  metadata:
+    name: [d.source.name/]
+    namespace: flux-system
+    labels:
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    interval: 10m
+    url: [d.source.url/]
+    ref:
+      digest: [d.source.digest/]
+    verify:
+      provider: cosign
+      matchOIDCIdentity:
+        - issuer: [d.source.issuer/]
+          subject: [d.source.subject/]
+  [for (u : resolveddeployment::FluxUnit | d.units)]
+    [u.unit(d.source)/]
+  [/for]
+[/template]
+
+[template private unit(u : resolveddeployment::FluxUnit, s : resolveddeployment::RenderSource)]
+  ---
+  apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    name: [u.name/]
+    namespace: flux-system
+    labels:
+      app.kubernetes.io/managed-by: deploy-kit
+  [if (u.annotations->notEmpty())]
+      annotations:
+    [for (a : resolveddeployment::KeyValue | u.annotations)]
+          [a.key/]: [a.value.scalar()/]
+    [/for]
+  [/if]
+  spec:
+    interval: 10m
+    prune: true
+    wait: true
+    healthCheckExprs:
+      - apiVersion: v1
+        kind: PersistentVolumeClaim
+        current: status.phase == 'Bound' || status.phase == 'Pending' && !(has(metadata.annotations) && 'volume.kubernetes.io/selected-node' in metadata.annotations)
+    sourceRef:
+      kind: OCIRepository
+      name: [s.name/]
+    path: [u.path/]
+  [if (u.dependsOn->notEmpty())]
+      dependsOn:
+    [for (n : String | u.dependsOn)]
+          - name: [n/]
+    [/for]
+  [/if]
+  [if (u.forcesDeployments)]
+      patches:
+        - patch: |
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: any
+              annotations:
+                kustomize.toolkit.fluxcd.io/force: Enabled
+          target:
+            kind: Deployment
+  [/if]
+[/template]
+
+[comment ========================================================== the estate /]
+
+[comment The two priority classes, the datastore's first: neither is the default, and each may evict a
+  lower one. Which of the two a class is fixes its description. /]
+[template private objects(d : resolveddeployment::PriorityClassFile)]
+  [d.data.priorityClass('A datastore: it schedules before what reads it.')/]
+  [d.critical.priorityClass('The foundation and the Applications the platform names: they keep scheduling under pressure.')/]
+[/template]
+
+[template private priorityClass(p : resolveddeployment::ResolvedPriority, description : String)]
+  ---
+  apiVersion: scheduling.k8s.io/v1
+  kind: PriorityClass
+  metadata:
+    name: [p.name/]
+    labels:
+      app.kubernetes.io/managed-by: deploy-kit
+  value: [p.value/]
+  globalDefault: false
+  preemptionPolicy: PreemptLowerPriority
+  description: [description.scalar()/]
+[/template]
+
+[comment A Human Grant: the sign-in provider's group bound to a cluster role, under a name both make. /]
+[template private objects(d : resolveddeployment::HumanGrantFile)]
+  [for (g : resolveddeployment::HumanGrantBinding | d.grants)]
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: human:[g.group/]:[g.clusterRole/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: [g.clusterRole/]
+    subjects:
+      - apiGroup: rbac.authorization.k8s.io
+        kind: Group
+        name: [g.group/]
+  [/for]
+[/template]
+
+[comment One item of a list of words: a scalar, or a block scalar where the word spans lines, its
+  lines one by one, since a template's lines take the column it is called at and an expression's
+  later lines do not reliably. A blank line of such a word is not kept. /]
+[template private listItem(value : String)]
+  [if (value.contains('\n'))]
+    - [value.chomping()/]
+    [for (l : String | value.tokenize('\n'))]
+        [l/]
+    [/for]
+  [else]
+    - [value.scalar()/]
+  [/if]
+[/template]
+
 [comment ============================================================= queries /]
 
 [comment The containers of a Process's pod whose image the lock records a version for, by name. /]
@@ -1777,12 +2859,19 @@
   (if p.imageVersion = null then Sequence{} else Sequence{p.name} endif)
     ->concat(p.sidecars->select(c | c.imageVersion <> null)->collect(c | c.name))
     ->concat(if p.vpn = null or p.vpn.imageVersion = null then Sequence{} else Sequence{'vpn'} endif)
+    ->concat(if p.seeder = null or p.seeder.imageVersion = null then Sequence{} else Sequence{'seed'} endif)
     ->sortedBy(n | n) /]
 
 [query private versionOf(p : resolveddeployment::ResolvedProcess, n : String) : String =
   if n = p.name then p.imageVersion
   else if p.sidecars->exists(c | c.name = n) then p.sidecars->select(c | c.name = n)->first().imageVersion
-  else p.vpn.imageVersion endif endif /]
+  else if n = 'seed' and p.seeder <> null then p.seeder.imageVersion
+  else p.vpn.imageVersion endif endif endif /]
+
+[comment Whether the Process is a member of its Application's release gate, whose pods carry the label
+  the Release Gate's policy admits. /]
+[query private member(p : resolveddeployment::ResolvedProcess) : Boolean =
+  p.application().releaseGate <> null and p.application().releaseGate.members->exists(m | m.process = p) /]
 
 [query private application(p : resolveddeployment::ResolvedProcess) : resolveddeployment::ResolvedApplication =
   p.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]
@@ -1882,7 +2971,17 @@
     .replaceAll('(?m)^(?=.)', indent) /]
 
 [comment A string scalar, double-quoted where a YAML 1.1 reader, which the Kubernetes API is,
-  would read it as null, a boolean, an integer, a float or a timestamp, and written plain otherwise. /]
+  would read it as null, a boolean, an integer, a float or a timestamp, or where a plain scalar
+  cannot hold it, and written plain otherwise. /]
 [query private scalar(value : String) : String =
   if value.matches('|~|null|Null|NULL|y|Y|yes|Yes|YES|n|N|no|No|NO|true|True|TRUE|false|False|FALSE|on|On|ON|off|Off|OFF|[-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?[0-9][0-9_]*|[-+]?0x[0-9a-fA-F_]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+|[-+]?([0-9][0-9_]*)?[.][0-9_]*([eE][-+]?[0-9]+)?|[-+]?[0-9][0-9_]*[eE][-+]?[0-9]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+[.][0-9_]*|[-+]?[.](inf|Inf|INF)|[.](nan|NaN|NAN)|[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}(([Tt]| +)[0-9]{1,2}:[0-9]{2}:[0-9]{2}([.][0-9]*)?( *(Z|[-+][0-9]{1,2}(:[0-9]{2})?))?)?')
+    or value.unplain()
   then '"' + value + '"' else value endif /]
+
+[comment Whether a plain scalar cannot hold the value: it opens on an indicator, holds a mapping's
+  separator or a comment's, ends on a colon, or opens or ends on a space. /]
+[query private unplain(value : String) : Boolean =
+  if value.size() = 0 then false
+  else Sequence{',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>', '"', '%', '@', '`'}->includes(value.substring(1, 1))
+    or value.startsWith('\'') or value.matches('[-?:]( .*)?') or value.matches('.*: .*')
+    or value.matches('.* #.*') or value.endsWith(':') or value.startsWith(' ') or value.endsWith(' ') endif /]

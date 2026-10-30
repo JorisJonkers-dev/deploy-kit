@@ -1,0 +1,8 @@
+projects/_estate/source.yaml pins/rendered/projects/_estate/source.yaml
+projects/data/source.yaml pins/rendered/projects/data/source.yaml
+projects/delivery/source.yaml pins/rendered/projects/delivery/source.yaml
+projects/edge/source.yaml pins/rendered/projects/edge/source.yaml
+projects/node/source.yaml pins/rendered/projects/node/source.yaml
+projects/notes/source.yaml pins/rendered/projects/notes/source.yaml
+projects/observability/source.yaml pins/rendered/projects/observability/source.yaml
+projects/secrets/source.yaml pins/rendered/projects/secrets/source.yaml

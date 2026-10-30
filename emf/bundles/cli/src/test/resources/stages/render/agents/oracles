@@ -1,0 +1,3 @@
+apps/agents/agents-api/rbac.yaml agents/rendered/apps/agents/agents-api/rbac.yaml
+apps/agents/hermes/client.yaml agents/rendered/apps/agents/hermes/client.yaml
+apps/agents/hermes/workload.yaml agents/rendered/apps/agents/hermes/workload.yaml

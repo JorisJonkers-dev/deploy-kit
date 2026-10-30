@@ -314,6 +314,10 @@ final class Comparison {
                     + " (" + written + ")");
             return;
         }
+        if (expected == null) {
+            // Two nulls: a YAML key written with no value on both sides.
+            return;
+        }
         switch (expected) {
             case Map<?, ?> map -> {
                 Map<?, ?> other = (Map<?, ?>) actual;

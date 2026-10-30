@@ -1,0 +1,7 @@
+apps/auth/aliases.yaml auth/rendered/apps/auth/aliases.yaml
+apps/auth/auth/canary.yaml auth/rendered/apps/auth/auth/canary.yaml
+apps/auth/auth/pdb.yaml auth/rendered/apps/auth/auth/pdb.yaml
+apps/auth/auth/route-public.yaml auth/rendered/apps/auth/auth/route-public.yaml
+estate/stable-addresses/kustomization.yaml auth/rendered/estate/stable-addresses/kustomization.yaml
+estate/stable-addresses/namespace.yaml auth/rendered/estate/stable-addresses/namespace.yaml
+estate/stable-addresses/services.yaml auth/rendered/estate/stable-addresses/services.yaml

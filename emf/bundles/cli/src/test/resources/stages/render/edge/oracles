@@ -1,0 +1,5 @@
+apps/edge/traefik-lan/middlewares.yaml edge/rendered/apps/edge/traefik-lan/middlewares.yaml
+apps/edge/traefik-lan/service.yaml edge/rendered/apps/edge/traefik-lan/service.yaml
+apps/edge/traefik-lan/workload.yaml edge/rendered/apps/edge/traefik-lan/workload.yaml
+apps/edge/traefik-public/service.yaml edge/rendered/apps/edge/traefik-public/service.yaml
+apps/edge/traefik-public/workload.yaml edge/rendered/apps/edge/traefik-public/workload.yaml

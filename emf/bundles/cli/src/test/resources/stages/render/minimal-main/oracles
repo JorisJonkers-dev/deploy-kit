@@ -1,0 +1,15 @@
+apps/notes/kustomization.yaml minimal/rendered/apps/notes/kustomization.yaml
+apps/notes/libraries.yaml minimal/rendered/apps/notes/libraries.yaml
+apps/notes/namespace.yaml minimal/rendered/apps/notes/namespace.yaml
+apps/notes/networkpolicy.yaml minimal/rendered/apps/notes/networkpolicy.yaml
+apps/notes/notes/canary.yaml minimal/rendered/apps/notes/notes/canary.yaml
+apps/notes/notes/configmap.yaml minimal/rendered/apps/notes/notes/configmap.yaml
+apps/notes/notes/kustomization.yaml minimal/rendered/apps/notes/notes/kustomization.yaml
+apps/notes/notes/networkpolicy.yaml minimal/rendered/apps/notes/notes/networkpolicy.yaml
+apps/notes/notes/podmonitor.yaml minimal/rendered/apps/notes/notes/podmonitor.yaml
+apps/notes/notes/route-public.yaml minimal/rendered/apps/notes/notes/route-public.yaml
+apps/notes/notes/serviceaccount.yaml minimal/rendered/apps/notes/notes/serviceaccount.yaml
+apps/notes/notes/workload.yaml minimal/rendered/apps/notes/notes/workload.yaml
+apps/notes/rollout-events/alert.yaml minimal/rendered/apps/notes/rollout-events/alert.yaml
+apps/notes/rollout-events/kustomization.yaml minimal/rendered/apps/notes/rollout-events/kustomization.yaml
+apps/notes/rollout-events/provider.yaml minimal/rendered/apps/notes/rollout-events/provider.yaml

@@ -265,7 +265,20 @@ class ResolvedDeploymentTest {
                         "ConnectionFile",
                         "VaultPolicyFile",
                         "VaultRoleFile",
-                        "GeneratedKeysFile");
+                        "GeneratedKeysFile",
+                        "PriorityClassFile",
+                        "HumanGrantFile",
+                        "NodeAgentFile",
+                        "AddressPoolFile",
+                        "ClientFile",
+                        "AlertRulesFile",
+                        "AlertingFile",
+                        "FluxMonitorFile",
+                        "DashboardFile",
+                        "SharedMiddlewareFile",
+                        "StableAddressFile",
+                        "MoveFile",
+                        "SourceFile");
     }
 
     @Test

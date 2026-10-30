@@ -1,0 +1,4 @@
+estate/human-grants/clusterrolebindings.yaml platform/rendered/estate/human-grants/clusterrolebindings.yaml
+estate/human-grants/kustomization.yaml platform/rendered/estate/human-grants/kustomization.yaml
+estate/priority-classes/kustomization.yaml platform/rendered/estate/priority-classes/kustomization.yaml
+estate/priority-classes/priorityclasses.yaml platform/rendered/estate/priority-classes/priorityclasses.yaml

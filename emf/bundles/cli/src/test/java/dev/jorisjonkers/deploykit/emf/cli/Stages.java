@@ -52,9 +52,18 @@ import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
  *   <li>{@code render}: every Resolved Deployment of {@code resolve}, rendered together, to the tree.
  * </ul>
  *
+ * <p>A case of a later stage with no case of the stage before is <em>given</em>: its {@code
+ * expected/} is written by hand rather than by the stage, so the stage after it can be driven by a
+ * model no earlier stage produces yet. A given {@code resolve} case is how a {@code render} case
+ * reads a Resolved Deployment the resolution cannot write yet. A {@code render} case whose {@code
+ * expected/} files are copies of the production implementation's oracles names each in {@link
+ * #ORACLES}, one {@code <expected path> <oracle path>} pair a line, the oracle path below {@code
+ * spec/v1/examples/}, and the copies must equal their oracles byte for byte.
+ *
  * <p>With {@code -Dgolden.update=true} a run rewrites these {@code expected/} trees from what the
- * stages wrote, for review in {@code git diff}. It never writes anywhere else: the oracles under
- * {@code spec/v1/examples/} belong to the production implementation and are never regenerated here.
+ * stages wrote, for review in {@code git diff}, save a given case and a case of copied oracles. It
+ * never writes anywhere else: the oracles under {@code spec/v1/examples/} belong to the production
+ * implementation and are never regenerated here.
  */
 final class Stages {
 
@@ -71,6 +80,9 @@ final class Stages {
 
     /** The file a resolve case names the projects it resolves in, one per line. */
     static final String PROJECTS = "projects";
+
+    /** The file a render case names the oracle each expected file is a copy of in. */
+    static final String ORACLES = "oracles";
 
     static final String INPUT = "input";
     static final String EXPECTED = "expected";
@@ -103,6 +115,39 @@ final class Stages {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    /** Whether case {@code name} of {@code stage} is given: a later stage's case with no case of the stage before. */
+    static boolean given(String stage, String name) {
+        int at = ORDER.indexOf(stage);
+        return at > 0 && !cases(ORDER.get(at - 1)).contains(name);
+    }
+
+    /** The cases of {@code stage} the stage itself writes, every case but a given one. */
+    static List<String> produced(String stage) {
+        return cases(stage).stream().filter(name -> !given(stage, name)).toList();
+    }
+
+    /**
+     * The oracle each expected file of render case {@code name} is a copy of, by its path below
+     * {@code expected/}, the oracle's below {@code spec/v1/examples/}; nothing for a case of this
+     * implementation's own goldens.
+     */
+    static Map<String, String> oracles(String name) throws IOException {
+        Path file = root().resolve("render").resolve(name).resolve(ORACLES);
+        Map<String, String> oracles = new TreeMap<>();
+        if (!Files.isRegularFile(file)) {
+            return oracles;
+        }
+        for (String line : Files.readAllLines(file)) {
+            String[] pair = line.strip().split("\\s+");
+            if (pair.length == 2) {
+                oracles.put(pair[0], pair[1]);
+            } else if (!line.isBlank()) {
+                throw new IllegalArgumentException(file + ": not an <expected> <oracle> pair: " + line);
+            }
+        }
+        return oracles;
     }
 
     static Path expected(String stage, String name) {

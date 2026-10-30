@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="platform-rabbitmq" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
+    <dashboards folder="data" datasource="prometheus">
+      <instance key="dashboards" value="grafana"/>
+      <files name="platform-rabbitmq-rabbitmq" content='{&#10;  "__inputs": [&#10;    {&#10;      "name": "DS_PROMETHEUS",&#10;      "label": "Prometheus",&#10;      "type": "datasource",&#10;      "pluginId": "prometheus"&#10;    }&#10;  ],&#10;  "uid": "rabbitmq",&#10;  "title": "RabbitMQ",&#10;  "tags": ["rabbitmq", "messaging"],&#10;  "editable": false,&#10;  "refresh": "30s",&#10;  "time": { "from": "now-1h", "to": "now" },&#10;  "panels": [&#10;    {&#10;      "id": 1,&#10;      "title": "Queue Messages (Ready)",&#10;      "type": "timeseries",&#10;      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },&#10;      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },&#10;      "targets": [&#10;        { "expr": "rabbitmq_queue_messages_ready", "legendFormat": "{{queue}} ready" }&#10;      ]&#10;    }&#10;  ],&#10;  "schemaVersion": 39&#10;}&#10;'>
+        <inputs>DS_PROMETHEUS</inputs>
+      </files>
+    </dashboards>
+    <processes name="platform-rabbitmq-main" identity="platform-rabbitmq-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="platform-rabbitmq-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <applications id="asset-sync" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="asset-sync" identity="asset-sync" lifecycle="scheduled" image="ghcr.io/jorisjonkers-dev/platform/asset-sync@sha256:5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e" imageVersion="1.0.0" uid="65532" gid="65532" deadline="60s" replicas="1" schedule="*/15 * * * *" startDeadline="300s" serving="asset-sync" servingLabel="app.kubernetes.io/instance" memory="64Mi" cpu="25m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <secrets path="secret/data/data-system/garage/web-key" access="read" delivery="file" destination="asset-sync-platform-garage-web-key" mountAt="/run/secrets/garage/credentials" fileMode="0400">
+        <keys>credentials</keys>
+      </secrets>
+    </processes>
+  </applications>
+  <applications id="platform-postgres" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="postgres" identity="postgres" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="postgres" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+      <move identity="postgres-move" tag="fe331b712e81" image="ghcr.io/jorisjonkers-dev/estate/postgres-move@sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f" imageVersion="1.0.0" uid="999" gid="999" memory="128Mi" cpu="100m" sourceHost="postgres.data-system.svc.cluster.local" targetHost="postgres-fe331b712e81.data-system.svc.cluster.local" port="5432" flips="platform-postgres-postgres" flipNamespace="estate-system" role="data-system-postgres-move" credentialsPath="secret/data/data/postgres/move" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+        <steps name="start" command="start"/>
+        <steps name="sync" command="sync"/>
+        <steps name="lag" command="lag"/>
+        <steps name="fence" command="fence"/>
+        <steps name="final-lag" command="lag"/>
+        <steps name="flip" command="flip"/>
+        <steps name="unfence" command="unfence"/>
+      </move>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-data"/>
+  <deliverables xsi:type="resolveddeployment:MoveFile" path="apps/data/platform-postgres/move.yaml" process="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/asset-sync/workload.yaml" processes="/0/@applications.1/@processes.0" controller="CronJob" strategy="none"/>
+  <deliverables xsi:type="resolveddeployment:DashboardFile" path="apps/data/platform-rabbitmq/dashboards.yaml" adapter="grafana" application="/0/@applications.0"/>
+</resolveddeployment:ResolvedDeployment>

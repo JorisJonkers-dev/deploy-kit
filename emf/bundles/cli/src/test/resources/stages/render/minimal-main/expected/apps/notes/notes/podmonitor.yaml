@@ -1,0 +1,27 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: notes-api
+  namespace: notes-system
+  labels:
+    release: metrics-stack
+    app.kubernetes.io/name: notes-api
+    app.kubernetes.io/instance: notes-api
+    app.kubernetes.io/part-of: notes
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: node
+spec:
+  jobLabel: app.kubernetes.io/instance
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: notes-api
+  namespaceSelector:
+    matchNames:
+      - notes-system
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
