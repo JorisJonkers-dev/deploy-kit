@@ -277,7 +277,8 @@ class ResolvedDeploymentTest {
                         "DashboardFile",
                         "SharedMiddlewareFile",
                         "StableAddressFile",
-                        "MoveFile");
+                        "MoveFile",
+                        "SourceFile");
     }
 
     @Test

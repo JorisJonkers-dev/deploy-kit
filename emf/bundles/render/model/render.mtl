@@ -2718,6 +2718,82 @@
   [/for]
 [/template]
 
+[comment ========================================================== the sources /]
+
+[comment What Flux pulls a Project's pinned render from, verified as the composition signed it, and
+  each unit it applies from it: pruned, waited on, and healthy once every claim is bound or waits
+  for its first consumer. /]
+[template private objects(d : resolveddeployment::SourceFile)]
+  ---
+  apiVersion: source.toolkit.fluxcd.io/v1
+  kind: OCIRepository
+  metadata:
+    name: [d.source.name/]
+    namespace: flux-system
+    labels:
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    interval: 10m
+    url: [d.source.url/]
+    ref:
+      digest: [d.source.digest/]
+    verify:
+      provider: cosign
+      matchOIDCIdentity:
+        - issuer: [d.source.issuer/]
+          subject: [d.source.subject/]
+  [for (u : resolveddeployment::FluxUnit | d.units)]
+    [u.unit(d.source)/]
+  [/for]
+[/template]
+
+[template private unit(u : resolveddeployment::FluxUnit, s : resolveddeployment::FluxSource)]
+  ---
+  apiVersion: kustomize.toolkit.fluxcd.io/v1
+  kind: Kustomization
+  metadata:
+    name: [u.name/]
+    namespace: flux-system
+    labels:
+      app.kubernetes.io/managed-by: deploy-kit
+  [if (u.annotations->notEmpty())]
+      annotations:
+    [for (a : resolveddeployment::KeyValue | u.annotations)]
+          [a.key/]: [a.value.scalar()/]
+    [/for]
+  [/if]
+  spec:
+    interval: 10m
+    prune: true
+    wait: true
+    healthCheckExprs:
+      - apiVersion: v1
+        kind: PersistentVolumeClaim
+        current: status.phase == 'Bound' || status.phase == 'Pending' && !(has(metadata.annotations) && 'volume.kubernetes.io/selected-node' in metadata.annotations)
+    sourceRef:
+      kind: OCIRepository
+      name: [s.name/]
+    path: [u.path/]
+  [if (u.dependsOn->notEmpty())]
+      dependsOn:
+    [for (n : String | u.dependsOn)]
+          - name: [n/]
+    [/for]
+  [/if]
+  [if (u.forcesDeployments)]
+      patches:
+        - patch: |
+            apiVersion: apps/v1
+            kind: Deployment
+            metadata:
+              name: any
+              annotations:
+                kustomize.toolkit.fluxcd.io/force: Enabled
+          target:
+            kind: Deployment
+  [/if]
+[/template]
+
 [comment ========================================================== the estate /]
 
 [comment The two priority classes, the datastore's first: neither is the default, and each may evict a
