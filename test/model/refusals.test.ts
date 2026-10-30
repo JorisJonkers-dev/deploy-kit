@@ -904,6 +904,18 @@ describe("the refusal fixtures", () => {
   });
 
   it("checks no Process of a monitoring role its Project does not declare", () => {
+    const result = checkIntentSet(
+      filesOf("operated-process").map((file) => ({
+        ...file,
+        text: file.text.replace(
+          "  prometheus: refusals/prometheus\n",
+          "  prometheus: refusals/absent\n",
+        ),
+      })),
+    );
+    expect(
+      result.ok ? [] : result.diagnostics.map(({ code }) => code),
+    ).toStrictEqual(["E_OPERATED_PROCESS", "E_UNKNOWN_MONITORING_APPLICATION"]);
     expect(
       codeIn("operated-process", "E_OPERATED_PROCESS", (text) =>
         text.replace(

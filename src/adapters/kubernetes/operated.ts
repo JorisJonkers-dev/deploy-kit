@@ -59,10 +59,12 @@ function notYet(process: ResolvedProcess): void {
 }
 
 /** Every label selector selects every object where it names no label. */
-// Stryker disable next-line ConditionalExpression: no labels and undefined ones render alike.
 const selecting = (
   labels: Readonly<Record<string, string>> | undefined,
-): LabelSelection => (labels === undefined ? {} : { matchLabels: labels });
+): LabelSelection =>
+  // No labels and undefined ones render alike: YAML drops the key.
+  // Stryker disable next-line ConditionalExpression
+  labels === undefined ? {} : { matchLabels: labels };
 
 /** The flags its arguments hold: E_OPERATED_PROCESS refused any other argument. */
 const flagsOf = (process: ResolvedProcess): Flag[] =>
