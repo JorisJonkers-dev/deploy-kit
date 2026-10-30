@@ -2654,9 +2654,10 @@ describe("each container's software version", () => {
   });
 });
 
-// REQ-075 (docs/requirements.md) and deploy-kit#383: a pod off the host
-// network binds any port without a capability, so a Process that listens
-// below 1024 composes under the one posture, adding nothing to it.
+// REQ-075 (docs/requirements.md) and deploy-kit#740: a Process that listens
+// below 1024 composes under the one posture, its container adding back
+// NET_BIND_SERVICE alone, so an image whose binary carries that file
+// capability still executes it.
 describe("a Process that listens below 1024", () => {
   type Container = {
     name: string;
@@ -2698,12 +2699,120 @@ describe("a Process that listens below 1024", () => {
     ]);
   });
 
-  it("drops every capability and adds none, and sets no sysctl", () => {
+  it("drops every capability, adds NET_BIND_SERVICE alone, and sets no sysctl", () => {
     const { securityContext, containers } = pod();
     expect(containers[0]?.securityContext.capabilities).toStrictEqual({
+      add: ["NET_BIND_SERVICE"],
       drop: ["ALL"],
     });
     expect(securityContext).not.toHaveProperty("sysctls");
+  });
+
+  it("adds nothing where every port is 1024 or above", () => {
+    const body = asTree(
+      artifact(
+        render({
+          "minimal/notes.project.yml": (document: string) =>
+            document
+              .replace(/http: 8080 #.*\n/, "http: 1024\n")
+              .replaceAll("port: 8080 }", "port: 1024 }"),
+        }),
+        "notes",
+      ),
+    )["apps/notes/notes/workload.yaml"] as string;
+    expect(body).toContain("containerPort: 1024\n");
+    expect(body).not.toContain("NET_BIND_SERVICE");
+  });
+});
+
+// REQ-152 (docs/requirements.md) and deploy-kit#740: a container that mounts
+// a writable /tmp gets HOME=/tmp, so a tool that writes under its home has
+// somewhere to write on the read-only root; an authored HOME wins.
+describe("a container's home", () => {
+  type Container = {
+    name: string;
+    env?: { name: string; value?: string }[];
+  };
+  const PROJECT = "minimal/notes.project.yml";
+  const withTmp = (paths: string) => (document: string) =>
+    document.replace(
+      "        cutover: continuous\n",
+      `        cutover: continuous\n        writablePaths: [${paths}]\n        sidecars:\n          - { name: tool, image: notes-api, memory: 16Mi, cpu: 5m }\n`,
+    );
+  const containers = (
+    edits: Readonly<Record<string, (text: string) => string>>,
+  ): Container[] => {
+    const body = asTree(artifact(render(edits), "notes"))[
+      "apps/notes/notes/workload.yaml"
+    ] as string;
+    const deployment = parseAllDocuments(body)
+      .map(
+        (document) =>
+          document.toJSON() as {
+            kind: string;
+            spec: { template: { spec: { containers: Container[] } } };
+          },
+      )
+      .find(({ kind }) => kind === "Deployment");
+    return deployment?.spec.template.spec.containers ?? [];
+  };
+  const homes = (edits: Readonly<Record<string, (text: string) => string>>) =>
+    containers(edits).map(({ name, env }) => [
+      name,
+      (env ?? []).filter((entry) => entry.name === "HOME"),
+    ]);
+
+  it("is /tmp on the Process's container and its sidecar, after their variables, where /tmp is writable", () => {
+    const [process, sidecar] = containers({ [PROJECT]: withTmp("/tmp") });
+    expect(process?.env?.at(-1)).toStrictEqual({
+      name: "HOME",
+      value: "/tmp",
+    });
+    expect(sidecar?.env?.at(-1)).toStrictEqual({
+      name: "HOME",
+      value: "/tmp",
+    });
+  });
+
+  it("is /tmp where /tmp is held in memory", () => {
+    expect(
+      homes({ [PROJECT]: withTmp("{path: /tmp, memory: 16Mi}") }),
+    ).toStrictEqual([
+      ["notes-api", [{ name: "HOME", value: "/tmp" }]],
+      ["tool", [{ name: "HOME", value: "/tmp" }]],
+    ]);
+  });
+
+  it("is not set where no writable path is /tmp itself", () => {
+    expect(homes({ [PROJECT]: withTmp("/tmp/cache") })).toStrictEqual([
+      ["notes-api", []],
+      ["tool", []],
+    ]);
+    expect(homes({})).toStrictEqual([["notes-api", []]]);
+  });
+
+  it("is not set where /tmp is mounted read-only", () => {
+    expect(
+      homes({
+        [PROJECT]: (document) =>
+          document
+            .replace("mountAt: /attachments", "mountAt: /tmp")
+            .replace("access: write", "access: read"),
+      }),
+    ).toStrictEqual([["notes-api", []]]);
+  });
+
+  it("is the author's where the Process's variables name one", () => {
+    expect(
+      homes({
+        [PROJECT]: withTmp("/tmp"),
+        "minimal/env/notes-api/base.env": (body) =>
+          `${body}HOME=/var/lib/notes\n`,
+      }),
+    ).toStrictEqual([
+      ["notes-api", [{ name: "HOME", value: "/var/lib/notes" }]],
+      ["tool", [{ name: "HOME", value: "/var/lib/notes" }]],
+    ]);
   });
 });
 
@@ -4437,6 +4546,20 @@ describe("a seeded Asset", () => {
     expect(seed?.volumeMounts?.map(({ name }) => name).slice(1)).toStrictEqual([
       "hermes-data",
     ]);
+  });
+
+  // REQ-152 (docs/requirements.md): the step that mounts a writable /tmp
+  // gets its home there, as every container does.
+  it("gives the step HOME=/tmp where it seeds below a writable /tmp, and no variable otherwise", () => {
+    const below = hermes((text) =>
+      text.replace(
+        SEEDED,
+        "          - { from: config/hermes/config.yaml, seedAt: /tmp/config.yaml }\n",
+      ),
+    ).pod.initContainers?.[0] as { env?: unknown };
+
+    expect(below.env).toStrictEqual([{ name: "HOME", value: "/tmp" }]);
+    expect(hermes().pod.initContainers?.[0]).not.toHaveProperty("env");
   });
 
   it("seeds onto a writable path, mounting it into the step under the name the Process mounts it by", () => {

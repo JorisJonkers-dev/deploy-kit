@@ -1493,7 +1493,7 @@ together:
 |---|---|
 | non-root | `runAsNonRoot: true`, with the numeric UID the images lock resolved ([0020](../../docs/adr/model/0020-hardening-is-one-platform-posture.md)) |
 | immutable root filesystem | `readOnlyRootFilesystem: true` |
-| no capabilities | `capabilities.drop: [ALL]` |
+| no capabilities | `capabilities.drop: [ALL]`, and on a container that listens below 1024, `NET_BIND_SERVICE` added back and nothing else ([A low port earns `NET_BIND_SERVICE`](#a-low-port-earns-net_bind_service)) |
 | no privilege escalation | `allowPrivilegeEscalation: false`, so a setuid binary in the image cannot regain what the other controls take away |
 | default syscall filter | `seccompProfile.type: RuntimeDefault` |
 
@@ -1543,7 +1543,8 @@ Chrome needs far more.
 Nothing is implicit. `/tmp` is not supplied unless it is declared (a mount
 nobody asked for would appear in every static image that never writes) and the
 worked `auth` project claiming that "the render supplies `/tmp` as an `emptyDir`"
-described behaviour no chapter specified.
+described behaviour no chapter specified. A declared `/tmp` is also where every
+container of the pod finds its home ([`HOME` is the writable `/tmp`](#home-is-the-writable-tmp)).
 
 `writablePaths` is Shared Intent, and the level it is written at is still a
 declaration rather than an exemption: `/tmp` on an Application whose Processes all
@@ -1560,8 +1561,9 @@ predicted.
 
 **A Process that cannot meet the class is refused.** There is no exception
 vocabulary, no `allow` list and no `hardening: privileged` shorthand: an image
-that needs root, a writable root filesystem, a dropped capability back or a
-relaxed syscall filter is `E_HARDENING_UNMET` at composition. The fix is the
+that needs root, a writable root filesystem, a dropped capability back other
+than the `NET_BIND_SERVICE` a low port derives, or a relaxed syscall filter is
+`E_HARDENING_UNMET` at composition. The fix is the
 image; until it is replaced, the Process stays on the old path.
 
 An escape hatch in the DSL is the thing this model exists to remove. A per-field
@@ -1573,14 +1575,50 @@ cost where the defect is. The worked estate proves the point: after
 exception at all**, and the two that used to are `auth-ui`, which lists the paths
 nginx writes, and `platform-postgres`, whose UID comes from the lock.
 
-### A low port needs no capability
+### A low port earns `NET_BIND_SERVICE`
 
-A `provides` port below 1024 composes like any other port. A pod off the host
-network binds any port without a capability
-([chapter 14](14-platform-intent.md#substrate-facts)), and no authored Process
-runs on the host network, so the `restricted` class costs a low port nothing:
-the render adds no capability and no sysctl for one. A Process keeps the port
-its image listens on, as `auth-ui` keeps nginx's 80.
+A `provides` port below 1024 composes like any other port, and a Process keeps
+the port its image listens on, as `auth-ui` keeps nginx's 80. Binding it needs
+no capability: a pod off the host network binds any port without one
+([chapter 14](14-platform-intent.md#substrate-facts)). **Executing the image
+can.** An image built to bind a low port as a non-root user commonly ships its
+binary with the file capability `cap_net_bind_service+ep`, and the kernel
+refuses to execute a file whose capabilities fall outside the bounding set:
+with every capability dropped, the container fails at `exec` with
+`operation not permitted` before it binds anything. Stalwart is the live case.
+
+So the capability is **derived from the port, never authored**
+([0141](../../docs/adr/model/0141-a-low-port-adds-net-bind-service-and-home-is-the-writable-tmp.md)).
+A container that listens on a port below 1024, the container port its pod
+spells and not a host port in front of it, renders
+`capabilities: {add: [NET_BIND_SERVICE], drop: [ALL]}`; every other container
+renders `drop: [ALL]` alone. `NET_BIND_SERVICE` is the one capability Pod
+Security's `restricted` profile allows a container to add, so the posture still
+meets the class, and nothing else is ever added back. The render sets no
+sysctl for a low port.
+
+### `HOME` is the writable `/tmp`
+
+An image whose user has no home directory, or whose `USER` names a number with
+no passwd entry, runs with `HOME=/`, and on a read-only root a tool that writes
+under its home (a CLI's config, a cache, a token) fails with
+`Read-only file system`. The home is derived rather than authored
+([0141](../../docs/adr/model/0141-a-low-port-adds-net-bind-service-and-home-is-the-writable-tmp.md)):
+
+- **Every container that mounts a writable volume at `/tmp` itself** gets the
+  variable `HOME=/tmp`, after its own variables: the Process's container, each
+  sidecar (which mounts the Process's writable paths), the step that seeds an
+  Asset below `/tmp`, and the migration runner, whose scratch is `/tmp`. A
+  writable path below `/tmp`, such as `/tmp/cache`, is not `/tmp` and earns
+  nothing.
+- **A container with no writable `/tmp` gets no `HOME`.** A home on the
+  read-only root is no home, and `/tmp` is not supplied unless it is declared
+  ([Writable paths](#writable-paths-are-declared-not-exempted)), so a Process
+  whose image writes under its home declares `writablePaths: [/tmp]`.
+- **An authored `HOME` wins.** Where the Process's variables already name
+  `HOME`, from its env file or a secret, every container keeps that value and
+  the render adds nothing; a variable is the author's to name, and two `HOME`
+  entries would leave the winner to the runtime.
 
 ### The UID is a pinned input, and the volume needs a group
 

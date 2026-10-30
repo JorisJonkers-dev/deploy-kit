@@ -65,6 +65,9 @@ spec:
           ports:
             - name: http
               containerPort: 8080
+          env:
+            - name: HOME
+              value: /tmp
           resources:
             requests:
               memory: 64Mi
