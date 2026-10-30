@@ -390,7 +390,7 @@ nodeAgents:
 
 | agent | runs on | what the catalog fixes |
 |---|---|---|
-| `gpu-device` | every node with an `nvidia` card in the node contract | the device plugin: privileged, the host's PIDs, the kubelet's device-plugin socket and the CDI directory, and time-slicing of **four shares per GPU** |
+| `gpu-device` | every node with an `nvidia` card in the node contract | the device plugin: privileged, the host's PIDs, the kubelet's device-plugin socket and the CDI directory, time-slicing of **four shares per GPU**, and each card handed out by its **index**, the name the hosts' CDI specification gives it ([0144](../../docs/adr/model/0144-the-device-plugin-names-each-card-by-its-index.md)) |
 | `gpu-metrics` | the same nodes | the card counters: `SYS_ADMIN`, the kubelet's pod-resources socket read-only, and **one share** of the card it reads |
 | `node-metrics` | every node | the host's metrics: the host network and PIDs, and `/proc`, `/sys` and `/` read-only, as a non-root user |
 | `l4-speaker` | the nodes of every site with a pool-kind [L4 Address](#l4-addresses) | the announcer: the host network and `NET_RAW` alone, its peers found by **memberlist**; beside it a **controller**, which runs once with no privilege, and per pool an address pool and an advertisement |
