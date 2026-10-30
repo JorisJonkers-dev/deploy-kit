@@ -1,28 +1,3 @@
-AdapterName.vaultPolicy is never used in a render case's input
-AdapterName.vso is never used in a render case's input
-BackupFile is never instantiated in a render case's input
-BackupFile is never instantiated in a render case's input (render.mtl dispatches on it)
-BackupFile.adapter is never set in a render case's input
-BackupFile.path is never set in a render case's input
-BackupFile.processes is never set in a render case's input
-BackupPeer is never instantiated in a render case's input
-BackupPeer.credential is never set in a render case's input
-BackupPeer.host is never set in a render case's input
-BackupPeer.port is never set in a render case's input
-BackupPlan is never instantiated in a render case's input
-BackupPlan.claim is never set in a render case's input
-BackupPlan.credential is never set in a render case's input
-BackupPlan.destinations is never set in a render case's input
-BackupPlan.egress is never set in a render case's input
-BackupPlan.gid is never set in a render case's input
-BackupPlan.identity is never set in a render case's input
-BackupPlan.method is never set in a render case's input
-BackupPlan.methodVersion is never set in a render case's input
-BackupPlan.offCluster is never set in a render case's input
-BackupPlan.peer is never set in a render case's input
-BackupPlan.retain is never set in a render case's input
-BackupPlan.schedule is never set in a render case's input
-BackupPlan.uid is never set in a render case's input
 CatalogAdmin is never instantiated in a render case's input
 CatalogAdmin.password is never set in a render case's input
 CatalogAdmin.path is never set in a render case's input
@@ -39,20 +14,7 @@ CatalogJobFile.job is never set in a render case's input
 CatalogJobFile.name is never set in a render case's input
 CatalogJobFile.part is never set in a render case's input
 CatalogJobFile.path is never set in a render case's input
-ClaimFile is never instantiated in a render case's input
-ClaimFile is never instantiated in a render case's input (render.mtl dispatches on it)
-ClaimFile.adapter is never set in a render case's input
-ClaimFile.path is never set in a render case's input
-ClaimFile.processes is never set in a render case's input
-ConnectionFile is never instantiated in a render case's input
-ConnectionFile is never instantiated in a render case's input (render.mtl dispatches on it)
-ConnectionFile.adapter is never set in a render case's input
-ConnectionFile.address is never set in a render case's input
-ConnectionFile.namespace is never set in a render case's input
-ConnectionFile.path is never set in a render case's input
 ControllerKind.statefulSet is never used in a render case's input
-DurabilityClass.irreplaceable is never used in a render case's input
-DurabilityClass.recoverable is never used in a render case's input
 GateMember.waitsFor is never set in a render case's input
 GateMigration is never instantiated in a render case's input
 GateMigration.identity is never set in a render case's input
@@ -79,26 +41,9 @@ MigrationFile.downTag is never set in a render case's input
 MigrationFile.path is never set in a render case's input
 MigrationFile.role is never set in a render case's input
 MigrationFile.upTag is never set in a render case's input
-MonitorKind.serviceMonitor is never used in a render case's input
 NetworkPolicyFile.migration is never set in a render case's input
-PolicyDocument is never instantiated in a render case's input
-PolicyDocument.file is never set in a render case's input
-PolicyDocument.json is never set in a render case's input
-PolicyJobFile is never instantiated in a render case's input
-PolicyJobFile is never instantiated in a render case's input (render.mtl dispatches on it)
-PolicyJobFile.adapter is never set in a render case's input
-PolicyJobFile.documents is never set in a render case's input
-PolicyJobFile.job is never set in a render case's input
-PolicyJobFile.name is never set in a render case's input
-PolicyJobFile.namespace is never set in a render case's input
-PolicyJobFile.part is never set in a render case's input
-PolicyJobFile.path is never set in a render case's input
-PolicyPath is never instantiated in a render case's input
-PolicyPath.allows is never set in a render case's input
-PolicyPath.path is never set in a render case's input
 ReleaseGate.migration is never set in a render case's input
 ResolvedApplication.migration is never set in a render case's input
-ResolvedApplication.secretStore is never set in a render case's input
 ResolvedCatalog is never instantiated in a render case's input
 ResolvedCatalog.admin is never set in a render case's input
 ResolvedCatalog.connection is never set in a render case's input
@@ -139,7 +84,6 @@ ResolvedGeneratedKey.path is never set in a render case's input
 ResolvedGrant.engine is never set in a render case's input
 ResolvedGrant.generated is never set in a render case's input
 ResolvedGrant.paths is never set in a render case's input
-ResolvedGrant.restartTargets is never set in a render case's input
 ResolvedMigration is never instantiated in a render case's input
 ResolvedMigration.consumes is never set in a render case's input
 ResolvedMigration.cpu is never set in a render case's input
@@ -160,7 +104,6 @@ ResolvedPlacement.boundTo is never set in a render case's input
 ResolvedPlacement.from is never set in a render case's input
 ResolvedProcess.dependencies is never set in a render case's input
 ResolvedProcess.vpn is never set in a render case's input
-ResolvedVolume.backup is never set in a render case's input
 ResolvedVpn is never instantiated in a render case's input
 ResolvedVpn.cpu is never set in a render case's input
 ResolvedVpn.credential is never set in a render case's input
@@ -169,30 +112,4 @@ ResolvedVpn.forwardedPort is never set in a render case's input
 ResolvedVpn.image is never set in a render case's input
 ResolvedVpn.imageVersion is never set in a render case's input
 ResolvedVpn.memory is never set in a render case's input
-SecretFile is never instantiated in a render case's input
-SecretFile is never instantiated in a render case's input (render.mtl dispatches on it)
-SecretFile.adapter is never set in a render case's input
-SecretFile.application is never set in a render case's input
-SecretFile.holders is never set in a render case's input
-SecretFile.path is never set in a render case's input
-SecretHolder is never instantiated in a render case's input
-SecretHolder.component is never set in a render case's input
-SecretHolder.grants is never set in a render case's input
-SecretHolder.identity is never set in a render case's input
-TcpTarget is never instantiated in a render case's input
-TcpTarget.tcp is never set in a render case's input
-VaultPolicyFile is never instantiated in a render case's input
-VaultPolicyFile is never instantiated in a render case's input (render.mtl dispatches on it)
-VaultPolicyFile.adapter is never set in a render case's input
-VaultPolicyFile.grants is never set in a render case's input
-VaultPolicyFile.identity is never set in a render case's input
-VaultPolicyFile.namespace is never set in a render case's input
-VaultPolicyFile.path is never set in a render case's input
-VaultPolicyFile.paths is never set in a render case's input
-VaultRoleFile is never instantiated in a render case's input
-VaultRoleFile is never instantiated in a render case's input (render.mtl dispatches on it)
-VaultRoleFile.adapter is never set in a render case's input
-VaultRoleFile.identity is never set in a render case's input
-VaultRoleFile.namespace is never set in a render case's input
-VaultRoleFile.path is never set in a render case's input
 WorkloadFile.disruptionBudget is never set in a render case's input

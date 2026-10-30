@@ -152,6 +152,8 @@ BackupPlan.identity is never set by a resolve case
 BackupPlan.method is never set by a resolve case
 BackupPlan.methodVersion is never set by a resolve case
 BackupPlan.offCluster is never set by a resolve case
+BackupPlan.offClusterPath is never set by a resolve case
+BackupPlan.offClusterRecipient is never set by a resolve case
 BackupPlan.peer is never set by a resolve case
 BackupPlan.retain is never set by a resolve case
 BackupPlan.schedule is never set by a resolve case

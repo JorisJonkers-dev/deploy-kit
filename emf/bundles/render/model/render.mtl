@@ -1508,6 +1508,14 @@
                     - name: BACKUP_OFF_CLUSTER
                       value: [b.offCluster.scalar()/]
   [/if]
+  [if (b.offClusterPath <> null)]
+                    - name: BACKUP_OFF_CLUSTER_PATH
+                      value: [b.offClusterPath.scalar()/]
+  [/if]
+  [if (b.offClusterRecipient <> null)]
+                    - name: BACKUP_OFF_CLUSTER_RECIPIENT
+                      value: [b.offClusterRecipient.scalar()/]
+  [/if]
   [if (b.peer <> null)]
                     - name: BACKUP_HOST
                       value: [b.peer.host/]
