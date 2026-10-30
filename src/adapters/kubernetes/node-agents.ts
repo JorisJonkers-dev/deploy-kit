@@ -70,6 +70,8 @@ const CATALOG: Readonly<Record<NodeAgent, Privileges>> = {
     hostPID: true,
     env: [
       { name: "CONFIG_FILE", value: "/config/config.yaml" },
+      // The hosts' CDI specification names each card by its index.
+      { name: "DEVICE_ID_STRATEGY", value: "index" },
       { name: "FAIL_ON_INIT_ERROR", value: "true" },
       { name: "NVIDIA_VISIBLE_DEVICES", value: "all" },
       { name: "PASS_DEVICE_SPECS", value: "true" },
