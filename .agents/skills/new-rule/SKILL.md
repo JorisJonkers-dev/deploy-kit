@@ -16,12 +16,14 @@ separately from what that command checks.
 
 1. **Read [`docs/architecture-rules.md`](../../../docs/architecture-rules.md)
    first**, in full: the id scheme (`RULE-NNN`, a flat estate-wide sequence,
-   family as a column never a prefix), the Families table, and the
-   "Considered and rejected" table. A rule resembling one already rejected
-   there starts from that argument, not from scratch.
-2. **Take the next `RULE-NNN`.** Grep the document's own rows; do not reuse
-   an id from the behaviour ledger (`docs/requirements/`), a different,
-   non-overlapping sequence.
+   family as a column never a prefix), the Families table, which links each
+   family's file under `docs/architecture-rules/`, and the "Considered and
+   rejected" table. A rule resembling one already rejected there starts from
+   that argument, not from scratch.
+2. **Take the next `RULE-NNN`.** One above the highest id across every file
+   under `docs/architecture-rules/`, skipping any an open pull request already
+   takes; do not reuse an id from the behaviour ledger (`docs/requirements/`),
+   a different, non-overlapping sequence.
 3. **Pick the enforcer kind.** `depcruise:` a named rule in
    `.dependency-cruiser.cjs`; `eslint:` a rule id `eslint.config.js`
    configures; `npm:` a script `package.json` defines; `file:` a file that
@@ -31,9 +33,11 @@ separately from what that command checks.
    violates the rule, asserting on a literal from the failure the enforcer
    emits (the witness). Confirm it fails before the enforcement exists.
 5. **Add the enforcement**, and confirm the fixture goes green.
-6. **Add the ledger row**, with the fixture link and the witness in
-   backticks, in family order. Update the document's stated row count (and
-   pending count, if this rule starts pending).
+6. **Add the ledger row** to its family's file
+   (`docs/architecture-rules/<family>.md`), in id order, with the fixture
+   link (its text the root-relative `test/x.test.ts`, its target
+   `../../test/x.test.ts`) and the witness in backticks. Never on the front
+   page; there is no count to update.
 7. **If the rule cannot be enforced yet**, add it as
    `pending (#NNN): reason` instead, naming no fixture, and skip steps 4 to
    5; a pending row still needs the ticket that will bring it.

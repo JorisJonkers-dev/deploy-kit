@@ -79,7 +79,7 @@ table does not name, so a new gate cannot go undocumented.
 | `lint:manifests` | every rendered example object against pinned Kubernetes and CRD schemas, and every pod template against Pod Security's `restricted` profile |
 | `lint:boundaries` | the compiler's layer boundaries and module reachability on the dependency graph |
 | `lint:requirements` | the behaviour ledger: the area files under [`docs/requirements/`](docs/requirements/), indexed by [`docs/requirements.md`](docs/requirements.md) |
-| `lint:rules` | the rule ledger, [`docs/architecture-rules.md`](docs/architecture-rules.md) |
+| `lint:rules` | the rule ledger: the family files under [`docs/architecture-rules/`](docs/architecture-rules/), indexed by [`docs/architecture-rules.md`](docs/architecture-rules.md) |
 | `lint:codes` | every specification `E_` code, exercised or pending |
 | `lint:docs` | README.md and CONTRIBUTING.md, held to the scripts, paths, coverage numbers and Node version they name |
 | `lint:agents` | this table, held to `package.json`'s real script list |
@@ -237,7 +237,7 @@ both. See [`docs/agents/domain.md`](docs/agents/domain.md).
   maintainer's approval, then open. Conventional-commit title, no agent
   attribution anywhere in the title, body or commits
   ([REQ-012](docs/requirements.md)).
-- **Checking a rule's id.** Grep `docs/architecture-rules.md` for a
+- **Checking a rule's id.** Grep `docs/architecture-rules/` for a
   `RULE-NNN`, or use the `gate-triage` skill.
 - **Adding a gate.** Its npm script and its CI job land in the same pull
   request ([0064](docs/adr/architecture/0064-a-gate-is-a-script-or-a-named-job.md));

@@ -1,6 +1,7 @@
 # Behaviour ledger
 
-This is not [`docs/architecture-rules.md`](architecture-rules.md). That ledger
+This is not [the rule ledger](architecture-rules.md), whose rows live one file
+per family under [`docs/architecture-rules/`](architecture-rules/). That ledger
 lists the rules a tool enforces: a dependency-cruiser check, an ESLint rule, a
 gate script, each keyed to its enforcer and to the fixture that proves it
 fires. This one lists the behaviours a person depends on: a sentence a
