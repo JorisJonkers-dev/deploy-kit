@@ -62,9 +62,8 @@ final class L4Checks {
                             Pointer.of(exposure),
                             named.getValue() + "/" + a,
                             project.getProject(),
-                            exposure.getProcess() == null
-                                    ? null
-                                    : exposure.getProcess().getName(),
+                            // Every name links before this is asked: an unlinked one refused the document.
+                            exposure.getProcess().getName(),
                             exposure.getAddress(),
                             exposure.getProtocol().getLiteral(),
                             exposure.getPort()));
@@ -74,30 +73,31 @@ final class L4Checks {
         for (int t = 0; t < platform.getTiers().size(); t++) {
             Tier tier = platform.getTiers().get(t);
             Application proxy = tier.getTraefik();
-            if (proxy == null || proxy.eIsProxy() || !(proxy.eContainer() instanceof Project project)) {
+            // A tier with no address derives nothing, and a proxy no project file declares is
+            // E_UNKNOWN_TIER_PROXY's.
+            if (tier.getAddress() == null || proxy.eIsProxy()) {
                 continue;
             }
             Optional<Process> answers = proxyProcessOf(proxy, tier.getListener());
-            if (tier.getAddress() != null && answers.isEmpty()) {
+            if (answers.isEmpty()) {
                 refusals.add(new Diagnostic(
                         TIER_SURFACE_MISSING,
                         document,
                         "/tiers/" + t,
                         "no Process of " + proxy.getId() + " provides every surface the " + tier.getName()
                                 + " tier's listener reaches"));
+                continue;
             }
-            if (tier.getAddress() != null && answers.isPresent()) {
-                for (int port : LISTENER_PORTS.get(tier.getListener()).keySet()) {
-                    entries.add(new Entry(
-                            document,
-                            "/tiers/" + t + "/address",
-                            document + "/" + t,
-                            project.getProject(),
-                            answers.get().getName(),
-                            tier.getAddress(),
-                            "tcp",
-                            port));
-                }
+            for (int port : LISTENER_PORTS.get(tier.getListener()).keySet()) {
+                entries.add(new Entry(
+                        document,
+                        "/tiers/" + t + "/address",
+                        document + "/" + t,
+                        ((Project) proxy.eContainer()).getProject(),
+                        answers.get().getName(),
+                        tier.getAddress(),
+                        "tcp",
+                        port));
             }
         }
         refusals.addAll(exhausted(platform, document, entries));

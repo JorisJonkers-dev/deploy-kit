@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -121,6 +122,9 @@ final class ShippedFiles {
      * to tell a top-level key from a nested one and a document from text that is not JSON.
      */
     static final class TopLevel {
+        /** A number, or one of the three words JSON spells a value with. */
+        private static final Pattern LITERAL = Pattern.compile("true|false|null|-?\\d+(\\.\\d+)?([eE][-+]?\\d+)?");
+
         private final String text;
         private int at;
 
@@ -217,14 +221,11 @@ final class ShippedFiles {
             } else if (c == '"') {
                 string();
             } else {
-                int start = at;
-                while (at < text.length() && "-+.eE0123456789truefalsn".indexOf(text.charAt(at)) >= 0) {
-                    at++;
-                }
-                String literal = text.substring(start, at);
-                if (literal.isEmpty() || !literal.matches("true|false|null|-?\\d+(\\.\\d+)?([eE][-+]?\\d+)?")) {
+                Matcher literal = LITERAL.matcher(text).region(at, text.length());
+                if (!literal.lookingAt()) {
                     throw new IllegalStateException("not a value");
                 }
+                at = literal.end();
             }
         }
 
