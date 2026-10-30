@@ -101,7 +101,7 @@
       <writablePaths path="/tmp" size="64Mi"/>
     </processes>
   </applications>
-  <applications id="release-gate" revision="sha256:4a87e539c1bfa7f8679fe75b3c22daf90227e1ac32740b8549792392d6d6a680" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
+  <applications id="release-gate" revision="sha256:b83f4ff9eb091ced3dbe7c4a9d471a554af36182b4868b0e91ffe9f66363c166" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
     <scrape process="/0/@applications.1/@processes.0" surface="http" path="/metrics" interval="30s" timeout="10s">
       <labels key="release" value="metrics-stack"/>
     </scrape>

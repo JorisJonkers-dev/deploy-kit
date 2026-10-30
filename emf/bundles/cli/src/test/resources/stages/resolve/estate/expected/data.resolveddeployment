@@ -68,7 +68,7 @@
       <environment name="POSTGRES_USER" value="postgres"/>
     </processes>
   </applications>
-  <applications id="platform-rabbitmq" revision="sha256:62a4ef2c27566c10a656aedad275b39300711e2bff5cc60139ed2a05158e4220" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+  <applications id="platform-rabbitmq" revision="sha256:844ccba33700d44cd5975bbaa062322cded54fb62093be26d67ea572bef4ef4f" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
     <exposure name="management" host="rabbitmq.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
       <dns target="ingress.jorisjonkers.dev" proxied="true"/>
       <routes path="/" audience="authenticated" precedence="1" process="/0/@applications.1/@processes.0" surface="management">

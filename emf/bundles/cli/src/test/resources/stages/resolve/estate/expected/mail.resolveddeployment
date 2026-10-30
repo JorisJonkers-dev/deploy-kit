@@ -20,7 +20,7 @@
     <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:b623d2ffe37d94ed3dfd601c8ef7aa011ef349912b4428d1071d72099e4c54a8"/>
   </provenance>
-  <applications id="stalwart" revision="sha256:1363ff63c4e1b84d28701adeaba5ff11c64b455e2e70428ec0bfc81912b1c449" project="mail" namespace="mail-system" reconcileUnit="/0/@reconcileUnits.0">
+  <applications id="stalwart" revision="sha256:0cabf7c55e421857050daad5f4097386c910d3fb7203e22196b39b9372efc6ab" project="mail" namespace="mail-system" reconcileUnit="/0/@reconcileUnits.0">
     <exposure name="admin" host="mail.jorisjonkers.dev" tier="public-frankfurt" listener="tls" certificates="acme" proxyApplication="traefik-public" proxyNamespace="edge-system" ingressClass="traefik-public">
       <dns target="ingress.jorisjonkers.dev" proxied="true"/>
       <routes path="/" match="exact" audience="authenticated" precedence="1" process="/0/@applications.0/@processes.0" surface="http">
