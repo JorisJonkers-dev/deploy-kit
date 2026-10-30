@@ -428,6 +428,59 @@ and moves the files under it once every one is written, and fails the run with
 Acceleo's own diagnostic when a template does not parse or does not evaluate,
 leaving the root as it was, so a half-written tree is never read as a whole one.
 
+## Stage tests
+
+Each stage also runs on its own, in-process, file in and file out, so a wrong
+label costs one stage and names its path rather than a full build and a byte
+diff of a whole file. The cases sit under
+`bundles/cli/src/test/resources/stages/<stage>/<case>/`, in `cli` because it
+is the one bundle that reaches every stage, and `StageTest` reads them from the
+working copy. Only `parse` holds an `input/`, the authored documents of a
+union; `lower`, `resolve` and `render` each read the `expected/` of the stage
+before, the same files, so one golden serves in two roles and two stages cannot
+drift apart. `parse` writes the authored extent with its env files,
+`intent.xmi`, the pinned extent, `pinned.xmi`, and each document's intent;
+`lower` writes `effective.xmi` and each project's Effective Intent; `resolve`
+writes `<project>.resolveddeployment` and its edges for each project its
+`projects` file names; `render` writes the tree. The goldens are this
+implementation's own: `minimal` and `data` read the documents at the tag
+`mde-task-3`, and their rendered trees equal that tag's committed trees.
+
+`Comparison` compares by content first and bytes last: JSON as a Jackson tree,
+YAML as every document of the stream through SnakeYAML's YAML 1.1 reader on both
+sides, and XMI loaded into EMF and walked feature by feature, with
+`EcoreUtil.EqualityHelper` deciding. It reports every difference as a path, a
+list of named items by name, and a file whose content matches but whose bytes
+do not as one "formatting only" difference at the first line that parts.
+Jackson and SnakeYAML reach the bundles in test scope only, beside JUnit and
+AssertJ.
+
+Two more suites ride on the same cases. `FieldCoverageTest` lists, per stage,
+every feature of every concrete class a stage's documents can hold that no case
+sets, every enum literal none uses, the same of what `lower` and `resolve`
+write, every intent schema path no `parse` input carries, and every type
+`render.mtl` dispatches on that no `render` input instantiates; the stage's
+`gaps.txt` must equal that list, so a new gap fails and a covered one must be
+removed. `OracleDistanceTest` compares this implementation with every oracle
+under `spec/v1/examples/` through the same comparator: the cases in `PASSING`
+must match, a case that matches must be listed, and every other case prints how
+many differences it is from passing.
+
+The loop, from `emf/`, after one full build:
+
+```bash
+./mvnw verify -Dtest=StageTest -Dsurefire.failIfNoSpecifiedTests=false \
+  -Djacoco.skip=true -Dspotless.check.skip=true -DskipPitest=true
+```
+
+That runs the reactor and the stage cases alone, about 25 seconds warm against
+35 for `OutputsTest` and `ParityTest`; one case takes well under two seconds of
+it. Adding `-Dgolden.update=true` rewrites every `expected/` from what the
+stages wrote, in stage order, and removes the covered entries of each
+`gaps.txt`; review it in `git diff`. It never writes under `spec/v1/examples/`.
+Run `verify`, not `test`: the constraints load from the packaged metamodel
+bundle, and add `clean` when a test compile reads a stale class.
+
 ## Parity
 
 `tests/parity` holds this repository's own evidence: the suites that assert each stage
