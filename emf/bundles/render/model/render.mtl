@@ -316,7 +316,13 @@
   apiVersion: monitoring.coreos.com/v1
   kind: [d.kind.toString()/]
   metadata:
-    [d.process.metadata()/]
+    name: [d.process.name/]
+    namespace: [d.process.application().namespace/]
+    labels:
+  [for (l : resolveddeployment::KeyValue | d.process.application().scrape.labels)]
+        [l.key/]: [l.value.scalar()/]
+  [/for]
+      [d.process.labels()/]
   spec:
     jobLabel: app.kubernetes.io/instance
     selector:
@@ -364,6 +370,7 @@
           [p.webhook('may-start', 'confirm-rollout')/]
           [p.webhook('checks', 'rollout')/]
           [p.webhook('may-promote', 'confirm-promotion')/]
+          [p.webhook('rollback', 'rollback')/]
     [if (p.replicas > 1)]
       ---
       apiVersion: autoscaling/v2
@@ -561,6 +568,9 @@
   [for (c : String | p.consumes)]
             [c.consumerLabel()/]
   [/for]
+  [if (p.member())]
+            gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+  [/if]
   [if (p.versioned()->notEmpty())]
           annotations:
     [for (n : String | p.versioned())]
@@ -1072,6 +1082,21 @@
     data:
       releaseGate.json: |
         [d.releaseGate/]
+  [/if]
+  [if (d.externalChecks <> null)]
+    ---
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: [d.application.id/]-external-checks
+      namespace: [d.application.namespace/]
+      labels:
+        app.kubernetes.io/part-of: [d.application.id/]
+        app.kubernetes.io/managed-by: deploy-kit
+        estate.jorisjonkers.dev/external-checks: "true"
+    data:
+      [d.application.id/]-external-checks.yaml: |
+        [d.externalChecks/]
   [/if]
   [for (p : resolveddeployment::ResolvedProcess | d.processes)]
     [for (a : resolveddeployment::ResolvedAsset | p.assets)]
@@ -1736,6 +1761,12 @@
     labels:
       app.kubernetes.io/part-of: [d.exposure.application().id/]
       app.kubernetes.io/managed-by: deploy-kit
+    annotations:
+      kubernetes.io/ingress.class: [d.exposure.ingressClass/]
+  [if (d.exposure.dns <> null)]
+        external-dns.alpha.kubernetes.io/target: [d.exposure.dns.target/]
+        external-dns.alpha.kubernetes.io/cloudflare-proxied: "[d.exposure.dns.proxied/]"
+  [/if]
   spec:
     entryPoints:
       - [d.entryPoint/]
@@ -1746,6 +1777,8 @@
   [if (d.certificateResolver <> null)]
       tls:
         certResolver: [d.certificateResolver/]
+  [elseif (d.terminatesTls)]
+      tls: {}
   [/if]
   [for (r : resolveddeployment::ResolvedRoute | d.exposure.routes)]
     [for (m : resolveddeployment::MiddlewareStep | r.middleware->select(s | s.kind.toString() = 'rate-limit'))]
@@ -2327,6 +2360,11 @@
   if n = p.name then p.imageVersion
   else if p.sidecars->exists(c | c.name = n) then p.sidecars->select(c | c.name = n)->first().imageVersion
   else p.vpn.imageVersion endif endif /]
+
+[comment Whether the Process is a member of its Application's release gate, whose pods carry the label
+  the Release Gate's policy admits. /]
+[query private member(p : resolveddeployment::ResolvedProcess) : Boolean =
+  p.application().releaseGate <> null and p.application().releaseGate.members->exists(m | m.process = p) /]
 
 [query private application(p : resolveddeployment::ResolvedProcess) : resolveddeployment::ResolvedApplication =
   p.eContainer().oclAsType(resolveddeployment::ResolvedApplication) /]

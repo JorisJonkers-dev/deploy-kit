@@ -1,0 +1,12 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: notification.toolkit.fluxcd.io/v1beta3
+kind: Provider
+metadata:
+  name: reporter-notes
+  namespace: flux-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  type: generic
+  address: http://reporter.delivery-system.svc.cluster.local:8080/flux

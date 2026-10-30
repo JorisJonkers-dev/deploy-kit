@@ -166,6 +166,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The labels the metrics stack selects a monitor by, which the render's own never give way to. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
   </eClassifiers>
 
   <!-- The migration plan (spec/v1/20-resolved-deployment.md#the-migration): the runner image
@@ -561,7 +563,16 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="certificates" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="proxyApplication" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="proxyNamespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The class the tier's proxy admits a route by, and the record the DNS controller writes for
+         the host: the tier's target, proxied or not, where the tier names a DNS provider. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="ingressClass" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="dns" eType="#//ExposureDns" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="routes" lowerBound="1" upperBound="-1" eType="#//ResolvedRoute" containment="true"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ExposureDns">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="target" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="proxied" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
   </eClassifiers>
 
   <!--
@@ -819,6 +830,9 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="exposure" lowerBound="1" eType="#//ResolvedExposure"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="entryPoint" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="certificateResolver" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Whether the route set terminates TLS: on a tls tier that issues no certificate, with the
+         one its proxy already holds, so it names no resolver. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="terminatesTls" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
   </eClassifiers>
 
   <!-- Where metrics are collected, and how often. -->
@@ -879,6 +893,9 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" upperBound="-1" eType="#//ResolvedProcess"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="releaseGate" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The external checks of the Application's routes, one per route the internet reaches, as
+         one line of canonical JSON for the checker to gather (docs/adr/model/0117). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="externalChecks" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- One scheduled backup per backed-up volume of the Processes, from the plan

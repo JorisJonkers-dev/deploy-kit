@@ -92,6 +92,7 @@ ClientFile.path is never set by a resolve case
 ClusterState.backups is never set in a resolve case's input
 ClusterState.bindings is never set in a resolve case's input
 ClusterState.placements is never set in a resolve case's input
+ConfigMapFile.externalChecks is never set by a resolve case
 ContentPolicy.admin is never used in a resolve case's input
 ContentPolicy.workflow is never used in a resolve case's input
 ControllerKind.cronJob is never used by a resolve case
@@ -134,6 +135,9 @@ Engine.valkey is never used in a resolve case's input
 EnginePolicies.valkey is never set in a resolve case's input
 EnvEntry.field is never set by a resolve case
 EnvFile.cluster is never set in a resolve case's input
+ExposureDns is never instantiated by a resolve case
+ExposureDns.proxied is never set by a resolve case
+ExposureDns.target is never set by a resolve case
 FluxMonitorFile is never instantiated by a resolve case
 FluxMonitorFile.adapter is never set by a resolve case
 FluxMonitorFile.application is never set by a resolve case
@@ -335,6 +339,7 @@ ResolvedEdge.application is never set by a resolve case
 ResolvedEdge.peers is never set by a resolve case
 ResolvedEdge.surface is never set by a resolve case
 ResolvedEdge.target is never set by a resolve case
+ResolvedExposure.dns is never set by a resolve case
 ResolvedFluxScrape is never instantiated by a resolve case
 ResolvedFluxScrape.interval is never set by a resolve case
 ResolvedFluxScrape.labels is never set by a resolve case
@@ -408,6 +413,7 @@ ResolvedProcess.consumes is never set by a resolve case
 ResolvedProcess.dependencies is never set by a resolve case
 ResolvedProcess.internetEgress is never set by a resolve case
 ResolvedProcess.vpn is never set by a resolve case
+ResolvedScrape.labels is never set by a resolve case
 ResolvedVpn is never instantiated by a resolve case
 ResolvedVpn.cpu is never set by a resolve case
 ResolvedVpn.credential is never set by a resolve case
