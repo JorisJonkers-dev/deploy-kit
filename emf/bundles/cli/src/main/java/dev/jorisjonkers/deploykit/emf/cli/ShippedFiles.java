@@ -143,7 +143,7 @@ final class ShippedFiles {
                 Optional<String> uid = json.object(true);
                 json.space();
                 return json.at == json.text.length() ? uid.filter(value -> !value.isEmpty()) : Optional.empty();
-            } catch (IllegalStateException | IndexOutOfBoundsException e) {
+            } catch (IllegalStateException | IndexOutOfBoundsException | NumberFormatException e) {
                 return Optional.empty();
             }
         }

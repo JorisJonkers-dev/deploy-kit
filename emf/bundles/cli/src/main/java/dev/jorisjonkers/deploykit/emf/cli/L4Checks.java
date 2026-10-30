@@ -16,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 
 /**
@@ -125,8 +126,11 @@ final class L4Checks {
                         processes.add(entry.project() + "/" + entry.process());
                     }
                 }
-                String range = pool.getRange();
-                long held = 1L << (32 - Integer.parseInt(range.substring(range.indexOf('/') + 1)));
+                OptionalLong capacity = held(pool.getRange());
+                if (capacity.isEmpty()) {
+                    continue;
+                }
+                long held = capacity.getAsLong();
                 if (processes.size() > held) {
                     refusals.add(new Diagnostic(
                             L4_ADDRESS_EXHAUSTED,
@@ -138,6 +142,15 @@ final class L4Checks {
             }
         }
         return refusals;
+    }
+
+    /** How many addresses {@code range} holds, by its prefix length; none known when it names none. */
+    private static OptionalLong held(String range) {
+        try {
+            return OptionalLong.of(1L << (32 - Integer.parseInt(range.substring(range.indexOf('/') + 1))));
+        } catch (NumberFormatException e) {
+            return OptionalLong.empty();
+        }
     }
 
     /** Every exposure on a node's own address whose node, protocol and port another owner dials too. */

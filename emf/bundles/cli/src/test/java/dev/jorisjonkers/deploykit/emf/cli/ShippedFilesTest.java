@@ -9,7 +9,6 @@ import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Dashboard;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentFactory;
-import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.TelemetryPolicy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -150,12 +149,11 @@ class ShippedFilesTest {
                         "a.project.yml",
                         "/applications/0/dashboards/0/from",
                         "the platform names no Grafana for a dashboard to ship to"));
-        TelemetryPolicy telemetry = MODEL.createTelemetryPolicy();
-        platform.setTelemetry(telemetry);
+        platform.setTelemetry(MODEL.createTelemetryPolicy());
         assertThat(ShippedFiles.acrossTheEstate(placed, Optional.of(platform)))
                 .extracting(Diagnostic::code)
                 .containsExactly(ShippedFiles.NO_DASHBOARD_POLICY);
-        telemetry.setDashboards(MODEL.createDashboardPolicy());
+        platform.getTelemetry().setDashboards(MODEL.createDashboardPolicy());
         assertThat(ShippedFiles.acrossTheEstate(placed, Optional.of(platform))).isEmpty();
     }
 
@@ -193,6 +191,7 @@ class ShippedFilesTest {
                 "{\"uid\" \"board\"}",
                 "{\"a\": [1 2], \"uid\": \"board\"}",
                 "{\"a\": tru, \"uid\": \"board\"}",
+                "{\"uid\": \"\\u12G4\"}",
                 "{\"a\": truex, \"uid\": \"board\"}",
                 "{\"a\": , \"uid\": \"board\"}",
                 "{uid: \"board\"}",

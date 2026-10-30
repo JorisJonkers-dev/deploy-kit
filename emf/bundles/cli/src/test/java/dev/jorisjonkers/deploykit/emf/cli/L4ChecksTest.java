@@ -190,6 +190,9 @@ class L4ChecksTest {
 
         assertThat(L4Checks.check(platform("192.168.0.97/31"), named(data, mail)))
                 .isEmpty();
+        assertThat(L4Checks.check(platform("192.168.0.97"), named(data, mail)))
+                .as("a range naming no prefix length holds no count to exceed")
+                .isEmpty();
         assertThat(L4Checks.check(platform("192.168.0.97/32"), named(data, mail)))
                 .extracting(Diagnostic::code, Diagnostic::document, Diagnostic::path, Diagnostic::message)
                 .containsExactly(tuple(

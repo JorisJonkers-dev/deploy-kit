@@ -155,7 +155,7 @@ final class FieldCoverage {
         List<EObject> roots = new ArrayList<>();
         for (String name : cases) {
             var resources = Stages.resources();
-            for (int i = 0; i < stagesAndFiles.length; i += 2) {
+            for (int i = 0; i + 1 < stagesAndFiles.length; i += 2) {
                 roots.addAll(Stages.load(
                         resources, Stages.expected(stagesAndFiles[i], name).resolve(stagesAndFiles[i + 1])));
             }

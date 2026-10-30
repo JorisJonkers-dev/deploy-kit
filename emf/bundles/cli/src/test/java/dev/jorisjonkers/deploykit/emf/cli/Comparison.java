@@ -427,19 +427,31 @@ final class Comparison {
 
     /** What a YAML 1.1 or JSON reader made of a value, by the type a consumer would see. */
     private static String kind(Object value) {
-        return switch (value) {
-            case null -> "null";
-            case Map<?, ?> ignored -> "map";
-            case List<?> ignored -> "list";
-            case String ignored -> "string";
-            case Boolean ignored -> "boolean";
-            case BigDecimal ignored -> "float";
-            case Double ignored -> "float";
-            case Float ignored -> "float";
-            case Number ignored -> "integer";
-            case Date ignored -> "timestamp";
-            default -> value.getClass().getSimpleName();
-        };
+        if (value == null) {
+            return "null";
+        }
+        if (value instanceof Map) {
+            return "map";
+        }
+        if (value instanceof List) {
+            return "list";
+        }
+        if (value instanceof String) {
+            return "string";
+        }
+        if (value instanceof Boolean) {
+            return "boolean";
+        }
+        if (value instanceof BigDecimal || value instanceof Double || value instanceof Float) {
+            return "float";
+        }
+        if (value instanceof Number) {
+            return "integer";
+        }
+        if (value instanceof Date) {
+            return "timestamp";
+        }
+        return value.getClass().getSimpleName();
     }
 
     private static String show(Object value) {
