@@ -21,9 +21,6 @@ import dev.jorisjonkers.deploykit.emf.syntax.PlatformIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.ProjectIntentStandaloneSetup;
 import dev.jorisjonkers.deploykit.emf.syntax.linking.UnlinkedNames;
 import dev.jorisjonkers.deploykit.emf.syntax.schema.Shapes;
-import org.eclipse.xtext.Grammar;
-import org.eclipse.xtext.IGrammarAccess;
-import org.eclipse.xtext.resource.XtextResource;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -46,8 +43,11 @@ import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
 import org.eclipse.xtext.EcoreUtil2;
+import org.eclipse.xtext.Grammar;
+import org.eclipse.xtext.IGrammarAccess;
 import org.eclipse.xtext.linking.impl.XtextLinkingDiagnostic;
 import org.eclipse.xtext.resource.IResourceFactory;
+import org.eclipse.xtext.resource.XtextResource;
 import org.eclipse.xtext.resource.XtextResourceSet;
 
 /**
@@ -582,9 +582,12 @@ public final class Pipeline {
     private static List<Diagnostic> shape(Resource resource, String file, List<Resource.Diagnostic> syntax) {
         List<Diagnostic> shape = new ArrayList<>();
         if (resource instanceof XtextResource xtext) {
-            try (java.io.InputStream in = resource.getResourceSet().getURIConverter().createInputStream(resource.getURI())) {
+            try (java.io.InputStream in =
+                    resource.getResourceSet().getURIConverter().createInputStream(resource.getURI())) {
                 String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                Grammar grammar = xtext.getResourceServiceProvider().get(IGrammarAccess.class).getGrammar();
+                Grammar grammar = xtext.getResourceServiceProvider()
+                        .get(IGrammarAccess.class)
+                        .getGrammar();
                 for (Shapes.Issue issue : Shapes.check(text, grammar)) {
                     shape.add(new Diagnostic(Diagnostic.SCHEMA, file, issue.path(), issue.message()));
                 }
@@ -597,7 +600,8 @@ public final class Pipeline {
         }
         List<Diagnostic> parsed = new ArrayList<>();
         for (Resource.Diagnostic error : syntax) {
-            parsed.add(new Diagnostic(Diagnostic.SCHEMA, file, "", "line " + error.getLine() + ": " + error.getMessage()));
+            parsed.add(
+                    new Diagnostic(Diagnostic.SCHEMA, file, "", "line " + error.getLine() + ": " + error.getMessage()));
         }
         return parsed;
     }

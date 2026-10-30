@@ -209,7 +209,8 @@ public final class Yaml {
         if (rest.matches("[>|][-+]?")) {
             StringBuilder folded = new StringBuilder();
             while (at < lines.size() && indent(lines.get(at)) > indent) {
-                folded.append(folded.length() == 0 ? "" : " ").append(lines.get(at++).strip());
+                folded.append(folded.length() == 0 ? "" : " ")
+                        .append(lines.get(at++).strip());
             }
             return new Node(null, null, folded.toString(), false);
         }
