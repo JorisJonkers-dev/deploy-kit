@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="ASCII"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:projectintent="https://jorisjonkers.dev/deploy-kit/project-intent/1">
+  <projectintent:Project apiVersion="intent.jorisjonkers.dev/v1" kind="Project" schemaVersion="1.0.0" project="data" owner="joris">
+    <applications id="platform-postgres">
+      <observability alertClass="page">
+        <scrape process="/0/@applications.0/@processes.0" surface="/0/@applications.0/@processes.0/@provides.1" path="/metrics"/>
+      </observability>
+      <processes startupBudget="60s" cutover="interrupted" name="postgres" image="postgres" runtime="none" engine="postgres">
+        <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/postgres/exporter">
+          <rotation/>
+          <keys xsi:type="projectintent:PlainKey" name="datasource"/>
+        </secrets>
+        <assets from="config/postgresql.conf" mountAt="/etc/postgresql/postgresql.conf"/>
+        <writablePaths>/var/run/postgresql</writablePaths>
+        <writablePaths>/tmp</writablePaths>
+        <env>
+          <entries name="POSTGRES_DB">
+            <value xsi:type="projectintent:EnvLiteral" text="postgres"/>
+          </entries>
+          <entries name="POSTGRES_USER">
+            <value xsi:type="projectintent:EnvLiteral" text="postgres"/>
+          </entries>
+          <entries name="DATA_SOURCE_NAME">
+            <value xsi:type="projectintent:Placeholder" source="secret/data/platform/postgres/exporter#datasource"/>
+          </entries>
+        </env>
+        <placement memory="2Gi" cpu="500m">
+          <arch>amd64</arch>
+          <disk>
+            <media>nvme</media>
+            <media>ssd</media>
+          </disk>
+        </placement>
+        <provides key="postgres" value="5432"/>
+        <provides key="metrics" value="9187"/>
+        <sidecars name="postgres-exporter" image="postgres-exporter" memory="64Mi" cpu="10m"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:TcpProbe" tcp="5432"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="5432"/>
+        </probes>
+        <volumes claim="postgres-data" mountAt="/var/lib/postgresql/data" size="20Gi" durability="irreplaceable"/>
+      </processes>
+    </applications>
+    <applications id="platform-rabbitmq">
+      <observability alertClass="urgent">
+        <scrape process="/0/@applications.1/@processes.0" surface="/0/@applications.1/@processes.0/@provides.2" path="/metrics"/>
+      </observability>
+      <exposure name="management" host="rabbitmq.jorisjonkers.dev" audience="authenticated">
+        <routes path="/" process="/0/@applications.1/@processes.0" surface="/0/@applications.1/@processes.0/@provides.1"/>
+      </exposure>
+      <processes startupBudget="120s" cutover="interrupted" name="rabbitmq" image="rabbitmq" runtime="none" engine="rabbitmq">
+        <placement memory="2Gi" cpu="500m"/>
+        <provides key="amqp" value="5672"/>
+        <provides key="management" value="15672"/>
+        <provides key="metrics" value="15692"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:TcpProbe" tcp="5672"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="5672"/>
+        </probes>
+        <volumes claim="rabbitmq-data" mountAt="/var/lib/rabbitmq" size="20Gi" durability="recoverable"/>
+      </processes>
+    </applications>
+    <applications id="platform-valkey">
+      <processes startupBudget="30s" cutover="interrupted" name="valkey" image="valkey" runtime="none">
+        <placement memory="256Mi" cpu="50m"/>
+        <provides key="redis" value="6379"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:TcpProbe" tcp="6379"/>
+          <liveness xsi:type="projectintent:TcpProbe" tcp="6379"/>
+        </probes>
+        <volumes claim="valkey-data" mountAt="/data" size="2Gi"/>
+      </processes>
+    </applications>
+  </projectintent:Project>
+  <projectintent:Project apiVersion="intent.jorisjonkers.dev/v1" kind="Project" schemaVersion="1.0.0" project="delivery" owner="joris">
+    <applications id="flagger">
+      <processes startupBudget="30s" cutover="continuous" name="flagger" image="flagger" runtime="none">
+        <dependsOn application="release-gate" surface="http"/>
+        <writablePaths>/tmp</writablePaths>
+        <placement memory="64Mi" cpu="10m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+        </probes>
+        <api reason="Flagger switches every blue-green Process, so it scales its Deployment, generates its Services and copies, and records the Canary">
+          <rules group="flagger.app">
+            <objects>canaries</objects>
+            <objects>canaries/status</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+          </rules>
+          <rules group="apps">
+            <objects>deployments</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="autoscaling">
+            <objects>horizontalpodautoscalers</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="core">
+            <objects>services</objects>
+            <objects>configmaps</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+            <verbs>delete</verbs>
+          </rules>
+          <rules group="core">
+            <objects>secrets</objects>
+            <verbs>get</verbs>
+          </rules>
+          <rules group="core">
+            <objects>events</objects>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+            <verbs>patch</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="release-gate">
+      <processes startupBudget="10s" cutover="continuous" name="release-gate" image="release-gate" runtime="none">
+        <placement memory="64Mi" cpu="25m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/readyz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+        </probes>
+        <api reason="the Release Gate answers Flagger from what the cluster holds, so it reads each gated Application's inputs, Canaries, Deployments, Jobs and pods; it finds the gated Applications by listing ConfigMaps, keeps each one's release record in a ConfigMap of its own, unsuspends the migration Jobs it starts, and deletes a gated Application's Vault sync objects of an older revision once it serves the new one">
+          <rules group="core">
+            <objects>configmaps</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>create</verbs>
+            <verbs>update</verbs>
+          </rules>
+          <rules group="core">
+            <objects>pods</objects>
+            <verbs>list</verbs>
+          </rules>
+          <rules group="apps">
+            <objects>deployments</objects>
+            <verbs>get</verbs>
+          </rules>
+          <rules group="batch">
+            <objects>jobs</objects>
+            <verbs>list</verbs>
+            <verbs>patch</verbs>
+          </rules>
+          <rules group="flagger.app">
+            <objects>canaries</objects>
+            <verbs>get</verbs>
+          </rules>
+          <rules group="secrets.hashicorp.com">
+            <objects>vaultauths</objects>
+            <objects>vaultstaticsecrets</objects>
+            <objects>vaultdynamicsecrets</objects>
+            <verbs>list</verbs>
+            <verbs>delete</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="collector">
+      <processes startupBudget="10s" cutover="interrupted" name="collector" image="collector" runtime="none">
+        <placement memory="64Mi" cpu="10m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/readyz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/fresh" port="8080"/>
+        </probes>
+        <api reason="the Collector captures where each bound claim and each rendered pod is, so it lists the three kinds that say so, cluster-wide, and writes nothing">
+          <rules group="core">
+            <objects>persistentvolumes</objects>
+            <objects>persistentvolumeclaims</objects>
+            <objects>pods</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+    <applications id="reporter">
+      <processes startupBudget="10s" cutover="interrupted" name="reporter" image="reporter" runtime="none">
+        <placement memory="64Mi" cpu="10m"/>
+        <provides key="http" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/readyz" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/healthz" port="8080"/>
+        </probes>
+        <api reason="the Reporter reads every Project's unit and every Canary again on start and on an interval, to correct a status an event it missed left behind, and writes nothing">
+          <rules group="kustomize.toolkit.fluxcd.io">
+            <objects>kustomizations</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="flagger.app">
+            <objects>canaries</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+      </processes>
+    </applications>
+  </projectintent:Project>
+  <projectintent:Project apiVersion="intent.jorisjonkers.dev/v1" kind="Project" schemaVersion="1.0.0" project="edge" owner="joris">
+    <applications id="traefik-public">
+      <processes startupBudget="20s" cutover="continuous" name="traefik-public" image="traefik" runtime="none">
+        <writablePaths>/tmp</writablePaths>
+        <placement memory="128Mi" cpu="50m">
+          <capabilities>public-ingress</capabilities>
+        </placement>
+        <provides key="web" value="8000"/>
+        <provides key="websecure" value="8443"/>
+        <provides key="admin" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
+        </probes>
+      </processes>
+    </applications>
+    <applications id="traefik-lan">
+      <processes startupBudget="20s" cutover="continuous" name="traefik-lan" image="traefik" runtime="none">
+        <writablePaths>/tmp</writablePaths>
+        <placement memory="128Mi" cpu="50m">
+          <capabilities>lan-ingress</capabilities>
+        </placement>
+        <provides key="web" value="8000"/>
+        <provides key="admin" value="8080"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
+        </probes>
+      </processes>
+    </applications>
+  </projectintent:Project>
+  <projectintent:Project apiVersion="intent.jorisjonkers.dev/v1" kind="Project" schemaVersion="1.0.0" project="observability" owner="joris">
+    <applications id="otel-collector">
+      <processes startupBudget="20s" cutover="continuous" name="otel-collector" image="otel-collector" runtime="none">
+        <placement memory="256Mi" cpu="50m"/>
+        <provides key="otlp" value="4317"/>
+        <provides key="health" value="13133"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/" port="13133"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/" port="13133"/>
+        </probes>
+      </processes>
+    </applications>
+    <applications id="prometheus">
+      <processes startupBudget="60s" cutover="continuous" name="prometheus" image="prometheus" runtime="none">
+        <writablePaths>/prometheus</writablePaths>
+        <placement memory="512Mi" cpu="100m"/>
+        <provides key="http" value="9090"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/-/ready" port="9090"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/-/healthy" port="9090"/>
+        </probes>
+      </processes>
+    </applications>
+  </projectintent:Project>
+  <projectintent:Platform apiVersion="intent.jorisjonkers.dev/v1" kind="Platform" schemaVersion="1.0.0" owner="joris" secretStore="/5/@applications.0">
+    <metadata cluster="production" project="jorisjonkers.dev" nodeContract="sha256:a989e80337efb294fa1a7175b3ad3eea8bed9bf13fbd503a26691c9265575fc2"/>
+    <substrate kubernetesVersion="v1.31.4+k3s1" serverCount="1" secretsEncryption="true" cni="flannel" networkPolicyController="embedded" clusterDns="kube-system" imagePull="2m"/>
+    <bootstrap>
+      <flux sourceRef="flux-system/platform">
+        <artifacts repository="ghcr.io/jorisjonkers-dev/render">
+          <signer issuer="https://token.actions.githubusercontent.com" subject="https://github.com/JorisJonkers-dev/estate/.github/workflows/compose.yml@refs/heads/main"/>
+        </artifacts>
+      </flux>
+      <vault unsealed="true"/>
+      <crds>traefik.io/v1alpha1</crds>
+      <crds>secrets.hashicorp.com/v1beta1</crds>
+      <crds>monitoring.coreos.com/v1</crds>
+      <crds>flagger.app/v1beta1</crds>
+    </bootstrap>
+    <tiers name="public-frankfurt" forwardAuth="http://auth-api.auth-system.svc.cluster.local:8081/api/auth/forward" proxiedBy="cloudflare" traefik="/2/@applications.0">
+      <audiences>anonymous</audiences>
+      <audiences>authenticated</audiences>
+    </tiers>
+    <tiers name="lan" listener="plain" certificates="none" traefik="/2/@applications.1">
+      <audiences>lan</audiences>
+    </tiers>
+    <durability>
+      <reconstructible/>
+      <recoverable schedule="15 3 * * *" retain="14"/>
+      <irreplaceable schedule="45 2 * * *" retain="90">
+        <offCluster destination="s3://backup-storage/jorisjonkers-dev" credential="secret/data/platform/backup/off-cluster">
+          <egress cidr="203.0.113.0/24" port="443"/>
+        </offCluster>
+      </irreplaceable>
+    </durability>
+    <engines>
+      <postgres backup="postgres-backup" surface="postgres" catalog="postgres-catalog"/>
+      <rabbitmq backup="rabbitmq-backup" surface="management"/>
+      <files backup="file-backup"/>
+    </engines>
+    <monitors interval="30s" timeout="10s"/>
+    <telemetry collector="/3/@applications.0" metrics="/3/@applications.1"/>
+    <probes period="10s" timeout="5s" failures="3"/>
+    <ephemeral size="64Mi"/>
+    <migration runner="liquibase-runner" deadline="10m" memory="256Mi" cpu="100m"/>
+    <delivery machinery="/2/@applications.0 /2/@applications.1 /1/@applications.0 /1/@applications.1" gate="/1/@applications.1" reporter="/1/@applications.3">
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
+    </delivery>
+    <apiAccess holders="/1/@applications.0 /1/@applications.1 /1/@applications.2 /1/@applications.3">
+      <server cidr="10.43.0.1/32" port="443"/>
+    </apiAccess>
+    <policyJob image="vault-policy" role="policy-admin" memory="64Mi" cpu="10m" deadline="120s"/>
+    <handover retireBy="2027-03-31">
+      <legacy>auth</legacy>
+      <legacy>data</legacy>
+      <legacy>knowledge</legacy>
+      <legacy>notes</legacy>
+      <estate>delivery</estate>
+      <estate>edge</estate>
+      <estate>knowledge-platform</estate>
+      <estate>observability</estate>
+      <estate>secrets</estate>
+      <serving application="platform-postgres" namespace="data-system">
+        <admin path="secret/data/platform/postgres" user="postgres.user" password="postgres.password"/>
+      </serving>
+    </handover>
+    <providers name="stalwart" address="10.0.0.12">
+      <surfaces key="smtp" value="25"/>
+      <surfaces key="http" value="8080"/>
+    </providers>
+    <libraries key="media">
+      <value node="enschede-t1000-1" path="/srv/media" gid="3001">
+        <grants key="notes" value="write"/>
+        <grants key="jellyfin"/>
+      </value>
+    </libraries>
+    <gpus key="nvidia">
+      <value resource="nvidia.com/gpu" runtimeClass="nvidia-cdi"/>
+    </gpus>
+    <vpn image="gluetun" credential="secret/data/platform/vpn" memory="128Mi" cpu="50m">
+      <settings key="VPN_SERVICE_PROVIDER" value="protonvpn"/>
+      <settings key="VPN_TYPE" value="wireguard"/>
+      <settings key="SERVER_COUNTRIES" value="Netherlands"/>
+      <settings key="PORT_FORWARD_ONLY" value="on"/>
+      <settings key="DOT" value="off"/>
+      <settings key="DNS_KEEP_NAMESERVER" value="on"/>
+    </vpn>
+  </projectintent:Platform>
+  <projectintent:Project apiVersion="intent.jorisjonkers.dev/v1" kind="Project" schemaVersion="1.0.0" project="secrets" owner="joris">
+    <applications id="vault">
+      <processes startupBudget="30s" cutover="interrupted" name="vault" image="vault" runtime="none">
+        <placement memory="256Mi" cpu="100m"/>
+        <provides key="http" value="8200"/>
+        <probes xsi:type="projectintent:Probes">
+          <readiness xsi:type="projectintent:HttpProbe" path="/v1/sys/health" port="8200"/>
+          <liveness xsi:type="projectintent:HttpProbe" path="/v1/sys/health" port="8200"/>
+        </probes>
+      </processes>
+    </applications>
+  </projectintent:Project>
+</xmi:XMI>

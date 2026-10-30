@@ -1,0 +1,82 @@
+# The smallest complete Project Intent in the model.
+#
+# One project, one Application, one Process, and nothing that is not required.
+# Everything absent from this file is either derived (chapter 20) or refused
+# (chapter 10). It is the file to read first, and the file to copy when
+# onboarding an Application that has no storage and no secrets.
+#
+# The one field beyond those is `libraries`: the worked mount of a library the
+# Platform document declares and grants this project.
+#
+# It is also the only worked example that renders on today's pinned inputs:
+# it holds no grant, so the secrets-at-rest gate
+# (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md) has nothing to refuse.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: notes # the namespace derives: notes-system
+owner: joris # the project's own; this project shares no intent below it
+
+applications:
+  - id: notes
+    # Whole or absent. The class states urgency; the scrape names the Process
+    # and the surface that carries the signal, so the port is declared once, in
+    # `provides`. Omitting the block entirely is how an Application says it wants no
+    # monitoring -- there is no `none` to write.
+    observability:
+      alertClass: business-hours
+      scrape:
+        process: notes-api
+        surface: http
+        path: /metrics
+
+    exposure:
+      - name: public
+        host: notes.jorisjonkers.dev # the full FQDN, authored
+        audience: anonymous # selects the tier that carries it
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: notes-api, surface: http }
+
+    processes:
+      - name: notes-api
+        lifecycle: application
+        image: notes-api # an alias; the lock resolves digest, uid and gid
+        runtime: node
+
+        provides:
+          http: 8080 # above 1024: restricted drops CAP_NET_BIND_SERVICE
+
+        # Two dimensions are required. Both are matched against what the node
+        # contract publishes, never against free capacity
+        # (docs/adr/model/0017-placement-is-hard-dimensions.md). `gpu` locks
+        # the card, and the request and runtime class are derived from it
+        # (docs/adr/model/0106-a-gpu-request-is-derived-from-placement.md).
+        placement:
+          memory: 256Mi
+          cpu: 50m
+          gpu: { class: transcode, model: [t1000] }
+
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+
+        startupBudget: 20s
+
+        # REQUIRED, no default. No volumes, so a continuous cutover is honourable.
+        cutover: continuous
+
+        # A directory the Platform document declares and grants this project,
+        # mounted below one of its folders. It places the Process on the
+        # library's node and runs it with the library's group, and is not a
+        # volume of its own (spec/v1/10-project-intent.md#libraries).
+        libraries:
+          - library: media
+            mountAt: /attachments
+            subPath: Notes
+            access: write
+
+        # No `replicas` block: the derived count is one, and one is what this
+        # Process runs. The block is for a count above one, with a reason.

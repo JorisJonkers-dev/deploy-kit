@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="ASCII"?>
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:pinnedinputs="https://jorisjonkers.dev/deploy-kit/pinned-inputs/1">
+  <pinnedinputs:AssetFile project="data" from="config/postgresql.conf" content="# collections/data/platform/config/postgresql.conf&#xA;#&#xA;# The Asset platform-postgres mounts at /etc/postgresql/postgresql.conf&#xA;# (docs/adr/model/0014-file-shaped-configuration-is-an-asset.md). Fully&#xA;# static: no placeholder and no derived value, so the file is carried into&#xA;# the projection as written, under a name its content digest decides.&#xA;&#xA;# ------------------------------------------------------------ connections&#xA;listen_addresses = '*'&#xA;port = 5432&#xA;max_connections = 100&#xA;unix_socket_directories = '/var/run/postgresql'&#xA;&#xA;# ----------------------------------------------------------------- memory&#xA;shared_buffers = 512MB&#xA;effective_cache_size = 1536MB&#xA;work_mem = 8MB&#xA;maintenance_work_mem = 128MB&#xA;&#xA;# -------------------------------------------------------------------- WAL&#xA;wal_level = replica&#xA;max_wal_size = 2GB&#xA;min_wal_size = 256MB&#xA;checkpoint_completion_target = 0.9&#xA;&#xA;# -------------------------------------------------------------- extensions&#xA;shared_preload_libraries = 'vector'&#xA;&#xA;# ---------------------------------------------------------------- logging&#xA;log_destination = 'stderr'&#xA;logging_collector = off&#xA;log_min_duration_statement = 1000&#xA;log_line_prefix = '%m [%p] %q%u@%d '&#xA;&#xA;# ---------------------------------------------------------------- locale&#xA;datestyle = 'iso, mdy'&#xA;timezone = 'UTC'&#xA;lc_messages = 'en_US.utf8'&#xA;default_text_search_config = 'pg_catalog.english'&#xA;"/>
+  <pinnedinputs:ClusterState apiVersion="state.jorisjonkers.dev/v1" kind="ClusterState" schemaVersion="1.0.0" cluster="production" capturedAt="2026-09-30T00:00:00Z"/>
+  <pinnedinputs:ImagesLock apiVersion="lock.jorisjonkers.dev/v1" kind="ImagesLock" schemaVersion="1.0.0" name="estate">
+    <images alias="collector" repository="ghcr.io/jorisjonkers-dev/delivery/collector" digest="sha256:7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d" uid="65532" gid="65532" version="1.0.0"/>
+    <images alias="reporter" repository="ghcr.io/jorisjonkers-dev/delivery/reporter" digest="sha256:4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f" uid="65532" gid="65532" version="1.0.0"/>
+    <images alias="file-backup" repository="ghcr.io/jorisjonkers-dev/platform/file-backup" digest="sha256:2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d" uid="1000" gid="1000" version="1.2.0"/>
+    <images alias="gluetun" repository="docker.io/qmcgaw/gluetun" digest="sha256:7e1f3c5a9b2d4f6e8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f" version="v3.40.0"/>
+    <images alias="flagger" repository="ghcr.io/fluxcd/flagger" digest="sha256:5d1b8f3e7a2c9d4b6e0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b" uid="10001" gid="10001" version="1.41.0"/>
+    <images alias="notes-api" repository="ghcr.io/jorisjonkers-dev/notes/notes-api" digest="sha256:9c1e5a4b7d2f8e3a6b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a" uid="1000" gid="1000" version="1.4.0"/>
+    <images alias="otel-collector" repository="ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib" digest="sha256:8e2c4a6f0b1d3e5a7c9f2b4d6e8a0c1f3b5d7e9a2c4f6b8d0e1a3c5f7b9d2e4a" uid="10001" gid="10001" version="0.120.0"/>
+    <images alias="postgres-backup" repository="ghcr.io/jorisjonkers-dev/platform/postgres-backup" digest="sha256:6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f" uid="999" gid="999" version="1.2.0"/>
+    <images alias="postgres-catalog" repository="ghcr.io/jorisjonkers-dev/delivery/postgres-catalog" digest="sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c" uid="65532" gid="65532" version="1.0.0"/>
+    <images alias="prometheus" repository="quay.io/prometheus/prometheus" digest="sha256:4c6e8a0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c" uid="65534" gid="65534" version="v3.2.1"/>
+    <images alias="rabbitmq-backup" repository="ghcr.io/jorisjonkers-dev/platform/rabbitmq-backup" digest="sha256:a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2" uid="999" gid="999" version="1.2.0"/>
+    <images alias="release-gate" repository="ghcr.io/jorisjonkers-dev/delivery/release-gate" digest="sha256:3e7a9c1d5b2f8e4a6c0d9b7e5f3a1c8d6e4b2a0f9c7e5d3b1a8f6e4c2d0b9a7e" uid="1000" gid="1000" version="1.0.0"/>
+    <images alias="traefik" repository="docker.io/library/traefik" digest="sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" uid="65532" gid="65532" version="v3.3.4"/>
+    <images alias="vault" repository="docker.io/hashicorp/vault" digest="sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c" uid="100" gid="1000" version="1.18.5"/>
+    <images alias="postgres-exporter" repository="quay.io/prometheuscommunity/postgres-exporter" digest="sha256:4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d" uid="65534" gid="65534" version="v0.17.1"/>
+    <images alias="postgres" repository="docker.io/pgvector/pgvector" digest="sha256:9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e" uid="999" gid="999" version="17.2.0"/>
+    <images alias="rabbitmq" repository="docker.io/library/rabbitmq" digest="sha256:2d4f6b8a0c2e4d6f8b0a2c4e6d8f0b2a4c6e8d0f2b4a6c8e0d2f4b6a8c0e2d4f" uid="999" gid="999" version="4.0.7"/>
+    <images alias="valkey" repository="docker.io/valkey/valkey" digest="sha256:6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c" uid="999" gid="1000" version="8.1.0"/>
+    <images alias="auth-api" repository="ghcr.io/jorisjonkers-dev/auth/auth-api" digest="sha256:3e5a7c9b1d3f5e7a9c1b3d5f7e9a1c3b5d7f9e1a3c5b7d9f1e3a5c7b9d1f3e5a" uid="1000" gid="1000" version="2.3.0"/>
+    <images alias="auth-ui" repository="ghcr.io/jorisjonkers-dev/auth/auth-ui" digest="sha256:8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d" uid="101" gid="101" version="2.3.0"/>
+    <images alias="auth-migration" repository="ghcr.io/jorisjonkers-dev/auth/auth-migration" digest="sha256:5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e" uid="1000" gid="1000" version="2.3.0"/>
+    <images alias="vault-policy" repository="ghcr.io/jorisjonkers-dev/delivery/vault-policy" digest="sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" uid="65532" gid="65532" version="1.0.0"/>
+    <images alias="docling-serve" repository="ghcr.io/docling-project/docling-serve" digest="sha256:5d1a649d48b5715e23ec4906bb0624632b1971a1d975a4bc57d0f723114c7c6e" uid="1000" gid="1000" version="v1.5.0"/>
+    <images alias="hindsight-api" repository="ghcr.io/vectorize-io/hindsight-api" digest="sha256:7b14a1f4062252992d0176758753615e0a2071d9a269995be007be223ab01812" uid="1000" gid="1000" version="0.4.0"/>
+    <images alias="hindsight-control-plane" repository="ghcr.io/vectorize-io/hindsight-control-plane" digest="sha256:d9bf57083f7cb0a53ee5011bdfde6aae2490dbf5c360d2d1bff10473b45eb112" uid="1000" gid="1000" version="0.4.0"/>
+    <images alias="text-embeddings-inference" repository="ghcr.io/huggingface/text-embeddings-inference" digest="sha256:8de25e75ce39617f17f2f6c77d60a4f75b65e779ed5005420eb1400072a15c1c" uid="1000" gid="1000" version="1.7.0"/>
+    <images alias="basic-memory" repository="ghcr.io/basicmachines-co/basic-memory" digest="sha256:939f1173d96626c280763e14622f2381d49fbbb7db17cae2e832f4f639405643" uid="1000" gid="1000" version="v0.14.2"/>
+    <images alias="basic-memory-git-sync" repository="ghcr.io/jorisjonkers-dev/knowledge/basic-memory-git-sync" digest="sha256:7507f69d7e903da30006f07d84091d892dfa42c359c125cccaec05506af36e50" uid="1000" gid="1000" version="1.0.0"/>
+    <images alias="karakeep" repository="ghcr.io/karakeep-app/karakeep" digest="sha256:3d57623bf031f32a0597a3ebe0cd869bff6ba181c02ebc90fac492458bcfd4a4" uid="1000" gid="1000" version="0.33.2"/>
+    <images alias="meilisearch" repository="getmeili/meilisearch" digest="sha256:860fa4baed04ae1c235de870edab0c8006227546dea1bbb6411fbfc5e27cf1db" uid="1000" gid="1000" version="v1.41.0"/>
+    <images alias="karakeep-chrome" repository="ghcr.io/karakeep-app/karakeep-chrome" digest="sha256:5b19bbb160e9ff60681a3abd97e1c4ec9f64212301410de658c3900ab7ef31e7" uid="1000" gid="1000" version="124.0.6367.78"/>
+  </pinnedinputs:ImagesLock>
+  <pinnedinputs:NodeContract apiVersion="contract.jorisjonkers.dev/v1" kind="NodeContract" schemaVersion="1.0.0" cluster="production" labelPrefix="platform.jorisjonkers.dev">
+    <nodes name="enschede-t1000-1" site="enschede" arch="amd64">
+      <allocatable cpu="53500m" memory="31488Mi"/>
+      <capabilities>nvidia</capabilities>
+      <capabilities>samba</capabilities>
+      <capabilities>lan-ingress</capabilities>
+      <capabilities>adguard</capabilities>
+      <gpus vendor="nvidia" model="t1000" class="transcode" memoryMib="4096"/>
+      <disks media="nvme" usableGib="120"/>
+      <disks media="nvme" usableGib="500"/>
+      <disks media="hdd" usableGib="4096"/>
+    </nodes>
+    <nodes name="enschede-rx7900xtx-1" site="enschede" arch="amd64">
+      <allocatable cpu="72300m" memory="31488Mi"/>
+      <capabilities>amd-gpu</capabilities>
+      <capabilities>llm-host</capabilities>
+      <capabilities>backup-store</capabilities>
+      <capabilities>lan-ingress</capabilities>
+      <capabilities>adguard</capabilities>
+      <gpus vendor="amd" model="rx7900xtx" class="render-compute" memoryMib="24576"/>
+      <disks media="nvme" usableGib="160"/>
+      <disks media="nvme" usableGib="1000"/>
+      <disks media="hdd" usableGib="8192"/>
+    </nodes>
+    <nodes name="enschede-gtx-960m-1" site="enschede" arch="amd64">
+      <allocatable cpu="28300m" memory="15872Mi"/>
+      <capabilities>nvidia</capabilities>
+      <capabilities>lan-ingress</capabilities>
+      <gpus vendor="nvidia" model="gtx960m" class="transcode" memoryMib="2048"/>
+      <disks media="ssd" usableGib="100"/>
+      <disks media="ssd" usableGib="500"/>
+      <disks media="hdd" usableGib="2048"/>
+    </nodes>
+    <nodes name="enschede-pi-1" site="enschede" arch="arm64">
+      <allocatable cpu="5750m" memory="7936Mi"/>
+      <capabilities>adguard</capabilities>
+      <disks media="sdcard" usableGib="64"/>
+    </nodes>
+    <nodes name="enschede-pi-2" site="enschede" arch="arm64">
+      <allocatable cpu="5750m" memory="3840Mi"/>
+      <capabilities>adguard</capabilities>
+      <disks media="sdcard" usableGib="64"/>
+    </nodes>
+    <nodes name="enschede-pi-3" site="enschede" arch="arm64">
+      <allocatable cpu="5750m" memory="3840Mi"/>
+      <capabilities>adguard</capabilities>
+      <disks media="sdcard" usableGib="64"/>
+    </nodes>
+    <nodes name="frankfurt-contabo-1" site="frankfurt" arch="amd64">
+      <allocatable cpu="15500m" memory="32256Mi"/>
+      <capabilities>public-ingress</capabilities>
+      <disks media="ssd" usableGib="80"/>
+      <disks media="ssd" usableGib="120"/>
+    </nodes>
+  </pinnedinputs:NodeContract>
+</xmi:XMI>
