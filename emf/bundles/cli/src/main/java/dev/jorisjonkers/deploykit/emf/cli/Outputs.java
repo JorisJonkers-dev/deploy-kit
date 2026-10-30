@@ -87,9 +87,7 @@ public final class Outputs {
             Map.entry("delivery", new Resolving("delivery", withFoundation())),
             Map.entry("edge", new Resolving("edge", withFoundation())),
             // The metrics stack scrapes notes' Process, which only the union holding notes lists as a peer.
-            Map.entry(
-                    "observability",
-                    new Resolving("observability", withFoundation("minimal/notes.project.yml"))),
+            Map.entry("observability", new Resolving("observability", withFoundation("minimal/notes.project.yml"))),
             Map.entry("secrets", new Resolving("secrets", withFoundation())),
             Map.entry("identity", new Resolving("identity", withFoundation())),
             Map.entry("agents", new Resolving("agents", withFoundation())),
