@@ -180,6 +180,12 @@ derived from its surfaces and its tier.
 proxies them, and the direct address a host taken out of the proxy points at;
 every route on the tier carries its record for the DNS controller.
 
+**Held certificate**: the certificate a `tls` tier that issues none serves,
+read from the Secret Store path its `certificateFrom` names and served from the
+default TLS store by every proxy
+([chapter 14](spec/v1/14-platform-intent.md#tiers)). Not issued by the model:
+whatever writes the path issues it.
+
 **Ingress class**: the name a tier's proxy admits routes by, declared on the
 tier. Every route rendered for the tier carries it, so a route reaches the one
 proxy its audience selects.

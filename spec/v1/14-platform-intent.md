@@ -91,6 +91,9 @@ other resolves and every policy one asks for the other offers:
 | a tier issues through `acme`, and `secretStore` is absent | `E_NO_SECRET_STORE` |
 | a Process of an acme tier's proxy declares `replicas` | `E_ACME_PROXY_REPLICATED` |
 | a Process answers a tier, and `apiAccess` is absent | `E_NO_API_ACCESS_POLICY` |
+| a tier names `certificateFrom` and is `plain` or issues through `acme` | `E_CERTIFICATE_FROM_UNSERVED` |
+| a tier names `certificateFrom` after another tier does | `E_CERTIFICATE_FROM_REPEATED` |
+| a tier names `certificateFrom`, and `secretStore` is absent | `E_NO_SECRET_STORE` |
 | two exposures dial the same port and protocol on one node through its node addresses | `E_NODE_PORT_TAKEN` |
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
@@ -459,6 +462,7 @@ acme:                                  # how an acme tier's proxy registers and 
 | `audiences` | which audiences this tier carries; a route's audience selects its tier, and an audience no tier carries is `E_NO_TIER_FOR_AUDIENCE` |
 | `listener` | whether the edge terminates TLS |
 | `certificates` | how certificates are issued for what it terminates |
+| `certificateFrom` | optional, on a `tls` tier that issues `none`: the Secret Store path holding the certificate its proxy serves, as `tls.crt` and `tls.key` ([below](#tiers)) |
 | `forwardAuth` | who authenticates for it: `provider`, a declared Application as `<project>/<application>`; `surface`, the surface one of its Processes answers on; `path`, where it answers; and optional `responseHeaders`, the headers the edge hands on to the route's Process. Never a URL: the edge asks the provider's Process where it runs, which follows the provider through a move and through the handover ledger's `serving` location while its Project is legacy. Required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)); a provider whose Project the set holds and which declares no such Application or surface is `E_UNKNOWN_FORWARD_AUTH_PROVIDER`. The Project that declares the tier's proxy renders the `forward-auth` Middleware ([chapter 30](30-deliverables.md#shared-middlewares)) |
 | `proxiedBy` | `cloudflare`, or absent. Who forwards clients' requests to this edge, which decides the address a route's `rateLimit` counts a client by: absent, the connection's own address; `cloudflare`, the address Cloudflare forwards in `CF-Connecting-IP`, since every connection then comes from a Cloudflare edge. State it only when every request reaches the tier through Cloudflare, since a client that reaches the edge directly writes that header itself ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)). An exposure that is not `proxied` is the one exception the model draws: its routes count by the connection's address, whatever this says ([0127](../../docs/adr/model/0127-an-exposure-may-bypass-the-dns-providers-proxy.md)) |
 | `traefik` | the platform Application whose proxy this tier is, as `<project>/<application>` ([privileged roles](#privileged-roles)); an Application its Project does not declare is `E_UNKNOWN_TIER_PROXY` |
@@ -499,15 +503,34 @@ any holder's are. A proxy under a document with no `apiAccess` has no address
 to reach the API at: `E_NO_API_ACCESS_POLICY`
 ([0092](../../docs/adr/model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md)).
 
+**A tier that issues none may read its certificate.** A `tls` tier whose
+proxy cannot prove its names, because the DNS provider's token answers only
+from another site, names the Secret Store path its certificate is kept at in
+`certificateFrom`. Its proxy's Process reads the path through the one secret
+delivery, as a Secret beside it that restarts nothing when the certificate is
+renewed and reaches no container: the proxy reads it through the API. The
+proxy's Project renders the default TLS store, which names that Secret, and
+every proxy serves the default store to a route that names no certificate of
+its own. So one tier at most names one: a second is
+`E_CERTIFICATE_FROM_REPEATED`. On a `plain` tier nothing serves it, and on an
+`acme` tier the resolver issues what its routes serve, so either is
+`E_CERTIFICATE_FROM_UNSERVED`; with no `secretStore` it is
+`E_NO_SECRET_STORE`. Who writes the path is not the model's: the platform
+declares a Process that issues the certificate where the token answers and
+writes it there
+([0148](../../docs/adr/model/0148-a-tier-that-issues-no-certificate-reads-one-from-the-secret-store.md)).
+
 **The issuance allowance is shared.** Tiers that issue the same names draw on
-one allowance at the certificate authority. Both of the estate's tiers issue
-the same wildcard, so a lost claim on either reissues against the allowance of
-both: five losses within seven days, counted across the tiers, exhaust it. The
+one allowance at the certificate authority, and so does whatever writes a
+tier's `certificateFrom`. Where two of them issue the same wildcard, a lost
+claim on either reissues against the allowance of both: five losses within
+seven days, counted across them, exhaust it. The
 claim stays `reconstructible`; losing it costs a reissue, never data.
 
 **A route takes its TLS from its tier**: on an acme tier the resolver named for
 the tier, on a `tls` tier that issues `none` the certificate the proxy already
-holds, and on a `plain` tier none. So a route never names a resolver its tier's
+holds, the default store's, which `certificateFrom` gives it, and on a `plain`
+tier none. So a route never names a resolver its tier's
 proxy does not declare, and switching a tier to its own certificate edits no
 route.
 
@@ -1490,6 +1513,7 @@ classDiagram
         +Audience[] audiences
         +Listener listener
         +CertificateSource certificates
+        +string certificateFrom
         +ProxiedBy proxiedBy
         +ApplicationId traefik
         +string ingressClass

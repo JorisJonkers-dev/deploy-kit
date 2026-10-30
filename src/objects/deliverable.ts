@@ -8,6 +8,7 @@ import type {
   FluxProvider,
   IngressRoute,
   Middleware,
+  TlsStore,
   OciRepository,
   PodMonitor,
   ServiceMonitor,
@@ -68,6 +69,7 @@ export type RenderedObject =
   | ServiceMonitor
   | IngressRoute
   | Middleware
+  | TlsStore
   | ConfigMap
   | ClusterRole
   | ClusterRoleBinding

@@ -100,6 +100,7 @@ and linted by the same script with `emf` as its root.
 | [0109](model/0109-a-consumer-reaches-its-provider-by-its-application-id.md) | A consumer reaches its provider by the provider's Application Id, through an alias in its own namespace | open |
 | [0110](model/0110-a-route-may-bound-its-request-rate.md) | A route may bound how many requests one client sends it, and the tier decides who the client is | open |
 | [0127](model/0127-an-exposure-may-bypass-the-dns-providers-proxy.md) | An exposure may bypass the DNS provider's proxy, pointing its record at the tier's stated direct address and counting its clients by their connection | open |
+| [0148](model/0148-a-tier-that-issues-no-certificate-reads-one-from-the-secret-store.md) | A tier that serves TLS but issues no certificate reads the one it serves from the Secret Store | open |
 | [0112](model/0112-east-west-traffic-is-mutually-authenticated-by-an-ambient-mesh.md) | East-west traffic is mutually authenticated by an ambient mesh, Istio's ztunnel on every node, and Kiali shows who reaches whom | open |
 | [0027](model/0027-prepare-processes-are-forward-only-setup.md) | A prepare Process is forward-only setup that runs after the migration and before the new version, and serves nothing | open |
 | [0117](model/0117-an-external-check-is-rendered-by-its-own-project.md) | An Application's external checks are rendered by its own Project and collected by the checker, and no edge catalog is rendered | open |

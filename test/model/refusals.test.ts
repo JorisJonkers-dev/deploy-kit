@@ -701,6 +701,8 @@ describe("the refusal fixtures", () => {
       "backup-surface-not-provided",
       "buckets-without-object-store",
       "catalog-surface-not-provided",
+      "certificate-from-repeated",
+      "certificate-from-unserved",
       "client-crd-not-bootstrapped",
       "client-path-unrouted",
       "client-placeholder-without-secret",
@@ -796,7 +798,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(97);
+    expect(refused).toHaveLength(99);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

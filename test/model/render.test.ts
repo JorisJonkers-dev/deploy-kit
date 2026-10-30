@@ -3848,6 +3848,126 @@ describe("a route's TLS", () => {
     ).toStrictEqual({});
   });
 });
+// REQ-155 (docs/requirements.md): a tls tier that issues none serves the
+// certificate it reads from the Secret Store: synced beside its proxy, which
+// reads it through the API, and named by the default TLS store.
+describe("a tier's certificate read from the Secret Store", () => {
+  const PATH = "secret/data/platform/tls/wildcard";
+  const held = () =>
+    asTree(
+      artifact(
+        render(
+          {
+            "platform/platform.intent.yml": (platform) =>
+              platform.replace(
+                "listener: plain\n    certificates: none",
+                `listener: tls\n    certificates: none\n    certificateFrom: ${PATH}`,
+              ),
+            "edge/edge.project.yml": (project) =>
+              project.replace(
+                "          web: 8000\n          admin: 8080",
+                "          web: 8000\n          websecure: 8443\n          admin: 8080",
+              ),
+          },
+          ["edge"],
+        ),
+        "edge",
+      ),
+    );
+  const objectsOf = (tree: Record<string, string>, path: string) =>
+    parseAllDocuments(tree[path] ?? "").map(
+      (document) => document.toJS() as Record<string, unknown>,
+    );
+
+  it("names the synced certificate in the default TLS store, beside the tier's proxy", () => {
+    expect(
+      objectsOf(held(), "apps/edge/traefik-lan/tlsstore.yaml"),
+    ).toStrictEqual([
+      {
+        apiVersion: "traefik.io/v1alpha1",
+        kind: "TLSStore",
+        metadata: {
+          name: "default",
+          namespace: "edge-system",
+          labels: {
+            "app.kubernetes.io/part-of": "traefik-lan",
+            "app.kubernetes.io/managed-by": "deploy-kit",
+          },
+        },
+        spec: {
+          defaultCertificate: {
+            secretName: "traefik-lan-platform-tls-wildcard",
+          },
+        },
+      },
+    ]);
+  });
+
+  it("syncs the certificate as the proxy, restarting nothing when it renews", () => {
+    const synced = objectsOf(held(), "apps/edge/traefik-lan/vso.yaml").find(
+      ({ kind }) => kind === "VaultStaticSecret",
+    ) as { spec: Record<string, unknown> } | undefined;
+    expect(synced?.spec["path"]).toBe("platform/tls/wildcard");
+    expect(synced?.spec["vaultAuthRef"]).toBe("traefik-lan");
+    expect(synced?.spec).not.toHaveProperty("rolloutRestartTargets");
+  });
+
+  it("injects nothing of the certificate into the proxy's container", () => {
+    expect(held()["apps/edge/traefik-lan/workload.yaml"]).not.toContain(
+      "traefik-lan-platform-tls-wildcard",
+    );
+  });
+
+  const lanTls = (platform: string) =>
+    platform.replace(
+      "listener: plain\n    certificates: none",
+      `listener: tls\n    certificates: none\n    certificateFrom: ${PATH}`,
+    );
+  const stores = (artifacts: readonly RenderedArtifact[]) =>
+    artifacts.flatMap(({ files: written }) =>
+      written.filter(({ path }) => path.endsWith("/tlsstore.yaml")),
+    );
+
+  it("renders no TLS store in the share of a Project that declares no proxy", () => {
+    expect(
+      stores(
+        render(
+          {
+            "platform/platform.intent.yml": lanTls,
+            "edge/edge.project.yml": (project) =>
+              project.replace(
+                "          web: 8000\n          admin: 8080",
+                "          web: 8000\n          websecure: 8443\n          admin: 8080",
+              ),
+          },
+          ["notes"],
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("renders no TLS store where no Process of the tier's proxy answers its listener", () => {
+    expect(
+      stores(
+        render(
+          {
+            // The LAN proxy provides no websecure, so the tier names no address.
+            "platform/platform.intent.yml": (platform) =>
+              lanTls(platform).replace(/\n {4}address: lan-edge[^\n]*/, ""),
+          },
+          ["edge"],
+        ),
+      ),
+    ).toStrictEqual([]);
+  });
+
+  it("renders no TLS store where no tier names a certificate", () => {
+    expect(
+      asTree(artifact(render(undefined, ["edge"]), "edge")),
+    ).not.toHaveProperty(["apps/edge/traefik-lan/tlsstore.yaml"]);
+  });
+});
+
 // REQ-091 (docs/requirements.md): a tier's proxy takes its static
 // configuration from the model: entry points from its surfaces, the CRD
 // provider filtered on its tier's ingress class, ping and metrics on `admin`.

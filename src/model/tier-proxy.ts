@@ -106,6 +106,12 @@ export const ACME_CLAIM = "acme";
 export const ACME_MOUNT = "/acme";
 export const ACME_SIZE = "16Mi";
 
+/** The keys of the Secret Store path a tier's `certificateFrom` names: the chain and its key. */
+export const CERTIFICATE_KEYS = ["tls.crt", "tls.key"] as const;
+
+/** The TLS store every proxy serves a route from that names no certificate of its own. */
+export const DEFAULT_TLS_STORE = "default";
+
 /** The key of the Secret Store path holding each DNS provider's token, as its client reads it. */
 export const DNS_TOKEN_KEYS: Readonly<Record<DnsProvider, string>> = {
   cloudflare: "CF_DNS_API_TOKEN",
@@ -160,3 +166,10 @@ export const PROXY_API = {
     },
   ],
 } as const;
+
+/** The TLS store a tier's `certificateFrom` derives: its proxy, and the Secret it names. */
+export interface ResolvedHeldCertificate {
+  /** The proxy, as `<project>/<application>`, beside whose Process the Secret is synced. */
+  readonly proxy: string;
+  readonly secret: string;
+}

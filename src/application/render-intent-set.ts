@@ -6,6 +6,7 @@
 import { NODE_PROJECT } from "../model/node-agents.ts";
 import { renderNodeAgents } from "../adapters/kubernetes/node-agents.ts";
 import { renderSharedMiddlewares } from "../adapters/traefik/shared-middlewares.ts";
+import { renderHeldCertificates } from "../adapters/traefik/held-certificates.ts";
 import {
   ADAPTERS,
   kustomizationsFor,
@@ -373,6 +374,10 @@ export function renderResolvedSet(
           options.projects,
           resolved.forwardAuths,
         )
+      : []),
+    // The certificate a tier reads, served from the default TLS store.
+    ...(adapters.some(({ name }) => name === TRAEFIK)
+      ? renderHeldCertificates(resolved.heldCertificates, options.projects)
       : []),
     // The Stable Addresses are the estate's, delivered with the Projects that
     // resolve them: a render holding none of them has nothing to resolve.

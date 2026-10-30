@@ -302,6 +302,44 @@ describe("parsePlatformIntent", () => {
     ]);
   });
 
+  // REQ-155 (docs/requirements.md): a tier's certificate read from the Secret
+  // Store needs a Secret Store to hold it.
+  it("refuses a tier's certificate where no Secret Store holds it, at the field", () => {
+    const text = WORKED.replace("secretStore: secrets/vault\n", "")
+      .replace("certificates: acme", "certificates: none")
+      .replace(
+        "listener: plain\n    certificates: none",
+        "listener: tls\n    certificates: none\n    certificateFrom: secret/data/platform/tls/wildcard",
+      );
+    expect(
+      refusalsOf(text).map(({ code, path }) => ({ code, path })),
+    ).toStrictEqual([
+      { code: "E_NO_SECRET_STORE", path: "/tiers/1/certificateFrom" },
+    ]);
+  });
+
+  it("refuses a tier's certificate on a tier that terminates no TLS", () => {
+    expect(
+      ((result) =>
+        result.ok
+          ? []
+          : result.diagnostics.map(({ code, message }) => ({ code, message })))(
+        parsePlatformIntent(
+          WORKED.replace(
+            "listener: plain\n    certificates: none",
+            "listener: plain\n    certificates: none\n    certificateFrom: secret/data/platform/tls/wildcard",
+          ),
+        ),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_CERTIFICATE_FROM_UNSERVED",
+        message:
+          "tier lan reads a certificate from secret/data/platform/tls/wildcard, and terminates no TLS, so its proxy would serve it for nothing",
+      },
+    ]);
+  });
+
   it("refuses an acme tier where no Secret Store holds its DNS token, at the tier", () => {
     const text = WORKED.replace("secretStore: secrets/vault\n", "");
     const result = parsePlatformIntent(text);

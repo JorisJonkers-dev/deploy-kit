@@ -949,7 +949,10 @@ derives: the rules its provider reads routes with, after any it declares
 itself, with the reason it declares or the tier's own, and the Platform
 document's `apiAccess.server`
 ([chapter 14](14-platform-intent.md#tiers)). So it mounts its token and holds
-a `ClusterRole`, as an admitted holder does.
+a `ClusterRole`, as an admitted holder does. On a tier that names
+`certificateFrom`, it carries a `read` grant on that path too, of `tls.crt` and
+`tls.key`, delivered `env` with no variable and no restart target: synced to a
+Secret beside it for the default TLS store to name.
 
 On an acme tier, the Process of the tier's proxy carries a `resolver` in its
 `edgeProxy` ([chapter 30](30-deliverables.md#the-edge-proxy)), which the tier
