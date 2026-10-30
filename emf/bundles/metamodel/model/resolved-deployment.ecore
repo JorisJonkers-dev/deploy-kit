@@ -310,11 +310,46 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="consumes" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="writablePaths" upperBound="-1" eType="#//WritablePath" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="environment" upperBound="-1" eType="#//EnvEntry" containment="true"/>
+    <!-- The arguments the container is handed: the authored ones, then those a tier's proxy derives
+         for its static configuration. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="arguments" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The priority class its pods schedule under, where it names one. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="priorityClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The nameservers a Process that serves DNS resolves through, never the cluster's own. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nameservers" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Whether its replicas repel each other across nodes, within one revision. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="spread" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <!-- The step that seeds its Assets onto its volumes before each start. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="seeder" eType="#//ResolvedSeeder" containment="true"/>
+    <!-- A `scheduled` Process's schedule, whether it is parked, and how late a run may still start. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="schedule" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="parked" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="startDeadline" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- The seeder: the platform's image, run first as the Process's own user, with the command that seeds each Asset and the mounts it reads and writes. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedSeeder">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="imageVersion" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="mounts" upperBound="-1" eType="#//ContainerMount" containment="true"/>
+  </eClassifiers>
+  <!-- A volume of the pod one container mounts, where, and whether it writes it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ContainerMount">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="subPath" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="readOnly" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedSurface">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <!-- The port of the node's own address a client dials the surface on, where an L4 exposure
+         of kind `node` reaches it over TCP at the surface's own number. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="hostPort" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
   </eClassifiers>
 
   <!-- A probe answers on a path and a port, or on a port alone. -->
@@ -494,8 +529,12 @@
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedAsset">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="from" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Where the Process reads it; a seeded Asset is read by none. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="content" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Where a seeded Asset is copied onto a volume before each start; a seeded Asset is the
+         seeder's to read, never the Process's. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="seedAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- A container beside the Process in its pod, its image pinned by digest. -->
@@ -505,6 +544,10 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="imageVersion" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Whether it runs to completion before the Process starts, rather than beside it. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="init" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <!-- The Process's volumes and Assets it names, each where it says. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="mounts" upperBound="-1" eType="#//ContainerMount" containment="true"/>
   </eClassifiers>
 
   <!--
@@ -538,6 +581,8 @@
   <eClassifiers xsi:type="ecore:EClass" name="WritablePath">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="size" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Whether the path is held in memory rather than on the node's disk. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
   </eClassifiers>
 
   <!-- A variable is a value, or one key of a granted path (spec/v1/10-project-intent.md#secret-references). -->
@@ -552,6 +597,8 @@
   <eClassifiers xsi:type="ecore:EClass" name="SecretReference">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Whether the Process starts without the key, where its grant marks the key optional. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="optional" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedExposure">
@@ -661,7 +708,8 @@
   <!-- The one settings file an agent reads, handed to it in a ConfigMap named for it. -->
   <eClassifiers xsi:type="ecore:EClass" name="AgentConfig">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="file" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Where the Process reads it; a seeded Asset is read by none. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="content" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 

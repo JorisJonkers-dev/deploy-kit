@@ -532,6 +532,36 @@
   with no leader election cannot run two copies; a stop-start one keeps its count and stops
   before it starts again. /]
 [template private workload(p : resolveddeployment::ResolvedProcess, d : resolveddeployment::WorkloadFile)]
+  [if (d.controller.toString() = 'CronJob')]
+    [p.scheduled()/]
+  [else]
+    [p.deployment(d)/]
+  [/if]
+[/template]
+
+[comment A scheduled Process's CronJob: at its own schedule, never two runs at once, and a run that
+  cannot start within its start deadline is skipped. A parked schedule starts no run. A failed run is
+  retried in its pod. /]
+[template private scheduled(p : resolveddeployment::ResolvedProcess)]
+  ---
+  apiVersion: batch/v1
+  kind: CronJob
+  metadata:
+    [p.metadata()/]
+  spec:
+    schedule: [p.schedule.scalar()/]
+  [if (p.parked)]
+      suspend: true
+  [/if]
+    concurrencyPolicy: Forbid
+    startingDeadlineSeconds: [p.startDeadline.seconds()/]
+    jobTemplate:
+      spec:
+        template:
+          [p.pod('OnFailure')/]
+[/template]
+
+[template private deployment(p : resolveddeployment::ResolvedProcess, d : resolveddeployment::WorkloadFile)]
   ---
   apiVersion: apps/v1
   kind: [d.controller.toString()/]
@@ -562,121 +592,203 @@
         app.kubernetes.io/name: [p.name/]
         app.kubernetes.io/instance: [p.name/]
     template:
-      metadata:
-        labels:
-          [p.labels()/]
+      [p.pod('')/]
+[/template]
+
+[comment The pod a Process runs in, whatever controller starts it, unindented: `restart` is the
+  policy a run to completion restarts by, and nothing for a pod that serves. /]
+[template private pod(p : resolveddeployment::ResolvedProcess, restart : String)]
+  metadata:
+    labels:
+      [p.labels()/]
   [for (c : String | p.consumes)]
-            [c.consumerLabel()/]
+        [c.consumerLabel()/]
   [/for]
   [if (p.member())]
-            gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
   [/if]
   [if (p.versioned()->notEmpty())]
-          annotations:
+      annotations:
     [for (n : String | p.versioned())]
-              image.jorisjonkers.dev/[n/]: [p.versionOf(n).scalar()/]
+          image.jorisjonkers.dev/[n/]: [p.versionOf(n).scalar()/]
     [/for]
   [/if]
-      spec:
-        serviceAccountName: [p.identity/]
-        automountServiceAccountToken: [p.identityToken/]
-  [if (p.gpu <> null)]
-          runtimeClassName: [p.gpu.runtimeClass/]
+  spec:
+    serviceAccountName: [p.identity/]
+  [if (p.priorityClass <> null)]
+      priorityClassName: [p.priorityClass/]
   [/if]
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: [p.uid/]
-          runAsGroup: [p.gid/]
+    automountServiceAccountToken: [p.identityToken/]
+  [if (p.nameservers->notEmpty())]
+      dnsPolicy: None
+      dnsConfig:
+        nameservers:
+    [for (n : String | p.nameservers)]
+            - [n/]
+    [/for]
+  [/if]
+  [if (restart <> '')]
+      restartPolicy: [restart/]
+  [/if]
+  [if (p.gpu <> null)]
+      runtimeClassName: [p.gpu.runtimeClass/]
+  [/if]
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: [p.uid/]
+      runAsGroup: [p.gid/]
   [comment A volume is written as the image's group, and only a volume is. A library's group is
     its own, and an fsGroup would re-own the whole library. /]
   [if (p.volumes->notEmpty() and p.libraries->isEmpty())]
-            fsGroup: [p.gid/]
+        fsGroup: [p.gid/]
   [/if]
   [if (p.libraries->notEmpty())]
-            supplementalGroups:
+        supplementalGroups:
     [for (g : Integer | p.libraries.gid->asOrderedSet()->sortedBy(x | x))]
-                - [g/]
+            - [g/]
     [/for]
   [/if]
-          seccompProfile:
-            type: RuntimeDefault
-  [comment The node its volume is bound to, or every node eligible for it, each by name. /]
-        affinity:
-          nodeAffinity:
-            requiredDuringSchedulingIgnoredDuringExecution:
-              nodeSelectorTerms:
-                - matchExpressions:
-                    - key: kubernetes.io/hostname
-                      operator: In
-                      values:
+      seccompProfile:
+        type: RuntimeDefault
+  [comment The node its volume is bound to, or every node eligible for it, each by name; and where
+    its replicas spread, each repelling the others of its own revision. /]
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/hostname
+                  operator: In
+                  values:
   [if (p.placement.boundTo <> null)]
-                          - [p.placement.boundTo/]
+                      - [p.placement.boundTo/]
   [else]
     [for (n : String | p.placement.eligibleNodes)]
-                            - [n/]
+                        - [n/]
     [/for]
   [/if]
-  [if (p.vpn <> null)]
-          initContainers:
-            [p.vpn.vpnContainer()/]
+  [if (p.spread)]
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: [p.name/]
+              matchLabelKeys:
+                - pod-template-hash
+              topologyKey: kubernetes.io/hostname
   [/if]
-        containers:
-          [p.container()/]
-  [for (c : resolveddeployment::ResolvedSidecar | p.sidecars)]
-            [c.sidecar(p)/]
+  [comment The seeder first, so every later step reads the seeded files; then the VPN, which starts
+    and stays; then each init step. /]
+  [if (p.seeder <> null or p.vpn <> null or p.sidecars->exists(c | c.init))]
+      initContainers:
+    [if (p.seeder <> null)]
+          [p.seeder.seederContainer()/]
+    [/if]
+    [if (p.vpn <> null)]
+          [p.vpn.vpnContainer()/]
+    [/if]
+    [for (c : resolveddeployment::ResolvedSidecar | p.sidecars->select(c | c.init))]
+          [c.sidecar(p)/]
+    [/for]
+  [/if]
+    containers:
+      [p.container()/]
+  [for (c : resolveddeployment::ResolvedSidecar | p.sidecars->reject(c | c.init))]
+        [c.sidecar(p)/]
   [/for]
   [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty() or p.vpn <> null)]
-          volumes:
+      volumes:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
-              - name: [v.claim/]
-                persistentVolumeClaim:
-                  claimName: [v.claim/]
+          - name: [v.claim/]
+            persistentVolumeClaim:
+              claimName: [v.claim/]
     [/for]
     [comment Two mounts of one library below two directories share its one claim. /]
     [for (c : String | p.libraries.claim->asOrderedSet())]
-              - name: [c/]
-                persistentVolumeClaim:
-                  claimName: [c/]
+          - name: [c/]
+            persistentVolumeClaim:
+              claimName: [c/]
     [/for]
     [for (a : resolveddeployment::ResolvedAsset | p.assets)]
-              - name: [a.name/]
-                configMap:
-                  name: [a.name/]
-                  items:
-                    - key: [a._from.fileOf()/]
-                      path: [a._from.fileOf()/]
+          - name: [a.name/]
+            configMap:
+              name: [a.name/]
+              items:
+                - key: [a._from.fileOf()/]
+                  path: [a._from.fileOf()/]
     [/for]
     [for (w : resolveddeployment::WritablePath | p.writablePaths)]
-              - name: [w.path.writableOf()/]
-                emptyDir:
-                  sizeLimit: [w.size/]
+          - name: [w.path.writableOf()/]
+            emptyDir:
+      [if (w.memory)]
+                medium: Memory
+      [/if]
+              sizeLimit: [w.size/]
     [/for]
     [for (g : resolveddeployment::ResolvedGrant | p.files())]
-              - name: secret-[g.destination/]
-                secret:
-                  secretName: [g.destination/]
-                  items:
+          - name: secret-[g.destination/]
+            secret:
+              secretName: [g.destination/]
+              items:
       [if (g.engine = 'database')]
-                      - key: username
-                        path: username
-                      - key: password
-                        path: password
+                  - key: username
+                    path: username
+                  - key: password
+                    path: password
       [else]
-                      - key: [g.keys->first()/]
-                        path: [g.mountAt.fileOf()/]
+                  - key: [g.keys->first()/]
+                    path: [g.mountAt.fileOf()/]
       [/if]
-                  defaultMode: [g.fileMode.octal()/]
+              defaultMode: [g.fileMode.octal()/]
     [/for]
     [if (p.vpn <> null)]
-              - name: vpn
-                emptyDir:
-                  sizeLimit: 1Mi
+          - name: vpn
+            emptyDir:
+              sizeLimit: 1Mi
     [/if]
   [/if]
 [/template]
 
-[comment A container beside the Process, under the same posture, the same variables, the same
-  writable paths and the same file grants: every container of its pod is the Process. /]
+[comment The step that seeds a Process's Assets, under the posture and as the Process's own user. /]
+[template private seederContainer(s : resolveddeployment::ResolvedSeeder)]
+  - name: seed
+    image: [s.image/]
+    command:
+  [for (c : String | s.command)]
+        [c.listItem()/]
+  [/for]
+    resources:
+      requests:
+        memory: [s.memory/]
+        cpu: [s.cpu/]
+      limits:
+        memory: [s.memory/]
+    securityContext:
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+    volumeMounts:
+  [for (m : resolveddeployment::ContainerMount | s.mounts)]
+        [m.mount()/]
+  [/for]
+[/template]
+
+[template private mount(m : resolveddeployment::ContainerMount)]
+  - name: [m.name/]
+    mountPath: [m.mountAt/]
+  [if (m.subPath <> null)]
+      subPath: [m.subPath/]
+  [/if]
+  [if (m.readOnly)]
+      readOnly: true
+  [/if]
+[/template]
+
+[comment A container beside the Process or before it, under the same posture, the same variables,
+  the same writable paths and the same file grants: every container of its pod is the Process. It
+  mounts the Process's volumes and Assets it names, each where it says. /]
 [template private sidecar(c : resolveddeployment::ResolvedSidecar, p : resolveddeployment::ResolvedProcess)]
   - name: [c.name/]
     image: [c.image/]
@@ -696,8 +808,11 @@
       capabilities:
         drop:
           - ALL
-  [if (p.writablePaths->notEmpty() or p.files()->notEmpty())]
+  [if (c.mounts->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty())]
       volumeMounts:
+    [for (m : resolveddeployment::ContainerMount | c.mounts)]
+          [m.mount()/]
+    [/for]
     [for (w : resolveddeployment::WritablePath | p.writablePaths)]
           - name: [w.path.writableOf()/]
             mountPath: [w.path/]
@@ -722,6 +837,9 @@
           secretKeyRef:
             name: [p.destinationOf(e.secret.path)/]
             key: [e.secret.key/]
+      [if (e.secret.optional)]
+              optional: true
+      [/if]
     [/if]
   [/for]
 [/template]
@@ -770,11 +888,20 @@
 [template private container(p : resolveddeployment::ResolvedProcess)]
   - name: [p.name/]
     image: [p.image/]
+  [if (p.arguments->notEmpty())]
+      args:
+    [for (x : String | p.arguments)]
+          [x.listItem()/]
+    [/for]
+  [/if]
   [if (p.surfaces->notEmpty())]
       ports:
     [for (s : resolveddeployment::ResolvedSurface | p.surfaces)]
           - name: [s.name/]
             containerPort: [s.port/]
+      [if (s.hostPort <> null)]
+              hostPort: [s.hostPort/]
+      [/if]
     [/for]
   [/if]
   [if (p.environment->notEmpty())]
@@ -797,7 +924,7 @@
       capabilities:
         drop:
           - ALL
-  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty() or (p.vpn <> null and p.vpn.forwardedPort))]
+  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->exists(a | a.seedAt = null) or p.writablePaths->notEmpty() or p.files()->notEmpty() or (p.vpn <> null and p.vpn.forwardedPort))]
       volumeMounts:
     [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
           - name: [v.claim/]
@@ -813,7 +940,7 @@
               readOnly: true
       [/if]
     [/for]
-    [for (a : resolveddeployment::ResolvedAsset | p.assets)]
+    [for (a : resolveddeployment::ResolvedAsset | p.assets->select(a | a.seedAt = null))]
           - name: [a.name/]
             mountPath: [a.mountAt/]
             subPath: [a._from.fileOf()/]
@@ -1781,8 +1908,12 @@
       tls: {}
   [/if]
   [for (r : resolveddeployment::ResolvedRoute | d.exposure.routes)]
-    [for (m : resolveddeployment::MiddlewareStep | r.middleware->select(s | s.kind.toString() = 'rate-limit'))]
-      [m.rateLimit(d.exposure)/]
+    [for (m : resolveddeployment::MiddlewareStep | r.middleware->select(s | s.kind.toString() = 'rate-limit' or s.kind.toString() = 'redirect'))]
+      [if (m.kind.toString() = 'redirect')]
+        [m.redirect(d.exposure)/]
+      [else]
+        [m.rateLimit(d.exposure)/]
+      [/if]
     [/for]
   [/for]
 [/template]
@@ -1809,6 +1940,26 @@
         sourceCriterion:
           requestHeaderName: CF-Connecting-IP
   [/if]
+[/template]
+
+[comment A route's redirect, its own Middleware beside its IngressRoute: the scheme and host the
+  request came on, and the path the route names. Not permanent, so a client caches no landing path
+  that may change; the route's own match decides which requests reach it. /]
+[template private redirect(m : resolveddeployment::MiddlewareStep, e : resolveddeployment::ResolvedExposure)]
+  ---
+  apiVersion: traefik.io/v1alpha1
+  kind: Middleware
+  metadata:
+    name: [m.name/]
+    namespace: [m.namespace/]
+    labels:
+      app.kubernetes.io/part-of: [e.application().id/]
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    redirectRegex:
+      regex: ^(https?://['['/]^/]+)(/.*)?$
+      replacement: ${1}[m.redirectTo/]
+      permanent: false
 [/template]
 
 [comment Traefik tries the higher priority first, and precedence 1 is matched first. /]
@@ -2347,6 +2498,20 @@
   [/for]
 [/template]
 
+[comment One item of a list of words: a scalar, or a block scalar where the word spans lines, its
+  lines one by one, since a template's lines take the column it is called at and an expression's
+  later lines do not reliably. A blank line of such a word is not kept. /]
+[template private listItem(value : String)]
+  [if (value.contains('\n'))]
+    - [value.chomping()/]
+    [for (l : String | value.tokenize('\n'))]
+        [l/]
+    [/for]
+  [else]
+    - [value.scalar()/]
+  [/if]
+[/template]
+
 [comment ============================================================= queries /]
 
 [comment The containers of a Process's pod whose image the lock records a version for, by name. /]
@@ -2354,12 +2519,14 @@
   (if p.imageVersion = null then Sequence{} else Sequence{p.name} endif)
     ->concat(p.sidecars->select(c | c.imageVersion <> null)->collect(c | c.name))
     ->concat(if p.vpn = null or p.vpn.imageVersion = null then Sequence{} else Sequence{'vpn'} endif)
+    ->concat(if p.seeder = null or p.seeder.imageVersion = null then Sequence{} else Sequence{'seed'} endif)
     ->sortedBy(n | n) /]
 
 [query private versionOf(p : resolveddeployment::ResolvedProcess, n : String) : String =
   if n = p.name then p.imageVersion
   else if p.sidecars->exists(c | c.name = n) then p.sidecars->select(c | c.name = n)->first().imageVersion
-  else p.vpn.imageVersion endif endif /]
+  else if n = 'seed' and p.seeder <> null then p.seeder.imageVersion
+  else p.vpn.imageVersion endif endif endif /]
 
 [comment Whether the Process is a member of its Application's release gate, whose pods carry the label
   the Release Gate's policy admits. /]

@@ -36,13 +36,78 @@
       <redirectUris>https://hermes.jorisjonkers.dev/auth/callback</redirectUris>
       <roles>user</roles>
     </client>
-    <processes name="hermes-main" identity="hermes-main" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="hermes-main" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="none">
+    <processes name="hermes" identity="hermes" lifecycle="application" image="docker.io/nousresearch/hermes-agent@sha256:64923faeae267792bf9bf87fe3b4c4869e35004e360c7df01730ad801b74d524" imageVersion="2026.8.31" uid="10000" gid="10000" cutover="interrupted" switchover="stop-start" deadline="480s" replicas="1" serving="hermes" servingLabel="app.kubernetes.io/instance" memory="3Gi" cpu="250m" hardening="restricted" component="none" priorityClass="platform-data">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/status" port="9119"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/status" port="9119"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="24">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/status" port="9119"/>
+      </startup>
+      <surfaces name="dashboard" port="9119"/>
       <placement>
         <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
       </placement>
+      <volumes claim="hermes-data" mountAt="/opt/data" size="1Gi" durability="reconstructible"/>
+      <assets name="hermes-config-yaml-118d92ae7c" from="config/config.yaml" content="" seedAt="/opt/data/config.yaml"/>
+      <writablePaths path="/run" size="64Mi"/>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <writablePaths path="/dev/shm" size="1Gi" memory="true"/>
+      <secrets path="secret/data/agents-system/hermes" access="read" delivery="env" destination="hermes-agents-hermes">
+        <keys>value</keys>
+      </secrets>
+      <environment name="ANTHROPIC_API_KEY">
+        <secret path="secret/data/agents-system/hermes" key="anthropic-api-key" optional="true"/>
+      </environment>
+      <environment name="API_SERVER_ENABLED" value="false"/>
+      <environment name="GITHUB_PAT">
+        <secret path="secret/data/agents-system/hermes" key="github-pat" optional="true"/>
+      </environment>
+      <environment name="HERMES_DASHBOARD" value="1"/>
+      <environment name="HERMES_DASHBOARD_HOST" value="0.0.0.0"/>
+      <environment name="HERMES_DASHBOARD_OIDC_CLIENT_ID" value="hermes"/>
+      <environment name="HERMES_DASHBOARD_OIDC_ISSUER" value="https://id.jorisjonkers.dev"/>
+      <environment name="HERMES_DASHBOARD_OIDC_SCOPES" value="openid profile email"/>
+      <environment name="HERMES_DASHBOARD_PORT" value="9119"/>
+      <environment name="HERMES_DASHBOARD_PUBLIC_URL" value="https://hermes.jorisjonkers.dev"/>
+      <environment name="HERMES_SKIP_CONFIG_MIGRATION" value="false"/>
+      <environment name="HINDSIGHT_API_TOKEN">
+        <secret path="secret/data/agents-system/hermes" key="hindsight-api-token" optional="true"/>
+      </environment>
+      <environment name="MEMORY_API_KEY">
+        <secret path="secret/data/agents-system/hermes" key="memory-api-key" optional="true"/>
+      </environment>
+      <environment name="OPENAI_API_KEY">
+        <secret path="secret/data/agents-system/hermes" key="openai-api-key" optional="true"/>
+      </environment>
+      <environment name="OPENROUTER_API_KEY">
+        <secret path="secret/data/agents-system/hermes" key="openrouter-api-key" optional="true"/>
+      </environment>
+      <environment name="OVERLEAF_SESSION">
+        <secret path="secret/data/agents-system/hermes" key="overleaf-session" optional="true"/>
+      </environment>
+      <environment name="S6_YES_I_WANT_A_WORLD_WRITABLE_RUN_BECAUSE_KUBERNETES" value="1"/>
+      <arguments>gateway</arguments>
+      <arguments>run</arguments>
+      <seeder image="docker.io/library/busybox@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec" imageVersion="1.37.0" memory="16Mi" cpu="10m">
+        <command>/bin/sh</command>
+        <command>-c</command>
+        <command>set -eu&#10;umask 077&#10;mkdir -p '/opt/data'&#10;if [ -e '/opt/data/config.yaml' ]; then cp -p '/opt/data/config.yaml' '/opt/data/config.yaml.superseded'; fi&#10;cp '/seed/hermes-config-yaml-118d92ae7c/config.yaml' '/opt/data/config.yaml.seeding'&#10;chmod 0600 '/opt/data/config.yaml.seeding'&#10;mv '/opt/data/config.yaml.seeding' '/opt/data/config.yaml'</command>
+        <mounts name="hermes-config-yaml-118d92ae7c" mountAt="/seed/hermes-config-yaml-118d92ae7c" readOnly="true"/>
+        <mounts name="hermes-data" mountAt="/opt/data"/>
+      </seeder>
+      <consumes>kubernetes-mcp-server.mcp</consumes>
     </processes>
   </applications>
   <reconcileUnits name="apps-agents"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/agents/hermes/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="Recreate"/>
   <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/agents/agents-api/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
   <deliverables xsi:type="resolveddeployment:ClientFile" path="apps/agents/hermes/client.yaml" application="/0/@applications.1"/>
 </resolveddeployment:ResolvedDeployment>

@@ -16,6 +16,17 @@
       </placement>
     </processes>
   </applications>
+  <applications id="asset-sync" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="data" namespace="data-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="asset-sync" identity="asset-sync" lifecycle="scheduled" image="ghcr.io/jorisjonkers-dev/platform/asset-sync@sha256:5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e" imageVersion="1.0.0" uid="65532" gid="65532" deadline="60s" replicas="1" schedule="*/15 * * * *" startDeadline="300s" serving="asset-sync" servingLabel="app.kubernetes.io/instance" memory="64Mi" cpu="25m" hardening="restricted" component="none">
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <secrets path="secret/data/data-system/garage/web-key" access="read" delivery="file" destination="asset-sync-platform-garage-web-key" mountAt="/run/secrets/garage/credentials" fileMode="0400">
+        <keys>credentials</keys>
+      </secrets>
+    </processes>
+  </applications>
   <reconcileUnits name="apps-data"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/data/asset-sync/workload.yaml" processes="/0/@applications.1/@processes.0" controller="CronJob" strategy="none"/>
   <deliverables xsi:type="resolveddeployment:DashboardFile" path="apps/data/platform-rabbitmq/dashboards.yaml" adapter="grafana" application="/0/@applications.0"/>
 </resolveddeployment:ResolvedDeployment>

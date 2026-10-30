@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="adguard" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="utility" namespace="utility-system" reconcileUnit="/0/@reconcileUnits.0">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="210s">
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
+      <members process="/0/@applications.0/@processes.0">
+        <readiness xsi:type="resolveddeployment:HttpTarget" path="/login.html" port="3000"/>
+      </members>
+    </releaseGate>
+    <processes name="adguard" identity="adguard" lifecycle="application" image="docker.io/adguard/adguardhome@sha256:6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f7e1f3c5a9b2d4f6e8a0c2e4b6d8f5a2c4e" imageVersion="v0.107.79" uid="1000" gid="1000" cutover="continuous" switchover="blue-green" deadline="210s" replicas="1" serving="adguard" servingLabel="app.kubernetes.io/instance" memory="256Mi" cpu="50m" hardening="restricted" component="none" spread="true">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/login.html" port="3000"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/login.html" port="3000"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/login.html" port="3000"/>
+      </startup>
+      <surfaces name="http" port="3000"/>
+      <surfaces name="dns" port="5353"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+      </placement>
+      <assets name="adguard-adguardhome-yaml-85a1bf27a7" from="config/AdGuardHome.yaml" content="" seedAt="/opt/adguardhome/conf/AdGuardHome.yaml"/>
+      <writablePaths path="/opt/adguardhome/work" size="128Mi" memory="true"/>
+      <writablePaths path="/opt/adguardhome/conf" size="64Mi"/>
+      <nameservers>9.9.9.10</nameservers>
+      <nameservers>149.112.112.10</nameservers>
+      <seeder image="docker.io/library/busybox@sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec" imageVersion="1.37.0" memory="16Mi" cpu="10m">
+        <command>/bin/sh</command>
+        <command>-c</command>
+        <command>set -eu&#10;umask 077&#10;mkdir -p '/opt/adguardhome/conf'&#10;if [ -e '/opt/adguardhome/conf/AdGuardHome.yaml' ]; then cp -p '/opt/adguardhome/conf/AdGuardHome.yaml' '/opt/adguardhome/conf/AdGuardHome.yaml.superseded'; fi&#10;cp '/seed/adguard-adguardhome-yaml-85a1bf27a7/AdGuardHome.yaml' '/opt/adguardhome/conf/AdGuardHome.yaml.seeding'&#10;chmod 0600 '/opt/adguardhome/conf/AdGuardHome.yaml.seeding'&#10;mv '/opt/adguardhome/conf/AdGuardHome.yaml.seeding' '/opt/adguardhome/conf/AdGuardHome.yaml'</command>
+        <mounts name="adguard-adguardhome-yaml-85a1bf27a7" mountAt="/seed/adguard-adguardhome-yaml-85a1bf27a7" readOnly="true"/>
+        <mounts name="writable-opt-adguardhome-conf" mountAt="/opt/adguardhome/conf"/>
+      </seeder>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-utility"/>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/utility/adguard/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="RollingUpdate"/>
+</resolveddeployment:ResolvedDeployment>

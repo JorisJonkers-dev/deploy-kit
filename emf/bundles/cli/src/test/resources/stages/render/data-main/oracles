@@ -1,1 +1,2 @@
+apps/data/asset-sync/workload.yaml data/rendered/apps/data/asset-sync/workload.yaml
 apps/data/platform-rabbitmq/dashboards.yaml data/rendered/apps/data/platform-rabbitmq/dashboards.yaml

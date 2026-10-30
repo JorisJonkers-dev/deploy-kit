@@ -28,7 +28,6 @@ CatalogJobFile.job is never set in a render case's input
 CatalogJobFile.name is never set in a render case's input
 CatalogJobFile.part is never set in a render case's input
 CatalogJobFile.path is never set in a render case's input
-ControllerKind.cronJob is never used in a render case's input
 ControllerKind.statefulSet is never used in a render case's input
 GateMember.waitsFor is never set in a render case's input
 GateMigration is never instantiated in a render case's input
@@ -46,14 +45,11 @@ GeneratedKeysFile.path is never set in a render case's input
 IndexFile.namespace is never set in a render case's input
 InternetEgress is never instantiated in a render case's input
 InternetEgress.reason is never set in a render case's input
-Match.exact is never used in a render case's input
 MiddlewareKind.rateLimit is never used in a render case's input
-MiddlewareKind.redirect is never used in a render case's input
 MiddlewareStep.allowance is never set in a render case's input
 MiddlewareStep.burst is never set in a render case's input
 MiddlewareStep.clientAddress is never set in a render case's input
 MiddlewareStep.per is never set in a render case's input
-MiddlewareStep.redirectTo is never set in a render case's input
 MigratedDatabase is never instantiated in a render case's input
 MigratedDatabase.host is never set in a render case's input
 MigratedDatabase.name is never set in a render case's input
@@ -107,9 +103,7 @@ ResolvedGeneratedKey.encoding is never set in a render case's input
 ResolvedGeneratedKey.key is never set in a render case's input
 ResolvedGeneratedKey.path is never set in a render case's input
 ResolvedGrant.engine is never set in a render case's input
-ResolvedGrant.fileMode is never set in a render case's input
 ResolvedGrant.generated is never set in a render case's input
-ResolvedGrant.mountAt is never set in a render case's input
 ResolvedGrant.paths is never set in a render case's input
 ResolvedMigration is never instantiated in a render case's input
 ResolvedMigration.consumes is never set in a render case's input
@@ -129,7 +123,6 @@ ResolvedMigration.testedAgainst is never set in a render case's input
 ResolvedMigration.uid is never set in a render case's input
 ResolvedPlacement.boundTo is never set in a render case's input
 ResolvedPlacement.from is never set in a render case's input
-ResolvedProcess.consumes is never set in a render case's input
 ResolvedProcess.dependencies is never set in a render case's input
 ResolvedProcess.internetEgress is never set in a render case's input
 ResolvedProcess.vpn is never set in a render case's input

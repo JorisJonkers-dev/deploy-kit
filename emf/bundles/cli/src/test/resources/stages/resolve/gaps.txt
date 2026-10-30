@@ -93,6 +93,11 @@ ClusterState.backups is never set in a resolve case's input
 ClusterState.bindings is never set in a resolve case's input
 ClusterState.placements is never set in a resolve case's input
 ConfigMapFile.externalChecks is never set by a resolve case
+ContainerMount is never instantiated by a resolve case
+ContainerMount.mountAt is never set by a resolve case
+ContainerMount.name is never set by a resolve case
+ContainerMount.readOnly is never set by a resolve case
+ContainerMount.subPath is never set by a resolve case
 ContentPolicy.admin is never used in a resolve case's input
 ContentPolicy.workflow is never used in a resolve case's input
 ControllerKind.cronJob is never used by a resolve case
@@ -287,6 +292,7 @@ ResolvedApplication.client is never set by a resolve case
 ResolvedApplication.dashboards is never set by a resolve case
 ResolvedApplication.fluxScrape is never set by a resolve case
 ResolvedApplication.migration is never set by a resolve case
+ResolvedAsset.seedAt is never set by a resolve case
 ResolvedCatalog is never instantiated by a resolve case
 ResolvedCatalog.admin is never set by a resolve case
 ResolvedCatalog.connection is never set by a resolve case
@@ -409,11 +415,26 @@ ResolvedPriority is never instantiated by a resolve case
 ResolvedPriority.name is never set by a resolve case
 ResolvedPriority.value is never set by a resolve case
 ResolvedProcess.api is never set by a resolve case
+ResolvedProcess.arguments is never set by a resolve case
 ResolvedProcess.consumes is never set by a resolve case
 ResolvedProcess.dependencies is never set by a resolve case
 ResolvedProcess.internetEgress is never set by a resolve case
+ResolvedProcess.nameservers is never set by a resolve case
+ResolvedProcess.priorityClass is never set by a resolve case
+ResolvedProcess.schedule is never set by a resolve case
+ResolvedProcess.seeder is never set by a resolve case
+ResolvedProcess.startDeadline is never set by a resolve case
 ResolvedProcess.vpn is never set by a resolve case
 ResolvedScrape.labels is never set by a resolve case
+ResolvedSeeder is never instantiated by a resolve case
+ResolvedSeeder.command is never set by a resolve case
+ResolvedSeeder.cpu is never set by a resolve case
+ResolvedSeeder.image is never set by a resolve case
+ResolvedSeeder.imageVersion is never set by a resolve case
+ResolvedSeeder.memory is never set by a resolve case
+ResolvedSeeder.mounts is never set by a resolve case
+ResolvedSidecar.mounts is never set by a resolve case
+ResolvedSurface.hostPort is never set by a resolve case
 ResolvedVpn is never instantiated by a resolve case
 ResolvedVpn.cpu is never set by a resolve case
 ResolvedVpn.credential is never set by a resolve case
