@@ -1,6 +1,6 @@
 // The tracked tree, as text, and the dangling-citation scan over it.
 //
-// Two ledgers cite ids into the tree: docs/requirements.md (REQ-NNN) and
+// Two ledgers cite ids into the tree: docs/requirements/*.md (REQ-NNN) and
 // docs/architecture-rules.md (RULE-NNN). Both need the same two things: every
 // tracked file's text, and every id cited somewhere that no row declares. The
 // scan is pure over a {path: content} map, so each gate's negative fixtures

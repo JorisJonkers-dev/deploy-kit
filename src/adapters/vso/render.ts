@@ -14,7 +14,11 @@ import type {
   VaultDynamicSecret,
   VaultStaticSecret,
 } from "../../objects/custom.ts";
-import { vaultNameOf } from "../../model/runtime-profiles.ts";
+import { namespaceOf, vaultNameOf } from "../../model/runtime-profiles.ts";
+import {
+  NODE_PROJECT,
+  type ResolvedNodeAgent,
+} from "../../model/node-agents.ts";
 import type { Deliverable } from "../../objects/deliverable.ts";
 import {
   holdersOf,
@@ -245,4 +249,80 @@ export function renderVso(project: ResolvedProject): Deliverable[] {
     },
   );
   return [...connection, ...applications];
+}
+
+/**
+ * The `node` Project's share: where the speaker runs memberlist, the
+ * connection, how the operator signs in as the speaker, and the static secret
+ * its key lands in (spec/v1/14-platform-intent.md#node-agents).
+ */
+export function renderNodeSecrets(
+  agents: readonly ResolvedNodeAgent[],
+): Deliverable[] {
+  const namespace = namespaceOf(NODE_PROJECT);
+  return agents.flatMap(({ agent, memberlist }): Deliverable[] => {
+    if (memberlist === undefined) return [];
+    const labels = {
+      ...managedOnly(),
+      "app.kubernetes.io/name": agent,
+      "app.kubernetes.io/part-of": NODE_PROJECT,
+    };
+    const auth: VaultAuth = {
+      apiVersion: API,
+      kind: "VaultAuth",
+      metadata: { name: agent, namespace, labels },
+      spec: {
+        vaultConnectionRef: CONNECTION,
+        method: "kubernetes",
+        mount: "kubernetes",
+        kubernetes: {
+          role: vaultNameOf(namespace, agent),
+          serviceAccount: agent,
+        },
+      },
+    };
+    const synced: VaultStaticSecret = {
+      apiVersion: API,
+      kind: "VaultStaticSecret",
+      metadata: { name: memberlist.secret, namespace, labels },
+      spec: {
+        vaultAuthRef: agent,
+        mount: KV_MOUNT,
+        type: "kv-v2",
+        path: memberlist.path.slice(KV_DATA.length),
+        refreshAfter: REFRESH,
+        hmacSecretData: true,
+        destination: {
+          name: memberlist.secret,
+          create: true,
+          annotations: UNTRACKED,
+        },
+        // A speaker reads its key at start, so a changed key restarts them all.
+        rolloutRestartTargets: [{ kind: "DaemonSet", name: agent }],
+      },
+    };
+    return [
+      {
+        path: `${projectDirectory(NODE_PROJECT)}/vaultconnection.yaml`,
+        adapter: ADAPTER,
+        objects: [
+          {
+            apiVersion: API,
+            kind: "VaultConnection",
+            metadata: {
+              name: CONNECTION,
+              namespace,
+              labels: managedOnly(),
+            },
+            spec: { address: memberlist.store, skipTLSVerify: false },
+          },
+        ],
+      },
+      {
+        path: `${projectDirectory(NODE_PROJECT)}/${agent}/vso.yaml`,
+        adapter: ADAPTER,
+        objects: [auth, synced],
+      },
+    ];
+  });
 }

@@ -207,7 +207,13 @@ A Project whose grants generate keys ([chapter 10](10-project-intent.md#generate
 adds one more document beside them, `apps/<project>/vault-policy/policies/<namespace>.generated.json`:
 `keys`, each a `path`, a `key`, its `bytes` and its `encoding`, the defaults
 filled in, and, for a key that adopts a value, `adopt`, the `path` and the
-`key` of the location, once each, in path then key order.
+`key` of the location, once each, in path then key order. The `node` Project
+holds no grant, and writes the same documents for the speaker's memberlist key
+([chapter 14](14-platform-intent.md#node-agents)): the `l4-speaker` identity's
+policy and role, and `node-system.generated.json`, beside its own job. Its
+connection, the speaker's `VaultAuth` and the `VaultStaticSecret`
+`l4-speaker-memberlist` are `vso`'s, in `apps/node/vaultconnection.yaml` and
+`apps/node/l4-speaker/vso.yaml`.
 
 **Rendered here, applied in the cluster.** Writing a policy into Vault is an act
 against a live system by an identity with privilege, which is delivery
@@ -256,7 +262,7 @@ same paths and is refused (`E_PATH_COLLISION`):
 |---|---|---|
 | `configmap.yaml` | `vault-policy` | the immutable `ConfigMap`, each document under its file name as canonical JSON on one line, in name order |
 | `job.yaml` | `vault-policy` | the `Job`, marked `kustomize.toolkit.fluxcd.io/force: Enabled`: the locked image, `VAULT_ADDR` the Secret Store's endpoint, `VAULT_ROLE` the platform's role, `POLICIES_DIR` where the ConfigMap is mounted read-only, `restartPolicy: OnFailure`, the token mounted because the job logs in with it; the pod's `activeDeadlineSeconds` the platform's deadline, so it bounds one attempt, and a required node affinity on `kubernetes.io/hostname` `In` the job's `eligibleNodes`; the Job's `backoffLimit` `2147483647`, the most the API holds, and no deadline of its own, so it retries until an attempt succeeds |
-| `cronjob.yaml` | `vault-policy` | the `CronJob` `vault-policy`: the same pod and the same `backoffLimit` as the Job, `@hourly`, `concurrencyPolicy: Forbid`, so a Vault restored without what the render holds gets it back within the hour |
+| `cronjob.yaml` | `vault-policy` | the `CronJob` `vault-policy`: the same pod as the Job, `@hourly`, `concurrencyPolicy: Forbid`, so a Vault restored without what the render holds gets it back within the hour; its job template's `backoffLimit` `6` and `activeDeadlineSeconds` `3000`, so a run that cannot succeed, its ConfigMap replaced and pruned by a later render, fails before the next is due rather than holding it off |
 | `serviceaccount.yaml` | `vault-policy` | the `ServiceAccount` `vault-policy`, the identity the platform's role is bound to in every namespace |
 | `networkpolicy.yaml` | `networking` | the job's own policy: egress to the Secret Store and the cluster's DNS, no ingress; listed by no index, like every policy |
 

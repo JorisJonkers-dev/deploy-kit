@@ -588,6 +588,29 @@ describe("renderIntentSet", () => {
       expect(cron).toContain(`name: ${String(named)}\n`);
     });
 
+    // REQ-159 (docs/requirements.md), deploy-kit#742: an hourly run whose
+    // hashed ConfigMap a later render pruned can never succeed, and under
+    // Forbid it would hold off every later run.
+    it("gives up an hourly run within the hour, while the one-shot Job retries until it succeeds", () => {
+      const tree = asTree(artifact(render(undefined, ["data"]), "data"));
+      const [run] = parseAllDocuments(
+        tree["apps/data/vault-policy/job.yaml"] ?? "",
+      ).map((document) => document.toJS() as { spec: Record<string, unknown> });
+      const [hourly] = parseAllDocuments(
+        tree["apps/data/vault-policy/cronjob.yaml"] ?? "",
+      ).map(
+        (document) =>
+          document.toJS() as {
+            spec: { jobTemplate: { spec: Record<string, unknown> } };
+          },
+      );
+
+      expect(run?.spec["backoffLimit"]).toBe(2_147_483_647);
+      expect(run?.spec["activeDeadlineSeconds"]).toBeUndefined();
+      expect(hourly?.spec.jobTemplate.spec["backoffLimit"]).toBe(6);
+      expect(hourly?.spec.jobTemplate.spec["activeDeadlineSeconds"]).toBe(3000);
+    });
+
     it("is recreated when the compiler alone changes its pod template, which a Job never lets an update change", () => {
       const tree = asTree(artifact(render(undefined, ["data"]), "data"));
       const job = tree["apps/data/vault-policy/job.yaml"] ?? "";
@@ -1395,6 +1418,36 @@ describe("the database catalog", () => {
       user: "postgres.user",
       password: "postgres.password",
     });
+  });
+
+  // REQ-159 (docs/requirements.md): the method's hourly run gives up within
+  // the hour, as the Vault policy job's does; its one-shot Job does not.
+  it("gives up the method's hourly run within the hour, while its one-shot Job retries until it succeeds", () => {
+    const limits = parseAllDocuments(estate()[CATALOG] ?? "")
+      .map(
+        (document) =>
+          document.toJS() as {
+            kind: string;
+            spec?: {
+              backoffLimit?: number;
+              activeDeadlineSeconds?: number;
+              jobTemplate?: {
+                spec: { backoffLimit: number; activeDeadlineSeconds: number };
+              };
+            };
+          },
+      )
+      .flatMap(({ kind, spec }) => {
+        const job = spec?.jobTemplate?.spec ?? spec;
+        return kind === "Job" || kind === "CronJob"
+          ? [[kind, job?.backoffLimit, job?.activeDeadlineSeconds]]
+          : [];
+      });
+
+    expect(limits).toStrictEqual([
+      ["Job", 2_147_483_647, undefined],
+      ["CronJob", 6, 3000],
+    ]);
   });
 
   // deploy-kit#572: the method reaches the datastore as every consumer does,
@@ -3947,6 +4000,18 @@ describe("the Node Agents", () => {
     });
   });
 
+  // REQ-156 (docs/requirements.md), deploy-kit#730: the hosts' CDI
+  // specification names each card by its index, so the plugin hands out that.
+  it("hand out each card by its index, the name the hosts' CDI specification gives it", () => {
+    const [plugin] = objectsOf("apps/node/gpu-device/workload.yaml") as {
+      spec: { template: { spec: { containers: { env: unknown[] }[] } } };
+    }[];
+    expect(plugin?.spec.template.spec.containers[0]?.env).toContainEqual({
+      name: "DEVICE_ID_STRATEGY",
+      value: "index",
+    });
+  });
+
   it("announce each pool from the nodes of its site, and assign none unasked", () => {
     const pools = objectsOf("apps/node/l4-speaker/pools.yaml");
     expect(
@@ -3991,6 +4056,171 @@ describe("the Node Agents", () => {
       expect.objectContaining({ kind: "IPAddressPool", name: "lan-mqtt" }),
       expect.objectContaining({ kind: "L2Advertisement", name: "lan-mqtt" }),
     ]);
+  });
+
+  // REQ-155 (docs/requirements.md), deploy-kit#729: MetalLB 0.15.3's speaker
+  // reads its own pod at start, and both copies watch their configuration
+  // states, the nodes, and their own namespace's Secrets and ConfigMaps.
+  it("hand the speaker its own pod's name, which it reads at start", () => {
+    const [speaker] = objectsOf("apps/node/l4-speaker/workload.yaml") as {
+      spec: { template: { spec: { containers: { env: unknown[] }[] } } };
+    }[];
+    expect(speaker?.spec.template.spec.containers[0]?.env).toContainEqual({
+      name: "METALLB_POD_NAME",
+      valueFrom: { fieldRef: { fieldPath: "metadata.name" } },
+    });
+  });
+
+  it("let the speaker and its controller read what MetalLB 0.15.3 always watches", () => {
+    const rbac = objectsOf("apps/node/l4-speaker/rbac.yaml") as {
+      kind: string;
+      metadata: { name: string; namespace?: string };
+      rules?: { apiGroups: string[]; resources: string[]; verbs: string[] }[];
+    }[];
+    const may = (kind: string, name: string, resource: string, verb: string) =>
+      rbac.some(
+        (object) =>
+          object.kind === kind &&
+          object.metadata.name === name &&
+          (object.rules ?? []).some(
+            ({ resources, verbs }) =>
+              resources.includes(resource) && verbs.includes(verb),
+          ),
+      );
+    for (const [cluster, local] of [
+      ["node:l4-speaker", "l4-speaker"],
+      ["node:l4-controller", "l4-controller"],
+    ] as const) {
+      expect(may("ClusterRole", cluster, "configurationstates", "list")).toBe(
+        true,
+      );
+      expect(may("ClusterRole", cluster, "nodes", "watch")).toBe(true);
+      for (const resource of ["secrets", "configmaps"])
+        expect(may("Role", local, resource, "watch")).toBe(true);
+    }
+    expect(may("Role", "l4-speaker", "servicebgpstatuses", "watch")).toBe(true);
+  });
+
+  it("read Secrets in the speaker's namespace alone, never cluster-wide", () => {
+    const rbac = objectsOf("apps/node/l4-speaker/rbac.yaml") as {
+      kind: string;
+      metadata: { namespace?: string };
+      rules?: { resources: string[] }[];
+    }[];
+    expect(
+      rbac
+        .filter(({ rules }) =>
+          (rules ?? []).some(({ resources }) => resources.includes("secrets")),
+        )
+        .map(({ kind, metadata }) => [kind, metadata.namespace]),
+    ).toStrictEqual([
+      ["Role", "node-system"],
+      ["Role", "node-system"],
+    ]);
+  });
+
+  // REQ-157 (docs/requirements.md), deploy-kit#733: the speakers find each
+  // other by memberlist, so a lost node's addresses move in seconds, keyed by
+  // a value the node Project's own Vault policy job generates.
+  it("join the speakers by memberlist, keyed from the Secret the operator syncs", () => {
+    const [speaker] = objectsOf("apps/node/l4-speaker/workload.yaml") as {
+      spec: {
+        template: {
+          spec: {
+            containers: {
+              env: { name: string }[];
+              volumeMounts: unknown[];
+            }[];
+            volumes: unknown[];
+          };
+        };
+      };
+    }[];
+    const pod = speaker?.spec.template.spec;
+    expect(pod?.containers[0]?.env).toEqual(
+      expect.arrayContaining([
+        {
+          name: "METALLB_ML_BIND_ADDR",
+          valueFrom: { fieldRef: { fieldPath: "status.podIP" } },
+        },
+        {
+          name: "METALLB_ML_LABELS",
+          value: "app.kubernetes.io/name=l4-speaker",
+        },
+        { name: "METALLB_ML_BIND_PORT", value: "7946" },
+        { name: "METALLB_ML_SECRET_KEY_PATH", value: "/etc/ml_secret_key" },
+      ]),
+    );
+    expect(pod?.containers[0]?.volumeMounts).toContainEqual({
+      name: "memberlist",
+      mountPath: "/etc/ml_secret_key",
+      readOnly: true,
+    });
+    expect(pod?.volumes).toContainEqual({
+      name: "memberlist",
+      secret: { secretName: "l4-speaker-memberlist" },
+    });
+    const synced = objectsOf("apps/node/l4-speaker/vso.yaml").find(
+      ({ kind }) => kind === "VaultStaticSecret",
+    ) as { spec: Record<string, unknown> } | undefined;
+    expect(synced?.spec).toMatchObject({
+      vaultAuthRef: "l4-speaker",
+      path: "node-system/l4-speaker",
+      destination: { name: "l4-speaker-memberlist", create: true },
+      rolloutRestartTargets: [{ kind: "DaemonSet", name: "l4-speaker" }],
+    });
+  });
+
+  it("generate the speaker's key in the node Project's own policy job, under its prefix", () => {
+    const written = tree();
+    const policies = "apps/node/vault-policy/policies";
+    expect(
+      JSON.parse(written[`${policies}/node-system.generated.json`] ?? "null"),
+    ).toStrictEqual({
+      keys: [
+        {
+          path: "secret/data/node-system/l4-speaker",
+          key: "secretkey",
+          bytes: 32,
+          encoding: "hex",
+        },
+      ],
+    });
+    expect(
+      JSON.parse(
+        written[`${policies}/node-system-l4-speaker.role.json`] ?? "null",
+      ),
+    ).toStrictEqual({
+      bound_service_account_names: ["l4-speaker"],
+      bound_service_account_namespaces: ["node-system"],
+      token_policies: ["node-system-l4-speaker"],
+    });
+    expect(written["apps/node/vault-policy/job.yaml"]).toContain(
+      "namespace: node-system\n",
+    );
+  });
+
+  it("join the speakers through the API alone where no policy job could generate the key", () => {
+    const written = asTree(
+      artifact(
+        render(
+          {
+            "platform/platform.intent.yml": (platform) =>
+              platform.replace(/^policyJob:\n(?: {2}.*\n)+/m, ""),
+          },
+          ["node"],
+        ),
+        "node",
+      ),
+    );
+    expect(written["apps/node/l4-speaker/workload.yaml"]).not.toContain(
+      "METALLB_ML_",
+    );
+    expect(
+      Object.keys(written).filter(
+        (path) => path.includes("vault") || path.endsWith("vso.yaml"),
+      ),
+    ).toStrictEqual([]);
   });
 
   it("run the speaker on the host network with NET_RAW alone", () => {
@@ -4661,7 +4891,7 @@ describe("a seeded Asset", () => {
   });
 });
 
-// REQ-154 (docs/requirements.md): the monitoring stack's Prometheus and
+// REQ-160 (docs/requirements.md): the monitoring stack's Prometheus and
 // Alertmanager render as the Prometheus operator's objects, carrying their
 // Process's pod, and select what the Platform document says.
 describe("the operator's objects", () => {

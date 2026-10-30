@@ -4504,6 +4504,32 @@ describe("a mongo, the document store", () => {
     });
   });
 
+  // REQ-158 (docs/requirements.md): its replica set member is configured by
+  // the name consumers reach it by, so the pod resolves that name to itself.
+  it("resolves its own Service's name to itself, the name its replica set member is configured by", () => {
+    expect(store("recoverable").selfNames).toStrictEqual([
+      "notes-store.notes-system.svc.cluster.local",
+    ]);
+  });
+
+  it("is the one engine whose Process resolves a name to itself", () => {
+    const postgres = processOf(
+      one(
+        serving(
+          "notes-db",
+          "        engine: postgres\n        volumes:\n          - { claim: rows, mountAt: /var/lib/postgresql/data, size: 1Gi, durability: recoverable }\n",
+        )
+          .replace("cutover: continuous", "cutover: interrupted")
+          .replace("provides: { http: 8080 }", "provides: { postgres: 5432 }"),
+      ),
+    );
+
+    expect(postgres).not.toHaveProperty("selfNames");
+    expect(processOf(one(serving("notes-api")))).not.toHaveProperty(
+      "selfNames",
+    );
+  });
+
   it("is refused where the platform names no mongo method, and where that method's surface is not provided", () => {
     expect(
       codesOf(

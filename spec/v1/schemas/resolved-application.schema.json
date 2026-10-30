@@ -1549,6 +1549,14 @@
             "minLength": 1
           }
         },
+        "selfNames": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
         "spawns": {
           "type": "array",
           "items": {

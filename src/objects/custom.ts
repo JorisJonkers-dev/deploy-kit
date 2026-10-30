@@ -286,7 +286,7 @@ export interface VaultStaticSecret {
       readonly annotations: Readonly<Record<string, string>>;
     };
     readonly rolloutRestartTargets?: readonly {
-      readonly kind: "Deployment" | "StatefulSet";
+      readonly kind: "Deployment" | "DaemonSet" | "StatefulSet";
       readonly name: string;
     }[];
   };

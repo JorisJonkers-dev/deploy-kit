@@ -851,7 +851,7 @@ describe("the refusal fixtures", () => {
           .map(({ path }) => path);
   };
 
-  // REQ-154 (docs/requirements.md): the operator runs a monitoring role's
+  // REQ-160 (docs/requirements.md): the operator runs a monitoring role's
   // Process only as one interrupted Process with one surface and flags of its own.
   it("refuses an argument of a monitoring role's Process that is not a flag", () => {
     expect(

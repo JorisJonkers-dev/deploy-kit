@@ -6,6 +6,7 @@ import {
   GPU_SHARES,
   NODE_PROJECT,
   type AgentImage,
+  type Memberlist,
   type ResolvedNodeAgent,
   type NodeAgent,
   type SpokenPool,
@@ -17,6 +18,8 @@ import type {
   ConfigMap,
   Labels,
   Namespace,
+  Role,
+  RoleBinding,
   ServiceAccount,
 } from "../../objects/kubernetes.ts";
 import type {
@@ -41,6 +44,10 @@ const GPU_RESOURCE = "nvidia.com/gpu";
 const CONTROLLER = "l4-controller";
 /** The metrics port of MetalLB's speaker and controller. */
 const METALLB_METRICS = 7472;
+/** The port the speakers' memberlist binds on the host, over TCP and UDP. */
+const MEMBERLIST_PORT = 7946;
+/** Where the speaker reads its memberlist key, as a file named for the key. */
+const MEMBERLIST_KEY_PATH = "/etc/ml_secret_key";
 
 /** What a catalog entry fixes for its container, beyond its image and request. */
 interface Privileges {
@@ -68,6 +75,8 @@ const CATALOG: Readonly<Record<NodeAgent, Privileges>> = {
     hostPID: true,
     env: [
       { name: "CONFIG_FILE", value: "/config/config.yaml" },
+      // The hosts' CDI specification names each card by its index.
+      { name: "DEVICE_ID_STRATEGY", value: "index" },
       { name: "FAIL_ON_INIT_ERROR", value: "true" },
       { name: "NVIDIA_VISIBLE_DEVICES", value: "all" },
       { name: "PASS_DEVICE_SPECS", value: "true" },
@@ -154,6 +163,11 @@ const CATALOG: Readonly<Record<NodeAgent, Privileges>> = {
         name: "METALLB_HOST",
         valueFrom: { fieldRef: { fieldPath: "status.hostIP" } },
       },
+      // The speaker reads its own pod at start, by this name.
+      {
+        name: "METALLB_POD_NAME",
+        valueFrom: { fieldRef: { fieldPath: "metadata.name" } },
+      },
     ],
     port: METALLB_METRICS,
     securityContext: {
@@ -173,6 +187,12 @@ const METALLB_READS = [
   "communities",
   "bfdprofiles",
 ];
+/** Where each copy records the configuration it last loaded, which both always watch. */
+const CONFIGURATION_STATES = {
+  apiGroups: ["metallb.io"],
+  resources: ["configurationstates", "configurationstates/status"],
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"],
+};
 const RULES: Readonly<Record<string, ClusterRole["rules"]>> = {
   "l4-speaker": [
     {
@@ -196,11 +216,12 @@ const RULES: Readonly<Record<string, ClusterRole["rules"]>> = {
       resources: ["servicel2statuses", "servicel2statuses/status"],
       verbs: ["create", "delete", "update", "patch"],
     },
+    CONFIGURATION_STATES,
   ],
   [CONTROLLER]: [
     {
       apiGroups: [""],
-      resources: ["services", "namespaces"],
+      resources: ["services", "namespaces", "nodes"],
       verbs: ["get", "list", "watch"],
     },
     { apiGroups: [""], resources: ["services/status"], verbs: ["update"] },
@@ -215,7 +236,28 @@ const RULES: Readonly<Record<string, ClusterRole["rules"]>> = {
       resources: ["ipaddresspools/status"],
       verbs: ["update"],
     },
+    CONFIGURATION_STATES,
   ],
+};
+
+/** What both watch in their own namespace alone: its Secrets and ConfigMaps. */
+const NAMESPACE_READS: ClusterRole["rules"] = [
+  {
+    apiGroups: [""],
+    resources: ["secrets", "configmaps"],
+    verbs: ["get", "list", "watch"],
+  },
+];
+const NAMESPACE_RULES: Readonly<Record<string, ClusterRole["rules"]>> = {
+  "l4-speaker": [
+    ...NAMESPACE_READS,
+    {
+      apiGroups: ["metallb.io"],
+      resources: ["servicebgpstatuses"],
+      verbs: ["get", "list", "watch"],
+    },
+  ],
+  [CONTROLLER]: NAMESPACE_READS,
 };
 
 const labelsOf = (name: string): Labels => ({
@@ -311,6 +353,42 @@ const podOf = (
   };
 };
 
+/**
+ * The speaker joined to its peers by memberlist: bound to its pod's address,
+ * finding the other speakers by their name label, its traffic keyed by the
+ * Secret the operator syncs from the Secret Store.
+ */
+const withMemberlist = (
+  spec: AgentPodSpec,
+  { secret }: Memberlist,
+): AgentPodSpec => ({
+  ...spec,
+  containers: spec.containers.map((container) => ({
+    ...container,
+    env: [
+      ...(container.env ?? []),
+      {
+        name: "METALLB_ML_BIND_ADDR",
+        valueFrom: { fieldRef: { fieldPath: "status.podIP" } },
+      },
+      {
+        name: "METALLB_ML_LABELS",
+        value: `app.kubernetes.io/name=${container.name}`,
+      },
+      { name: "METALLB_ML_BIND_PORT", value: String(MEMBERLIST_PORT) },
+      { name: "METALLB_ML_SECRET_KEY_PATH", value: MEMBERLIST_KEY_PATH },
+    ],
+    volumeMounts: [
+      ...(container.volumeMounts ?? []),
+      { name: "memberlist", mountPath: MEMBERLIST_KEY_PATH, readOnly: true },
+    ],
+  })),
+  volumes: [
+    ...(spec.volumes ?? []),
+    { name: "memberlist", secret: { secretName: secret } },
+  ],
+});
+
 const daemonSetOf = (name: string, spec: AgentPodSpec): AgentDaemonSet => ({
   apiVersion: "apps/v1",
   kind: "DaemonSet",
@@ -342,7 +420,7 @@ sharing:
 
 const rbacOf = (
   names: readonly string[],
-): (ClusterRole | ClusterRoleBinding)[] =>
+): (ClusterRole | ClusterRoleBinding | Role | RoleBinding)[] =>
   names.flatMap((name) => [
     {
       apiVersion: "rbac.authorization.k8s.io/v1" as const,
@@ -358,6 +436,25 @@ const rbacOf = (
         apiGroup: "rbac.authorization.k8s.io" as const,
         kind: "ClusterRole" as const,
         name: `${NODE_PROJECT}:${name}`,
+      },
+      subjects: [
+        { kind: "ServiceAccount" as const, name, namespace: NODE_NAMESPACE },
+      ],
+    },
+    {
+      apiVersion: "rbac.authorization.k8s.io/v1" as const,
+      kind: "Role" as const,
+      metadata: metadataOf(name),
+      rules: NAMESPACE_RULES[name] as Role["rules"],
+    },
+    {
+      apiVersion: "rbac.authorization.k8s.io/v1" as const,
+      kind: "RoleBinding" as const,
+      metadata: metadataOf(name),
+      roleRef: {
+        apiGroup: "rbac.authorization.k8s.io" as const,
+        kind: "Role" as const,
+        name,
       },
       subjects: [
         { kind: "ServiceAccount" as const, name, namespace: NODE_NAMESPACE },
@@ -442,7 +539,7 @@ function agentDeliverables(agent: ResolvedNodeAgent): Deliverable[] {
   const directory = directoryOf(agent.agent);
   const gpu = agent.agent === "gpu-device";
   const limits = agent.agent === "gpu-metrics" ? { [GPU_RESOURCE]: "1" } : {};
-  const spec = podOf(
+  const pod = podOf(
     agent.agent,
     agent.nodes,
     containerOf(agent.agent, agent, privileges, limits, gpu),
@@ -455,6 +552,10 @@ function agentDeliverables(agent: ResolvedNodeAgent): Deliverable[] {
       ...(gpu ? { config: true as const } : {}),
     },
   );
+  const spec =
+    agent.memberlist === undefined
+      ? pod
+      : withMemberlist(pod, agent.memberlist);
   const speaker = agent.controller !== undefined;
   return [
     {

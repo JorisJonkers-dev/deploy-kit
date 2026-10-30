@@ -1,0 +1,10 @@
+{
+  "keys": [
+    {
+      "path": "secret/data/node-system/l4-speaker",
+      "key": "secretkey",
+      "bytes": 32,
+      "encoding": "hex"
+    }
+  ]
+}

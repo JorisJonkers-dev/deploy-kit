@@ -835,6 +835,10 @@ const resolvedProcess = stated(
     // The resolvers a Process that serves DNS resolves through, in place of
     // the cluster's DNS (spec/v1/20-resolved-deployment.md#derived-mechanics).
     nameservers: z.array(text).min(1).exactOptional(),
+    // The names a `mongo` Process's own pod resolves to itself: its Service's,
+    // the name its replica set member is configured by
+    // (spec/v1/20-resolved-deployment.md#a-replica-set-member-finds-itself).
+    selfNames: z.array(text).min(1).exactOptional(),
     spawns: z.array(resolvedSpawn).exactOptional(),
     move: resolvedMove.exactOptional(),
     ingress: z.array(ingressPeer).exactOptional(),
