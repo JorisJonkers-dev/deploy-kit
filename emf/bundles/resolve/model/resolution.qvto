@@ -263,7 +263,7 @@ query afterOf(prj : EffectiveProject) : Sequence(String) =
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
-	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty() or holdsClientGrants(p) or p.vpn <> null
+	->union(if prj.applications.processes->exists(p | p.secrets->notEmpty() or holdsClientGrants(p) or p.readsClientSecret() or p.vpn <> null
 				or p.dependsOn->exists(e | reachesDatabase(e)))
 			or prj.applications->exists(a | managed(a) or appliesCatalog(a))
 		then secretsAfter(prj.project) else Sequence{} endif)
@@ -995,7 +995,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
 	if self.vpn <> null then vpn := vpnOf(self) endif;
 	hardening := estate.hardening.spelling();
-	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self))->union(obsReceiverGrants(self, app))->union(self.clientGrants(app))->union(bucketKeysOf(self, prj));
+	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self))->union(obsReceiverGrants(self, app))->union(self.clientGrants(app))->union(bucketKeysOf(self, prj))->union(self.clientReadGrants(app, prj));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
 	priorityClass := priorityOf(self, app, prj);
@@ -1870,6 +1870,16 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 				};
 			}
 		else unresolved(variable, 'a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE') endif
+	else if self.kind = PlaceholderKind::client and self.source = 'secret' then
+		-- observability: the Client's secret is read as a `${secret:}` reference would be.
+		object EnvEntry {
+			name := variable;
+			secret := object SecretReference {
+				path := clientSecretPath(prj.project, owner.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication).id);
+				key := 'secret';
+				optional := false;
+			};
+		}
 	else if self.kind = PlaceholderKind::dependency and self.source.lastIndexOf('.') > 0
 			and Sequence{'accessKeyId', 'secretAccessKey'}->includes(
 				self.source.substring(self.source.lastIndexOf('.') + 1, self.source.size())) then
@@ -1901,7 +1911,7 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 		}
 	else
 		object EnvEntry { name := variable; value := self.textFor(owner, prj) + suffix; }
-	endif endif endif endif;
+	endif endif endif endif endif;
 
 query Placeholder::textFor(owner : PI::Process, prj : EffectiveProject) : String =
 	if self.kind = PlaceholderKind::dependency then dependencyValue(self.source, owner)
@@ -2461,7 +2471,7 @@ query egressOf(p : PI::Process) : Sequence(PolicyPeer) =
 	-- A Process that serves DNS resolves through the upstream nameservers, never the cluster's DNS.
 	(if servesDns(p) then Sequence{} else
 		Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }} endif)
-	->union(if p.secrets->isEmpty() and not edgeAcme(p) and not holdsClientGrants(p) then Sequence{} else storePeers() endif)
+	->union(if p.secrets->isEmpty() and not edgeAcme(p) and not holdsClientGrants(p) and not p.readsClientSecret() then Sequence{} else storePeers() endif)
 	-- The Release Gate reaches every gate member's pods (spec/v1/16-dependencies.md#the-member-label).
 	->union(if estate.delivery <> null and estate.delivery.gate.id = app.id
 		then Sequence{object PolicyPeer { rule := 'gate-members'; port := 0; }} else Sequence{} endif)
@@ -2785,7 +2795,7 @@ query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(
 		->collect(e | projectOf(e.application))
 		->select(other | other <> null and other <> prj.project)
 		->collect(other | unitOf(other))
-	->union(if app.processes->exists(p | p.secrets->notEmpty() or holdsClientGrants(p) or p.vpn <> null
+	->union(if app.processes->exists(p | p.secrets->notEmpty() or holdsClientGrants(p) or p.readsClientSecret() or p.vpn <> null
 			or p.dependsOn->exists(e | reachesDatabase(e)))
 			or managed(app) or appliesCatalog(app)
 		then secretsAfter(prj.project) else Sequence{} endif)
@@ -3582,7 +3592,7 @@ query obsScrapeEgress(app : EffectiveApplication) : Sequence(PolicyPeer) =
 	if estate.telemetry = null or estate.telemetry.metrics.id <> app.id then Sequence{} else
 	let targets : Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
 		projects->collect(prj | prj.applications->select(a | a.observability <> null and a.observability.scrape <> null)
-			->collect(a | Tuple{rule = 'peer', namespace = homeNamespace(prj.project, a.id),
+			->collect(a | Tuple{rule = 'scrape-target', namespace = homeNamespace(prj.project, a.id),
 				process = homeProcess(a.id, a.observability.scrape.process.name),
 				port = a.observability.scrape.surface.value}))->flatten() in
 	named(targets->asOrderedSet()->asSequence()->sortedBy(t | t.namespace + ' ' + t.process + ' ' + t.port.toString())->asSequence())
@@ -3781,3 +3791,22 @@ query gateCheck(app : EffectiveApplication, e : Exposure, prj : EffectiveProject
 		Tuple{k = 'url', v = str((if tierFor(e.audience).listener = Listener::tls then 'https' else 'http' endif)
 			+ '://' + e.host + GATE_PATH)},
 		Tuple{k = 'conditions', v = arr(Sequence{str('[STATUS] < 500')})}});
+
+-- ================================================================== observability: the Client's secret read
+-- observability: a Process that references `${client:secret}` is granted read on the Client's credential
+-- path, delivered as a `${secret:}` reference's grant is (spec/v1/17-sign-in.md#credentials-and-placeholders).
+query PI::Process::readsClientSecret() : Boolean =
+	self.env->exists(f | f.entries->exists(v | v.value.oclIsKindOf(Placeholder)
+		and v.value.oclAsType(Placeholder).kind = PlaceholderKind::client
+		and v.value.oclAsType(Placeholder).source = 'secret'));
+
+query PI::Process::clientReadGrants(app : EffectiveApplication, prj : EffectiveProject) : Sequence(ResolvedGrant) =
+	if not self.readsClientSecret() then Sequence{} else
+	Sequence{object ResolvedGrant {
+		delivery := 'env';
+		path := clientSecretPath(prj.project, app.id);
+		keys := Sequence{'id', 'secret'};
+		_access := 'read';
+		destination := destinationOf(self.name, clientSecretPath(prj.project, app.id));
+		if self.lifecycle <> Lifecycle::scheduled then restartTargets := Sequence{self.name} endif;
+	}} endif;

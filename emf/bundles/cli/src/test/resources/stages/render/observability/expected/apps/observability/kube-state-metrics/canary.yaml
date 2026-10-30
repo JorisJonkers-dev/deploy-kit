@@ -1,0 +1,69 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: kube-state-metrics
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/instance: kube-state-metrics
+    app.kubernetes.io/part-of: kube-state-metrics
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kube-state-metrics
+  progressDeadlineSeconds: 210
+  service:
+    port: 8080
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: kube-state-metrics
+          process: kube-state-metrics
+          revision: sha256:2193c1c60acedf71736b49fb4c5a7d1cab725c5a383d968c13bc29fa1c28c22a
+          readiness: /livez
+          errorRate: 1%
+          latency: 500ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: kube-state-metrics
+          process: kube-state-metrics
+          revision: sha256:2193c1c60acedf71736b49fb4c5a7d1cab725c5a383d968c13bc29fa1c28c22a
+          readiness: /livez
+          errorRate: 1%
+          latency: 500ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: kube-state-metrics
+          process: kube-state-metrics
+          revision: sha256:2193c1c60acedf71736b49fb4c5a7d1cab725c5a383d968c13bc29fa1c28c22a
+          readiness: /livez
+          errorRate: 1%
+          latency: 500ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: kube-state-metrics
+          process: kube-state-metrics
+          revision: sha256:2193c1c60acedf71736b49fb4c5a7d1cab725c5a383d968c13bc29fa1c28c22a
+          readiness: /livez
+          errorRate: 1%
+          latency: 500ms

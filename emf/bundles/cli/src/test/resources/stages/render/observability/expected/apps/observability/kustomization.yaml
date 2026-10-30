@@ -1,0 +1,21 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - alertmanager
+  - alloy
+  - gatus
+  - grafana
+  - grafana-operator
+  - kube-state-metrics
+  - loki
+  - namespace.yaml
+  - otel-collector
+  - prometheus
+  - prometheus-operator
+  - pyroscope
+  - rollout-events
+  - tempo
+  - vault-policy
+  - vaultconnection.yaml
