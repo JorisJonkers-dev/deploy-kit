@@ -146,8 +146,14 @@ describe("the model-driven build runs where a change reaches it, and gates nothi
     expect(ci).toContain(
       "grep -qE '^(emf/|spec/v1/examples/|\\.github/workflows/ci\\.yml$)'",
     );
-    expect(ci).toContain(`if [ "\${EVENT}" = 'workflow_dispatch' ]; then`);
     expect(job).not.toContain("github.event_name == 'workflow_dispatch'");
+  });
+
+  it("runs mutation testing only on the nightly run and a dispatch", () => {
+    expect(ci).toContain("./mvnw -B -ntp verify -DskipPitest=true");
+    expect(ci).toContain(
+      `if [ "\${EVENT}" = 'workflow_dispatch' ] || [ "\${EVENT}" = 'schedule' ]; then`,
+    );
   });
 
   it("is not a job Pipeline Complete needs", () => {
