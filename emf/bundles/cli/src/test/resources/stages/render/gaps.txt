@@ -66,13 +66,4 @@ ResolvedGrant.generated is never set in a render case's input
 ResolvedMigration.testedAgainst is never set in a render case's input
 ResolvedPlacement.boundTo is never set in a render case's input
 ResolvedPlacement.from is never set in a render case's input
-ResolvedProcess.vpn is never set in a render case's input
-ResolvedVpn is never instantiated in a render case's input
-ResolvedVpn.cpu is never set in a render case's input
-ResolvedVpn.credential is never set in a render case's input
-ResolvedVpn.environment is never set in a render case's input
-ResolvedVpn.forwardedPort is never set in a render case's input
-ResolvedVpn.image is never set in a render case's input
-ResolvedVpn.imageVersion is never set in a render case's input
-ResolvedVpn.memory is never set in a render case's input
 WorkloadFile.disruptionBudget is never set in a render case's input

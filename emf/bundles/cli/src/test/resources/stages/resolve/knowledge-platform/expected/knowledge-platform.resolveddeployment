@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:0000000000000000000000000000000000000000000000000000000000000000" schemaPackageIntegrity="sha256:0000000000000000000000000000000000000000000000000000000000000000">
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0000000000000000000000000000000000000000000000000000000000000000"/>
+  </provenance>
+  <applications id="hindsight" revision="sha256:e764c96d9622f87d54cc76f57aba5ed612c1fd501ba0e21d4f5da348355d5f67" project="knowledge-platform" namespace="knowledge-platform-system" reconcileUnit="/0/@reconcileUnits.0">
+    <releaseGate endpoint="http://release-gate.delivery-system.svc.cluster.local:8080" deadline="600s">
+      <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
+      <members process="/0/@applications.0/@processes.0">
+        <readiness xsi:type="resolveddeployment:TcpTarget" tcp="8888"/>
+      </members>
+    </releaseGate>
+    <processes name="hindsight-api" identity="hindsight-api" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="hindsight-api-primary" servingLabel="app.kubernetes.io/name" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="python" cutover="continuous" switchover="blue-green">
+      <secrets path="secret/data/platform/hindsight" access="read" delivery="env" destination="hindsight-api-platform-hindsight">
+        <keys>value</keys>
+        <restartTargets>hindsight-api</restartTargets>
+      </secrets>
+      <secrets engine="database" delivery="env" destination="hindsight-api-database-creds-knowledge-platform-owner">
+        <paths path="database/creds/knowledge-platform-owner">
+          <allows>read</allows>
+        </paths>
+        <restartTargets>hindsight-api</restartTargets>
+      </secrets>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+    <processes name="hindsight-worker" identity="hindsight-worker" lifecycle="application" image="ghcr.io/jorisjonkers-dev/stub@sha256:0000000000000000000000000000000000000000000000000000000000000000" uid="1000" gid="1000" serving="hindsight-worker" servingLabel="app.kubernetes.io/instance" deadline="60s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" component="python" cutover="continuous" switchover="rolling">
+      <secrets path="secret/data/platform/hindsight" access="read" delivery="env" destination="hindsight-worker-platform-hindsight">
+        <keys>value</keys>
+        <restartTargets>hindsight-worker</restartTargets>
+      </secrets>
+      <secrets engine="database" delivery="env" destination="hindsight-worker-database-creds-knowledge-platform-owner">
+        <paths path="database/creds/knowledge-platform-owner">
+          <allows>read</allows>
+        </paths>
+        <restartTargets>hindsight-worker</restartTargets>
+      </secrets>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <applications id="karakeep" revision="sha256:0000000000000000000000000000000000000000000000000000000000000000" project="knowledge-platform" namespace="knowledge-platform-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="karakeep" identity="karakeep" lifecycle="application" image="ghcr.io/karakeep-app/karakeep@sha256:3d57623bf031f32a0597a3ebe0cd869bff6ba181c02ebc90fac492458bcfd4a4" imageVersion="0.33.2" uid="1000" gid="1000" cutover="interrupted" switchover="stop-start" deadline="720s" replicas="1" serving="karakeep" servingLabel="app.kubernetes.io/instance" memory="512Mi" cpu="200m" hardening="restricted" component="node" priorityClass="platform-data">
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/health" port="3000"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/health" port="3000"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="40">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/api/health" port="3000"/>
+      </startup>
+      <surfaces name="http" port="3000"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="karakeep-data" mountAt="/data" size="1Gi" durability="reconstructible"/>
+      <volumes claim="karakeep-meili" mountAt="/meili_data" size="1Gi" durability="reconstructible"/>
+      <volumes claim="meilisearch-data" mountAt="/meili_data" size="1Gi" durability="reconstructible"/>
+      <secrets path="secret/data/karakeep-knowledge-platform-garage-s3" access="read" delivery="env" destination="karakeep-knowledge-platform-garage-s3">
+        <keys>value</keys>
+      </secrets>
+      <secrets path="secret/data/karakeep-platform-karakeep" access="read" delivery="env" destination="karakeep-platform-karakeep">
+        <keys>value</keys>
+      </secrets>
+      <environment name="ASSET_STORE_S3_ACCESS_KEY_ID">
+        <secret path="secret/data/karakeep-knowledge-platform-garage-s3" key="access-key-id"/>
+      </environment>
+      <environment name="ASSET_STORE_S3_BUCKET" value="knowledge-platform-assets"/>
+      <environment name="ASSET_STORE_S3_ENDPOINT" value="http://platform-garage:3900"/>
+      <environment name="ASSET_STORE_S3_FORCE_PATH_STYLE" value="true"/>
+      <environment name="ASSET_STORE_S3_REGION" value="garage"/>
+      <environment name="ASSET_STORE_S3_SECRET_ACCESS_KEY">
+        <secret path="secret/data/karakeep-knowledge-platform-garage-s3" key="secret-access-key"/>
+      </environment>
+      <environment name="BROWSER_WEB_URL" value="http://localhost:9222"/>
+      <environment name="DATA_DIR" value="/data"/>
+      <environment name="DEPLOYMENT_ENVIRONMENT" value="production"/>
+      <environment name="INFERENCE_CONTEXT_LENGTH" value="2048"/>
+      <environment name="INFERENCE_ENABLE_AUTO_SUMMARIZATION" value="true"/>
+      <environment name="INFERENCE_ENABLE_AUTO_TAGGING" value="true"/>
+      <environment name="INFERENCE_TEXT_MODEL" value="mistralai/mistral-small-2603"/>
+      <environment name="MEILI_ADDR" value="http://localhost:7700"/>
+      <environment name="MEILI_MASTER_KEY">
+        <secret path="secret/data/karakeep-platform-karakeep" key="meili-master-key"/>
+      </environment>
+      <environment name="MEILI_NO_ANALYTICS" value="true"/>
+      <environment name="NEXTAUTH_SECRET">
+        <secret path="secret/data/karakeep-platform-karakeep" key="nextauth-secret"/>
+      </environment>
+      <environment name="NEXTAUTH_URL" value="https://karakeep.jorisjonkers.dev"/>
+      <environment name="OPENAI_API_BASE" value="https://eu.openrouter.ai/api/v1"/>
+      <environment name="OPENAI_API_KEY">
+        <secret path="secret/data/karakeep-platform-karakeep" key="openrouter-api-key"/>
+      </environment>
+      <environment name="OTEL_EXPORTER_OTLP_ENDPOINT" value="http://otel-collector.observability-system.svc.cluster.local:4317"/>
+      <environment name="OTEL_SERVICE_NAME" value="karakeep"/>
+      <environment name="PORT" value="3000"/>
+      <sidecars name="meilisearch" image="getmeili/meilisearch@sha256:860fa4baed04ae1c235de870edab0c8006227546dea1bbb6411fbfc5e27cf1db" imageVersion="v1.41.0" memory="256Mi" cpu="100m">
+        <mounts name="karakeep-meili" mountAt="/meili_data"/>
+      </sidecars>
+      <sidecars name="chrome" image="ghcr.io/karakeep-app/karakeep-chrome@sha256:5b19bbb160e9ff60681a3abd97e1c4ec9f64212301410de658c3900ab7ef31e7" imageVersion="124.0.6367.78" memory="512Mi" cpu="500m"/>
+      <vpn image="docker.io/qmcgaw/gluetun@sha256:7e1f3c5a9b2d4f6e8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f" imageVersion="v3.40.0" memory="128Mi" cpu="50m">
+        <environment name="DNS_KEEP_NAMESERVER" value="on"/>
+        <environment name="DOT" value="off"/>
+        <environment name="FIREWALL_INPUT_PORTS" value="3000"/>
+        <environment name="PORT_FORWARD_ONLY" value="on"/>
+        <environment name="SERVER_COUNTRIES" value="Netherlands"/>
+        <environment name="VPN_PORT_FORWARDING" value="off"/>
+        <environment name="VPN_SERVICE_PROVIDER" value="protonvpn"/>
+        <environment name="VPN_TYPE" value="wireguard"/>
+        <credential destination="karakeep-vpn-platform-vpn-knowledge-platform-karakeep" delivery="env"/>
+      </vpn>
+      <consumes>platform-garage.s3</consumes>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-knowledge-platform"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/knowledge-platform/hindsight/vso.yaml" adapter="vso" application="/0/@applications.0">
+    <holders identity="hindsight-api" component="python" grants="/0/@applications.0/@processes.0/@secrets.0 /0/@applications.0/@processes.0/@secrets.1"/>
+    <holders identity="hindsight-worker" component="python" grants="/0/@applications.0/@processes.1/@secrets.0 /0/@applications.0/@processes.1/@secrets.1"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/knowledge-platform/karakeep/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="Recreate"/>
+</resolveddeployment:ResolvedDeployment>
