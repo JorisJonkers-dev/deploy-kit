@@ -723,18 +723,24 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	priorityClass := priorityOf(self, app, prj);
 	identityToken := self.api <> null or self.secrets->exists(g | g.delivery = Delivery::selfDelivery)
 		or self.edgeCredentials(app, prj)->exists(g | g.delivery = 'self')
-		or self.clientGrants(app)->notEmpty();
+		or self.clientGrants(app)->notEmpty()
+		or self.spawns->notEmpty();
 	-- The platform admits the holder, or E_PROCESS_RBAC_GRANT refused it, so the
 	-- block that says where the API answers is there.
-	if self.api <> null then api := object ResolvedApiAccess {
-		reason := self.api.reason;
-		rules := self.api.rules->collect(r | object ResolvedApiRule {
+	-- A spawn template derives access to create its pods in the Process's own namespace.
+	if self.api <> null or self.spawns->notEmpty() then api := object ResolvedApiAccess {
+		reason := if self.api = null then 'it creates the pods its spawn templates declare' else self.api.reason endif;
+		rules := (if self.api = null then Sequence{} else self.api.rules->asSequence() endif)->collect(r | object ResolvedApiRule {
 			group := r.group;
 			objects := r.objects;
 			verbs := r.verbs->collect(v | v.toString());
 			-- A rule reaches the cluster unless it says its own namespace.
 			scope := if r.scope = ApiScope::_namespace then RuleScope::_namespace else RuleScope::cluster endif;
-		});
+		})->union(if self.spawns->isEmpty() then Sequence{} else Sequence{
+			object ResolvedApiRule { group := 'core'; objects := Sequence{'pods'};
+				verbs := Sequence{'get', 'list', 'watch', 'create', 'delete'}; scope := RuleScope::_namespace; },
+			object ResolvedApiRule { group := 'core'; objects := Sequence{'pods/log'};
+				verbs := Sequence{'get'}; scope := RuleScope::_namespace; }} endif);
 		server := estate.apiAccess.server->collect(range | object AdmittedRange {
 			cidr := range.cidr;
 			port := range.port;
@@ -811,7 +817,23 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 			else estate.ephemeral.size endif;
 		memory := w.oclIsKindOf(MemoryPath);
 	});
-	environment := environmentOf(self, prj)->union(edgeEnvOf(self))->sortedBy(e | e.name);
+	-- A spawn template's pods run on its image, labelled for its Process and the surfaces it consumes.
+	spawns := self.spawns->collect(t | object ResolvedSpawn {
+		name := self.name + '-' + t.name;
+		surfaces := t.provides->collect(s | object ResolvedSurface { name := s.key; port := s.value; });
+		dependencies := t.dependsOn->collect(e | edgeOf(e, owner(self)));
+		egress := Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }};
+		if t.egress <> null then internetEgress := object InternetEgress { reason := t.egress.reason; } endif;
+	});
+	environment := environmentOf(self, prj)->union(edgeEnvOf(self))
+		->union(self.spawns->collect(t | Sequence{
+			object EnvEntry { name := spawnVariable(t.name, 'IMAGE');
+				value := locked(t.image).repository + '@' + locked(t.image).digest; },
+			object EnvEntry { name := spawnVariable(t.name, 'LABELS');
+				value := Sequence{'deploy-kit.jorisjonkers.dev/spawned-from=' + self.name + '-' + t.name}
+					->union(t.dependsOn->collect(e | 'consumes.deploy-kit.jorisjonkers.dev/' + e.application + '.' + e.surface + '=true'))
+					->iterate(l; acc : String = '' | if acc = '' then l else acc + ',' + l endif); }})->flatten())
+		->sortedBy(e | e.name);
 	if mountsTmp(self) and not namesHome(self, prj) then home := HOME_DIR endif;
 	addedPrivileges := lowPrivileges(result);
 }
@@ -1200,6 +1222,9 @@ query inputsOf(content : String) : Sequence(String) =
 		->collect(e | let named : String = e.substring(e.indexOf('"name": "') + 9, e.size()) in
 			named.substring(1, named.indexOf('"') - 1))->asSequence() endif;
 
+query spawnVariable(template : String, what : String) : String =
+	'SPAWN_' + template.toUpper().replaceAll('[^A-Z0-9]', '_') + '_' + what;
+
 query unfiled(source : String) : AssetFile {
 	assert fatal (false) with log(source + ': an Asset whose file is not beside its project');
 	return null;
@@ -1504,7 +1529,13 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 				and g.delivery = Delivery::env and g.oclAsType(KvGrant).keys.name->includes(secretKey)) then
 			object EnvEntry {
 				name := variable;
-				secret := object SecretReference { path := secretPath; key := secretKey; };
+				-- A key the Process may start without is optional in the Secret it reads.
+				secret := object SecretReference {
+					path := secretPath;
+					key := secretKey;
+					optional := owner.secrets->exists(g | g.oclIsKindOf(KvGrant) and g.oclAsType(KvGrant).path = secretPath
+						and g.oclAsType(KvGrant).keys->exists(k | k.oclIsKindOf(OptionalKey) and k.name = secretKey));
+				};
 			}
 		else unresolved(variable, 'a placeholder no env grant of the Process holds is E_UNAUTHORISED_SECRET_REFERENCE') endif
 	else if self.kind = PlaceholderKind::dependency and self.source.lastIndexOf('.') > 0
@@ -1543,11 +1574,15 @@ query Placeholder::entryFor(variable : String, prj : EffectiveProject) : EnvEntr
 query Placeholder::textFor(owner : PI::Process, prj : EffectiveProject) : String =
 	if self.kind = PlaceholderKind::dependency then dependencyValue(self.source, owner)
 	else if self.kind = PlaceholderKind::exposure then exposureValue(self.source)
+	-- A Client hands its own Application the issuer it signs in with and its id, the Application Id.
+	else if self.kind = PlaceholderKind::client and self.source = 'issuer' then estate.signIn.issuer
+	else if self.kind = PlaceholderKind::client and self.source = 'id'
+		then owner.oclAsType(ECORE::EObject).eContainer().oclAsType(EffectiveApplication).id
 	else if self.source = 'namespace' then namespaceOf(prj.project)
 	-- The Secret Store has no namespaces, so the Vault role's name carries the one the Process
 	-- is unique in; the ServiceAccount is the Process's own name.
 	else if self.source = 'vaultRole' then namespaceOf(prj.project) + '-' + owner.name
-	else owner.name endif endif endif endif;
+	else owner.name endif endif endif endif endif endif;
 
 -- `${dependency:<application>.<coordinate>}`: one coordinate of the Process's own edge.
 query dependencyValue(source : String, owner : PI::Process) : String =
