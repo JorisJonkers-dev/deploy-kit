@@ -4179,6 +4179,110 @@ describe("the Node Agents", () => {
     ]);
   });
 
+  // REQ-157 (docs/requirements.md), deploy-kit#733: the speakers find each
+  // other by memberlist, so a lost node's addresses move in seconds, keyed by
+  // a value the node Project's own Vault policy job generates.
+  it("join the speakers by memberlist, keyed from the Secret the operator syncs", () => {
+    const [speaker] = objectsOf("apps/node/l4-speaker/workload.yaml") as {
+      spec: {
+        template: {
+          spec: {
+            containers: {
+              env: { name: string }[];
+              volumeMounts: unknown[];
+            }[];
+            volumes: unknown[];
+          };
+        };
+      };
+    }[];
+    const pod = speaker?.spec.template.spec;
+    expect(pod?.containers[0]?.env).toEqual(
+      expect.arrayContaining([
+        {
+          name: "METALLB_ML_BIND_ADDR",
+          valueFrom: { fieldRef: { fieldPath: "status.podIP" } },
+        },
+        {
+          name: "METALLB_ML_LABELS",
+          value: "app.kubernetes.io/name=l4-speaker",
+        },
+        { name: "METALLB_ML_BIND_PORT", value: "7946" },
+        { name: "METALLB_ML_SECRET_KEY_PATH", value: "/etc/ml_secret_key" },
+      ]),
+    );
+    expect(pod?.containers[0]?.volumeMounts).toContainEqual({
+      name: "memberlist",
+      mountPath: "/etc/ml_secret_key",
+      readOnly: true,
+    });
+    expect(pod?.volumes).toContainEqual({
+      name: "memberlist",
+      secret: { secretName: "l4-speaker-memberlist" },
+    });
+    const synced = objectsOf("apps/node/l4-speaker/vso.yaml").find(
+      ({ kind }) => kind === "VaultStaticSecret",
+    ) as { spec: Record<string, unknown> } | undefined;
+    expect(synced?.spec).toMatchObject({
+      vaultAuthRef: "l4-speaker",
+      path: "node-system/l4-speaker",
+      destination: { name: "l4-speaker-memberlist", create: true },
+      rolloutRestartTargets: [{ kind: "DaemonSet", name: "l4-speaker" }],
+    });
+  });
+
+  it("generate the speaker's key in the node Project's own policy job, under its prefix", () => {
+    const written = tree();
+    const policies = "apps/node/vault-policy/policies";
+    expect(
+      JSON.parse(written[`${policies}/node-system.generated.json`] ?? "null"),
+    ).toStrictEqual({
+      keys: [
+        {
+          path: "secret/data/node-system/l4-speaker",
+          key: "secretkey",
+          bytes: 32,
+          encoding: "hex",
+        },
+      ],
+    });
+    expect(
+      JSON.parse(
+        written[`${policies}/node-system-l4-speaker.role.json`] ?? "null",
+      ),
+    ).toStrictEqual({
+      bound_service_account_names: ["l4-speaker"],
+      bound_service_account_namespaces: ["node-system"],
+      token_policies: ["node-system-l4-speaker"],
+    });
+    expect(written["apps/node/vault-policy/job.yaml"]).toContain(
+      "namespace: node-system\n",
+    );
+  });
+
+  it("join the speakers through the API alone where no policy job could generate the key", () => {
+    const written = asTree(
+      artifact(
+        render(
+          {
+            "platform/platform.intent.yml": (platform) =>
+              platform.replace(/^policyJob:\n(?: {2}.*\n)+/m, ""),
+          },
+          ["node"],
+        ),
+        "node",
+      ),
+    );
+    expect(written["apps/node/l4-speaker/workload.yaml"]).not.toContain(
+      "METALLB_ML_",
+    );
+    expect(
+      Object.keys(written).filter(
+        (path) => path.includes("vault") || path.endsWith("vso.yaml"),
+      ),
+    ).toStrictEqual([]);
+  });
+
   it("run the speaker on the host network with NET_RAW alone", () => {
     const [speaker] = objectsOf("apps/node/l4-speaker/workload.yaml") as {
       kind: string;

@@ -53,7 +53,8 @@ export type AgentVolume =
       readonly name: string;
       readonly hostPath: { readonly path: string; readonly type?: string };
     }
-  | { readonly name: string; readonly configMap: { readonly name: string } };
+  | { readonly name: string; readonly configMap: { readonly name: string } }
+  | { readonly name: string; readonly secret: { readonly secretName: string } };
 
 export interface AgentPodSpec {
   readonly serviceAccountName: string;
