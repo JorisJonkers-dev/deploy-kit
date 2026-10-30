@@ -29,6 +29,11 @@ mapping Application::lower(in prj : Project) : EffectiveApplication {
 	id := self.id;
 	-- The Processes first: `resolveone` below can only find a copy once it exists.
 	processes := self.processes->map lower(self, prj);
+	if self.description <> null then description := self.description endif;
+	client := self.client.map copy();
+	l4Exposure := self.l4Exposure->map copy();
+	dashboards := self.dashboards->collect(d | object Dashboard { _from := d._from; });
+	alertRules := self.alertRules->collect(r | object AlertRules { _from := r._from; });
 	observability := self.observability.map copy();
 	exposure := self.exposure->map copy();
 	-- How the schema moves defines the Application, so it stays on it.
@@ -82,6 +87,13 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 	egress := self.egress.map copy();
 	vpn := self.vpn.map copy();
 	libraries := self.libraries->map copy();
+	if self.description <> null then description := self.description endif;
+	if self.schedule <> null then schedule := self.schedule endif;
+	if self.parked <> null then parked := object Parked { reason := self.parked.reason; } endif;
+	command := self.command;
+	args := self.args;
+	spawns := self.spawns->map copyFor(self);
+	if self.rollback <> null then rollback := object Rollback {} endif;
 
 	-- Every copy is keyed on its Process: a mapping's result is cached per source
 	-- object, and a containment feature would move one shared copy to the last
@@ -93,18 +105,19 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 	assets := mergeAssets(mergeAssets(self.assets, app.assets), prj.assets)
 		->map copyFor(self);
 	-- a path is its own whole value, so the union is the merge
-	writablePaths := self.writablePaths
-		->union(app.writablePaths)->union(prj.writablePaths)->asOrderedSet()->asSequence();
-	-- One file per Cluster Target, its entries extended by every scope above.
-	-- Base and overlay stay apart: which of them holds is a question only a
-	-- render for a named cluster can answer.
-	env := clustersOf(self.env->union(app.env)->union(prj.env))
-		->collect(c | self.map envFor(c, app, prj));
+	-- A path is its own identity, so the union is the merge, and a lower level's
+	-- declaration of a path is the one that holds.
+	writablePaths := mergePaths(mergePaths(self.writablePaths, app.writablePaths), prj.writablePaths)
+		->map copyFor(self);
+	-- The Process's one file, its entries extended by every scope above, or none.
+	env := if self.env->union(app.env)->union(prj.env)->isEmpty() then Sequence{}
+		else Sequence{self.map envFor(app, prj)} endif;
 
 	-- the single values, from the lowest level that declared one
 	if budgets->notEmpty() then startupBudget := budgets->first() endif;
 	-- A prepare Process cuts over nothing, so a shared answer does not reach it.
-	if self.lifecycle <> Lifecycle::prepare and cutovers->notEmpty()
+	if self.lifecycle <> Lifecycle::prepare and self.lifecycle <> Lifecycle::scheduled
+			and cutovers->notEmpty()
 		then cutover := cutovers->first() endif;
 
 	-- Key by key: each dimension from the lowest level that set it, the
@@ -125,25 +138,19 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 	} endif;
 }
 
--- The Cluster Targets any scope names, `null` among them where a `base.env`
--- does. `asOrderedSet` keeps the order the scopes were read in.
-query clustersOf(files : Collection(EnvFile)) : Sequence(String) =
-	files->collect(f | f.cluster)->asOrderedSet()->asSequence();
-
-query entriesIn(files : Collection(EnvFile), cluster : String) : Sequence(EnvVariable) =
-	files->select(f | f.cluster = cluster)->collect(f | f.entries)->asSequence();
+-- The entries of every file of one scope; no file varies by cluster.
+query entriesIn(files : Collection(EnvFile)) : Sequence(EnvVariable) =
+	files->collect(f | f.entries)->asSequence();
 
 query mergeEntries(own : Collection(EnvVariable), shared : Collection(EnvVariable))
 		: Sequence(EnvVariable) =
 	own->asSequence()->union(
 		shared->asSequence()->select(e | own->forAll(m | m.name <> e.name)));
 
-mapping Process::envFor(in cluster : String, in app : Application, in prj : Project)
-		: EnvFile {
-	if cluster <> null then result.cluster := cluster endif;
+mapping Process::envFor(in app : Application, in prj : Project) : EnvFile {
 	entries := mergeEntries(
-			mergeEntries(entriesIn(self.env, cluster), entriesIn(app.env, cluster)),
-			entriesIn(prj.env, cluster))
+			mergeEntries(entriesIn(self.env), entriesIn(app.env)),
+			entriesIn(prj.env))
 		->map copyFor(self);
 }
 
@@ -190,16 +197,38 @@ query mergeEdges(own : Collection(DependencyEdge), shared : Collection(Dependenc
 		shared->asSequence()->select(e |
 			own->forAll(m | m.application <> e.application or m.surface <> e.surface)));
 
--- Two files cannot arrive at one path, so the mount is the identity.
-query mergeAssets(own : Collection(Asset), shared : Collection(Asset)) : Sequence(Asset) =
+-- Two files cannot arrive at one path, so where an Asset lands, mounted or
+-- seeded, is its identity.
+query AssetDeclaration::landsAt() : String =
+	if self.oclIsKindOf(Asset) then self.oclAsType(Asset).mountAt
+	else self.oclAsType(SeededAsset).seedAt endif;
+
+query mergeAssets(own : Collection(AssetDeclaration), shared : Collection(AssetDeclaration))
+		: Sequence(AssetDeclaration) =
 	own->asSequence()->union(
-		shared->asSequence()->select(a | own->forAll(m | m.mountAt <> a.mountAt)));
+		shared->asSequence()->select(a | own->forAll(m | m.landsAt() <> a.landsAt())));
+
+query mergePaths(own : Collection(WritablePathDeclaration), shared : Collection(WritablePathDeclaration))
+		: Sequence(WritablePathDeclaration) =
+	own->asSequence()->union(
+		shared->asSequence()->select(w | own->forAll(m | m.path <> w.path)));
+
+mapping WritablePathDeclaration::copyFor(in owner : Process) : WritablePathDeclaration
+	disjuncts PlainPath::copyFor, MemoryPath::copyFor {}
+
+mapping PlainPath::copyFor(in owner : Process) : PlainPath {
+	path := self.path;
+}
+
+mapping MemoryPath::copyFor(in owner : Process) : MemoryPath {
+	path := self.path;
+	memory := self.memory;
+}
 
 -- A contained object has one container, so everything below is copied rather
 -- than referenced: the lowered model holds no pointer into the authored one.
 
 mapping Observability::copy() : Observability {
-	alertClass := self.alertClass;
 	scrape := self.scrape.map copy();
 }
 
@@ -215,6 +244,7 @@ mapping Exposure::copy() : Exposure {
 	audience := self.audience;
 	if self.oclAsType(ECORE::EObject).states('contentPolicy')
 		then contentPolicy := self.contentPolicy endif;
+	if self.proxied <> null then proxied := self.proxied endif;
 	routes := self.routes->map copy();
 }
 
@@ -241,8 +271,46 @@ mapping Surface::copy() : Surface {
 mapping Sidecar::copy() : Sidecar {
 	name := self.name;
 	image := self.image;
+	command := self.command;
+	args := self.args;
 	memory := self.memory;
 	cpu := self.cpu;
+	volumes := self.volumes->collect(v | object SidecarMount { claim := v.claim; mountAt := v.mountAt; });
+	assets := self.assets->collect(a | object SidecarAsset { _from := a._from; mountAt := a.mountAt; });
+	if self._init <> null then _init := self._init endif;
+}
+
+-- A spawn template is the Process's own, so it is copied whole.
+mapping SpawnTemplate::copyFor(in owner : Process) : SpawnTemplate {
+	name := self.name;
+	image := self.image;
+	placement := object SpawnPlacement { memory := self.placement.memory; cpu := self.placement.cpu; };
+	provides := self.provides->map copy();
+	dependsOn := self.dependsOn->map copyFor(owner);
+	egress := self.egress.map copy();
+}
+
+mapping Client::copy() : Client {
+	signIn := self.signIn;
+	if self.exposure <> null then exposure := self.exposure endif;
+	if self.label <> null then label := self.label endif;
+	if self.description <> null then description := self.description endif;
+	if self.iconPath <> null then iconPath := self.iconPath endif;
+	if self.launchPath <> null then launchPath := self.launchPath endif;
+	redirectPaths := self.redirectPaths;
+	if self.protectedPath <> null then protectedPath := self.protectedPath endif;
+	if self.backChannelLogoutPath <> null then backChannelLogoutPath := self.backChannelLogoutPath endif;
+	if self.oclAsType(ECORE::EObject).states('credential') then credential := self.credential endif;
+	roles := self.roles;
+}
+
+-- The port's Process and surface are the lowered Process's, as a route's are.
+mapping L4Exposure::copy() : L4Exposure {
+	address := self.address;
+	port := self.port;
+	protocol := self.protocol;
+	process := self.process.resolveone(Process);
+	surface := self.surface.resolveone(Surface);
 }
 
 mapping DiskRequest::copyFor(in owner : Process) : DiskRequest {
@@ -260,6 +328,7 @@ mapping DependencyEdge::copyFor(in owner : Process) : DependencyEdge {
 	application := self.application;
 	surface := self.surface;
 	if self.required <> null then required := self.required endif;
+	buckets := self.buckets;
 	credentials := self.credentials.map copyFor(owner);
 }
 
@@ -270,9 +339,17 @@ mapping Credentials::copyFor(in owner : Process) : Credentials {
 	rotation := self.rotation.map copyFor(owner);
 }
 
+mapping AssetDeclaration::copyFor(in owner : Process) : AssetDeclaration
+	disjuncts Asset::copyFor, SeededAsset::copyFor {}
+
 mapping Asset::copyFor(in owner : Process) : Asset {
 	_from := self._from;
 	mountAt := self.mountAt;
+}
+
+mapping SeededAsset::copyFor(in owner : Process) : SeededAsset {
+	_from := self._from;
+	seedAt := self.seedAt;
 }
 
 mapping Volume::copy() : Volume {
@@ -304,12 +381,14 @@ mapping ApiAccess::copy() : ApiAccess {
 		group := r.group;
 		objects := r.objects;
 		verbs := r.verbs;
+		if r.oclAsType(ECORE::EObject).states('scope') then scope := r.scope endif;
 	});
 }
 
 mapping Capacity::copy() : Capacity {
 	count := self.count;
 	reason := self.reason;
+	if self.oclAsType(ECORE::EObject).states('across') then across := self.across endif;
 }
 
 mapping ProbePolicy::copy() : ProbePolicy
@@ -348,7 +427,12 @@ mapping KvGrant::copyFor(in owner : Process) : KvGrant {
 }
 
 mapping KvKey::copyFor(in owner : Process) : KvKey
-	disjuncts PlainKey::copyFor, GeneratedKey::copyFor {}
+	disjuncts PlainKey::copyFor, GeneratedKey::copyFor, OptionalKey::copyFor {}
+
+mapping OptionalKey::copyFor(in owner : Process) : OptionalKey {
+	name := self.name;
+	optional := self.optional;
+}
 
 mapping PlainKey::copyFor(in owner : Process) : PlainKey {
 	name := self.name;

@@ -2,6 +2,7 @@ package dev.jorisjonkers.deploykit.emf.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.DependencyEdges;
 import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.DescriptorFile;
 import dev.jorisjonkers.deploykit.emf.metamodel.json.CanonicalJson;
@@ -15,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
 import org.junit.jupiter.api.Test;
@@ -30,7 +32,110 @@ import org.junit.jupiter.api.io.TempDir;
 class OracleDistanceTest {
 
     /** The oracle comparisons expected to pass, as {@code <oracle> <case>}. Each catch-up slice adds to it. */
-    static final Set<String> PASSING = Set.of("intent secrets");
+    static final Set<String> PASSING = Set.of(
+            "descriptor expected",
+            "effective auth",
+            "effective data",
+            "effective identity",
+            "effective knowledge-platform",
+            "effective minimal",
+            "intent agents",
+            "intent auth",
+            "intent data",
+            "intent delivery",
+            "intent edge",
+            "intent identity",
+            "intent knowledge",
+            "intent knowledge-platform",
+            "intent mail",
+            "intent minimal",
+            "intent observability",
+            "intent platform",
+            "intent secrets",
+            "intent utility",
+            "refusal acme-proxy-replicated",
+            "refusal alert-rules-outside-monitoring",
+            "refusal asset-not-found",
+            "refusal backup-surface-not-provided",
+            "refusal buckets-without-object-store",
+            "refusal catalog-surface-not-provided",
+            "refusal client-crd-not-bootstrapped",
+            "refusal credentials-without-database",
+            "refusal cutover-continuous-over-rwo",
+            "refusal cutover-missing",
+            "refusal cutover-mixed",
+            "refusal duplicate-backup-claim",
+            "refusal duplicate-claim",
+            "refusal duplicate-human-grant",
+            "refusal duplicate-l4-port",
+            "refusal duplicate-route-match",
+            "refusal durability-policy-incomplete",
+            "refusal durability-without-engine",
+            "refusal engine-without-durability",
+            "refusal env-cannot-reload",
+            "refusal generated-key-adopts-ungranted",
+            "refusal generated-key-outside-project",
+            "refusal generated-key-twice",
+            "refusal generated-key-written-elsewhere",
+            "refusal handover-both-paths",
+            "refusal handover-serving",
+            "refusal handover-unlisted",
+            "refusal illegal-delivery-for-access",
+            "refusal library-not-granted",
+            "refusal migration-owner-duplicated",
+            "refusal migration-undeclared",
+            "refusal migration-ungated",
+            "refusal migration-without-database",
+            "refusal mongo-credentials-without-database",
+            "refusal mongo-without-durability",
+            "refusal no-acme-policy",
+            "refusal no-delivery-policy",
+            "refusal no-direct-target",
+            "refusal no-durability-policy",
+            "refusal no-engine-policy",
+            "refusal no-forward-auth-endpoint",
+            "refusal no-migration-policy",
+            "refusal no-secret-store",
+            "refusal no-sign-in-provider",
+            "refusal no-tier-for-audience",
+            "refusal no-upstream-nameservers",
+            "refusal no-vpn-policy",
+            "refusal node-address-replicated",
+            "refusal non-kv-delivery",
+            "refusal owner-role-granted",
+            "refusal placement-incomplete",
+            "refusal prepare-process-serves",
+            "refusal process-rbac-grant",
+            "refusal profile-key-authored",
+            "refusal redirect-loop",
+            "refusal release-unit-no-readiness",
+            "refusal schedule-missing",
+            "refusal schedule-unscheduled",
+            "refusal scheduled-process-serves",
+            "refusal scrape-unknown-process",
+            "refusal secrets-at-rest-required",
+            "refusal secrets-at-rest-required-at-header",
+            "refusal shared-declaration-duplicated",
+            "refusal shared-quantity",
+            "refusal surface-label-invalid",
+            "refusal tier-class-unfiltered",
+            "refusal tier-without-ingress-class",
+            "refusal unauthorised-secret-reference",
+            "refusal unbound-secret-grant",
+            "refusal unknown-api-holder",
+            "refusal unknown-critical-application",
+            "refusal unknown-forward-auth-provider",
+            "refusal unknown-l4-address",
+            "refusal unknown-library",
+            "refusal unknown-machinery",
+            "refusal unknown-monitoring-application",
+            "refusal unknown-receiver",
+            "refusal unknown-surface",
+            "refusal unknown-telemetry-collector",
+            "refusal unknown-tier-proxy",
+            "refusal unresolved-placeholder",
+            "schema-refusal credentials-file-without-mount",
+            "schema-refusal schedule-malformed");
 
     @Test
     void theListedOraclesMatchAndEveryOtherSaysHowFarItIs(@TempDir Path scratch) throws IOException {
@@ -49,6 +154,13 @@ class OracleDistanceTest {
                 summary.add(comparison + ": " + differences.size() + " differences; first: " + differences.get(0));
             }
         });
+        // Every difference of every comparison, for the reader of one case's distance.
+        Files.writeString(
+                Path.of("target", "oracle-distance.txt"),
+                distances.entrySet().stream()
+                        .map(entry -> entry.getKey() + ": " + entry.getValue().size() + "\n  "
+                                + String.join("\n  ", entry.getValue()))
+                        .collect(Collectors.joining("\n")));
         System.out.println("Oracle distance, " + (distances.size() - summary.size()) + " of " + distances.size()
                 + " passing:\n  " + String.join("\n  ", summary));
 
@@ -128,7 +240,55 @@ class OracleDistanceTest {
                                         : refused(refusals);
                             }));
         }
+        for (String kind : List.of("refusals", "schema-refusals")) {
+            for (Path oracle : diagnosticsOracles(examples.resolve(kind))) {
+                String stem = oracle.getFileName().toString().replace(DIAGNOSTICS, "");
+                Path set = oracle.resolveSibling(stem);
+                distances.put(
+                        kind.replaceFirst("s$", "") + " " + stem,
+                        attempt(() -> Comparison.json(
+                                oracle.getFileName().toString(),
+                                sorted(JSON.readValue(oracle.toFile(), List.class)),
+                                sorted(Stages.diagnostics(
+                                        Files.isDirectory(set)
+                                                ? Pipeline.check(documentsIn(set))
+                                                : Pipeline.intent(oracle.resolveSibling(stem + ".project.yml"))
+                                                        .diagnostics())))));
+            }
+        }
         return distances;
+    }
+
+    private static final String DIAGNOSTICS = ".diagnostics.json";
+
+    private static final ObjectMapper JSON = new ObjectMapper();
+
+    /** A list of diagnostics as canonical JSON, in an order neither implementation's run decides. */
+    private static String sorted(List<?> diagnostics) {
+        return CanonicalJson.write(diagnostics.stream()
+                .map(diagnostic -> (Object) new TreeMap<>((Map<?, ?>) diagnostic))
+                .sorted(Comparator.comparing(Object::toString))
+                .toList());
+    }
+
+    private static List<Path> diagnosticsOracles(Path directory) throws IOException {
+        try (Stream<Path> files = Files.list(directory)) {
+            return files.filter(file -> file.getFileName().toString().endsWith(DIAGNOSTICS))
+                    .sorted()
+                    .toList();
+        }
+    }
+
+    /** The documents of a refused set: its project files and its Platform document, sorted. */
+    private static List<Path> documentsIn(Path set) throws IOException {
+        try (Stream<Path> files = Files.list(set)) {
+            return files.filter(file -> {
+                        String name = file.getFileName().toString();
+                        return name.endsWith(".project.yml") || name.equals("platform.intent.yml");
+                    })
+                    .sorted()
+                    .toList();
+        }
     }
 
     /** A step that fails outright, such as a resolution that does not complete, is one difference. */
@@ -153,8 +313,8 @@ class OracleDistanceTest {
 
     private static List<String> refused(List<Diagnostic> diagnostics) {
         return diagnostics.stream()
-                .map(diagnostic ->
-                        "refused: " + diagnostic.code() + " " + diagnostic.document() + " " + diagnostic.path())
+                .map(diagnostic -> "refused: " + diagnostic.code() + " " + diagnostic.document() + " "
+                        + diagnostic.path() + " (" + diagnostic.message() + ")")
                 .toList();
     }
 

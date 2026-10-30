@@ -38,7 +38,7 @@ class BlockTokenSourceTest {
                 tokens.add("END");
             } else if (token.getType() != InternalProjectIntentParser.RULE_WS
                     && token.getType() != InternalProjectIntentParser.RULE_SL_COMMENT) {
-                tokens.add(token.getText());
+                tokens.add(BlockTokenSource.valueOf(token.getText()));
             }
         }
         return tokens;
@@ -163,7 +163,7 @@ class BlockTokenSourceTest {
         String source = "a: >-\n  one line\n  and another\nb: 2\n";
 
         CommonToken folded = (CommonToken) tokens(source).stream()
-                .filter(token -> "one line and another".equals(token.getText()))
+                .filter(token -> token.getText().startsWith(">"))
                 .findFirst()
                 .orElseThrow();
 
@@ -187,6 +187,27 @@ class BlockTokenSourceTest {
         }
 
         assertThat(next).isEqualTo(source.length());
+    }
+
+    @Test
+    void aFoldedScalarsTokenCoversItsSourceSoWhatFollowsSitsWhereItsTextIs() {
+        String source = "a: >-\n  one line\n  and another\nb: 2\n";
+
+        assertThat(tokens(source).stream().map(Token::getText).filter(text -> text.startsWith(">")))
+                .containsExactly(">-\n  one line\n  and another");
+        assertThat(BlockTokenSource.valueOf("")).isEmpty();
+        assertThat(BlockTokenSource.valueOf("|\n  kept")).isEqualTo("kept\n");
+    }
+
+    @Test
+    void aValueOfSeveralWordsIsOnePlainScalarToTheEndOfItsLine() {
+        assertThat(blocks("a: one two, three # a comment\nb: 2\n"))
+                .containsExactly("a", ":", "one two, three", "b", ":", "2");
+        assertThat(blocks("a: { b: one two, c: [x, y] }\n"))
+                .containsExactly("a", ":", "BEGIN", "b", ":", "one two", "c", ":", "BEGIN", "x", "y", "END", "END");
+        assertThat(blocks("a: { b: one two }\n")).containsExactly("a", ":", "BEGIN", "b", ":", "one two", "END");
+        assertThat(blocks("a: one\nb:\n  - c\n"))
+                .containsExactly("a", ":", "one", "b", ":", "BEGIN", "-", "BEGIN", "c", "END", "END");
     }
 
     @Test

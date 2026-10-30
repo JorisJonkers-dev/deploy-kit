@@ -281,7 +281,10 @@ final class FieldCoverage {
         List<String> gaps = new ArrayList<>();
         for (EEnum vocabulary :
                 enums.stream().sorted(Comparator.comparing(EEnum::getName)).toList()) {
-            for (EEnumLiteral literal : vocabulary.getELiterals()) {
+            // A literal with no spelling is the model's way of saying "unset", which no document writes.
+            for (EEnumLiteral literal : vocabulary.getELiterals().stream()
+                    .filter(literal -> !literal.getLiteral().isEmpty())
+                    .toList()) {
                 String name = vocabulary.getName() + "." + literal.getName();
                 if (!used.contains(name)) {
                     gaps.add(name + " is never used " + phrase);

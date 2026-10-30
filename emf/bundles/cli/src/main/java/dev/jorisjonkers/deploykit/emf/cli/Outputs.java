@@ -35,6 +35,21 @@ import org.eclipse.emf.ecore.xmi.impl.XMIResourceImpl;
  */
 public final class Outputs {
 
+    /**
+     * The project files every case composes with: the Applications the Platform document names in a
+     * privileged role, the sign-in provider among them, and what they depend on.
+     */
+    private static final List<String> FOUNDATION = List.of(
+            "delivery/delivery.project.yml",
+            "edge/edge.project.yml",
+            "observability/observability.project.yml",
+            "secrets/secrets.project.yml",
+            "identity/identity.project.yml",
+            "mail/mail.project.yml",
+            "utility/utility.project.yml",
+            "agents/agents.project.yml",
+            "data/data.project.yml");
+
     /** The parsed intent of a case the pipeline accepted. */
     public static final String INTENT = "intent.json";
 
@@ -84,11 +99,11 @@ public final class Outputs {
                 "platform/images.lock.yml",
                 "platform/cluster-state.yml"));
         documents.addAll(List.of(own));
-        documents.addAll(List.of(
-                "delivery/delivery.project.yml",
-                "edge/edge.project.yml",
-                "observability/observability.project.yml",
-                "secrets/secrets.project.yml"));
+        for (String foundation : FOUNDATION) {
+            if (!documents.contains(foundation)) {
+                documents.add(foundation);
+            }
+        }
         return List.copyOf(documents);
     }
 

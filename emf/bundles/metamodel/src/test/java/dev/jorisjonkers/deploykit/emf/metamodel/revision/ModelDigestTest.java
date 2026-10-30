@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Lifecycle;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.PlainPath;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Platform;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Process;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
@@ -22,7 +23,7 @@ class ModelDigestTest {
         Process process = MODEL.createProcess();
         process.setName("notes-api");
         process.setLifecycle(Lifecycle.APPLICATION);
-        process.getWritablePaths().add("/tmp");
+        process.getWritablePaths().add(path("/tmp"));
         Application application = MODEL.createApplication();
         application.setId("notes");
         application.getProcesses().add(process);
@@ -49,7 +50,7 @@ class ModelDigestTest {
         renamed.setOwner("someone-else");
         assertThat(ModelDigest.of(renamed)).isNotEqualTo(recorded);
         Project listed = project();
-        listed.getApplications().get(0).getProcesses().get(0).getWritablePaths().add("/var/cache");
+        listed.getApplications().get(0).getProcesses().get(0).getWritablePaths().add(path("/var/cache"));
         assertThat(ModelDigest.of(listed)).isNotEqualTo(recorded);
         Project job = project();
         job.getApplications().get(0).getProcesses().get(0).setLifecycle(Lifecycle.JOB);
@@ -64,7 +65,7 @@ class ModelDigestTest {
         Process second = MODEL.createProcess();
         second.setName("notes-api");
         second.setLifecycle(Lifecycle.APPLICATION);
-        second.getWritablePaths().add("/tmp");
+        second.getWritablePaths().add(path("/tmp"));
         one.getApplications().get(0).getProcesses().add(second);
         String first = ModelDigest.of(one);
         one.getApplications().get(0).getObservability().getScrape().setProcess(second);
@@ -105,5 +106,11 @@ class ModelDigestTest {
         } catch (java.security.NoSuchAlgorithmException absent) {
             throw new IllegalStateException(absent);
         }
+    }
+
+    private static PlainPath path(String written) {
+        PlainPath path = MODEL.createPlainPath();
+        path.setPath(written);
+        return path;
     }
 }

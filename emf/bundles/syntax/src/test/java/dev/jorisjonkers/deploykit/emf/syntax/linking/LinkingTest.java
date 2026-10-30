@@ -37,7 +37,6 @@ class LinkingTest {
             applications:
               - id: links
                 observability:
-                  alertClass: urgent
                   scrape: { process: SCRAPE_PROCESS, surface: SCRAPE_SURFACE, path: /metrics }
                 exposure:
                   - name: public

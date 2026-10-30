@@ -75,6 +75,12 @@ public final class Descriptor {
         return !"no".equals(detail(feature, "document"));
     }
 
+    /** The key a document writes a feature under: its name, unless the name is no Java identifier. */
+    public static String keyOf(EStructuralFeature feature) {
+        String key = detail(feature, "key");
+        return key == null ? feature.getName() : key;
+    }
+
     /** What this element's JSON annotation says under {@code key}, or nothing where it carries none. */
     private static String detail(EModelElement element, String key) {
         EAnnotation json = element.getEAnnotation(JSON);
@@ -106,7 +112,7 @@ public final class Descriptor {
                 "features",
                 owner.getEAllStructuralFeatures().stream()
                         .filter(Descriptor::isInTheDocument)
-                        .sorted(Comparator.comparing(EStructuralFeature::getName))
+                        .sorted(Comparator.comparing(Descriptor::keyOf))
                         .map(Descriptor::feature)
                         .toList());
         String scalar = detail(owner, "scalar");
@@ -122,14 +128,15 @@ public final class Descriptor {
                 && isMapEntry(containment.getEReferenceType());
         boolean linked = feature instanceof EReference reference && !reference.isContainment();
         Map<String, Object> json = new LinkedHashMap<>();
-        json.put("name", feature.getName());
+        json.put("name", keyOf(feature));
         json.put("types", linked ? List.of(feature.getEType().getName()) : types(feature, map));
         json.put("required", feature.isRequired());
         json.put("many", feature.isMany() && !map);
         json.put("map", map);
         json.put("reference", linked);
         if (map) {
-            json.put("entry", feature.getEType().getName());
+            String entry = detail(feature.getEType(), "entry");
+            json.put("entry", entry == null ? feature.getEType().getName() : entry);
         }
         return json;
     }

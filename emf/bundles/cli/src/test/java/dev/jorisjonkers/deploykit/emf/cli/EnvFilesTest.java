@@ -102,11 +102,14 @@ class EnvFilesTest {
     }
 
     @Test
-    void namesTheClusterTargetAnOverlayCarriesAndNoneForBase() {
-        assertThat(read("A=1\n").files().get(0).file().getCluster()).isNull();
+    void refusesAFileOtherThanTheScopesOneBaseFileBecauseNoFileVariesByCluster() {
         EnvFiles.Read overlay = EnvFiles.read(List.of(new Source("env/w/production.env", "A=1\n")));
 
-        assertThat(overlay.files().get(0).file().getCluster()).isEqualTo("production");
+        assertThat(overlay.files()).isEmpty();
+        assertThat(overlay.diagnostics()).singleElement().satisfies(refusal -> {
+            assertThat(refusal.code()).isEqualTo(Diagnostic.SCHEMA);
+            assertThat(refusal.message()).isEqualTo("a scope's one env file is base.env");
+        });
     }
 
     @Test

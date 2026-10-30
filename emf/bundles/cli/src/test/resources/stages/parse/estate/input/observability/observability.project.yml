@@ -1,0 +1,328 @@
+# The telemetry collector and the metrics stack as Project Intent: the
+# Applications the worked Platform document's `telemetry` block names
+# (spec/v1/14-platform-intent.md#telemetry).
+#
+# Every Process whose Runtime Profile exports telemetry is handed this
+# collector's `otlp` surface as its endpoint
+# (spec/v1/10-project-intent.md#runtime-profiles), so no project writes the
+# address and none can write it wrong.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: observability # the namespace derives: observability-system
+owner: joris
+
+applications:
+  - id: otel-collector
+    processes:
+      - name: otel-collector
+        lifecycle: application
+        image: otel-collector
+        runtime: none
+        provides:
+          otlp: 4317
+          health: 13133
+        placement:
+          memory: 256Mi
+          cpu: 50m
+        probes:
+          readiness: { path: /, port: 13133 }
+          liveness: { path: /, port: 13133 }
+        startupBudget: 20s
+        cutover: continuous
+
+  # The metrics stack the Platform document's `telemetry.metrics` names: every
+  # declared scrape surface admits it, and nothing else scrapes
+  # (spec/v1/16-dependencies.md#the-derived-allow-set).
+  - id: prometheus
+    # The platform's alert rules: only the monitoring stack carries them
+    # (spec/v1/10-project-intent.md#alert-rules).
+    alertRules:
+      - {from: rules/platform.yaml}
+    processes:
+      - name: prometheus
+        lifecycle: application
+        image: prometheus
+        runtime: none
+        provides:
+          http: 9090
+        placement:
+          memory: 512Mi
+          cpu: 100m
+        writablePaths: [/prometheus]
+        probes:
+          readiness: { path: /-/ready, port: 9090 }
+          liveness: { path: /-/healthy, port: 9090 }
+        startupBudget: 60s
+        cutover: continuous
+
+  # The Prometheus operator: Prometheus, Alertmanager and every monitor and
+  # rule are objects the render emits, and it reconciles them cluster-wide.
+  - id: prometheus-operator
+    processes:
+      - name: prometheus-operator
+        lifecycle: application
+        image: prometheus-operator
+        runtime: none
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 50m
+        probes:
+          readiness: { path: /healthz, port: 8080 }
+          liveness: { path: /healthz, port: 8080 }
+        startupBudget: 30s
+        cutover: interrupted
+        api:
+          reason: >-
+            the operator reconciles every monitor, rule and Alertmanager routing object into the Prometheus and Alertmanager configuration, cluster-wide
+          rules:
+            - group: monitoring.coreos.com
+              objects: [prometheuses, prometheuses/status, alertmanagers, alertmanagers/status, servicemonitors, podmonitors, prometheusrules, alertmanagerconfigs]
+              verbs: [get, list, watch, create, update, patch, delete]
+            - group: core
+              objects: [services, endpoints, pods, nodes, namespaces, configmaps, secrets]
+              verbs: [get, list, watch, create, update, delete]
+            - group: apps
+              objects: [statefulsets]
+              verbs: [get, list, watch, create, update, delete]
+
+  # The cluster's object state as metrics.
+  - id: kube-state-metrics
+    processes:
+      - name: kube-state-metrics
+        lifecycle: application
+        image: kube-state-metrics
+        runtime: none
+        provides:
+          http: 8080
+          telemetry: 8081
+        placement:
+          memory: 128Mi
+          cpu: 20m
+        probes:
+          readiness: { path: /livez, port: 8080 }
+          liveness: { path: /livez, port: 8080 }
+        startupBudget: 30s
+        cutover: continuous
+        api:
+          reason: >-
+            kube-state-metrics reports the state of every object it lists, cluster-wide
+          rules:
+            - group: core
+              objects: [pods, nodes, namespaces, services, persistentvolumeclaims, persistentvolumes]
+              verbs: [list, watch]
+            - group: apps
+              objects: [deployments, statefulsets, daemonsets, replicasets]
+              verbs: [list, watch]
+            - group: batch
+              objects: [jobs, cronjobs]
+              verbs: [list, watch]
+
+  # The operator that hands the Grafana below every Application's dashboards.
+  - id: grafana-operator
+    processes:
+      - name: grafana-operator
+        lifecycle: application
+        image: grafana-operator
+        runtime: none
+        provides:
+          metrics: 8080
+          health: 8081
+        placement:
+          memory: 64Mi
+          cpu: 20m
+        probes:
+          readiness: { path: /healthz, port: 8081 }
+          liveness: { path: /healthz, port: 8081 }
+        startupBudget: 30s
+        cutover: interrupted
+        api:
+          reason: >-
+            the operator imports every Application's dashboards into the Grafana it selects, cluster-wide
+          rules:
+            - group: grafana.integreatly.org
+              objects: [grafanas, grafanas/status, grafanadashboards, grafanadashboards/status]
+              verbs: [get, list, watch, update, patch]
+            - group: core
+              objects: [configmaps, secrets]
+              verbs: [get, list, watch]
+
+  # Grafana signs people in itself, as a native Client of the identity
+  # project's provider, holding a secret (spec/v1/17-sign-in.md). Every path
+  # is on the exposure's host, which is authored once, there. The env file
+  # reads the credential through ${client:secret}, which derives the Process's
+  # read grant on the path the provider writes.
+  - id: grafana
+    exposure:
+      - name: public
+        host: grafana.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: grafana, surface: http }
+    client:
+      signIn: native
+      label: Grafana
+      description: Metrics and dashboards
+      iconPath: /public/img/grafana_icon.svg
+      redirectPaths: [/login/generic_oauth]
+      protectedPath: /api/user
+      credential: secret
+      roles: [viewer, editor, admin]
+    processes:
+      - name: grafana
+        lifecycle: application
+        image: grafana
+        runtime: none
+        provides:
+          http: 3000
+        placement:
+          memory: 256Mi
+          cpu: 50m
+        writablePaths: [/var/lib/grafana]
+        probes:
+          readiness: { path: /api/health, port: 3000 }
+        startupBudget: 30s
+        cutover: continuous
+
+  # The loki store, which keeps what it is sent on a claim of its own.
+  - id: loki
+    processes:
+      - name: loki
+        lifecycle: application
+        image: loki
+        runtime: none
+        provides:
+          http: 3100
+        placement:
+          memory: 512Mi
+          cpu: 100m
+        probes:
+          readiness: { path: /ready, port: 3100 }
+          liveness: { path: /ready, port: 3100 }
+        startupBudget: 30s
+        cutover: interrupted
+        volumes:
+          - { claim: loki, mountAt: /loki, size: 10Gi, durability: reconstructible }
+
+  # The tempo store, which keeps what it is sent on a claim of its own.
+  - id: tempo
+    processes:
+      - name: tempo
+        lifecycle: application
+        image: tempo
+        runtime: none
+        provides:
+          http: 3200
+        placement:
+          memory: 512Mi
+          cpu: 100m
+        probes:
+          readiness: { path: /ready, port: 3200 }
+          liveness: { path: /ready, port: 3200 }
+        startupBudget: 30s
+        cutover: interrupted
+        volumes:
+          - { claim: tempo, mountAt: /var/tempo, size: 10Gi, durability: reconstructible }
+
+  # The pyroscope store, which keeps what it is sent on a claim of its own.
+  - id: pyroscope
+    processes:
+      - name: pyroscope
+        lifecycle: application
+        image: pyroscope
+        runtime: none
+        provides:
+          http: 4040
+        placement:
+          memory: 512Mi
+          cpu: 100m
+        probes:
+          readiness: { path: /ready, port: 4040 }
+          liveness: { path: /ready, port: 4040 }
+        startupBudget: 30s
+        cutover: interrupted
+        volumes:
+          - { claim: pyroscope, mountAt: /data, size: 10Gi, durability: reconstructible }
+
+  # Gatus, which gathers every Project's external checks through its sidecar
+  # (spec/v1/14-platform-intent.md#the-foundation-is-declared).
+  - id: gatus
+    processes:
+      - name: gatus
+        lifecycle: application
+        image: gatus
+        runtime: none
+        provides:
+          http: 8080
+        placement:
+          memory: 64Mi
+          cpu: 20m
+        probes:
+          readiness: { path: /health, port: 8080 }
+          liveness: { path: /health, port: 8080 }
+        startupBudget: 30s
+        cutover: interrupted
+        sidecars:
+          - name: checks
+            image: gatus-checks
+            memory: 32Mi
+            cpu: 10m
+        api:
+          reason: >-
+            the checks sidecar watches every Project's external-checks ConfigMap, cluster-wide
+          rules:
+            - group: core
+              objects: [configmaps]
+              verbs: [get, list, watch]
+
+  # The log collector: an ordinary Process that tails pod logs through the
+  # Kubernetes API, with no host privilege and one copy, not one per node.
+  - id: alloy
+    processes:
+      - name: alloy
+        lifecycle: application
+        image: alloy
+        runtime: none
+        provides:
+          http: 12345
+        placement:
+          memory: 256Mi
+          cpu: 50m
+        probes:
+          readiness: { path: /-/ready, port: 12345 }
+          liveness: { path: /-/ready, port: 12345 }
+        startupBudget: 30s
+        cutover: continuous
+        api:
+          reason: >-
+            Alloy tails every pod's log through the API, cluster-wide
+          rules:
+            - group: core
+              objects: [pods, pods/log, namespaces]
+              verbs: [get, list, watch]
+
+  # The monitoring stack's Alertmanager, which the Platform document names by
+  # role; the one routing of every alert renders into its namespace, and each
+  # receiver's webhook reaches it through the one secret delivery
+  # (spec/v1/14-platform-intent.md#monitoring).
+  - id: alertmanager
+    processes:
+      - name: alertmanager
+        lifecycle: application
+        image: alertmanager
+        runtime: none
+        provides:
+          http: 9093
+        placement:
+          memory: 128Mi
+          cpu: 50m
+        writablePaths: [/alertmanager]
+        probes:
+          readiness: { path: /-/ready, port: 9093 }
+          liveness: { path: /-/healthy, port: 9093 }
+        startupBudget: 30s
+        cutover: continuous

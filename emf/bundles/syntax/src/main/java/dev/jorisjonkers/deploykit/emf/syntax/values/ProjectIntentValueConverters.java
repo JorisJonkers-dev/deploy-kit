@@ -1,5 +1,6 @@
 package dev.jorisjonkers.deploykit.emf.syntax.values;
 
+import dev.jorisjonkers.deploykit.emf.syntax.blocks.BlockTokenSource;
 import org.eclipse.xtext.common.services.DefaultTerminalConverters;
 import org.eclipse.xtext.conversion.IValueConverter;
 import org.eclipse.xtext.conversion.ValueConverter;
@@ -14,7 +15,7 @@ public class ProjectIntentValueConverters extends DefaultTerminalConverters {
         return new IValueConverter<>() {
             @Override
             public String toValue(String string, INode node) {
-                return unquote(string);
+                return unquote(BlockTokenSource.valueOf(string));
             }
 
             @Override

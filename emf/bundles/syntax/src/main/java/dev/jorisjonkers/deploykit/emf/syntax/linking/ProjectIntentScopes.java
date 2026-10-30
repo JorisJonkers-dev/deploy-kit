@@ -2,6 +2,7 @@ package dev.jorisjonkers.deploykit.emf.syntax.linking;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Application;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.DeliveryPolicy;
+import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ForwardAuth;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Project;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.ProjectIntentPackage;
 import java.util.List;
@@ -34,6 +35,9 @@ public class ProjectIntentScopes implements IScopeProvider {
 
     @Override
     public IScope getScope(EObject context, EReference reference) {
+        if (reference == ProjectIntentPackage.Literals.FORWARD_AUTH__PROVIDER) {
+            return providing(context, ((ForwardAuth) context).getSurface());
+        }
         if (reference == ProjectIntentPackage.Literals.TELEMETRY_POLICY__COLLECTOR) {
             return providing(context, OTLP);
         }

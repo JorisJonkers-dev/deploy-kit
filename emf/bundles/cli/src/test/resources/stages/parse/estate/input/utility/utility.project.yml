@@ -1,0 +1,92 @@
+# Worked example: utility's DNS resolver, the live case of a Process that
+# serves DNS (spec/v1/10-project-intent.md#l4-exposure).
+#
+# Exercises: a raw surface on a pool. The LAN's devices ask adguard for names
+# on port 53, over UDP and TCP, at `lan-dns`, a one-address pool at Enschede.
+# Both entries are one Service, so one address answers both protocols. The two
+# replicas sit on two nodes, and the pool's address is failover, not load
+# sharing: one node announces it, and the other replica takes over when that
+# node goes.
+#
+# Also exercises: a Process that reaches the Kubernetes API holding no rule of
+# its own. Headlamp acts on the API with each signed-in user's own token, so it
+# needs the way to the API server and nothing else: no Role, no binding, no
+# mounted token (spec/v1/10-project-intent.md#kubernetes-api-access).
+#
+# Also exercises: a Process that serves DNS resolves through the platform's
+# upstream nameservers, never the cluster's own DNS, which may be down in
+# exactly the outage this resolver exists for. Nothing here says so: an
+# exposure on port 53 derives it.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: utility # the namespace derives: utility-system
+owner: joris
+
+applications:
+  - id: adguard
+    l4Exposure:
+      - { address: lan-dns, port: 53, protocol: udp, process: adguard, surface: dns }
+      - { address: lan-dns, port: 53, protocol: tcp, process: adguard, surface: dns }
+    processes:
+      - name: adguard
+        lifecycle: application
+        image: adguard
+        runtime: none
+        provides:
+          http: 3000
+          dns: 5353
+        placement:
+          memory: 128Mi
+          cpu: 50m
+          capabilities: [adguard]
+        replicas:
+          count: 2
+          reason: the LAN keeps its resolver while one node is down
+          across: node
+        # Its work directory, the query log and statistics, holds 66MB live,
+        # past the platform's one ephemeral size, so it is held in memory at
+        # its own size and counted toward the Process
+        # (spec/v1/10-project-intent.md#writable-paths-are-declared-not-exempted).
+        # It is lost with the pod, as a disk one would be.
+        writablePaths: [{ path: /opt/adguardhome/work, memory: 128Mi }, /opt/adguardhome/conf]
+        # AdGuard rewrites its config on every start and stops if it cannot, so
+        # the config is seeded onto its conf directory before each start rather
+        # than mounted read-only (spec/v1/10-project-intent.md#seeded-assets).
+        # The directory is the pod's own: each pod starts from this file.
+        assets:
+          - { from: config/adguard/AdGuardHome.yaml, seedAt: /opt/adguardhome/conf/AdGuardHome.yaml }
+        # Its DNS-over-HTTPS upstream is on the internet.
+        egress: { to: internet, reason: answers the LAN from a DNS-over-HTTPS upstream }
+        probes:
+          readiness: { path: /login.html, port: 3000 }
+          liveness: { path: /login.html, port: 3000 }
+        startupBudget: 30s
+        cutover: continuous
+
+  - id: headlamp
+    exposure:
+      - name: lan
+        host: dashboard.lan.jorisjonkers.dev
+        audience: lan
+        routes:
+          - { path: /, match: prefix, process: headlamp, surface: http }
+    processes:
+      - name: headlamp
+        lifecycle: application
+        image: headlamp
+        runtime: none
+        provides:
+          http: 4466
+        placement:
+          memory: 128Mi
+          cpu: 50m
+        api:
+          reason: it acts on the API with each signed-in user's own token, and holds nothing of its own
+        probes:
+          readiness: { path: /, port: 4466 }
+          liveness: { path: /, port: 4466 }
+        startupBudget: 30s
+        cutover: continuous

@@ -1,0 +1,120 @@
+# Sign-in as Project Intent: the Identity Provider the worked Platform
+# document's `signIn` names, and two Applications that sign people in through
+# it, beside the third way chapter 17 works through (spec/v1/17-sign-in.md).
+#
+#   portal    a native Client signing in with PKCE: a public client, no secret
+#   whoami    a gated Client: no OIDC in the image, so the Gate signs a person
+#             in at the edge and the route set gains the derived /.auth/ route
+#
+# The third, a native Client holding a secret, is grafana: its own OIDC, and a
+# derived credential path the provider writes and grafana reads. It belongs to
+# the observability project, beside the operator that ships its dashboards
+# (observability/observability.project.yml).
+#
+# The Identity Provider is a platform Application, named by the Platform
+# document as the secret store and the tier proxies are, so this project is
+# part of the worked foundation every case composes with. Its process is
+# granted write on every Client's credential path, in this project or another.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: identity # the namespace derives: identity-system
+owner: joris
+
+applications:
+  # The sign-in provider. Its Process is granted write on every derived client
+  # credential path, derived and never authored, and the public tier's
+  # forward-auth endpoint is its Gate.
+  - id: identity
+    exposure:
+      - name: public
+        host: id.jorisjonkers.dev
+        audience: anonymous # the provider is what signs people in, so it cannot sit behind it
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: identity, surface: http }
+    processes:
+      - name: identity
+        lifecycle: application
+        image: identity
+        runtime: none
+        provides:
+          http: 8080
+        placement:
+          memory: 256Mi
+          cpu: 50m
+        probes:
+          readiness: { path: /health/ready, port: 8080 }
+          liveness: { path: /health/live, port: 8080 }
+        startupBudget: 30s
+        cutover: continuous
+
+  # Native, with PKCE: a single-page app is a public client and holds no
+  # secret, so ${client:secret} here would be E_CLIENT_PLACEHOLDER_WITHOUT_SECRET.
+  - id: portal
+    exposure:
+      - name: public
+        host: home.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: portal, surface: http }
+    client:
+      signIn: native
+      label: Home
+      description: Every application you can open
+      launchPath: /apps
+      redirectPaths: [/callback, /silent-renew]
+      protectedPath: /api/me
+      credential: pkce
+    processes:
+      - name: portal
+        lifecycle: application
+        image: portal
+        runtime: none
+        provides:
+          http: 8080
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        probes:
+          readiness: { path: /, port: 8080 }
+        cutover: continuous
+
+  # Gated: the image speaks no OIDC. Every route of the exposure takes the
+  # tier's forward-auth, but for the one route that takes itself out of the
+  # sign-in, and the Gate's /.auth/ route is derived, never authored.
+  - id: whoami
+    exposure:
+      - name: public
+        host: whoami.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: whoami, surface: http }
+          - { path: /health, match: exact, process: whoami, surface: http, audience: anonymous }
+    client:
+      signIn: gated
+      label: Who am I
+      iconPath: /favicon.ico
+    processes:
+      - name: whoami
+        lifecycle: application
+        image: whoami
+        runtime: none
+        provides:
+          http: 8080
+        placement:
+          memory: 32Mi
+          cpu: 10m
+        probes:
+          readiness: { path: /health, port: 8080 }
+        cutover: continuous
+        # Two replicas on different nodes: losing one node leaves the probe
+        # answering. Only pods of one revision repel each other, so a rollout
+        # completes even where the replicas fill every eligible node
+        # (spec/v1/10-project-intent.md#replicas).
+        replicas:
+          count: 2
+          reason: Availability of the sign-in probe across a node loss.
+          across: node
