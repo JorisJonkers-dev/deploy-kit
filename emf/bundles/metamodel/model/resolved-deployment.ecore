@@ -326,6 +326,8 @@
          that are not a surface's own number over TCP. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="l4Services" upperBound="-1" eType="#//ResolvedL4Service" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="nodePorts" upperBound="-1" eType="#//L4Port" containment="true"/>
+    <!-- An open Move of the Process (spec/v1/55-delivery.md#the-move), where one is open. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="move" eType="#//ResolvedMove" containment="true"/>
     <!-- A `scheduled` Process's schedule, whether it is parked, and how late a run may still start. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="schedule" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="parked" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
@@ -361,6 +363,32 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="protocol" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="targetPort" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+  </eClassifiers>
+
+  <!-- An open Move: the identity its step Jobs run as, under the Move's tag; the engine's move image and its user; the Instance it moves from and the one it moves to, on the engine's surface; the Stable Address its flip moves, in the estate's namespace; and the Vault role and path of the credential it holds. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedMove">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="tag" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="imageVersion" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="uid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceHost" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="targetHost" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="flips" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="flipNamespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="credentialsPath" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secretStore" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="steps" lowerBound="1" upperBound="-1" eType="#//MoveStep" containment="true"/>
+  </eClassifiers>
+  <!-- One step of a Move, by the name of its Job and the step it runs. -->
+  <eClassifiers xsi:type="ecore:EClass" name="MoveStep">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedSurface">
@@ -1130,6 +1158,10 @@
   <eClassifiers xsi:type="ecore:EClass" name="StableAddressFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="addresses" lowerBound="1" upperBound="-1" eType="#//Alias" containment="true"/>
+  </eClassifiers>
+  <!-- The move identity of a Process's open Move, the role that lets it flip the Stable Address, and one suspended Job per step, each created once. -->
+  <eClassifiers xsi:type="ecore:EClass" name="MoveFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//ResolvedProcess"/>
   </eClassifiers>
   <!-- ==================================================== vocabularies -->
 

@@ -276,7 +276,8 @@ class ResolvedDeploymentTest {
                         "FluxMonitorFile",
                         "DashboardFile",
                         "SharedMiddlewareFile",
-                        "StableAddressFile");
+                        "StableAddressFile",
+                        "MoveFile");
     }
 
     @Test

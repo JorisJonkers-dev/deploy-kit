@@ -534,6 +534,126 @@
               sizeLimit: [d.application.migration.scratch/]
 [/template]
 
+[comment An open Move: its identity, the Role in the estate's namespace that lets it update the one
+  Stable Address its flip moves, and one Job per step, named by the Move's tag, suspended and created
+  once: what runs a step writes `suspend` afterwards. /]
+[template private objects(d : resolveddeployment::MoveFile)]
+  ---
+  apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    name: [d.process.move.identity/]
+    namespace: [d.process.application().namespace/]
+    labels:
+      [d.process.move.identity.labelSet('none', d.process.application().id)/]
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: Role
+  metadata:
+    name: [d.process.application().namespace/]-[d.process.move.identity/]
+    namespace: [d.process.move.flipNamespace/]
+    labels:
+      [d.process.move.identity.labelSet('none', d.process.application().id)/]
+  rules:
+    - apiGroups:
+        - ""
+      resources:
+        - services
+      resourceNames:
+        - [d.process.move.flips/]
+      verbs:
+        - get
+        - update
+        - patch
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: [d.process.application().namespace/]-[d.process.move.identity/]
+    namespace: [d.process.move.flipNamespace/]
+    labels:
+      [d.process.move.identity.labelSet('none', d.process.application().id)/]
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: Role
+    name: [d.process.application().namespace/]-[d.process.move.identity/]
+  subjects:
+    - kind: ServiceAccount
+      name: [d.process.move.identity/]
+      namespace: [d.process.application().namespace/]
+  [for (s : resolveddeployment::MoveStep | d.process.move.steps)]
+    [d.process.moveJob(s)/]
+  [/for]
+[/template]
+
+[template private moveJob(p : resolveddeployment::ResolvedProcess, s : resolveddeployment::MoveStep)]
+  ---
+  apiVersion: batch/v1
+  kind: Job
+  metadata:
+    name: [p.move.identity/]-[s.name/]-[p.move.tag/]
+    namespace: [p.application().namespace/]
+    labels:
+      [p.move.identity.labelSet('none', p.application().id)/]
+    annotations:
+      kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
+  spec:
+    suspend: true
+    backoffLimit: 0
+    template:
+      metadata:
+        labels:
+          [p.move.identity.labelSet('none', p.application().id)/]
+  [if (p.move.imageVersion <> null)]
+          annotations:
+            image.jorisjonkers.dev/move: [p.move.imageVersion.scalar()/]
+  [/if]
+      spec:
+        serviceAccountName: [p.move.identity/]
+        automountServiceAccountToken: true
+        restartPolicy: Never
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: [p.move.uid/]
+          runAsGroup: [p.move.gid/]
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+          - name: move
+            image: [p.move.image/]
+            env:
+              - name: MOVE_STEP
+                value: [s.command.scalar()/]
+              - name: MOVE_SOURCE_HOST
+                value: [p.move.sourceHost/]
+              - name: MOVE_TARGET_HOST
+                value: [p.move.targetHost/]
+              - name: MOVE_PORT
+                value: [p.move.port.toString().scalar()/]
+              - name: MOVE_FLIPS
+                value: [p.move.flips/]
+              - name: MOVE_FLIP_NAMESPACE
+                value: [p.move.flipNamespace/]
+              - name: VAULT_ADDR
+                value: [p.move.secretStore/]
+              - name: VAULT_ROLE
+                value: [p.move.role/]
+              - name: VAULT_CREDENTIALS_PATH
+                value: [p.move.credentialsPath/]
+            resources:
+              requests:
+                memory: [p.move.memory/]
+                cpu: [p.move.cpu/]
+              limits:
+                memory: [p.move.memory/]
+            securityContext:
+              allowPrivilegeEscalation: false
+              readOnlyRootFilesystem: true
+              capabilities:
+                drop:
+                  - ALL
+[/template]
+
 [template private webhook(p : resolveddeployment::ResolvedProcess, name : String, type : String)]
   - name: [name/]
     type: [type/]

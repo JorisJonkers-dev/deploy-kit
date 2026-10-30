@@ -233,6 +233,13 @@ MigrationProof.apiVersion is never set in a resolve case's input
 MigrationProof.applications is never set in a resolve case's input
 MigrationProof.kind is never set in a resolve case's input
 MigrationProof.schemaVersion is never set in a resolve case's input
+MoveFile is never instantiated by a resolve case
+MoveFile.adapter is never set by a resolve case
+MoveFile.path is never set by a resolve case
+MoveFile.process is never set by a resolve case
+MoveStep is never instantiated by a resolve case
+MoveStep.command is never set by a resolve case
+MoveStep.name is never set by a resolve case
 NetworkPolicyFile.migration is never set by a resolve case
 NoMigration is never instantiated in a resolve case's input
 NoProbes is never instantiated in a resolve case's input
@@ -397,6 +404,24 @@ ResolvedMigration.runnerVersion is never set by a resolve case
 ResolvedMigration.scratch is never set by a resolve case
 ResolvedMigration.testedAgainst is never set by a resolve case
 ResolvedMigration.uid is never set by a resolve case
+ResolvedMove is never instantiated by a resolve case
+ResolvedMove.cpu is never set by a resolve case
+ResolvedMove.credentialsPath is never set by a resolve case
+ResolvedMove.flipNamespace is never set by a resolve case
+ResolvedMove.flips is never set by a resolve case
+ResolvedMove.gid is never set by a resolve case
+ResolvedMove.identity is never set by a resolve case
+ResolvedMove.image is never set by a resolve case
+ResolvedMove.imageVersion is never set by a resolve case
+ResolvedMove.memory is never set by a resolve case
+ResolvedMove.port is never set by a resolve case
+ResolvedMove.role is never set by a resolve case
+ResolvedMove.secretStore is never set by a resolve case
+ResolvedMove.sourceHost is never set by a resolve case
+ResolvedMove.steps is never set by a resolve case
+ResolvedMove.tag is never set by a resolve case
+ResolvedMove.targetHost is never set by a resolve case
+ResolvedMove.uid is never set by a resolve case
 ResolvedNodeAgent is never instantiated by a resolve case
 ResolvedNodeAgent.addedPrivileges is never set by a resolve case
 ResolvedNodeAgent.application is never set by a resolve case
@@ -436,6 +461,7 @@ ResolvedProcess.consumes is never set by a resolve case
 ResolvedProcess.dependencies is never set by a resolve case
 ResolvedProcess.internetEgress is never set by a resolve case
 ResolvedProcess.l4Services is never set by a resolve case
+ResolvedProcess.move is never set by a resolve case
 ResolvedProcess.nameservers is never set by a resolve case
 ResolvedProcess.nodePorts is never set by a resolve case
 ResolvedProcess.priorityClass is never set by a resolve case
