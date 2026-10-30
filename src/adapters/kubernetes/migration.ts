@@ -18,10 +18,12 @@ import {
   labelsOf,
   podMetadataOf,
 } from "../shared/labels.ts";
+import { RESTRICTED, withHome } from "./posture.ts";
 
 /** The runner's one writable path, and the volume it is mounted from. */
 const SCRATCH = "/tmp";
 const SCRATCH_VOLUME = "scratch";
+const SCRATCH_MOUNTS = [{ name: SCRATCH_VOLUME, mountPath: SCRATCH }];
 
 /** One of the runner's two commands, as the Job that runs it against a tag. */
 function jobOf(
@@ -66,34 +68,33 @@ function jobOf(
               name: "migration",
               image: plan.runner,
               args: [command, tag],
-              env: [
-                { name: "DATABASE_HOST", value: plan.database.host },
-                { name: "DATABASE_PORT", value: String(plan.database.port) },
-                { name: "DATABASE_NAME", value: plan.database.name },
-                // A migration reads the store, so its Application names one.
-                {
-                  name: "VAULT_ADDR",
-                  value: application.secretStore as string,
-                },
-                {
-                  name: "VAULT_ROLE",
-                  value: vaultNameOf(application.namespace, plan.identity),
-                },
-                {
-                  name: "VAULT_CREDENTIALS_PATH",
-                  value: (plan.credential.paths[0] as { path: string }).path,
-                },
-              ],
+              env: withHome(
+                [
+                  { name: "DATABASE_HOST", value: plan.database.host },
+                  { name: "DATABASE_PORT", value: String(plan.database.port) },
+                  { name: "DATABASE_NAME", value: plan.database.name },
+                  // A migration reads the store, so its Application names one.
+                  {
+                    name: "VAULT_ADDR",
+                    value: application.secretStore as string,
+                  },
+                  {
+                    name: "VAULT_ROLE",
+                    value: vaultNameOf(application.namespace, plan.identity),
+                  },
+                  {
+                    name: "VAULT_CREDENTIALS_PATH",
+                    value: (plan.credential.paths[0] as { path: string }).path,
+                  },
+                ],
+                SCRATCH_MOUNTS,
+              ),
               resources: {
                 requests: { memory: plan.memory, cpu: plan.cpu },
                 limits: { memory: plan.memory },
               },
-              securityContext: {
-                allowPrivilegeEscalation: false,
-                readOnlyRootFilesystem: true,
-                capabilities: { drop: ["ALL"] },
-              },
-              volumeMounts: [{ name: SCRATCH_VOLUME, mountPath: SCRATCH }],
+              securityContext: RESTRICTED,
+              volumeMounts: SCRATCH_MOUNTS,
             },
           ],
           volumes: [

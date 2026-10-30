@@ -261,7 +261,12 @@ export interface Container {
   readonly securityContext: {
     readonly allowPrivilegeEscalation: false;
     readonly readOnlyRootFilesystem: true;
-    readonly capabilities: { readonly drop: readonly ["ALL"] };
+    // A container that listens below 1024 adds back the one capability
+    // Pod Security's restricted profile allows.
+    readonly capabilities: {
+      readonly add?: readonly ["NET_BIND_SERVICE"];
+      readonly drop: readonly ["ALL"];
+    };
   };
   readonly volumeMounts?: readonly VolumeMount[];
   readonly readinessProbe?: Probe;

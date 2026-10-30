@@ -105,6 +105,8 @@ spec:
               value: "true"
             - name: VAULT_KUBERNETES_ROLE
               value: auth-system-auth-api
+            - name: HOME
+              value: /tmp
           resources:
             requests:
               memory: 768Mi
@@ -222,6 +224,8 @@ spec:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
             capabilities:
+              add:
+                - NET_BIND_SERVICE
               drop:
                 - ALL
           volumeMounts:

@@ -62,6 +62,9 @@ spec:
           ports:
             - name: mongo
               containerPort: 27017
+          env:
+            - name: HOME
+              value: /tmp
           resources:
             requests:
               memory: 2Gi
