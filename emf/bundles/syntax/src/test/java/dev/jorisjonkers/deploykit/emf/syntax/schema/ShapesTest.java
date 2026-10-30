@@ -312,19 +312,19 @@ class ShapesTest {
 
     @Test
     void anOffClusterCopyIsEncryptedToAnAgePublicKeyAndNothingElse() {
-        String key = "age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8";
+        String recipient = "age1s6v5qrx3mgcgk37gscv8y6z43rssksdct5lx3xk5xrtptjndqvhsnhj7h8";
         String copy = "durability:\n  irreplaceable:\n    schedule: s\n    retain: 1\n    offCluster:\n"
                 + "      destination: d\n      credential: c\n      recipient: %s\n"
                 + "      egress:\n        - cidr: 10.0.0.0/8\n          port: 443\n";
         String at = "/durability/irreplaceable/offCluster/recipient";
-        assertThat(recipientIssues(copy.formatted(key))).isEmpty();
-        assertThat(recipientIssues(copy.formatted("\"" + key + "\""))).isEmpty();
+        assertThat(recipientIssues(copy.formatted(recipient))).isEmpty();
+        assertThat(recipientIssues(copy.formatted("\"" + recipient + "\""))).isEmpty();
         for (String wrong : List.of(
                 "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI",
-                key.substring(0, key.length() - 1),
-                key.replace("age1s", "age1b"),
-                "x" + key,
-                key + "8")) {
+                recipient.substring(0, recipient.length() - 1),
+                recipient.replace("age1s", "age1b"),
+                "x" + recipient,
+                recipient + "8")) {
             assertThat(recipientIssues(copy.formatted(wrong))).as(wrong).containsExactly(at);
         }
         assertThat(recipientIssues(copy.replace("      recipient: %s\n", ""))).containsExactly(at);
