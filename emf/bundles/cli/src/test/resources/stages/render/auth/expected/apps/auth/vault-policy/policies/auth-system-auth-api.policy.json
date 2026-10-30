@@ -1,0 +1,44 @@
+{
+  "path": {
+    "secret/data/platform/postgres/auth": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/postgres/auth": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/data/auth-api": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/auth-api": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "transit/sign/auth-api-jwt": {
+      "capabilities": [
+        "update"
+      ]
+    },
+    "transit/keys/auth-api-jwt/rotate": {
+      "capabilities": [
+        "update"
+      ]
+    },
+    "transit/keys/auth-api-jwt": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "database/creds/auth-data": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}
