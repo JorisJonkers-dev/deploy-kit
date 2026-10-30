@@ -1770,6 +1770,288 @@
         port: [r.process.surfaces->select(s | s.name = r.surface)->first().port/]
 [/template]
 
+[comment ======================================================== the node agents /]
+
+[comment One part of the Node Agents: their workloads, their ServiceAccounts, their cluster roles and
+  bindings, or the settings file of each that reads one. Each carries the labels a node agent
+  carries, which name no instance and no component. /]
+[template private objects(d : resolveddeployment::NodeAgentFile)]
+  [for (a : resolveddeployment::ResolvedNodeAgent | d.agents)]
+    [if (d.part = 'workload')]
+      [a.agentWorkload()/]
+    [elseif (d.part = 'serviceaccount')]
+      ---
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        [a.agentMetadata()/]
+    [elseif (d.part = 'rbac')]
+      [a.agentRbac()/]
+    [else]
+      ---
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        [a.agentMetadata()/]
+      data:
+        [a.config.file/]: [a.config.content.chomping()/]
+      [a.config.content.blockOf('    ')/]
+    [/if]
+  [/for]
+[/template]
+
+[template private agentMetadata(a : resolveddeployment::ResolvedNodeAgent)]
+  name: [a.name/]
+  namespace: [a.namespace/]
+  labels:
+    [a.agentLabels()/]
+[/template]
+
+[template private agentLabels(a : resolveddeployment::ResolvedNodeAgent)]
+  app.kubernetes.io/managed-by: deploy-kit
+  app.kubernetes.io/name: [a.name/]
+  app.kubernetes.io/part-of: [a.application/]
+[/template]
+
+[comment A DaemonSet agent replaces one node's pod at a time; the controller of a fixed count stops
+  before it starts again. /]
+[template private agentWorkload(a : resolveddeployment::ResolvedNodeAgent)]
+  ---
+  apiVersion: apps/v1
+  kind: [a.controller.toString()/]
+  metadata:
+    [a.agentMetadata()/]
+  spec:
+  [if (a.replicas <> null)]
+      replicas: [a.replicas/]
+      strategy:
+        type: Recreate
+  [/if]
+    selector:
+      matchLabels:
+        app.kubernetes.io/name: [a.name/]
+  [if (a.replicas = null)]
+      updateStrategy:
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+  [/if]
+    template:
+      metadata:
+        labels:
+          [a.agentLabels()/]
+      spec:
+        serviceAccountName: [a.name/]
+        automountServiceAccountToken: [a.identityToken/]
+        priorityClassName: [a.priorityClass/]
+        securityContext:
+          seccompProfile:
+            type: RuntimeDefault
+  [if (a.hostNetwork)]
+          hostNetwork: true
+  [/if]
+  [if (a.hostProcesses)]
+          hostPID: true
+  [/if]
+  [if (a.runtimeClass <> null)]
+          runtimeClassName: [a.runtimeClass/]
+  [/if]
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: kubernetes.io/hostname
+                      operator: In
+                      values:
+  [for (n : String | a.eligibleNodes)]
+                          - [n/]
+  [/for]
+        containers:
+          [a.agentContainer()/]
+  [if (a.mounts->notEmpty() or a.config <> null)]
+          volumes:
+    [for (m : resolveddeployment::HostMount | a.mounts)]
+              - name: [m.name/]
+                hostPath:
+                  path: [m.hostPath/]
+    [/for]
+    [if (a.config <> null)]
+              - name: config
+                configMap:
+                  name: [a.name/]
+    [/if]
+  [/if]
+[/template]
+
+[template private agentContainer(a : resolveddeployment::ResolvedNodeAgent)]
+  - name: [a.name/]
+    image: [a.image/]
+  [if (a.arguments->notEmpty())]
+      args:
+    [for (g : String | a.arguments)]
+          - [g.scalar()/]
+    [/for]
+  [/if]
+  [if (a.environment->notEmpty())]
+      env:
+    [for (e : resolveddeployment::EnvEntry | a.environment)]
+      [if (e.field <> null)]
+            - name: [e.name/]
+              valueFrom:
+                fieldRef:
+                  fieldPath: [e.field/]
+      [else]
+            - name: [e.name/]
+              value: [e.value.scalar()/]
+      [/if]
+    [/for]
+  [/if]
+  [if (a.surfaces->notEmpty())]
+      ports:
+    [for (s : resolveddeployment::ResolvedSurface | a.surfaces)]
+          - name: [s.name/]
+            containerPort: [s.port/]
+    [/for]
+  [/if]
+    resources:
+      requests:
+        memory: [a.memory/]
+        cpu: [a.cpu/]
+      limits:
+        memory: [a.memory/]
+  [if (a.deviceShare <> null)]
+          [a.deviceShare/]: "1"
+  [/if]
+    securityContext:
+  [if (a.privileged)]
+        privileged: true
+  [else]
+    [if (a.nonRoot <> null)]
+          runAsNonRoot: [a.nonRoot/]
+    [/if]
+    [if (a.uid <> null)]
+          runAsUser: [a.uid/]
+    [/if]
+    [if (a.gid <> null)]
+          runAsGroup: [a.gid/]
+    [/if]
+    [if (a.confined)]
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+    [/if]
+        capabilities:
+    [if (a.addedPrivileges->notEmpty())]
+            add:
+      [for (c : String | a.addedPrivileges)]
+                - [c/]
+      [/for]
+    [/if]
+          drop:
+            - ALL
+  [/if]
+  [if (a.mounts->notEmpty() or a.config <> null)]
+      volumeMounts:
+    [for (m : resolveddeployment::HostMount | a.mounts)]
+          - name: [m.name/]
+            mountPath: [m.mountAt/]
+      [if (m.readOnly)]
+              readOnly: true
+      [/if]
+      [if (m.propagated)]
+              mountPropagation: HostToContainer
+      [/if]
+    [/for]
+    [if (a.config <> null)]
+          - name: config
+            mountPath: [a.config.mountAt/]
+            readOnly: true
+    [/if]
+  [/if]
+[/template]
+
+[comment An agent's cluster role and its binding, both named for the agent's Project and the agent. /]
+[template private agentRbac(a : resolveddeployment::ResolvedNodeAgent)]
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: [a.application/]:[a.name/]
+    labels:
+      [a.agentLabels()/]
+  rules:
+  [for (r : resolveddeployment::ResolvedApiRule | a.rules)]
+      [r.rule()/]
+  [/for]
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: [a.application/]:[a.name/]
+    labels:
+      [a.agentLabels()/]
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: [a.application/]:[a.name/]
+  subjects:
+    - kind: ServiceAccount
+      name: [a.name/]
+      namespace: [a.namespace/]
+[/template]
+
+[comment One rule of a role. `core` is the group Kubernetes itself spells as no name at all. /]
+[template private rule(r : resolveddeployment::ResolvedApiRule)]
+  - apiGroups:
+      - [if (r.group = 'core')]""[else][r.group/][/if]
+    resources:
+  [for (o : String | r.objects)]
+        - [o/]
+  [/for]
+    verbs:
+  [for (v : String | r.verbs)]
+        - [v/]
+  [/for]
+[/template]
+
+[comment Each pool the speaker answers for, an address no Service takes unless it names the pool, and
+  its advertisement from the nodes named. /]
+[template private objects(d : resolveddeployment::AddressPoolFile)]
+  [for (p : resolveddeployment::ResolvedAddressPool | d.pools)]
+    ---
+    apiVersion: metallb.io/v1beta1
+    kind: IPAddressPool
+    metadata:
+      name: [p.name/]
+      namespace: [d.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      addresses:
+        - [p.range/]
+      autoAssign: false
+    ---
+    apiVersion: metallb.io/v1beta1
+    kind: L2Advertisement
+    metadata:
+      name: [p.name/]
+      namespace: [d.namespace/]
+      labels:
+        app.kubernetes.io/managed-by: deploy-kit
+    spec:
+      ipAddressPools:
+        - [p.name/]
+      nodeSelectors:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+    [for (n : String | p.nodes)]
+                  - [n/]
+    [/for]
+  [/for]
+[/template]
+
 [comment ========================================================== the estate /]
 
 [comment The two priority classes, the datastore's first: neither is the default, and each may evict a

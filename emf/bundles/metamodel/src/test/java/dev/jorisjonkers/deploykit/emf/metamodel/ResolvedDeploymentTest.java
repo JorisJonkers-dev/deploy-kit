@@ -267,7 +267,9 @@ class ResolvedDeploymentTest {
                         "VaultRoleFile",
                         "GeneratedKeysFile",
                         "PriorityClassFile",
-                        "HumanGrantFile");
+                        "HumanGrantFile",
+                        "NodeAgentFile",
+                        "AddressPoolFile");
     }
 
     @Test

@@ -34,6 +34,9 @@
     <!-- Where Flux's events about every Project's unit go, where the platform names a
          Reporter (spec/v1/55-delivery.md#rollouts). -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="events" eType="#//ResolvedEvents" containment="true"/>
+    <!-- The `node` Project's agents and the address pools its speaker answers for. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodeAgents" upperBound="-1" eType="#//ResolvedNodeAgent" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="addressPools" upperBound="-1" eType="#//ResolvedAddressPool" containment="true"/>
     <!-- Layer 2 assigns every output path (docs/adr/model/0070). -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="deliverables" lowerBound="1" upperBound="-1" eType="#//Deliverable" containment="true"/>
   </eClassifiers>
@@ -527,6 +530,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="secret" eType="#//SecretReference" containment="true"/>
+    <!-- A field of the pod's own, such as the node it runs on, read by the API. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="field" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <eClassifiers xsi:type="ecore:EClass" name="SecretReference">
@@ -579,6 +584,70 @@
          IngressRoute, numbered by the route's position. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- A Node Agent (spec/v1/14-platform-intent.md#node-agents): a controller the `node` Project
+       runs on the nodes its facts name, with the privileges its catalog entry fixes, carried here
+       so the template only spells them. A DaemonSet agent runs one pod per node; the speaker's
+       controller runs once, as a Deployment of `replicas`. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedNodeAgent">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="controller" lowerBound="1" eType="#//ControllerKind"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="replicas" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The device resource one share of which the agent asks, and the runtime class its pod runs in. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="deviceShare" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="runtimeClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="priorityClass" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identityToken" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <!-- The host's own network and process namespaces, where the agent reads the node itself. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="hostNetwork" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="hostProcesses" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="eligibleNodes" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="arguments" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="environment" upperBound="-1" eType="#//EnvEntry" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="surfaces" upperBound="-1" eType="#//ResolvedSurface" containment="true"/>
+    <!-- The posture its catalog entry fixes: a privileged agent is that alone; any other drops every
+         capability but those it adds, and a confined one also writes no root filesystem and never
+         escalates. `nonRoot`, `uid` and `gid` are stated only where the entry states them. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="privileged" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nonRoot" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="uid" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="gid" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="confined" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="addedPrivileges" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="mounts" upperBound="-1" eType="#//HostMount" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="config" eType="#//AgentConfig" containment="true"/>
+    <!-- What it may ask of the Kubernetes API, cluster-wide; none for an agent that asks nothing. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" upperBound="-1" eType="#//ResolvedApiRule" containment="true"/>
+  </eClassifiers>
+  <!-- A directory of the node an agent mounts, read-only or not, and whether a mount below it
+       made on the host reaches the agent. -->
+  <eClassifiers xsi:type="ecore:EClass" name="HostMount">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="hostPath" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="readOnly" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="propagated" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+  </eClassifiers>
+  <!-- The one settings file an agent reads, handed to it in a ConfigMap named for it. -->
+  <eClassifiers xsi:type="ecore:EClass" name="AgentConfig">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="file" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="mountAt" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="content" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- The address pools the L4 speaker answers for (spec/v1/14-platform-intent.md#l4-addresses):
+       each one address no Service takes unless it names the pool, advertised from the nodes
+       named. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedAddressPool">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="range" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="nodes" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
   <!-- ============================================ the generated resources -->
@@ -837,6 +906,18 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="clusterRole" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
 
+  <!-- One file of the Node Agents of the `node` Project: their workloads, their ServiceAccounts,
+       their cluster roles and bindings, or the ConfigMap of the one that reads a settings file. -->
+  <eClassifiers xsi:type="ecore:EClass" name="NodeAgentFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="part" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="agents" lowerBound="1" upperBound="-1" eType="#//ResolvedNodeAgent"/>
+  </eClassifiers>
+  <!-- The L4 speaker's address pools and the advertisement of each, in the agents' namespace. -->
+  <eClassifiers xsi:type="ecore:EClass" name="AddressPoolFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pools" lowerBound="1" upperBound="-1" eType="#//ResolvedAddressPool"/>
+  </eClassifiers>
+
   <!-- ==================================================== vocabularies -->
 
   <eClassifiers xsi:type="ecore:EEnum" name="PinnedInput">
@@ -898,6 +979,7 @@
     <eLiterals name="deployment" literal="Deployment"/>
     <eLiterals name="statefulSet" value="1" literal="StatefulSet"/>
     <eLiterals name="cronJob" value="2" literal="CronJob"/>
+    <eLiterals name="daemonSet" value="3" literal="DaemonSet"/>
   </eClassifiers>
 
 </ecore:EPackage>
