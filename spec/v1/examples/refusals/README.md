@@ -67,6 +67,8 @@ one defect so the refusal has a single cause.
 | [`l4-address-exhausted/`](l4-address-exhausted/) | `E_L4_ADDRESS_EXHAUSTED` | two Processes exposed on a pool whose range holds one address ([chapter 14](../../14-platform-intent.md#l4-addresses)) |
 | [`no-acme-policy/`](no-acme-policy/) | `E_NO_ACME_POLICY` | an acme tier under a Platform document that names no acme account ([chapter 14](../../14-platform-intent.md#tiers)) |
 | [`acme-proxy-replicated/`](acme-proxy-replicated/) | `E_ACME_PROXY_REPLICATED` | an acme tier's proxy that declares replicas ([chapter 14](../../14-platform-intent.md#tiers)) |
+| [`certificate-from-unserved/`](certificate-from-unserved/) | `E_CERTIFICATE_FROM_UNSERVED` | a tier that issues through acme naming a certificate to read from the Secret Store ([chapter 14](../../14-platform-intent.md#tiers)) |
+| [`certificate-from-repeated/`](certificate-from-repeated/) | `E_CERTIFICATE_FROM_REPEATED` | two tiers each naming a certificate to read ([chapter 14](../../14-platform-intent.md#tiers)) |
 | [`no-api-access-policy/`](no-api-access-policy/) | `E_NO_API_ACCESS_POLICY` | a tier's proxy under a Platform document that declares no `apiAccess` ([chapter 14](../../14-platform-intent.md#tiers)) |
 | [`tier-surface-missing/`](tier-surface-missing/) | `E_TIER_SURFACE_MISSING` | a tier with an address whose proxy provides no surface its listener reaches ([chapter 14](../../14-platform-intent.md#tiers)) |
 | [`node-port-taken/`](node-port-taken/) | `E_NODE_PORT_TAKEN` | two Processes exposed on one node's own address at the same port and protocol ([chapter 10](../../10-project-intent.md#l4-exposure)) |
