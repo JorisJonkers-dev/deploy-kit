@@ -45,15 +45,16 @@ failure to its diagnostic with no table.
   invariant reports at its object, plus at most one feature named after `__`.
   An entry of a list of strings, such as one Project the mesh enrols, or a port
   a tier derives rather than one a project file writes, has no object of its
-  own. `L4Checks` and `Pipeline.check` place these.
+  own. `L4Checks`, `OperatedChecks` and `Pipeline.check` place these.
 
 **What a Process holds across the union is asked only of a document that
 holds.** Self delivery without a Vault client, and a secret placeholder on a
 Client without one, read the env files beside the project, which are attached
-before the document is checked. The production implementation asks these
-after each document's own checks pass, so a document refused for its own shape
-is not refused for them as well. `Pipeline.refusals` keeps that order with one
-named set of such codes.
+before the document is checked. A tier's proxy under a Platform document with
+no `apiAccess` is asked of the union by composition. The production
+implementation asks these after each document's own checks pass, so a document
+refused for its own shape is not refused for them as well. `Pipeline.refusals`
+keeps that order with one named set of such codes.
 
 ## Alternatives
 
@@ -75,5 +76,5 @@ is compared by code, document and path, wherever it is decided.
 ## Consequences
 
 - "Where is a refusal decided" has two answers, paid by a reader of the architecture, who finds both, and the reason for each group, in its constraints section.
-- Three Java classes carry rules an examiner would look for in the `.ocl` file, paid by the course report, which defends the split rather than hiding it.
+- Four Java classes carry rules an examiner would look for in the `.ocl` file, paid by the course report, which defends the split rather than hiding it.
 - The union-level codes are listed twice, as invariants and as the set `Pipeline.refusals` defers them by, paid by whoever adds such a code, who adds it to both.

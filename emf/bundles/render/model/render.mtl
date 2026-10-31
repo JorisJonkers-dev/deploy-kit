@@ -852,7 +852,9 @@
   with no leader election cannot run two copies; a stop-start one keeps its count and stops
   before it starts again. /]
 [template private workload(p : resolveddeployment::ResolvedProcess, d : resolveddeployment::WorkloadFile)]
-  [if (d.controller.toString() = 'CronJob')]
+  [if (p.operated <> null)]
+    [p.operatedWorkload()/]
+  [elseif (d.controller.toString() = 'CronJob')]
     [p.scheduled()/]
   [else]
     [p.deployment(d)/]
@@ -919,6 +921,152 @@
       [p.pod('')/]
 [/template]
 
+[comment The monitoring stack's Prometheus or Alertmanager as the Prometheus operator's own object
+  (spec/v1/14-platform-intent.md#the-operators-objects): the pod the render would have run, handed
+  to the operator whole, its own container patched by the Process's variables, posture, mounts and
+  probes, and what the Platform document says each selects and notifies. The operator sets the
+  name, instance and manager labels on every pod itself. /]
+[template private operatedWorkload(p : resolveddeployment::ResolvedProcess)]
+  ---
+  apiVersion: monitoring.coreos.com/v1
+  kind: [p.operated.kind/]
+  metadata:
+    [p.metadata()/]
+  spec:
+    image: [p.image/]
+  [if (p.imageVersion <> null)]
+      version: [p.imageVersion.scalar()/]
+  [/if]
+    replicas: [p.replicas/]
+    serviceAccountName: [p.identity/]
+    automountServiceAccountToken: [p.identityToken/]
+  [if (p.priorityClass <> null)]
+      priorityClassName: [p.priorityClass/]
+  [/if]
+    podMetadata:
+      labels:
+        app.kubernetes.io/part-of: [p.application().id/]
+        app.kubernetes.io/component: [p.component/]
+  [for (c : String | p.consumes)]
+          [c.consumerLabel()/]
+  [/for]
+  [if (p.member())]
+          gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+  [/if]
+  [if (p.versioned()->notEmpty())]
+        annotations:
+    [for (n : String | p.versioned())]
+            image.jorisjonkers.dev/[n/]: [p.versionOf(n).scalar()/]
+    [/for]
+  [/if]
+    portName: [p.surfaces->first().name/]
+    [p.podSecurity()/]
+    [p.podAffinity()/]
+    resources:
+      requests:
+        memory: [p.memory/]
+        cpu: [p.cpu/]
+      limits:
+        memory: [p.memory/]
+    containers:
+      - name: [p.operated.container/]
+  [if (p.holdsEnv())]
+          [p.containerEnv()/]
+  [/if]
+        [p.containerSecurity()/]
+  [if (p.mounts())]
+          [p.containerMounts()/]
+  [/if]
+  [if (p.probed())]
+          [p.probes()/]
+  [/if]
+  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty() or p.vpn <> null)]
+      [p.podVolumes()/]
+  [/if]
+  [if (p.operated.additionalArgs->notEmpty())]
+      additionalArgs:
+    [for (f : resolveddeployment::OperatedFlag | p.operated.additionalArgs)]
+          - name: [f.name.scalar()/]
+      [if (f.value <> null)]
+              value: [f.value.scalar()/]
+      [/if]
+    [/for]
+  [/if]
+  [if (p.operated.kind = 'Prometheus')]
+      [p.operated.prometheusSpec()/]
+  [else]
+      alertmanagerConfigSelector:
+        [p.operated.managedSelection()/]
+      alertmanagerConfigMatcherStrategy:
+        type: None
+  [/if]
+  [if (p.operated.retention <> null)]
+      retention: [p.operated.retention.scalar()/]
+  [/if]
+  [if (p.operated.retentionSize <> null)]
+      retentionSize: [p.operated.retentionSize.scalar()/]
+  [/if]
+  [if (p.operated.remoteWriteReceiver)]
+      enableRemoteWriteReceiver: true
+  [/if]
+  [if (p.operated.features->notEmpty())]
+      enableFeatures:
+    [for (x : String | p.operated.features)]
+          - [x.scalar()/]
+    [/for]
+  [/if]
+[/template]
+
+[comment What a Prometheus scrapes, evaluates and notifies: the monitors of every namespace by the
+  labels the platform's monitors carry, every scrape of k3s and every rule group the render
+  writes, and the Alertmanager of the monitoring stack. /]
+[template private prometheusSpec(o : resolveddeployment::ResolvedOperated)]
+  scrapeInterval: [o.interval/]
+  scrapeTimeout: [o.timeout/]
+  evaluationInterval: [o.interval/]
+  [if (o.monitors->isEmpty())]
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelector: {}
+    podMonitorNamespaceSelector: {}
+  [else]
+    serviceMonitorSelector:
+      [o.monitorLabels()/]
+    serviceMonitorNamespaceSelector: {}
+    podMonitorSelector:
+      [o.monitorLabels()/]
+    podMonitorNamespaceSelector: {}
+  [/if]
+  scrapeConfigSelector:
+    [o.managedSelection()/]
+  scrapeConfigNamespaceSelector: {}
+  ruleSelector:
+    [o.managedSelection()/]
+  ruleNamespaceSelector: {}
+  [if (o.alertmanager <> null)]
+    alerting:
+      alertmanagers:
+        - namespace: [o.alertmanager.namespace/]
+          name: [o.alertmanager.service/]
+          port: [o.alertmanager.port/]
+          apiVersion: v2
+  [/if]
+[/template]
+
+[comment The labels the platform's monitors carry, as a selection. /]
+[template private monitorLabels(o : resolveddeployment::ResolvedOperated)]
+  matchLabels:
+  [for (l : resolveddeployment::KeyValue | o.monitors)]
+      [l.key/]: [l.value.scalar()/]
+  [/for]
+[/template]
+
+[comment Every object the render writes, by the label it manages them by. /]
+[template private managedSelection(o : resolveddeployment::ResolvedOperated)]
+  matchLabels:
+    app.kubernetes.io/managed-by: deploy-kit
+[/template]
+
 [comment The pod a Process runs in, whatever controller starts it, unindented: `restart` is the
   policy a run to completion restarts by, and nothing for a pod that serves. /]
 [template private pod(p : resolveddeployment::ResolvedProcess, restart : String)]
@@ -967,50 +1115,8 @@
   [if (p.gpu <> null)]
       runtimeClassName: [p.gpu.runtimeClass/]
   [/if]
-    securityContext:
-      runAsNonRoot: true
-      runAsUser: [p.uid/]
-      runAsGroup: [p.gid/]
-  [comment A volume is written as the image's group, and only a volume is. A library's group is
-    its own, and an fsGroup would re-own the whole library. /]
-  [if (p.volumes->notEmpty() and p.libraries->isEmpty())]
-        fsGroup: [p.gid/]
-  [/if]
-  [if (p.libraries->notEmpty())]
-        supplementalGroups:
-    [for (g : Integer | p.libraries.gid->asOrderedSet()->sortedBy(x | x))]
-            - [g/]
-    [/for]
-  [/if]
-      seccompProfile:
-        type: RuntimeDefault
-  [comment The node its volume is bound to, or every node eligible for it, each by name; and where
-    its replicas spread, each repelling the others of its own revision. /]
-    affinity:
-      nodeAffinity:
-        requiredDuringSchedulingIgnoredDuringExecution:
-          nodeSelectorTerms:
-            - matchExpressions:
-                - key: kubernetes.io/hostname
-                  operator: In
-                  values:
-  [if (p.placement.boundTo <> null)]
-                      - [p.placement.boundTo/]
-  [else]
-    [for (n : String | p.placement.eligibleNodes)]
-                        - [n/]
-    [/for]
-  [/if]
-  [if (p.spread)]
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app.kubernetes.io/instance: [p.name/]
-              matchLabelKeys:
-                - pod-template-hash
-              topologyKey: kubernetes.io/hostname
-  [/if]
+    [p.podSecurity()/]
+    [p.podAffinity()/]
   [comment The seeder first, so every later step reads the seeded files; then the VPN, which starts
     and stays; then each init step. /]
   [if (p.seeder <> null or p.vpn <> null or p.sidecars->exists(c | c.init))]
@@ -1031,55 +1137,7 @@
         [c.sidecar(p)/]
   [/for]
   [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->notEmpty() or p.writablePaths->notEmpty() or p.files()->notEmpty() or p.vpn <> null)]
-      volumes:
-    [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
-          - name: [v.claim/]
-            persistentVolumeClaim:
-              claimName: [v.claim/]
-    [/for]
-    [comment Two mounts of one library below two directories share its one claim. /]
-    [for (c : String | p.libraries.claim->asOrderedSet())]
-          - name: [c/]
-            persistentVolumeClaim:
-              claimName: [c/]
-    [/for]
-    [for (a : resolveddeployment::ResolvedAsset | p.assets)]
-          - name: [a.name/]
-            configMap:
-              name: [a.name/]
-              items:
-                - key: [a._from.fileOf()/]
-                  path: [a._from.fileOf()/]
-    [/for]
-    [for (w : resolveddeployment::WritablePath | p.writablePaths)]
-          - name: [w.path.writableOf()/]
-            emptyDir:
-      [if (w.memory)]
-                medium: Memory
-      [/if]
-              sizeLimit: [w.size/]
-    [/for]
-    [for (g : resolveddeployment::ResolvedGrant | p.files())]
-          - name: secret-[g.destination/]
-            secret:
-              secretName: [g.destination/]
-              items:
-      [if (g.engine = 'database')]
-                  - key: username
-                    path: username
-                  - key: password
-                    path: password
-      [else]
-                  - key: [g.keys->first()/]
-                    path: [g.mountAt.fileOf()/]
-      [/if]
-              defaultMode: [g.fileMode.octal()/]
-    [/for]
-    [if (p.vpn <> null)]
-          - name: vpn
-            emptyDir:
-              sizeLimit: 1Mi
-    [/if]
+      [p.podVolumes()/]
   [/if]
 [/template]
 
@@ -1273,14 +1331,8 @@
             protocol: [x.protocol/]
     [/for]
   [/if]
-  [if (p.environment->notEmpty() or p.home <> null)]
-      env:
-    [if (p.environment->notEmpty())]
-          [p.env()/]
-    [/if]
-    [if (p.home <> null)]
-          [p.home.homeEntry()/]
-    [/if]
+  [if (p.holdsEnv())]
+      [p.containerEnv()/]
   [/if]
     resources:
       requests:
@@ -1292,77 +1344,212 @@
   [if (p.gpu <> null)]
           [p.gpu.resource/]: "1"
   [/if]
-    securityContext:
-      allowPrivilegeEscalation: false
-      readOnlyRootFilesystem: true
-      capabilities:
-  [if (p.addedPrivileges->notEmpty())]
-          add:
-    [for (c : String | p.addedPrivileges)]
-              - [c/]
+    [p.containerSecurity()/]
+  [if (p.mounts())]
+      [p.containerMounts()/]
+  [/if]
+  [if (p.probed())]
+      [p.probes()/]
+  [/if]
+[/template]
+
+[comment The pod's own posture: as the image's user and group, under the runtime's default seccomp
+  profile. /]
+[template private podSecurity(p : resolveddeployment::ResolvedProcess)]
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: [p.uid/]
+    runAsGroup: [p.gid/]
+  [comment A volume is written as the image's group, and only a volume is. A library's group is
+    its own, and an fsGroup would re-own the whole library. /]
+  [if (p.volumes->notEmpty() and p.libraries->isEmpty())]
+      fsGroup: [p.gid/]
+  [/if]
+  [if (p.libraries->notEmpty())]
+      supplementalGroups:
+    [for (g : Integer | p.libraries.gid->asOrderedSet()->sortedBy(x | x))]
+          - [g/]
     [/for]
   [/if]
-        drop:
-          - ALL
-  [if (p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->exists(a | a.seedAt = null) or p.writablePaths->notEmpty() or p.files()->notEmpty() or (p.vpn <> null and p.vpn.forwardedPort))]
-      volumeMounts:
-    [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
-          - name: [v.claim/]
-            mountPath: [v.mountAt/]
+    seccompProfile:
+      type: RuntimeDefault
+[/template]
+
+[comment The node its volume is bound to, or every node eligible for it, each by name; and where
+  its replicas spread, each repelling the others of its own revision. /]
+[template private podAffinity(p : resolveddeployment::ResolvedProcess)]
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+  [if (p.placement.boundTo <> null)]
+                    - [p.placement.boundTo/]
+  [else]
+    [for (n : String | p.placement.eligibleNodes)]
+                      - [n/]
     [/for]
-    [for (m : resolveddeployment::ResolvedLibraryMount | p.libraries)]
-          - name: [m.claim/]
-            mountPath: [m.mountAt/]
-      [if (m.subPath <> null)]
-              subPath: [m.subPath/]
-      [/if]
-      [if (m.access = 'read')]
-              readOnly: true
-      [/if]
-    [/for]
-    [for (a : resolveddeployment::ResolvedAsset | p.assets->select(a | a.seedAt = null))]
-          - name: [a.name/]
-            mountPath: [a.mountAt/]
-            subPath: [a._from.fileOf()/]
-            readOnly: true
-    [/for]
-    [for (w : resolveddeployment::WritablePath | p.writablePaths)]
-          - name: [w.path.writableOf()/]
-            mountPath: [w.path/]
-    [/for]
-    [for (g : resolveddeployment::ResolvedGrant | p.files())]
-          - name: secret-[g.destination/]
-            mountPath: [g.directoryOf()/]
-            readOnly: true
-    [/for]
-    [if (p.vpn <> null and p.vpn.forwardedPort)]
-          - name: vpn
-            mountPath: /run/vpn
-            readOnly: true
+  [/if]
+  [if (p.spread)]
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/instance: [p.name/]
+            matchLabelKeys:
+              - pod-template-hash
+            topologyKey: kubernetes.io/hostname
+  [/if]
+[/template]
+
+[comment Every volume the pod mounts: its claims, its libraries' claims, its Assets, its writable
+  paths, its file grants and the VPN's port file. /]
+[template private podVolumes(p : resolveddeployment::ResolvedProcess)]
+  volumes:
+  [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
+      - name: [v.claim/]
+        persistentVolumeClaim:
+          claimName: [v.claim/]
+  [/for]
+  [comment Two mounts of one library below two directories share its one claim. /]
+  [for (c : String | p.libraries.claim->asOrderedSet())]
+      - name: [c/]
+        persistentVolumeClaim:
+          claimName: [c/]
+  [/for]
+  [for (a : resolveddeployment::ResolvedAsset | p.assets)]
+      - name: [a.name/]
+        configMap:
+          name: [a.name/]
+          items:
+            - key: [a._from.fileOf()/]
+              path: [a._from.fileOf()/]
+  [/for]
+  [for (w : resolveddeployment::WritablePath | p.writablePaths)]
+      - name: [w.path.writableOf()/]
+        emptyDir:
+    [if (w.memory)]
+            medium: Memory
     [/if]
+          sizeLimit: [w.size/]
+  [/for]
+  [for (g : resolveddeployment::ResolvedGrant | p.files())]
+      - name: secret-[g.destination/]
+        secret:
+          secretName: [g.destination/]
+          items:
+    [if (g.engine = 'database')]
+              - key: username
+                path: username
+              - key: password
+                path: password
+    [else]
+              - key: [g.keys->first()/]
+                path: [g.mountAt.fileOf()/]
+    [/if]
+          defaultMode: [g.fileMode.octal()/]
+  [/for]
+  [if (p.vpn <> null)]
+      - name: vpn
+        emptyDir:
+          sizeLimit: 1Mi
   [/if]
+[/template]
+
+[comment The container's variables: as written, then the home a writable /tmp gives it. /]
+[template private containerEnv(p : resolveddeployment::ResolvedProcess)]
+  env:
+  [if (p.environment->notEmpty())]
+      [p.env()/]
+  [/if]
+  [if (p.home <> null)]
+      [p.home.homeEntry()/]
+  [/if]
+[/template]
+
+[comment The container's posture: no escalation, no root filesystem written, and every capability
+  dropped but those the Process adds. /]
+[template private containerSecurity(p : resolveddeployment::ResolvedProcess)]
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+  [if (p.addedPrivileges->notEmpty())]
+        add:
+    [for (c : String | p.addedPrivileges)]
+            - [c/]
+    [/for]
+  [/if]
+      drop:
+        - ALL
+[/template]
+
+[comment Where the container mounts each volume of its pod. /]
+[template private containerMounts(p : resolveddeployment::ResolvedProcess)]
+  volumeMounts:
+  [for (v : resolveddeployment::ResolvedVolume | p.volumes)]
+      - name: [v.claim/]
+        mountPath: [v.mountAt/]
+  [/for]
+  [for (m : resolveddeployment::ResolvedLibraryMount | p.libraries)]
+      - name: [m.claim/]
+        mountPath: [m.mountAt/]
+    [if (m.subPath <> null)]
+          subPath: [m.subPath/]
+    [/if]
+    [if (m.access = 'read')]
+          readOnly: true
+    [/if]
+  [/for]
+  [for (a : resolveddeployment::ResolvedAsset | p.assets->select(a | a.seedAt = null))]
+      - name: [a.name/]
+        mountPath: [a.mountAt/]
+        subPath: [a._from.fileOf()/]
+        readOnly: true
+  [/for]
+  [for (w : resolveddeployment::WritablePath | p.writablePaths)]
+      - name: [w.path.writableOf()/]
+        mountPath: [w.path/]
+  [/for]
+  [for (g : resolveddeployment::ResolvedGrant | p.files())]
+      - name: secret-[g.destination/]
+        mountPath: [g.directoryOf()/]
+        readOnly: true
+  [/for]
+  [if (p.vpn <> null and p.vpn.forwardedPort)]
+      - name: vpn
+        mountPath: /run/vpn
+        readOnly: true
+  [/if]
+[/template]
+
+[comment How the kubelet asks whether the container is ready, alive and started. /]
+[template private probes(p : resolveddeployment::ResolvedProcess)]
   [if (p.readiness <> null)]
-      readinessProbe:
-        [p.readiness.target.probeTarget()/]
-        periodSeconds: [p.readiness.period.seconds()/]
-        timeoutSeconds: [p.readiness.timeout.seconds()/]
-        failureThreshold: [p.readiness.failures/]
-        initialDelaySeconds: 0
+    readinessProbe:
+      [p.readiness.target.probeTarget()/]
+      periodSeconds: [p.readiness.period.seconds()/]
+      timeoutSeconds: [p.readiness.timeout.seconds()/]
+      failureThreshold: [p.readiness.failures/]
+      initialDelaySeconds: 0
   [/if]
   [if (p.liveness <> null)]
-      livenessProbe:
-        [p.liveness.target.probeTarget()/]
-        periodSeconds: [p.liveness.period.seconds()/]
-        timeoutSeconds: [p.liveness.timeout.seconds()/]
-        failureThreshold: [p.liveness.failures/]
-        initialDelaySeconds: 0
+    livenessProbe:
+      [p.liveness.target.probeTarget()/]
+      periodSeconds: [p.liveness.period.seconds()/]
+      timeoutSeconds: [p.liveness.timeout.seconds()/]
+      failureThreshold: [p.liveness.failures/]
+      initialDelaySeconds: 0
   [/if]
   [if (p.startup <> null)]
-      startupProbe:
-        [p.startup.target.probeTarget()/]
-        periodSeconds: [p.startup.period.seconds()/]
-        timeoutSeconds: [p.startup.timeout.seconds()/]
-        failureThreshold: [p.startup.failures/]
+    startupProbe:
+      [p.startup.target.probeTarget()/]
+      periodSeconds: [p.startup.period.seconds()/]
+      timeoutSeconds: [p.startup.timeout.seconds()/]
+      failureThreshold: [p.startup.failures/]
   [/if]
 [/template]
 
@@ -1906,8 +2093,13 @@
   [if (g.restartTargets->notEmpty())]
       rolloutRestartTargets:
     [for (t : String | g.restartTargets)]
-          - kind: Deployment
-            name: [d.application.servingOf(t)/]
+      [if (d.application.operatedOf(t) <> null)]
+            - kind: StatefulSet
+              name: [d.application.operatedOf(t).container/]-[t/]
+      [else]
+            - kind: Deployment
+              name: [d.application.servingOf(t)/]
+      [/if]
     [/for]
   [/if]
 [/template]
@@ -3308,8 +3500,23 @@
     and (g.path = path or g.paths->exists(x | x.path = path)))->first().destination /]
 
 [comment The Deployment that serves for the Process of that name. /]
+[comment Whether the container holds a variable, a mount, or a probe. /]
+[query private holdsEnv(p : resolveddeployment::ResolvedProcess) : Boolean =
+  p.environment->notEmpty() or p.home <> null /]
+
+[query private mounts(p : resolveddeployment::ResolvedProcess) : Boolean =
+  p.volumes->notEmpty() or p.libraries->notEmpty() or p.assets->exists(a | a.seedAt = null) or p.writablePaths->notEmpty() or p.files()->notEmpty() or (p.vpn <> null and p.vpn.forwardedPort) /]
+
+[query private probed(p : resolveddeployment::ResolvedProcess) : Boolean =
+  p.readiness <> null or p.liveness <> null or p.startup <> null /]
+
 [query private servingOf(a : resolveddeployment::ResolvedApplication, name : String) : String =
   a.processes->select(p | p.name = name)->first().serving /]
+
+[comment What the Prometheus operator runs a Process as, which it restarts from the StatefulSet it
+  names for its container and the Process. /]
+[query private operatedOf(a : resolveddeployment::ResolvedApplication, name : String) : resolveddeployment::ResolvedOperated =
+  a.processes->select(p | p.name = name)->first().operated /]
 
 [comment How a block scalar keeps its last line break: once, not at all, or every one. /]
 [query private chomping(content : String) : String =

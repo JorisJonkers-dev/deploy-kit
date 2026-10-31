@@ -337,6 +337,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="nameservers" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- The names a `mongo` Process's own pod resolves to itself: its Service's. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="selfNames" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Present where the Prometheus operator runs the Process, from an object of its own. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operated" eType="#//ResolvedOperated" containment="true"/>
     <!-- Whether its replicas repel each other across nodes, within one revision. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="spread" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <!-- The step that seeds its Assets onto its volumes before each start. -->
@@ -578,6 +580,35 @@
     <!-- None where the Process acts on the API only with each signed-in user's own token. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="rules" upperBound="-1" eType="#//ResolvedApiRule" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="server" lowerBound="1" upperBound="-1" eType="#//AdmittedRange" containment="true"/>
+  </eClassifiers>
+  <!-- The monitoring stack's Prometheus or Alertmanager, which the Prometheus operator runs
+       (spec/v1/14-platform-intent.md#the-operators-objects): the kind and the container the
+       operator runs it in; a Prometheus's cadence, the labels it selects monitors by and the
+       Alertmanager it notifies; and the flags its arguments hold, as the fields the operator's
+       object carries and the additional arguments it passes on. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedOperated">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="container" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="monitors" upperBound="-1" eType="#//KeyValue" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="alertmanager" eType="#//OperatedAlertmanager" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="additionalArgs" upperBound="-1" eType="#//OperatedFlag" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retention" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retentionSize" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="remoteWriteReceiver" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="features" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- The Alertmanager a Prometheus notifies: the Service of its role's one Process, by its port's name. -->
+  <eClassifiers xsi:type="ecore:EClass" name="OperatedAlertmanager">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="service" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- A flag as the operator passes it on: its name, without dashes, and any value. -->
+  <eClassifiers xsi:type="ecore:EClass" name="OperatedFlag">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedApiRule">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="group" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

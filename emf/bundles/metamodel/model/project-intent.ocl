@@ -896,6 +896,20 @@ context Process
 				and t.traefik.processes->includes(self))
 			implies replicas = null
 
+	-- The Prometheus operator runs a monitoring role's one Process: so it is `interrupted`, since the
+	-- operator replaces its one pod in place, and serves on one port
+	-- (spec/v1/14-platform-intent.md#the-operators-objects). Its arguments are asked in Java, at
+	-- the entry each is.
+	def: operated : Boolean =
+		let application : Application = oclContainer().oclAsType(Application) in
+		application.operatedRole and application.processes->size() = 1
+
+	inv E_OPERATED_PROCESS__cutover:
+		operated implies cutover = Cutover::interrupted
+
+	inv E_OPERATED_PROCESS__provides:
+		operated implies provides->size() = 1
+
 	-- The Process of an Application a tier names as its proxy that provides every surface the
 	-- tier's listener derives, the first that does: the one that answers the tier.
 	def: answersTier : Boolean =
@@ -993,6 +1007,15 @@ context Tier
 		let tiers : OrderedSet(Tier) = oclContainer().oclAsType(Platform).tiers in
 		ingressClass = null or tiers->select(t | tiers->indexOf(t) < tiers->indexOf(self)
 			and t.traefik = traefik and t.ingressClass <> null)->forAll(t | t.ingressClass = ingressClass)
+
+context Application
+	-- Whether the monitoring stack names this Application as its Prometheus or its Alertmanager.
+	def: operatedRole : Boolean =
+		Monitoring.allInstances()->exists(m | m.prometheus = self or m.alertmanager = self)
+
+	-- The operator runs one Process as each role.
+	inv E_OPERATED_PROCESS__processes:
+		operatedRole implies processes->size() <= 1
 
 context HumanGrant
 	-- One group holds one cluster role once.

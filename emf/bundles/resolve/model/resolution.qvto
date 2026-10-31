@@ -1154,6 +1154,9 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	if self.oclAsType(ECORE::EObject).states('engine') and self.engine = Engine::mongo then
 		selfNames := Sequence{self.name + '.' + namespaceOf(prj.project) + '.svc.cluster.local'}
 	endif;
+	-- The Prometheus operator runs the monitoring stack's Prometheus and Alertmanager from objects
+	-- of its own (spec/v1/14-platform-intent.md#the-operators-objects).
+	operated := operatedOf(app, prj);
 	nodePorts := edgeNodePortsOf(self);
 	placement := object ResolvedPlacement {
 		eligibleNodes := contract.nodes->select(n | eligible(self, n))->collect(n | n.name);
@@ -2251,6 +2254,79 @@ query middlewareOf(r : Route, exposure : Exposure, app : EffectiveApplication, p
 			namespace := namespaceOf(prj.project);
 		}} endif);
 
+-- ===================================================== the operator's objects
+
+-- What the Prometheus operator runs an Application's one Process as, where the Application holds
+-- the monitoring stack's Prometheus or Alertmanager role (spec/v1/14-platform-intent.md#the-operators-objects).
+query operatedOf(app : EffectiveApplication, prj : EffectiveProject) : ResolvedOperated =
+	let held : String = prj.project + '/' + app.id in
+	if estate.monitoring = null then null
+	else if heldName(estate.monitoring.alertmanager) = held then operatedAs('Alertmanager', app.processes->first())
+	else if heldName(estate.monitoring.prometheus) = held then operatedAs('Prometheus', app.processes->first())
+	else null endif endif endif;
+
+-- The flags the operator's object of each kind carries as fields of its own; every other flag is
+-- an additional argument. E_OPERATED_PROCESS refused any argument that is not a flag, or that sets
+-- what the operator sets itself.
+query operatedFields(kind : String) : Sequence(String) =
+	if kind = 'Prometheus' then Sequence{'enable-feature', 'storage.tsdb.retention.size',
+		'storage.tsdb.retention.time', 'web.enable-remote-write-receiver'}
+	else Sequence{'data.retention'} endif;
+
+query operatedAs(role : String, p : PI::Process) : ResolvedOperated =
+	let args : Sequence(String) = p.args->asSequence() in
+	let prometheus : Boolean = role = 'Prometheus' in
+	object ResolvedOperated {
+		kind := role;
+		container := if prometheus then 'prometheus' else 'alertmanager' endif;
+		if prometheus then interval := estate.monitors.interval endif;
+		if prometheus then timeout := estate.monitors.timeout endif;
+		-- The labels the platform's monitors carry, as it names them.
+		if prometheus then monitors := estate.monitors.labels->collect(l | object KeyValue { key := l.key; value := l.value; }) endif;
+		if prometheus then alertmanager := operatedAlertmanager() endif;
+		additionalArgs := args->reject(a | operatedFields(role)->includes(flagName(a)))
+			->collect(a | object OperatedFlag { name := flagName(a); value := flagValue(a); });
+		-- A repeated flag is read as the binary reads it: its last value.
+		retention := lastFlag(args, if prometheus then 'storage.tsdb.retention.time' else 'data.retention' endif);
+		if prometheus then retentionSize := lastFlag(args, 'storage.tsdb.retention.size') endif;
+		remoteWriteReceiver := prometheus and args->exists(a | flagName(a) = 'web.enable-remote-write-receiver');
+		if prometheus then features := args->select(a | flagName(a) = 'enable-feature' and flagValue(a) <> null)
+			->collect(a | flagValue(a).tokenize(','))->flatten()->asOrderedSet()->asSequence() endif;
+	};
+
+-- The Alertmanager a Prometheus notifies: the Service of its role's one Process, on that Process's
+-- one surface, where the union holds its Project.
+query operatedAlertmanager() : OperatedAlertmanager =
+	let home : String = heldName(estate.monitoring.alertmanager).substringBefore('/') in
+	let declared : Sequence(EffectiveProject) = projects->select(prj | prj.project = home) in
+	if declared->isEmpty() then null else
+	let served : PI::Process = declared->first().applications
+		->select(a | a.id = estate.monitoring.alertmanager.id)->any(true).processes->first() in
+	object OperatedAlertmanager {
+		namespace := namespaceOf(home);
+		service := served.name;
+		port := served.provides->first().key;
+	} endif;
+
+-- An argument as a flag (one or two dashes, then a name that opens on neither a dash nor `=`): what
+-- follows the dashes, or nothing where it is not one.
+query flagBody(a : String) : String =
+	if a.size() > 2 and a.startsWith('--') and Sequence{'=', '-'}->excludes(a.substring(3, 3)) then a.substring(3, a.size())
+	else if a.size() > 1 and a.startsWith('-') and Sequence{'=', '-'}->excludes(a.substring(2, 2)) then a.substring(2, a.size())
+	else null endif endif;
+
+query flagName(a : String) : String =
+	let body : String = flagBody(a) in
+	if body = null then null else if body.indexOf('=') > 0 then body.substringBefore('=') else body endif endif;
+
+query flagValue(a : String) : String =
+	let body : String = flagBody(a) in
+	if body = null or body.indexOf('=') = 0 then null else body.substringAfter('=') endif;
+
+query lastFlag(args : Sequence(String), name : String) : String =
+	let named : Sequence(String) = args->select(a | flagName(a) = name) in
+	if named->isEmpty() then null else flagValue(named->last()) endif;
+
 -- ============================================================ the path plan
 
 -- What every project writes: its namespace, the index over it, the
@@ -3037,6 +3113,16 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'priorityClass', v = opt(self.priorityClass)},
 		Tuple{k = 'nameservers', v = if self.nameservers->isEmpty() then null else arr(self.nameservers->collect(x | str(x))) endif},
 		Tuple{k = 'selfNames', v = if self.selfNames->isEmpty() then null else arr(self.selfNames->collect(x | str(x))) endif},
+		Tuple{k = 'operated', v = if self.operated = null then null else obj(Sequence{
+			Tuple{k = 'kind', v = str(self.operated.kind)},
+			Tuple{k = 'interval', v = opt(self.operated.interval)},
+			Tuple{k = 'timeout', v = opt(self.operated.timeout)},
+			Tuple{k = 'monitors', v = if self.operated.monitors->isEmpty() then null
+				else obj(self.operated.monitors->collect(l | Tuple{k = l.key, v = str(l.value)})) endif},
+			Tuple{k = 'alertmanager', v = if self.operated.alertmanager = null then null else obj(Sequence{
+				Tuple{k = 'namespace', v = str(self.operated.alertmanager.namespace)},
+				Tuple{k = 'service', v = str(self.operated.alertmanager.service)},
+				Tuple{k = 'port', v = str(self.operated.alertmanager.port)}}) endif}}) endif},
 		Tuple{k = 'l4Exposure', v = let src : PI::Process = self.invresolveone(PI::Process) in
 			if src = null or l4Of(src)->isEmpty() then null else arr(l4Of(src).address->asSet()->sortedBy(a | a)
 				->collect(address | let declared : L4AddressDeclaration = addressOf(address) in obj(Sequence{

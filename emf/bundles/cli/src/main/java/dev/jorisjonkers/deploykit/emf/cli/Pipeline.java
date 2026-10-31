@@ -448,6 +448,7 @@ public final class Pipeline {
         refusals.addAll(ShippedFiles.acrossTheEstate(placed, platform));
         platform.ifPresent(document -> refusals.addAll(unknownEnrolled(document, projects)));
         platform.ifPresent(document -> refusals.addAll(L4Checks.check(document, named)));
+        platform.ifPresent(document -> refusals.addAll(OperatedChecks.check(document, named)));
         Optional<Platform> estate = platform;
         files.stream()
                 .filter(file -> file.getFileName().toString().equals(IMAGES_LOCK))

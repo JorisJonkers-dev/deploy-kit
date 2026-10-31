@@ -237,6 +237,9 @@ bundle, because each asks something the parsed model does not hold
   addresses than Processes, a node's port two owners dial. A tier derives ports
   no project file writes, and a refusal there is placed at the tier's address,
   which no invariant's path can name.
+- `OperatedChecks`: an argument of the monitoring stack's Prometheus or
+  Alertmanager that is no flag, or sets what the Prometheus operator sets
+  itself, placed at its entry of the Process's list of arguments.
 - `Pipeline.check`: a Project the mesh enrols that no file declares, placed at
   its entry of a list of strings, and an image the images lock holds as root,
   which the pinned inputs decide and the intent's constraints never read.
