@@ -650,6 +650,7 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 	alertRules := Sequence{1..self.alertRules->size()}->collect(i | obsAlertRules(self.id, self.alertRules->at(i)._from, fileOf(prj.project, self.alertRules->at(i)._from)));
 	if obsAlerts(self) then alerting := obsAlerting(self) endif;
 	if obsFlux(self) then fluxScrape := obsFluxScrape() endif;
+	k3sScrape := k3sScrapeOf(self, prj);
 	-- The operator syncs from the Secret Store wherever a grant or a backup's
 	-- off-cluster or peer credential is delivered anywhere but to the Process itself,
 	-- and a migration reads its owner credential from the store itself.
@@ -2257,6 +2258,28 @@ query middlewareOf(r : Route, exposure : Exposure, app : EffectiveApplication, p
 			namespace := namespaceOf(prj.project);
 		}} endif);
 
+-- ============================================================ k3s's metrics
+
+-- k3s's own components, on the metrics stack the Platform document names, where the bootstrap set
+-- records them (spec/v1/14-platform-intent.md#k3ss-metrics), scraped as the stack's first Process.
+query k3sScrapeOf(app : EffectiveApplication, prj : EffectiveProject) : ResolvedK3sScrape =
+	if estate.bootstrap.k3s = null or estate.telemetry = null or estate.telemetry.metrics = null
+		or heldName(estate.telemetry.metrics) <> prj.project + '/' + app.id then null else
+	let metrics : K3sMetrics = estate.bootstrap.k3s.metrics in
+	object ResolvedK3sScrape {
+		identity := app.processes->first().name;
+		interval := estate.monitors.interval;
+		timeout := estate.monitors.timeout;
+		labels := estate.monitors.labels->collect(l | object KeyValue { key := l.key; value := l.value; });
+		if metrics.kubelet <> null then kubeletPort := metrics.kubelet.port endif;
+		-- A holder-shaped reference, or the schema refused it.
+		if metrics.apiServer <> null then apiServerNamespace := metrics.apiServer.service.substringBefore('/') endif;
+		if metrics.apiServer <> null then apiServerService := metrics.apiServer.service.substringAfter('/') endif;
+		if metrics.apiServer <> null then apiServerPort := metrics.apiServer.port endif;
+		if metrics.coreDns <> null then coreDnsNamespace := estate.substrate.clusterDns endif;
+		if metrics.coreDns <> null then coreDnsPort := metrics.coreDns.port endif;
+	} endif;
+
 -- ================================================================= Grafana
 
 -- The monitoring stack's Grafana as the Grafana operator reaches it
@@ -2620,6 +2643,12 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 		->union(if self.client = null then Sequence{} else Sequence{object ClientFile {
 				path := root + 'client.yaml';
 				application := moved;
+			}.oclAsType(Deliverable)} endif)
+		->union(if self.resolveone(ResolvedApplication).k3sScrape = null then Sequence{} else
+			Sequence{object K3sMonitorsFile {
+				path := root + 'k3s-monitors.yaml';
+				adapter := AdapterName::prometheus;
+				application := self.resolveone(ResolvedApplication);
 			}.oclAsType(Deliverable)} endif)
 		->union(if self.resolveone(ResolvedApplication).grafana = null then Sequence{} else
 			Sequence{object GrafanaFile {
@@ -3150,6 +3179,21 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 					Tuple{k = 'from', v = str(d._from)},
 					Tuple{k = 'content', v = str(content)},
 					Tuple{k = 'inputs', v = arr(inputsOf(content)->collect(x | str(x)))}})))}}) endif},
+		Tuple{k = 'k3sScrape', v = if self.k3sScrape = null then null else obj(Sequence{
+			Tuple{k = 'identity', v = str(self.k3sScrape.identity)},
+			Tuple{k = 'interval', v = str(self.k3sScrape.interval)},
+			Tuple{k = 'timeout', v = str(self.k3sScrape.timeout)},
+			Tuple{k = 'labels', v = if self.k3sScrape.labels->isEmpty() then null
+				else obj(self.k3sScrape.labels->collect(l | Tuple{k = l.key, v = str(l.value)})) endif},
+			Tuple{k = 'kubelet', v = if self.k3sScrape.kubeletPort = null then null
+				else obj(Sequence{Tuple{k = 'port', v = num(self.k3sScrape.kubeletPort)}}) endif},
+			Tuple{k = 'apiServer', v = if self.k3sScrape.apiServerService = null then null else obj(Sequence{
+				Tuple{k = 'namespace', v = str(self.k3sScrape.apiServerNamespace)},
+				Tuple{k = 'service', v = str(self.k3sScrape.apiServerService)},
+				Tuple{k = 'port', v = str(self.k3sScrape.apiServerPort)}}) endif},
+			Tuple{k = 'coreDns', v = if self.k3sScrape.coreDnsPort = null then null else obj(Sequence{
+				Tuple{k = 'namespace', v = str(self.k3sScrape.coreDnsNamespace)},
+				Tuple{k = 'port', v = num(self.k3sScrape.coreDnsPort)}}) endif}}) endif},
 		Tuple{k = 'grafana', v = if self.grafana = null then null else obj(Sequence{
 			Tuple{k = 'labels', v = obj(self.grafana.labels->collect(l | Tuple{k = l.key, v = str(l.value)}))},
 			Tuple{k = 'url', v = str(self.grafana.url)},

@@ -2013,6 +2013,208 @@
         key: [d.application.grafana.password/]
 [/template]
 
+[comment k3s's own components, scraped by the metrics stack from its own namespace
+  (spec/v1/14-platform-intent.md#k3ss-metrics): the token of the stack's ServiceAccount the scrapes
+  authenticate with and the read they take, a ScrapeConfig per kubelet endpoint, a ServiceMonitor
+  of the API server's Service and a PodMonitor of the cluster's DNS, each where the bootstrap set
+  records it. /]
+[template private objects(d : resolveddeployment::K3sMonitorsFile)]
+  [d.application.k3sScrape.k3sMonitors(d.application)/]
+[/template]
+
+[template private k3sMonitors(k : resolveddeployment::ResolvedK3sScrape, a : resolveddeployment::ResolvedApplication)]
+  ---
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: [k.identity/]-token
+    namespace: [a.namespace/]
+    labels:
+      [a.ownLabels()/]
+    annotations:
+      kubernetes.io/service-account.name: [k.identity/]
+  type: kubernetes.io/service-account-token
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    name: [a.namespace/]-[k.identity/]-k3s
+    labels:
+      [a.ownLabels()/]
+  rules:
+    - apiGroups:
+        - ""
+      resources:
+        - nodes
+      verbs:
+        - get
+        - list
+        - watch
+    - apiGroups:
+        - ""
+      resources:
+        - nodes/metrics
+      verbs:
+        - get
+    - nonResourceURLs:
+        - /metrics
+      verbs:
+        - get
+  ---
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
+    name: [a.namespace/]-[k.identity/]-k3s
+    labels:
+      [a.ownLabels()/]
+  roleRef:
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: [a.namespace/]-[k.identity/]-k3s
+  subjects:
+    - kind: ServiceAccount
+      name: [k.identity/]
+      namespace: [a.namespace/]
+  [if (k.kubeletPort <> null)]
+    [k.kubeletScrape(a, 'kubelet', '/metrics')/]
+    [k.kubeletScrape(a, 'kubelet-cadvisor', '/metrics/cadvisor')/]
+    [k.kubeletScrape(a, 'kubelet-probes', '/metrics/probes')/]
+  [/if]
+  [if (k.apiServerService <> null)]
+    ---
+    apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: apiserver
+      namespace: [a.namespace/]
+      labels:
+        [k.scrapeLabels(a)/]
+    spec:
+      jobLabel: component
+      selector:
+        matchLabels:
+          component: apiserver
+          provider: kubernetes
+      namespaceSelector:
+        matchNames:
+          - [k.apiServerNamespace/]
+      endpoints:
+        - port: [k.apiServerPort/]
+          scheme: https
+          interval: [k.interval/]
+          scrapeTimeout: [k.timeout/]
+          [k.bearer()/]
+          tlsConfig:
+            ca:
+              configMap:
+                name: kube-root-ca.crt
+                key: ca.crt
+            serverName: [k.apiServerService/]
+          metricRelabelings:
+            - action: drop
+              sourceLabels:
+                - __name__
+                - le
+              regex: (etcd_request|apiserver_request_slo|apiserver_request_sli|apiserver_request)_duration_seconds_bucket;(0\.15|0\.2|0\.3|0\.35|0\.4|0\.45|0\.6|0\.7|0\.8|0\.9|1\.25|1\.5|1\.75|2|3|3\.5|4|4\.5|6|7|8|9|15|20|40|45|50)(\.0)?
+  [/if]
+  [if (k.coreDnsPort <> null)]
+    ---
+    apiVersion: monitoring.coreos.com/v1
+    kind: PodMonitor
+    metadata:
+      name: coredns
+      namespace: [a.namespace/]
+      labels:
+        [k.scrapeLabels(a)/]
+    spec:
+      jobLabel: k8s-app
+      selector:
+        matchLabels:
+          k8s-app: kube-dns
+      namespaceSelector:
+        matchNames:
+          - [k.coreDnsNamespace/]
+      podMetricsEndpoints:
+        - portNumber: [k.coreDnsPort/]
+          path: /metrics
+          interval: [k.interval/]
+          scrapeTimeout: [k.timeout/]
+          relabelings:
+            - targetLabel: job
+              replacement: coredns
+  [/if]
+[/template]
+
+[comment One endpoint of the kubelet, at its recorded port on each node, its serving certificate its
+  own, signed by no authority the pod holds. The cadvisor endpoint drops the series no rule reads. /]
+[template private kubeletScrape(k : resolveddeployment::ResolvedK3sScrape, a : resolveddeployment::ResolvedApplication, name : String, path : String)]
+  ---
+  apiVersion: monitoring.coreos.com/v1alpha1
+  kind: ScrapeConfig
+  metadata:
+    name: [name/]
+    namespace: [a.namespace/]
+    labels:
+      [k.scrapeLabels(a)/]
+  spec:
+    jobName: kubelet
+    kubernetesSDConfigs:
+      - role: Node
+    scheme: HTTPS
+    metricsPath: [path/]
+    scrapeInterval: [k.interval/]
+    scrapeTimeout: [k.timeout/]
+    honorLabels: true
+    honorTimestamps: true
+    [k.bearer()/]
+    tlsConfig:
+      insecureSkipVerify: true
+    relabelings:
+      - sourceLabels:
+          - __address__
+        regex: (.+):\d+
+        replacement: $1:[k.kubeletPort/]
+        targetLabel: __address__
+      - sourceLabels:
+          - __meta_kubernetes_node_name
+        targetLabel: node
+      - sourceLabels:
+          - __metrics_path__
+        targetLabel: metrics_path
+  [if (name = 'kubelet-cadvisor')]
+      metricRelabelings:
+    [for (x : String | Sequence{'container_cpu_(cfs_throttled_seconds_total|load_average_10s|system_seconds_total|user_seconds_total)', 'container_fs_(io_current|io_time_seconds_total|io_time_weighted_seconds_total|reads_merged_total|sector_reads_total|sector_writes_total|writes_merged_total)', 'container_memory_(mapped_file|swap)', 'container_(file_descriptors|tasks_state|threads_max)', 'container_spec.*'})]
+          - action: drop
+            sourceLabels:
+              - __name__
+            regex: [x/]
+    [/for]
+  [/if]
+[/template]
+
+[comment How a scrape of k3s authenticates: as the stack's ServiceAccount, by its token Secret. /]
+[template private bearer(k : resolveddeployment::ResolvedK3sScrape)]
+  authorization:
+    type: Bearer
+    credentials:
+      name: [k.identity/]-token
+      key: token
+[/template]
+
+[comment A scrape's labels: the platform's monitor labels beside its Application's own. /]
+[template private scrapeLabels(k : resolveddeployment::ResolvedK3sScrape, a : resolveddeployment::ResolvedApplication)]
+  [for (l : resolveddeployment::KeyValue | k.labels)]
+    [l.key/]: [l.value.scalar()/]
+  [/for]
+  [a.ownLabels()/]
+[/template]
+
+[comment What marks an object as the Application's and the render's alone. /]
+[template private ownLabels(a : resolveddeployment::ResolvedApplication)]
+  app.kubernetes.io/part-of: [a.id/]
+  app.kubernetes.io/managed-by: deploy-kit
+[/template]
+
 [template private objects(d : resolveddeployment::ConnectionFile)]
   ---
   apiVersion: secrets.hashicorp.com/v1beta1

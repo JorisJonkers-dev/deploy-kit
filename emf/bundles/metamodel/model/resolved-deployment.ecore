@@ -172,6 +172,8 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="dashboards" eType="#//ResolvedDashboards" containment="true"/>
     <!-- The monitoring stack's Grafana, as the Grafana operator reaches it. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="grafana" eType="#//ResolvedGrafana" containment="true"/>
+    <!-- Where the metrics stack scrapes k3s itself. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="k3sScrape" eType="#//ResolvedK3sScrape" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess" containment="true"/>
   </eClassifiers>
 
@@ -601,6 +603,26 @@
   </eClassifiers>
   <!-- The Grafana instance its Application renders, for the operator to import dashboards into. -->
   <eClassifiers xsi:type="ecore:EClass" name="GrafanaFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
+  <!-- Where the metrics stack scrapes k3s itself (spec/v1/14-platform-intent.md#k3ss-metrics): the
+       identity it scrapes as, its cadence and monitor labels, and each component the bootstrap set
+       records: the kubelet's port, the API server's Service and named port, and the cluster DNS's
+       namespace and port. A component the set does not record is unset. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedK3sScrape">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kubeletPort" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiServerNamespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiServerService" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiServerPort" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="coreDnsNamespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="coreDnsPort" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <!-- The scrapes of k3s its Application renders, with the token and the read they take. -->
+  <eClassifiers xsi:type="ecore:EClass" name="K3sMonitorsFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedOperated">
