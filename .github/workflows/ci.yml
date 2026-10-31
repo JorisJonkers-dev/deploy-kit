@@ -501,19 +501,48 @@
   # it runs is listed in emf/docs/rules.md; the thresholds are in emf/pom.xml.
   # test/emf-wiring.test.ts proves this step names a real build.
   #
-  # Frozen at the tag mde-task-3 (#373) until a catch-up PR after 1.0.0:
-  # model changes land in TypeScript only, so this build runs by hand
-  # (workflow_dispatch) and rejoins Pipeline Complete's needs with that PR.
+  # The model-driven build under emf/ (Maven and Tycho) runs its tests and its
+  # 100% JaCoCo gate on every change to its sources or to this workflow. Any
+  # other change skips its steps: a model change lands in TypeScript first and
+  # moves the oracles, and the model-driven build catches up in its own change. Its 100% PIT gate takes too long for every change, so it runs
+  # periodically: on the nightly run and on a dispatch. It is not one of
+  # Pipeline Complete's needs.
   'emf':
     'name': 'Model-driven build'
-    'if': "github.event_name == 'workflow_dispatch'"
+    'if': "!startsWith(github.head_ref, 'release-please--')"
     'runs-on': 'ubuntu-latest'
-    'timeout-minutes': 20
+    'timeout-minutes': 60
     'permissions':
       'contents': 'read'
     'steps':
+      # A pull request checks out its merge commit and a push to main the
+      # squashed commit; either way the first parent is main before it.
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1
+        'with':
+          'fetch-depth': '2'
+      - 'name': 'Decide whether the change reaches the model-driven build'
+        'id': 'scope'
+        'shell': 'bash'
+        'env':
+          'EVENT': '${{ github.event_name }}'
+        'run': |
+          set -euo pipefail
+          mutation='false'
+          if [ "${EVENT}" = 'workflow_dispatch' ] || [ "${EVENT}" = 'schedule' ]; then
+            needed='true'
+            mutation='true'
+          elif git diff --name-only HEAD^1 HEAD | grep -qE '^(emf/|\.github/workflows/ci\.yml$)'; then
+            needed='true'
+          else
+            needed='false'
+          fi
+          echo "needed=${needed}" >> "$GITHUB_OUTPUT"
+          echo "mutation=${mutation}" >> "$GITHUB_OUTPUT"
+      - 'name': 'Nothing the build reads changed'
+        'if': "steps.scope.outputs.needed != 'true'"
+        'run': 'echo "No model-driven build: this change reaches neither emf/ nor this workflow."'
       - 'uses': 'actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6' # v6.0.1
+        'if': "steps.scope.outputs.needed == 'true'"
         'with':
           'distribution': 'temurin'
           'java-version-file': 'emf/.java-version'
@@ -524,10 +553,20 @@
             emf/**/pom.xml
             emf/emf.target
       - 'name': 'Verify'
+        'if': "steps.scope.outputs.needed == 'true'"
         'working-directory': 'emf'
-        'run': './mvnw -B -ntp verify'
+        'shell': 'bash'
+        'env':
+          'MUTATION': '${{ steps.scope.outputs.mutation }}'
+        'run': |
+          set -euo pipefail
+          if [ "${MUTATION}" = 'true' ]; then
+            ./mvnw -B -ntp verify
+          else
+            ./mvnw -B -ntp verify -DskipPitest=true
+          fi
       - 'name': 'Summary'
-        'if': 'always()'
+        'if': "always() && steps.scope.outputs.needed == 'true'"
         'run': 'emf/scripts/summary.sh >> "$GITHUB_STEP_SUMMARY"'
 
   # Two jobs land here together, for issue #33. Neither gates: neither joins

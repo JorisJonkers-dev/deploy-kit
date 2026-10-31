@@ -347,14 +347,15 @@
         </keys>
       </secrets>
       <dependsOn application="platform-valkey" surface="redis" required="false"/>
-      <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/data/seed.conf"/>
+      <assets xsi:type="projectintent:SeededAsset" from="config/seed.conf" seedAt="/var/cache/coverage/seed.conf"/>
       <writablePaths xsi:type="projectintent:MemoryPath" path="/var/cache/coverage" memory="64Mi"/>
       <env>
         <entries name="LEVEL">
           <value xsi:type="projectintent:EnvLiteral" text="info"/>
         </entries>
       </env>
-      <client signIn="token" backChannelLogoutPath="/logout">
+      <client label="Coverage" protectedPath="/api" backChannelLogoutPath="/logout" credential="pkce">
+        <redirectPaths>/callback</redirectPaths>
         <roles>reader</roles>
       </client>
       <processes cutover="interrupted" name="coverage-api" image="coverage-api" runtime="none">

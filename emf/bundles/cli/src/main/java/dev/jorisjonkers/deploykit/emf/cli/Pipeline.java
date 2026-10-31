@@ -3,6 +3,7 @@ package dev.jorisjonkers.deploykit.emf.cli;
 import com.google.inject.Injector;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.AssetFile;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ImagesLock;
+import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.NodeContract;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsFactory;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInputsPackage;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.AlertRules;
@@ -90,6 +91,9 @@ public final class Pipeline {
     /** The code an image earns that a pod runs as its own user where the lock holds it as root. */
     private static final String IMAGE_RUNS_AS_ROOT = "E_IMAGE_RUNS_AS_ROOT";
 
+    /** The code an image earns that the images lock holds no entry for. */
+    private static final String UNLOCKED_IMAGE = "E_UNLOCKED_IMAGE";
+
     /** The code a Project the mesh enrols earns where no project file declares it. */
     private static final String UNKNOWN_ENROLLED_PROJECT = "E_UNKNOWN_ENROLLED_PROJECT";
 
@@ -170,10 +174,11 @@ public final class Pipeline {
                 intent.add(Lowering.lower(document));
             }
         }
-        return Resolved.of(
-                Resolution.resolve(intent, authored.pinned(), project, schemaPackageIntegrity),
-                intent,
-                authored.pinned());
+        ResolvedDeployment deployment = Resolution.resolve(intent, authored.pinned(), project, schemaPackageIntegrity);
+        List<Diagnostic> unplaceable = Placement.check(deployment, intent);
+        return unplaceable.isEmpty()
+                ? Resolved.of(deployment, intent, authored.pinned())
+                : Resolved.refused(unplaceable);
     }
 
     /**
@@ -279,14 +284,12 @@ public final class Pipeline {
         EcoreUtil2.getAllContentsOfType(project, AlertRules.class).forEach(rules -> named.add(rules.getFrom()));
         List<AssetFile> read = new ArrayList<>();
         for (String from : named) {
-            Optional<Path> beside = besideProject(file, from);
-            if (beside.isPresent()) {
-                AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
-                assetFile.setProject(project.getProject());
-                assetFile.setFrom(from);
-                assetFile.setContent(Files.readString(beside.get(), StandardCharsets.UTF_8));
-                read.add(assetFile);
-            }
+            Path beside = besideProject(file, from).orElseThrow();
+            AssetFile assetFile = PinnedInputsFactory.eINSTANCE.createAssetFile();
+            assetFile.setProject(project.getProject());
+            assetFile.setFrom(from);
+            assetFile.setContent(Files.readString(beside, StandardCharsets.UTF_8));
+            read.add(assetFile);
         }
         return read;
     }
@@ -442,10 +445,19 @@ public final class Pipeline {
         refusals.addAll(ShippedFiles.acrossTheEstate(placed, platform));
         platform.ifPresent(document -> refusals.addAll(unknownEnrolled(document, projects)));
         platform.ifPresent(document -> refusals.addAll(L4Checks.check(document, named)));
+        Optional<Platform> estate = platform;
         files.stream()
                 .filter(file -> file.getFileName().toString().equals(IMAGES_LOCK))
                 .findFirst()
-                .ifPresent(lock -> refusals.addAll(rootImages(lock, named.keySet())));
+                .ifPresent(lock -> {
+                    refusals.addAll(rootImages(lock, named.keySet()));
+                    estate.ifPresent(document -> refusals.addAll(unlockedSeeder(lock, document)));
+                });
+        // Which Node Agents run is decided by the contract beside the Platform document, where the set has one.
+        files.stream()
+                .filter(file -> file.getFileName().toString().equals(NODE_CONTRACT))
+                .findFirst()
+                .ifPresent(contract -> estate.ifPresent(document -> refusals.addAll(nodeAgents(contract, document))));
         for (Resource document : read) {
             refusals.addAll(refusals(document, true));
         }
@@ -499,6 +511,42 @@ public final class Pipeline {
                         })
                         .orElse(List.of())
                 : List.of();
+    }
+
+    /**
+     * The seeder the Platform document names, where the images lock holds no entry for its image
+     * (spec/v1/14-platform-intent.md#the-seeder): the step runs by digest, and a lock that does not
+     * parse is refused for its shape, not here.
+     */
+    private static List<Diagnostic> unlockedSeeder(Path lock, Platform platform) {
+        Resource read = read(List.of(lock)).get(0);
+        if (platform.getSeeder() == null || !read.getErrors().isEmpty()) {
+            return List.of();
+        }
+        boolean held = read.getContents().stream()
+                .map(ImagesLock.class::cast)
+                .flatMap(images -> images.getImages().stream())
+                .anyMatch(image -> image.getAlias().equals(platform.getSeeder().getImage()));
+        return held
+                ? List.of()
+                : List.of(new Diagnostic(
+                        UNLOCKED_IMAGE,
+                        platform.eResource().getURI().lastSegment(),
+                        "/seeder/image",
+                        "the images lock holds no entry for "
+                                + platform.getSeeder().getImage()));
+    }
+
+    /**
+     * The Node Agents the node contract at {@code contract} and {@code platform} derive that the
+     * catalog names no image for, or the refusals of a contract that does not read.
+     */
+    private static List<Diagnostic> nodeAgents(Path contract, Platform platform) {
+        Resource read = read(List.of(contract)).get(0);
+        if (!read.getErrors().isEmpty()) {
+            return shape(read, contract.getFileName().toString(), read.getErrors());
+        }
+        return NodeAgentChecks.check(platform, (NodeContract) read.getContents().get(0));
     }
 
     /**
@@ -690,19 +738,13 @@ public final class Pipeline {
      */
     private static List<Diagnostic> shape(Resource resource, String file, List<Resource.Diagnostic> syntax) {
         List<Diagnostic> shape = new ArrayList<>();
-        if (resource instanceof XtextResource xtext) {
-            try (java.io.InputStream in =
-                    resource.getResourceSet().getURIConverter().createInputStream(resource.getURI())) {
-                String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
-                Grammar grammar = xtext.getResourceServiceProvider()
-                        .get(IGrammarAccess.class)
-                        .getGrammar();
-                for (Shapes.Issue issue : Shapes.check(text, grammar)) {
-                    shape.add(new Diagnostic(Diagnostic.SCHEMA, file, issue.path(), issue.message()));
-                }
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+        // The parse keeps the whole text it read, so the file is not read a second time.
+        XtextResource xtext = (XtextResource) resource;
+        String text = xtext.getParseResult().getRootNode().getText();
+        Grammar grammar =
+                xtext.getResourceServiceProvider().get(IGrammarAccess.class).getGrammar();
+        for (Shapes.Issue issue : Shapes.check(text, grammar)) {
+            shape.add(new Diagnostic(Diagnostic.SCHEMA, file, issue.path(), issue.message()));
         }
         if (!shape.isEmpty()) {
             return shape;

@@ -986,6 +986,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	replicas := if self.parked <> null then 0 else if self.replicas = null then 1 else self.replicas.count endif endif;
 	parked := self.parked <> null;
 	spread := self.replicas <> null and self.replicas.oclAsType(ECORE::EObject).states('across');
+	command := self.command->asSequence();
 	arguments := self.args->asSequence()->union(edgeArgsOf(self));
 	-- A path held in memory is memory the container holds.
 	memory := let held : Real = self.writablePaths->select(w | w.oclIsKindOf(MemoryPath))
@@ -1071,6 +1072,8 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		imageVersion := locked(c.image).version;
 		memory := c.memory;
 		cpu := c.cpu;
+		command := c.command->asSequence();
+		arguments := c.args->asSequence();
 		-- An init step runs to completion before the Process starts.
 		_init := c._init = true;
 		-- A volume of the Process, where the sidecar says; then a file beside the project,
@@ -1704,14 +1707,23 @@ query copiesOf(p : PI::Process) : Integer =
 
 -- Eligibility, not bin-packing: each Process against allocatable alone, on every
 -- dimension it declared (spec/v1/20-resolved-deployment.md#layer-2-does-not-assign-a-node).
--- What one copy asks for is the Process and its sidecars together.
+-- What one copy asks for is the Process and its sidecars together, the VPN container beside it
+-- where it attaches to one, the step that seeds its Assets where it seeds any, and the memory
+-- its writable paths hold. E_NO_VPN_POLICY and E_NO_SEEDER refused what the platform runs none of.
+query seeds(p : PI::Process) : Boolean =
+	p.assets->exists(a | a.oclIsKindOf(SeededAsset)) and estate.seeder <> null;
+
 query requestedMemory(p : PI::Process) : Real =
 	p.sidecars->collect(c | mebibytes(c.memory))->sum() + mebibytes(p.placement.memory)
-		+ (if p.vpn = null or estate.vpn = null then 0 else mebibytes(estate.vpn.memory) endif);
+		+ (if p.vpn = null or estate.vpn = null then 0 else mebibytes(estate.vpn.memory) endif)
+		+ (if seeds(p) then mebibytes(estate.seeder.memory) else 0 endif)
+		+ p.writablePaths->select(w | w.oclIsKindOf(MemoryPath))
+			->collect(w | mebibytes(w.oclAsType(MemoryPath).memory))->sum();
 
 query requestedCpu(p : PI::Process) : Integer =
 	p.sidecars->collect(c | millicores(c.cpu))->sum() + millicores(p.placement.cpu)
-		+ (if p.vpn = null or estate.vpn = null then 0 else millicores(estate.vpn.cpu) endif);
+		+ (if p.vpn = null or estate.vpn = null then 0 else millicores(estate.vpn.cpu) endif)
+		+ (if seeds(p) then millicores(estate.seeder.cpu) else 0 endif);
 
 query eligible(p : PI::Process, n : Node) : Boolean =
 	mebibytes(n.allocatable.memory) >= requestedMemory(p) * copiesOf(p)
@@ -2129,7 +2141,8 @@ query middlewareOf(r : Route, exposure : Exposure, app : EffectiveApplication, p
 			allowance := r.rateLimit.requests;
 			per := r.rateLimit.per;
 			burst := r.rateLimit.requests;
-			clientAddress := if tierFor(r.audienceOf(exposure)).oclAsType(ECORE::EObject).states('proxiedBy')
+			-- A host published straight at the tier's own address meets its clients without the proxy.
+			clientAddress := if exposure.proxied <> false and tierFor(r.audienceOf(exposure)).oclAsType(ECORE::EObject).states('proxiedBy')
 				then 'cloudflare' else 'connection' endif;
 			name := own + '-rate-limit';
 			namespace := namespaceOf(prj.project);
@@ -3626,6 +3639,8 @@ mapping EffectiveApplication::clientOf(in prj : EffectiveProject) : ResolvedClie
 	if self.client.oclAsType(ECORE::EObject).states('iconPath') then
 		iconUrl := 'https://' + hostName + self.client.iconPath endif;
 	redirectUris := self.client.redirectPaths->collect(p | 'https://' + hostName + p);
+	if self.client.oclAsType(ECORE::EObject).states('backChannelLogoutPath') then
+		backChannelLogoutUri := 'https://' + hostName + self.client.backChannelLogoutPath endif;
 	if self.client.oclAsType(ECORE::EObject).states('credential') then
 		credential := self.client.credential.toString() endif;
 	if self.client.oclAsType(ECORE::EObject).states('credential') and self.client.credential = ClientCredential::secret then
@@ -3708,6 +3723,7 @@ query ResolvedClient::json() : String = obj(Sequence{
 	Tuple{k = 'iconUrl', v = opt(self.iconUrl)},
 	Tuple{k = 'redirectUris', v = if self.redirectUris->isEmpty() then null
 		else arr(self.redirectUris->collect(u | str(u))) endif},
+	Tuple{k = 'backChannelLogoutUri', v = opt(self.backChannelLogoutUri)},
 	Tuple{k = 'credential', v = opt(self.credential)},
 	Tuple{k = 'secretPath', v = opt(self.secretPath)},
 	Tuple{k = 'roles', v = arr(self.roles->collect(r | str(r)))},

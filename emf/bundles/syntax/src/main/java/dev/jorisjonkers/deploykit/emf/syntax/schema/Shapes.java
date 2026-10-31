@@ -43,10 +43,40 @@ public final class Shapes {
 
     private record Value(boolean sequence, List<AbstractRule> targets, List<String> literals) {}
 
-    /** Scalar constraints the grammar cannot say: a count of at least one, a period in whole units. */
-    private static final Map<String, Predicate<String>> CONSTRAINTS = Map.of(
-            "RateLimit.requests", text -> !text.matches("0+"),
-            "RateLimit.per", text -> Pattern.matches("[1-9][0-9]*(s|m|h)", text));
+    /** An age public key: {@code age1} and 58 more characters of the bech32 alphabet. */
+    private static final String AGE_RECIPIENT = "age1[02-9ac-hj-np-z]{58}";
+
+    /** The longest description: one short sentence, not a paragraph. */
+    private static final int DESCRIPTION_LENGTH = 160;
+
+    /** A scalar the constraint reads as text: a count of at least one, a period in whole units. */
+    private static Predicate<Yaml.Node> scalar(Predicate<String> text) {
+        return node -> text.test(node.text);
+    }
+
+    /** A list of at least one word, none of them empty where {@code wordsFilled}. */
+    private static Predicate<Yaml.Node> words(boolean wordsFilled) {
+        return node ->
+                !node.list.isEmpty() && (!wordsFilled || node.list.stream().noneMatch(word -> word.text.isEmpty()));
+    }
+
+    /**
+     * Constraints the grammar cannot say, by the rule and key they hold: a count of at least one, a
+     * period in whole units, a description of one short sentence, what a container runs as at least one
+     * word, an optional key that is optional, and the age public key an off-cluster copy is encrypted to.
+     */
+    private static final Map<String, Predicate<Yaml.Node>> CONSTRAINTS = Map.ofEntries(
+            Map.entry("RateLimit.requests", scalar(text -> !text.matches("0+"))),
+            Map.entry("RateLimit.per", scalar(text -> Pattern.matches("[1-9][0-9]*(s|m|h)", text))),
+            Map.entry(
+                    "Application.description", scalar(text -> !text.isEmpty() && text.length() <= DESCRIPTION_LENGTH)),
+            Map.entry("Process.description", scalar(text -> !text.isEmpty() && text.length() <= DESCRIPTION_LENGTH)),
+            Map.entry("Process.command", words(true)),
+            Map.entry("Sidecar.command", words(true)),
+            Map.entry("Process.args", words(false)),
+            Map.entry("Sidecar.args", words(false)),
+            Map.entry("BlockKey.optional", scalar("true"::equals)),
+            Map.entry("OffClusterCopy.recipient", scalar(text -> Pattern.matches(AGE_RECIPIENT, text))));
 
     private final Grammar grammar;
     private final Map<ParserRule, List<Form>> forms = new HashMap<>();
@@ -290,8 +320,8 @@ public final class Shapes {
             }
             int before = out.size();
             value(pair.getValue(), entry.value(), child, out);
-            Predicate<String> constraint = CONSTRAINTS.get(form.rule() + "." + pair.getKey());
-            if (out.size() == before && constraint != null && !constraint.test(pair.getValue().text)) {
+            Predicate<Yaml.Node> constraint = CONSTRAINTS.get(form.rule() + "." + pair.getKey());
+            if (out.size() == before && constraint != null && !constraint.test(pair.getValue())) {
                 out.add(new Issue(child, "`" + pair.getKey() + "` is out of range"));
             }
         }

@@ -25,3 +25,5 @@ Engine.valkey is never used in a lower case's input
 Generate.adopt is never set by a lower case
 Generate.adopt is never set in a lower case's input
 LibraryAccess.read is never used by a lower case
+SignInMode.token is never used by a lower case
+SignInMode.token is never used in a lower case's input

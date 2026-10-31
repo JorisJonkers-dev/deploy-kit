@@ -1,0 +1,25 @@
+-- Document-level constraints of the Resolved Deployment, asked of a resolution
+-- before anything is rendered from it (docs/adr/emf/0143). Each invariant is
+-- named after the diagnostic code it reports, and its feature is the position
+-- the refusal is written at in the project file the Process comes from.
+
+import 'https://jorisjonkers.dev/deploy-kit/resolved-deployment/1'
+
+package resolveddeployment
+
+context ResolvedProcess
+	-- Every dimension a Process declared is matched against the node contract, so
+	-- no eligible node is a Process nothing can hold: its replicas, a writable path
+	-- held in memory, the seeder beside it and the pool its L4 Addresses hold it to
+	-- all count (spec/v1/20-resolved-deployment.md#layer-2-does-not-assign-a-node).
+	inv E_PLACEMENT_UNSATISFIABLE__placement:
+		placement.eligibleNodes->notEmpty()
+
+	-- Replicas spread across nodes need a node each, and a rollout's old and new
+	-- pod may still share one, so fewer eligible nodes than the count leaves a
+	-- replica that never schedules. None eligible is the placement's own refusal.
+	inv E_PLACEMENT_UNSATISFIABLE__replicas:
+		(spread and placement.eligibleNodes->notEmpty())
+			implies placement.eligibleNodes->size() >= replicas
+
+endpackage

@@ -255,4 +255,16 @@ class PipelineTest {
                 .allSatisfy(diagnostic -> assertThat(diagnostic.message()).startsWith("the ServiceAccount "));
         assertThat(out).isEmptyDirectory();
     }
+
+    @Test
+    void yamlTheShapeCheckCannotReadLeavesTheVerdictToTheParser(@TempDir Path directory) throws IOException {
+        Parsed parsed = Pipeline.intent(file(directory, MINIMAL + "extra: {a: 1\n"));
+
+        assertThat(parsed.ok()).isFalse();
+        assertThat(parsed.diagnostics()).isNotEmpty().allSatisfy(diagnostic -> {
+            assertThat(diagnostic.code()).isEqualTo(Diagnostic.SCHEMA);
+            assertThat(diagnostic.path()).isEmpty();
+            assertThat(diagnostic.message()).startsWith("line ");
+        });
+    }
 }

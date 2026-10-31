@@ -1019,4 +1019,89 @@ context Client
 				->forAll(p | p.probes <> null and p.probes.oclIsKindOf(Probes)
 					and p.probes.oclAsType(Probes).readiness <> null)
 
+-- A Client's fields by Sign-in Mode (spec/v1/17-sign-in.md#what-is-checked): a
+-- native Client takes every field, a gated one a tile's, and a token one none,
+-- and each mode requires what it needs to be signed in to. A field a mode does
+-- not take is refused at the field; one it requires and lacks, at the Client.
+
+context Client
+	inv E_CLIENT_FIELD_FOR_MODE__label: label <> null implies signIn <> SignInMode::token
+	inv E_CLIENT_FIELD_FOR_MODE__description: description <> null implies signIn <> SignInMode::token
+	inv E_CLIENT_FIELD_FOR_MODE__iconPath: iconPath <> null implies signIn <> SignInMode::token
+	inv E_CLIENT_FIELD_FOR_MODE__launchPath: launchPath <> null implies signIn <> SignInMode::token
+	inv E_CLIENT_FIELD_FOR_MODE__redirectPaths: redirectPaths->notEmpty() implies signIn = SignInMode::native
+	inv E_CLIENT_FIELD_FOR_MODE__protectedPath: protectedPath <> null implies signIn = SignInMode::native
+	inv E_CLIENT_FIELD_FOR_MODE__backChannelLogoutPath:
+		backChannelLogoutPath <> null implies signIn = SignInMode::native
+	inv E_CLIENT_FIELD_FOR_MODE__credential:
+		credential <> ClientCredential::absent implies signIn = SignInMode::native
+
+	inv E_CLIENT_FIELD_FOR_MODE:
+		(signIn = SignInMode::native implies
+			(label <> null and redirectPaths->notEmpty() and protectedPath <> null
+				and credential <> ClientCredential::absent))
+		and (signIn = SignInMode::gated implies label <> null)
+
+-- A Process holds the Assets it declares and those a level above shares down to it,
+-- a lower level holding the path two levels name (spec/v1/10-project-intent.md#sharing-merges-and-a-duplicate-is-refused).
+
+context Process
+	def: heldAssets : Sequence(AssetDeclaration) =
+		let application : Application = oclContainer().oclAsType(Application) in
+		let project : Project = application.oclContainer().oclAsType(Project) in
+		let own : Sequence(AssetDeclaration) = assets->asSequence() in
+		let shared : Sequence(AssetDeclaration) = own->union(application.assets->asSequence()
+			->select(a | own->forAll(b | b.landsAt <> a.landsAt))) in
+		shared->union(project.assets->asSequence()
+			->select(a | shared->forAll(b | b.landsAt <> a.landsAt) and own->forAll(b | b.landsAt <> a.landsAt)))
+
+	-- The Assets that are seeded, in the order the levels hold them, lowest first.
+	def: seededAssets : Sequence(SeededAsset) = heldAssets->selectByKind(SeededAsset)
+
+	-- Where a seeded file may land: below a volume, or a writable path of any level.
+	def: landingDirectories : Sequence(String) =
+		let application : Application = oclContainer().oclAsType(Application) in
+		let project : Project = application.oclContainer().oclAsType(Project) in
+		volumes->collect(mountAt)->asSequence()
+			->union(writablePaths->collect(path)->asSequence())
+			->union(application.writablePaths->collect(path)->asSequence())
+			->union(project.writablePaths->collect(path)->asSequence())
+
+	-- A file is below a directory when it names one more or more segments under it, none of
+	-- them empty, `.` or `..`.
+	def: below(file : String, directory : String) : Boolean =
+		let root : String = directory.replaceAll('/+$', '') in
+		file.startsWith(root.concat('/'))
+			and (if file.size() > root.size() + 1
+				then let rest : String = file.substring(root.size() + 2, file.size()) in
+					rest.matches('([^/]+/)*[^/]+') and not rest.matches('(.*/)?[.][.]?(/.*)?')
+				else false endif)
+
+context SidecarAsset
+	-- A sidecar mounts the Process's own Assets, and no other.
+	inv E_UNKNOWN_SIDECAR_ASSET:
+		oclContainer().oclContainer().oclAsType(Process).heldAssets->exists(a | a.from = self.from)
+
+context SeededAsset
+	-- The Processes the level that declares the Asset shares it with.
+	def: carriers : Set(Process) =
+		let level : SharedIntent = oclContainer().oclAsType(SharedIntent) in
+		if level.oclIsKindOf(Process) then Set{level.oclAsType(Process)}
+		else
+			if level.oclIsKindOf(Application) then level.oclAsType(Application).processes->asSet()
+			else level.oclAsType(Project).applications.processes->asSet() endif
+		endif
+
+	-- Seeding runs the platform's seeder, which the Platform document names; the Asset a
+	-- Process seeds first is where the refusal is written, once for the Process.
+	inv E_NO_SEEDER__seedAt:
+		Platform.allInstances()->forAll(seeder <> null)
+			or carriers->forAll(p | p.seededAssets->isEmpty() or p.seededAssets->first() <> self)
+
+	-- A seeded file lands below one of the Process's own volumes or writable paths.
+	inv E_SEED_OUTSIDE_VOLUME__seedAt:
+		Platform.allInstances()->isEmpty()
+			or carriers->forAll(p | not p.seededAssets->includes(self)
+				or p.landingDirectories->exists(directory | p.below(seedAt, directory)))
+
 endpackage

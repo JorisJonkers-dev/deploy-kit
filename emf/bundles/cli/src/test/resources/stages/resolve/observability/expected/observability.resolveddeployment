@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:906e2ac3af1ccde79f0b0ff0581a00fde268c49d85f19f580f260c97c18e195a" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:01c8eea2e626a1b42431c3f263fac43589df6c8c80be0532b866fe5a4c1afa48" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
     <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
     <inputDigests name="delivery" digest="sha256:31f4d21b3c877943fecd855a160f8e339bce5c46f1ba9264c6256d37c4124767"/>
@@ -9,9 +9,9 @@
     <inputDigests name="mail" digest="sha256:94fada2c3ecb8b3433bdc676e677e7d5d732509b31f6980f8352cdb25590a5c8"/>
     <inputDigests name="notes" digest="sha256:18df1eade889398c265322d14889728749b999ab340d2d183efa04c8a3c0b29a"/>
     <inputDigests name="observability" digest="sha256:d5098265009c4d1ef5a75d9e7035d4af64f7e16c6e1983185a0d469869cc6639"/>
-    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="secrets" digest="sha256:3acbc4e3ca72029cd9345e3a16303e3f76fe69336a4cdd8fcb9ac8f0d969913a"/>
     <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:f7490b93e1893a6e9269c8b6f9ad9b4ae0b5ee0842b2dd870bbaf7a50da7fbe6"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:f57937b7c523cf481b63baf3071af4f2c8c780d1710a738e7c760af851a77185"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
     <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
