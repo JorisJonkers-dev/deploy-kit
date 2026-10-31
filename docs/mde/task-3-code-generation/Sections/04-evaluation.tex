@@ -76,10 +76,8 @@ pipeline writes and holds 171 comparisons on an allowlist to an exact match.
 \texttt{-kubernetes-version 1.36.5} and \texttt{-strict} against the default
 schemas, the datreeio CRD catalogue and the repository's \texttt{Client} schema,
 and checks every pod template against Pod Security's \texttt{restricted} profile;
-both checks have negative fixtures. The schema, profile and dry-run checks use the
-generated tree through \texttt{dry-run.sh output "" generated}.
-% TODO(verify): rerun dry-run.sh and lint on the submitted generated tree and confirm the counts
-The script \path{handin/scripts/dry-run.sh} takes about twelve seconds. It starts a disposable k3s cluster at v1.36.5, the production version, installs the CRDs for every non-core kind, creates the declared namespaces and applies each Project's output with \texttt{-{}-dry-run=server}. An earlier attempt at 1.31 failed because the \texttt{GrafanaDashboard} CRD requires a newer API server. Network policies are absent from indexes and are applied file by file.
+both checks have negative fixtures. \path{handin/scripts/dry-run.sh}, run as
+\texttt{dry-run.sh output "" generated}, applies them to the generated tree and takes about ten seconds. It then starts a disposable k3s cluster at v1.36.5, the production version, installs pinned CRDs for every non-core kind, creates the namespaces the output names and applies each Project's output and the platform's share with \texttt{-{}-dry-run=server}. An earlier attempt at 1.31 failed because the \texttt{GrafanaDashboard} CRD requires a newer API server. Network policies are absent from indexes and are applied file by file.
 
 \subsubsection{Oracles and Their Independence}
 \label{sec:oracles}
@@ -117,10 +115,10 @@ change the first Project's bytes; \texttt{edge} is compared separately.
 \label{sec:results}
 
 Table~\ref{tab:results} reports each check for each case. The schema, profile and dry-run
-results were obtained on 2026-10-29 from the generated tree. Units differ by row:
-output counts refer to files; schema counts refer to resources (several may occupy
-one file, and \path{kustomization.yaml} files count as resources); dry-run counts
-refer to indexed objects. The profile check covers 23 pod templates; only parity reads the Vault JSON files.
+results were obtained on 2026-10-31 from the generated tree. Units differ by row:
+output counts refer to files; schema counts refer to resources (several may share
+a file, and \path{kustomization.yaml} files count); dry-run counts
+refer to objects; both include the platform's share. The profile check covers 19 pod templates; only parity reads the Vault JSON files.
 
 \begin{table}[!htbp]
 \centering
@@ -134,9 +132,9 @@ Written by the run & 15 & 76 & 95 & 34 \\
 Byte parity & within union & within union & pass & pass \\
 Per-Project output & pass & pass & -- & -- \\
 Second run writes the same bytes & -- & -- & pass & -- \\
-Schema (kubeconform) & 16/16 valid & 89/89 valid & -- & 39/39 valid \\
+Schema (kubeconform) & 22/22 valid & 95/95 valid & -- & 44/44 valid \\
 Pod Security \texttt{restricted} & no finding & no finding & -- & no finding \\
-Server dry-run, indexed objects & 11/11 & 68/68 & -- & 28/28 \\
+Server dry-run, indexed objects & 15/15 & 72/72 & -- & 31/31 \\
 Server dry-run, network policies & 2/2 & 12/12 & -- & 5/5 \\
 \hline
 \end{tabular}
@@ -144,7 +142,7 @@ Server dry-run, network policies & 2/2 & 12/12 & -- & 5/5 \\
 \label{tab:results}
 \end{table}
 
-The API server issued one warning for \texttt{edge}'s public Traefik \texttt{Deployment}: two entry points are each declared twice. This reflects a modelling choice rather than a defect.
+The API server issued two warnings for \texttt{edge}'s public Traefik \texttt{Deployment}: two entry points are each declared twice. This reflects a modelling choice rather than a defect.
 
 \subsection{Defects Found}
 \label{sec:defects}

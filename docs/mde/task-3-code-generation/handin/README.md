@@ -57,5 +57,16 @@ the launches, and writes `WORK/report.txt` and screenshots taken from inside the
 workbench. `--fix-m2e` first changes the copy's m2e mapping for the generators
 from `execute` to `ignore`, as `emf/pom.xml` will once that change lands.
 
+`scripts/dry-run.sh ROOT [SUBDIR] [LABEL]` produces the report's schema, Pod
+Security and server dry-run results. From the unpacked archive, after its
+`build.sh`, it runs as `dry-run.sh output "" generated`: per example it runs
+`scripts/lint-manifests.ts` (kubeconform 0.6.7 and the `restricted` profile) on the
+tree, then starts a disposable k3s v1.36.5 container (`dk-evidence-k3s`, removed on
+exit), installs the CRDs it pins, creates the namespaces the tree names, and
+applies every Kustomize index and every file no index lists with
+`--dry-run=server`. Every kubectl call reads only the kubeconfig the script writes
+into its own temporary directory. It is not copied into the archive: the profile
+check is this repository's own, so it needs a checkout with `npm ci` run.
+
 This directory is coursework, not repository tooling: the gates under `scripts/`
 and `test/` do not read it.
