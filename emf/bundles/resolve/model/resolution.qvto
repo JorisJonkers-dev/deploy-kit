@@ -1092,22 +1092,28 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
 	priorityClass := priorityOf(self, app, prj);
-	identityToken := self.api <> null or self.secrets->exists(g | g.delivery = Delivery::selfDelivery)
+	identityToken := self.api <> null or edgeTiersOf(self)->notEmpty()
+		or self.secrets->exists(g | g.delivery = Delivery::selfDelivery)
 		or self.edgeCredentials(app, prj)->exists(g | g.delivery = 'self')
 		or self.clientGrants(app)->notEmpty()
 		or self.spawns->notEmpty();
 	-- The platform admits the holder, or E_PROCESS_RBAC_GRANT refused it, so the
 	-- block that says where the API answers is there.
 	-- A spawn template derives access to create its pods in the Process's own namespace.
-	if self.api <> null or self.spawns->notEmpty() then api := object ResolvedApiAccess {
-		reason := if self.api = null then 'it creates the pods its spawn templates declare' else self.api.reason endif;
-		rules := (if self.api = null then Sequence{} else self.api.rules->asSequence() endif)->collect(r | object ResolvedApiRule {
+	-- A tier's proxy reads its routes through the API, so the tier derives the access its
+	-- provider needs, before any the proxy declares itself (spec/v1/14-platform-intent.md#tiers).
+	if self.api <> null or self.spawns->notEmpty() or edgeTiersOf(self)->notEmpty() then api := object ResolvedApiAccess {
+		reason := if self.api <> null then self.api.reason
+			else if edgeTiersOf(self)->notEmpty() then PROXY_API_REASON
+			else 'it creates the pods its spawn templates declare' endif endif;
+		rules := (if edgeTiersOf(self)->isEmpty() then Sequence{} else proxyApiRules() endif)
+			->union((if self.api = null then Sequence{} else self.api.rules->asSequence() endif)->collect(r | object ResolvedApiRule {
 			group := r.group;
 			objects := r.objects;
 			verbs := r.verbs->collect(v | v.toString());
 			-- A rule reaches the cluster unless it says its own namespace.
 			scope := if r.scope = ApiScope::_namespace then RuleScope::_namespace else RuleScope::cluster endif;
-		})->union(if self.spawns->isEmpty() then Sequence{} else Sequence{
+		}))->union(if self.spawns->isEmpty() then Sequence{} else Sequence{
 			object ResolvedApiRule { group := 'core'; objects := Sequence{'pods'};
 				verbs := Sequence{'get', 'list', 'watch', 'create', 'delete'}; scope := RuleScope::_namespace; },
 			object ResolvedApiRule { group := 'core'; objects := Sequence{'pods/log'};
@@ -1143,6 +1149,11 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	l4Services := l4ServicesOf(self);
 	-- A Process that serves DNS resolves through the platform's upstream nameservers.
 	if servesDns(self) then nameservers := estate.substrate.upstreamNameservers endif;
+	-- A `mongo` resolves its own Service's name to itself: its replica set member is configured by
+	-- the name its consumers reach it by (spec/v1/20-resolved-deployment.md#a-replica-set-member-finds-itself).
+	if self.oclAsType(ECORE::EObject).states('engine') and self.engine = Engine::mongo then
+		selfNames := Sequence{self.name + '.' + namespaceOf(prj.project) + '.svc.cluster.local'}
+	endif;
 	nodePorts := edgeNodePortsOf(self);
 	placement := object ResolvedPlacement {
 		eligibleNodes := contract.nodes->select(n | eligible(self, n))->collect(n | n.name);
@@ -2327,6 +2338,10 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 	let scaled : Sequence(ResolvedProcess) = served->select(p | p.replicas > 1) in
 	let moved : ResolvedApplication = self.resolveone(ResolvedApplication) in
 	let monitor : Sequence(Deliverable) = monitorOf(self, root) in
+	-- The certificate a tier's proxy here reads, served from the default TLS store; one tier at
+	-- most names one, or E_CERTIFICATE_FROM_REPEATED refused it.
+	let stored : Sequence(String) = self.processes->collect(p | edgeTiersOf(p)->select(t | t.certificateFrom <> null)
+		->collect(t | destinationOf(p.name, t.certificateFrom)))->flatten()->asSequence() in
 	let files : Sequence(Deliverable) = self.routeFiles(root)->union(
 		Sequence{object WorkloadFile {
 			path := root + 'workload.yaml';
@@ -2401,6 +2416,13 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 				processes := holding;
 			}.oclAsType(Deliverable)} else Sequence{} endif)
 		->union(monitor)
+		->union(if stored->isEmpty() then Sequence{} else Sequence{object TlsStoreFile {
+				path := root + 'tlsstore.yaml';
+				adapter := AdapterName::traefik;
+				namespace := namespaceOf(prj.project);
+				application := self.id;
+				secret := stored->first();
+			}.oclAsType(Deliverable)} endif)
 		->union(if synced->notEmpty() then Sequence{object SecretFile {
 				path := root + 'vso.yaml';
 				adapter := AdapterName::vso;
@@ -3014,6 +3036,7 @@ query ResolvedProcess::json() : String =
 		Tuple{k = 'hardening', v = str(self.hardening)},
 		Tuple{k = 'priorityClass', v = opt(self.priorityClass)},
 		Tuple{k = 'nameservers', v = if self.nameservers->isEmpty() then null else arr(self.nameservers->collect(x | str(x))) endif},
+		Tuple{k = 'selfNames', v = if self.selfNames->isEmpty() then null else arr(self.selfNames->collect(x | str(x))) endif},
 		Tuple{k = 'l4Exposure', v = let src : PI::Process = self.invresolveone(PI::Process) in
 			if src = null or l4Of(src)->isEmpty() then null else arr(l4Of(src).address->asSet()->sortedBy(a | a)
 				->collect(address | let declared : L4AddressDeclaration = addressOf(address) in obj(Sequence{
@@ -3439,6 +3462,21 @@ query edgeTiersOf(p : PI::Process) : Sequence(Tier) =
 	estate.tiers->select(t | heldName(t.traefik) = prj.project + '/' + app.id
 		and listenedBy(app, t.listener) = p.name)->asSequence();
 
+-- What a tier's proxy asks of the Kubernetes API: its provider reads every route, middleware and
+-- TLS object, and the Services, endpoints and Secrets they name, in every namespace
+-- (spec/v1/14-platform-intent.md#tiers).
+property PROXY_API_REASON : String = 'the proxy reads every route of its tier and what each names, cluster-wide';
+
+query proxyApiRules() : Sequence(ResolvedApiRule) =
+	let reads : Sequence(String) = Sequence{'get', 'list', 'watch'} in
+	Sequence{
+		apiRule('core', Sequence{'services', 'secrets', 'nodes', 'configmaps', 'namespaces'}, reads),
+		apiRule('core', Sequence{'pods'}, Sequence{'get'}),
+		apiRule('discovery.k8s.io', Sequence{'endpointslices'}, reads),
+		apiRule('traefik.io', Sequence{'ingressroutes', 'ingressroutetcps', 'ingressrouteudps', 'middlewares',
+			'middlewaretcps', 'serverstransports', 'serverstransporttcps', 'tlsoptions', 'tlsstores',
+			'traefikservices'}, reads)};
+
 -- Whether the Process answers an acme tier.
 query edgeAcme(p : PI::Process) : Boolean =
 	edgeTiersOf(p)->exists(t | t.certificates = CertificateSource::acme);
@@ -3471,14 +3509,27 @@ query edgeVolumesOf(p : PI::Process) : Sequence(ResolvedVolume) =
 	}} else Sequence{} endif;
 
 query edgeGrantsOf(p : PI::Process) : Sequence(ResolvedGrant) =
-	if edgeAcme(p) then Sequence{object ResolvedGrant {
+	(if edgeAcme(p) then Sequence{object ResolvedGrant {
 		path := estate.acme.token;
 		keys := Sequence{DNS_TOKEN_KEY};
 		_access := 'read';
 		delivery := 'env';
 		destination := destinationOf(p.name, estate.acme.token);
 		restartTargets := Sequence{p.name};
-	}} else Sequence{} endif;
+	}} else Sequence{} endif)
+	->union(heldCertificatesOf(p));
+
+-- The certificate a tier that issues none reads from the Secret Store, synced beside its proxy for
+-- the default TLS store to name (spec/v1/14-platform-intent.md#tiers). The proxy reads it through
+-- the API, so nothing is injected and a new certificate restarts nothing.
+query heldCertificatesOf(p : PI::Process) : Sequence(ResolvedGrant) =
+	edgeTiersOf(p)->select(t | t.certificateFrom <> null)->collect(t | object ResolvedGrant {
+		path := t.certificateFrom;
+		keys := Sequence{'tls.crt', 'tls.key'};
+		_access := 'read';
+		delivery := 'env';
+		destination := destinationOf(p.name, t.certificateFrom);
+	});
 
 query edgeEnvOf(p : PI::Process) : Sequence(EnvEntry) =
 	if edgeAcme(p) then Sequence{object EnvEntry {

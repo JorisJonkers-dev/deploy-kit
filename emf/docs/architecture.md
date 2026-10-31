@@ -246,7 +246,9 @@ what it reads through them is part of what is checked of it. The codes that
 ask that, self delivery without a Vault client and a secret placeholder on a
 Client that holds none, are kept by `Pipeline.refusals` until a document holds
 on its own, as the production implementation asks them of the union only after
-each document's own checks pass.
+each document's own checks pass. A tier's proxy under a Platform document that
+says nowhere where the Kubernetes API answers is kept the same way, since
+composition asks it of the union too.
 
 Constraint parity is checked by code: every OCL invariant is named by the
 diagnostic code it emits, and the root's parity test compares those names with

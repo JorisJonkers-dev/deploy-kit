@@ -335,6 +335,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="priorityClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- The nameservers a Process that serves DNS resolves through, never the cluster's own. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="nameservers" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The names a `mongo` Process's own pod resolves to itself: its Service's. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="selfNames" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- Whether its replicas repel each other across nodes, within one revision. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="spread" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <!-- The step that seeds its Assets onto its volumes before each start. -->
@@ -1105,6 +1107,14 @@
 
   <!-- The operator's connection to the Secret Store, one per project namespace
        that syncs anything. -->
+  <!-- The default TLS store a tier's `certificateFrom` derives, beside its proxy: every proxy serves
+       the Secret it names to a route that names no certificate of its own. -->
+  <eClassifiers xsi:type="ecore:EClass" name="TlsStoreFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secret" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
   <eClassifiers xsi:type="ecore:EClass" name="ConnectionFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

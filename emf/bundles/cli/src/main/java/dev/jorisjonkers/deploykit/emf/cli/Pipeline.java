@@ -84,9 +84,12 @@ public final class Pipeline {
     /** The code an env file earns whose scope directory names no level of the project file. */
     private static final String UNKNOWN_ENV_SCOPE = "E_UNKNOWN_ENV_SCOPE";
 
-    /** The codes of what a Process holds across its levels and its env files, asked of a document that holds. */
-    private static final java.util.Set<String> ACROSS_THE_UNION =
-            java.util.Set.of("E_SELF_WITHOUT_VAULT_CLIENT", "E_CLIENT_PLACEHOLDER_WITHOUT_SECRET");
+    /**
+     * The codes of what a Process holds across its levels and its env files, and of what the union asks
+     * of a tier's proxy, asked of a document that holds, as composition asks them.
+     */
+    private static final java.util.Set<String> ACROSS_THE_UNION = java.util.Set.of(
+            "E_SELF_WITHOUT_VAULT_CLIENT", "E_CLIENT_PLACEHOLDER_WITHOUT_SECRET", "E_NO_API_ACCESS_POLICY");
 
     /** The code an image earns that a pod runs as its own user where the lock holds it as root. */
     private static final String IMAGE_RUNS_AS_ROOT = "E_IMAGE_RUNS_AS_ROOT";

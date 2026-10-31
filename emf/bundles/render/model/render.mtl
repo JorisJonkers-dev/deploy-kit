@@ -951,6 +951,16 @@
             - [n/]
     [/for]
   [/if]
+  [comment A replica set member checks the name it is configured by is its own, which through its
+    Service holds only where traffic turns back to the pod it left: the pod's own loopback. /]
+  [if (p.selfNames->notEmpty())]
+      hostAliases:
+        - ip: 127.0.0.1
+          hostnames:
+    [for (n : String | p.selfNames)]
+              - [n/]
+    [/for]
+  [/if]
   [if (restart <> '')]
       restartPolicy: [restart/]
   [/if]
@@ -1774,6 +1784,22 @@
 
 [comment The operator's connection to the Secret Store. TLS is never skipped: the schema asks, and
   the answer is fixed. /]
+[comment The default TLS store a tier's certificate derives, beside the tier's proxy. /]
+[template private objects(d : resolveddeployment::TlsStoreFile)]
+  ---
+  apiVersion: traefik.io/v1alpha1
+  kind: TLSStore
+  metadata:
+    name: default
+    namespace: [d.namespace/]
+    labels:
+      app.kubernetes.io/part-of: [d.application/]
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    defaultCertificate:
+      secretName: [d.secret/]
+[/template]
+
 [template private objects(d : resolveddeployment::ConnectionFile)]
   ---
   apiVersion: secrets.hashicorp.com/v1beta1
