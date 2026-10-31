@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/node-system/l4-speaker": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/node-system/l4-speaker": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

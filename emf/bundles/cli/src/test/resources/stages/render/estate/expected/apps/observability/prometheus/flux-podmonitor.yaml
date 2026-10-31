@@ -1,0 +1,24 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: flux-controllers
+  namespace: observability-system
+  labels:
+    release: metrics-stack
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  jobLabel: app
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: flux
+  namespaceSelector:
+    matchNames:
+      - flux-system
+  podMetricsEndpoints:
+    - portNumber: 8080
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

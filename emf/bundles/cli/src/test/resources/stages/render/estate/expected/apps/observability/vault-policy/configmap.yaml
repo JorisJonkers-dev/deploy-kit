@@ -1,0 +1,25 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-policy-b2e608d67c17
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: vault-policy
+    app.kubernetes.io/instance: vault-policy
+    app.kubernetes.io/part-of: vault-policy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  observability-system-alertmanager.policy.json: |
+    {"path":{"secret/data/platform/alertmanager-discord":{"capabilities":["read"]},"secret/metadata/platform/alertmanager-discord":{"capabilities":["read"]}}}
+  observability-system-alertmanager.role.json: |
+    {"bound_service_account_names":["alertmanager"],"bound_service_account_namespaces":["observability-system"],"token_policies":["observability-system-alertmanager"]}
+  observability-system-grafana.policy.json: |
+    {"path":{"secret/data/observability-system/grafana-admin":{"capabilities":["read"]},"secret/data/observability-system/grafana/client":{"capabilities":["read"]},"secret/metadata/observability-system/grafana-admin":{"capabilities":["read"]},"secret/metadata/observability-system/grafana/client":{"capabilities":["read"]}}}
+  observability-system-grafana.role.json: |
+    {"bound_service_account_names":["grafana"],"bound_service_account_namespaces":["observability-system"],"token_policies":["observability-system-grafana"]}
+  observability-system.generated.json: |
+    {"keys":[{"bytes":32,"encoding":"hex","key":"password","path":"secret/data/observability-system/grafana-admin"},{"bytes":32,"encoding":"hex","key":"user","path":"secret/data/observability-system/grafana-admin"}]}

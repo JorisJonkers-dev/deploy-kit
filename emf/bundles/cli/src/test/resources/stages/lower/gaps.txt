@@ -1,5 +1,4 @@
 Audience.internal is never used by a lower case
-Audience.internal is never used in a lower case's input
 ContentPolicy.admin is never used by a lower case
 ContentPolicy.admin is never used in a lower case's input
 ContentPolicy.workflow is never used by a lower case

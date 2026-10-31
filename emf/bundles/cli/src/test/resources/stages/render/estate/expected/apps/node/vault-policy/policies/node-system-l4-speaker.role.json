@@ -1,0 +1,11 @@
+{
+  "bound_service_account_names": [
+    "l4-speaker"
+  ],
+  "bound_service_account_namespaces": [
+    "node-system"
+  ],
+  "token_policies": [
+    "node-system-l4-speaker"
+  ]
+}

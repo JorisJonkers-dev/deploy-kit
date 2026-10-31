@@ -1,0 +1,103 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: lan-dns
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  addresses:
+    - 192.168.0.98/32
+  autoAssign: false
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: lan-dns
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  ipAddressPools:
+    - lan-dns
+  nodeSelectors:
+    - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+            - enschede-t1000-1
+            - enschede-rx7900xtx-1
+            - enschede-gtx-960m-1
+            - enschede-pi-1
+            - enschede-pi-2
+            - enschede-pi-3
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: lan-edge
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  addresses:
+    - 192.168.0.99/32
+  autoAssign: false
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: lan-edge
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  ipAddressPools:
+    - lan-edge
+  nodeSelectors:
+    - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+            - enschede-t1000-1
+            - enschede-rx7900xtx-1
+            - enschede-gtx-960m-1
+            - enschede-pi-1
+            - enschede-pi-2
+            - enschede-pi-3
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: lan-mqtt
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  addresses:
+    - 192.168.0.97/32
+  autoAssign: false
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: lan-mqtt
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  ipAddressPools:
+    - lan-mqtt
+  nodeSelectors:
+    - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+            - enschede-t1000-1
+            - enschede-rx7900xtx-1
+            - enschede-gtx-960m-1
+            - enschede-pi-1
+            - enschede-pi-2
+            - enschede-pi-3

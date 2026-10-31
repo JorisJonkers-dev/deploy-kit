@@ -23,7 +23,8 @@ spec:
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
     spec:
-      backoffLimit: 2147483647
+      backoffLimit: 6
+      activeDeadlineSeconds: 3000
       template:
         metadata:
           labels:

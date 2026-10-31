@@ -11,4 +11,4 @@ metadata:
     estate.jorisjonkers.dev/external-checks: "true"
 data:
   platform-rabbitmq-external-checks.yaml: |
-    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"data","name":"platform-rabbitmq-management-1","url":"https://rabbitmq.jorisjonkers.dev/"},{"conditions":["[STATUS] < 500"],"group":"data","name":"platform-rabbitmq-lan-1","url":"http://rabbitmq.jorisjonkers.dev/"}]}
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"data","name":"platform-rabbitmq-management-1","url":"https://rabbitmq.jorisjonkers.dev/"},{"conditions":["[STATUS] < 500"],"group":"data","name":"platform-rabbitmq-lan-1","url":"https://rabbitmq.jorisjonkers.dev/"}]}

@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/platform/cloudflare": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/cloudflare": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

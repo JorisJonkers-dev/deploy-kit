@@ -4,3 +4,6 @@ auth
 delivery
 mail
 identity
+edge
+node
+observability

@@ -1,0 +1,13 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  defaultCertificate:
+    secretName: traefik-lan-platform-tls-wildcard
