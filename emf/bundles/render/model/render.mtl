@@ -2102,7 +2102,8 @@
           labels:
             [d.job.identity.labelSet('none', d.job.identity)/]
         spec:
-          backoffLimit: 2147483647
+          backoffLimit: 6
+          activeDeadlineSeconds: 3000
           template:
             [d.pod()/]
   [else]
@@ -2261,7 +2262,8 @@
           labels:
             [d.job.identity.labelSet('none', d.job.identity)/]
         spec:
-          backoffLimit: 2147483647
+          backoffLimit: 6
+          activeDeadlineSeconds: 3000
           template:
             [d.catalogPod()/]
   [else]
@@ -2685,6 +2687,10 @@
         [a.agentMetadata()/]
     [elseif (d.part = 'rbac')]
       [a.agentRbac()/]
+    [elseif (d.part = 'vso')]
+      [if (a.memberlist <> null)]
+        [a.agentSecrets()/]
+      [/if]
     [else]
       ---
       apiVersion: v1
@@ -2767,7 +2773,7 @@
   [/for]
         containers:
           [a.agentContainer()/]
-  [if (a.mounts->notEmpty() or a.config <> null)]
+  [if (a.mounts->notEmpty() or a.config <> null or a.memberlist <> null)]
           volumes:
     [for (m : resolveddeployment::HostMount | a.mounts)]
               - name: [m.name/]
@@ -2778,6 +2784,11 @@
               - name: config
                 configMap:
                   name: [a.name/]
+    [/if]
+    [if (a.memberlist <> null)]
+              - name: memberlist
+                secret:
+                  secretName: [a.memberlist.secret/]
     [/if]
   [/if]
 [/template]
@@ -2848,7 +2859,7 @@
           drop:
             - ALL
   [/if]
-  [if (a.mounts->notEmpty() or a.config <> null)]
+  [if (a.mounts->notEmpty() or a.config <> null or a.memberlist <> null)]
       volumeMounts:
     [for (m : resolveddeployment::HostMount | a.mounts)]
           - name: [m.name/]
@@ -2865,10 +2876,16 @@
             mountPath: [a.config.mountAt/]
             readOnly: true
     [/if]
+    [if (a.memberlist <> null)]
+          - name: memberlist
+            mountPath: /etc/ml_secret_key
+            readOnly: true
+    [/if]
   [/if]
 [/template]
 
-[comment An agent's cluster role and its binding, both named for the agent's Project and the agent. /]
+[comment An agent's cluster role and its binding, both named for the agent's Project and the agent,
+  then the role and binding of what it reads in its own namespace alone, named for the agent. /]
 [template private agentRbac(a : resolveddeployment::ResolvedNodeAgent)]
   ---
   apiVersion: rbac.authorization.k8s.io/v1
@@ -2878,7 +2895,7 @@
     labels:
       [a.agentLabels()/]
   rules:
-  [for (r : resolveddeployment::ResolvedApiRule | a.rules)]
+  [for (r : resolveddeployment::ResolvedApiRule | a.rules->select(r | r.scope = resolveddeployment::RuleScope::cluster))]
       [r.rule()/]
   [/for]
   ---
@@ -2896,6 +2913,70 @@
     - kind: ServiceAccount
       name: [a.name/]
       namespace: [a.namespace/]
+  [if (a.rules->exists(r | r.scope = resolveddeployment::RuleScope::namespace))]
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: Role
+    metadata:
+      [a.agentMetadata()/]
+    rules:
+    [for (r : resolveddeployment::ResolvedApiRule | a.rules->select(r | r.scope = resolveddeployment::RuleScope::namespace))]
+        [r.rule()/]
+    [/for]
+    ---
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: RoleBinding
+    metadata:
+      [a.agentMetadata()/]
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: Role
+      name: [a.name/]
+    subjects:
+      - kind: ServiceAccount
+        name: [a.name/]
+        namespace: [a.namespace/]
+  [/if]
+[/template]
+
+[comment Where the speaker runs memberlist: how the operator signs in as it, and the static secret its
+  key lands in, whose change restarts every speaker, since each reads its key at start. /]
+[template private agentSecrets(a : resolveddeployment::ResolvedNodeAgent)]
+  ---
+  apiVersion: secrets.hashicorp.com/v1beta1
+  kind: VaultAuth
+  metadata:
+    [a.agentMetadata()/]
+  spec:
+    vaultConnectionRef: secret-store
+    method: kubernetes
+    mount: kubernetes
+    kubernetes:
+      role: [a.namespace/]-[a.name/]
+      serviceAccount: [a.name/]
+  ---
+  apiVersion: secrets.hashicorp.com/v1beta1
+  kind: VaultStaticSecret
+  metadata:
+    name: [a.memberlist.secret/]
+    namespace: [a.namespace/]
+    labels:
+      [a.agentLabels()/]
+  spec:
+    vaultAuthRef: [a.name/]
+    mount: secret
+    type: kv-v2
+    path: [a.memberlist.path.substring(13)/]
+    refreshAfter: 10m
+    hmacSecretData: true
+    destination:
+      name: [a.memberlist.secret/]
+      create: true
+      annotations:
+        flagger.app/config-tracking: disabled
+    rolloutRestartTargets:
+      - kind: DaemonSet
+        name: [a.name/]
 [/template]
 
 [comment One rule of a role. `core` is the group Kubernetes itself spells as no name at all. /]

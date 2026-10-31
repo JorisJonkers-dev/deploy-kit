@@ -333,10 +333,58 @@ mapping Platform::nodeDeployment() : ResolvedDeployment {
 	addressPools := speakerPools()->collect(t | object ResolvedAddressPool {
 		name := t.name; range := t.range; nodes := t.nodes; });
 	nodeAgents := gpuAgents()->union(speakerAgents())->union(metricsAgents());
+	policyJob := policyJobOf();
 	end {
-		result.deliverables := nodeFiles(result)->union(platformFiles());
+		result.deliverables := nodeFiles(result)->union(nodeVaultFiles(result))->union(platformFiles());
+		-- The speaker's memberlist key is this Project's own to generate, so its own policy job
+		-- writes it (spec/v1/14-platform-intent.md#node-agents).
+		result.deliverables += policyJobFiles(result.policyJob, result.deliverables->select(d |
+			d.path.startsWith(policiesOf(NODE_PROJECT)))->asSequence(), policyJobRoot(NODE_PROJECT),
+			namespaceOf(NODE_PROJECT));
+		if (result.deliverables->exists(d | d.path = policyJobRoot(NODE_PROJECT) + 'kustomization.yaml')) {
+			var top : IndexFile := result.deliverables[IndexFile]
+				->select(i | i.path = 'apps/' + NODE_PROJECT + '/kustomization.yaml')->any(true);
+			top.resources := top.resources->append('vault-policy')->sortedBy(r | r);
+		};
 	}
 }
+
+-- Where the speaker runs memberlist: the operator's connection to the Secret Store, and the
+-- speaker's own policy and role reading its one document, beside the key this Project's policy
+-- job generates there.
+query nodeVaultFiles(d : ResolvedDeployment) : Sequence(Deliverable) =
+	d.nodeAgents->select(a | a.memberlist <> null)->collect(a |
+		let ns : String = namespaceOf(NODE_PROJECT) in
+		let stem : String = policiesOf(NODE_PROJECT) + ns + '-' + a.name in
+		Sequence{
+			object ConnectionFile {
+				path := 'apps/' + NODE_PROJECT + '/vaultconnection.yaml';
+				adapter := AdapterName::vso;
+				namespace := ns;
+				address := a.memberlist.store;
+			}.oclAsType(Deliverable),
+			object VaultPolicyFile {
+				path := stem + '.policy.json';
+				adapter := AdapterName::vaultPolicy;
+				namespace := ns;
+				identity := a.name;
+				paths := Sequence{allowing(a.memberlist.path, Sequence{'read'}),
+					allowing('secret/metadata/' + a.memberlist.path.substring(KV_DATA.size() + 1, a.memberlist.path.size()),
+						Sequence{'read'})};
+			}.oclAsType(Deliverable),
+			object VaultRoleFile {
+				path := stem + '.role.json';
+				adapter := AdapterName::vaultPolicy;
+				namespace := ns;
+				identity := a.name;
+			}.oclAsType(Deliverable),
+			-- Memberlist keys its traffic with the first 32 bytes of the value.
+			object GeneratedKeysFile {
+				path := policiesOf(NODE_PROJECT) + ns + '.generated.json';
+				adapter := AdapterName::vaultPolicy;
+				keys := Sequence{object ResolvedGeneratedKey {
+					path := a.memberlist.path; key := a.memberlist.key; bytes := 32; encoding := 'hex'; }};
+			}.oclAsType(Deliverable)})->flatten()->asSequence();
 
 -- Each pool, announced from the nodes of its site, in the order the Platform document names them.
 query speakerPools() : Sequence(Tuple(name : String, range : String, nodes : Sequence(String))) =
@@ -368,7 +416,8 @@ query gpuAgents() : Sequence(ResolvedNodeAgent) =
 			hostProcesses := true; privileged := true;
 			eligibleNodes := gpuNodes();
 			environment := Sequence{plainEntry('CONFIG_FILE', '/config/config.yaml'),
-				plainEntry('FAIL_ON_INIT_ERROR', 'true'), plainEntry('NVIDIA_VISIBLE_DEVICES', 'all'),
+				plainEntry('DEVICE_ID_STRATEGY', 'index'), plainEntry('FAIL_ON_INIT_ERROR', 'true'),
+				plainEntry('NVIDIA_VISIBLE_DEVICES', 'all'),
 				plainEntry('PASS_DEVICE_SPECS', 'true')};
 			mounts := Sequence{
 				object HostMount { name := 'device-plugins'; hostPath := '/var/lib/kubelet/device-plugins'; mountAt := '/var/lib/kubelet/device-plugins'; },
@@ -417,6 +466,26 @@ query metricsAgents() : Sequence(ResolvedNodeAgent) =
 query apiRule(g : String, o : Sequence(String), v : Sequence(String)) : ResolvedApiRule =
 	object ResolvedApiRule { group := g; objects := o; verbs := v; };
 
+-- A rule that holds in the agents' own namespace alone.
+query namespaceRule(g : String, o : Sequence(String), v : Sequence(String)) : ResolvedApiRule =
+	object ResolvedApiRule { group := g; objects := o; verbs := v; scope := RuleScope::_namespace; };
+
+-- The port the speakers' memberlist binds on the host, over TCP and UDP, and where the speaker
+-- reads its key, as a file named for the key.
+property MEMBERLIST_PORT : Integer = 7946;
+property MEMBERLIST_KEY_PATH : String = '/etc/ml_secret_key';
+
+-- How the speakers find each other fast (spec/v1/14-platform-intent.md#node-agents): memberlist,
+-- where a Vault policy job can generate its key under the `node` Project's own prefix. None
+-- without one: the speakers then find each other through the API alone.
+query memberlistOf() : ResolvedMemberlist =
+	if policyJobOf() = null then null else object ResolvedMemberlist {
+		store := storeEndpoint();
+		path := KV_DATA + namespaceOf(NODE_PROJECT) + '/l4-speaker';
+		key := 'secretkey';
+		secret := 'l4-speaker-memberlist';
+	} endif;
+
 -- The speaker, on every node of a pool's site, and its controller, which runs once.
 query speakerAgents() : Sequence(ResolvedNodeAgent) =
 	let speakers : Sequence(String) = contract.nodes
@@ -424,6 +493,12 @@ query speakerAgents() : Sequence(ResolvedNodeAgent) =
 	let reads : Sequence(String) = Sequence{'get', 'list', 'watch'} in
 	let crds : Sequence(String) = Sequence{'ipaddresspools', 'l2advertisements', 'bgppeers', 'bgpadvertisements',
 		'communities', 'bfdprofiles'} in
+	-- Where each copy records the configuration it last loaded, which both always watch.
+	let states : Sequence(String) = Sequence{'configurationstates', 'configurationstates/status'} in
+	let writes : Sequence(String) = Sequence{'get', 'list', 'watch', 'create', 'update', 'patch', 'delete'} in
+	-- What both watch in their own namespace alone: its Secrets and ConfigMaps.
+	let own : ResolvedApiRule = namespaceRule('core', Sequence{'secrets', 'configmaps'}, reads) in
+	let keyed : ResolvedMemberlist = memberlistOf() in
 	if speakers->isEmpty() or estate.nodeAgents = null or estate.nodeAgents.l4Speaker = null then Sequence{} else
 	Sequence{
 		object ResolvedNodeAgent {
@@ -435,8 +510,17 @@ query speakerAgents() : Sequence(ResolvedNodeAgent) =
 			identityToken := true; hostNetwork := true; confined := true;
 			eligibleNodes := speakers;
 			arguments := Sequence{'--port=' + SPEAKER_PORT.toString(), '--namespace=' + namespaceOf(NODE_PROJECT), '--log-level=info'};
+			-- The speaker reads its own pod at start, by its name; with memberlist, it binds to its
+			-- pod's address and finds the other speakers by their name label.
 			environment := Sequence{object EnvEntry { name := 'METALLB_NODE_NAME'; field := 'spec.nodeName'; },
-				object EnvEntry { name := 'METALLB_HOST'; field := 'status.hostIP'; }};
+				object EnvEntry { name := 'METALLB_HOST'; field := 'status.hostIP'; },
+				object EnvEntry { name := 'METALLB_POD_NAME'; field := 'metadata.name'; }}
+				->union(if keyed = null then Sequence{} else Sequence{
+					object EnvEntry { name := 'METALLB_ML_BIND_ADDR'; field := 'status.podIP'; },
+					plainEntry('METALLB_ML_LABELS', 'app.kubernetes.io/name=l4-speaker'),
+					plainEntry('METALLB_ML_BIND_PORT', MEMBERLIST_PORT.toString()),
+					plainEntry('METALLB_ML_SECRET_KEY_PATH', MEMBERLIST_KEY_PATH)} endif);
+			memberlist := keyed;
 			surfaces := Sequence{object ResolvedSurface { name := 'metrics'; port := SPEAKER_PORT; }};
 			addedPrivileges := Sequence{'NET_RAW'};
 			rules := Sequence{
@@ -445,7 +529,9 @@ query speakerAgents() : Sequence(ResolvedNodeAgent) =
 				apiRule('core', Sequence{'events'}, Sequence{'create', 'patch'}),
 				apiRule('metallb.io', crds->append('servicel2statuses'), reads),
 				apiRule('metallb.io', Sequence{'servicel2statuses', 'servicel2statuses/status'},
-					Sequence{'create', 'delete', 'update', 'patch'})};
+					Sequence{'create', 'delete', 'update', 'patch'}),
+				apiRule('metallb.io', states, writes),
+				own, namespaceRule('metallb.io', Sequence{'servicebgpstatuses'}, reads)};
 		},
 		object ResolvedNodeAgent {
 			name := 'l4-controller'; namespace := namespaceOf(NODE_PROJECT); application := NODE_PROJECT;
@@ -461,11 +547,13 @@ query speakerAgents() : Sequence(ResolvedNodeAgent) =
 				'--webhook-mode=disabled', '--log-level=info'};
 			surfaces := Sequence{object ResolvedSurface { name := 'metrics'; port := SPEAKER_PORT; }};
 			rules := Sequence{
-				apiRule('core', Sequence{'services', 'namespaces'}, reads),
+				apiRule('core', Sequence{'services', 'namespaces', 'nodes'}, reads),
 				apiRule('core', Sequence{'services/status'}, Sequence{'update'}),
 				apiRule('core', Sequence{'events'}, Sequence{'create', 'patch'}),
 				apiRule('metallb.io', crds, reads),
-				apiRule('metallb.io', Sequence{'ipaddresspools/status'}, Sequence{'update'})};
+				apiRule('metallb.io', Sequence{'ipaddresspools/status'}, Sequence{'update'}),
+				apiRule('metallb.io', states, writes),
+				namespaceRule('core', Sequence{'secrets', 'configmaps'}, reads)};
 		}} endif;
 
 -- The `node` Project's tree: a directory per agent, the speaker's holding its controller and the
@@ -482,7 +570,9 @@ query nodeFiles(d : ResolvedDeployment) : Sequence(Deliverable) =
 		object IndexFile {
 			path := root + 'kustomization.yaml';
 			adapter := AdapterName::kubernetes;
-			resources := dirs->append('namespace.yaml')->sortedBy(r | r);
+			resources := dirs->append('namespace.yaml')
+				->union(if d.nodeAgents->exists(a | a.memberlist <> null) then Sequence{'vaultconnection.yaml'}
+					else Sequence{} endif)->sortedBy(r | r);
 		}.oclAsType(Deliverable)}
 	->union(dirs->collect(dir | d.agentFilesOf(root + dir + '/',
 		d.nodeAgents->select(a | a.name = dir or (dir = 'l4-speaker' and a.name = 'l4-controller'))->asSequence()))
@@ -491,7 +581,9 @@ query nodeFiles(d : ResolvedDeployment) : Sequence(Deliverable) =
 query ResolvedDeployment::agentFilesOf(dir : String, held : Sequence(ResolvedNodeAgent)) : Sequence(Deliverable) =
 	let parts : Sequence(String) = (if held->exists(a | a.config <> null) then Sequence{'configmap'} else Sequence{} endif)
 		->union(if held->exists(a | a.rules->notEmpty()) then Sequence{'rbac'} else Sequence{} endif)
-		->union(Sequence{'serviceaccount', 'workload'}) in
+		->union(Sequence{'serviceaccount'})
+		->union(if held->exists(a | a.memberlist <> null) then Sequence{'vso'} else Sequence{} endif)
+		->union(Sequence{'workload'}) in
 	let announced : Sequence(ResolvedAddressPool) = self.addressPools->asSequence() in
 	let pooled : Boolean = held->exists(a | a.name = 'l4-speaker') and announced->notEmpty() in
 	parts->collect(piece | object NodeAgentFile {

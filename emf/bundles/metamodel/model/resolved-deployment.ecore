@@ -812,8 +812,21 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="addedPrivileges" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="mounts" upperBound="-1" eType="#//HostMount" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="config" eType="#//AgentConfig" containment="true"/>
-    <!-- What it may ask of the Kubernetes API, cluster-wide; none for an agent that asks nothing. -->
+    <!-- What it may ask of the Kubernetes API, across the cluster or in its own namespace alone, as
+         each rule's scope says; none for an agent that asks nothing. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="rules" upperBound="-1" eType="#//ResolvedApiRule" containment="true"/>
+    <!-- The speaker's memberlist, where a Vault policy job can generate its key. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="memberlist" eType="#//ResolvedMemberlist" containment="true"/>
+  </eClassifiers>
+  <!-- How the speakers find each other fast (spec/v1/14-platform-intent.md#node-agents): the Secret
+       Store's endpoint the operator reads the key from, the document the `node` Project's own
+       policy job generates it in, the key's name, and the Secret it lands in and the speaker
+       mounts. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedMemberlist">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="store" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secret" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <!-- A directory of the node an agent mounts, read-only or not, and whether a mount below it
        made on the host reaches the agent. -->
@@ -1102,7 +1115,8 @@
   <eClassifiers xsi:type="ecore:EClass" name="VaultPolicyFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//ResolvedGrant"/>
+    <!-- None for a policy no grant derives: the speaker's, which reads its memberlist key. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" upperBound="-1" eType="#//ResolvedGrant"/>
     <!-- What the policy allows at each path, in its grants' order: an engine's own paths, or `read`
          on a kv grant's document and on the same document's metadata. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="paths" lowerBound="1" upperBound="-1" eType="#//PolicyPath" containment="true"/>
