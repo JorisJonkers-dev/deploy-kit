@@ -170,6 +170,8 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="fluxScrape" eType="#//ResolvedFluxScrape" containment="true"/>
     <!-- The dashboard files the Application ships, for the Grafana the Platform document names. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="dashboards" eType="#//ResolvedDashboards" containment="true"/>
+    <!-- The monitoring stack's Grafana, as the Grafana operator reaches it. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grafana" eType="#//ResolvedGrafana" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess" containment="true"/>
   </eClassifiers>
 
@@ -586,6 +588,21 @@
        operator runs it in; a Prometheus's cadence, the labels it selects monitors by and the
        Alertmanager it notifies; and the flags its arguments hold, as the fields the operator's
        object carries and the additional arguments it passes on. -->
+  <!-- The monitoring stack's Grafana, as the Grafana operator reaches it
+       (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources): the labels every
+       dashboard selects it by, its address, and the Secret and keys of the admin credential it
+       generates. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedGrafana">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="url" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secret" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="user" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="password" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- The Grafana instance its Application renders, for the operator to import dashboards into. -->
+  <eClassifiers xsi:type="ecore:EClass" name="GrafanaFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedOperated">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="container" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

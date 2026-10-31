@@ -645,6 +645,7 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 				});
 		}
 	endif;
+	grafana := grafanaOf(self, prj, result);
 	if managed(self) then migration := self.map migrationOf(prj) endif;
 	alertRules := Sequence{1..self.alertRules->size()}->collect(i | obsAlertRules(self.id, self.alertRules->at(i)._from, fileOf(prj.project, self.alertRules->at(i)._from)));
 	if obsAlerts(self) then alerting := obsAlerting(self) endif;
@@ -1088,7 +1089,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	if self.placement.gpu <> null then gpu := gpuOf(self) endif;
 	if self.vpn <> null then vpn := vpnOf(self) endif;
 	hardening := estate.hardening.spelling();
-	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self))->union(obsReceiverGrants(self, app))->union(self.clientGrants(app))->union(bucketKeysOf(self, prj))->union(self.clientReadGrants(app, prj));
+	secrets := self.secrets->collect(g | g.resolvedFor(self))->union(self.edgeCredentials(app, prj))->union(edgeGrantsOf(self))->union(obsReceiverGrants(self, app))->union(self.clientGrants(app))->union(bucketKeysOf(self, prj))->union(self.clientReadGrants(app, prj))->union(grafanaAdminOf(self, app, prj));
 	-- The pod authenticates only where a grant is delivered `self`, or where it
 	-- holds Kubernetes API access.
 	priorityClass := priorityOf(self, app, prj);
@@ -1195,6 +1196,8 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		if mountsTmp(self) and not namesHome(self, prj) then home := HOME_DIR endif;
 	});
 	dependencies := self.dependsOn->collect(e | edgeOf(e, owner(self)));
+	-- The data sources the Grafana role's Process derives from its edges into the monitoring stack.
+	if isGrafana(self, app, prj) then assets := result.assets->asSequence()->union(datasourcesOf(result)) endif;
 	-- An edge to an Application's surface reaches a pod, which admits the label; one to a
 	-- Registered Unmanaged Surface reaches an address.
 	consumes := result.dependencies->select(d | d.peers->notEmpty())
@@ -1214,7 +1217,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		egress := Sequence{object PolicyPeer { rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; }};
 		if t.egress <> null then internetEgress := object InternetEgress { reason := t.egress.reason; } endif;
 	});
-	environment := environmentOf(self, prj)->union(edgeEnvOf(self))
+	environment := environmentOf(self, prj)->union(edgeEnvOf(self))->union(grafanaEnvOf(self, app, prj))
 		->union(self.spawns->collect(t | Sequence{
 			object EnvEntry { name := spawnVariable(t.name, 'IMAGE');
 				value := locked(t.image).repository + '@' + locked(t.image).digest; },
@@ -2254,6 +2257,165 @@ query middlewareOf(r : Route, exposure : Exposure, app : EffectiveApplication, p
 			namespace := namespaceOf(prj.project);
 		}} endif);
 
+-- ================================================================= Grafana
+
+-- The monitoring stack's Grafana as the Grafana operator reaches it
+-- (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources): the admin credential the
+-- Vault policy job generates for it and both read, the instance every dashboard selects, and the
+-- data sources its edges into the monitoring stack derive.
+
+-- The two keys of Grafana's admin credential, and the variables Grafana reads them from.
+property GRAFANA_ADMIN : Sequence(Tuple(key : String, variable : String)) = Sequence{
+	Tuple{key = 'user', variable = 'GF_SECURITY_ADMIN_USER'},
+	Tuple{key = 'password', variable = 'GF_SECURITY_ADMIN_PASSWORD'}};
+
+-- Where Grafana provisions the data sources the render derives.
+property DATASOURCES_AT : String = '/etc/grafana/provisioning/datasources/datasources.yaml';
+
+-- Whether the Process is the one the operator reaches: the Grafana role's first.
+query isGrafana(p : PI::Process, app : EffectiveApplication, prj : EffectiveProject) : Boolean =
+	estate.monitoring <> null and heldName(estate.monitoring.grafana) = prj.project + '/' + app.id
+		and app.processes->first().name = p.name;
+
+-- Where the admin credential of a Project's Grafana is generated: under the Project's own prefix.
+query grafanaAdminPath(prj : EffectiveProject, app : EffectiveApplication) : String =
+	KV_DATA + namespaceOf(prj.project) + '/' + app.id + '-admin';
+
+-- The admin credential the Grafana role's Process holds: one generated document, read into the
+-- two variables Grafana creates its admin from.
+query grafanaAdminOf(p : PI::Process, app : EffectiveApplication, prj : EffectiveProject) : Sequence(ResolvedGrant) =
+	if not isGrafana(p, app, prj) then Sequence{} else
+	let at : String = grafanaAdminPath(prj, app) in
+	Sequence{object ResolvedGrant {
+		path := at;
+		keys := GRAFANA_ADMIN->collect(a | a.key);
+		generated := GRAFANA_ADMIN->collect(a | object ResolvedGeneratedKey { key := a.key; bytes := 32; encoding := 'hex'; });
+		_access := 'read';
+		delivery := 'env';
+		destination := destinationOf(p.name, at);
+		restartTargets := Sequence{p.name};
+	}} endif;
+
+query grafanaEnvOf(p : PI::Process, app : EffectiveApplication, prj : EffectiveProject) : Sequence(EnvEntry) =
+	if not isGrafana(p, app, prj) then Sequence{} else
+	GRAFANA_ADMIN->collect(a | object EnvEntry {
+		name := a.variable;
+		secret := object SecretReference { path := grafanaAdminPath(prj, app); key := a.key; };
+	}) endif;
+
+-- The instance the Grafana operator imports every dashboard into: the Grafana role's Application,
+-- where the Platform document says which labels its dashboards select, reached at its Process's
+-- `http` surface and signed in to with the credential it generates.
+query grafanaOf(app : EffectiveApplication, prj : EffectiveProject, res : ResolvedApplication) : ResolvedGrafana =
+	if estate.telemetry = null or estate.telemetry.dashboards = null or estate.monitoring = null
+		or heldName(estate.monitoring.grafana) <> prj.project + '/' + app.id then null else
+	let first : ResolvedProcess = res.processes->first() in
+	let http : Sequence(ResolvedSurface) = first.surfaces->select(s | s.name = HTTP_SURFACE)->asSequence() in
+	if http->isEmpty() then null else
+	object ResolvedGrafana {
+		labels := estate.telemetry.dashboards.instance->collect(i | object KeyValue { key := i.key; value := i.value; });
+		url := 'http://' + first.name + '.' + namespaceOf(prj.project) + ':' + http->first().port.toString();
+		secret := destinationOf(first.name, grafanaAdminPath(prj, app));
+		user := 'user';
+		password := 'password';
+	} endif endif;
+
+-- Each kind of data source, in the order Grafana lists them: its uid, its name and its type.
+property DATASOURCE_KINDS : Sequence(Tuple(uid : String, name : String, type : String)) = Sequence{
+	Tuple{uid = 'prometheus', name = 'Prometheus', type = 'prometheus'},
+	Tuple{uid = 'loki', name = 'Loki', type = 'loki'},
+	Tuple{uid = 'tempo', name = 'Tempo', type = 'tempo'},
+	Tuple{uid = 'pyroscope', name = 'Pyroscope', type = 'grafana-pyroscope-datasource'},
+	Tuple{uid = 'alertmanager', name = 'Alertmanager', type = 'alertmanager'}};
+
+-- The kind of data source the Application `id` is, as the Platform document names it; a later
+-- role names it over an earlier one.
+query datasourceKind(id : String) : String =
+	let m : Monitoring = estate.monitoring in
+	let named : Sequence(Tuple(kind : String, app : Application)) = Sequence{
+		Tuple{kind = 'prometheus', app = m.prometheus}, Tuple{kind = 'alertmanager', app = m.alertmanager}}
+		->union(if m.stores = null then Sequence{} else Sequence{
+			Tuple{kind = 'loki', app = m.stores.loki}, Tuple{kind = 'tempo', app = m.stores.tempo},
+			Tuple{kind = 'pyroscope', app = m.stores.pyroscope}} endif)
+		->select(t | t.app <> null and t.app.id = id) in
+	if named->isEmpty() then null else named->last().kind endif;
+
+-- The data sources the Grafana role's Process derives: one per edge it declares into an
+-- Application the monitoring stack names, at that edge's address (a store reached twice at the
+-- later edge's), with the kind's own uid, linked to the others the set holds. None without one.
+query datasourcesOf(p : ResolvedProcess) : Sequence(ResolvedAsset) =
+	let edges : Sequence(ResolvedEdge) = p.dependencies->select(e | datasourceKind(e.application) <> null)->asSequence() in
+	let held : Sequence(String) = DATASOURCE_KINDS->collect(k | k.uid)
+		->select(k | edges->exists(e | datasourceKind(e.application) = k)) in
+	if held->isEmpty() then Sequence{} else
+	let written : String = pj(Sequence{
+		Tuple{k = 'apiVersion', v = '1'},
+		Tuple{k = 'datasources', v = pa(DATASOURCE_KINDS->select(k | held->includes(k.uid))->collect(k | pj(Sequence{
+			Tuple{k = 'name', v = str(k.name)},
+			Tuple{k = 'type', v = str(k.type)},
+			Tuple{k = 'uid', v = str(k.uid)},
+			Tuple{k = 'access', v = str('proxy')},
+			Tuple{k = 'url', v = str('http://' + edges->select(e | datasourceKind(e.application) = k.uid)->last().address)},
+			Tuple{k = 'isDefault', v = bool(k.uid = 'prometheus')},
+			Tuple{k = 'editable', v = 'false'},
+			Tuple{k = 'jsonData', v = datasourceLinks(k.uid, held)}}, 2)), 1)}}, 0) + '\n' in
+	Sequence{object ResolvedAsset {
+		name := p.name + '-datasources-yaml-' + written.textDigestOf().substring(8, 7 + CONTENT_DIGITS);
+		_from := 'datasources.yaml';
+		mountAt := DATASOURCES_AT;
+		content := written;
+	}} endif;
+
+-- What links one data source to the others the set holds: traces to logs, metrics and profiles.
+query datasourceLinks(kind : String, held : Sequence(String)) : String =
+	let tags : String = pa(Sequence{pj(Sequence{Tuple{k = 'key', v = str('service.name')},
+		Tuple{k = 'value', v = str('service_name')}}, 6)}, 5) in
+	if kind = 'prometheus' then pj(Sequence{
+		Tuple{k = 'httpMethod', v = str('POST')},
+		Tuple{k = 'exemplarTraceIdDestinations', v = if held->excludes('tempo') then null else
+			pa(Sequence{pj(Sequence{Tuple{k = 'name', v = str('traceID')}, Tuple{k = 'datasourceUid', v = str('tempo')}}, 5)}, 4) endif}}, 3)
+	else if kind = 'loki' then pj(Sequence{
+		Tuple{k = 'derivedFields', v = if held->excludes('tempo') then null else
+			pa(Sequence{pj(Sequence{Tuple{k = 'name', v = str('trace_id')},
+				Tuple{k = 'matcherRegex', v = str('"trace_id"\\s*:\\s*"([0-9a-f]+)"')},
+				Tuple{k = 'datasourceUid', v = str('tempo')},
+				Tuple{k = 'url', v = str('$${__value.raw}')}}, 5)}, 4) endif}}, 3)
+	else if kind = 'tempo' then pj(Sequence{
+		Tuple{k = 'nodeGraph', v = pj(Sequence{Tuple{k = 'enabled', v = 'true'}}, 4)},
+		Tuple{k = 'tracesToLogsV2', v = if held->excludes('loki') then null else pj(Sequence{
+			Tuple{k = 'datasourceUid', v = str('loki')}, Tuple{k = 'filterByTraceID', v = 'true'},
+			Tuple{k = 'tags', v = tags}}, 4) endif},
+		Tuple{k = 'tracesToMetrics', v = if held->excludes('prometheus') then null else pj(Sequence{
+			Tuple{k = 'datasourceUid', v = str('prometheus')}, Tuple{k = 'tags', v = tags}}, 4) endif},
+		Tuple{k = 'serviceMap', v = if held->excludes('prometheus') then null else pj(Sequence{
+			Tuple{k = 'datasourceUid', v = str('prometheus')}}, 4) endif},
+		Tuple{k = 'tracesToProfilesV2', v = if held->excludes('pyroscope') then null else pj(Sequence{
+			Tuple{k = 'datasourceUid', v = str('pyroscope')},
+			Tuple{k = 'profileTypeId', v = str('process_cpu:cpu:nanoseconds:cpu:nanoseconds')},
+			Tuple{k = 'tags', v = tags}}, 4) endif}}, 3)
+	else if kind = 'alertmanager' then pj(Sequence{
+		Tuple{k = 'implementation', v = str('prometheus')},
+		Tuple{k = 'handleGrafanaManagedAlerts', v = 'false'}}, 3)
+	else '{}' endif endif endif endif;
+
+-- An object as JSON.stringify writes it with an indent of two, at `depth`, its keys in the order
+-- given and an entry with no value left out; and an array the same way.
+query pj(entries : Sequence(Tuple(k : String, v : String)), depth : Integer) : String =
+	let present : Sequence(Tuple(k : String, v : String)) = entries->select(e | e.v <> null) in
+	if present->isEmpty() then '{}' else
+	'{\n' + present->collect(e | pad(depth + 1) + str(e.k) + ': ' + e.v)
+		->iterate(i; acc : String = '' | if acc = '' then i else acc + ',\n' + i endif)
+		+ '\n' + pad(depth) + '}' endif;
+
+query pa(items : Sequence(String), depth : Integer) : String =
+	if items->isEmpty() then '[]' else
+	'[\n' + items->collect(i | pad(depth + 1) + i)
+		->iterate(i; acc : String = '' | if acc = '' then i else acc + ',\n' + i endif)
+		+ '\n' + pad(depth) + ']' endif;
+
+query pad(depth : Integer) : String =
+	if depth = 0 then '' else Sequence{1..depth}->iterate(i; acc : String = '' | acc + '  ') endif;
+
 -- ===================================================== the operator's objects
 
 -- What the Prometheus operator runs an Application's one Process as, where the Application holds
@@ -2458,6 +2620,12 @@ query EffectiveApplication::applicationFiles(prj : EffectiveProject) : Sequence(
 		->union(if self.client = null then Sequence{} else Sequence{object ClientFile {
 				path := root + 'client.yaml';
 				application := moved;
+			}.oclAsType(Deliverable)} endif)
+		->union(if self.resolveone(ResolvedApplication).grafana = null then Sequence{} else
+			Sequence{object GrafanaFile {
+				path := root + 'grafana.yaml';
+				adapter := AdapterName::grafana;
+				application := self.resolveone(ResolvedApplication);
 			}.oclAsType(Deliverable)} endif)
 		->union(if self.resolveone(ResolvedApplication).dashboards = null then Sequence{} else
 			Sequence{object DashboardFile {
@@ -2982,6 +3150,13 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 					Tuple{k = 'from', v = str(d._from)},
 					Tuple{k = 'content', v = str(content)},
 					Tuple{k = 'inputs', v = arr(inputsOf(content)->collect(x | str(x)))}})))}}) endif},
+		Tuple{k = 'grafana', v = if self.grafana = null then null else obj(Sequence{
+			Tuple{k = 'labels', v = obj(self.grafana.labels->collect(l | Tuple{k = l.key, v = str(l.value)}))},
+			Tuple{k = 'url', v = str(self.grafana.url)},
+			Tuple{k = 'credential', v = obj(Sequence{
+				Tuple{k = 'secret', v = str(self.grafana.secret)},
+				Tuple{k = 'user', v = str(self.grafana.user)},
+				Tuple{k = 'password', v = str(self.grafana.password)}})}}) endif},
 		Tuple{k = 'exposure', v = if self.exposure->isEmpty() then null
 			else arr(self.exposure->collect(e | e.json())) endif},
 		Tuple{k = 'client', v = if self.client = null then null else self.client.json() endif},

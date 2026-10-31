@@ -139,6 +139,9 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
             ProjectIntentPackage.Literals.MONITORING__GRAFANA, " the monitoring stack's grafana names",
             ProjectIntentPackage.Literals.MONITORING__PROMETHEUS, " the monitoring stack's prometheus names",
             ProjectIntentPackage.Literals.MONITORING__ALERTMANAGER, " the monitoring stack's alertmanager names",
+            ProjectIntentPackage.Literals.MONITORING_STORES__LOKI, " the monitoring stack's stores/loki names",
+            ProjectIntentPackage.Literals.MONITORING_STORES__TEMPO, " the monitoring stack's stores/tempo names",
+            ProjectIntentPackage.Literals.MONITORING_STORES__PYROSCOPE, " the monitoring stack's stores/pyroscope names",
             ProjectIntentPackage.Literals.PRIORITY_POLICY__CRITICAL_APPLICATIONS, " the platform names critical");
 
     private static final Map<EReference, String> CODES = Map.of(
@@ -146,6 +149,9 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
             ProjectIntentPackage.Literals.MONITORING__GRAFANA, UNKNOWN_MONITORING_APPLICATION,
             ProjectIntentPackage.Literals.MONITORING__PROMETHEUS, UNKNOWN_MONITORING_APPLICATION,
             ProjectIntentPackage.Literals.MONITORING__ALERTMANAGER, UNKNOWN_MONITORING_APPLICATION,
+            ProjectIntentPackage.Literals.MONITORING_STORES__LOKI, UNKNOWN_MONITORING_APPLICATION,
+            ProjectIntentPackage.Literals.MONITORING_STORES__TEMPO, UNKNOWN_MONITORING_APPLICATION,
+            ProjectIntentPackage.Literals.MONITORING_STORES__PYROSCOPE, UNKNOWN_MONITORING_APPLICATION,
             ProjectIntentPackage.Literals.PRIORITY_POLICY__CRITICAL_APPLICATIONS, UNKNOWN_CRITICAL_APPLICATION);
 
     /** Whether a project file of the set declares the Project {@code name} is written under. */

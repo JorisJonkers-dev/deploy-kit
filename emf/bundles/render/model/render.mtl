@@ -1987,6 +1987,32 @@
       secretName: [d.secret/]
 [/template]
 
+[comment The monitoring stack's Grafana as the Grafana operator reaches it: an external instance
+  carrying the labels every dashboard selects it by, signed in to with its admin credential. /]
+[template private objects(d : resolveddeployment::GrafanaFile)]
+  ---
+  apiVersion: grafana.integreatly.org/v1beta1
+  kind: Grafana
+  metadata:
+    name: [d.application.id/]
+    namespace: [d.application.namespace/]
+    labels:
+  [for (l : resolveddeployment::KeyValue | d.application.grafana.labels)]
+        [l.key/]: [l.value.scalar()/]
+  [/for]
+      app.kubernetes.io/part-of: [d.application.id/]
+      app.kubernetes.io/managed-by: deploy-kit
+  spec:
+    external:
+      url: [d.application.grafana.url/]
+      adminUser:
+        name: [d.application.grafana.secret/]
+        key: [d.application.grafana.user/]
+      adminPassword:
+        name: [d.application.grafana.secret/]
+        key: [d.application.grafana.password/]
+[/template]
+
 [template private objects(d : resolveddeployment::ConnectionFile)]
   ---
   apiVersion: secrets.hashicorp.com/v1beta1
