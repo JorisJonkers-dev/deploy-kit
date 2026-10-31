@@ -88,6 +88,7 @@ public final class Check implements IStartup {
     private final List<String> failures = new ArrayList<>();
     private Path root;
     private Path shots;
+    private long jobMinutes = Long.getLong("handin.check.jobMinutes", 20);
 
     @Override
     public void earlyStartup() {
@@ -202,13 +203,11 @@ public final class Check implements IStartup {
         IFile ecore = archive.getFile("model/resolved-deployment.ecore");
         IFile template = archive.getFile("model/render.mtl");
         IFile model = archive.getFile("examples/minimal/notes.resolveddeployment");
-        open(ecore, "org.eclipse.emf.ecore.presentation.EcoreEditorID", "ecore-editor");
-        open(template, null, "acceleo-editor");
-        IEditorPart reflective = open(model, "org.eclipse.emf.ecore.presentation.ReflectiveEditorID", "model-editor");
-        waitForJobs();
-        for (IMarker marker : template.findMarkers(IMarker.PROBLEM, true, IResource.DEPTH_ZERO)) {
-            line("  render.mtl marker: " + describe(marker));
+        if (Boolean.getBoolean("handin.check.mtlFirst")) {
+            acceleo(template);
         }
+        open(ecore, "org.eclipse.emf.ecore.presentation.EcoreEditorID", "ecore-editor");
+        IEditorPart reflective = open(model, "org.eclipse.emf.ecore.presentation.ReflectiveEditorID", "model-editor");
         if (reflective instanceof IEditingDomainProvider provider) {
             AtomicReference<String> seen = new AtomicReference<>();
             Display.getDefault().syncExec(() -> {
@@ -254,6 +253,38 @@ public final class Check implements IStartup {
         waitForJobs();
         section("8. Problems after the launches");
         problems(workspace, "after the launches");
+        if (!Boolean.getBoolean("handin.check.mtlFirst")) {
+            section("9. The Acceleo editor");
+            acceleo(template);
+        }
+    }
+
+    /**
+     * Opens render.mtl in the editor Acceleo 4 binds to it, which starts Acceleo's language server,
+     * and reports the markers it leaves, or a deadlock in it: Acceleo 4.2.2's server can deadlock
+     * between its workspace synchronizer and the didOpen of the first module.
+     */
+    private void acceleo(IFile template) throws Exception {
+        long before = jobMinutes;
+        jobMinutes = 3;
+        open(template, null, "acceleo-editor");
+        jobMinutes = before;
+        long[] deadlocked = java.lang.management.ManagementFactory.getThreadMXBean().findDeadlockedThreads();
+        if (deadlocked != null) {
+            StringBuilder names = new StringBuilder();
+            for (java.lang.management.ThreadInfo info :
+                    java.lang.management.ManagementFactory.getThreadMXBean().getThreadInfo(deadlocked, true, true)) {
+                StackTraceElement[] stack = info.getStackTrace();
+                names.append("\n    ").append(info.getThreadName()).append(" at ")
+                        .append(stack.length > 0 ? stack[0] : "?");
+            }
+            fail("Acceleo's language server deadlocked after render.mtl opened:" + names);
+            return;
+        }
+        for (IMarker marker : template.findMarkers(IMarker.PROBLEM, true, IResource.DEPTH_ZERO)) {
+            line("  render.mtl marker: " + describe(marker));
+        }
+        line("  render.mtl: " + template.findMarkers(IMarker.PROBLEM, true, IResource.DEPTH_ZERO).length + " markers");
     }
 
     private void flatten(List<MavenProjectInfo> infos, List<MavenProjectInfo> into) {
@@ -427,11 +458,22 @@ public final class Check implements IStartup {
         }
     }
 
-    /** Waits until no job runs or waits for three seconds in a row. */
-    private static void waitForJobs() {
+    /**
+     * Waits until no job but the check's own runs or waits for three seconds in a row, or until
+     * handin.check.jobMinutes (default 20) have passed.
+     */
+    private void waitForJobs() {
+        Job self = Job.getJobManager().currentJob();
+        long deadline = System.currentTimeMillis() + jobMinutes * 60_000;
         int quiet = 0;
         while (quiet < 6) {
+            if (System.currentTimeMillis() > deadline) {
+                line("  (stopped waiting for jobs: " + Arrays.stream(Job.getJobManager().find(null))
+                        .filter(job -> job != self && job.getState() == Job.RUNNING).map(Job::getName).toList() + ")");
+                return;
+            }
             boolean busy = Arrays.stream(Job.getJobManager().find(null))
+                    .filter(job -> job != self)
                     .anyMatch(job -> job.getState() == Job.RUNNING || job.getState() == Job.WAITING);
             quiet = busy ? 0 : quiet + 1;
             try {
