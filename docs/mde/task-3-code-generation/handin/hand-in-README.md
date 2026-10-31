@@ -85,8 +85,9 @@ After the import, the Problems view shows four errors on the `pom.xml` of the
 metamodel and syntax projects, `Failed to execute mojo
 org.codehaus.mojo:exec-maven-plugin:3.6.4:java`, and no Java errors. They come
 from Eclipse trying to run the EMF and Xtext code generators, which need a
-classpath Eclipse does not give them; `build.sh` has already run them, so the
-errors can be ignored or deleted.
+classpath Eclipse does not give them. `build.sh` has already run them, so the
+errors can be ignored: they disappear with the next build, for instance after
+running **test implementation**.
 
 Open `model/render.mtl` in `dev.jorisjonkers.deploykit.emf.render` to read the
 transformation in Acceleo's editor. Acceleo 4.2.2's language server can

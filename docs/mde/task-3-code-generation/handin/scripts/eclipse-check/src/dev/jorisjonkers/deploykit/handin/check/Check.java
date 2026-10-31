@@ -202,7 +202,18 @@ public final class Check implements IStartup {
             waitForJobs();
             int left = problems(workspace, "after Project > Clean");
             if (left > 0) {
-                fail(left + " error markers after the import and a clean build");
+                // And then: Maven > Update Project, every project, and a build.
+                List<IProject> maven = Arrays.stream(workspace.getRoot().getProjects())
+                        .filter(project -> project.getFile("pom.xml").exists()).toList();
+                MavenPlugin.getProjectConfigurationManager().updateProjectConfiguration(
+                        new org.eclipse.m2e.core.project.MavenUpdateRequest(maven, false, false), new NullProgressMonitor());
+                waitForJobs();
+                workspace.build(IncrementalProjectBuilder.FULL_BUILD, new NullProgressMonitor());
+                waitForJobs();
+                left = problems(workspace, "after Maven > Update Project");
+            }
+            if (left > 0) {
+                fail(left + " error markers after the import, a clean build and Maven > Update Project");
             }
         }
 
