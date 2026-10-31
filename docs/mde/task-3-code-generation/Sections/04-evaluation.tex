@@ -1,0 +1,188 @@
+\section{Tests and Evaluation}
+\label{sec:evaluation}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.92\linewidth, keepaspectratio]{Figures/evidence}
+\caption{Checks from Generated Files to the Cluster}
+\label{fig:evidence}
+\end{figure}
+% TODO(verify): Figure 4 (Figures/evidence) must show the same four levels as Table 7: template seam, CLI file interface, external schema and profile, API server.
+
+The evaluation asks whether each transformation writes the intended model or text and whether external consumers accept the result. Committed expected files answer the first question; schema validation, a security profile and an API server address the second. Figure~\ref{fig:evidence} shows these checks along the path to the cluster.
+
+\subsection{Testing Strategy}
+\label{sec:testing-strategy}
+
+Table~\ref{tab:checks} lists eleven checks at four levels. Each row names what the
+output is compared with and the defects it can expose. Passing one check does not rule out defects covered by another.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{p{3.4cm}p{2.6cm}p{4.6cm}p{4.6cm}}
+\hline
+\textbf{Check} & \textbf{Level} & \textbf{Compared with} & \textbf{Defects it can expose} \\
+\hline
+Stage tests (\texttt{StageTest}) & 1. Stage seam & Committed expected files of each stage, each the next stage's input & A wrong value in any stage's output, named by its path \\
+Field coverage (\texttt{FieldCoverageTest}) & 1. Stage seam & Every feature, literal and kind the metamodels declare & A feature no case exercises \\
+Behaviour witnesses & 1. Stage seam & 75 model rows of the behaviour ledger & A model behaviour without a test \\
+Seam tests (\texttt{RenderingTest}) & 1. Template seam & Expected text written in the test & A wrong header, path or key order; a template that does not parse; files left by a failed run \\
+Composed union parity (\texttt{ParityTest}) & 2. CLI file interface & Committed trees of \texttt{minimal}, \texttt{data} and the platform's share & Any changed byte; a missing or extra file \\
+Per-Project output (\texttt{RenderedTreeTest}) & 2. CLI file interface & Committed trees of \texttt{minimal}, \texttt{data} and \texttt{delivery} & A file written into another Project's output \\
+Determinism and rejection (\texttt{RenderedTreeTest}) & 2. CLI file interface & A second run; a set the checks reject & Varying output; a partial tree on rejection \\
+Oracle distance (\texttt{OracleDistanceTest}) & 2. Pipeline & Every oracle under \path{spec/v1/examples/} & An oracle on the allowlist that no longer matches \\
+Schema (\path{lint:manifests}, kubeconform) & 3. External definition & Kubernetes 1.36.5 schemas, the datreeio CRD catalogue, the \texttt{Client} schema & Unknown or missing fields, wrong types \\
+Pod Security (\path{scripts/lib/pod-security.ts}) & 3. External definition & Pod Security \texttt{restricted} plus a read-only root filesystem & A pod template that drops a privilege control \\
+Server dry-run (k3s cluster) & 4. API server & Admission by a cluster using the production version & Objects accepted by the schema but rejected by the cluster \\
+\hline
+\end{tabular}
+\caption{The Eleven Checks, Their Levels, Oracles and Detectable Defects}
+\label{tab:checks}
+\end{table}
+
+\subsubsection{Test Levels}
+\label{sec:levels}
+
+\textbf{Stage tests.} Each transformation is unit-tested on its own: \texttt{StageTest}
+runs parse, lower, resolve and render in-process, each from committed input to
+committed expected files under \path{emf/bundles/cli/src/test/resources/stages/<stage>/<case>/}.
+Only \texttt{parse} reads authored input; every later stage reads the expected output of
+the stage before it, so one file is one stage's oracle and the next stage's input, and
+two stages cannot drift apart. A render case's expected files are copies of the committed
+oracles, held to them byte for byte. \texttt{FieldCoverageTest} holds each stage's cases
+to every feature, enumeration literal and template dispatch its metamodels declare; the
+gaps left are listed per stage in \path{gaps.txt}, a baseline that may only shrink.
+Each of 75 model behaviours of the behaviour ledger has a JUnit witness
+(\path{emf/docs/witnesses.md}). The build enforces 100\% line and branch coverage
+(JaCoCo) and a 100\% mutation score (PIT) per module and fails below either; the
+suite has 639 tests.
+
+\textbf{Seam and file interface.} The seam tests in \path{emf/bundles/render} exercise
+\texttt{Rendering} without the pipeline. A template that does not parse must fail with Acceleo's diagnostic. A template that fails halfway (\path{halfway.mtl}) must leave the output root unchanged, as the sibling \path{.partial} directory guarantees. A deliberately unindented module
+(\path{unindented.mtl}) is the negative case for the indentation rule of
+Section~\ref{sec:design}.
+\texttt{ParityTest} in \path{emf/tests/parity} runs the whole pipeline through its
+command-line file interface
+(\path{emf/docs/adr/emf/0080-parity-crosses-the-cli-file-interface.md}) and checks that
+the composed union contains exactly the committed files, each identical byte for byte.
+\texttt{RenderedTreeTest} checks that each Project's output matches its own committed
+tree, that a second run writes the same bytes, and that a set containing an invalid
+document (\texttt{surface: grpc}, rejected with \texttt{E\_UNKNOWN\_SURFACE}) produces no
+files. \texttt{OracleDistanceTest} measures every oracle's distance from what the
+pipeline writes and holds 171 comparisons on an allowlist to an exact match.
+
+\textbf{External consumers.} \path{scripts/lint-manifests.ts} runs kubeconform 0.6.7 with
+\texttt{-kubernetes-version 1.36.5} and \texttt{-strict} against the default
+schemas, the datreeio CRD catalogue and the repository's \texttt{Client} schema,
+and checks every pod template against Pod Security's \texttt{restricted} profile;
+both checks have negative fixtures. The schema, profile and dry-run checks use the
+generated tree through \texttt{dry-run.sh output "" generated}.
+% TODO(verify): rerun dry-run.sh and lint on the submitted generated tree and confirm the counts
+The script \path{handin/scripts/dry-run.sh} takes about twelve seconds. It starts a disposable k3s cluster at v1.36.5, the production version, installs the CRDs for every non-core kind, creates the declared namespaces and applies each Project's output with \texttt{-{}-dry-run=server}. An earlier attempt at 1.31 failed because the \texttt{GrafanaDashboard} CRD requires a newer API server. Network policies are absent from indexes and are applied file by file.
+
+\subsubsection{Oracles and Their Independence}
+\label{sec:oracles}
+
+A committed file is an \emph{oracle} in this report: the expected output against
+which a result is compared. The oracles under \path{spec/v1/examples/} are produced by
+the production implementation; the model-driven implementation is held to them, and
+its tests refuse to rewrite them. Appendix~\ref{sec:appendix-production} discusses that
+implementation and the limits of this independence.
+
+\subsubsection{Comparison: Content First, Bytes Last}
+\label{sec:compare-alt}
+
+Every intermediate model and every output is structured data, so \texttt{Comparison}
+compares parsed content first and bytes last. JSON is read with Jackson, YAML with
+SnakeYAML's YAML~1.1 reader on both sides, as Kubernetes reads it, so a quoted
+\texttt{"on"} and a plain \texttt{on} still differ by type, and XMI is loaded into EMF
+and compared with its equality helper. Every difference is reported as a path into
+the document, with a list item named by its key:
+\texttt{.spec.template.spec.containers[name="vault"].command: missing (expected a list of 1)}.
+Only when the content agrees are the bytes compared, and a difference there is
+reported as ``formatting only'', naming the first line that differs. Byte identity
+remains the bar: a formatting-only difference still fails. A failure names the field
+at fault instead of giving a line diff over the whole file, which made testing and
+debugging faster.
+
+\subsection{Example Models}
+\label{sec:source-models}
+
+The suite renders three examples: \texttt{minimal} (15 files, one Process with a blue-green \texttt{Canary}), \texttt{data} (76 files, five datastores and an asset-sync Process with Vault delivery) and \texttt{edge} (34 files, the two Traefik instances and a DNS controller). \texttt{minimal} and \texttt{data} render together, with the platform's four estate-scoped files,
+as a composed union of 95 files, checking that adding a second Project does not
+change the first Project's bytes; \texttt{edge} is compared separately.
+
+\subsection{Results}
+\label{sec:results}
+
+Table~\ref{tab:results} reports each check for each case. The schema, profile and dry-run
+results were obtained on 2026-10-29 from the generated tree. Units differ by row:
+output counts refer to files; schema counts refer to resources (several may occupy
+one file, and \path{kustomization.yaml} files count as resources); dry-run counts
+refer to indexed objects. The profile check covers 23 pod templates; only parity reads the Vault JSON files.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{p{4.6cm}p{2.3cm}p{2.3cm}p{2.3cm}p{2.3cm}}
+\hline
+& \textbf{minimal} & \textbf{data} & \textbf{union} & \textbf{edge} \\
+\hline
+Committed files (YAML, JSON) & 15 (15, 0) & 76 (64, 12) & 95 & 34 (32, 2) \\
+Written by the run & 15 & 76 & 95 & 34 \\
+Byte parity & within union & within union & pass & pass \\
+Per-Project output & pass & pass & -- & -- \\
+Second run writes the same bytes & -- & -- & pass & -- \\
+Schema (kubeconform) & 16/16 valid & 89/89 valid & -- & 39/39 valid \\
+Pod Security \texttt{restricted} & no finding & no finding & -- & no finding \\
+Server dry-run, indexed objects & 11/11 & 68/68 & -- & 28/28 \\
+Server dry-run, network policies & 2/2 & 12/12 & -- & 5/5 \\
+\hline
+\end{tabular}
+\caption{Results per Check and Case}
+\label{tab:results}
+\end{table}
+
+The API server issued one warning for \texttt{edge}'s public Traefik \texttt{Deployment}: two entry points are each declared twice. This reflects a modelling choice rather than a defect.
+
+\subsection{Defects Found}
+\label{sec:defects}
+
+Most rendering defects were found by running the output rather than by byte comparison. The trees changed alongside the implementations, so comparisons passed both before and after a fix. Five examples illustrate this:
+\begin{itemize}
+\item A pod template omitted \texttt{allowPrivilegeEscalation: false}: found by
+  reading the profile; the Pod Security check now catches it.
+\item A Job's name did not reflect its pod template, so the cluster rejected it: found on a cluster; no check here catches it.
+\item Eligible nodes were derived but not rendered: found by reading the adapter;
+  parity catches it now.
+\item A space in an authored path created a second Release Gate entry, the
+  condition per Reconcile Unit that blocks a rollout: found by review; validation now rejects it.
+\item An optional edge between Projects made two Reconcile Units, the units Flux
+  reconciles in order, wait for each other: found in use; no example declares such an edge.
+\end{itemize}
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+\paragraph{Template coverage.} Comparisons provide no evidence about kinds absent from the compared trees; the render stage's baseline names each one.
+Acceleo template coverage is not measured: the gates do not reach templates, and no
+tool reports which branches the cases exercise. A one-character change to the Namespace
+template's \texttt{managed-by} label failed 14 of 25 stage cases and 5 of 9 rendered-tree
+tests, each naming the file; a change to a kind no compared tree holds would pass.
+
+\paragraph{Version pins.} Schema validation is pinned to Kubernetes 1.36.5 and one
+CRD catalogue commit, while production worker nodes run 1.35.2. A field ignored by a
+1.35 kubelet would therefore pass validation.
+
+\paragraph{Fresh-cluster dry-run.} This cannot detect defects involving immutable fields; no controllers run and no network policies are enforced. The
+model-driven implementation does not apply objects, so these checks do not exercise
+Flux's ordering, pruning or release gating.
+
+\paragraph{When the build runs.} The \texttt{Model-driven build} job runs the Maven
+verify, tests and the coverage gate, on every commit that changes \path{emf/} or the
+workflow; other changes skip it. The mutation gate takes too long for every change and runs
+nightly instead. A Maven
+wrapper update once broke the Tycho build unnoticed while it ran only on request: an
+implementation stays level with shared oracles only while every change that reaches it
+runs its build.

@@ -1,0 +1,189 @@
+\section{Alternatives and Justification}
+\label{sec:alternatives}
+
+Table~\ref{tab:choices} summarises every decision below.
+
+\subsection{Constraints Set by the Course}
+\label{sec:fixed}
+
+The course requires Ecore metamodels, QVT-Operational or ATL for model-to-model
+transformation, Acceleo for model-to-text generation, Eclipse/EMF projects in the archive,
+and a generated artefact loaded in a tool (here, the Kubernetes API server). The project
+defines its own domain, target and source syntax. OCL cannot hash canonical bytes, so
+one Java library computes only that digest. Maven with Tycho builds the projects
+without an IDE; an examiner can also run the generator from Eclipse.
+
+\subsection{Overview of the Design Decisions}
+\label{sec:shape}
+
+Each decision is presented with its strongest alternative and the criterion used to
+reject it.
+
+\subsubsection{Source Model: One Intent per Project, Plus a Platform Intent}
+\label{sec:shape-source}
+
+Intent is authored in one file per Project, plus one Platform Intent for facts that
+must be unique across the estate
+(\url{docs/adr/model/0009-intent-is-authored-one-file-per-project.md},
+\url{docs/adr/model/0045-platform-intent-is-the-second-authored-document.md}). One
+file per Application was rejected because each fact needs a single source: the same
+OpenTelemetry variables would otherwise be repeated for three Processes. Lowering
+merges shared declarations onto each Process, so templates need not combine
+information from different levels.
+
+\subsubsection{Transformation Chain: Lower, Resolve, Render}
+\label{sec:shape-stages}
+
+Three typed steps replace a single transformation from source to Resolved Deployment.
+A single transformation was rejected because it obscures the source of faults: each
+intermediate model has an oracle that identifies which step produced a fault.
+Rendering reads only the Resolved Deployment and therefore only writes text.
+
+\subsubsection{Removing the Estate Pass}
+\label{sec:shape-estate}
+
+The Task~2 pipeline had a third transformation over every Resolved Deployment. It
+was removed because each Project owns and alone writes every object it delivers
+(decision record 0116 under \path{docs/adr/model/}). Keeping it
+would break the delivery guarantee that publishing an unrelated change deploys nothing: one
+policy Job held every Project's grants, so one change re-ran it for all, and one
+fault left seven Projects not ready. Every generated file now belongs to
+one Project's Resolved Deployment, so no template merges output across Projects.
+
+\subsubsection{Kubernetes Objects and Custom Resources as the Target}
+\label{sec:shape-target}
+
+The target consists of Kubernetes API objects and custom resources for Flux,
+Flagger, the Vault Secrets Operator, Traefik and the Prometheus Operator. Flux is
+the only applier, and it pulls the render by digest
+(\url{docs/adr/model/0050-delivery-is-part-of-the-model.md}). A push path from CI
+was rejected because it would require a deployment credential outside the cluster. Helm
+or Kustomize templating was rejected because no abstract model could express its
+constraints (Task~1 report). Each generated file represents an object that the API
+server validates; the load stage checks this validation.
+
+\subsubsection{One Rendering Run for All Projects}
+\label{sec:shape-union}
+
+Each Project is resolved separately using the union of all Projects, and rendering
+runs once over the resulting set. Resolution from a Project's own documents alone
+was rejected because it cannot account for cross-Project facts: a provider's address,
+admission of a consumer by label, or rejection when a provider removes a Surface named by a consumer
+(\url{spec/v1/40-composition.md}). The cost is that one Project's change can alter
+another's output through names. A test checks that unrelated Projects' output remains unchanged.
+
+\subsection{The Model-to-Text Step}
+\label{sec:m2t-choices}
+
+Rendering is the only step that writes text. Its output must match the committed
+\texttt{rendered/} trees byte for byte, including whitespace, key order, quoting and headers.
+
+\subsubsection{The Language: Acceleo 4}
+\label{sec:m2t-language}
+
+The assignment prescribes Acceleo, which also meets three technical criteria.
+Acceleo~4 has a standalone API, allowing one Java class to run the module without an IDE, as in CI.
+Its whitespace rules give templates exact control over the output bytes. Queries use
+Acceleo Query Language (AQL) expressions over the Ecore model; the templates
+are interpreted rather than compiled to Java.
+
+The Epsilon Generation Language (EGL)~\cite{egl} also runs standalone over Ecore
+and would meet the first two criteria; the assignment settles the choice. Xtend is a
+separate JVM language that compiles to Java, not the template language of Xtext.
+Acceleo implements the OMG standard MOFM2T~\cite{mofm2t}; no conformance is
+claimed beyond the constructs the module uses.
+
+\subsubsection{Templates Rather Than a Serialiser}
+\label{sec:m2t-templates}
+
+The production implementation uses visitors or APIs: a YAML library and a JSON encoder
+write typed objects. The model-driven implementation uses templates without a subsequent
+formatting pass.
+
+The criterion is that one reviewed artefact determines the output bytes. A template
+directly specifies the file layout, so a difference from the oracle points to a
+visible template line. A serialiser delegates key order and quoting to library
+defaults; a formatting pass adds a second tool whose version affects the bytes.
+Comparing parsed documents would not check the headers, ordering or quoting
+specified by the committed trees.
+
+Two further alternatives were rejected:
+\begin{itemize}
+\item A model-to-model step into a Kubernetes object metamodel adds a third
+metamodel of 27 kinds that repeats the Resolved Deployment's shape, and the
+target syntax still has to be written.
+\item The Xtext serialiser needs a grammar and a formatter per kind, and gives no
+control of the header line or key order without a custom formatter.
+\end{itemize}
+
+The cost is manual whitespace control: the template must specify every layout byte
+(Section~\ref{sec:m2t-fragments}). The template also writes the key order of the
+Vault JSON documents, which have no header. A string is double-quoted when a YAML implicit resolver would read it as
+a null, a boolean, a number or a timestamp, or when it ends in a colon or contains
+``\texttt{: }''.
+
+\subsubsection{Template Structure: One Module with Dispatch by Type}
+\label{sec:m2t-structure}
+
+MOFM2T lets a module import others and extend or override their templates. This is
+useful when a generator varies by platform. Here there is one target and no
+variant to override; shared templates (label set, peer selector, consumer
+label) serve nearly every kind. Splitting by kind would require imports throughout;
+one module retains a single namespace. The cost is a large file navigated by template name:
+3230 lines holding 93 templates and 29 queries.
+
+YAML generation calls one overloaded \texttt{objects} template, which Acceleo resolves by the Deliverable's
+runtime type (a polymorphic template in the course's terms). It replaced a chain
+of 22 type tests with no \texttt{else}, where a kind without a branch produced
+only the header. A kind without a template now causes the run to fail.
+
+\subsubsection{Templates Use Only Values Present in the Model}
+\label{sec:m2t-decides}
+
+No template derives a value absent from the model. Platform decisions are made in the
+QVT-Operational transformations and recorded in the Resolved Deployment, so a
+missing derivation produces a missing or different file. This preserves release identity:
+a release's revision is computed from the Application's canonical JSON, so a value
+derived in a template would fall outside that identity.
+
+Templates handle only target-syntax formatting. A duration becomes whole seconds,
+precedence becomes a Traefik priority of 1000 minus the precedence, and a match
+becomes \texttt{Path} or \texttt{PathPrefix}. The templates also apply fixed
+per-kind rules of the target format: the rolling-update surge, the
+\texttt{Recreate} strategy, the disruption-budget selector and the suspension of
+migration Jobs. These rules do not vary by model. Queries select and order the objects
+a template visits without deriving values.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.15\linewidth}>{\raggedright\arraybackslash}p{0.28\linewidth}>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}}
+\hline
+\textbf{Decision area} & \textbf{Rejected alternative} & \textbf{Chosen approach} & \textbf{Reason} \\
+\hline
+Source & One file per Application & One Intent per Project & One place per fact \\
+Chain & One transformation & Lower, resolve, render & Oracle for each model \\
+estate pass & Keep it & Removed & Unrelated publication deploys nothing \\
+Target & Push path; Helm; Kustomize & Objects pulled by Flux & No external credential \\
+Rendering input & One Project alone & Union, one run & Cross-Project facts \\
+Language & EGL; Xtend & Acceleo~4 & Headless API, whitespace \\
+Text output & Serialiser; formatter; parsed comparison & Templates write bytes & One artefact determines bytes \\
+Other options & Model-to-model Kubernetes metamodel; Xtext serialiser & Rejected & Extra metamodel; no byte control \\
+Modules & Imports, overriding & One module & No variant \\
+YAML dispatch & Chain of type tests & Dispatch by type & Missing kind fails \\
+Derivation & Queries in templates & Model holds values & Identity covers values \\
+\hline
+\end{tabular}
+\caption{Summary of the Design Decisions and the Rejected Alternatives}
+\label{tab:choices}
+\end{table}
+
+Section~\ref{sec:evaluation} discusses the remaining limitations and
+Section~\ref{sec:reflection} the decisions that were reversed.
+
+% BIB: \bibitem{mofm2t} Object Management Group. \emph{MOF Model to Text
+%   Transformation Language (MOFM2T)}, version 1.0, 2008.
+%   \url{https://www.omg.org/spec/MOFM2T/1.0/}.
+% BIB: \bibitem{egl} The Epsilon Generation Language, part of the Eclipse Epsilon
+%   project. \url{https://eclipse.dev/epsilon/}. TODO(verify): the authors and
+%   venue from the proceedings the course material cites under Task~3.

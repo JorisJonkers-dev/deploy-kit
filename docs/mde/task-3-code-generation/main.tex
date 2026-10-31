@@ -1,0 +1,143 @@
+% Project Task 3: code generation
+% Model Driven Engineering, University of Twente
+%
+% Always compile twice, to get the table of contents and references right.
+\documentclass[10pt, a4paper, oneside]{article}
+\usepackage[left=2cm, right=2cm, top=2.5cm, bottom=3cm]{geometry}
+\usepackage{amsmath}        % For all kinds of math symbols
+\usepackage{graphicx}       % Package to include photos and graphs
+\usepackage{float}          % Helps in positioning floats
+\usepackage[justification=centering]{caption}  % To center the captions
+\usepackage{url}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{textcomp}
+\usepackage{listings}
+\usepackage{nameref}
+\usepackage{pdflscape}
+\renewcommand{\lstlistingname}{Example}  % a listing is called an Example here
+
+% Code listings, coloured by language with listings alone: the Overleaf
+% instance runs without shell escape, so minted and Pygments are not an option.
+\definecolor{codebg}{HTML}{F8FAFC}
+\definecolor{codeframe}{HTML}{CBD5E1}
+\definecolor{codekey}{HTML}{1E40AF}
+\definecolor{codeattr}{HTML}{7C3AED}
+\definecolor{codestring}{HTML}{047857}
+\definecolor{codecomment}{HTML}{64748B}
+\definecolor{codeliteral}{HTML}{B45309}
+\lstdefinestyle{report}{
+  backgroundcolor=\color{codebg}, frame=single, rulecolor=\color{codeframe},
+  framesep=4pt, xleftmargin=5pt, xrightmargin=5pt, captionpos=b,
+  basicstyle=\normalsize\ttfamily, columns=fullflexible, keepspaces=true,
+  breaklines=true, showstringspaces=false, upquote=true,
+  commentstyle=\color{codecomment}\itshape, stringstyle=\color{codestring},
+  keywordstyle=\color{codeliteral}}
+% YAML: a line starts as a key, and turns into a value at its first colon.
+\newcommand\yamlkey{\color{codekey}\normalsize\ttfamily}
+\newcommand\yamlvalue{\color{black}\normalsize\ttfamily}
+\newcommand\yamlcolon{\color{black}}
+\lstdefinelanguage{yaml}{
+  basicstyle=\yamlkey, keywords={true,false,null},
+  keywordstyle=\color{codeliteral}, sensitive=true,
+  comment=[l]{\#}, morestring=[b]', morestring=[b]",
+  moredelim=**[il][\yamlcolon{:}\yamlvalue]{:},
+  literate={-\ }{{\color{black}-\ }}2}
+% QVT Operational Mappings: the keywords the listings use.
+\lstdefinelanguage{qvto}{
+  morekeywords={modeltype,uses,transformation,in,out,access,library,import,
+    configuration,property,main,mapping,query,init,end,object,var,let,if,then,
+    else,elif,endif,and,or,not,self,result,map,resolveone,assert,fatal,with,
+    log,return,disjuncts,Sequence,Tuple},
+  keywordstyle=\color{codekey}\bfseries, sensitive=true,
+  comment=[l]{--}, morestring=[b]'}
+\lstdefinelanguage{ocl}{
+  morekeywords={context,inv,def,let,in,if,then,else,endif,implies,and,or,not,self},
+  keywordstyle=\color{codekey}\bfseries, sensitive=true,
+  comment=[l]{--}, morestring=[b]'}
+% Acceleo 4 (MOFM2T): the block keywords the listings use.
+\lstdefinelanguage{acceleo}{
+  morekeywords={module,import,template,query,public,private,protected,main,
+    file,for,if,else,elseif,let,protected,separator,before,after,not,and,or,
+    self,overwrite,append,create},
+  keywordstyle=\color{codekey}\bfseries, sensitive=true,
+  comment=[s]{[**}{/]}, morestring=[b]'}
+
+% Drafting aids. Both are removed before the hand-in: a figure placeholder is
+% replaced by its \includegraphics, and \pending marks a value or claim that
+% can only be written once emf/ is caught up with main.
+\newcommand\figplaceholder[2]{%
+  \fbox{\parbox[c][5cm][c]{0.9\linewidth}{\centering\small\textit{Figure to
+  draw: #1}\\[4pt]\footnotesize #2}}}
+\newcommand\pending[1]{\textcolor{red!70!black}{[pending: #1]}}
+
+\setlength{\parindent}{0pt} % When you do not want indentation for your paragraphs.
+\setlength{\parskip}{4pt}   % For space between paragraphs.
+\setlength{\emergencystretch}{2em} % let a line with a long code word stretch rather than overrun
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!55!black,
+  citecolor=blue!55!black,
+  urlcolor=blue!55!black,
+  linktoc=all,
+  bookmarksnumbered=true,
+}
+
+% Heading and list layout. This is a short report, so the headings stay small
+% and the spacing around them tight. The Overleaf instance carries no titlesec
+% or enumitem, so both are reproduced with the kernel's own commands.
+\makeatletter
+\renewcommand\section{\@startsection{section}{1}{\z@}%
+  {-2.2ex \@plus -0.6ex \@minus -.2ex}{0.6ex \@plus.2ex}%
+  {\normalfont\large\bfseries}}
+\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
+  {-1.8ex \@plus -0.5ex \@minus -.2ex}{0.4ex \@plus.2ex}%
+  {\normalfont\normalsize\bfseries}}
+\def\@listI{\leftmargin\leftmargini
+  \parsep 0pt \topsep 3pt \itemsep 1pt}
+\let\@listi\@listI
+\makeatother
+
+\begin{document}
+%==== FRONT PART====
+\hypersetup{pageanchor=false}
+\include{Title/titlepage}
+\pagenumbering{roman}
+\hypersetup{pageanchor=true}
+\setcounter{tocdepth}{2}
+\tableofcontents
+
+%==== MAIN PART ====
+\newpage
+\pagenumbering{arabic}
+\input{Sections/01-introduction}
+\input{Sections/02-alternatives}
+\input{Sections/03-design}
+\input{Sections/04-evaluation}
+\input{Sections/05-reflection}
+\input{Sections/06-outlook}
+
+
+
+\begin{thebibliography}{9}
+\bibitem{mofm2t} Object Management Group. \emph{MOF Model to Text
+  Transformation Language (MOFM2T)}, version 1.0, 2008.
+  \url{https://www.omg.org/spec/MOFM2T/1.0/}.
+\bibitem{egl} L.~M.~Rose, R.~F.~Paige, D.~S.~Kolovos and F.~A.~C.~Polack.
+  The Epsilon Generation Language. In \emph{Model Driven Architecture --
+  Foundations and Applications (ECMDA-FA 2008)}, LNCS 5095, Springer, 2008.
+\end{thebibliography}
+
+%==== APPENDIX ====
+\clearpage
+\appendix
+\input{Sections/07-appendix-changes}
+
+%==== END OF ALL ===
+\end{document}

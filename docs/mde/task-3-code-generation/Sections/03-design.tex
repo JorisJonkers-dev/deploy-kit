@@ -1,0 +1,384 @@
+\section{Solution Design}
+\label{sec:design}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.72\linewidth, keepaspectratio]{Figures/m2t-structure}
+\caption{Template Structure}
+\label{fig:m2t-structure}
+\end{figure}
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth, keepaspectratio]{Figures/worked-example}
+\caption{From Model to File}
+\label{fig:worked-example}
+\end{figure}
+
+Figure~\ref{fig:m2t-structure} shows the model-to-text step: a main
+template, one template family per Deliverable kind, the shared templates those
+families use, and the Java class \texttt{Rendering} that loads and runs the module.
+Section~\ref{sec:m2t-choices} justifies the choice of Acceleo~4. The module,
+\path{emf/bundles/render/model/render.mtl}, reads the Resolved Deployment produced
+by the preceding transformations. Section~\ref{sec:m2t-example} explains
+Figure~\ref{fig:worked-example}, tracing one Route from model to file.
+
+The design applies four course concepts. Dispatch by kind uses polymorphic templates
+(Section~\ref{sec:m2t-kinds}). Every run regenerates every file in full, so no
+protected areas are needed. Each stage is tested on its own against committed files,
+and the output is held byte for byte to committed oracle files (reference trees that
+both implementations must match; Section~\ref{sec:levels}), so no trace blocks map
+text back to model elements. The JSON templates use text-explicit escape
+(\texttt{['['/]}) to write a literal bracket.
+
+\subsection{Interface: Input, Output and Entry Point}
+\label{sec:m2t-interface}
+
+\textbf{Input.} The step reads one Resolved Deployment for each Project in the run,
+each containing a \texttt{deliverables} list of the files the Project delivers.
+Lowering and resolution run for each Project in turn; \texttt{Rendering} copies the
+results into one model for a single rendering run. Templates read no files,
+environment variables or system clock: all other inputs are consumed beforehand
+and represented as model features.
+Each Deliverable has a \texttt{path} relative to the output root, assigned by the
+resolution stage. The metamodel has 38 concrete Deliverable kinds
+(\path{emf/bundles/metamodel/model/resolved-deployment.ecore}), each with a template
+family of its own.
+
+\textbf{Output.} The Deliverable Set contains one file per Deliverable at its
+assigned path, with nothing else under the root. A YAML file begins with one header line and contains
+one or more objects, each introduced by three dashes. A Vault document is JSON with no
+header.
+
+\textbf{Entry point.} The sole entry point is \texttt{Pipeline.render} in the CLI bundle. It
+checks every input document. If validation rejects the set, it returns
+diagnostics and writes nothing; otherwise, it lowers and resolves each Project and calls
+\texttt{Rendering.render(deployments, root)} once. The step has no command-line \texttt{main}; it runs
+in the Maven build of \path{emf/}, where \texttt{RenderedTreeTest} compares each
+rendered file with the committed \texttt{rendered/} tree. The parity suite uses
+the same entry point exclusively through files
+(\path{emf/docs/adr/emf/0080-parity-crosses-the-cli-file-interface.md}).
+In Eclipse, the hand-in's launch configurations run the module through the same entry point.
+
+\subsection{The Main Template and the Path Plan}
+\label{sec:m2t-main}
+
+The seven-line main template (Example~\ref{lst:main}) opens one file per
+Deliverable at the model's assigned path; it computes no paths.
+
+\begin{lstlisting}[style=report, language=acceleo, caption={The Main Template}, label={lst:main}]
+[template public render(deployment : resolveddeployment::ResolvedDeployment)]
+  [for (d : resolveddeployment::Deliverable | deployment.deliverables)]
+    [file (d.path, overwrite, 'UTF-8')]
+      [d.document()/]
+    [/file]
+  [/for]
+[/template]
+\end{lstlisting}
+
+The private template \texttt{document} chooses the format: JSON for the three Vault
+kinds and the catalog method's policy part, YAML for everything else. YAML generation
+calls \texttt{objects} on the Deliverable; Acceleo selects the overload for its
+runtime type, with one overload for each of the 24 YAML kinds.
+
+Resolution defines the path plan; templates only follow it. Each Project has
+a namespace file and an index for \path{apps/<project>/}; each
+Application has one file per family, with no file for a family containing no objects.
+No index lists policy files or Vault documents, because the
+Vault policy Job reads them from its own ConfigMap
+(\path{spec/v1/30-deliverables.md}).
+% TODO(verify): the claim that the ConfigMap is the only object applying the Vault
+% documents is read from the path plan's description in emf/docs/architecture.md and
+% spec/v1/30-deliverables.md; the full set of applying objects was not traced.
+
+\textbf{Several Resolved Deployments, one owner per file.} A Project owns every file in
+its directory, so indexes are not shared and each lists only its own Deliverable's
+resources (Example~\ref{lst:index}). The composed minimal and data cases match the
+two committed trees file for file (Section~\ref{sec:evaluation}).
+
+\begin{lstlisting}[style=report, language=acceleo, caption={An Index Lists Its Own Directory}, label={lst:index}]
+[template private objects(d : resolveddeployment::IndexFile)]
+  ---
+  apiVersion: kustomize.config.k8s.io/v1beta1
+  kind: Kustomization
+  resources:
+  [for (r : String | d.resources->sortedBy(r | r))]
+      - [r/]
+  [/for]
+[/template]
+\end{lstlisting}
+
+Sorting by value makes indexes independent of Deliverable order. The module
+previously collected indexes through \texttt{allInstances()}; this was removed with the
+estate pass (Section~\ref{sec:shape}).
+
+Two Deliverables assigned the same path would silently overwrite the earlier file;
+templates cannot detect this. The pipeline therefore checks the plan before rendering
+and the written files before moving them into place, and rejects any path, ServiceAccount
+or Vault name with two owners, reporting \texttt{E\_PATH\_COLLISION}
+(\path{spec/v1/30-deliverables.md}).
+
+\subsection{One Template per Deliverable Kind}
+\label{sec:m2t-kinds}
+
+The submitted module supports 38 Deliverable kinds in nine families
+(Table~\ref{tab:kinds}). Each YAML family uses an \texttt{objects}
+template overloaded on its receiver type. Acceleo selects the overload by runtime type
+rather than string comparison: these are polymorphic templates in the course's sense.
+A kind with no overload causes evaluation and the run to fail. The module previously
+dispatched through 22 type tests with no \texttt{else}, so a kind without a branch
+would silently produce only a header line. Type dispatch closes this gap and is 50 lines shorter.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{p{3.0cm}p{6.0cm}p{6.4cm}}
+\hline
+Family & Deliverable kinds & Output objects \\
+\hline
+Project files & \texttt{NamespaceFile}, \texttt{IndexFile}, \texttt{SourceFile} & Namespace; Kustomization; Flux \texttt{OCIRepository} and its Kustomization \\
+Process workload & \texttt{WorkloadFile}, \texttt{SwitchoverFile}, \texttt{ServiceFile}, \texttt{BudgetFile}, \texttt{NodeAgentFile}, \texttt{PriorityClassFile} & Deployment (or declared controller); Flagger Canary and HorizontalPodAutoscaler; Service; PodDisruptionBudget; Node Agent DaemonSet; PriorityClass \\
+Identity and access & \texttt{IdentityFile}, \texttt{RbacFile}, \texttt{NetworkPolicyFile}, \texttt{ClientFile}, \texttt{HumanGrantFile} & ServiceAccount; Role or ClusterRole and binding; NetworkPolicy; sign-in \texttt{Client}; bindings for human groups \\
+Routing & \texttt{IngressRouteFile}, \texttt{AliasFile}, \texttt{SharedMiddlewareFile}, \texttt{StableAddressFile}, \texttt{AddressPoolFile} & Traefik IngressRoute with rate-limit Middleware; \texttt{ExternalName} Service; shared Middlewares; Stable Address Service; MetalLB \texttt{IPAddressPool} and \texttt{L2Advertisement} \\
+Storage and configuration & \texttt{ClaimFile}, \texttt{LibraryFile}, \texttt{ConfigMapFile}, \texttt{BackupFile} & PersistentVolume and Claim; immutable ConfigMap per Asset; backup CronJob \\
+Jobs & \texttt{MigrationFile}, \texttt{MoveFile}, \texttt{PolicyJobFile}, \texttt{CatalogJobFile} & Suspended Migration Jobs; Move Jobs with their Role; Vault policy and catalog Jobs by \texttt{part} \\
+Observability & \texttt{MonitorFile}, \texttt{EventsFile}, \texttt{DashboardFile}, \texttt{AlertRulesFile}, \texttt{AlertingFile}, \texttt{FluxMonitorFile} & ServiceMonitor or PodMonitor; Flux Provider and Alert; \texttt{GrafanaDashboard}; \texttt{PrometheusRule}; \texttt{AlertmanagerConfig}; Flux's PodMonitor \\
+Secrets & \texttt{SecretFile}, \texttt{ConnectionFile} & \texttt{VaultAuth}, \texttt{VaultStaticSecret}, \texttt{VaultDynamicSecret}; \texttt{VaultConnection} \\
+Vault documents (JSON) & \texttt{VaultPolicyFile}, \texttt{VaultRoleFile}, \texttt{GeneratedKeysFile} & Policy, auth role and generated-key documents; no header \\
+\hline
+\end{tabular}
+\caption{The 38 Deliverable Kinds in Nine Families}
+\label{tab:kinds}
+\end{table}
+
+\texttt{MoveFile} renders a Move handed to it, kept for the migration (Section~\ref{sec:since-task2}).
+A Deliverable represents a file rather than an object. Policy Jobs and catalog methods
+are exceptions: the \texttt{part} attribute assigns each of their five objects to a
+separate file, so each is planned and pruned as a separate Deliverable.
+
+\phantomsection\label{sec:m2t-gaps}
+Everything added since Task~2 followed the same sequence: a metamodel
+kind or feature, its derivation in resolution, a template, and a committed file for
+byte comparison. Features of existing kinds include Route annotations (facts about the
+Route's tier) and the fourth Canary webhook, \texttt{rollback}, through which the
+Release Gate decides whether to roll back a release it can no longer pass. Each new
+kind received one \texttt{objects} overload; the edge's shared Middlewares, for
+example, are named by Routes through \texttt{MiddlewareStep.name}.
+
+Templates derive no values, but specify how the target format represents them.
+The module's comments cite the chapter defining each rule:
+
+\begin{itemize}
+  \item \textbf{Update strategy.} Blue-green uses \texttt{RollingUpdate} with a surge of
+    one and no unavailable pods, because Flagger starts the new version beside the old.
+    Rolling uses a surge of zero and one unavailable pod, because a proxy using a host
+    port cannot run two copies. Stop-start uses \texttt{Recreate}.
+  \item \textbf{Disruption budget.} The selector is the resolution's \texttt{servingLabel}
+    for a blue-green Process, naming the Deployment managed by Flagger
+    (\texttt{serving}); otherwise, it selects the Process's own pods.
+  \item \textbf{Route match.} \texttt{exact} is written as \texttt{Path}; every other match
+    as \texttt{PathPrefix}.
+  \item \textbf{Migration Jobs.} They are created suspended and named for their
+    revision's tag. Only the Release Gate (the check that releases a migration)
+    changes their suspension.
+\end{itemize}
+% TODO(verify): the suspended-Job rule spells the Release Gate contract of spec/v1,
+% not a single model value; confirm the chapter that fixes it.
+
+\subsection{Shared Templates and the Whitespace Rules}
+\label{sec:m2t-fragments}
+
+A shared template has multiple callers, such as the template for a Process's metadata
+or label set. It is written once at the left margin; callers determine its placement.
+Three whitespace rules apply. MOFM2T \S 8.4 defines what templates write at the start
+and end of a line. Acceleo~4 adds two behaviours used by the module.
+
+\textbf{The indentation margin (Acceleo~4).} Each block (the template, each \texttt{if}, each
+\texttt{for}) adds two indentation spaces that Acceleo omits from the output. A line
+inside $n$ enclosing blocks therefore appears $2n$ spaces further left. A Deployment's \texttt{strategy}
+is indented six spaces in the module and two in the output. A negative fixture with
+no body margin must fail with an Acceleo parsing error
+(\path{emf/bundles/render/src/test/resources/unindented.mtl}).
+
+\textbf{The call column (Acceleo~4).} A call repeats the text preceding it on the
+line before every output line, so a shared template need not know where it will
+appear. In Example~\ref{lst:labels}, \texttt{metadata} calls
+\texttt{labels} at column two of its own output, and \texttt{labels} calls
+\texttt{labelSet} at column zero, so the five label lines appear at column four of the
+Deployment. The label set is written at the margin; its output indentation depends
+on the call column.
+
+\begin{lstlisting}[style=report, language=acceleo, caption={The Label Shared Templates}, label={lst:labels}]
+[template private labels(p : resolveddeployment::ResolvedProcess)]
+  [p.name.labelSet(p.component, p.application().id)/]
+[/template]
+
+[template private labelSet(name : String, component : String, application : String)]
+  app.kubernetes.io/name: [name/]
+  app.kubernetes.io/instance: [name/]
+  app.kubernetes.io/part-of: [application/]
+  app.kubernetes.io/managed-by: deploy-kit
+  app.kubernetes.io/component: [component/]
+[/template]
+\end{lstlisting}
+
+\textbf{List items.} A list item is a shared template that begins with its own
+\texttt{- }, and the caller does not write the dash: a dash before the call would be
+repeated before every line, making each line a separate item.
+
+Whitespace is therefore a template concern (Section~\ref{sec:whitespace}). In return,
+the layout is visible in the template and checked without an intervening formatter.
+
+\subsection{Writing YAML and JSON}
+\label{sec:m2t-spelling}
+
+\textbf{Header.} A YAML Deliverable begins with \texttt{\# GENERATED. Never hand-edit.},
+written once per file by \texttt{document}. A JSON document has no header, because
+a comment would make it invalid for the Vault job that reads it.
+
+\textbf{Quoting.} A string is written as a plain scalar unless the \texttt{scalar} query
+matches an implicit-type pattern; matches are double-quoted. The patterns
+match the whole value and cover the empty string, tilde, null, the boolean words
+(\texttt{y}, \texttt{yes}, \texttt{on} and their opposites), integers in every
+YAML~1.1 base, floats and timestamps.
+YAML~1.1 rules are deliberate: Kubernetes tooling decodes through
+\texttt{sigs.k8s.io/yaml}, which follows YAML~1.1 implicit types, and the production
+implementation writes with \texttt{version: "1.1"} (\path{src/infrastructure/serializer.ts}).
+A value such as \texttt{on} would reach the API server as a boolean if written as a plain scalar;
+unnecessary quoting costs only bytes. The string \texttt{50} is written \texttt{"50"}.
+Values a YAML reader would misread are also quoted: those opening on an indicator
+character, containing \texttt{:~} or \texttt{~\#}, ending in a colon, or opening or
+ending on a space. The edge's Content Security Policy, which ends in \texttt{https:},
+is quoted in the committed tree.
+
+The double-quoted form does not escape its content, so a quote or backslash in a
+value would break the line. The model's value rules are intended to exclude these characters.
+% TODO(verify): identify the constraint that excludes quotes and backslashes from
+% scalar values.
+
+\textbf{Block scalars.} An Asset is a file a Project ships as configuration. Its
+ConfigMap holds the text as a block scalar, and its name contains a digest of the
+content, so an edit produces a new immutable object
+(\path{docs/adr/model/0014-file-shaped-configuration-is-an-asset.md}). Two queries
+write it (Example~\ref{lst:block}).
+
+\begin{lstlisting}[style=report, language=acceleo, caption={The Block Scalar Queries}, label={lst:block}]
+[query private chomping(content : String) : String =
+  if content.endsWith('\n\n') then '|+' else if content.endsWith('\n') then '|' else '|-' endif endif /]
+
+[query private blockOf(content : String, indent : String) : String =
+  (if content.endsWith('\n') then content.substring(1, content.size() - 1) else content endif)
+    .replaceAll('(?m)^(?=.)', indent) /]
+\end{lstlisting}
+
+The indicator preserves trailing line breaks: one newline gives \texttt{|}
+(clip), two give \texttt{|+} (keep), none give \texttt{|-} (strip). The body drops one
+trailing newline, supplied by the block's own clipping, and indents every non-empty
+line by four spaces; blank lines stay blank.
+% TODO(verify): the substring arithmetic in blockOf uses OCL's one-based, inclusive
+% substring. The committed trees agree with that reading, but the AQL reference was not
+% consulted.
+
+\textbf{Key order.} Key order follows the template text. The API reads
+objects as maps, but the Acceleo~4 decision requires byte equality
+(decision record 0077 under \path{emf/docs/adr/}).
+
+\textbf{Vault documents as JSON.} A policy document has one \texttt{path}
+member, with a \texttt{capabilities} list per path. A Kubernetes auth role
+has three lists containing one name each. The \texttt{json} templates pretty-print
+these documents with two spaces per level, using the margin rule, and escape list brackets
+with \texttt{['['/]}. The policy also appears as canonical one-line JSON
+in the Vault policy Job's ConfigMap, written during resolution and covered
+by the digest in the ConfigMap's name. Templates do not check that the two agree;
+parity comparison checks this only for committed cases.
+% TODO(verify): confirm that the pretty-printed policy and the canonical document are
+% generated from one value in the resolution, and not spelled separately.
+A generated-key document is the only JSON file built by concatenation: the \texttt{entry}
+query returns one key as an object, and \texttt{json} separates the entries with
+commas. The concatenation writes keys, paths and encodings without escaping, which is
+safe only while the model restricts them to characters that need none.
+
+\subsection{Queries: Formatting and Selection}
+\label{sec:m2t-queries}
+
+The module contains 29 queries as submitted, counting each overload. Seven earlier
+queries were removed because they chose values, and the
+choices are now represented by model features: \texttt{allowsAt}, \texttt{policyPaths},
+\texttt{catalogAllows}, \texttt{catalogPaths}, \texttt{middlewareName},
+\texttt{rateLimitName} and \texttt{listed}. \texttt{serving} became \texttt{servingOf}.
+Table~\ref{tab:moved-choices} lists the five choices behind them.
+
+The remaining queries derive no model values. Formatting queries read one
+value and return a string or a number (\texttt{seconds}, \texttt{octal},
+\texttt{fileOf}, \texttt{directoryOf}, \texttt{writableOf}, \texttt{scalar},
+\texttt{chomping}, \texttt{blockOf}, \texttt{entry}). Selection queries determine
+which objects a template visits and their order (\texttt{application},
+\texttt{routed}, \texttt{paths}, \texttt{hostnames}, \texttt{backups},
+\texttt{backupRanges}, \texttt{files}, \texttt{destinationOf}, \texttt{versioned},
+\texttt{versionOf}, \texttt{servingOf}); the module's comments specify each order.
+The per-kind rules above (including \texttt{switchover} and \texttt{servingLabel})
+specify how the target format represents model values without deriving them.
+
+Each of the five choices produced a value beyond the reach of model-level tests.
+These values are now derived once during resolution and only written by templates.
+The trees remained identical byte for byte, except that a redirect step previously
+named as a security profile by \texttt{middlewareName} is now named for its Route, as
+in the production implementation.
+
+\begin{table}[!htbp]
+\centering
+\small
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.27\linewidth}>{\raggedright\arraybackslash}p{0.33\linewidth}>{\raggedright\arraybackslash}p{0.3\linewidth}}
+\hline
+\textbf{Choice} & \textbf{Formerly in the template} & \textbf{Now in the model} \\
+\hline
+Default Vault capability & \texttt{allowsAt}: \texttt{read} for a path with no entry & \texttt{VaultPolicyFile.paths} \\
+Catalog capabilities & \texttt{catalogAllows}: by the path's prefix & \texttt{ResolvedCatalogJob.policy} \\
+Security profile name & \texttt{middlewareName}: by content policy & \texttt{MiddlewareStep.name}, \texttt{.namespace} \\
+Rate limit name & \texttt{rateLimitName}: by the Route's position & \texttt{MiddlewareStep.name}, \texttt{.namespace} \\
+Primary Deployment name & the \texttt{-primary} suffix, in two templates & \texttt{ResolvedProcess.serving}, \texttt{.servingLabel} \\
+\hline
+\end{tabular}
+\caption{The Decisions Moved from the Templates into the Resolution}
+\label{tab:moved-choices}
+\end{table}
+
+The full list of changes is in Section~\ref{sec:appendix-target} and
+Section~\ref{sec:appendix-transformations}.
+
+\subsection{The Java Class and Failure Handling}
+\label{sec:m2t-java}
+
+The Java class \texttt{Rendering} is the only Java in the step. It copies the Resolved
+Deployments into a fresh resource, loads the module from the class path, and runs the
+standalone generator in a \texttt{.partial} directory beside the output root. If Acceleo
+reports a diagnostic other than OK, the class throws an \texttt{IllegalStateException} whose message begins
+\texttt{the rendering did not complete} and includes Acceleo's text. Files move under the root
+only after success, so a failed run leaves the root unchanged. A template that fails to
+parse or evaluate therefore cannot silently produce an incomplete tree. The module
+previously wrote directly under the root and could leave a partial tree.
+
+\subsection{Worked Example: One Route from Model to File}
+\label{sec:m2t-example}
+
+Figure~\ref{fig:worked-example} places the model values, the Route template and the
+committed YAML side by side. The minimal case has one Exposure serving
+\texttt{notes.jorisjonkers.dev}, with one Route matching the path \texttt{/} as a
+prefix and reaching the Process \texttt{notes-api} on its \texttt{http} Surface
+(\path{spec/v1/examples/minimal/notes.project.yml}). The host and the path are
+authored, and only \texttt{exact} would be written as \texttt{Path} instead of
+\texttt{PathPrefix}. Resolution assigns precedence 1; the template writes
+\texttt{priority: 999} by the arithmetic \texttt{1000 - r.precedence}, so that the
+smallest precedence has the highest priority. The middleware step carries its name
+and namespace, so the template needs no conditional choice. The module previously
+chose them by the step's kind, with a query for each name (Table~\ref{tab:moved-choices}). The port
+is looked up by the Surface's name among the Process's Surfaces, so the file states the
+port the Process declares.
+
+% BIB: \bibitem{yaml11} The YAML Language Development Team. \emph{YAML Ain't Markup
+% Language (YAML) Version 1.1}, the type repository for the implicit types of YAML 1.1.
+% \url{https://yaml.org/type/}. TODO(verify): the visit date and the exact page.
+% BIB: \bibitem{acceleo4} Eclipse Foundation. \emph{Acceleo 4: Acceleo Query Language
+% and the MOFM2T standalone API}. TODO(verify): the URL of the Acceleo 4 documentation
+% the report should cite.
+% BIB: \bibitem{ocl24} Object Management Group. \emph{Object Constraint Language},
+% version 2.4, 2014. TODO(verify): the edition, for the one-based substring convention.
