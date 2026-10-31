@@ -1,6 +1,7 @@
 # Witnesses
 
-A row of the root [behaviour ledger](../../docs/requirements.md) whose
+A row of the root [behaviour ledger](../../docs/requirements.md), in any of
+its area files under [`docs/requirements/`](../../docs/requirements/), whose
 behaviour is the model's own is proved in both implementations. The root row
 names the production implementation's test, under `test/model/`; this list
 names the JUnit test that proves the same behaviour here

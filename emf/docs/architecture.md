@@ -32,13 +32,15 @@ What that pull request keeps: every oracle file under `spec/v1/examples/`, the
 constraint parity test without its OCL column, and the descriptor check. What it
 deletes: this directory; the `emf` CI job and the `ADR contract (emf)` step in
 `.github/workflows/ci.yml`; the `java-kotlin` entry in
-`.github/workflows/codeql.yml`; `test/emf-wiring.test.ts`, with `RULE-061`,
-`RULE-062` and `REQ-015`; the `emf` domain entry in `scripts/lint-adrs.ts` and
+`.github/workflows/codeql.yml`; `test/emf-wiring.test.ts`, with `RULE-061` and
+`RULE-062` in `docs/architecture-rules/gates.md` and `REQ-015` in
+`docs/requirements/repository.md`; the `emf` domain entry in `scripts/lint-adrs.ts` and
 the two `emf/` cases in `test/adr-contract.test.ts`; the `emf` exclusion in
 `release-please-config.json`, the `emf maven` rule in `renovate.json`, the
 `/emf/` line in `.github/CODEOWNERS`, the `mvnw` line in `.gitattributes` and
 the stage goldens' line in `.prettierignore`;
 and the `emf/` mentions in `docs/architecture.md`, `docs/requirements.md`,
+`docs/requirements/repository.md`,
 `docs/adr/README.md`, `README.md`, `CONTEXT.md` and `CLAUDE.md`.
 
 ## Toolchain
@@ -580,8 +582,8 @@ proving nothing.
 A behaviour ledger row whose behaviour is the model's own is proved in both
 implementations. `emf/docs/witnesses.md` lists, for each such `REQ-NNN` id, the
 JUnit test that proves it here, in whichever language its module is written.
-`tests/parity` fails when a model row in
-`docs/requirements.md` has no witness in that file, or a witness names a test
+`tests/parity` fails when a model row in any of the behaviour ledger's area
+files under `docs/requirements/` has no witness in that file, or a witness names a test
 that does not exist or an id that no row carries.
 
 ## Gates
