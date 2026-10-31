@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!--
-  Runs model/render.mtl over minimal in Eclipse, the run the pipeline makes
-  headless: the Resolved Deployment `./mvnw verify` leaves under the pipeline's
-  parity output in, its Deliverable Set out, under this project's target/.
+  Runs model/render.mtl over minimal in Eclipse, as a Java application: RenderModel
+  loads the committed models/minimal.resolveddeployment with the generated package
+  registered in its own resource set, and writes its Deliverable Set through
+  Rendering.render, the entry the pipeline uses, under this project's target/render.
+  RenderModelTest makes the same run headless and holds the files under
+  apps/notes/ equal to spec/v1/examples/minimal/rendered/apps/notes/.
 -->
-<launchConfiguration type="org.eclipse.acceleo.aql.ls.debug.ide.launchConfigurationType">
-    <stringAttribute key="module" value="/dev.jorisjonkers.deploykit.emf.render/model/render.mtl"/>
-    <stringAttribute key="model" value="/dev.jorisjonkers.deploykit.emf.cli/target/parity/minimal/notes.resolveddeployment"/>
-    <stringAttribute key="destination" value="/dev.jorisjonkers.deploykit.emf.render/target/render"/>
+<launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
+    <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="dev.jorisjonkers.deploykit.emf.render"/>
+    <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="dev.jorisjonkers.deploykit.emf.render.RenderModel"/>
+    <stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="&quot;${project_loc:dev.jorisjonkers.deploykit.emf.render}/../../models/minimal.resolveddeployment&quot; &quot;${project_loc:dev.jorisjonkers.deploykit.emf.render}/target/render&quot;"/>
+    <stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="${project_loc:dev.jorisjonkers.deploykit.emf.render}"/>
 </launchConfiguration>
