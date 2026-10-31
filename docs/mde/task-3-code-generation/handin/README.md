@@ -16,20 +16,19 @@ implementation and run the transformation on each example, and two folders:
 - `implementation/`, the tracked `emf/` modules with `spec/v1/examples/` and the
   two intent schemas `FieldCoverageTest` reads, so `./mvnw verify` runs there.
   It leaves out what only governs this repository (`emf/docs/`, `emf/scripts/`,
-  `emf/README.md` and the ledger test that reads them) and `render.launch`,
-  whose Acceleo launch type resolves the metamodel only through the IDE's
-  package registry and so writes nothing from an imported workspace.
+  `emf/README.md` and the ledger test that reads them). The render plug-in
+  project keeps its `render.launch`, a Java application launch of
+  `RenderModel` that renders the committed `emf/models/minimal.resolveddeployment`
+  under the project's `target/render/`.
 
 `hand-in-README.md`, copied into the archive as `README.md`, says how to import
 the projects into Eclipse and how to run the transformation and the tests from
 the command line and from Eclipse.
 
-**The oracles come from release 1.4.0.** An oracle moves in the production
-implementation first and `emf/` catches up later, so `emf/` as it stands is
-level with the oracles of `v1.4.0`, not with `main`'s: against `main`'s
-`spec/v1/examples/` its cli module fails 77 of 276 tests. `build.py` therefore takes
-`spec/v1/examples/` and the two schemas from `v1.4.0` (`--spec-rev REV` to
-change it) and `emf/` from the working tree.
+**The oracles come from the checked-out commit.** `build.py` takes `emf/` from
+the working tree and `spec/v1/examples/` and the two schemas from `HEAD`, the
+commit `emf/` is level with; `--spec-rev REV` takes them from another revision
+instead.
 
 It is built from the repository, never assembled by hand:
 
@@ -54,8 +53,9 @@ under `WORK`, provisions it with the p2 director, and starts the workbench with
 the plug-in in `scripts/eclipse-check/`, which sets the target platform,
 imports and builds the projects, opens the editors, validates the models, runs
 the launches, and writes `WORK/report.txt` and screenshots taken from inside the
-workbench. `--fix-m2e` first changes the copy's m2e mapping for the generators
-from `execute` to `ignore`, as `emf/pom.xml` will once that change lands.
+workbench. Besides the archive's own launches it runs the render plug-in
+project's `render.launch` and holds what it writes under `apps/notes/` to the
+committed tree.
 
 `scripts/dry-run.sh ROOT [SUBDIR] [LABEL]` produces the report's schema, Pod
 Security and server dry-run results. From the unpacked archive, after its

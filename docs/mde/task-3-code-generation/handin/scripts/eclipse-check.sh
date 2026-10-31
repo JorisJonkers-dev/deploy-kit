@@ -1,21 +1,20 @@
 #!/bin/sh
 # Checks that the unpacked hand-in loads in Eclipse the way its README says, on macOS (aarch64).
 #
-#   eclipse-check.sh HAND_IN WORK [--fix-m2e]
+#   eclipse-check.sh HAND_IN WORK
 #
 # HAND_IN is the archive unpacked, after its ./build.sh has run. WORK is a scratch directory: the
 # check installs Eclipse Modeling Tools 2026-06 there (downloaded once, then provisioned with
 # Acceleo 4, QVT-Operational and m2e with its PDE connector by the p2 director), copies HAND_IN to
 # WORK/hand-in so the import and the launches never touch it, and starts the workbench on a fresh
 # workspace with the plug-in in eclipse-check/, which imports, builds, opens the editors, validates
-# the models, runs the launches and writes WORK/report.txt and WORK/screenshots/. --fix-m2e first
-# changes the copy's m2e lifecycle mapping for the Xtext generator from execute to ignore.
+# the models, runs the launches and writes WORK/report.txt and WORK/screenshots/.
 #
 # JAVA_HOME must be a JDK 21: it compiles the plug-in and backs the JavaSE-21 environment the
 # launches use. MAVEN_REPO, if set, is the local Maven repository the workbench's Maven uses, so
 # no settings of the user's own are read. CHECK_VMARGS adds system properties for the plug-in.
 set -e
-[ $# -ge 2 ] || { echo "usage: $0 HAND_IN WORK [--fix-m2e]" >&2; exit 2; }
+[ $# -ge 2 ] || { echo "usage: $0 HAND_IN WORK" >&2; exit 2; }
 here="$(cd "$(dirname "$0")" && pwd)"
 hand_in="$(cd "$1" && pwd)"
 mkdir -p "$2"
@@ -49,10 +48,6 @@ cp -R "$here/eclipse-check/META-INF" "$here/eclipse-check/plugin.xml" "$bundle/"
 
 rm -rf "$work/hand-in" "$work/workspace" "$work/report.txt" "$work/screenshots"
 cp -R "$hand_in" "$work/hand-in"
-if [ "$3" = "--fix-m2e" ]; then
-  perl -0pi -e 's{<execute><runOnIncremental>false</runOnIncremental></execute>}{<ignore/>}' "$work/hand-in/implementation/emf/pom.xml"
-  grep -q '<ignore/>' "$work/hand-in/implementation/emf/pom.xml"
-fi
 cat > "$work/maven-settings.xml" <<EOF
 <settings><localRepository>${MAVEN_REPO:-$work/m2repo}</localRepository></settings>
 EOF

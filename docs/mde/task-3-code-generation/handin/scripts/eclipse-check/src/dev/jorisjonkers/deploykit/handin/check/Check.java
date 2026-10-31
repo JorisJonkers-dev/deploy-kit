@@ -257,6 +257,19 @@ public final class Check implements IStartup {
                 fail("render " + name + ".launch did not reproduce the expected files");
             }
         }
+        // The render plug-in project's own launch: RenderModel on the committed minimal model, writing
+        // under the project's target/render, whose apps/notes/ must equal the committed tree.
+        IProject renderProject = workspace.getRoot().getProject("dev.jorisjonkers.deploykit.emf.render");
+        Path rendered = implementation.resolve("bundles/render/target/render");
+        delete(rendered);
+        int renderExit = launch(launches.getLaunchConfiguration(renderProject.getFile("render.launch")));
+        List<String> renderDifferences = compare(rendered.resolve("apps/notes"),
+                root.resolve("implementation/spec/v1/examples/minimal/rendered/apps/notes"));
+        line("render.launch: exit " + renderExit + ", " + count(rendered.resolve("apps/notes")) + " files in target/render/apps/notes/, "
+                + (renderDifferences.isEmpty() ? "equal to the committed tree byte for byte" : renderDifferences.size() + " differ: " + renderDifferences));
+        if (renderExit != 0 || !renderDifferences.isEmpty() || count(rendered.resolve("apps/notes")) == 0) {
+            fail("render.launch did not reproduce the committed tree");
+        }
         ILaunchConfiguration tests = launches.getLaunchConfiguration(archive.getFile("test implementation.launch"));
         int exit = launch(tests);
         line("test implementation.launch: exit " + exit + ", " + surefire(implementation));

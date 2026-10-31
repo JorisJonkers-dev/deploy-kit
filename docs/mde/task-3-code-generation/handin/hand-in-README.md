@@ -26,7 +26,7 @@ In `task-3-code-generation/`:
 | `render <example>.launch`, `test implementation.launch` | Run configurations; see below. |
 
 The examples are `minimal` (Project `notes`: 15 files, plus 4 under `estate/`),
-`data` (76, plus 4) and `edge` (34, plus 4). Open a model with Open With >
+`data` (76, plus 4) and `edge` (36, plus 4). Open a model with Open With >
 Sample Reflective Ecore Model Editor: it references its metamodel, so no
 package registration is needed.
 
@@ -41,7 +41,7 @@ With JDK 21 (`JAVA_HOME` set to it), from the archive root:
 ./build.sh          # Windows: build.cmd
 ```
 
-This builds the implementation and runs its tests (about 600, including the
+This builds the implementation and runs its tests (about 650, including the
 stage tests that run the transformation on 18 cases), then runs `render.mtl`
 on each example's model, writes the generated files to `output/<example>/`,
 and compares them with `examples/<example>/expected/`. It prints one `OK` line
@@ -78,16 +78,19 @@ JDK 21.
    - **Program > render minimal** (and `data`, `edge`) runs `render.mtl` on the
      example's model, writes `examples/<example>/generated/` again, and
      compares it with `expected/`; the console ends with `OK`.
+   - **Java Application > render**, the render project's own `render.launch`,
+     runs `render.mtl` through the class `RenderModel` on
+     `implementation/emf/models/minimal.resolveddeployment` and writes the
+     files under `target/render/` of `dev.jorisjonkers.deploykit.emf.render`;
+     those under `apps/notes/` equal
+     `implementation/spec/v1/examples/minimal/rendered/apps/notes/`.
    - **Maven Build > test implementation** runs the implementation's tests,
      without the mutation tests and the coverage report.
 
-After the import, the Problems view shows four errors on the `pom.xml` of the
-metamodel and syntax projects, `Failed to execute mojo
-org.codehaus.mojo:exec-maven-plugin:3.6.4:java`, and no Java errors. They come
-from Eclipse trying to run the EMF and Xtext code generators, which need a
-classpath Eclipse does not give them. `build.sh` has already run them, so the
-errors can be ignored: they disappear with the next build, for instance after
-running **test implementation**.
+After the import, the Problems view shows no errors: Eclipse does not run the
+EMF and Xtext code generators itself, and reads the Java `build.sh` generated.
+**test implementation** starts with `clean`, which also removes the jars the
+**render <example>** launches use; run `build.sh` again before those.
 
 Open `model/render.mtl` in `dev.jorisjonkers.deploykit.emf.render` to read the
 transformation in Acceleo's editor. Acceleo 4.2.2's language server can

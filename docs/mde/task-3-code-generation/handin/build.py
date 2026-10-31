@@ -2,7 +2,7 @@
 
 After the emf build README.md names, writes task-3-code-generation.zip, or with `--dir [PATH]`
 the same tree as a folder. `--pdf PATH` names the report (default ../main.pdf) and `--spec-rev
-REV` the revision the oracles are taken from (default v1.4.0). See README.md.
+REV` the revision the oracles are taken from (default HEAD, the checked-out tree). See README.md.
 """
 import io, os, re, shutil, subprocess, sys, tarfile, tempfile, zipfile
 import xml.etree.ElementTree as ET
@@ -22,10 +22,9 @@ def option(name, default):
 
 
 PDF = os.path.abspath(option('--pdf', os.path.join(HERE, '..', 'main.pdf')))
-# The model-driven implementation trails the production one: an oracle moves in TypeScript first,
-# and emf/ catches up later. This is the last release whose oracles emf/ is level with; the
-# archive pairs emf/ as it stands with spec/v1 as it stood there.
-SPEC_REV = option('--spec-rev', 'v1.4.0')
+# The oracles are taken from the checked-out commit by default, the one emf/ is level with;
+# --spec-rev pairs emf/ as it stands with spec/v1 as it stood at another revision.
+SPEC_REV = option('--spec-rev', 'HEAD')
 LIB = f'{R}/emf/target/lib'
 
 ROOT = os.path.join(tempfile.mkdtemp(), 'hand-in')
@@ -91,11 +90,9 @@ def git(*args):
 
 # The implementation, as the repository tracks it: the EMF modules as they stand, and the examples
 # and the two intent schemas their tests read, at SPEC_REV. Left out: the repository's own records
-# (decisions, ledgers, CI script), the one test that holds the ledgers to the repository, which
-# reads them, and render.launch, whose Acceleo launch type resolves the metamodel only through the
-# IDE's package registry and so writes nothing from an imported workspace; the launches in the
-# Eclipse project replace it.
-OMIT = ('emf/docs/', 'emf/scripts/', 'emf/README.md', 'emf/.gitignore', 'emf/bundles/render/render.launch',
+# (decisions, ledgers, CI script) and the one test that holds the ledgers to the repository, which
+# reads them.
+OMIT = ('emf/docs/', 'emf/scripts/', 'emf/README.md', 'emf/.gitignore',
         'emf/tests/parity/src/main/kotlin/dev/jorisjonkers/deploykit/emf/parity/Ledgers.kt',
         'emf/tests/parity/src/test/kotlin/dev/jorisjonkers/deploykit/emf/parity/LedgersTest.kt')
 for f in git('ls-files', '-z', 'emf').decode().split('\0'):
