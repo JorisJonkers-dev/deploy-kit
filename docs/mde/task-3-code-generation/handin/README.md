@@ -5,11 +5,14 @@ report (`report.pdf`), a `README.md` for the marker (`hand-in-README.md` here),
 the `build.sh` and `build.cmd` from `scripts/`, which build and test the
 implementation and run the transformation on each example, and two folders:
 
-- `task-3-code-generation/`, an Eclipse project holding the Acceleo module
-  `render.mtl`, the Resolved Deployment metamodel it reads, and per example
-  (`minimal`, `data`, `edge`) the source model, the files the module generates
-  from it and the oracles they equal, with a Program launch per example that
-  regenerates them and a Maven launch that runs the implementation's tests;
+- `task-3-code-generation/`, an Eclipse project holding the Resolved Deployment
+  metamodel and per example (`minimal`, `data`, `edge`) the source model, the
+  files `render.mtl` generates from it and the oracles they equal, with a
+  Program launch per example that regenerates them and a Maven launch that runs
+  the implementation's tests. It holds no copy of `render.mtl`: Acceleo's
+  editor resolves a module's metamodel through the classpath of the Java project
+  holding it, so outside the render plug-in project every type in it shows as
+  unresolved;
 - `implementation/`, the tracked `emf/` modules with `spec/v1/examples/` and the
   two intent schemas `FieldCoverageTest` reads, so `./mvnw verify` runs there.
   It leaves out what only governs this repository (`emf/docs/`, `emf/scripts/`,
@@ -51,7 +54,8 @@ under `WORK`, provisions it with the p2 director, and starts the workbench with
 the plug-in in `scripts/eclipse-check/`, which sets the target platform,
 imports and builds the projects, opens the editors, validates the models, runs
 the launches, and writes `WORK/report.txt` and screenshots taken from inside the
-workbench.
+workbench. `--fix-m2e` first changes the copy's m2e mapping for the generators
+from `execute` to `ignore`, as `emf/pom.xml` will once that change lands.
 
 This directory is coursework, not repository tooling: the gates under `scripts/`
 and `test/` do not read it.

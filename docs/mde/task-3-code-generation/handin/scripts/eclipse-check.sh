@@ -13,7 +13,7 @@
 #
 # JAVA_HOME must be a JDK 21: it compiles the plug-in and backs the JavaSE-21 environment the
 # launches use. MAVEN_REPO, if set, is the local Maven repository the workbench's Maven uses, so
-# no settings of the user's own are read.
+# no settings of the user's own are read. CHECK_VMARGS adds system properties for the plug-in.
 set -e
 [ $# -ge 2 ] || { echo "usage: $0 HAND_IN WORK [--fix-m2e]" >&2; exit 2; }
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -65,7 +65,7 @@ EOF
 
 "$eclipse" -nosplash -data "$work/workspace" -pluginCustomization "$work/customization.ini" -vmargs \
   -Dhandin.check.root="$work/hand-in" -Dhandin.check.report="$work/report.txt" \
-  -Dhandin.check.jdk="$JAVA_HOME" -Dhandin.check.mavenSettings="$work/maven-settings.xml" \
+  -Dhandin.check.jdk="$JAVA_HOME" -Dhandin.check.mavenSettings="$work/maven-settings.xml" $CHECK_VMARGS \
   > "$work/eclipse.log" 2>&1 || true
 cat "$work/report.txt"
 grep -q '^RESULT: PASS' "$work/report.txt"

@@ -7,17 +7,18 @@ Joris Jonkers (s1829157), Model Driven Engineering, University of Twente.
 - `report.pdf`: the report.
 - `build.sh`, `build.cmd`: build and test the implementation and run the
   transformation; see below.
-- `task-3-code-generation/`: Eclipse project with the Acceleo transformation,
-  the source models, the generated code and the expected code.
-- `implementation/`: the Eclipse/Maven projects that run the transformation,
-  with the example files their tests read.
+- `task-3-code-generation/`: Eclipse project with the source models, the
+  generated code and the expected code.
+- `implementation/`: the Eclipse/Maven projects that hold and run the
+  transformation, with the example files their tests read. The transformation
+  is `implementation/emf/bundles/render/model/render.mtl` (Acceleo 4), in the
+  plug-in project `dev.jorisjonkers.deploykit.emf.render`.
 
 In `task-3-code-generation/`:
 
 | Path | Contents |
 | --- | --- |
-| `model/render.mtl` | The model-to-text transformation (Acceleo 4). |
-| `model/resolved-deployment.ecore` | The metamodel it reads: the Resolved Deployment, the target metamodel of Task 2. |
+| `model/resolved-deployment.ecore` | The metamodel the transformation reads: the Resolved Deployment, the target metamodel of Task 2. |
 | `examples/<example>/<project>.resolveddeployment` | The source model: the Resolved Deployment the Task 2 resolution writes for the example. |
 | `examples/<example>/generated/` | The code `render.mtl` generates from it: Kubernetes manifests and Kustomize files under `apps/<project>/`, and the platform-wide files under `estate/`. |
 | `examples/<example>/expected/` | The files the generated code must equal byte for byte: those the production implementation commits for this example and for the platform. |
@@ -29,9 +30,8 @@ The examples are `minimal` (Project `notes`: 15 files, plus 4 under `estate/`),
 Sample Reflective Ecore Model Editor: it references its metamodel, so no
 package registration is needed.
 
-The copies in `model/` are for reading. The transformation that runs is the one
-in `implementation/emf/bundles/render/model/render.mtl`; edit that one, then
-run `build.sh` again, to see a change take effect.
+To see a change to the transformation take effect, edit `render.mtl` in the
+render project and run `build.sh` again.
 
 ## Run the transformation from the command line
 
@@ -81,4 +81,17 @@ JDK 21.
    - **Maven Build > test implementation** runs the implementation's tests,
      without the mutation tests and the coverage report.
 
-<!-- M2E-NOTE -->
+After the import, the Problems view shows four errors on the `pom.xml` of the
+metamodel and syntax projects, `Failed to execute mojo
+org.codehaus.mojo:exec-maven-plugin:3.6.4:java`, and no Java errors. They come
+from Eclipse trying to run the EMF and Xtext code generators, which need a
+classpath Eclipse does not give them; `build.sh` has already run them, so the
+errors can be ignored or deleted.
+
+Open `model/render.mtl` in `dev.jorisjonkers.deploykit.emf.render` to read the
+transformation in Acceleo's editor. Acceleo 4.2.2's language server can
+deadlock when the first module is opened while it is still indexing the
+workspace: the editor then shows the module with its syntax colouring but
+reports nothing, and the Progress view keeps a "Synchronizing AcceleoWorkspace"
+job. This is a fault in Acceleo, not in the module: when the server is running,
+it reports no problem in `render.mtl`.

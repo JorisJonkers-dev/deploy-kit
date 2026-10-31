@@ -113,9 +113,9 @@ with tarfile.open(fileobj=io.BytesIO(git('archive', '--format=tar', SPEC_REV, *S
             os.chmod(dst, 0o755 if member.mode & 0o100 else 0o644)
 ORACLES = f'{IMPL}/spec/v1/examples'
 
-# The transformation and the metamodel it reads, for inspection; the launches run the
-# implementation's own copy of the module.
-copy(f'{R}/emf/bundles/render/model/render.mtl', f'{OUT}/model/render.mtl')
+# The metamodel the transformation reads. The transformation itself, render.mtl, stays in the render
+# plug-in project only: Acceleo's editor resolves a module's metamodel through the classpath of the
+# Java project holding it, so a copy here would show every type in it as unresolved.
 xml(f'{R}/emf/bundles/metamodel/model/resolved-deployment.ecore', f'{OUT}/model/resolved-deployment.ecore')
 copy(f'{HERE}/scripts/Render.java', f'{OUT}/scripts/Render.java')
 
