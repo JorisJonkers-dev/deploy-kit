@@ -141,7 +141,8 @@ public class UnlinkedNames extends LinkingDiagnosticMessageProvider {
             ProjectIntentPackage.Literals.MONITORING__ALERTMANAGER, " the monitoring stack's alertmanager names",
             ProjectIntentPackage.Literals.MONITORING_STORES__LOKI, " the monitoring stack's stores/loki names",
             ProjectIntentPackage.Literals.MONITORING_STORES__TEMPO, " the monitoring stack's stores/tempo names",
-            ProjectIntentPackage.Literals.MONITORING_STORES__PYROSCOPE, " the monitoring stack's stores/pyroscope names",
+            ProjectIntentPackage.Literals.MONITORING_STORES__PYROSCOPE,
+                    " the monitoring stack's stores/pyroscope names",
             ProjectIntentPackage.Literals.PRIORITY_POLICY__CRITICAL_APPLICATIONS, " the platform names critical");
 
     private static final Map<EReference, String> CODES = Map.of(
