@@ -896,6 +896,34 @@ context Process
 				and t.traefik.processes->includes(self))
 			implies replicas = null
 
+	-- The Prometheus operator runs a monitoring role's one Process: so it is `interrupted`, since the
+	-- operator replaces its one pod in place, and serves on one port
+	-- (spec/v1/14-platform-intent.md#the-operators-objects). Its arguments are asked in Java, at
+	-- the entry each is.
+	def: operated : Boolean =
+		let application : Application = oclContainer().oclAsType(Application) in
+		application.operatedRole and application.processes->size() = 1
+
+	inv E_OPERATED_PROCESS__cutover:
+		operated implies cutover = Cutover::interrupted
+
+	inv E_OPERATED_PROCESS__provides:
+		operated implies provides->size() = 1
+
+	-- The Process of an Application a tier names as its proxy that provides every surface the
+	-- tier's listener derives, the first that does: the one that answers the tier.
+	def: answersTier : Boolean =
+		Tier.allInstances()->exists(t | t.traefik <> null and
+			let answering : OrderedSet(Process) = t.traefik.processes->select(q |
+				q.provides->keys()->includes('web')
+				and (t.listener = Listener::tls implies q.provides->keys()->includes('websecure'))) in
+			answering->notEmpty() and answering->first() = self)
+
+	-- A tier's proxy reads its routes through the Kubernetes API, and the platform says where
+	-- the API answers only in its `apiAccess` (spec/v1/14-platform-intent.md#tiers).
+	inv E_NO_API_ACCESS_POLICY:
+		answersTier implies Platform.allInstances()->forAll(p | p.apiAccess <> null)
+
 	-- A Process exposed on a node's own address holds a host port, so one copy.
 	def: onNode : Boolean =
 		let application : Application = oclContainer().oclAsType(Application) in
@@ -952,6 +980,23 @@ context L4Exposure
 			Substrate.allInstances()->forAll(s | s.upstreamNameservers->notEmpty())
 
 context Tier
+	-- A certificate read from the Secret Store is what a tls tier that issues none serves: on a
+	-- plain tier nothing would serve it, and on an acme tier the resolver issues what its routes
+	-- serve (spec/v1/14-platform-intent.md#tiers).
+	inv E_CERTIFICATE_FROM_UNSERVED__certificateFrom:
+		certificateFrom <> null implies (listener = Listener::tls and certificates = CertificateSource::none)
+
+	-- And it is read from the Secret Store, which the platform must name.
+	inv E_NO_SECRET_STORE__certificateFrom:
+		certificateFrom <> null implies oclContainer().oclAsType(Platform).secretStore <> null
+
+	-- Every proxy serves the one default TLS store, so a second tier naming a certificate would
+	-- name the one every proxy already serves.
+	inv E_CERTIFICATE_FROM_REPEATED__certificateFrom:
+		let tiers : OrderedSet(Tier) = oclContainer().oclAsType(Platform).tiers in
+		certificateFrom = null or tiers->select(t | tiers->indexOf(t) < tiers->indexOf(self))
+			->forAll(t | t.certificateFrom = null)
+
 	-- Certificates issued through acme need the platform's ACME account.
 	inv E_NO_ACME_POLICY:
 		certificates = CertificateSource::acme implies Platform.allInstances()->forAll(p | p.acme <> null)
@@ -962,6 +1007,15 @@ context Tier
 		let tiers : OrderedSet(Tier) = oclContainer().oclAsType(Platform).tiers in
 		ingressClass = null or tiers->select(t | tiers->indexOf(t) < tiers->indexOf(self)
 			and t.traefik = traefik and t.ingressClass <> null)->forAll(t | t.ingressClass = ingressClass)
+
+context Application
+	-- Whether the monitoring stack names this Application as its Prometheus or its Alertmanager.
+	def: operatedRole : Boolean =
+		Monitoring.allInstances()->exists(m | m.prometheus = self or m.alertmanager = self)
+
+	-- The operator runs one Process as each role.
+	inv E_OPERATED_PROCESS__processes:
+		operatedRole implies processes->size() <= 1
 
 context HumanGrant
 	-- One group holds one cluster role once.

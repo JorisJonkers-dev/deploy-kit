@@ -9,6 +9,16 @@
       "capabilities": [
         "read"
       ]
+    },
+    "secret/data/observability-system/grafana-admin": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/observability-system/grafana-admin": {
+      "capabilities": [
+        "read"
+      ]
     }
   }
 }

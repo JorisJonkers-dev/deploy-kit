@@ -170,6 +170,10 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="fluxScrape" eType="#//ResolvedFluxScrape" containment="true"/>
     <!-- The dashboard files the Application ships, for the Grafana the Platform document names. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="dashboards" eType="#//ResolvedDashboards" containment="true"/>
+    <!-- The monitoring stack's Grafana, as the Grafana operator reaches it. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grafana" eType="#//ResolvedGrafana" containment="true"/>
+    <!-- Where the metrics stack scrapes k3s itself. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="k3sScrape" eType="#//ResolvedK3sScrape" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="processes" lowerBound="1" upperBound="-1" eType="#//ResolvedProcess" containment="true"/>
   </eClassifiers>
 
@@ -335,6 +339,10 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="priorityClass" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <!-- The nameservers a Process that serves DNS resolves through, never the cluster's own. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="nameservers" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- The names a `mongo` Process's own pod resolves to itself: its Service's. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="selfNames" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Present where the Prometheus operator runs the Process, from an object of its own. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="operated" eType="#//ResolvedOperated" containment="true"/>
     <!-- Whether its replicas repel each other across nodes, within one revision. -->
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="spread" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <!-- The step that seeds its Assets onto its volumes before each start. -->
@@ -577,6 +585,70 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="rules" upperBound="-1" eType="#//ResolvedApiRule" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="server" lowerBound="1" upperBound="-1" eType="#//AdmittedRange" containment="true"/>
   </eClassifiers>
+  <!-- The monitoring stack's Prometheus or Alertmanager, which the Prometheus operator runs
+       (spec/v1/14-platform-intent.md#the-operators-objects): the kind and the container the
+       operator runs it in; a Prometheus's cadence, the labels it selects monitors by and the
+       Alertmanager it notifies; and the flags its arguments hold, as the fields the operator's
+       object carries and the additional arguments it passes on. -->
+  <!-- The monitoring stack's Grafana, as the Grafana operator reaches it
+       (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources): the labels every
+       dashboard selects it by, its address, and the Secret and keys of the admin credential it
+       generates. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedGrafana">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="url" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secret" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="user" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="password" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- The Grafana instance its Application renders, for the operator to import dashboards into. -->
+  <eClassifiers xsi:type="ecore:EClass" name="GrafanaFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
+  <!-- Where the metrics stack scrapes k3s itself (spec/v1/14-platform-intent.md#k3ss-metrics): the
+       identity it scrapes as, its cadence and monitor labels, and each component the bootstrap set
+       records: the kubelet's port, the API server's Service and named port, and the cluster DNS's
+       namespace and port. A component the set does not record is unset. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedK3sScrape">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kubeletPort" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiServerNamespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiServerService" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="apiServerPort" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="coreDnsNamespace" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="coreDnsPort" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <!-- The scrapes of k3s its Application renders, with the token and the read they take. -->
+  <eClassifiers xsi:type="ecore:EClass" name="K3sMonitorsFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="application" lowerBound="1" eType="#//ResolvedApplication"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedOperated">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="container" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="monitors" upperBound="-1" eType="#//KeyValue" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="alertmanager" eType="#//OperatedAlertmanager" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="additionalArgs" upperBound="-1" eType="#//OperatedFlag" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retention" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retentionSize" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="remoteWriteReceiver" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="features" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- The Alertmanager a Prometheus notifies: the Service of its role's one Process, by its port's name. -->
+  <eClassifiers xsi:type="ecore:EClass" name="OperatedAlertmanager">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="service" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- A flag as the operator passes it on: its name, without dashes, and any value. -->
+  <eClassifiers xsi:type="ecore:EClass" name="OperatedFlag">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedApiRule">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="group" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="objects" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -812,8 +884,21 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="addedPrivileges" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="mounts" upperBound="-1" eType="#//HostMount" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="config" eType="#//AgentConfig" containment="true"/>
-    <!-- What it may ask of the Kubernetes API, cluster-wide; none for an agent that asks nothing. -->
+    <!-- What it may ask of the Kubernetes API, across the cluster or in its own namespace alone, as
+         each rule's scope says; none for an agent that asks nothing. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="rules" upperBound="-1" eType="#//ResolvedApiRule" containment="true"/>
+    <!-- The speaker's memberlist, where a Vault policy job can generate its key. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="memberlist" eType="#//ResolvedMemberlist" containment="true"/>
+  </eClassifiers>
+  <!-- How the speakers find each other fast (spec/v1/14-platform-intent.md#node-agents): the Secret
+       Store's endpoint the operator reads the key from, the document the `node` Project's own
+       policy job generates it in, the key's name, and the Secret it lands in and the speaker
+       mounts. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ResolvedMemberlist">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="store" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secret" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <!-- A directory of the node an agent mounts, read-only or not, and whether a mount below it
        made on the host reaches the agent. -->
@@ -1092,6 +1177,14 @@
 
   <!-- The operator's connection to the Secret Store, one per project namespace
        that syncs anything. -->
+  <!-- The default TLS store a tier's `certificateFrom` derives, beside its proxy: every proxy serves
+       the Secret it names to a route that names no certificate of its own. -->
+  <eClassifiers xsi:type="ecore:EClass" name="TlsStoreFile" eSuperTypes="#//Deliverable">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="secret" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
   <eClassifiers xsi:type="ecore:EClass" name="ConnectionFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="address" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -1102,7 +1195,8 @@
   <eClassifiers xsi:type="ecore:EClass" name="VaultPolicyFile" eSuperTypes="#//Deliverable">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="identity" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" lowerBound="1" upperBound="-1" eType="#//ResolvedGrant"/>
+    <!-- None for a policy no grant derives: the speaker's, which reads its memberlist key. -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="grants" upperBound="-1" eType="#//ResolvedGrant"/>
     <!-- What the policy allows at each path, in its grants' order: an engine's own paths, or `read`
          on a kv grant's document and on the same document's metadata. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="paths" lowerBound="1" upperBound="-1" eType="#//PolicyPath" containment="true"/>

@@ -32,13 +32,15 @@ What that pull request keeps: every oracle file under `spec/v1/examples/`, the
 constraint parity test without its OCL column, and the descriptor check. What it
 deletes: this directory; the `emf` CI job and the `ADR contract (emf)` step in
 `.github/workflows/ci.yml`; the `java-kotlin` entry in
-`.github/workflows/codeql.yml`; `test/emf-wiring.test.ts`, with `RULE-061`,
-`RULE-062` and `REQ-015`; the `emf` domain entry in `scripts/lint-adrs.ts` and
+`.github/workflows/codeql.yml`; `test/emf-wiring.test.ts`, with `RULE-061` and
+`RULE-062` in `docs/architecture-rules/gates.md` and `REQ-015` in
+`docs/requirements/repository.md`; the `emf` domain entry in `scripts/lint-adrs.ts` and
 the two `emf/` cases in `test/adr-contract.test.ts`; the `emf` exclusion in
 `release-please-config.json`, the `emf maven` rule in `renovate.json`, the
 `/emf/` line in `.github/CODEOWNERS`, the `mvnw` line in `.gitattributes` and
 the stage goldens' line in `.prettierignore`;
 and the `emf/` mentions in `docs/architecture.md`, `docs/requirements.md`,
+`docs/requirements/repository.md`,
 `docs/adr/README.md`, `README.md`, `CONTEXT.md` and `CLAUDE.md`.
 
 ## Toolchain
@@ -235,6 +237,9 @@ bundle, because each asks something the parsed model does not hold
   addresses than Processes, a node's port two owners dial. A tier derives ports
   no project file writes, and a refusal there is placed at the tier's address,
   which no invariant's path can name.
+- `OperatedChecks`: an argument of the monitoring stack's Prometheus or
+  Alertmanager that is no flag, or sets what the Prometheus operator sets
+  itself, placed at its entry of the Process's list of arguments.
 - `Pipeline.check`: a Project the mesh enrols that no file declares, placed at
   its entry of a list of strings, and an image the images lock holds as root,
   which the pinned inputs decide and the intent's constraints never read.
@@ -244,7 +249,9 @@ what it reads through them is part of what is checked of it. The codes that
 ask that, self delivery without a Vault client and a secret placeholder on a
 Client that holds none, are kept by `Pipeline.refusals` until a document holds
 on its own, as the production implementation asks them of the union only after
-each document's own checks pass.
+each document's own checks pass. A tier's proxy under a Platform document that
+says nowhere where the Kubernetes API answers is kept the same way, since
+composition asks it of the union too.
 
 Constraint parity is checked by code: every OCL invariant is named by the
 diagnostic code it emits, and the root's parity test compares those names with
@@ -580,8 +587,8 @@ proving nothing.
 A behaviour ledger row whose behaviour is the model's own is proved in both
 implementations. `emf/docs/witnesses.md` lists, for each such `REQ-NNN` id, the
 JUnit test that proves it here, in whichever language its module is written.
-`tests/parity` fails when a model row in
-`docs/requirements.md` has no witness in that file, or a witness names a test
+`tests/parity` fails when a model row in any of the behaviour ledger's area
+files under `docs/requirements/` has no witness in that file, or a witness names a test
 that does not exist or an id that no row carries.
 
 ## Gates

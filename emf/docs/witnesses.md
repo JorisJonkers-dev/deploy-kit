@@ -1,6 +1,7 @@
 # Witnesses
 
-A row of the root [behaviour ledger](../../docs/requirements.md) whose
+A row of the root [behaviour ledger](../../docs/requirements.md), in any of
+its area files under [`docs/requirements/`](../../docs/requirements/), whose
 behaviour is the model's own is proved in both implementations. The root row
 names the production implementation's test, under `test/model/`; this list
 names the JUnit test that proves the same behaviour here
@@ -21,7 +22,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **75** witnesses, and **3** pending.
+This list holds **85** witnesses, and **3** pending.
 
 | id | JUnit test |
 |---|---|
@@ -100,6 +101,16 @@ This list holds **75** witnesses, and **3** pending.
 | REQ-151 | `ModelWitnessesTest#aClientTakesTheFieldsItsSignInModeTakesAndRequiresWhatItNeedsAndTheLogoutPathIsANativeClientsAlone` |
 | REQ-152 | `ModelWitnessesTest#aContainerThatMountsAWritableTmpGetsHomeAfterItsOwnVariablesAndOneWithoutGetsNone` |
 | REQ-153 | `ModelWitnessesTest#everyNamespaceTheRenderWritesIsNeverPruned` |
+| REQ-155 | `ModelWitnessesTest#theL4SpeakerStartsOnMetalLbZeroFifteenThreeReadingSecretsInItsOwnNamespaceAlone` |
+| REQ-156 | `ModelWitnessesTest#theGpuDeviceHandsOutEachCardByItsIndex` |
+| REQ-157 | `ModelWitnessesTest#theL4SpeakerRunsMemberlistKeyedByTheNodeProjectsOwnGeneratedKeyAndWithoutAPolicyJobNone` |
+| REQ-158 | `ModelWitnessesTest#aMongoResolvesItsOwnServiceNameToItselfAndAProcessOfAnyOtherEngineToNothing` |
+| REQ-159 | `ModelWitnessesTest#anHourlyPolicyOrCatalogRunGivesUpWithinTheHourAndTheOneShotJobRetriesUntilItSucceeds` |
+| REQ-160 | `ModelWitnessesTest#theMonitoringStacksPrometheusAndAlertmanagerRenderAsTheOperatorsObjectsAndAProcessItCannotRunIsRefused` |
+| REQ-161 | `ModelWitnessesTest#everyProcessThatAnswersATierHoldsTheApiAccessItsProxyReadsRoutesWithAndNoApiAccessBlockIsRefused` |
+| REQ-162 | `ModelWitnessesTest#aTlsTierThatIssuesNoCertificateServesTheOneItReadsFromTheSecretStoreAndElsewhereItIsRefused` |
+| REQ-163 | `ModelWitnessesTest#theMonitoringStacksGrafanaRendersItsInstanceReadsOneGeneratedAdminAndDerivesItsDataSources` |
+| REQ-164 | `ModelWitnessesTest#theMetricsStackScrapesK3sWhereTheBootstrapSetRecordsItAndAComponentItDoesNotRecordIsNotScraped` |
 
 ## Pending
 

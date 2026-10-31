@@ -1,0 +1,30 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana-public
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/part-of: grafana
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kubernetes.io/ingress.class: traefik-public
+    external-dns.alpha.kubernetes.io/target: ingress.jorisjonkers.dev
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`grafana.jorisjonkers.dev`) && PathPrefix(`/`)
+      priority: 999
+      middlewares:
+        - name: security-headers
+          namespace: edge-system
+      services:
+        - name: grafana
+          namespace: observability-system
+          port: 3000
+  tls:
+    certResolver: public-frankfurt

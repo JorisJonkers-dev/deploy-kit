@@ -22,7 +22,7 @@ class LedgersTest {
     fun `a model behaviour without a witness fails`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", "$MODEL_ROW\n$GATE_ROW")
+        write(root, AREA, "$MODEL_ROW\n$GATE_ROW")
         write(root, "emf/docs/witnesses.md", "This list holds **0** witnesses.\n")
 
         assertThat(Ledgers.checkWitnesses(root))
@@ -33,7 +33,7 @@ class LedgersTest {
     fun `a witness must name a model row and a real test once`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", "$MODEL_ROW\n$GATE_ROW")
+        write(root, AREA, "$MODEL_ROW\n$GATE_ROW")
         write(root, "emf/tests/parity/src/test/kotlin/x/ParseTest.kt", "class ParseTest { fun `parses`() {} }")
         write(root, "emf/tests/parity/src/main/kotlin/x/ParseTest.kt", "class ParseTest { fun `missing`() {} }")
         write(
@@ -51,8 +51,8 @@ class LedgersTest {
         assertThat(Ledgers.checkWitnesses(root))
             .containsExactly(
                 "$MODEL: listed twice",
-                "$GATE: names no model behaviour row in docs/requirements.md",
-                "$UNKNOWN: names no model behaviour row in docs/requirements.md",
+                "$GATE: names no model behaviour row in docs/requirements/",
+                "$UNKNOWN: names no model behaviour row in docs/requirements/",
                 "$UNKNOWN: names ParseTest#missing, which is not a test in emf/",
                 "emf/docs/witnesses.md: states 4 rows but holds 3",
             )
@@ -62,7 +62,7 @@ class LedgersTest {
     fun `a model behaviour listed as pending needs no witness`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", "$MODEL_ROW\n$GATE_ROW")
+        write(root, AREA, "$MODEL_ROW\n$GATE_ROW")
         write(
             root,
             "emf/docs/witnesses.md",
@@ -79,7 +79,7 @@ class LedgersTest {
     fun `a row that is both witnessed and pending fails`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", MODEL_ROW)
+        write(root, AREA, MODEL_ROW)
         write(root, "emf/tests/parity/src/test/kotlin/x/ParseTest.kt", "class ParseTest { fun `parses`() {} }")
         write(
             root,
@@ -98,7 +98,7 @@ class LedgersTest {
     fun `a row pending twice fails`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", MODEL_ROW)
+        write(root, AREA, MODEL_ROW)
         write(
             root,
             "emf/docs/witnesses.md",
@@ -118,7 +118,7 @@ class LedgersTest {
     fun `a pending row naming no model row fails, and the real row stays owed`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", MODEL_ROW)
+        write(root, AREA, MODEL_ROW)
         write(
             root,
             "emf/docs/witnesses.md",
@@ -130,7 +130,7 @@ class LedgersTest {
 
         assertThat(Ledgers.checkWitnesses(root))
             .containsExactly(
-                "$UNKNOWN: is pending and names no model behaviour row in docs/requirements.md",
+                "$UNKNOWN: is pending and names no model behaviour row in docs/requirements/",
                 "$MODEL: is a model behaviour with no witness in emf/docs/witnesses.md",
             )
     }
@@ -139,7 +139,7 @@ class LedgersTest {
     fun `a pending count that drifts fails`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", MODEL_ROW)
+        write(root, AREA, MODEL_ROW)
         write(
             root,
             "emf/docs/witnesses.md",
@@ -157,7 +157,7 @@ class LedgersTest {
     fun `a pending row with no stated pending count fails`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", MODEL_ROW)
+        write(root, AREA, MODEL_ROW)
         write(
             root,
             "emf/docs/witnesses.md",
@@ -173,7 +173,7 @@ class LedgersTest {
     fun `a witness naming a java test in a bundle is found`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", MODEL_ROW)
+        write(root, AREA, MODEL_ROW)
         write(root, "emf/bundles/cli/src/test/java/x/ParseTest.java", "class ParseTest { void parses() {} }")
         write(
             root,
@@ -184,11 +184,34 @@ class LedgersTest {
         assertThat(Ledgers.checkWitnesses(root)).isEmpty()
     }
 
+    /**
+     * The ledger is one file per area, so a model row in any of them is owed a witness, and the
+     * index page, which holds no rows, is not read as one.
+     */
+    @Test
+    fun `a model row in every area file is read and the index page is not`(
+        @TempDir root: Path,
+    ) {
+        val second = "REQ-" + "021"
+        write(root, AREA, GATE_ROW)
+        write(
+            root,
+            "docs/requirements/processes.md",
+            "| $second | runs a pod | [test/model/pod.test.ts](../../test/model/pod.test.ts) |",
+        )
+        write(root, "docs/requirements/notes.txt", MODEL_ROW)
+        write(root, "docs/requirements.md", "| $UNKNOWN | old | [test/model/x.test.ts](../test/model/x.test.ts) |")
+        write(root, "emf/docs/witnesses.md", "This list holds **0** witnesses.\n")
+
+        assertThat(Ledgers.checkWitnesses(root))
+            .containsExactly("$second: is a model behaviour with no witness in emf/docs/witnesses.md")
+    }
+
     @Test
     fun `a witness list stating no count fails`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", GATE_ROW)
+        write(root, AREA, GATE_ROW)
         write(root, "emf/docs/witnesses.md", "No count here.\n")
 
         assertThat(Ledgers.checkWitnesses(root)).containsExactly("emf/docs/witnesses.md: states no row count")
@@ -238,7 +261,7 @@ class LedgersTest {
     fun `a stated count too large for an int is reported not thrown`(
         @TempDir root: Path,
     ) {
-        write(root, "docs/requirements.md", GATE_ROW)
+        write(root, AREA, GATE_ROW)
         write(root, "emf/docs/witnesses.md", "This list holds **99999999999** witnesses.\n")
 
         assertThat(Ledgers.checkWitnesses(root))
@@ -261,9 +284,10 @@ class LedgersTest {
         private const val UNKNOWN = "REQ-" + "099"
 
         private const val MODEL_ROW =
-            "| $MODEL | parses a project | [test/model/parse.test.ts](../test/model/parse.test.ts) |"
+            "| $MODEL | parses a project | [test/model/parse.test.ts](../../test/model/parse.test.ts) |"
         private const val GATE_ROW =
-            "| $GATE | lints ADRs | [test/adr-contract.test.ts](../test/adr-contract.test.ts) |"
+            "| $GATE | lints ADRs | [test/adr-contract.test.ts](../../test/adr-contract.test.ts) |"
+        private const val AREA = "docs/requirements/intent.md"
 
         private fun write(
             root: Path,

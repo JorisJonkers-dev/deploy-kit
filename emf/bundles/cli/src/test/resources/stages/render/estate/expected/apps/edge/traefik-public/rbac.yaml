@@ -1,0 +1,75 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: edge-system-traefik-public
+  labels:
+    app.kubernetes.io/name: traefik-public
+    app.kubernetes.io/instance: traefik-public
+    app.kubernetes.io/part-of: traefik-public
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - services
+      - secrets
+      - nodes
+      - configmaps
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - get
+  - apiGroups:
+      - discovery.k8s.io
+    resources:
+      - endpointslices
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - traefik.io
+    resources:
+      - ingressroutes
+      - ingressroutetcps
+      - ingressrouteudps
+      - middlewares
+      - middlewaretcps
+      - serverstransports
+      - serverstransporttcps
+      - tlsoptions
+      - tlsstores
+      - traefikservices
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: edge-system-traefik-public
+  labels:
+    app.kubernetes.io/name: traefik-public
+    app.kubernetes.io/instance: traefik-public
+    app.kubernetes.io/part-of: traefik-public
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edge-system-traefik-public
+subjects:
+  - kind: ServiceAccount
+    name: traefik-public
+    namespace: edge-system

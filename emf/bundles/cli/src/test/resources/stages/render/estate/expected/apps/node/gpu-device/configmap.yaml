@@ -1,0 +1,19 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpu-device
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/name: gpu-device
+    app.kubernetes.io/part-of: node
+data:
+  config.yaml: |
+    version: v1
+    sharing:
+      timeSlicing:
+        resources:
+          - name: nvidia.com/gpu
+            replicas: 4

@@ -1158,4 +1158,328 @@ class ModelWitnessesTest {
                         "E_CLIENT_FIELD_FOR_MODE " + gated + "iconPath",
                         "E_CLIENT_FIELD_FOR_MODE " + gated + "launchPath");
     }
+
+    @Test
+    void theL4SpeakerStartsOnMetalLbZeroFifteenThreeReadingSecretsInItsOwnNamespaceAlone() {
+        String speaker = rendered("node", "apps/node/l4-speaker/workload.yaml");
+        assertThat(speaker)
+                .contains("- name: METALLB_POD_NAME\n              valueFrom:\n                fieldRef:\n"
+                        + "                  fieldPath: metadata.name\n");
+
+        String rbac = rendered("node", "apps/node/l4-speaker/rbac.yaml");
+        assertThat(object(rbac, "ClusterRole", "node:l4-speaker"))
+                .contains("      - configurationstates\n      - configurationstates/status\n")
+                .doesNotContain("secrets");
+        assertThat(object(rbac, "ClusterRole", "node:l4-controller"))
+                .contains("      - services\n      - namespaces\n      - nodes\n")
+                .contains("      - configurationstates\n")
+                .doesNotContain("secrets");
+        String speakerRole = object(rbac, "Role", "l4-speaker");
+        assertThat(speakerRole)
+                .contains("  namespace: node-system\n")
+                .contains("      - secrets\n      - configmaps\n")
+                .contains("      - servicebgpstatuses\n");
+        assertThat(object(rbac, "Role", "l4-controller"))
+                .contains("      - secrets\n      - configmaps\n")
+                .doesNotContain("servicebgpstatuses");
+        assertThat(object(rbac, "RoleBinding", "l4-speaker"))
+                .contains("  kind: Role\n  name: l4-speaker\n")
+                .contains("    name: l4-speaker\n    namespace: node-system");
+    }
+
+    @Test
+    void theGpuDeviceHandsOutEachCardByItsIndex() {
+        assertThat(rendered("node", "apps/node/gpu-device/workload.yaml"))
+                .contains("- name: DEVICE_ID_STRATEGY\n              value: index\n");
+    }
+
+    @Test
+    void theL4SpeakerRunsMemberlistKeyedByTheNodeProjectsOwnGeneratedKeyAndWithoutAPolicyJobNone(@TempDir Path work)
+            throws IOException {
+        assertThat(rendered("node", "apps/node/l4-speaker/workload.yaml"))
+                .contains("- name: METALLB_ML_BIND_ADDR\n              valueFrom:\n                fieldRef:\n"
+                        + "                  fieldPath: status.podIP\n")
+                .contains("- name: METALLB_ML_LABELS\n              value: app.kubernetes.io/name=l4-speaker\n")
+                .contains("- name: METALLB_ML_BIND_PORT\n              value: \"7946\"\n")
+                .contains("- name: METALLB_ML_SECRET_KEY_PATH\n              value: /etc/ml_secret_key\n")
+                .contains("            - name: memberlist\n              mountPath: /etc/ml_secret_key\n")
+                .contains("secretName: l4-speaker-memberlist\n");
+        String synced =
+                object(rendered("node", "apps/node/l4-speaker/vso.yaml"), "VaultStaticSecret", "l4-speaker-memberlist");
+        assertThat(synced)
+                .contains("  vaultAuthRef: l4-speaker\n")
+                .contains("  path: node-system/l4-speaker\n")
+                .contains("    - kind: DaemonSet\n      name: l4-speaker\n");
+        String policies = "apps/node/vault-policy/policies/";
+        assertThat(capabilities(
+                        rendered("node", policies + "node-system-l4-speaker.policy.json"),
+                        "secret/data/node-system/l4-speaker"))
+                .containsExactly("read");
+        assertThat(rendered("node", policies + "node-system.generated.json"))
+                .contains("\"path\": \"secret/data/node-system/l4-speaker\"")
+                .contains("\"key\": \"secretkey\"");
+        assertThat(rendered("node", "apps/node/kustomization.yaml"))
+                .contains("  - vault-policy\n  - vaultconnection.yaml\n");
+
+        Path unkeyed = renderedWith(
+                "node",
+                work,
+                new Edit(
+                        PLATFORM_DOCUMENT,
+                        "policyJob:\n  image: vault-policy\n  role: policy-admin\n  memory: 64Mi\n  cpu: 10m\n"
+                                + "  deadline: 120s\n",
+                        ""));
+        assertThat(Files.readString(unkeyed.resolve("apps/node/l4-speaker/workload.yaml")))
+                .contains("METALLB_POD_NAME")
+                .doesNotContain("METALLB_ML_")
+                .doesNotContain("memberlist");
+        assertThat(unkeyed.resolve("apps/node/l4-speaker/vso.yaml")).doesNotExist();
+        assertThat(unkeyed.resolve("apps/node/vault-policy")).doesNotExist();
+        assertThat(unkeyed.resolve("apps/node/vaultconnection.yaml")).doesNotExist();
+    }
+
+    @Test
+    void aMongoResolvesItsOwnServiceNameToItselfAndAProcessOfAnyOtherEngineToNothing() {
+        assertThat(rendered("data", "apps/data/platform-mongo/workload.yaml"))
+                .contains("      hostAliases:\n        - ip: 127.0.0.1\n          hostnames:\n"
+                        + "            - mongo.data-system.svc.cluster.local\n");
+        assertThat(rendered("data", "apps/data/platform-postgres/workload.yaml"))
+                .doesNotContain("hostAliases");
+        assertThat(rendered("auth", "apps/auth/auth/workload.yaml")).doesNotContain("hostAliases");
+    }
+
+    @Test
+    void anHourlyPolicyOrCatalogRunGivesUpWithinTheHourAndTheOneShotJobRetriesUntilItSucceeds() {
+        for (String[] hourly : new String[][] {
+            {"auth", "apps/auth/vault-policy/cronjob.yaml"},
+            {"knowledge-platform", "estate/vso-secrets/postgres-catalog.yaml"}
+        }) {
+            assertThat(object(
+                            rendered(hourly[0], hourly[1]),
+                            "CronJob",
+                            hourly[1].contains("catalog") ? "postgres-catalog" : "vault-policy"))
+                    .as(hourly[1])
+                    .contains("      backoffLimit: 6\n      activeDeadlineSeconds: 3000\n");
+        }
+        // The one-shot Job's pod keeps the attempt deadline every pod of it has; the Job itself none.
+        assertThat(rendered("auth", "apps/auth/vault-policy/job.yaml"))
+                .contains("spec:\n  backoffLimit: 2147483647\n  template:\n");
+    }
+
+    @Test
+    void theMonitoringStacksPrometheusAndAlertmanagerRenderAsTheOperatorsObjectsAndAProcessItCannotRunIsRefused(
+            @TempDir Path work) throws IOException {
+        String prometheus = rendered("observability", "apps/observability/prometheus/workload.yaml");
+        assertThat(prometheus)
+                .contains("kind: Prometheus\n")
+                .contains("  portName: http\n")
+                .contains("    - name: prometheus\n")
+                .contains("  serviceMonitorSelector:\n    matchLabels:\n      release: metrics-stack\n")
+                .contains("  ruleSelector:\n    matchLabels:\n      app.kubernetes.io/managed-by: deploy-kit\n")
+                .contains("      - namespace: observability-system\n        name: alertmanager\n        port: http\n")
+                .doesNotContain("app.kubernetes.io/instance: prometheus\n      app.kubernetes.io/part-of: prometheus\n"
+                        + "      app.kubernetes.io/managed-by");
+        assertThat(rendered("observability", "apps/observability/alertmanager/workload.yaml"))
+                .contains("kind: Alertmanager\n")
+                .contains("  alertmanagerConfigSelector:\n    matchLabels:\n")
+                .contains("  alertmanagerConfigMatcherStrategy:\n    type: None\n");
+
+        Path flagged = renderedWith(
+                "observability",
+                work,
+                new Edit(
+                        "observability/observability.project.yml",
+                        "        writablePaths: [/prometheus]\n",
+                        "        writablePaths: [/prometheus]\n        args: [--storage.tsdb.retention.time=7d,"
+                                + " --storage.tsdb.retention.time=15d, --enable-feature=exemplar-storage,"
+                                + " --web.enable-remote-write-receiver, --log.level=debug, --query.max-concurrency]\n"),
+                new Edit(
+                        "observability/observability.project.yml",
+                        "        writablePaths: [/alertmanager]\n",
+                        "        writablePaths: [/alertmanager]\n        secrets:\n"
+                                + "          - path: secret/data/platform/alertmanager/extra\n"
+                                + "            keys: [token]\n            access: read\n            delivery: env\n"
+                                + "            rotation: {tolerates: restart}\n"));
+        assertThat(Files.readString(flagged.resolve("apps/observability/prometheus/workload.yaml")))
+                .contains("  additionalArgs:\n    - name: log.level\n      value: debug\n"
+                        + "    - name: query.max-concurrency\n")
+                .contains("  retention: 15d\n")
+                .contains("  enableRemoteWriteReceiver: true\n")
+                .contains("  enableFeatures:\n    - exemplar-storage\n")
+                .doesNotContain("7d");
+        assertThat(Files.readString(flagged.resolve("apps/observability/alertmanager/vso.yaml")))
+                .contains("  rolloutRestartTargets:\n    - kind: StatefulSet\n      name: alertmanager-alertmanager\n");
+
+        assertThat(refusal("operated-process"))
+                .containsExactlyInAnyOrder(
+                        "E_OPERATED_PROCESS /applications/0/processes/0/args/0",
+                        "E_OPERATED_PROCESS /applications/0/processes/0/cutover",
+                        "E_OPERATED_PROCESS /applications/1/processes/0/provides");
+    }
+
+    @Test
+    void everyProcessThatAnswersATierHoldsTheApiAccessItsProxyReadsRoutesWithAndNoApiAccessBlockIsRefused()
+            throws IOException {
+        String rbac = rendered("edge", "apps/edge/traefik-public/rbac.yaml");
+        assertThat(object(rbac, "ClusterRole", "edge-system-traefik-public"))
+                .contains("      - services\n      - secrets\n      - nodes\n      - configmaps\n      - namespaces\n")
+                .contains("      - traefik.io\n")
+                .contains("      - ingressroutes\n")
+                .contains("      - tlsstores\n");
+        assertThat(rendered("edge", "apps/edge/traefik-lan/workload.yaml"))
+                .contains("automountServiceAccountToken: true\n");
+        assertThat(rendered("edge", "apps/edge/traefik-lan/networkpolicy.yaml")).contains("cidr: 10.43.0.1/32\n");
+        assertThat(refusal("no-api-access-policy"))
+                .containsExactly("E_NO_API_ACCESS_POLICY /applications/0/processes/0");
+    }
+
+    @Test
+    void aTlsTierThatIssuesNoCertificateServesTheOneItReadsFromTheSecretStoreAndElsewhereItIsRefused(@TempDir Path work)
+            throws IOException {
+        String from = "secret/data/platform/tls/wildcard";
+        Edit tls = new Edit(
+                PLATFORM_DOCUMENT,
+                "listener: plain\n    certificates: none\n",
+                "listener: tls\n    certificates: none\n    certificateFrom: " + from + "\n");
+        Path held = renderedWith(
+                "edge",
+                work.resolve("held"),
+                tls,
+                new Edit(
+                        "edge/edge.project.yml",
+                        "          web: 8000\n          admin: 8080\n",
+                        "          web: 8000\n          websecure: 8443\n          admin: 8080\n"));
+        assertThat(Files.readString(held.resolve("apps/edge/traefik-lan/tlsstore.yaml")))
+                .contains("kind: TLSStore\nmetadata:\n  name: default\n  namespace: edge-system\n")
+                .contains("    app.kubernetes.io/part-of: traefik-lan\n")
+                .contains("  defaultCertificate:\n    secretName: traefik-lan-platform-tls-wildcard\n");
+        assertThat(Files.readString(held.resolve("apps/edge/traefik-lan/kustomization.yaml")))
+                .contains("  - tlsstore.yaml\n");
+        String synced = object(
+                Files.readString(held.resolve("apps/edge/traefik-lan/vso.yaml")),
+                "VaultStaticSecret",
+                "traefik-lan-platform-tls-wildcard");
+        assertThat(synced)
+                .contains("  vaultAuthRef: traefik-lan\n")
+                .contains("  path: platform/tls/wildcard\n")
+                .doesNotContain("rolloutRestartTargets");
+        assertThat(Files.readString(held.resolve("apps/edge/traefik-lan/workload.yaml")))
+                .doesNotContain("traefik-lan-platform-tls-wildcard");
+        assertThat(held.resolve("apps/edge/traefik-public/tlsstore.yaml")).doesNotExist();
+
+        assertThat(refusal("certificate-from-unserved"))
+                .containsExactly("E_CERTIFICATE_FROM_UNSERVED /tiers/0/certificateFrom");
+        assertThat(refusal("certificate-from-repeated"))
+                .containsExactly("E_CERTIFICATE_FROM_REPEATED /tiers/1/certificateFrom");
+        Path platform = work.resolve("storeless/platform.intent.yml");
+        Files.createDirectories(platform.getParent());
+        Files.writeString(
+                platform,
+                Examples.read(PLATFORM_DOCUMENT)
+                        .replace(
+                                "listener: plain\n    certificates: none\n",
+                                "listener: tls\n    certificates: none\n    certificateFrom: " + from + "\n")
+                        .replace("secretStore: secrets/vault\n", ""));
+        assertThat(Pipeline.check(List.of(platform)).stream().map(ModelWitnessesTest::described))
+                .contains("E_NO_SECRET_STORE platform.intent.yml /tiers/1/certificateFrom");
+    }
+
+    @Test
+    void theMonitoringStacksGrafanaRendersItsInstanceReadsOneGeneratedAdminAndDerivesItsDataSources(@TempDir Path work)
+            throws IOException {
+        assertThat(rendered("observability", "apps/observability/grafana/grafana.yaml"))
+                .contains("kind: Grafana\n")
+                .contains("    dashboards: grafana\n")
+                .contains("    url: http://grafana.observability-system:3000\n")
+                .contains("    adminUser:\n      name: grafana-observability-system-grafana-admin\n      key: user\n")
+                .contains("    adminPassword:\n      name: grafana-observability-system-grafana-admin\n"
+                        + "      key: password\n");
+        assertThat(rendered("observability", "apps/observability/grafana/workload.yaml"))
+                .contains("- name: GF_SECURITY_ADMIN_PASSWORD\n")
+                .contains("- name: GF_SECURITY_ADMIN_USER\n");
+        assertThat(rendered(
+                        "observability",
+                        "apps/observability/vault-policy/policies/observability-system.generated.json"))
+                .contains("\"path\": \"secret/data/observability-system/grafana-admin\"");
+
+        Path sourced = renderedWith(
+                "observability",
+                work.resolve("sourced"),
+                new Edit(
+                        "observability/observability.project.yml",
+                        "        writablePaths: [/var/lib/grafana]\n",
+                        "        writablePaths: [/var/lib/grafana]\n        dependsOn:\n"
+                                + "          - {application: prometheus, surface: http}\n"
+                                + "          - {application: tempo, surface: http}\n"));
+        String configMap = Files.readString(sourced.resolve("apps/observability/grafana/configmap.yaml"));
+        assertThat(configMap)
+                .contains("datasources.yaml")
+                .contains("\"uid\": \"prometheus\"")
+                .contains("\"uid\": \"tempo\"")
+                .contains("\"isDefault\": true")
+                .contains("\"datasourceUid\": \"tempo\"")
+                .doesNotContain("\"uid\": \"loki\"");
+        assertThat(Files.readString(sourced.resolve("apps/observability/grafana/workload.yaml")))
+                .contains("mountPath: /etc/grafana/provisioning/datasources/datasources.yaml\n");
+
+        assertThat(checkRefusals(
+                        "observability",
+                        work.resolve("unknown"),
+                        new Edit(
+                                PLATFORM_DOCUMENT,
+                                "    loki: observability/loki\n",
+                                "    loki: observability/nowhere\n")))
+                .contains("E_UNKNOWN_MONITORING_APPLICATION platform.intent.yml /monitoring/stores/loki");
+        assertThat(checkRefusals(
+                        "observability",
+                        work.resolve("rules"),
+                        new Edit(
+                                "observability/observability.project.yml",
+                                "  - id: loki\n",
+                                "  - id: loki\n    alertRules:\n      - {from: rules/platform.yaml}\n")))
+                .contains("E_ALERT_RULES_OUTSIDE_MONITORING observability.project.yml /applications/6/alertRules");
+    }
+
+    @Test
+    void theMetricsStackScrapesK3sWhereTheBootstrapSetRecordsItAndAComponentItDoesNotRecordIsNotScraped(
+            @TempDir Path work) throws IOException {
+        String monitors = rendered("observability", "apps/observability/prometheus/k3s-monitors.yaml");
+        assertThat(object(monitors, "Secret", "prometheus-token"))
+                .contains("    kubernetes.io/service-account.name: prometheus\n");
+        assertThat(object(monitors, "ClusterRole", "observability-system-prometheus-k3s"))
+                .contains("      - nodes/metrics\n")
+                .contains("  - nonResourceURLs:\n      - /metrics\n");
+        assertThat(object(monitors, "ScrapeConfig", "kubelet-cadvisor"))
+                .contains("  metricsPath: /metrics/cadvisor\n")
+                .contains("      replacement: $1:10250\n")
+                .contains("    release: metrics-stack\n");
+        assertThat(object(monitors, "ServiceMonitor", "apiserver"))
+                .contains("      - default\n")
+                .contains("    - port: https\n");
+        assertThat(object(monitors, "PodMonitor", "coredns"))
+                .contains("      - kube-system\n")
+                .contains("    - portNumber: 9153\n");
+        assertThat(rendered("observability", "apps/observability/prometheus/workload.yaml"))
+                .contains(
+                        "  scrapeConfigSelector:\n    matchLabels:\n      app.kubernetes.io/managed-by: deploy-kit\n");
+
+        Path dnsless = renderedWith(
+                "observability",
+                work.resolve("dnsless"),
+                new Edit(PLATFORM_DOCUMENT, "      coreDns: {port: 9153}\n", ""));
+        assertThat(Files.readString(dnsless.resolve("apps/observability/prometheus/k3s-monitors.yaml")))
+                .contains("kind: ServiceMonitor\n")
+                .doesNotContain("kind: PodMonitor\n");
+        Path unrecorded = renderedWith(
+                "observability",
+                work.resolve("unrecorded"),
+                new Edit(
+                        PLATFORM_DOCUMENT,
+                        "  k3s:\n    metrics:\n      kubelet: {port: 10250}\n"
+                                + "      apiServer: {service: default/kubernetes, port: https}\n"
+                                + "      coreDns: {port: 9153}\n",
+                        ""));
+        assertThat(unrecorded.resolve("apps/observability/prometheus/k3s-monitors.yaml"))
+                .doesNotExist();
+    }
 }

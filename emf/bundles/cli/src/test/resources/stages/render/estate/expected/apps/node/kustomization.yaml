@@ -1,0 +1,12 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - gpu-device
+  - gpu-metrics
+  - l4-speaker
+  - namespace.yaml
+  - node-metrics
+  - vault-policy
+  - vaultconnection.yaml

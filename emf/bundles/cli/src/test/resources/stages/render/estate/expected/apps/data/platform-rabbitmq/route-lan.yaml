@@ -12,7 +12,7 @@ metadata:
     kubernetes.io/ingress.class: traefik-lan
 spec:
   entryPoints:
-    - web
+    - websecure
   routes:
     - kind: Rule
       match: Host(`rabbitmq.jorisjonkers.dev`) && PathPrefix(`/`)
@@ -24,3 +24,4 @@ spec:
         - name: rabbitmq
           namespace: data-system
           port: 15672
+  tls: {}

@@ -52,14 +52,36 @@ applications:
           memory: 512Mi
           cpu: 100m
         writablePaths: [/prometheus]
+        # The breadth case's flags: those the operator's object carries as fields
+        # of its own, and two it passes on as arguments.
+        args:
+          - --storage.tsdb.retention.time=15d
+          - --storage.tsdb.retention.size=10GB
+          - --enable-feature=exemplar-storage
+          - --enable-feature=native-histograms
+          - --web.enable-remote-write-receiver
+          - --log.level=info
+          - --query.max-concurrency
         probes:
           readiness: { path: /-/ready, port: 9090 }
           liveness: { path: /-/healthy, port: 9090 }
         startupBudget: 60s
-        cutover: continuous
+        # The operator replaces its one pod in place.
+        cutover: interrupted
+        api:
+          reason: >-
+            Prometheus discovers every monitor's targets through the API, cluster-wide
+          rules:
+            - group: core
+              objects: [services, endpoints, pods]
+              verbs: [get, list, watch]
+            - group: discovery.k8s.io
+              objects: [endpointslices]
+              verbs: [get, list, watch]
 
   # The Prometheus operator: Prometheus, Alertmanager and every monitor and
-  # rule are objects the render emits, and it reconciles them cluster-wide.
+  # rule are objects the render emits, and it reconciles them cluster-wide,
+  # running the monitoring stack's Prometheus and Alertmanager below.
   - id: prometheus-operator
     processes:
       - name: prometheus-operator
@@ -325,4 +347,5 @@ applications:
           readiness: { path: /-/ready, port: 9093 }
           liveness: { path: /-/healthy, port: 9093 }
         startupBudget: 30s
-        cutover: continuous
+        # The operator replaces its one pod in place.
+        cutover: interrupted

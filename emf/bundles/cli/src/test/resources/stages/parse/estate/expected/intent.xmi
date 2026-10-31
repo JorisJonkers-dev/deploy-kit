@@ -725,6 +725,7 @@
           <capabilities>lan-ingress</capabilities>
         </placement>
         <provides key="web" value="8000"/>
+        <provides key="websecure" value="8443"/>
         <provides key="admin" value="8080"/>
         <probes xsi:type="projectintent:Probes">
           <readiness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
@@ -1339,7 +1340,7 @@
     </applications>
     <applications id="prometheus">
       <alertRules from="rules/platform.yaml"/>
-      <processes startupBudget="60s" cutover="continuous" name="prometheus" image="prometheus" runtime="none">
+      <processes startupBudget="60s" cutover="interrupted" name="prometheus" image="prometheus" runtime="none">
         <writablePaths xsi:type="projectintent:PlainPath" path="/prometheus"/>
         <placement memory="512Mi" cpu="100m"/>
         <provides key="http" value="9090"/>
@@ -1347,6 +1348,29 @@
           <readiness xsi:type="projectintent:HttpProbe" path="/-/ready" port="9090"/>
           <liveness xsi:type="projectintent:HttpProbe" path="/-/healthy" port="9090"/>
         </probes>
+        <api reason="Prometheus discovers every monitor's targets through the API, cluster-wide">
+          <rules group="core">
+            <objects>services</objects>
+            <objects>endpoints</objects>
+            <objects>pods</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="discovery.k8s.io">
+            <objects>endpointslices</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+        <args>--storage.tsdb.retention.time=15d</args>
+        <args>--storage.tsdb.retention.size=10GB</args>
+        <args>--enable-feature=exemplar-storage</args>
+        <args>--enable-feature=native-histograms</args>
+        <args>--web.enable-remote-write-receiver</args>
+        <args>--log.level=info</args>
+        <args>--query.max-concurrency</args>
       </processes>
     </applications>
     <applications id="prometheus-operator">
@@ -1594,7 +1618,7 @@
       </processes>
     </applications>
     <applications id="alertmanager">
-      <processes startupBudget="30s" cutover="continuous" name="alertmanager" image="alertmanager" runtime="none">
+      <processes startupBudget="30s" cutover="interrupted" name="alertmanager" image="alertmanager" runtime="none">
         <writablePaths xsi:type="projectintent:PlainPath" path="/alertmanager"/>
         <placement memory="128Mi" cpu="50m"/>
         <provides key="http" value="9093"/>
@@ -1612,6 +1636,13 @@
       <upstreamNameservers>149.112.112.10</upstreamNameservers>
     </substrate>
     <bootstrap>
+      <k3s>
+        <metrics>
+          <kubelet port="10250"/>
+          <apiServer service="default/kube-apiserver" port="https"/>
+          <coreDns port="9153"/>
+        </metrics>
+      </k3s>
       <flux sourceRef="flux-system/platform">
         <artifacts repository="ghcr.io/jorisjonkers-dev/render" pullSecret="flux-system/render-pull">
           <signer issuer="https://token.actions.githubusercontent.com" subject="https://github.com/JorisJonkers-dev/estate/.github/workflows/compose.yml@refs/heads/main"/>
@@ -1634,8 +1665,11 @@
       </forwardAuth>
       <dns target="ingress.jorisjonkers.dev" proxied="true" direct="167.86.79.203"/>
     </tiers>
-    <tiers name="lan" listener="plain" certificates="none" traefik="/5/@applications.1" ingressClass="traefik-lan" address="lan-edge">
+    <tiers name="lan" certificates="none" certificateFrom="secret/data/platform/tls/wildcard" traefik="/5/@applications.1" ingressClass="traefik-lan" address="lan-edge">
       <audiences>lan</audiences>
+    </tiers>
+    <tiers name="internal" listener="plain" certificates="none" traefik="/5/@applications.1" ingressClass="traefik-lan">
+      <audiences>internal</audiences>
     </tiers>
     <durability>
       <reconstructible/>
@@ -1675,7 +1709,7 @@
       <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
       <move timeout="300s" retention="7d" memory="128Mi" cpu="100m"/>
     </delivery>
-    <apiAccess holders="/4/@applications.0 /4/@applications.1 /4/@applications.2 /4/@applications.3 /5/@applications.2 /13/@applications.1 /11/@applications.2 /11/@applications.3 /11/@applications.4 /11/@applications.9 /11/@applications.10 /0/@applications.1 /2/@applications.0" namespaceHolders="/0/@applications.2 /14/@applications.1">
+    <apiAccess holders="/4/@applications.0 /4/@applications.1 /4/@applications.2 /4/@applications.3 /5/@applications.2 /13/@applications.1 /11/@applications.1 /11/@applications.2 /11/@applications.3 /11/@applications.4 /11/@applications.9 /11/@applications.10 /0/@applications.1 /2/@applications.0" namespaceHolders="/0/@applications.2 /14/@applications.1">
       <server cidr="10.43.0.1/32" port="443"/>
     </apiAccess>
     <policyJob image="vault-policy" role="policy-admin" memory="64Mi" cpu="10m" deadline="120s"/>
@@ -1723,6 +1757,7 @@
       <settings key="DNS_KEEP_NAMESERVER" value="on"/>
     </vpn>
     <monitoring grafana="/11/@applications.5" prometheus="/11/@applications.1" alertmanager="/11/@applications.11">
+      <stores loki="/11/@applications.6" tempo="/11/@applications.7" pyroscope="/11/@applications.8"/>
       <receivers name="discord">
         <discord>
           <webhook path="secret/data/platform/alertmanager-discord" key="webhook-url"/>

@@ -79,7 +79,9 @@ and Acceleo 4 SDKs installed from the same release:
    Configurations**. They write under each project's `target/`. The resolution
    reads the two extents step 0's build left under
    `dev.jorisjonkers.deploykit.emf.cli/target/parity/minimal/`, and its output
-   equals `models/minimal.resolveddeployment`. The rendering reads the
-   Resolved Deployment the same build left beside those extents, and the files
-   it writes under `target/render/apps/notes/` equal
-   `spec/v1/examples/minimal/rendered/apps/notes/`.
+   equals `models/minimal.resolveddeployment`. `render.launch` is a Java
+   application launch of `RenderModel`, which reads that committed model with
+   its package registered in its own resource set and renders it through
+   `Rendering.render`, the entry the pipeline uses: the files it writes under
+   `target/render/apps/notes/` equal
+   `spec/v1/examples/minimal/rendered/apps/notes/`, as `RenderModelTest` holds.

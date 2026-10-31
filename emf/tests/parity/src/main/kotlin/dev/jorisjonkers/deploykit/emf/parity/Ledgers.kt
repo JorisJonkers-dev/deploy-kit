@@ -11,7 +11,7 @@ import kotlin.streams.asSequence
  * describe. Each check returns every violation it finds, never only the first.
  */
 object Ledgers {
-    private val REQUIREMENT_ROW = Regex("""^\|\s*(REQ-\d{3})\s*\|.*\[[^]]*]\(\.\./([^)]+)\)\s*\|\s*$""")
+    private val REQUIREMENT_ROW = Regex("""^\|\s*(REQ-\d{3})\s*\|.*\[[^]]*]\(\.\./\.\./([^)]+)\)\s*\|\s*$""")
     private val WITNESS_ROW = Regex("""^\|\s*(REQ-\d{3})\s*\|\s*`([A-Za-z0-9_]+)#([^`]+)`\s*\|\s*$""")
     private val PENDING_ROW = Regex("""^\|\s*(REQ-\d{3})\s*\|\s*([^|]+?)\s*\|\s*(#\d+)\s*\|\s*$""")
     private val RULE_ROW = Regex("""^\|\s*(EMF-\d{3})\s*\|\s*[^|]+\|\s*`([^`]+)`\s*\|\s*`([^`]+)`\s*\|\s*$""")
@@ -20,7 +20,9 @@ object Ledgers {
 
     /**
      * The witness list: every behaviour ledger row proved by a test under `test/model/` names a JUnit
-     * test here, and every witness names a real model row and a real test method.
+     * test here, and every witness names a real model row and a real test method. The ledger's rows
+     * live one file per area under `docs/requirements/`, each linking its test from two levels down,
+     * and every area file is read.
      *
      * A model row this implementation cannot prove yet is listed as **pending** with the ticket that
      * lands it, the same state the rule ledger already carries for a rule not enforced yet
@@ -31,7 +33,8 @@ object Ledgers {
     fun checkWitnesses(repository: Path): List<String> {
         val errors = mutableListOf<String>()
         val modelRows =
-            lines(repository.resolve("docs/requirements.md"))
+            areas(repository.resolve("docs/requirements"))
+                .flatMap { lines(it) }
                 .mapNotNull { REQUIREMENT_ROW.matchEntire(it) }
                 .filter { it.groupValues[2].startsWith("test/model/") }
                 .map { it.groupValues[1] }
@@ -45,7 +48,7 @@ object Ledgers {
                 errors.add("$id: listed twice")
             }
             if (id !in modelRows) {
-                errors.add("$id: names no model behaviour row in docs/requirements.md")
+                errors.add("$id: names no model behaviour row in docs/requirements/")
             }
             if (!testMethodExists(repository.resolve("emf"), type, method)) {
                 errors.add("$id: names $type#$method, which is not a test in emf/")
@@ -59,7 +62,7 @@ object Ledgers {
                 errors.add("$id: pending twice")
             }
             if (id !in modelRows) {
-                errors.add("$id: is pending and names no model behaviour row in docs/requirements.md")
+                errors.add("$id: is pending and names no model behaviour row in docs/requirements/")
             }
             if (id in listed) {
                 errors.add("$id: is both witnessed and pending")
@@ -159,6 +162,20 @@ object Ledgers {
         return Regex("""\bvoid $name\s*\(""").containsMatchIn(source) ||
             Regex("""\bfun `$name`\s*\(""").containsMatchIn(source)
     }
+
+    /** The behaviour ledger's area files, in name order so a report reads the same every run. */
+    private fun areas(directory: Path): List<Path> =
+        try {
+            Files.list(directory).use { files ->
+                files
+                    .asSequence()
+                    .filter { it.fileName.toString().endsWith(".md") }
+                    .sorted()
+                    .toList()
+            }
+        } catch (e: IOException) {
+            throw UncheckedIOException(e)
+        }
 
     private fun lines(file: Path): List<String> = read(file).lines()
 
