@@ -40,6 +40,15 @@ substrate:
 # enumerated, never declared; growing this table is a decision
 # (docs/adr/model/0046-the-foundation-is-declared.md).
 bootstrap:
+  # Where k3s serves its own metrics: the metrics stack scrapes each from its
+  # own namespace (spec/v1/14-platform-intent.md#k3ss-metrics).
+  k3s:
+    metrics:
+      kubelet: {port: 10250}
+      # Not the worked example's `default/kubernetes`: written into the parsed
+      # model's XMI, that value reads to the secret scan as an API key.
+      apiServer: {service: default/kube-apiserver, port: https}
+      coreDns: {port: 9153}
   flux:
     sourceRef: flux-system/platform
     # Where each Project's render is published, one artifact per Project at
@@ -87,11 +96,22 @@ tiers:
     address: edge-frankfurt # the node's own address: ports 80 and 443 derive from `tls`
   - name: lan
     audiences: [lan]
-    listener: plain
+    listener: tls
     certificates: none
+    # The breadth case serves a certificate the Secret Store holds, so the
+    # default TLS store a tier's certificateFrom derives is resolved too.
+    certificateFrom: secret/data/platform/tls/wildcard
     traefik: edge/traefik-lan # placed on a LAN node
     ingressClass: traefik-lan
-    address: lan-edge # an address of the Enschede pool: port 80 derives from `plain`
+    address: lan-edge # an address of the Enschede pool: ports 80 and 443 derive from `tls`
+  # A tier no route of the breadth case reaches, plain, on the LAN proxy beside
+  # the lan tier, under the same ingress class.
+  - name: internal
+    audiences: [internal]
+    listener: plain
+    certificates: none
+    traefik: edge/traefik-lan
+    ingressClass: traefik-lan
 
 # How an acme tier's proxy registers and proves its names
 # (spec/v1/14-platform-intent.md#tiers): the account's email, the DNS provider
@@ -175,6 +195,12 @@ monitoring:
   grafana: observability/grafana
   prometheus: observability/prometheus
   alertmanager: observability/alertmanager
+  # The stores Grafana reads beside them, each a data source its edges derive
+  # (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources).
+  stores:
+    loki: observability/loki
+    tempo: observability/tempo
+    pyroscope: observability/pyroscope
   receivers:
     - name: discord
       discord:
@@ -259,7 +285,7 @@ delivery:
 # anyone else's declaration is E_PROCESS_RBAC_GRANT. `server` is what such a
 # Process's egress policy admits: the API server is no pod a selector reaches.
 apiAccess:
-  holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter, edge/external-dns, secrets/vault-secrets-operator, observability/prometheus-operator, observability/kube-state-metrics, observability/grafana-operator, observability/gatus, observability/alloy, agents/kubernetes-mcp-server, coverage/coverage-api]
+  holders: [delivery/flagger, delivery/release-gate, delivery/collector, delivery/reporter, edge/external-dns, secrets/vault-secrets-operator, observability/prometheus, observability/prometheus-operator, observability/kube-state-metrics, observability/grafana-operator, observability/gatus, observability/alloy, agents/kubernetes-mcp-server, coverage/coverage-api]
   # Admitted to their own namespace alone: no privileged role, so no foundation.
   namespaceHolders: [agents/agents-api, utility/headlamp]
   server:

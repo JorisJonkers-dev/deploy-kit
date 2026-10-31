@@ -229,8 +229,9 @@ class ResolvedDeploymentTest {
         // ConfigMaps, backups, the Secret Store connection, Vault's own
         // documents, the RBAC of a Process that holds API access, the budget
         // of a count above one, a migration's identity and Jobs, the route
-        // Flux's events take to the Reporter, and the volume and claim of a
-        // library a project mounts.
+        // Flux's events take to the Reporter, the volume and claim of a
+        // library a project mounts, the default TLS store a tier's certificate
+        // derives, Grafana's instance, and the scrapes of k3s itself.
         assertThat(ResolvedDeploymentPackage.eINSTANCE.getEClassifiers().stream()
                         .filter(EClass.class::isInstance)
                         .map(EClass.class::cast)
@@ -278,7 +279,10 @@ class ResolvedDeploymentTest {
                         "SharedMiddlewareFile",
                         "StableAddressFile",
                         "MoveFile",
-                        "SourceFile");
+                        "SourceFile",
+                        "TlsStoreFile",
+                        "GrafanaFile",
+                        "K3sMonitorsFile");
     }
 
     @Test

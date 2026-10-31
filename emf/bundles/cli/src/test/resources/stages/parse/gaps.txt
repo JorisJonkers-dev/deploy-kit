@@ -1,4 +1,3 @@
-Audience.internal is never used in a parse case's input
 ContentPolicy.admin is never used in a parse case's input
 ContentPolicy.workflow is never used in a parse case's input
 DatabaseEngine.database is never used in a parse case's input

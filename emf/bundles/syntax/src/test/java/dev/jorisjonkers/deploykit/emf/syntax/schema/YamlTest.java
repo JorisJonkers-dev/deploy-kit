@@ -128,6 +128,17 @@ class YamlTest {
         assertThat(read("a: {b: 1,}\nc: [x,]")).isEqualTo("{a={b=1},c=[x]}");
     }
 
+    /**
+     * A colon not followed by a space ends no key and opens no mapping, in a flow sequence as in a
+     * block one: an item such as {@code --listen=:9100} is one plain scalar, as YAML reads it.
+     */
+    @Test
+    void aColonInsideASequenceItemIsPartOfItsScalar() {
+        assertThat(read("a: [--listen=:9100, x:y]")).isEqualTo("{a=[--listen=:9100,x:y]}");
+        assertThat(read("a:\n  - --listen=:9100")).isEqualTo("{a=[--listen=:9100]}");
+        assertThat(read("a: {b: [--l=:1]}")).isEqualTo("{a={b=[--l=:1]}}");
+    }
+
     @Test
     void aFlowCollectionMayRunOverSeveralLines() {
         assertThat(read("a: {b: 1,\n   c: 2}\nd: 3")).isEqualTo("{a={b=1,c=2},d=3}");

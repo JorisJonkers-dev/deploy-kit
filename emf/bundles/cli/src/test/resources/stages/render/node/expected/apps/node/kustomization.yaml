@@ -8,3 +8,5 @@ resources:
   - l4-speaker
   - namespace.yaml
   - node-metrics
+  - vault-policy
+  - vaultconnection.yaml

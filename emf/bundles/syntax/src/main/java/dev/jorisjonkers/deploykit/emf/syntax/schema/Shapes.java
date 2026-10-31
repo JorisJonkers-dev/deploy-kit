@@ -49,34 +49,35 @@ public final class Shapes {
     /** The longest description: one short sentence, not a paragraph. */
     private static final int DESCRIPTION_LENGTH = 160;
 
-    /** A scalar the constraint reads as text: a count of at least one, a period in whole units. */
-    private static Predicate<Yaml.Node> scalar(Predicate<String> text) {
-        return node -> text.test(node.text);
-    }
+    /** A description of one short sentence: neither empty nor a paragraph. */
+    private static final Predicate<Yaml.Node> DESCRIBED =
+            node -> !node.text.isEmpty() && node.text.length() <= DESCRIPTION_LENGTH;
 
-    /** A list of at least one word, none of them empty where {@code wordsFilled}. */
-    private static Predicate<Yaml.Node> words(boolean wordsFilled) {
-        return node ->
-                !node.list.isEmpty() && (!wordsFilled || node.list.stream().noneMatch(word -> word.text.isEmpty()));
-    }
+    /** What a container runs: at least one word, none of them empty. */
+    private static final Predicate<Yaml.Node> COMMAND =
+            node -> !node.list.isEmpty() && node.list.stream().noneMatch(word -> word.text.isEmpty());
+
+    /** What a container is handed: at least one word, where an empty one is an argument too. */
+    private static final Predicate<Yaml.Node> ARGUMENTS = node -> !node.list.isEmpty();
 
     /**
      * Constraints the grammar cannot say, by the rule and key they hold: a count of at least one, a
      * period in whole units, a description of one short sentence, what a container runs as at least one
      * word, an optional key that is optional, and the age public key an off-cluster copy is encrypted to.
+     * Each is a value of its own, written where it is held, so building the table runs no code a test
+     * could tell apart from its absence.
      */
     private static final Map<String, Predicate<Yaml.Node>> CONSTRAINTS = Map.ofEntries(
-            Map.entry("RateLimit.requests", scalar(text -> !text.matches("0+"))),
-            Map.entry("RateLimit.per", scalar(text -> Pattern.matches("[1-9][0-9]*(s|m|h)", text))),
-            Map.entry(
-                    "Application.description", scalar(text -> !text.isEmpty() && text.length() <= DESCRIPTION_LENGTH)),
-            Map.entry("Process.description", scalar(text -> !text.isEmpty() && text.length() <= DESCRIPTION_LENGTH)),
-            Map.entry("Process.command", words(true)),
-            Map.entry("Sidecar.command", words(true)),
-            Map.entry("Process.args", words(false)),
-            Map.entry("Sidecar.args", words(false)),
-            Map.entry("BlockKey.optional", scalar("true"::equals)),
-            Map.entry("OffClusterCopy.recipient", scalar(text -> Pattern.matches(AGE_RECIPIENT, text))));
+            Map.entry("RateLimit.requests", node -> !node.text.matches("0+")),
+            Map.entry("RateLimit.per", node -> Pattern.matches("[1-9][0-9]*(s|m|h)", node.text)),
+            Map.entry("Application.description", DESCRIBED),
+            Map.entry("Process.description", DESCRIBED),
+            Map.entry("Process.command", COMMAND),
+            Map.entry("Sidecar.command", COMMAND),
+            Map.entry("Process.args", ARGUMENTS),
+            Map.entry("Sidecar.args", ARGUMENTS),
+            Map.entry("BlockKey.optional", node -> "true".equals(node.text)),
+            Map.entry("OffClusterCopy.recipient", node -> Pattern.matches(AGE_RECIPIENT, node.text)));
 
     private final Grammar grammar;
     private final Map<ParserRule, List<Form>> forms = new HashMap<>();

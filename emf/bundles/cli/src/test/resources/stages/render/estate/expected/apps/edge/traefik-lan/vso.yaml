@@ -1,0 +1,44 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: traefik-lan
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/name: traefik-lan
+    app.kubernetes.io/instance: traefik-lan
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: edge-system-traefik-lan
+    serviceAccount: traefik-lan
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: traefik-lan-platform-tls-wildcard
+  namespace: edge-system
+  labels:
+    app.kubernetes.io/name: traefik-lan
+    app.kubernetes.io/instance: traefik-lan
+    app.kubernetes.io/part-of: traefik-lan
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: traefik-lan
+  mount: secret
+  type: kv-v2
+  path: platform/tls/wildcard
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: traefik-lan-platform-tls-wildcard
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

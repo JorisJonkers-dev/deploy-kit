@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/platform/tls/wildcard": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/tls/wildcard": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

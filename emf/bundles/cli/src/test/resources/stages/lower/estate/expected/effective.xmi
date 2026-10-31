@@ -772,6 +772,7 @@
           <capabilities>lan-ingress</capabilities>
         </placement>
         <provides key="web" value="8000"/>
+        <provides key="websecure" value="8443"/>
         <provides key="admin" value="8080"/>
         <probes xsi:type="projectintent:Probes">
           <readiness xsi:type="projectintent:HttpProbe" path="/ping" port="8080"/>
@@ -1415,7 +1416,7 @@
       </processes>
     </applications>
     <applications id="prometheus">
-      <processes startupBudget="60s" cutover="continuous" name="prometheus" image="prometheus" runtime="none">
+      <processes startupBudget="60s" cutover="interrupted" name="prometheus" image="prometheus" runtime="none">
         <writablePaths xsi:type="projectintent:PlainPath" path="/prometheus"/>
         <placement memory="512Mi" cpu="100m"/>
         <provides key="http" value="9090"/>
@@ -1423,6 +1424,29 @@
           <readiness xsi:type="projectintent:HttpProbe" path="/-/ready" port="9090"/>
           <liveness xsi:type="projectintent:HttpProbe" path="/-/healthy" port="9090"/>
         </probes>
+        <api reason="Prometheus discovers every monitor's targets through the API, cluster-wide">
+          <rules group="core">
+            <objects>services</objects>
+            <objects>endpoints</objects>
+            <objects>pods</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+          <rules group="discovery.k8s.io">
+            <objects>endpointslices</objects>
+            <verbs>get</verbs>
+            <verbs>list</verbs>
+            <verbs>watch</verbs>
+          </rules>
+        </api>
+        <args>--storage.tsdb.retention.time=15d</args>
+        <args>--storage.tsdb.retention.size=10GB</args>
+        <args>--enable-feature=exemplar-storage</args>
+        <args>--enable-feature=native-histograms</args>
+        <args>--web.enable-remote-write-receiver</args>
+        <args>--log.level=info</args>
+        <args>--query.max-concurrency</args>
       </processes>
       <alertRules from="rules/platform.yaml"/>
     </applications>
@@ -1671,7 +1695,7 @@
       </processes>
     </applications>
     <applications id="alertmanager">
-      <processes startupBudget="30s" cutover="continuous" name="alertmanager" image="alertmanager" runtime="none">
+      <processes startupBudget="30s" cutover="interrupted" name="alertmanager" image="alertmanager" runtime="none">
         <writablePaths xsi:type="projectintent:PlainPath" path="/alertmanager"/>
         <placement memory="128Mi" cpu="50m"/>
         <provides key="http" value="9093"/>

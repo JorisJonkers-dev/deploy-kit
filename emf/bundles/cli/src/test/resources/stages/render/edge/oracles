@@ -13,12 +13,14 @@ apps/edge/rollout-events/provider.yaml edge/rendered/apps/edge/rollout-events/pr
 apps/edge/traefik-lan/kustomization.yaml edge/rendered/apps/edge/traefik-lan/kustomization.yaml
 apps/edge/traefik-lan/middlewares.yaml edge/rendered/apps/edge/traefik-lan/middlewares.yaml
 apps/edge/traefik-lan/networkpolicy.yaml edge/rendered/apps/edge/traefik-lan/networkpolicy.yaml
+apps/edge/traefik-lan/rbac.yaml edge/rendered/apps/edge/traefik-lan/rbac.yaml
 apps/edge/traefik-lan/service.yaml edge/rendered/apps/edge/traefik-lan/service.yaml
 apps/edge/traefik-lan/serviceaccount.yaml edge/rendered/apps/edge/traefik-lan/serviceaccount.yaml
 apps/edge/traefik-lan/workload.yaml edge/rendered/apps/edge/traefik-lan/workload.yaml
 apps/edge/traefik-public/kustomization.yaml edge/rendered/apps/edge/traefik-public/kustomization.yaml
 apps/edge/traefik-public/networkpolicy.yaml edge/rendered/apps/edge/traefik-public/networkpolicy.yaml
 apps/edge/traefik-public/pvc.yaml edge/rendered/apps/edge/traefik-public/pvc.yaml
+apps/edge/traefik-public/rbac.yaml edge/rendered/apps/edge/traefik-public/rbac.yaml
 apps/edge/traefik-public/service.yaml edge/rendered/apps/edge/traefik-public/service.yaml
 apps/edge/traefik-public/serviceaccount.yaml edge/rendered/apps/edge/traefik-public/serviceaccount.yaml
 apps/edge/traefik-public/vso.yaml edge/rendered/apps/edge/traefik-public/vso.yaml

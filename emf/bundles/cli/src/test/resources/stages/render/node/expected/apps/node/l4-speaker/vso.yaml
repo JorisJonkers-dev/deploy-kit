@@ -1,0 +1,43 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: l4-speaker
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/name: l4-speaker
+    app.kubernetes.io/part-of: node
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: node-system-l4-speaker
+    serviceAccount: l4-speaker
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: l4-speaker-memberlist
+  namespace: node-system
+  labels:
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/name: l4-speaker
+    app.kubernetes.io/part-of: node
+spec:
+  vaultAuthRef: l4-speaker
+  mount: secret
+  type: kv-v2
+  path: node-system/l4-speaker
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: l4-speaker-memberlist
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: DaemonSet
+      name: l4-speaker

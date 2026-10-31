@@ -3,12 +3,12 @@
 apiVersion: flagger.app/v1beta1
 kind: Canary
 metadata:
-  name: prometheus
+  name: grafana
   namespace: observability-system
   labels:
-    app.kubernetes.io/name: prometheus
-    app.kubernetes.io/instance: prometheus
-    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/part-of: grafana
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
 spec:
@@ -16,10 +16,10 @@ spec:
   targetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: prometheus
-  progressDeadlineSeconds: 300
+    name: grafana
+  progressDeadlineSeconds: 210
   service:
-    port: 9090
+    port: 3000
     targetPort: http
     portName: http
   analysis:
@@ -31,39 +31,47 @@ spec:
         type: confirm-rollout
         url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
         metadata:
-          application: prometheus
-          process: prometheus
-          revision: sha256:904cb3774e827615ec478ef7a96afd6585072222d4b9264d02477217341d7c32
-          readiness: /-/ready
+          application: grafana
+          process: grafana
+          revision: sha256:bb7204ad30e9f8f597b47042633308a8039ee4b9fe6816eab1b409655b088037
+          paths: /
+          readiness: /api/health
+          hostnames: grafana.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms
       - name: checks
         type: rollout
         url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
         metadata:
-          application: prometheus
-          process: prometheus
-          revision: sha256:904cb3774e827615ec478ef7a96afd6585072222d4b9264d02477217341d7c32
-          readiness: /-/ready
+          application: grafana
+          process: grafana
+          revision: sha256:bb7204ad30e9f8f597b47042633308a8039ee4b9fe6816eab1b409655b088037
+          paths: /
+          readiness: /api/health
+          hostnames: grafana.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms
       - name: may-promote
         type: confirm-promotion
         url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
         metadata:
-          application: prometheus
-          process: prometheus
-          revision: sha256:904cb3774e827615ec478ef7a96afd6585072222d4b9264d02477217341d7c32
-          readiness: /-/ready
+          application: grafana
+          process: grafana
+          revision: sha256:bb7204ad30e9f8f597b47042633308a8039ee4b9fe6816eab1b409655b088037
+          paths: /
+          readiness: /api/health
+          hostnames: grafana.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms
       - name: rollback
         type: rollback
         url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
         metadata:
-          application: prometheus
-          process: prometheus
-          revision: sha256:904cb3774e827615ec478ef7a96afd6585072222d4b9264d02477217341d7c32
-          readiness: /-/ready
+          application: grafana
+          process: grafana
+          revision: sha256:bb7204ad30e9f8f597b47042633308a8039ee4b9fe6816eab1b409655b088037
+          paths: /
+          readiness: /api/health
+          hostnames: grafana.jorisjonkers.dev
           errorRate: 1%
           latency: 500ms

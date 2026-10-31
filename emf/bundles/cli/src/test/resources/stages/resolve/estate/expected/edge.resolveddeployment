@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:d303c9c70fff6bd674e107c213f62850af95e3c762fd403c65adc2a5d73089d7" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="agents" digest="sha256:7a710b34e13d2be9c7ddfceb239b6c8e099137f760cb7a3ebb5a7d71dead88d9"/>
+    <inputDigests name="auth" digest="sha256:9ede7056e41341c9040da4b17b9e1fdcf074966ed07fff0c288a2f989614d0d8"/>
+    <inputDigests name="coverage" digest="sha256:af367531489d73e62a23d0d336832069223ff3797500a82fddf0901a1204c877"/>
+    <inputDigests name="data" digest="sha256:d7a7a3bb48f3b4ae673f1b30c4bd8baafa398ee518566c98f410c3faf23292cf"/>
+    <inputDigests name="delivery" digest="sha256:7399f88a5ed5dae0a18971a1dbcfd79053e4dc69e5ea3106d63b58a45a064448"/>
+    <inputDigests name="edge" digest="sha256:e33f19a504f64a98a34b21bec0de37867d7f924a0df4d7b58f066eec4eb2347e"/>
+    <inputDigests name="identity" digest="sha256:a495f34c57b72802be980417998d579bcf5ba63b1a3d3ca2df47819fdcc9eaf0"/>
+    <inputDigests name="knowledge" digest="sha256:09e444ec41eebbeec2e9f54401fbbe30a00e5037e5ba01e116d5a3f2656bfa48"/>
+    <inputDigests name="knowledge-platform" digest="sha256:bbd782977092ebeb77ec78072d4f005b9f8b3c010ae7d5d8e5341a90b7dcb2dd"/>
+    <inputDigests name="mail" digest="sha256:8969188e8126f46258197d242d12043030ca47510845267a03f066a6e31883f9"/>
+    <inputDigests name="notes" digest="sha256:7876ff722429a69629d175a67bf8c4199f5e12b84c4a237b171bbd9048411918"/>
+    <inputDigests name="observability" digest="sha256:33ca6b450c57377ce5f26545ebd0130a845ecd98ab1d00932c09d6b328bf2fc9"/>
+    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="utility" digest="sha256:a834788112fe0d6045472f11f9b9a87002ca9c3493547d6789e485a4f3d2983f"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:79e2e0686350c3e8cfd77b56d3bcfbc1b9dbf907f1ce73d087ff52137819c854"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:b623d2ffe37d94ed3dfd601c8ef7aa011ef349912b4428d1071d72099e4c54a8"/>
+  </provenance>
+  <applications id="traefik-public" revision="sha256:5bc86d0e90eac1eed4fe59668b79b7c77f0c6c94b347584e3b278995f294b1e1" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <processes name="traefik-public" identity="traefik-public" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" serving="traefik-public" servingLabel="app.kubernetes.io/instance" deadline="180s" replicas="1" memory="128Mi" cpu="50m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app" home="/tmp">
+      <api reason="the proxy reads every route of its tier and what each names, cluster-wide">
+        <rules group="core">
+          <objects>services</objects>
+          <objects>secrets</objects>
+          <objects>nodes</objects>
+          <objects>configmaps</objects>
+          <objects>namespaces</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="core">
+          <objects>pods</objects>
+          <verbs>get</verbs>
+        </rules>
+        <rules group="discovery.k8s.io">
+          <objects>endpointslices</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="traefik.io">
+          <objects>ingressroutes</objects>
+          <objects>ingressroutetcps</objects>
+          <objects>ingressrouteudps</objects>
+          <objects>middlewares</objects>
+          <objects>middlewaretcps</objects>
+          <objects>serverstransports</objects>
+          <objects>serverstransporttcps</objects>
+          <objects>tlsoptions</objects>
+          <objects>tlsstores</objects>
+          <objects>traefikservices</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <internetEgress reason="ACME issuance and its DNS challenge"/>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="4">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </startup>
+      <surfaces name="web" port="8000"/>
+      <surfaces name="websecure" port="8443"/>
+      <surfaces name="admin" port="8080"/>
+      <placement>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+      <volumes claim="acme" mountAt="/acme" size="16Mi"/>
+      <secrets path="secret/data/platform/cloudflare" access="read" delivery="env" destination="traefik-public-platform-cloudflare">
+        <keys>CF_DNS_API_TOKEN</keys>
+        <restartTargets>traefik-public</restartTargets>
+      </secrets>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <environment name="CF_DNS_API_TOKEN">
+        <secret path="secret/data/platform/cloudflare" key="CF_DNS_API_TOKEN"/>
+      </environment>
+      <arguments>--entryPoints.web.address=:8000/tcp</arguments>
+      <arguments>--entryPoints.websecure.address=:8443/tcp</arguments>
+      <arguments>--entryPoints.websecure.http.tls=true</arguments>
+      <arguments>--entryPoints.traefik.address=:8080/tcp</arguments>
+      <arguments>--ping=true</arguments>
+      <arguments>--ping.entryPoint=traefik</arguments>
+      <arguments>--metrics.prometheus=true</arguments>
+      <arguments>--metrics.prometheus.entryPoint=traefik</arguments>
+      <arguments>--providers.kubernetescrd=true</arguments>
+      <arguments>--providers.kubernetescrd.ingressClass=traefik-public</arguments>
+      <arguments>--providers.kubernetescrd.allowCrossNamespace=true</arguments>
+      <arguments>--providers.kubernetescrd.allowEmptyServices=true</arguments>
+      <arguments>--certificatesresolvers.public-frankfurt.acme.email=hostmaster@jorisjonkers.dev</arguments>
+      <arguments>--certificatesresolvers.public-frankfurt.acme.storage=/acme/public-frankfurt.json</arguments>
+      <arguments>--certificatesresolvers.public-frankfurt.acme.dnschallenge.provider=cloudflare</arguments>
+      <arguments>--log.format=json</arguments>
+      <arguments>--accesslog=true</arguments>
+      <arguments>--accesslog.format=json</arguments>
+      <nodePorts name="tcp-80" port="80" protocol="TCP" targetPort="8000"/>
+      <nodePorts name="tcp-443" port="443" protocol="TCP" targetPort="8443"/>
+    </processes>
+  </applications>
+  <applications id="traefik-lan" revision="sha256:6ce3d13c943f5db2ee154aa1d777cd7e0e7d72e1338d054f0a908f0af2cafbfa" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <processes name="traefik-lan" identity="traefik-lan" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" serving="traefik-lan" servingLabel="app.kubernetes.io/instance" deadline="180s" replicas="1" memory="128Mi" cpu="50m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app" home="/tmp">
+      <api reason="the proxy reads every route of its tier and what each names, cluster-wide">
+        <rules group="core">
+          <objects>services</objects>
+          <objects>secrets</objects>
+          <objects>nodes</objects>
+          <objects>configmaps</objects>
+          <objects>namespaces</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="core">
+          <objects>pods</objects>
+          <verbs>get</verbs>
+        </rules>
+        <rules group="discovery.k8s.io">
+          <objects>endpointslices</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="traefik.io">
+          <objects>ingressroutes</objects>
+          <objects>ingressroutetcps</objects>
+          <objects>ingressrouteudps</objects>
+          <objects>middlewares</objects>
+          <objects>middlewaretcps</objects>
+          <objects>serverstransports</objects>
+          <objects>serverstransporttcps</objects>
+          <objects>tlsoptions</objects>
+          <objects>tlsstores</objects>
+          <objects>traefikservices</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="4">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
+      </startup>
+      <surfaces name="web" port="8000"/>
+      <surfaces name="websecure" port="8443"/>
+      <surfaces name="admin" port="8080"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+      </placement>
+      <secrets path="secret/data/platform/tls/wildcard" access="read" delivery="env" destination="traefik-lan-platform-tls-wildcard">
+        <keys>tls.crt</keys>
+        <keys>tls.key</keys>
+      </secrets>
+      <writablePaths path="/tmp" size="64Mi"/>
+      <arguments>--entryPoints.web.address=:8000/tcp</arguments>
+      <arguments>--entryPoints.websecure.address=:8443/tcp</arguments>
+      <arguments>--entryPoints.websecure.http.tls=true</arguments>
+      <arguments>--entryPoints.traefik.address=:8080/tcp</arguments>
+      <arguments>--ping=true</arguments>
+      <arguments>--ping.entryPoint=traefik</arguments>
+      <arguments>--metrics.prometheus=true</arguments>
+      <arguments>--metrics.prometheus.entryPoint=traefik</arguments>
+      <arguments>--providers.kubernetescrd=true</arguments>
+      <arguments>--providers.kubernetescrd.ingressClass=traefik-lan</arguments>
+      <arguments>--providers.kubernetescrd.allowCrossNamespace=true</arguments>
+      <arguments>--providers.kubernetescrd.allowEmptyServices=true</arguments>
+      <arguments>--log.format=json</arguments>
+      <arguments>--accesslog=true</arguments>
+      <arguments>--accesslog.format=json</arguments>
+      <l4Services name="traefik-lan-lan-edge" pool="lan-edge">
+        <ports name="tcp-80" port="80" protocol="TCP" targetPort="8000"/>
+        <ports name="tcp-443" port="443" protocol="TCP" targetPort="8443"/>
+      </l4Services>
+    </processes>
+  </applications>
+  <applications id="external-dns" revision="sha256:77f1b3e8e0fd9e6985eecb3547a158bbce1219a621956cf632945faeadab5820" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0">
+    <processes name="external-dns" identity="external-dns" lifecycle="application" image="registry.k8s.io/external-dns/external-dns@sha256:32d7bec08ad97a73bf55e6bd4a434206f5eefb0b15adc05453203c72788fcd5d" imageVersion="0.15.1" uid="65532" gid="65532" cutover="interrupted" switchover="stop-start" serving="external-dns" servingLabel="app.kubernetes.io/instance" deadline="210s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app">
+      <api reason="external-dns reads every route and the Services behind it, cluster-wide, to publish their hosts">
+        <rules group="core">
+          <objects>services</objects>
+          <objects>endpoints</objects>
+          <objects>pods</objects>
+          <objects>nodes</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <rules group="traefik.io">
+          <objects>ingressroutes</objects>
+          <verbs>get</verbs>
+          <verbs>list</verbs>
+          <verbs>watch</verbs>
+        </rules>
+        <server cidr="10.43.0.1/32" port="443"/>
+      </api>
+      <internetEgress reason="the DNS provider's API"/>
+      <readiness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="7979"/>
+      </readiness>
+      <liveness period="10s" timeout="5s" failures="3">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="7979"/>
+      </liveness>
+      <startup period="5s" timeout="5s" failures="6">
+        <target xsi:type="resolveddeployment:HttpTarget" path="/healthz" port="7979"/>
+      </startup>
+      <surfaces name="metrics" port="7979"/>
+      <placement>
+        <eligibleNodes>enschede-t1000-1</eligibleNodes>
+        <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+        <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-1</eligibleNodes>
+        <eligibleNodes>enschede-pi-2</eligibleNodes>
+        <eligibleNodes>enschede-pi-3</eligibleNodes>
+        <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+      </placement>
+    </processes>
+  </applications>
+  <reconcileUnits name="apps-edge"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+  </policyJob>
+  <catalogJobs identity="postgres-catalog" namespace="data-system" image="ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c" imageVersion="1.0.0" uid="65532" gid="65532" role="data-system-postgres-catalog" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <catalog host="primary.data-system.svc.cluster.local" port="5432" connection="postgres">
+      <admin path="secret/data/platform/postgres" user="postgres.user" password="postgres.password"/>
+      <databases name="knowledge-platform_db" owner="knowledge-platform-owner" data="knowledge-platform-data"/>
+    </catalog>
+    <consumes>platform-postgres.postgres</consumes>
+    <egress rule="datastore" namespace="data-system" process="primary" port="5432"/>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    <policy path="secret/data/platform/postgres">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/metadata/platform/postgres">
+      <allows>read</allows>
+    </policy>
+    <policy path="database/roles/knowledge-platform-owner">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+    <policy path="database/roles/knowledge-platform-data">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+  </catalogJobs>
+  <catalogJobs identity="garage-catalog" namespace="data-system" image="ghcr.io/jorisjonkers-dev/delivery/garage-catalog@sha256:3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e" imageVersion="1.0.0" uid="65532" gid="65532" role="data-system-garage-catalog" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <catalog host="garage.data-system.svc.cluster.local" port="3903">
+      <admin path="secret/data/platform/garage" token="admin-token"/>
+      <keys name="knowledge-platform" path="secret/data/knowledge-platform/garage/s3">
+        <buckets>knowledge-platform-assets</buckets>
+      </keys>
+    </catalog>
+    <consumes>platform-garage.admin</consumes>
+    <egress rule="datastore" namespace="data-system" process="garage" port="3903"/>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    <policy path="secret/data/platform/garage">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/metadata/platform/garage">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/data/knowledge-platform/garage/s3">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+  </catalogJobs>
+  <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/edge/namespace.yaml" namespace="edge-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/edge/kustomization.yaml">
+    <resources>external-dns</resources>
+    <resources>namespace.yaml</resources>
+    <resources>rollout-events</resources>
+    <resources>traefik-lan</resources>
+    <resources>traefik-public</resources>
+    <resources>vault-policy</resources>
+    <resources>vaultconnection.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/edge/networkpolicy.yaml" adapter="networking"/>
+  <deliverables xsi:type="resolveddeployment:ConnectionFile" path="apps/edge/vaultconnection.yaml" adapter="vso" namespace="edge-system" address="http://vault.secrets-system.svc.cluster.local:8200"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/edge/traefik-public/kustomization.yaml">
+    <resources>pvc.yaml</resources>
+    <resources>rbac.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/edge/traefik-public/workload.yaml" processes="/0/@applications.0/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/edge/traefik-public/service.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/edge/traefik-public/serviceaccount.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:ClaimFile" path="apps/edge/traefik-public/pvc.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/edge/traefik-public/rbac.yaml" processes="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/edge/traefik-public/vso.yaml" adapter="vso" application="/0/@applications.0">
+    <holders identity="traefik-public" component="none" grants="/0/@applications.0/@processes.0/@secrets.0"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/edge/traefik-public/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.0/@processes.0">
+      <ingress rule="consumer" consumes="traefik-public.web" port="8000"/>
+      <ingress rule="consumer" consumes="traefik-public.websecure" port="8443"/>
+      <ingress rule="consumer" consumes="traefik-public.admin" port="8080"/>
+      <ingress rule="l4" port="8000" cidr="0.0.0.0/0"/>
+      <ingress rule="l4" port="8443" cidr="0.0.0.0/0"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+      <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/edge/traefik-lan/kustomization.yaml">
+    <resources>middlewares.yaml</resources>
+    <resources>rbac.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>tlsstore.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/edge/traefik-lan/workload.yaml" processes="/0/@applications.1/@processes.0" strategy="RollingUpdate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/edge/traefik-lan/service.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/edge/traefik-lan/serviceaccount.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/edge/traefik-lan/rbac.yaml" processes="/0/@applications.1/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:TlsStoreFile" path="apps/edge/traefik-lan/tlsstore.yaml" adapter="traefik" namespace="edge-system" application="traefik-lan" secret="traefik-lan-platform-tls-wildcard"/>
+  <deliverables xsi:type="resolveddeployment:SecretFile" path="apps/edge/traefik-lan/vso.yaml" adapter="vso" application="/0/@applications.1">
+    <holders identity="traefik-lan" component="none" grants="/0/@applications.1/@processes.0/@secrets.0"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/edge/traefik-lan/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.1/@processes.0">
+      <ingress rule="consumer" consumes="traefik-lan.web" port="8000"/>
+      <ingress rule="consumer" consumes="traefik-lan.websecure" port="8443"/>
+      <ingress rule="consumer" consumes="traefik-lan.admin" port="8080"/>
+      <ingress rule="l4" port="8000" cidr="0.0.0.0/0"/>
+      <ingress rule="l4" port="8443" cidr="0.0.0.0/0"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/edge/external-dns/kustomization.yaml">
+    <resources>rbac.yaml</resources>
+    <resources>service.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:WorkloadFile" path="apps/edge/external-dns/workload.yaml" processes="/0/@applications.2/@processes.0" strategy="Recreate"/>
+  <deliverables xsi:type="resolveddeployment:ServiceFile" path="apps/edge/external-dns/service.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:IdentityFile" path="apps/edge/external-dns/serviceaccount.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:RbacFile" path="apps/edge/external-dns/rbac.yaml" processes="/0/@applications.2/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:NetworkPolicyFile" path="apps/edge/external-dns/networkpolicy.yaml" adapter="networking">
+    <policies process="/0/@applications.2/@processes.0">
+      <ingress rule="consumer" consumes="external-dns.metrics" port="7979"/>
+      <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    </policies>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/edge/vault-policy/policies/edge-system-traefik-public.policy.json" adapter="vault-policy" namespace="edge-system" identity="traefik-public" grants="/0/@applications.0/@processes.0/@secrets.0">
+    <paths path="secret/data/platform/cloudflare">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/cloudflare">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/edge/vault-policy/policies/edge-system-traefik-public.role.json" adapter="vault-policy" namespace="edge-system" identity="traefik-public"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/edge/vault-policy/policies/edge-system-traefik-lan.policy.json" adapter="vault-policy" namespace="edge-system" identity="traefik-lan" grants="/0/@applications.1/@processes.0/@secrets.0">
+    <paths path="secret/data/platform/tls/wildcard">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/platform/tls/wildcard">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/edge/vault-policy/policies/edge-system-traefik-lan.role.json" adapter="vault-policy" namespace="edge-system" identity="traefik-lan"/>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-operators" clusterRole="admin"/>
+    <grants group="oidc:k8s-developers" clusterRole="edit"/>
+    <grants group="oidc:k8s-readers" clusterRole="view"/>
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:SharedMiddlewareFile" path="apps/edge/traefik-lan/middlewares.yaml" adapter="traefik" namespace="edge-system" application="traefik-lan">
+    <forwardAuth address="http://identity-http.estate-system.svc.cluster.local:8080/gate/forward"/>
+    <policies name="strict" contentSecurityPolicy="default-src 'self'"/>
+    <policies name="admin" contentSecurityPolicy="default-src 'self'; style-src 'self' 'unsafe-inline'"/>
+    <policies name="workflow" contentSecurityPolicy="default-src 'self'; connect-src 'self' https:"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/edge/vault-policy/configmap.yaml" adapter="vault-policy" namespace="edge-system" part="configmap" name="vault-policy-4201b3c4846b" job="/0/@policyJob">
+    <documents file="edge-system-traefik-lan.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-lan.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-lan&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-lan&quot;]}"/>
+    <documents file="edge-system-traefik-public.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-public.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-public&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-public&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/edge/vault-policy/job.yaml" adapter="vault-policy" namespace="edge-system" part="job" name="vault-policy-4201b3c4846b" job="/0/@policyJob">
+    <documents file="edge-system-traefik-lan.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-lan.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-lan&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-lan&quot;]}"/>
+    <documents file="edge-system-traefik-public.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-public.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-public&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-public&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/edge/vault-policy/cronjob.yaml" adapter="vault-policy" namespace="edge-system" part="cronjob" name="vault-policy-4201b3c4846b" job="/0/@policyJob">
+    <documents file="edge-system-traefik-lan.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-lan.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-lan&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-lan&quot;]}"/>
+    <documents file="edge-system-traefik-public.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-public.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-public&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-public&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/edge/vault-policy/serviceaccount.yaml" adapter="vault-policy" namespace="edge-system" part="serviceaccount" name="vault-policy-4201b3c4846b" job="/0/@policyJob">
+    <documents file="edge-system-traefik-lan.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-lan.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-lan&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-lan&quot;]}"/>
+    <documents file="edge-system-traefik-public.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-public.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-public&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-public&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/edge/vault-policy/networkpolicy.yaml" adapter="networking" namespace="edge-system" part="networkpolicy" name="vault-policy-4201b3c4846b" job="/0/@policyJob">
+    <documents file="edge-system-traefik-lan.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/tls/wildcard&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-lan.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-lan&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-lan&quot;]}"/>
+    <documents file="edge-system-traefik-public.policy.json" json="{&quot;path&quot;:{&quot;secret/data/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/cloudflare&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="edge-system-traefik-public.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;traefik-public&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;edge-system&quot;],&quot;token_policies&quot;:[&quot;edge-system-traefik-public&quot;]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/edge/vault-policy/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>cronjob.yaml</resources>
+    <resources>job.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/edge/rollout-events/alert.yaml" part="alert" project="edge" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/edge/rollout-events/provider.yaml" part="provider" project="edge" events="/0/@events"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/edge/rollout-events/kustomization.yaml">
+    <resources>alert.yaml</resources>
+    <resources>provider.yaml</resources>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>

@@ -1,7 +1,7 @@
 # GENERATED. Never hand-edit.
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
 metadata:
   name: prometheus
   namespace: observability-system
@@ -12,97 +12,106 @@ metadata:
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
 spec:
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
-  progressDeadlineSeconds: 300
-  selector:
-    matchLabels:
-      app.kubernetes.io/name: prometheus
-      app.kubernetes.io/instance: prometheus
-  template:
-    metadata:
-      labels:
-        app.kubernetes.io/name: prometheus
-        app.kubernetes.io/instance: prometheus
-        app.kubernetes.io/part-of: prometheus
-        app.kubernetes.io/managed-by: deploy-kit
-        app.kubernetes.io/component: none
-        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
-      annotations:
-        image.jorisjonkers.dev/prometheus: v3.2.1
-    spec:
-      serviceAccountName: prometheus
-      priorityClassName: platform-critical-app
-      automountServiceAccountToken: false
+  image: quay.io/prometheus/prometheus@sha256:4c6e8a0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c
+  version: v3.2.1
+  replicas: 1
+  serviceAccountName: prometheus
+  automountServiceAccountToken: true
+  priorityClassName: platform-critical-app
+  podMetadata:
+    labels:
+      app.kubernetes.io/part-of: prometheus
+      app.kubernetes.io/component: none
+    annotations:
+      image.jorisjonkers.dev/prometheus: v3.2.1
+  portName: http
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  - enschede-t1000-1
+                  - enschede-rx7900xtx-1
+                  - enschede-gtx-960m-1
+                  - enschede-pi-1
+                  - enschede-pi-2
+                  - enschede-pi-3
+                  - frankfurt-contabo-1
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+  containers:
+    - name: prometheus
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        seccompProfile:
-          type: RuntimeDefault
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: In
-                    values:
-                      - enschede-t1000-1
-                      - enschede-rx7900xtx-1
-                      - enschede-gtx-960m-1
-                      - enschede-pi-1
-                      - enschede-pi-2
-                      - enschede-pi-3
-                      - frankfurt-contabo-1
-      containers:
-        - name: prometheus
-          image: quay.io/prometheus/prometheus@sha256:4c6e8a0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c
-          ports:
-            - name: http
-              containerPort: 9090
-          resources:
-            requests:
-              memory: 512Mi
-              cpu: 100m
-            limits:
-              memory: 512Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
-          volumeMounts:
-            - name: writable-prometheus
-              mountPath: /prometheus
-          readinessProbe:
-            httpGet:
-              path: /-/ready
-              port: 9090
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
-            initialDelaySeconds: 0
-          livenessProbe:
-            httpGet:
-              path: /-/healthy
-              port: 9090
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
-            initialDelaySeconds: 0
-          startupProbe:
-            httpGet:
-              path: /-/healthy
-              port: 9090
-            periodSeconds: 5
-            timeoutSeconds: 5
-            failureThreshold: 12
-      volumes:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      volumeMounts:
         - name: writable-prometheus
-          emptyDir:
-            sizeLimit: 64Mi
+          mountPath: /prometheus
+      readinessProbe:
+        httpGet:
+          path: /-/ready
+          port: 9090
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+        initialDelaySeconds: 0
+      livenessProbe:
+        httpGet:
+          path: /-/healthy
+          port: 9090
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+        initialDelaySeconds: 0
+      startupProbe:
+        httpGet:
+          path: /-/healthy
+          port: 9090
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 12
+  volumes:
+    - name: writable-prometheus
+      emptyDir:
+        sizeLimit: 64Mi
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+  evaluationInterval: 30s
+  serviceMonitorSelector:
+    matchLabels:
+      release: metrics-stack
+  serviceMonitorNamespaceSelector: {}
+  podMonitorSelector:
+    matchLabels:
+      release: metrics-stack
+  podMonitorNamespaceSelector: {}
+  scrapeConfigSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: deploy-kit
+  scrapeConfigNamespaceSelector: {}
+  ruleSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: deploy-kit
+  ruleNamespaceSelector: {}
+  alerting:
+    alertmanagers:
+      - namespace: observability-system
+        name: alertmanager
+        port: http
+        apiVersion: v2

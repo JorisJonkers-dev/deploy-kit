@@ -1,0 +1,16 @@
+{
+  "keys": [
+    {
+      "path": "secret/data/observability-system/grafana-admin",
+      "key": "password",
+      "bytes": 32,
+      "encoding": "hex"
+    },
+    {
+      "path": "secret/data/observability-system/grafana-admin",
+      "key": "user",
+      "bytes": 32,
+      "encoding": "hex"
+    }
+  ]
+}

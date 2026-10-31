@@ -36,7 +36,7 @@ spec:
     spec:
       serviceAccountName: traefik-lan
       priorityClassName: platform-critical-app
-      automountServiceAccountToken: false
+      automountServiceAccountToken: true
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532

@@ -6,4 +6,5 @@ resources:
   - pools.yaml
   - rbac.yaml
   - serviceaccount.yaml
+  - vso.yaml
   - workload.yaml

@@ -2,8 +2,10 @@
 # Prints one Markdown line for the CI job summary: tests, line coverage and
 # mutation score of the model-driven build, read from the reports `mvnw verify`
 # leaves behind. Missing reports print as "n/a" rather than failing, because the
-# summary runs after a failed build too.
-set -euo pipefail
+# summary runs after a failed build too. So no `pipefail`: each read ends in an
+# awk that prints "n/a" for no input, and a `cat` or `grep` that finds nothing
+# upstream of it is no failure of the script.
+set -eu
 cd "$(dirname "$0")/.."
 
 tests=$(cat ./*/*/target/surefire-reports/TEST-*.xml 2>/dev/null \

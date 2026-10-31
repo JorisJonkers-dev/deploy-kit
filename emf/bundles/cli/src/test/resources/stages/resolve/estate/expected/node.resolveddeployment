@@ -1,0 +1,345 @@
+<?xml version="1.0" encoding="ASCII"?>
+<resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
+  <provenance renderHash="sha256:d303c9c70fff6bd674e107c213f62850af95e3c762fd403c65adc2a5d73089d7" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+    <inputDigests name="agents" digest="sha256:7a710b34e13d2be9c7ddfceb239b6c8e099137f760cb7a3ebb5a7d71dead88d9"/>
+    <inputDigests name="auth" digest="sha256:9ede7056e41341c9040da4b17b9e1fdcf074966ed07fff0c288a2f989614d0d8"/>
+    <inputDigests name="coverage" digest="sha256:af367531489d73e62a23d0d336832069223ff3797500a82fddf0901a1204c877"/>
+    <inputDigests name="data" digest="sha256:d7a7a3bb48f3b4ae673f1b30c4bd8baafa398ee518566c98f410c3faf23292cf"/>
+    <inputDigests name="delivery" digest="sha256:7399f88a5ed5dae0a18971a1dbcfd79053e4dc69e5ea3106d63b58a45a064448"/>
+    <inputDigests name="edge" digest="sha256:e33f19a504f64a98a34b21bec0de37867d7f924a0df4d7b58f066eec4eb2347e"/>
+    <inputDigests name="identity" digest="sha256:a495f34c57b72802be980417998d579bcf5ba63b1a3d3ca2df47819fdcc9eaf0"/>
+    <inputDigests name="knowledge" digest="sha256:09e444ec41eebbeec2e9f54401fbbe30a00e5037e5ba01e116d5a3f2656bfa48"/>
+    <inputDigests name="knowledge-platform" digest="sha256:bbd782977092ebeb77ec78072d4f005b9f8b3c010ae7d5d8e5341a90b7dcb2dd"/>
+    <inputDigests name="mail" digest="sha256:8969188e8126f46258197d242d12043030ca47510845267a03f066a6e31883f9"/>
+    <inputDigests name="notes" digest="sha256:7876ff722429a69629d175a67bf8c4199f5e12b84c4a237b171bbd9048411918"/>
+    <inputDigests name="observability" digest="sha256:33ca6b450c57377ce5f26545ebd0130a845ecd98ab1d00932c09d6b328bf2fc9"/>
+    <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>
+    <inputDigests name="utility" digest="sha256:a834788112fe0d6045472f11f9b9a87002ca9c3493547d6789e485a4f3d2983f"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:79e2e0686350c3e8cfd77b56d3bcfbc1b9dbf907f1ce73d087ff52137819c854"/>
+    <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:b623d2ffe37d94ed3dfd601c8ef7aa011ef349912b4428d1071d72099e4c54a8"/>
+  </provenance>
+  <reconcileUnits name="apps-node"/>
+  <policyJob identity="vault-policy" namespace="secrets-system" image="ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e7" imageVersion="1.0.0" uid="65532" gid="65532" role="policy-admin" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+  </policyJob>
+  <nodeAgents name="gpu-device" namespace="node-system" application="node" controller="DaemonSet" image="nvcr.io/nvidia/k8s-device-plugin@sha256:eeaf499dbb6f09bb79d95f788d3d87ca6ffa0ae36ed63210d5672e08ba266ff4" memory="64Mi" cpu="10m" runtimeClass="nvidia-cdi" priorityClass="system-node-critical" hostProcesses="true" privileged="true">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <environment name="CONFIG_FILE" value="/config/config.yaml"/>
+    <environment name="DEVICE_ID_STRATEGY" value="index"/>
+    <environment name="FAIL_ON_INIT_ERROR" value="true"/>
+    <environment name="NVIDIA_VISIBLE_DEVICES" value="all"/>
+    <environment name="PASS_DEVICE_SPECS" value="true"/>
+    <mounts name="device-plugins" hostPath="/var/lib/kubelet/device-plugins" mountAt="/var/lib/kubelet/device-plugins"/>
+    <mounts name="cdi" hostPath="/var/run/cdi" mountAt="/var/run/cdi"/>
+    <config file="config.yaml" mountAt="/config" content="version: v1&#xA;sharing:&#xA;  timeSlicing:&#xA;    resources:&#xA;      - name: nvidia.com/gpu&#xA;        replicas: 4&#xA;"/>
+  </nodeAgents>
+  <nodeAgents name="gpu-metrics" namespace="node-system" application="node" controller="DaemonSet" image="nvcr.io/nvidia/k8s/dcgm-exporter@sha256:6faf8666aeffe3aa674aa33eb59433addf6b8d5ec267ac1a096892d1ffab6a0b" memory="256Mi" cpu="50m" deviceShare="nvidia.com/gpu" runtimeClass="nvidia-cdi" priorityClass="system-node-critical" nonRoot="false" uid="0">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <environment name="DCGM_EXPORTER_KUBERNETES" value="true"/>
+    <environment name="DCGM_EXPORTER_LISTEN" value=":9400"/>
+    <surfaces name="metrics" port="9400"/>
+    <addedPrivileges>SYS_ADMIN</addedPrivileges>
+    <mounts name="pod-resources" hostPath="/var/lib/kubelet/pod-resources" mountAt="/var/lib/kubelet/pod-resources" readOnly="true"/>
+  </nodeAgents>
+  <nodeAgents name="l4-speaker" namespace="node-system" application="node" controller="DaemonSet" image="quay.io/metallb/speaker@sha256:a2de24e2d206541cb9f101b66876944ecd5a2f19d1783d674e982bfb829defbe" memory="64Mi" cpu="20m" priorityClass="system-node-critical" identityToken="true" hostNetwork="true" confined="true">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>enschede-pi-1</eligibleNodes>
+    <eligibleNodes>enschede-pi-2</eligibleNodes>
+    <eligibleNodes>enschede-pi-3</eligibleNodes>
+    <arguments>--port=7472</arguments>
+    <arguments>--namespace=node-system</arguments>
+    <arguments>--log-level=info</arguments>
+    <environment name="METALLB_NODE_NAME" field="spec.nodeName"/>
+    <environment name="METALLB_HOST" field="status.hostIP"/>
+    <environment name="METALLB_POD_NAME" field="metadata.name"/>
+    <environment name="METALLB_ML_BIND_ADDR" field="status.podIP"/>
+    <environment name="METALLB_ML_LABELS" value="app.kubernetes.io/name=l4-speaker"/>
+    <environment name="METALLB_ML_BIND_PORT" value="7946"/>
+    <environment name="METALLB_ML_SECRET_KEY_PATH" value="/etc/ml_secret_key"/>
+    <surfaces name="metrics" port="7472"/>
+    <addedPrivileges>NET_RAW</addedPrivileges>
+    <rules group="core">
+      <objects>services</objects>
+      <objects>endpoints</objects>
+      <objects>nodes</objects>
+      <objects>namespaces</objects>
+      <objects>pods</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+    </rules>
+    <rules group="discovery.k8s.io">
+      <objects>endpointslices</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+    </rules>
+    <rules group="core">
+      <objects>events</objects>
+      <verbs>create</verbs>
+      <verbs>patch</verbs>
+    </rules>
+    <rules group="metallb.io">
+      <objects>ipaddresspools</objects>
+      <objects>l2advertisements</objects>
+      <objects>bgppeers</objects>
+      <objects>bgpadvertisements</objects>
+      <objects>communities</objects>
+      <objects>bfdprofiles</objects>
+      <objects>servicel2statuses</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+    </rules>
+    <rules group="metallb.io">
+      <objects>servicel2statuses</objects>
+      <objects>servicel2statuses/status</objects>
+      <verbs>create</verbs>
+      <verbs>delete</verbs>
+      <verbs>update</verbs>
+      <verbs>patch</verbs>
+    </rules>
+    <rules group="metallb.io">
+      <objects>configurationstates</objects>
+      <objects>configurationstates/status</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+      <verbs>create</verbs>
+      <verbs>update</verbs>
+      <verbs>patch</verbs>
+      <verbs>delete</verbs>
+    </rules>
+    <rules group="core" scope="namespace">
+      <objects>secrets</objects>
+      <objects>configmaps</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+    </rules>
+    <rules group="metallb.io" scope="namespace">
+      <objects>servicebgpstatuses</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+    </rules>
+    <memberlist store="http://vault.secrets-system.svc.cluster.local:8200" path="secret/data/node-system/l4-speaker" key="secretkey" secret="l4-speaker-memberlist"/>
+  </nodeAgents>
+  <nodeAgents name="l4-controller" namespace="node-system" application="node" replicas="1" image="quay.io/metallb/controller@sha256:8bd722cbf5d88cf8b9c82fed1ab069dc1a2f8e5ee383dcf57e49c359ee9d27a3" memory="64Mi" cpu="10m" priorityClass="system-cluster-critical" identityToken="true" nonRoot="true" uid="65534" gid="65534" confined="true">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>enschede-pi-1</eligibleNodes>
+    <eligibleNodes>enschede-pi-2</eligibleNodes>
+    <eligibleNodes>enschede-pi-3</eligibleNodes>
+    <arguments>--port=7472</arguments>
+    <arguments>--namespace=node-system</arguments>
+    <arguments>--webhook-mode=disabled</arguments>
+    <arguments>--log-level=info</arguments>
+    <surfaces name="metrics" port="7472"/>
+    <rules group="core">
+      <objects>services</objects>
+      <objects>namespaces</objects>
+      <objects>nodes</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+    </rules>
+    <rules group="core">
+      <objects>services/status</objects>
+      <verbs>update</verbs>
+    </rules>
+    <rules group="core">
+      <objects>events</objects>
+      <verbs>create</verbs>
+      <verbs>patch</verbs>
+    </rules>
+    <rules group="metallb.io">
+      <objects>ipaddresspools</objects>
+      <objects>l2advertisements</objects>
+      <objects>bgppeers</objects>
+      <objects>bgpadvertisements</objects>
+      <objects>communities</objects>
+      <objects>bfdprofiles</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+    </rules>
+    <rules group="metallb.io">
+      <objects>ipaddresspools/status</objects>
+      <verbs>update</verbs>
+    </rules>
+    <rules group="metallb.io">
+      <objects>configurationstates</objects>
+      <objects>configurationstates/status</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+      <verbs>create</verbs>
+      <verbs>update</verbs>
+      <verbs>patch</verbs>
+      <verbs>delete</verbs>
+    </rules>
+    <rules group="core" scope="namespace">
+      <objects>secrets</objects>
+      <objects>configmaps</objects>
+      <verbs>get</verbs>
+      <verbs>list</verbs>
+      <verbs>watch</verbs>
+    </rules>
+  </nodeAgents>
+  <nodeAgents name="node-metrics" namespace="node-system" application="node" controller="DaemonSet" image="quay.io/prometheus/node-exporter@sha256:2303824a4e3dc61fe3195d1a6e978029d4774876cc9aba9d2c60ef85eb96a845" memory="64Mi" cpu="20m" priorityClass="system-node-critical" hostNetwork="true" hostProcesses="true" nonRoot="true" confined="true">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>enschede-pi-1</eligibleNodes>
+    <eligibleNodes>enschede-pi-2</eligibleNodes>
+    <eligibleNodes>enschede-pi-3</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <arguments>--path.procfs=/host/proc</arguments>
+    <arguments>--path.sysfs=/host/sys</arguments>
+    <arguments>--path.rootfs=/host/root</arguments>
+    <arguments>--web.listen-address=:9100</arguments>
+    <surfaces name="metrics" port="9100"/>
+    <mounts name="proc" hostPath="/proc" mountAt="/host/proc" readOnly="true"/>
+    <mounts name="sys" hostPath="/sys" mountAt="/host/sys" readOnly="true"/>
+    <mounts name="root" hostPath="/" mountAt="/host/root" readOnly="true" propagated="true"/>
+  </nodeAgents>
+  <addressPools name="lan-dns" range="192.168.0.98/32">
+    <nodes>enschede-t1000-1</nodes>
+    <nodes>enschede-rx7900xtx-1</nodes>
+    <nodes>enschede-gtx-960m-1</nodes>
+    <nodes>enschede-pi-1</nodes>
+    <nodes>enschede-pi-2</nodes>
+    <nodes>enschede-pi-3</nodes>
+  </addressPools>
+  <addressPools name="lan-edge" range="192.168.0.99/32">
+    <nodes>enschede-t1000-1</nodes>
+    <nodes>enschede-rx7900xtx-1</nodes>
+    <nodes>enschede-gtx-960m-1</nodes>
+    <nodes>enschede-pi-1</nodes>
+    <nodes>enschede-pi-2</nodes>
+    <nodes>enschede-pi-3</nodes>
+  </addressPools>
+  <addressPools name="lan-mqtt" range="192.168.0.97/32">
+    <nodes>enschede-t1000-1</nodes>
+    <nodes>enschede-rx7900xtx-1</nodes>
+    <nodes>enschede-gtx-960m-1</nodes>
+    <nodes>enschede-pi-1</nodes>
+    <nodes>enschede-pi-2</nodes>
+    <nodes>enschede-pi-3</nodes>
+  </addressPools>
+  <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/node/namespace.yaml" namespace="node-system"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/kustomization.yaml">
+    <resources>gpu-device</resources>
+    <resources>gpu-metrics</resources>
+    <resources>l4-speaker</resources>
+    <resources>namespace.yaml</resources>
+    <resources>node-metrics</resources>
+    <resources>vault-policy</resources>
+    <resources>vaultconnection.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-device/configmap.yaml" part="configmap" agents="/0/@nodeAgents.0"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-device/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.0"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-device/workload.yaml" part="workload" agents="/0/@nodeAgents.0"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/gpu-device/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-metrics/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.1"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/gpu-metrics/workload.yaml" part="workload" agents="/0/@nodeAgents.1"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/gpu-metrics/kustomization.yaml">
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/rbac.yaml" part="rbac" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/vso.yaml" part="vso" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/l4-speaker/workload.yaml" part="workload" agents="/0/@nodeAgents.2 /0/@nodeAgents.3"/>
+  <deliverables xsi:type="resolveddeployment:AddressPoolFile" path="apps/node/l4-speaker/pools.yaml" namespace="node-system" pools="/0/@addressPools.0 /0/@addressPools.1 /0/@addressPools.2"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/l4-speaker/kustomization.yaml">
+    <resources>pools.yaml</resources>
+    <resources>rbac.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+    <resources>vso.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/node-metrics/serviceaccount.yaml" part="serviceaccount" agents="/0/@nodeAgents.4"/>
+  <deliverables xsi:type="resolveddeployment:NodeAgentFile" path="apps/node/node-metrics/workload.yaml" part="workload" agents="/0/@nodeAgents.4"/>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/node-metrics/kustomization.yaml">
+    <resources>serviceaccount.yaml</resources>
+    <resources>workload.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:ConnectionFile" path="apps/node/vaultconnection.yaml" adapter="vso" namespace="node-system" address="http://vault.secrets-system.svc.cluster.local:8200"/>
+  <deliverables xsi:type="resolveddeployment:VaultPolicyFile" path="apps/node/vault-policy/policies/node-system-l4-speaker.policy.json" adapter="vault-policy" namespace="node-system" identity="l4-speaker">
+    <paths path="secret/data/node-system/l4-speaker">
+      <allows>read</allows>
+    </paths>
+    <paths path="secret/metadata/node-system/l4-speaker">
+      <allows>read</allows>
+    </paths>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="apps/node/vault-policy/policies/node-system-l4-speaker.role.json" adapter="vault-policy" namespace="node-system" identity="l4-speaker"/>
+  <deliverables xsi:type="resolveddeployment:GeneratedKeysFile" path="apps/node/vault-policy/policies/node-system.generated.json" adapter="vault-policy">
+    <keys path="secret/data/node-system/l4-speaker" key="secretkey" bytes="32" encoding="hex"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PriorityClassFile" path="estate/priority-classes/priorityclasses.yaml">
+    <data name="platform-data" value="1000000"/>
+    <critical name="platform-critical-app" value="100000"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/priority-classes/kustomization.yaml">
+    <resources>priorityclasses.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:HumanGrantFile" path="estate/human-grants/clusterrolebindings.yaml">
+    <grants group="oidc:k8s-operators" clusterRole="admin"/>
+    <grants group="oidc:k8s-developers" clusterRole="edit"/>
+    <grants group="oidc:k8s-readers" clusterRole="view"/>
+    <grants group="oidc:k8s-admin" clusterRole="cluster-admin"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/human-grants/kustomization.yaml">
+    <resources>clusterrolebindings.yaml</resources>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/node/vault-policy/configmap.yaml" adapter="vault-policy" namespace="node-system" part="configmap" name="vault-policy-7aef94bb1eca" job="/0/@policyJob">
+    <documents file="node-system-l4-speaker.policy.json" json="{&quot;path&quot;:{&quot;secret/data/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="node-system-l4-speaker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;l4-speaker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;node-system&quot;],&quot;token_policies&quot;:[&quot;node-system-l4-speaker&quot;]}"/>
+    <documents file="node-system.generated.json" json="{&quot;keys&quot;:[{&quot;bytes&quot;:32,&quot;encoding&quot;:&quot;hex&quot;,&quot;key&quot;:&quot;secretkey&quot;,&quot;path&quot;:&quot;secret/data/node-system/l4-speaker&quot;}]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/node/vault-policy/job.yaml" adapter="vault-policy" namespace="node-system" part="job" name="vault-policy-7aef94bb1eca" job="/0/@policyJob">
+    <documents file="node-system-l4-speaker.policy.json" json="{&quot;path&quot;:{&quot;secret/data/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="node-system-l4-speaker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;l4-speaker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;node-system&quot;],&quot;token_policies&quot;:[&quot;node-system-l4-speaker&quot;]}"/>
+    <documents file="node-system.generated.json" json="{&quot;keys&quot;:[{&quot;bytes&quot;:32,&quot;encoding&quot;:&quot;hex&quot;,&quot;key&quot;:&quot;secretkey&quot;,&quot;path&quot;:&quot;secret/data/node-system/l4-speaker&quot;}]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/node/vault-policy/cronjob.yaml" adapter="vault-policy" namespace="node-system" part="cronjob" name="vault-policy-7aef94bb1eca" job="/0/@policyJob">
+    <documents file="node-system-l4-speaker.policy.json" json="{&quot;path&quot;:{&quot;secret/data/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="node-system-l4-speaker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;l4-speaker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;node-system&quot;],&quot;token_policies&quot;:[&quot;node-system-l4-speaker&quot;]}"/>
+    <documents file="node-system.generated.json" json="{&quot;keys&quot;:[{&quot;bytes&quot;:32,&quot;encoding&quot;:&quot;hex&quot;,&quot;key&quot;:&quot;secretkey&quot;,&quot;path&quot;:&quot;secret/data/node-system/l4-speaker&quot;}]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/node/vault-policy/serviceaccount.yaml" adapter="vault-policy" namespace="node-system" part="serviceaccount" name="vault-policy-7aef94bb1eca" job="/0/@policyJob">
+    <documents file="node-system-l4-speaker.policy.json" json="{&quot;path&quot;:{&quot;secret/data/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="node-system-l4-speaker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;l4-speaker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;node-system&quot;],&quot;token_policies&quot;:[&quot;node-system-l4-speaker&quot;]}"/>
+    <documents file="node-system.generated.json" json="{&quot;keys&quot;:[{&quot;bytes&quot;:32,&quot;encoding&quot;:&quot;hex&quot;,&quot;key&quot;:&quot;secretkey&quot;,&quot;path&quot;:&quot;secret/data/node-system/l4-speaker&quot;}]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="apps/node/vault-policy/networkpolicy.yaml" adapter="networking" namespace="node-system" part="networkpolicy" name="vault-policy-7aef94bb1eca" job="/0/@policyJob">
+    <documents file="node-system-l4-speaker.policy.json" json="{&quot;path&quot;:{&quot;secret/data/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/node-system/l4-speaker&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
+    <documents file="node-system-l4-speaker.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;l4-speaker&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;node-system&quot;],&quot;token_policies&quot;:[&quot;node-system-l4-speaker&quot;]}"/>
+    <documents file="node-system.generated.json" json="{&quot;keys&quot;:[{&quot;bytes&quot;:32,&quot;encoding&quot;:&quot;hex&quot;,&quot;key&quot;:&quot;secretkey&quot;,&quot;path&quot;:&quot;secret/data/node-system/l4-speaker&quot;}]}"/>
+  </deliverables>
+  <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/node/vault-policy/kustomization.yaml">
+    <resources>configmap.yaml</resources>
+    <resources>cronjob.yaml</resources>
+    <resources>job.yaml</resources>
+    <resources>serviceaccount.yaml</resources>
+  </deliverables>
+</resolveddeployment:ResolvedDeployment>
