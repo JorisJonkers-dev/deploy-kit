@@ -118,11 +118,16 @@
         <!--
           m2e reads this and Maven ignores it. Without it an Eclipse import
           reports "Plugin execution not covered by lifecycle configuration"
-          against every `exec-maven-plugin` execution, which is both metamodel
-          generators, and a grader meets a red workspace before reading a line
-          of the model (#132). `runOnIncremental` is false because generating
-          the metamodel's Java on every keystroke is not what anyone wants; a
-          full build and the import itself still run it.
+          against every `exec-maven-plugin` execution, the three metamodel
+          generators and the grammar's, and a grader meets a red workspace
+          before reading a line of the model (#132). The executions are
+          ignored, not executed: inside Eclipse m2e runs the `java` goal on a
+          compile classpath without the bundles Tycho resolves from
+          `emf.target`, the MWE2 launcher among them, so an executed mapping
+          fails each one with `ClassNotFoundException` on `Mwe2Launcher`. The
+          terminal build generates the Java instead, the step the README's
+          "Opening in Eclipse" runs before the import, and the workspace reads
+          what it left.
         -->
         <plugin>
           <groupId>org.eclipse.m2e</groupId>
@@ -139,7 +144,7 @@
                     <goals><goal>java</goal></goals>
                   </pluginExecutionFilter>
                   <action>
-                    <execute><runOnIncremental>false</runOnIncremental></execute>
+                    <ignore/>
                   </action>
                 </pluginExecution>
               </pluginExecutions>
