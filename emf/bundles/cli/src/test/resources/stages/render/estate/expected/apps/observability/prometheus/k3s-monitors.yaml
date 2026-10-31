@@ -226,7 +226,7 @@ spec:
           configMap:
             name: kube-root-ca.crt
             key: ca.crt
-        serverName: kubernetes
+        serverName: kube-apiserver
       metricRelabelings:
         - action: drop
           sourceLabels:

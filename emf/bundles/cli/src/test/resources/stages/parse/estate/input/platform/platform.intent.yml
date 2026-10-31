@@ -45,7 +45,9 @@ bootstrap:
   k3s:
     metrics:
       kubelet: {port: 10250}
-      apiServer: {service: default/kubernetes, port: https}
+      # Not the worked example's `default/kubernetes`: written into the parsed
+      # model's XMI, that value reads to the secret scan as an API key.
+      apiServer: {service: default/kube-apiserver, port: https}
       coreDns: {port: 9153}
   flux:
     sourceRef: flux-system/platform

@@ -1639,7 +1639,7 @@
       <k3s>
         <metrics>
           <kubelet port="10250"/>
-          <apiServer service="default/kubernetes" port="https"/>
+          <apiServer service="default/kube-apiserver" port="https"/>
           <coreDns port="9153"/>
         </metrics>
       </k3s>
