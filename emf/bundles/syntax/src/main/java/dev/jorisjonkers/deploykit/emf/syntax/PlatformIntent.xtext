@@ -62,9 +62,30 @@ Substrate returns Substrate:
 	& ('upstreamNameservers' ':' BEGIN (DASH BEGIN upstreamNameservers+=Text END | upstreamNameservers+=Text)+ END)?);
 
 Bootstrap returns Bootstrap:
-	(('flux' ':' BEGIN flux=FluxSource END)
+	(('k3s' ':' BEGIN k3s=K3sInstall END)?
+	& ('flux' ':' BEGIN flux=FluxSource END)
 	& ('vault' ':' BEGIN vault=VaultState END)
 	& ('crds' ':' BEGIN (DASH BEGIN crds+=Text END | crds+=Text)+ END));
+
+// Where k3s serves its own metrics: each component the set records is scraped.
+K3sInstall returns K3sInstall:
+	'metrics' ':' BEGIN metrics=K3sMetrics END;
+
+K3sMetrics returns K3sMetrics:
+	{K3sMetrics}
+	(('kubelet' ':' BEGIN kubelet=KubeletMetrics END)?
+	& ('apiServer' ':' BEGIN apiServer=ApiServerMetrics END)?
+	& ('coreDns' ':' BEGIN coreDns=CoreDnsMetrics END)?);
+
+KubeletMetrics returns KubeletMetrics:
+	'port' ':' port=Port;
+
+ApiServerMetrics returns ApiServerMetrics:
+	(('service' ':' service=Text)
+	& ('port' ':' port=Text));
+
+CoreDnsMetrics returns CoreDnsMetrics:
+	'port' ':' port=Port;
 
 HandoverLedger returns HandoverLedger:
 	(('retireBy' ':' retireBy=Text)
@@ -119,6 +140,7 @@ Tier returns Tier:
 	& ('audiences' ':' BEGIN (DASH BEGIN audiences+=Audience END | audiences+=Audience)+ END)
 	& ('listener' ':' listener=Listener)
 	& ('certificates' ':' certificates=CertificateSource)
+	& ('certificateFrom' ':' certificateFrom=Text)?
 	& ('forwardAuth' ':' BEGIN forwardAuth=ForwardAuth END)?
 	& ('proxiedBy' ':' proxiedBy=ProxiedBy)?
 	& ('traefik' ':' traefik=[Application|Text])
@@ -304,8 +326,16 @@ Monitoring returns Monitoring:
 	(('grafana' ':' grafana=[Application|Text])
 	& ('prometheus' ':' prometheus=[Application|Text])
 	& ('alertmanager' ':' alertmanager=[Application|Text])
+	& ('stores' ':' BEGIN stores=MonitoringStores END)?
 	& ('receivers' ':' BEGIN (DASH BEGIN receivers+=Receiver END)+ END)
 	& ('routes' ':' BEGIN (DASH BEGIN routes+=SeverityRoute END)+ END));
+
+// The stores Grafana reads beside the stack.
+MonitoringStores returns MonitoringStores:
+	{MonitoringStores}
+	(('loki' ':' loki=[Application|Text])?
+	& ('tempo' ':' tempo=[Application|Text])?
+	& ('pyroscope' ':' pyroscope=[Application|Text])?);
 
 Receiver returns Receiver:
 	(('name' ':' name=Text)
@@ -394,22 +424,24 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'alertmanager' | 'always' | 'analysis' | 'apiAccess' | 'artifacts' | 'audiences' | 'backup' | 'bootstrap' |
-	'breaksOn' | 'catalog' | 'catalogSurface' | 'certificates' | 'cidr' | 'cloudflare' | 'cluster-admin' | 'clusterDns' |
-	'clusterRole' | 'cni' | 'collector' | 'contract' | 'controller' | 'crds' | 'critical' | 'criticalApplications' | 'data' |
-	'datasource' | 'datastore' | 'deadline' | 'destination' | 'direct' | 'discord' | 'dns' | 'dnsProvider' | 'edit' | 'email' |
-	'embedded' | 'engines' | 'enrolled' | 'ephemeral' | 'errorRate' | 'estate' | 'etcd' | 'failures' | 'flux' | 'forwardAuth' |
-	'gate' | 'gid' | 'gpu-device' | 'gpu-metrics' | 'gpus' | 'grafana' | 'grants' | 'handover' | 'hardening' | 'holders' |
-	'humanGrants' | 'imagePull' | 'ingressClass' | 'instance' | 'interval' | 'issuer' | 'iterations' | 'kubernetesVersion' |
-	'l4-speaker' | 'l4Addresses' | 'labels' | 'latency' | 'legacy' | 'listener' | 'machinery' | 'major' | 'mesh' | 'metadata' |
+	'acme' | 'alertmanager' | 'always' | 'analysis' | 'apiAccess' | 'apiServer' | 'artifacts' | 'audiences' | 'backup' |
+	'bootstrap' | 'breaksOn' | 'catalog' | 'catalogSurface' | 'certificateFrom' | 'certificates' | 'cidr' | 'cloudflare' |
+	'cluster-admin' | 'clusterDns' | 'clusterRole' | 'cni' | 'collector' | 'contract' | 'controller' | 'coreDns' | 'crds' |
+	'critical' | 'criticalApplications' | 'data' | 'datasource' | 'datastore' | 'deadline' | 'destination' | 'direct' |
+	'discord' | 'dns' | 'dnsProvider' | 'edit' | 'email' | 'embedded' | 'engines' | 'enrolled' | 'ephemeral' |
+	'errorRate' | 'estate' | 'etcd' | 'failures' | 'flux' | 'forwardAuth' | 'gate' | 'gid' | 'gpu-device' | 'gpu-metrics' |
+	'gpus' | 'grafana' | 'grants' | 'handover' | 'hardening' | 'holders' | 'humanGrants' | 'imagePull' | 'ingressClass' |
+	'instance' | 'interval' | 'issuer' | 'iterations' | 'k3s' | 'kubelet' | 'kubernetesVersion' | 'l4-speaker' |
+	'l4Addresses' | 'labels' | 'latency' | 'legacy' | 'listener' | 'loki' | 'machinery' | 'major' | 'mesh' | 'metadata' |
 	'metrics' | 'minor' | 'monitoring' | 'monitors' | 'move' | 'namespaceHolders' | 'networkPolicyController' | 'never' |
-	'node-metrics' | 'nodeAgents' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' | 'pool' |
-	'priority' | 'prometheus' | 'provider' | 'providers' | 'proxiedBy' | 'pullSecret' | 'range' | 'receiver' | 'receivers' |
-	'recipient' | 'repeat' | 'reporter' | 'repository' | 'resource' | 'responseHeaders' | 'restricted' | 'retain' | 'retention' |
-	'retireBy' | 'reverse' | 'runner' | 'runtimeClass' | 'same-major' | 'secretStore' | 'secretsEncryption' | 'seeder' | 'server' |
-	'serverCount' | 'serving' | 'settings' | 'severity' | 'signer' | 'sourceRef' | 'sqlite' | 'subject' | 'substrate' | 'surfaces' |
-	'target' | 'telemetry' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'upstreamNameservers' | 'user' |
-	'value' | 'vault' | 'view' | 'webhook';
+	'node-metrics' | 'nodeAgents' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' |
+	'pool' | 'priority' | 'prometheus' | 'provider' | 'providers' | 'proxiedBy' | 'pullSecret' | 'pyroscope' | 'range' |
+	'receiver' | 'receivers' | 'recipient' | 'repeat' | 'reporter' | 'repository' | 'resource' | 'responseHeaders' |
+	'restricted' | 'retain' | 'retention' | 'retireBy' | 'reverse' | 'runner' | 'runtimeClass' | 'same-major' |
+	'secretsEncryption' | 'secretStore' | 'seeder' | 'server' | 'serverCount' | 'service' | 'serving' | 'settings' |
+	'severity' | 'signer' | 'sourceRef' | 'sqlite' | 'stores' | 'subject' | 'substrate' | 'surfaces' | 'target' |
+	'telemetry' | 'tempo' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'upstreamNameservers' |
+	'user' | 'value' | 'vault' | 'view' | 'webhook';
 
 enum Datastore returns Datastore:
 	sqlite='sqlite' | etcd='etcd';

@@ -650,9 +650,31 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="upstreamNameservers" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Bootstrap">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="k3s" eType="#//K3sInstall" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="flux" lowerBound="1" eType="#//FluxSource" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="vault" lowerBound="1" eType="#//VaultState" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="crds" lowerBound="1" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <!-- Where k3s serves its own metrics, each component the set records
+       (spec/v1/14-platform-intent.md#k3ss-metrics). -->
+  <eClassifiers xsi:type="ecore:EClass" name="K3sInstall">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="metrics" lowerBound="1" eType="#//K3sMetrics" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="K3sMetrics">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="kubelet" eType="#//KubeletMetrics" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="apiServer" eType="#//ApiServerMetrics" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="coreDns" eType="#//CoreDnsMetrics" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="KubeletMetrics">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
+  </eClassifiers>
+  <!-- The API server's Service, as namespace/name, and its named port. -->
+  <eClassifiers xsi:type="ecore:EClass" name="ApiServerMetrics">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="service" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="CoreDnsMetrics">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
   </eClassifiers>
   <!-- Which delivery path each Project is on during the handover
        (spec/v1/60-setup.md#handing-over-one-project-at-a-time). -->
@@ -706,6 +728,9 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="audiences" lowerBound="1" upperBound="-1" eType="#//Audience"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="listener" lowerBound="1" eType="#//Listener"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="certificates" lowerBound="1" eType="#//CertificateSource"/>
+    <!-- The Secret Store path a tier that issues no certificate serves one from
+         (spec/v1/14-platform-intent.md#tiers). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="certificateFrom" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="forwardAuth" eType="#//ForwardAuth" containment="true"/>
     <!-- Who forwards clients' requests to the edge, where anyone does
          (spec/v1/14-platform-intent.md#tiers). -->
@@ -874,8 +899,16 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="grafana" lowerBound="1" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="prometheus" lowerBound="1" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="alertmanager" lowerBound="1" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="stores" eType="#//MonitoringStores" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="receivers" lowerBound="1" upperBound="-1" eType="#//Receiver" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="routes" lowerBound="1" upperBound="-1" eType="#//SeverityRoute" containment="true"/>
+  </eClassifiers>
+  <!-- The stores Grafana reads beside the stack, each a data source its edges derive
+       (spec/v1/14-platform-intent.md#grafanas-instance-and-data-sources). -->
+  <eClassifiers xsi:type="ecore:EClass" name="MonitoringStores">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="loki" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="tempo" eType="#//Application"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="pyroscope" eType="#//Application"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Receiver">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
