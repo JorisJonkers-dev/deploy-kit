@@ -19,8 +19,8 @@ template, one template family per Deliverable kind, the shared templates those
 families use, and the Java class \texttt{Rendering} that loads and runs the module.
 Section~\ref{sec:m2t-choices} justifies the choice of Acceleo~4. The module,
 \path{emf/bundles/render/model/render.mtl}, reads the Resolved Deployment produced
-by the preceding transformations. Section~\ref{sec:m2t-example} explains
-Figure~\ref{fig:worked-example}, tracing one Route from model to file.
+by the preceding transformations. Section~\ref{sec:m2t-example} traces one Route from
+model to file (Figure~\ref{fig:worked-example}).
 
 The design applies four course concepts. Dispatch by kind uses polymorphic templates
 (Section~\ref{sec:m2t-kinds}). Every run regenerates every file in full, so no
@@ -40,7 +40,7 @@ results into one model for a single rendering run. Templates read no files,
 environment variables or system clock: all other inputs are consumed beforehand
 and represented as model features.
 Each Deliverable has a \texttt{path} relative to the output root, assigned by the
-resolution stage. The metamodel has 38 concrete Deliverable kinds
+resolution stage. The metamodel has 41 concrete Deliverable kinds
 (\path{emf/bundles/metamodel/model/resolved-deployment.ecore}), each with a template
 family of its own.
 
@@ -49,15 +49,16 @@ assigned path, with nothing else under the root. A YAML file begins with one hea
 one or more objects, each introduced by three dashes. A Vault document is JSON with no
 header.
 
-\textbf{Entry point.} The sole entry point is \texttt{Pipeline.render} in the CLI bundle. It
+\textbf{Entry point.} The pipeline's entry point is \texttt{Pipeline.render} in the CLI bundle. It
 checks every input document. If validation rejects the set, it returns
 diagnostics and writes nothing; otherwise, it lowers and resolves each Project and calls
-\texttt{Rendering.render(deployments, root)} once. The step has no command-line \texttt{main}; it runs
+\texttt{Rendering.render(deployments, root)} once. The pipeline has no command-line interface; it runs
 in the Maven build of \path{emf/}, where \texttt{RenderedTreeTest} compares each
 rendered file with the committed \texttt{rendered/} tree. The parity suite uses
 the same entry point exclusively through files
 (\path{emf/docs/adr/emf/0080-parity-crosses-the-cli-file-interface.md}).
-In Eclipse, the hand-in's launch configurations run the module through the same entry point.
+In Eclipse, \texttt{render.launch} (class \texttt{RenderModel}) and the hand-in's launch
+configurations render one model file through \texttt{Rendering.render}.
 
 \subsection{The Main Template and the Path Plan}
 \label{sec:m2t-main}
@@ -78,7 +79,7 @@ Deliverable at the model's assigned path; it computes no paths.
 The private template \texttt{document} chooses the format: JSON for the three Vault
 kinds and the catalog method's policy part, YAML for everything else. YAML generation
 calls \texttt{objects} on the Deliverable; Acceleo selects the overload for its
-runtime type, with one overload for each of the 24 YAML kinds.
+runtime type, with one overload for each of the 38 YAML kinds.
 
 Resolution defines the path plan; templates only follow it. Each Project has
 a namespace file and an index for \path{apps/<project>/}; each
@@ -120,7 +121,7 @@ or Vault name with two owners, reporting \texttt{E\_PATH\_COLLISION}
 \subsection{One Template per Deliverable Kind}
 \label{sec:m2t-kinds}
 
-The submitted module supports 38 Deliverable kinds in nine families
+The submitted module supports 41 Deliverable kinds in nine families
 (Table~\ref{tab:kinds}). Each YAML family uses an \texttt{objects}
 template overloaded on its receiver type. Acceleo selects the overload by runtime type
 rather than string comparison: these are polymorphic templates in the course's sense.
@@ -138,15 +139,15 @@ Family & Deliverable kinds & Output objects \\
 Project files & \texttt{NamespaceFile}, \texttt{IndexFile}, \texttt{SourceFile} & Namespace; Kustomization; Flux \texttt{OCIRepository} and its Kustomization \\
 Process workload & \texttt{WorkloadFile}, \texttt{SwitchoverFile}, \texttt{ServiceFile}, \texttt{BudgetFile}, \texttt{NodeAgentFile}, \texttt{PriorityClassFile} & Deployment (or declared controller); Flagger Canary and HorizontalPodAutoscaler; Service; PodDisruptionBudget; Node Agent DaemonSet; PriorityClass \\
 Identity and access & \texttt{IdentityFile}, \texttt{RbacFile}, \texttt{NetworkPolicyFile}, \texttt{ClientFile}, \texttt{HumanGrantFile} & ServiceAccount; Role or ClusterRole and binding; NetworkPolicy; sign-in \texttt{Client}; bindings for human groups \\
-Routing & \texttt{IngressRouteFile}, \texttt{AliasFile}, \texttt{SharedMiddlewareFile}, \texttt{StableAddressFile}, \texttt{AddressPoolFile} & Traefik IngressRoute with rate-limit Middleware; \texttt{ExternalName} Service; shared Middlewares; Stable Address Service; MetalLB \texttt{IPAddressPool} and \texttt{L2Advertisement} \\
+Routing & \texttt{IngressRouteFile}, \texttt{AliasFile}, \texttt{SharedMiddlewareFile}, \texttt{StableAddressFile}, \texttt{AddressPoolFile}, \texttt{TlsStoreFile} & Traefik IngressRoute with rate-limit Middleware; \texttt{ExternalName} Service; shared Middlewares; Stable Address Service; MetalLB \texttt{IPAddressPool} and \texttt{L2Advertisement}; default \texttt{TLSStore} \\
 Storage and configuration & \texttt{ClaimFile}, \texttt{LibraryFile}, \texttt{ConfigMapFile}, \texttt{BackupFile} & PersistentVolume and Claim; immutable ConfigMap per Asset; backup CronJob \\
 Jobs & \texttt{MigrationFile}, \texttt{MoveFile}, \texttt{PolicyJobFile}, \texttt{CatalogJobFile} & Suspended Migration Jobs; Move Jobs with their Role; Vault policy and catalog Jobs by \texttt{part} \\
-Observability & \texttt{MonitorFile}, \texttt{EventsFile}, \texttt{DashboardFile}, \texttt{AlertRulesFile}, \texttt{AlertingFile}, \texttt{FluxMonitorFile} & ServiceMonitor or PodMonitor; Flux Provider and Alert; \texttt{GrafanaDashboard}; \texttt{PrometheusRule}; \texttt{AlertmanagerConfig}; Flux's PodMonitor \\
+Observability & \texttt{MonitorFile}, \texttt{EventsFile}, \texttt{DashboardFile}, \texttt{GrafanaFile}, \texttt{AlertRulesFile}, \texttt{AlertingFile}, \texttt{FluxMonitorFile}, \texttt{K3sMonitorsFile} & ServiceMonitor or PodMonitor; Flux Provider and Alert; \texttt{GrafanaDashboard}; \texttt{Grafana}; \texttt{PrometheusRule}; \texttt{AlertmanagerConfig}; Flux's PodMonitor; k3s scrapes \\
 Secrets & \texttt{SecretFile}, \texttt{ConnectionFile} & \texttt{VaultAuth}, \texttt{VaultStaticSecret}, \texttt{VaultDynamicSecret}; \texttt{VaultConnection} \\
 Vault documents (JSON) & \texttt{VaultPolicyFile}, \texttt{VaultRoleFile}, \texttt{GeneratedKeysFile} & Policy, auth role and generated-key documents; no header \\
 \hline
 \end{tabular}
-\caption{The 38 Deliverable Kinds in Nine Families}
+\caption{The 41 Deliverable Kinds in Nine Families}
 \label{tab:kinds}
 \end{table}
 
@@ -233,7 +234,7 @@ the layout is visible in the template and checked without an intervening formatt
 
 \textbf{Header.} A YAML Deliverable begins with \texttt{\# GENERATED. Never hand-edit.},
 written once per file by \texttt{document}. A JSON document has no header, because
-a comment would make it invalid for the Vault job that reads it.
+a comment would make it invalid for the Vault job.
 
 \textbf{Quoting.} A string is written as a plain scalar unless the \texttt{scalar} query
 matches an implicit-type pattern; matches are double-quoted. The patterns
@@ -300,7 +301,7 @@ safe only while the model restricts them to characters that need none.
 \subsection{Queries: Formatting and Selection}
 \label{sec:m2t-queries}
 
-The module contains 29 queries as submitted, counting each overload. Seven earlier
+The module contains 33 queries as submitted, counting each overload. Seven earlier
 queries were removed because they chose values, and the
 choices are now represented by model features: \texttt{allowsAt}, \texttt{policyPaths},
 \texttt{catalogAllows}, \texttt{catalogPaths}, \texttt{middlewareName},
@@ -314,7 +315,8 @@ value and return a string or a number (\texttt{seconds}, \texttt{octal},
 which objects a template visits and their order (\texttt{application},
 \texttt{routed}, \texttt{paths}, \texttt{hostnames}, \texttt{backups},
 \texttt{backupRanges}, \texttt{files}, \texttt{destinationOf}, \texttt{versioned},
-\texttt{versionOf}, \texttt{servingOf}); the module's comments specify each order.
+\texttt{versionOf}, \texttt{servingOf}, \texttt{operatedOf}, and \texttt{holdsEnv}, \texttt{mounts}
+and \texttt{probed} for a container's optional sections); the module's comments specify each order.
 The per-kind rules above (including \texttt{switchover} and \texttt{servingLabel})
 specify how the target format represents model values without deriving them.
 
@@ -354,8 +356,7 @@ standalone generator in a \texttt{.partial} directory beside the output root. If
 reports a diagnostic other than OK, the class throws an \texttt{IllegalStateException} whose message begins
 \texttt{the rendering did not complete} and includes Acceleo's text. Files move under the root
 only after success, so a failed run leaves the root unchanged. A template that fails to
-parse or evaluate therefore cannot silently produce an incomplete tree. The module
-previously wrote directly under the root and could leave a partial tree.
+parse or evaluate therefore cannot silently produce an incomplete tree, as it previously could.
 
 \subsection{Worked Example: One Route from Model to File}
 \label{sec:m2t-example}

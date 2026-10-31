@@ -17,13 +17,13 @@ change set was derived from the repository's git history rather than a
 comparison of complete models, so each row summarises a commit's effect.
 
 File sizes indicate the extent of the changes. As submitted, the Project Intent
-metamodel, which also holds the Platform Intent classes, has 131 classes and
-427 features, the Resolved Deployment metamodel 124 classes and 574 features,
+metamodel, which also holds the Platform Intent classes, has 137 classes and
+441 features, the Resolved Deployment metamodel 133 classes and 619 features,
 and the Pinned Inputs metamodel 15 classes and 67 features. The resolution
-transformation has 3828 lines, 10 mappings and 280 queries, and the lowering
+transformation has 4276 lines, 10 mappings and 305 queries, and the lowering
 has 473 lines and 54 mappings, compared with about 1700 and 340 lines in the
 Task~2 design section. The 134-line estate pass was removed. The Acceleo
-module has 3230 lines.
+module has 3772 lines.
 
 \subsection{Source Metamodel (Project Intent)}
 \label{sec:appendix-source}
@@ -172,6 +172,7 @@ Substrate pulls & The substrate's image pull is allowed within every derived dea
 Tier forward auth & A tier's \texttt{forwardAuth} names a provider Application, its responding Surface and the path. & The endpoint follows the provider's Process, so moving the provider updates the edge's target. \\
 Tier certificates and addresses & A tier gains an L4 Address and its own certificate; a Route takes its TLS from its tier. & Each tier is a proxy with its own entry point and certificate. \\
 Tier DNS and ingress class & A tier declares \texttt{dns} (\texttt{target}, \texttt{proxied}) and an ingress class. & Routes carry the annotations required by public records and the selected proxy. \\
+Default certificate & A tier that issues no certificate names a Secret Store path in \texttt{certificateFrom}. & Every proxy serves that certificate to a Route naming none of its own. \\
 L4 Addresses & Named L4 Addresses, each an IPv4 pool announced at one site. & A raw Surface needs a platform-owned address. \\
 Mesh enrolment & \texttt{mesh.enrolled} names the Projects in the ambient mesh. & Enrolment is the platform's decision, and a name no Project declares is rejected. \\
 \hline
@@ -188,6 +189,7 @@ Mesh enrolment & \texttt{mesh.enrolled} names the Projects in the ambient mesh. 
 \textbf{Change} & \textbf{What changed} & \textbf{Why} \\
 \hline
 Flux metrics & The bootstrap set's Flux entry records the port and path where its controllers serve metrics. & Flux serves all Projects and belongs to none, so the platform records how to reach it. \\
+k3s metrics and monitoring stores & The bootstrap set's \texttt{k3s} entry (\texttt{K3sInstall}, \texttt{K3sMetrics}) records where the kubelet, the API server and the cluster DNS serve metrics; \texttt{Monitoring} gains \texttt{stores}, the Loki, Tempo and Pyroscope Applications Grafana reads. & The cluster's own components and Grafana's data sources belong to no Project, so the platform records them. \\
 Priority classes & Two classes, \texttt{data} and \texttt{critical}, and a list of critical Applications. & Priority is derived from the Process rather than authored by it. \\
 Node agents & Node agents are derived from node facts and pools. & Agents follow existing nodes without a duplicated list. \\
 Foundation and bootstrap set & The remaining foundation and its bootstrap set are declared. & The platform specifies what a cluster needs before any Project runs. \\
@@ -294,6 +296,7 @@ Command, memory-backed paths and Flux metrics & \texttt{ResolvedProcess} and \te
 Process forms & \texttt{scheduled} (a CronJob), \texttt{parked}, \texttt{across} anti-affinity, \texttt{spawn} templates and the sidecar's \texttt{init} step. & Each form renders a different workload, and the target records which one it is. \\
 Tier entries & The forward-auth endpoint, the Route's redirect Middleware, ingress class and DNS annotations, L4 Service, Client object and human-grant ClusterRoleBinding. & Each entry represents a tier or grant fact in Platform Intent. \\
 Priority and node agents & A Process's priority class and the node agents' pools. & Priority is derived; agents are derived from node facts. \\
+Monitoring stack and default certificate & \texttt{ResolvedOperated} (with \texttt{OperatedAlertmanager} and \texttt{OperatedFlag}) records a Prometheus or Alertmanager the Prometheus operator runs; \texttt{GrafanaFile} with \texttt{ResolvedGrafana}, \texttt{K3sMonitorsFile} with \texttt{ResolvedK3sScrape}, and \texttt{TlsStoreFile} carry the Grafana instance, the scrapes of k3s and a tier's default certificate; \texttt{ResolvedMemberlist} the node speakers' shared key. & Each object is derived from a platform fact, so the templates only write it. \\
 \hline
 \end{tabular}
 \caption{Changes to the Resolved Deployment Metamodel Since Task~2: Workload Features; Process Forms and Tiers}
@@ -424,6 +427,7 @@ Release Gate decisions & The Release Gate decides whether to roll back a release
 Flux metrics and metrics egress & The metrics stack's Project renders one PodMonitor for Flux in its own namespace; egress is derived to every declared scrape port and Flux's port. A memory-backed path adds its size to the Process's request, limit and eligibility. & The monitor and egress follow declared facts without manual specification. \\
 Human grants & Each grant renders one ClusterRoleBinding from its role to its group, named for both. & Grants belong to no Project, so rendering or removing a Project cannot remove them. \\
 Tiers & The tier entry determines its proxy configuration, forward-auth Middleware, shared Middlewares, Route TLS and DNS annotations. & A Route reaches exactly one proxy, selected by its audience. \\
+Monitoring stack & Resolution derives the operator's objects for Prometheus and Alertmanager, the Grafana instance, the scrapes of k3s with their token and read access, and each tier's default TLS store. & Each follows a Platform Intent fact rather than a Project's declaration. \\
 Encryption and resolver & Off-cluster copies are encrypted to the platform's recipient; DNS-serving Processes use the upstream nameservers. & Rendering uses both platform facts as given. \\
 \hline
 \end{tabular}

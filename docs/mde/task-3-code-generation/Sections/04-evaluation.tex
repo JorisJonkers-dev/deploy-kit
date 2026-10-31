@@ -26,7 +26,7 @@ output is compared with and the defects it can expose. Passing one check does no
 \hline
 Stage tests (\texttt{StageTest}) & 1. Stage seam & Committed expected files of each stage, each the next stage's input & A wrong value in any stage's output, named by its path \\
 Field coverage (\texttt{FieldCoverageTest}) & 1. Stage seam & Every feature, literal and kind the metamodels declare & A feature no case exercises \\
-Behaviour witnesses & 1. Stage seam & 75 model rows of the behaviour ledger & A model behaviour without a test \\
+Behaviour witnesses & 1. Stage seam & 85 model rows of the behaviour ledger & A model behaviour without a test \\
 Seam tests (\texttt{RenderingTest}) & 1. Template seam & Expected text written in the test & A wrong header, path or key order; a template that does not parse; files left by a failed run \\
 Composed union parity (\texttt{ParityTest}) & 2. CLI file interface & Committed trees of \texttt{minimal}, \texttt{data} and the platform's share & Any changed byte; a missing or extra file \\
 Per-Project output (\texttt{RenderedTreeTest}) & 2. CLI file interface & Committed trees of \texttt{minimal}, \texttt{data} and \texttt{delivery} & A file written into another Project's output \\
@@ -53,10 +53,10 @@ two stages cannot drift apart. A render case's expected files are copies of the 
 oracles, held to them byte for byte. \texttt{FieldCoverageTest} holds each stage's cases
 to every feature, enumeration literal and template dispatch its metamodels declare; the
 gaps left are listed per stage in \path{gaps.txt}, a baseline that may only shrink.
-Each of 75 model behaviours of the behaviour ledger has a JUnit witness
-(\path{emf/docs/witnesses.md}). The build enforces 100\% line and branch coverage
+Each of 85 model behaviours of the behaviour ledger has a JUnit witness, and three
+more are listed as pending (\path{emf/docs/witnesses.md}). The build enforces 100\% line and branch coverage
 (JaCoCo) and a 100\% mutation score (PIT) per module and fails below either; the
-suite has 639 tests.
+suite has 662 tests.
 
 \textbf{Seam and file interface.} The seam tests in \path{emf/bundles/render} exercise
 \texttt{Rendering} without the pipeline. A template that does not parse must fail with Acceleo's diagnostic. A template that fails halfway (\path{halfway.mtl}) must leave the output root unchanged, as the sibling \path{.partial} directory guarantees. A deliberately unindented module
@@ -70,7 +70,7 @@ the composed union contains exactly the committed files, each identical byte for
 tree, that a second run writes the same bytes, and that a set containing an invalid
 document (\texttt{surface: grpc}, rejected with \texttt{E\_UNKNOWN\_SURFACE}) produces no
 files. \texttt{OracleDistanceTest} measures every oracle's distance from what the
-pipeline writes and holds 171 comparisons on an allowlist to an exact match.
+pipeline writes and holds 175 comparisons on an allowlist to an exact match.
 
 \textbf{External consumers.} \path{scripts/lint-manifests.ts} runs kubeconform 0.6.7 with
 \texttt{-kubernetes-version 1.36.5} and \texttt{-strict} against the default
@@ -101,13 +101,12 @@ the document, with a list item named by its key:
 Only when the content agrees are the bytes compared, and a difference there is
 reported as ``formatting only'', naming the first line that differs. Byte identity
 remains the bar: a formatting-only difference still fails. A failure names the field
-at fault instead of giving a line diff over the whole file, which made testing and
-debugging faster.
+at fault instead of a line diff over the whole file, which sped up debugging.
 
 \subsection{Example Models}
 \label{sec:source-models}
 
-The suite renders three examples: \texttt{minimal} (15 files, one Process with a blue-green \texttt{Canary}), \texttt{data} (76 files, five datastores and an asset-sync Process with Vault delivery) and \texttt{edge} (34 files, the two Traefik instances and a DNS controller). \texttt{minimal} and \texttt{data} render together, with the platform's four estate-scoped files,
+The suite renders three examples: \texttt{minimal} (15 files, one Process with a blue-green \texttt{Canary}), \texttt{data} (76 files, five datastores and an asset-sync Process with Vault delivery) and \texttt{edge} (36 files, the two Traefik instances and a DNS controller). \texttt{minimal} and \texttt{data} render together, with the platform's four estate-scoped files,
 as a composed union of 95 files, checking that adding a second Project does not
 change the first Project's bytes; \texttt{edge} is compared separately.
 
@@ -127,14 +126,14 @@ refer to objects; both include the platform's share. The profile check covers 19
 \hline
 & \textbf{minimal} & \textbf{data} & \textbf{union} & \textbf{edge} \\
 \hline
-Committed files (YAML, JSON) & 15 (15, 0) & 76 (64, 12) & 95 & 34 (32, 2) \\
-Written by the run & 15 & 76 & 95 & 34 \\
+Committed files (YAML, JSON) & 15 (15, 0) & 76 (64, 12) & 95 & 36 (34, 2) \\
+Written by the run & 15 & 76 & 95 & 36 \\
 Byte parity & within union & within union & pass & pass \\
 Per-Project output & pass & pass & -- & -- \\
 Second run writes the same bytes & -- & -- & pass & -- \\
-Schema (kubeconform) & 22/22 valid & 95/95 valid & -- & 44/44 valid \\
+Schema (kubeconform) & 22/22 valid & 95/95 valid & -- & 48/48 valid \\
 Pod Security \texttt{restricted} & no finding & no finding & -- & no finding \\
-Server dry-run, indexed objects & 15/15 & 72/72 & -- & 31/31 \\
+Server dry-run, indexed objects & 15/15 & 72/72 & -- & 35/35 \\
 Server dry-run, network policies & 2/2 & 12/12 & -- & 5/5 \\
 \hline
 \end{tabular}
@@ -151,7 +150,7 @@ Most rendering defects were found by running the output rather than by byte comp
 \begin{itemize}
 \item A pod template omitted \texttt{allowPrivilegeEscalation: false}: found by
   reading the profile; the Pod Security check now catches it.
-\item A Job's name did not reflect its pod template, so the cluster rejected it: found on a cluster; no check here catches it.
+\item A Job's name did not reflect its pod template, so the cluster rejected it: found only on a cluster.
 \item Eligible nodes were derived but not rendered: found by reading the adapter;
   parity catches it now.
 \item A space in an authored path created a second Release Gate entry, the
@@ -182,5 +181,4 @@ verify, tests and the coverage gate, on every commit that changes \path{emf/} or
 workflow; other changes skip it. The mutation gate takes too long for every change and runs
 nightly instead. A Maven
 wrapper update once broke the Tycho build unnoticed while it ran only on request: an
-implementation stays level with shared oracles only while every change that reaches it
-runs its build.
+implementation stays level with shared oracles only while every change runs its build.
