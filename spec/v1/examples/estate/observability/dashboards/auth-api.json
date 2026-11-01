@@ -13,7 +13,7 @@
       "gridPos": {"h":3,"w":24,"x":0,"y":0},
       "options": {
         "mode": "markdown",
-        "content": "This dashboard is the per-feature traffic overview. **To drill into one slow request and see its full span tree, logs, metrics, and profile**, open the [Spring Service — Endpoint Investigation](/d/spring-service-endpoints) dashboard, pick `auth-api` as the service, and click an exemplar dot on the latency heatmap."
+        "content": "This dashboard is the per-feature traffic overview. **To drill into one slow request and see its full span tree, logs, metrics, and profile**, open the [Spring Service: Endpoint Investigation](/d/spring-service-endpoints) dashboard, pick `auth-api` as the service, and click an exemplar dot on the latency heatmap."
       }
     },
     { "id": 1, "title": "Login Rate", "type": "timeseries",

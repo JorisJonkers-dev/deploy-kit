@@ -35,7 +35,7 @@
   },
   "panels": [
     { "id": 1, "type": "row", "title": "Memory", "gridPos": {"h":1,"w":24,"x":0,"y":0}, "collapsed": false },
-    { "id": 2, "title": "Heap used vs max — per pod", "type": "timeseries",
+    { "id": 2, "title": "Heap used vs max: per pod", "type": "timeseries",
       "gridPos": {"h":8,"w":12,"x":0,"y":1},
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [
@@ -52,7 +52,7 @@
     },
 
     { "id": 10, "type": "row", "title": "Garbage collection", "gridPos": {"h":1,"w":24,"x":0,"y":9}, "collapsed": false },
-    { "id": 11, "title": "GC pause p95 — per pod, by cause", "type": "timeseries",
+    { "id": 11, "title": "GC pause p95: per pod, by cause", "type": "timeseries",
       "gridPos": {"h":8,"w":12,"x":0,"y":10},
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [{ "expr": "histogram_quantile(0.95, sum by(le, application, instance, cause)(rate(jvm_gc_pause_seconds_bucket{application=~\"$service\"}[5m])))", "legendFormat": "{{application}} {{instance}} / {{cause}}" }],
@@ -66,7 +66,7 @@
     },
 
     { "id": 20, "type": "row", "title": "Threads + CPU", "gridPos": {"h":1,"w":24,"x":0,"y":18}, "collapsed": false },
-    { "id": 21, "title": "Live + daemon threads — per pod", "type": "timeseries",
+    { "id": 21, "title": "Live + daemon threads: per pod", "type": "timeseries",
       "gridPos": {"h":8,"w":8,"x":0,"y":19},
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "targets": [

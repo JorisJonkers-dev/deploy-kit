@@ -1,6 +1,6 @@
 {
   "uid": "spring-service-endpoints",
-  "title": "Spring Service — Endpoint Investigation",
+  "title": "Spring Service: Endpoint Investigation",
   "tags": ["spring-boot", "endpoint", "drilldown"],
   "timezone": "browser",
   "editable": false,
@@ -47,7 +47,7 @@
     ]
   },
   "panels": [
-    { "id": 1, "type": "row", "title": "Top-line — $service / $route", "gridPos": {"h":1,"w":24,"x":0,"y":0}, "collapsed": false },
+    { "id": 1, "type": "row", "title": "Top-line: $service / $route", "gridPos": {"h":1,"w":24,"x":0,"y":0}, "collapsed": false },
     { "id": 2, "type": "stat", "title": "Requests / sec",
       "gridPos": {"h":4,"w":6,"x":0,"y":1},
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -87,7 +87,7 @@
       "fieldConfig": { "defaults": { "unit": "s" } }
     },
 
-    { "id": 20, "type": "row", "title": "Pipeline breakdown — where the time goes inside one request", "gridPos": {"h":1,"w":24,"x":0,"y":14}, "collapsed": false },
+    { "id": 20, "type": "row", "title": "Pipeline breakdown: where the time goes inside one request", "gridPos": {"h":1,"w":24,"x":0,"y":14}, "collapsed": false },
     { "id": 21, "type": "timeseries", "title": "Avg duration per pipeline.* stage",
       "gridPos": {"h":8,"w":12,"x":0,"y":15},
       "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -135,7 +135,7 @@
       "fieldConfig": { "defaults": { "unit": "s" } }
     },
 
-    { "id": 40, "type": "row", "title": "Slow-request leaderboard — click a trace to open in Drilldown", "gridPos": {"h":1,"w":24,"x":0,"y":40}, "collapsed": false },
+    { "id": 40, "type": "row", "title": "Slow-request leaderboard: click a trace to open in Drilldown", "gridPos": {"h":1,"w":24,"x":0,"y":40}, "collapsed": false },
     { "id": 41, "type": "table", "title": "Slowest traces in window (TraceQL)",
       "gridPos": {"h":10,"w":24,"x":0,"y":41},
       "datasource": { "type": "tempo", "uid": "tempo" },
@@ -148,7 +148,7 @@
       }]
     },
 
-    { "id": 50, "type": "row", "title": "Error log feed (Loki) — trace_id rendered as a clickable link", "gridPos": {"h":1,"w":24,"x":0,"y":51}, "collapsed": false },
+    { "id": 50, "type": "row", "title": "Error log feed (Loki): trace_id rendered as a clickable link", "gridPos": {"h":1,"w":24,"x":0,"y":51}, "collapsed": false },
     { "id": 51, "type": "logs", "title": "Errors in window for $service",
       "gridPos": {"h":10,"w":24,"x":0,"y":52},
       "datasource": { "type": "loki", "uid": "loki" },

@@ -107,7 +107,7 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: '{{ $labels.application }}: JVM heap > 90%'
-          description: Old generation heap is sustained > 90% — risk of OOM/GC thrash.
+          description: Old generation heap is sustained > 90%, risk of OOM/GC thrash.
       - alert: JvmGcPauseHigh
         expr: histogram_quantile(0.95, sum by (le, application) (rate(jvm_gc_pause_seconds_bucket[5m]))) > 0.5
         for: 5m
@@ -192,7 +192,7 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: Valkey is evicting keys
-          description: Cache memory pressure — consider raising maxmemory.
+          description: Cache memory pressure, consider raising maxmemory.
       - alert: ValkeyMemoryFragmentationHigh
         expr: redis_memory_fragmentation_ratio > 1.5
         for: 30m
@@ -204,7 +204,7 @@ groups:
         labels: {severity: warning}
         annotations:
           summary: 'RabbitMQ unacked > 10k: {{ $labels.queue }}'
-          description: Unacknowledged messages have piled up — consumer slow / dead.
+          description: Unacknowledged messages have piled up, consumer slow / dead.
   # ───────── Storage ─────────
   - name: platform-storage
     rules:
@@ -406,7 +406,7 @@ groups:
         for: 10m
         labels: {severity: warning}
         annotations: {summary: Pyroscope is rejecting profile ingest}
-  # ───────── JVM services — request pipeline ─────────
+  # ───────── JVM services, request pipeline ─────────
   # Per-stage latency from Tempo's `traces_spanmetrics_*`. The
   # span-derived dimensions (http.route, k8s.pod.name) were added
   # in #292. p95 thresholds picked at ~3× current healthy p95 so
@@ -427,8 +427,8 @@ groups:
         annotations:
           summary: '{{ $labels.service_name }} {{ $labels.http_route }}: p95 controller latency > 2s'
           description: |
-            `pipeline.controller` p95 — wall clock spent inside the
-            controller method body + Jackson response write — has been
+            `pipeline.controller` p95, wall clock spent inside the
+            controller method body + Jackson response write, has been
             > 2s for 10 minutes on this route. Open the per-endpoint
             dashboard, filter by route + pod, check the pipeline.*
             breakdown.
@@ -446,7 +446,7 @@ groups:
         annotations:
           summary: '{{ $labels.service_name }} {{ $labels.http_route }}: p95 response-finalize > 1s'
           description: Outbound network back-pressure or session write-back stall after handler returns.
-  # ───────── JVM services — Redis (Lettuce) ─────────
+  # ───────── JVM services, Redis (Lettuce) ─────────
   - name: platform-jvm-redis
     rules:
       - alert: LettuceCommandTimeouts
@@ -476,7 +476,7 @@ groups:
         annotations:
           summary: '{{ $labels.service_name }} Redis {{ $labels.db_operation }} p95 > 200ms'
           description: Per-command Redis p95 has been > 200ms for 10 min. Healthy is single-digit ms on a local Valkey.
-  # ───────── JVM services — Postgres (Hikari) ─────────
+  # ───────── JVM services, Postgres (Hikari) ─────────
   - name: platform-jvm-hikari
     rules:
       - alert: HikariConnectionsPending
@@ -498,7 +498,7 @@ groups:
         annotations:
           summary: '{{ $labels.application }} ({{ $labels.instance }}): Hikari acquire p95 > 1s'
           description: Time waiting for a connection from the pool is dominating request latency.
-  # ───────── JVM services — Garbage collection ─────────
+  # ───────── JVM services, Garbage collection ─────────
   - name: platform-jvm-gc
     rules:
       - alert: JvmGcPauseLong

@@ -101,7 +101,7 @@ spec:
             severity: warning
           annotations:
             summary: "{{ $labels.application }}: JVM heap > 90%"
-            description: Old generation heap is sustained > 90% — risk of OOM/GC thrash.
+            description: Old generation heap is sustained > 90%, risk of OOM/GC thrash.
         - alert: JvmGcPauseHigh
           expr: histogram_quantile(0.95, sum by (le, application) (rate(jvm_gc_pause_seconds_bucket[5m]))) > 0.5
           for: 5m
@@ -174,7 +174,7 @@ spec:
             severity: warning
           annotations:
             summary: Valkey is evicting keys
-            description: Cache memory pressure — consider raising maxmemory.
+            description: Cache memory pressure, consider raising maxmemory.
         - alert: ValkeyMemoryFragmentationHigh
           expr: redis_memory_fragmentation_ratio > 1.5
           for: 30m
@@ -189,7 +189,7 @@ spec:
             severity: warning
           annotations:
             summary: "RabbitMQ unacked > 10k: {{ $labels.queue }}"
-            description: Unacknowledged messages have piled up — consumer slow / dead.
+            description: Unacknowledged messages have piled up, consumer slow / dead.
     - name: platform-storage
       rules:
         - alert: PersistentVolumeFillingUp
@@ -358,8 +358,8 @@ spec:
           annotations:
             summary: "{{ $labels.service_name }} {{ $labels.http_route }}: p95 controller latency > 2s"
             description: |
-              `pipeline.controller` p95 — wall clock spent inside the
-              controller method body + Jackson response write — has been
+              `pipeline.controller` p95, wall clock spent inside the
+              controller method body + Jackson response write, has been
               > 2s for 10 minutes on this route. Open the per-endpoint
               dashboard, filter by route + pod, check the pipeline.*
               breakdown.

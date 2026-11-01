@@ -19,7 +19,7 @@ consumer of it.
 
 ## Where each input came from
 
-Every file is the one composition read, unchanged, save the two adjustments
+Every file is the one composition read, unchanged, save the three adjustments
 below. The estate repository is
 [JorisJonkers-dev/estate](https://github.com/JorisJonkers-dev/estate) at
 `967bab23abb60871f104b2bcbb45e6e67d7c61ba`, where every Project's pin names the
@@ -63,6 +63,11 @@ release published, `ghcr.io/jorisjonkers-dev/intent-<project>:<release>`.
   application repository keeps its files under `deploy/`. Here every Project
   has its own directory, named for the Project, with its files laid out as
   they were beside the project file.
+- **No em-dash.** This repository admits none in tracked text, and six of
+  `observability`'s files carried one between two phrases: five dashboards and
+  `rules/platform.yaml`. Each became a colon in a dashboard's JSON and a comma
+  in the rule file, where a colon would end a plain scalar. Nothing else in
+  those files changed.
 
 ## How the oracles were written, and what they were checked against
 
@@ -76,7 +81,7 @@ holds them.
 Each tree was compared with the Rendered artifact production delivers for that
 Project, `ghcr.io/jorisjonkers-dev/render/<project>` at the digest the estate's
 pin names, and differs from it in two ways only, both composition's rather than
-the Project's:
+the Project's, besides the em-dashes above:
 
 - **Routes.** Composition holds every Project's routes back while the edge is
   still `legacy` in the handover ledger, so the old path's Traefik stays the

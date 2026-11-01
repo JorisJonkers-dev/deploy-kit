@@ -107,7 +107,7 @@ spec:
   json: |+
     {
       "uid": "spring-service-endpoints",
-      "title": "Spring Service — Endpoint Investigation",
+      "title": "Spring Service: Endpoint Investigation",
       "tags": ["spring-boot", "endpoint", "drilldown"],
       "timezone": "browser",
       "editable": false,
@@ -154,7 +154,7 @@ spec:
         ]
       },
       "panels": [
-        { "id": 1, "type": "row", "title": "Top-line — $service / $route", "gridPos": {"h":1,"w":24,"x":0,"y":0}, "collapsed": false },
+        { "id": 1, "type": "row", "title": "Top-line: $service / $route", "gridPos": {"h":1,"w":24,"x":0,"y":0}, "collapsed": false },
         { "id": 2, "type": "stat", "title": "Requests / sec",
           "gridPos": {"h":4,"w":6,"x":0,"y":1},
           "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -194,7 +194,7 @@ spec:
           "fieldConfig": { "defaults": { "unit": "s" } }
         },
 
-        { "id": 20, "type": "row", "title": "Pipeline breakdown — where the time goes inside one request", "gridPos": {"h":1,"w":24,"x":0,"y":14}, "collapsed": false },
+        { "id": 20, "type": "row", "title": "Pipeline breakdown: where the time goes inside one request", "gridPos": {"h":1,"w":24,"x":0,"y":14}, "collapsed": false },
         { "id": 21, "type": "timeseries", "title": "Avg duration per pipeline.* stage",
           "gridPos": {"h":8,"w":12,"x":0,"y":15},
           "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -242,7 +242,7 @@ spec:
           "fieldConfig": { "defaults": { "unit": "s" } }
         },
 
-        { "id": 40, "type": "row", "title": "Slow-request leaderboard — click a trace to open in Drilldown", "gridPos": {"h":1,"w":24,"x":0,"y":40}, "collapsed": false },
+        { "id": 40, "type": "row", "title": "Slow-request leaderboard: click a trace to open in Drilldown", "gridPos": {"h":1,"w":24,"x":0,"y":40}, "collapsed": false },
         { "id": 41, "type": "table", "title": "Slowest traces in window (TraceQL)",
           "gridPos": {"h":10,"w":24,"x":0,"y":41},
           "datasource": { "type": "tempo", "uid": "tempo" },
@@ -255,7 +255,7 @@ spec:
           }]
         },
 
-        { "id": 50, "type": "row", "title": "Error log feed (Loki) — trace_id rendered as a clickable link", "gridPos": {"h":1,"w":24,"x":0,"y":51}, "collapsed": false },
+        { "id": 50, "type": "row", "title": "Error log feed (Loki): trace_id rendered as a clickable link", "gridPos": {"h":1,"w":24,"x":0,"y":51}, "collapsed": false },
         { "id": 51, "type": "logs", "title": "Errors in window for $service",
           "gridPos": {"h":10,"w":24,"x":0,"y":52},
           "datasource": { "type": "loki", "uid": "loki" },
@@ -318,7 +318,7 @@ spec:
       },
       "panels": [
         { "id": 1, "type": "row", "title": "Memory", "gridPos": {"h":1,"w":24,"x":0,"y":0}, "collapsed": false },
-        { "id": 2, "title": "Heap used vs max — per pod", "type": "timeseries",
+        { "id": 2, "title": "Heap used vs max: per pod", "type": "timeseries",
           "gridPos": {"h":8,"w":12,"x":0,"y":1},
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "targets": [
@@ -335,7 +335,7 @@ spec:
         },
 
         { "id": 10, "type": "row", "title": "Garbage collection", "gridPos": {"h":1,"w":24,"x":0,"y":9}, "collapsed": false },
-        { "id": 11, "title": "GC pause p95 — per pod, by cause", "type": "timeseries",
+        { "id": 11, "title": "GC pause p95: per pod, by cause", "type": "timeseries",
           "gridPos": {"h":8,"w":12,"x":0,"y":10},
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "targets": [{ "expr": "histogram_quantile(0.95, sum by(le, application, instance, cause)(rate(jvm_gc_pause_seconds_bucket{application=~\"$service\"}[5m])))", "legendFormat": "{{application}} {{instance}} / {{cause}}" }],
@@ -349,7 +349,7 @@ spec:
         },
 
         { "id": 20, "type": "row", "title": "Threads + CPU", "gridPos": {"h":1,"w":24,"x":0,"y":18}, "collapsed": false },
-        { "id": 21, "title": "Live + daemon threads — per pod", "type": "timeseries",
+        { "id": 21, "title": "Live + daemon threads: per pod", "type": "timeseries",
           "gridPos": {"h":8,"w":8,"x":0,"y":19},
           "datasource": { "type": "prometheus", "uid": "prometheus" },
           "targets": [
@@ -4314,7 +4314,7 @@ spec:
   allowCrossNamespaceImport: true
   folder: observability
   json: |+
-    {"uid":"tempo-traces","title":"Tempo / Traces","tags":["tempo","traces","opentelemetry"],"timezone":"browser","editable":false,"refresh":"30s","time":{"from":"now-1h","to":"now"},"templating":{"list":[{"name":"service","type":"query","datasource":{"type":"tempo","uid":"tempo"},"query":{"type":"3","refId":"ServiceName"},"allValue":".*","includeAll":true,"multi":true,"refresh":2,"sort":1,"current":{"text":"All","value":"$__all"}},{"name":"min_duration","type":"custom","query":"0s,10ms,50ms,100ms,500ms,1s,5s","current":{"text":"0s","value":"0s"},"label":"Min Duration"}],"hide":0},"panels":[{"id":1,"title":"Trace Search (actuator + health excluded)","type":"traces","gridPos":{"h":12,"w":24,"x":0,"y":0},"description":"User-facing traces only — span name matching /actuator or /api/v1/health is dropped at the Tempo query so kubelet/gatus/Prometheus noise does not bury real requests.","targets":[{"datasource":{"type":"tempo","uid":"tempo"},"queryType":"traceqlSearch","query":"{resource.service.name=~\"${service:regex}\" && duration > $min_duration && span.http.route !~ \"/actuator.*|/api/actuator.*|/api/v1/health\" && name !~ \"(GET|HEAD) /actuator.*|(GET|HEAD) /api/actuator.*|(GET|HEAD) /api/v1/health\"}","limit":50}],"datasource":{"type":"tempo","uid":"tempo"}},{"id":2,"title":"Service Graph","type":"nodeGraph","gridPos":{"h":10,"w":24,"x":0,"y":12},"targets":[{"datasource":{"type":"tempo","uid":"tempo"},"queryType":"serviceMap"}],"datasource":{"type":"tempo","uid":"tempo"}},{"id":3,"title":"Span Rate by Service","type":"timeseries","gridPos":{"h":8,"w":12,"x":0,"y":22},"targets":[{"expr":"sum by(service_name)(rate(traces_spanmetrics_calls_total{service_name=~\"${service:regex}\"}[5m]))","legendFormat":"{{service_name}}"}],"fieldConfig":{"defaults":{"unit":"ops","custom":{"drawStyle":"line","fillOpacity":10,"lineWidth":2}}},"datasource":{"type":"prometheus","uid":"prometheus"}},{"id":4,"title":"Span Duration P95 by Service","type":"timeseries","gridPos":{"h":8,"w":12,"x":12,"y":22},"targets":[{"expr":"histogram_quantile(0.95, sum by(le, service_name)(rate(traces_spanmetrics_latency_bucket{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"{{service_name}} p95"}],"fieldConfig":{"defaults":{"unit":"s","custom":{"drawStyle":"line","fillOpacity":10,"lineWidth":2}}},"datasource":{"type":"prometheus","uid":"prometheus"}},{"id":8,"title":"Top Spans by Rate","type":"timeseries","gridPos":{"h":8,"w":24,"x":0,"y":30},"description":"Per-operation span rate (top 15). Shows EVERY operation including actuator endpoints so you can spot what is dominating traffic before excluding it from the Trace Search panel above.","targets":[{"expr":"topk(15, sum by(service_name, span_name)(rate(traces_spanmetrics_calls_total{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"{{service_name}} {{span_name}}"}],"fieldConfig":{"defaults":{"unit":"ops","custom":{"drawStyle":"line","fillOpacity":5,"lineWidth":2}}},"datasource":{"type":"prometheus","uid":"prometheus"}},{"id":5,"title":"Error Spans","type":"traces","gridPos":{"h":10,"w":24,"x":0,"y":38},"targets":[{"datasource":{"type":"tempo","uid":"tempo"},"queryType":"traceqlSearch","query":"{resource.service.name=~\"${service:regex}\" && status = error}","limit":20}],"datasource":{"type":"tempo","uid":"tempo"}},{"id":6,"title":"Span Error Rate by Service","type":"timeseries","gridPos":{"h":8,"w":12,"x":0,"y":48},"targets":[{"expr":"sum by(service_name)(rate(traces_spanmetrics_calls_total{service_name=~\"${service:regex}\", status_code=\"STATUS_CODE_ERROR\"}[5m]))","legendFormat":"{{service_name}} errors"}],"fieldConfig":{"defaults":{"unit":"ops","custom":{"drawStyle":"line","fillOpacity":10,"lineWidth":2},"color":{"fixedColor":"red","mode":"fixed"}}},"datasource":{"type":"prometheus","uid":"prometheus"}},{"id":7,"title":"Span Duration P50 / P95 / P99","type":"timeseries","gridPos":{"h":8,"w":12,"x":12,"y":48},"targets":[{"expr":"histogram_quantile(0.50, sum by(le)(rate(traces_spanmetrics_latency_bucket{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"p50"},{"expr":"histogram_quantile(0.95, sum by(le)(rate(traces_spanmetrics_latency_bucket{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"p95"},{"expr":"histogram_quantile(0.99, sum by(le)(rate(traces_spanmetrics_latency_bucket{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"p99"}],"fieldConfig":{"defaults":{"unit":"s","custom":{"drawStyle":"line","fillOpacity":5,"lineWidth":2}}},"datasource":{"type":"prometheus","uid":"prometheus"}}],"schemaVersion":39}
+    {"uid":"tempo-traces","title":"Tempo / Traces","tags":["tempo","traces","opentelemetry"],"timezone":"browser","editable":false,"refresh":"30s","time":{"from":"now-1h","to":"now"},"templating":{"list":[{"name":"service","type":"query","datasource":{"type":"tempo","uid":"tempo"},"query":{"type":"3","refId":"ServiceName"},"allValue":".*","includeAll":true,"multi":true,"refresh":2,"sort":1,"current":{"text":"All","value":"$__all"}},{"name":"min_duration","type":"custom","query":"0s,10ms,50ms,100ms,500ms,1s,5s","current":{"text":"0s","value":"0s"},"label":"Min Duration"}],"hide":0},"panels":[{"id":1,"title":"Trace Search (actuator + health excluded)","type":"traces","gridPos":{"h":12,"w":24,"x":0,"y":0},"description":"User-facing traces only: span name matching /actuator or /api/v1/health is dropped at the Tempo query so kubelet/gatus/Prometheus noise does not bury real requests.","targets":[{"datasource":{"type":"tempo","uid":"tempo"},"queryType":"traceqlSearch","query":"{resource.service.name=~\"${service:regex}\" && duration > $min_duration && span.http.route !~ \"/actuator.*|/api/actuator.*|/api/v1/health\" && name !~ \"(GET|HEAD) /actuator.*|(GET|HEAD) /api/actuator.*|(GET|HEAD) /api/v1/health\"}","limit":50}],"datasource":{"type":"tempo","uid":"tempo"}},{"id":2,"title":"Service Graph","type":"nodeGraph","gridPos":{"h":10,"w":24,"x":0,"y":12},"targets":[{"datasource":{"type":"tempo","uid":"tempo"},"queryType":"serviceMap"}],"datasource":{"type":"tempo","uid":"tempo"}},{"id":3,"title":"Span Rate by Service","type":"timeseries","gridPos":{"h":8,"w":12,"x":0,"y":22},"targets":[{"expr":"sum by(service_name)(rate(traces_spanmetrics_calls_total{service_name=~\"${service:regex}\"}[5m]))","legendFormat":"{{service_name}}"}],"fieldConfig":{"defaults":{"unit":"ops","custom":{"drawStyle":"line","fillOpacity":10,"lineWidth":2}}},"datasource":{"type":"prometheus","uid":"prometheus"}},{"id":4,"title":"Span Duration P95 by Service","type":"timeseries","gridPos":{"h":8,"w":12,"x":12,"y":22},"targets":[{"expr":"histogram_quantile(0.95, sum by(le, service_name)(rate(traces_spanmetrics_latency_bucket{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"{{service_name}} p95"}],"fieldConfig":{"defaults":{"unit":"s","custom":{"drawStyle":"line","fillOpacity":10,"lineWidth":2}}},"datasource":{"type":"prometheus","uid":"prometheus"}},{"id":8,"title":"Top Spans by Rate","type":"timeseries","gridPos":{"h":8,"w":24,"x":0,"y":30},"description":"Per-operation span rate (top 15). Shows EVERY operation including actuator endpoints so you can spot what is dominating traffic before excluding it from the Trace Search panel above.","targets":[{"expr":"topk(15, sum by(service_name, span_name)(rate(traces_spanmetrics_calls_total{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"{{service_name}} {{span_name}}"}],"fieldConfig":{"defaults":{"unit":"ops","custom":{"drawStyle":"line","fillOpacity":5,"lineWidth":2}}},"datasource":{"type":"prometheus","uid":"prometheus"}},{"id":5,"title":"Error Spans","type":"traces","gridPos":{"h":10,"w":24,"x":0,"y":38},"targets":[{"datasource":{"type":"tempo","uid":"tempo"},"queryType":"traceqlSearch","query":"{resource.service.name=~\"${service:regex}\" && status = error}","limit":20}],"datasource":{"type":"tempo","uid":"tempo"}},{"id":6,"title":"Span Error Rate by Service","type":"timeseries","gridPos":{"h":8,"w":12,"x":0,"y":48},"targets":[{"expr":"sum by(service_name)(rate(traces_spanmetrics_calls_total{service_name=~\"${service:regex}\", status_code=\"STATUS_CODE_ERROR\"}[5m]))","legendFormat":"{{service_name}} errors"}],"fieldConfig":{"defaults":{"unit":"ops","custom":{"drawStyle":"line","fillOpacity":10,"lineWidth":2},"color":{"fixedColor":"red","mode":"fixed"}}},"datasource":{"type":"prometheus","uid":"prometheus"}},{"id":7,"title":"Span Duration P50 / P95 / P99","type":"timeseries","gridPos":{"h":8,"w":12,"x":12,"y":48},"targets":[{"expr":"histogram_quantile(0.50, sum by(le)(rate(traces_spanmetrics_latency_bucket{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"p50"},{"expr":"histogram_quantile(0.95, sum by(le)(rate(traces_spanmetrics_latency_bucket{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"p95"},{"expr":"histogram_quantile(0.99, sum by(le)(rate(traces_spanmetrics_latency_bucket{service_name=~\"${service:regex}\"}[5m])))","legendFormat":"p99"}],"fieldConfig":{"defaults":{"unit":"s","custom":{"drawStyle":"line","fillOpacity":5,"lineWidth":2}}},"datasource":{"type":"prometheus","uid":"prometheus"}}],"schemaVersion":39}
 
 ---
 apiVersion: grafana.integreatly.org/v1beta1
@@ -10569,7 +10569,7 @@ spec:
           "gridPos": {"h":3,"w":24,"x":0,"y":0},
           "options": {
             "mode": "markdown",
-            "content": "This dashboard is the per-feature traffic overview. **To drill into one slow request and see its full span tree, logs, metrics, and profile**, open the [Spring Service — Endpoint Investigation](/d/spring-service-endpoints) dashboard, pick `auth-api` as the service, and click an exemplar dot on the latency heatmap."
+            "content": "This dashboard is the per-feature traffic overview. **To drill into one slow request and see its full span tree, logs, metrics, and profile**, open the [Spring Service: Endpoint Investigation](/d/spring-service-endpoints) dashboard, pick `auth-api` as the service, and click an exemplar dot on the latency heatmap."
           }
         },
         { "id": 1, "title": "Login Rate", "type": "timeseries",
@@ -10684,7 +10684,7 @@ spec:
           "gridPos": {"h":3,"w":24,"x":0,"y":0},
           "options": {
             "mode": "markdown",
-            "content": "This dashboard is the per-feature traffic overview. **To drill into one slow request and see its full span tree, logs, metrics, and profile**, open the [Spring Service — Endpoint Investigation](/d/spring-service-endpoints) dashboard, pick `agents-api` as the service, and click an exemplar dot on the latency heatmap."
+            "content": "This dashboard is the per-feature traffic overview. **To drill into one slow request and see its full span tree, logs, metrics, and profile**, open the [Spring Service: Endpoint Investigation](/d/spring-service-endpoints) dashboard, pick `agents-api` as the service, and click an exemplar dot on the latency heatmap."
           }
         },
         { "id": 1, "title": "Request rate by URI", "type": "timeseries",
