@@ -272,10 +272,7 @@ its identity, `<process>-catalog`, and its identity's policy and auth role to
 its Project's `policies/`, beside every other identity's. The two files are its
 own Project's: they land in `apps/<project>/<application>/`, the directory of
 the Application that runs the datastore, and that directory's index lists the
-first. Only while the datastore's Project is `legacy` does it have no share on
-the estate path: then the two files land in `estate/vso-secrets/`, listed by
-its index, its documents in `estate/vso-secrets/policies/`, and the
-**estate-scoped policy job** beside them writes those documents alone:
+first:
 
 | file | adapter | holds |
 |---|---|---|
@@ -285,11 +282,8 @@ its index, its documents in `estate/vso-secrets/policies/`, and the
 All of them are in the datastore's namespace: the method runs beside the
 datastore it writes into.
 
-A Project's own job is in that **Project's namespace**, `<project>-system`. The
-estate-scoped job is in the namespace of the catalog it writes, the one the
-handover ledger states the old path runs that datastore in, so each writes
-names of its own namespace alone; catalogs the old path runs in two namespaces
-would need two such jobs, and the render stops rather than write one.
+A Project's own job is in that **Project's namespace**, `<project>-system`, so
+each writes names of its own namespace alone.
 
 - It authenticates as the platform's role, a platform fixture created with the
   auth method and bound to the ServiceAccount `vault-policy` in every
@@ -517,15 +511,13 @@ Where two tiers of one namespace name one, the first in the Platform document is
 | `security-headers-admin` | the baseline, and `default-src 'self'; style-src 'self' 'unsafe-inline'` |
 | `security-headers-workflow` | the baseline, and `default-src 'self'; connect-src 'self' https:` |
 
-## A Project's handover diff
+## Coverage
 
-Nothing live goes unattributed while two delivery paths coexist, because each
-Project hands over one at a time
-([chapter 14](14-platform-intent.md#handover-ledger)), and its handover includes
-a one-off diff of its render against the hand-written objects the old path
-applies for it. Every difference is explained by a decision before the Project
-moves; what cannot be declared yet stays on the old path. The diff is a tool the
-handover runs, not a model rule, so no ledger of accepted holes is kept and no
+Nothing live goes unattributed: every object is a registered adapter's, a
+derived Node Agent's or the bootstrap set's. A Project adopted from objects
+some other applier left is diffed once against them, and every difference is
+explained by a decision before its pin is applied; the diff is a tool the
+adoption runs, not a model rule, so no ledger of accepted holes is kept and no
 review date fails a build.
 
 The estate's coverage is the union of what the registered adapters emit, the
@@ -578,7 +570,7 @@ needs a decision, not an allowlist entry."*
 | a path claimed by two adapters | `E_PATH_COLLISION`; attribution becomes ambiguous |
 | a path outside the gitops root, or containing `..` | the adapter contract test |
 | a hand-added file inside the rendered tree | the tree is published whole as a signed artifact, so a file added beside it never reaches the cluster |
-| a hand-written object of any kind, a raw manifest, a pack file | there is no pass-through ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)); what cannot be declared yet stays on the old path until its Project hands over |
+| a hand-written object of any kind, a raw manifest, a pack file | there is no pass-through ([0046](../../docs/adr/model/0046-the-foundation-is-declared.md)); what cannot be declared yet stays with whatever applies it until its Project declares it |
 
 ## Flagger-ready objects
 

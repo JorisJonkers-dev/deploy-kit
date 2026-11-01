@@ -23,7 +23,6 @@ import {
   applicationDirectory,
   ESTATE_DIRECTORY,
   policyJobDirectory,
-  SECRETS_DIRECTORY,
 } from "../adapters/shared/paths.ts";
 import { documentsOf, renderPolicyJob } from "../adapters/vault-policy/job.ts";
 import {
@@ -44,7 +43,7 @@ import type {
   ResolvedPolicyJob,
 } from "../model/resolved-deployment.ts";
 import { namespaceOf } from "../model/runtime-profiles.ts";
-import { notSupported } from "../model/internal-failure.ts";
+import type { CatalogHome } from "../resolve/catalog-job.ts";
 import type { AuthoredFile } from "./check-intent-set.ts";
 import {
   resolveIntentSet,
@@ -64,12 +63,6 @@ export interface RenderOptions extends ResolveOptions {
   readonly adapters?: readonly Adapter[];
   /** The projects whose share of the tree to render. */
   readonly projects: readonly string[];
-  /**
-   * Whether each Project's share carries its routes: not while the old path
-   * still serves the edge, until the edge itself is handed over
-   * (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
-   */
-  readonly routes?: boolean;
 }
 
 /** One rendered file, attributed to the adapter that produced it. */
@@ -213,51 +206,29 @@ function policyJobIn(
  * The Vault policy jobs of one render, where the platform names the job
  * (spec/v1/20-resolved-deployment.md#the-vault-policy-job): one in each
  * Project's own share, in that Project's namespace, writing only that
- * Project's documents; and, while a datastore the old path runs has a catalog
- * the estate path applies, one estate-scoped job in that datastore's
- * namespace, writing that catalog's documents. Every one logs in as the
- * platform's role, which confines a writer to its own namespace's names.
+ * Project's documents. Each logs in as the platform's role, which confines a
+ * writer to its own namespace's names.
  */
 function policyJobsOf(
   resolved: ResolvedSet,
   rendered: readonly Deliverable[],
   projects: readonly string[],
-  held: readonly ResolvedCatalogJob[],
   hash: Hasher,
 ): Deliverable[] {
   const job = resolved.policyJob;
   if (job === undefined) return [];
-  const legacy = [
-    ...new Set(
-      held
-        .filter((catalog) => !resolved.catalogHomes.has(catalog))
-        .map(({ namespace }) => namespace),
-    ),
-  ];
-  if (legacy.length > 1)
-    throw notSupported(
-      `catalogs the old path runs in ${legacy.join(" and ")}: one estate-scoped policy job writes one namespace's names`,
-    );
-  return [
-    ...projects.flatMap((project) =>
-      policyJobIn(
-        {
-          ...job,
-          namespace: namespaceOf(project),
-          ...meshIn(resolved, project),
-        },
-        rendered,
-        policyJobDirectory(project),
-        hash,
-      ),
-    ),
-    ...policyJobIn(
-      { ...job, namespace: legacy[0] ?? job.namespace },
+  return projects.flatMap((project) =>
+    policyJobIn(
+      {
+        ...job,
+        namespace: namespaceOf(project),
+        ...meshIn(resolved, project),
+      },
       rendered,
-      SECRETS_DIRECTORY,
+      policyJobDirectory(project),
       hash,
     ),
-  ];
+  );
 }
 
 /** What the mesh derives in a Project's namespace, read off its resolved Applications. */
@@ -277,33 +248,25 @@ const meshIn = (
   return mesh === undefined ? {} : { mesh };
 };
 
-/**
- * The catalog methods this render holds: one whose datastore's own Project
- * renders, and one the old path still runs whose catalog names a project of
- * this render.
- */
+/** The catalog methods this render holds: those whose datastore's own Project renders. */
 const heldCatalogs = (
   resolved: ResolvedSet,
   projects: readonly string[],
 ): ResolvedCatalogJob[] =>
-  (resolved.catalogJobs ?? []).filter((job) => {
-    const home = resolved.catalogHomes.get(job);
-    if (home !== undefined) return projects.includes(home.project);
-    const { catalog } = job;
-    return "databases" in catalog
-      ? catalog.databases.some(({ name }) =>
-          projects.some((project) => name === `${project}_db`),
-        )
-      : catalog.keys.some(({ name }) => projects.includes(name));
-  });
+  (resolved.catalogJobs ?? []).filter((job) =>
+    projects.includes(homeOf(resolved, job).project),
+  );
+
+/** The Project and Application that run a catalog method's datastore. */
+const homeOf = (resolved: ResolvedSet, job: ResolvedCatalogJob): CatalogHome =>
+  // Resolution gives every catalog method the home it derives it in.
+  resolved.catalogHomes.get(job) as CatalogHome;
 
 /**
  * Each datastore's catalog method this render holds
  * (spec/v1/16-dependencies.md#applying-the-catalog): its objects, its policy,
- * and the Vault documents the policy job writes for it. A datastore whose own
- * Project is on the estate path has its method in that Project's share, where
- * that Project renders. One the old path still runs has it estate-scoped,
- * where a project its catalog names renders.
+ * and the Vault documents the policy job writes for it, in the share of the
+ * datastore's own Project.
  */
 function catalogJobsOf(
   resolved: ResolvedSet,
@@ -311,26 +274,16 @@ function catalogJobsOf(
   hash: Hasher,
 ): Deliverable[] {
   return held.flatMap((job) => {
-    const home = resolved.catalogHomes.get(job);
-    const directory =
-      home === undefined
-        ? SECRETS_DIRECTORY
-        : applicationDirectory(home.project, home.application);
+    const home = homeOf(resolved, job);
+    const directory = applicationDirectory(home.project, home.application);
     return [
       renderCatalogJob(job, hash(catalogDigestOf(job)), directory),
       renderPolicyJobPolicy(
-        home === undefined
-          ? job
-          : { ...job, ...meshIn(resolved, home.project) },
+        { ...job, ...meshIn(resolved, home.project) },
         `${job.identity}-networkpolicy.yaml`,
         directory,
       ),
-      ...renderCatalogVault(
-        job,
-        home === undefined
-          ? SECRETS_DIRECTORY
-          : policyJobDirectory(home.project),
-      ),
+      ...renderCatalogVault(job, policyJobDirectory(home.project)),
     ];
   });
 }
@@ -344,9 +297,7 @@ export function renderResolvedSet(
   const rendering = resolved.projects.filter(({ project }) =>
     options.projects.includes(project),
   );
-  const adapters = (options.adapters ?? ADAPTERS).filter(
-    ({ name }) => options.routes !== false || name !== TRAEFIK,
-  );
+  const adapters = options.adapters ?? ADAPTERS;
   const projects = rendering.flatMap((project) =>
     adapters.flatMap((adapter) => adapter.render(project)),
   );
@@ -369,7 +320,6 @@ export function renderResolvedSet(
       resolved,
       [...projects, ...catalogs, ...agents],
       options.projects,
-      held,
       options.hash,
     ),
     // Each Project's route for Flux's events is its own.

@@ -1,7 +1,6 @@
-# REFUSED: E_HANDOVER_BOTH_PATHS, in the Platform document beside this file
+# REFUSED: E_DUPLICATE_HUMAN_GRANT, in the Platform document beside this file
 #
-# The ledger puts `refusals` on both delivery paths, so two sources would each
-# apply it (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+# The project file the Platform document is read with.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project

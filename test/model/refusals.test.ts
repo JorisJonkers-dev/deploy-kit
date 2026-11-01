@@ -729,9 +729,6 @@ describe("the refusal fixtures", () => {
       "generated-key-outside-project",
       "generated-key-twice",
       "generated-key-written-elsewhere",
-      "handover-both-paths",
-      "handover-serving",
-      "handover-unlisted",
       "illegal-delivery-for-access",
       "image-runs-as-root",
       "l4-address-exhausted",
@@ -799,7 +796,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(100);
+    expect(refused).toHaveLength(97);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

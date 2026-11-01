@@ -13,7 +13,6 @@ import type {
 } from "../../objects/kubernetes.ts";
 import { wholeSeconds } from "../shared/durations.ts";
 import { consumerLabelsOf, labelsOf, podMetadataOf } from "../shared/labels.ts";
-import { SECRETS_DIRECTORY } from "../shared/paths.ts";
 import {
   nodeAffinityOf,
   RECREATED,
@@ -43,7 +42,7 @@ export const catalogDigestOf = (job: ResolvedCatalogJob): unknown => ({
 export function renderCatalogJob(
   job: ResolvedCatalogJob,
   digest: string,
-  directory: string = SECRETS_DIRECTORY,
+  directory: string,
 ): Deliverable {
   const name = `${job.identity}-${(digest.split(":")[1] as string).slice(0, NAME_DIGITS)}`;
   const labels = labelsOf(

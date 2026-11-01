@@ -20,7 +20,7 @@ lands, the **compiler** that turns that model into deployable artifacts.
 | [`docs/adr/model/`](docs/adr/model/) | The v1 model: premises carrying falsifiable claims, decisions resting on them. The register counts both. |
 | [`docs/adr/architecture/`](docs/adr/architecture/README.md) | The compiler's own structure. Pointers resolve against `docs/architecture.md`, not `spec/v1`. |
 | [`docs/adr/deferred/`](docs/adr/deferred/README.md) | Co-testing, still parked, and the retired push-delivery design, each record with its fate. Not v1. |
-| [`docs/runbooks/`](docs/runbooks/) | The live procedures a person runs: [handing a Project over](docs/runbooks/handover.md) to the estate path, and [standing the estate path up](docs/runbooks/setup.md) on a cluster. Not normative: the chapters they cite are. |
+| [`docs/runbooks/`](docs/runbooks/) | The live procedures a person runs: [standing the estate path up](docs/runbooks/setup.md) on a cluster. Not normative: the chapters they cite are. |
 | [`spec/v1/`](spec/v1/00-overview.md) | The normative specification. Chapters 00–60, delivery (55) among them, including the two authored documents: Project Intent (10) and Platform Intent (14). |
 | [`spec/v1/diagrams/`](spec/v1/diagrams/README.md) | One drawn diagram per chapter, as an SVG with the editable draw.io diagram embedded. One palette; colour carries the layer. |
 | [`spec/v1/examples/minimal/`](spec/v1/examples/minimal/README.md) | The smallest complete Application: one project, one Application, one Process, 31 authored lines reaching 12 objects. |
@@ -140,8 +140,8 @@ node src/cli/index.ts generate identity spec/v1/examples/platform/platform.inten
   data alone: the diagnostics as an array, `[]` for an accepted run, whose
   summary then goes to stderr. Nothing is coloured, and nothing waits for input.
 - **What compose writes.** Under its output directory, `artifacts/<name>/`
-  holds one directory per delivered Project, and `_estate`: its Vault policy
-  job alone while any Project is legacy, and its edge units too once none is. `projects/<name>/source.yaml` is the pin source of each artifact whose
+  holds one directory per delivered Project, and `_estate`, where anything is
+  estate-scoped. `projects/<name>/source.yaml` is the pin source of each artifact whose
   pin moves, to commit to the Estate repository in place of the one there. With `--sources`, the Estate repository's `projects` directory, it also
   holds the source of each pinned artifact whose committed one says something composition no longer derives, at the digest that one is committed at. Beside it, the lock.json file holds the composition lock, and the
   composition.json file holds each artifact's content hash, the repository it

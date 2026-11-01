@@ -54,7 +54,6 @@ export function resolveMigration(
   const { peer: datastore, consumes } = databaseEdgeOf(
     application,
     context.union,
-    context.platform,
   ) as NonNullable<ReturnType<typeof databaseEdgeOf>>;
   return {
     runner: `${image.repository}@${image.digest}`,

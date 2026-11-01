@@ -33,7 +33,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          revision: sha256:49ff31e3012f00541df1a3f5f675fa38f15781ff75027b150c9af0e526826216
           paths: /mcp/default /mcp/default/ /mcp/private /mcp/private/ /v1/default/banks/default/ /v1/default/banks/private/
           readiness: /health
           hostnames: hindsight-api.jorisjonkers.dev hindsight-private.jorisjonkers.dev
@@ -45,7 +45,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          revision: sha256:49ff31e3012f00541df1a3f5f675fa38f15781ff75027b150c9af0e526826216
           paths: /mcp/default /mcp/default/ /mcp/private /mcp/private/ /v1/default/banks/default/ /v1/default/banks/private/
           readiness: /health
           hostnames: hindsight-api.jorisjonkers.dev hindsight-private.jorisjonkers.dev
@@ -57,7 +57,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          revision: sha256:49ff31e3012f00541df1a3f5f675fa38f15781ff75027b150c9af0e526826216
           paths: /mcp/default /mcp/default/ /mcp/private /mcp/private/ /v1/default/banks/default/ /v1/default/banks/private/
           readiness: /health
           hostnames: hindsight-api.jorisjonkers.dev hindsight-private.jorisjonkers.dev
@@ -69,7 +69,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-api
-          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          revision: sha256:49ff31e3012f00541df1a3f5f675fa38f15781ff75027b150c9af0e526826216
           paths: /mcp/default /mcp/default/ /mcp/private /mcp/private/ /v1/default/banks/default/ /v1/default/banks/private/
           readiness: /health
           hostnames: hindsight-api.jorisjonkers.dev hindsight-private.jorisjonkers.dev
@@ -109,7 +109,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-worker
-          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          revision: sha256:49ff31e3012f00541df1a3f5f675fa38f15781ff75027b150c9af0e526826216
           readiness: /health
           errorRate: 1%
           latency: 1000ms
@@ -119,7 +119,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-worker
-          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          revision: sha256:49ff31e3012f00541df1a3f5f675fa38f15781ff75027b150c9af0e526826216
           readiness: /health
           errorRate: 1%
           latency: 1000ms
@@ -129,7 +129,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-worker
-          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          revision: sha256:49ff31e3012f00541df1a3f5f675fa38f15781ff75027b150c9af0e526826216
           readiness: /health
           errorRate: 1%
           latency: 1000ms
@@ -139,7 +139,7 @@ spec:
         metadata:
           application: hindsight
           process: hindsight-worker
-          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          revision: sha256:49ff31e3012f00541df1a3f5f675fa38f15781ff75027b150c9af0e526826216
           readiness: /health
           errorRate: 1%
           latency: 1000ms

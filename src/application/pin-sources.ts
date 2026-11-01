@@ -4,8 +4,8 @@
 // units it applies are always the ones its artifact holds. One is written
 // when the pin moves, and when the committed one no longer says what
 // composition derives. A Project's artifact holds its one unit; the
-// estate-scoped one holds the unit that applies the Human Grants, and the
-// unit that provisions secrets while a datastore the old path runs needs it.
+// estate-scoped one holds the units of the priority classes, the Human Grants
+// and the Stable Addresses.
 import { NODE_PROJECT } from "../model/node-agents.ts";
 import {
   ESTATE_ARTIFACT,
@@ -18,14 +18,12 @@ import { brokenInvariant } from "../model/internal-failure.ts";
 import { PIN_ANNOTATIONS } from "../model/pin-annotations.ts";
 import {
   fluxNamespaceOf,
-  holds,
   type PlatformIntentDocument,
 } from "../model/platform-intent.ts";
 import {
   HUMAN_GRANTS_UNIT,
   PRIORITY_CLASSES_UNIT,
   STABLE_ADDRESSES_UNIT,
-  SECRETS_UNIT,
   unitOf,
 } from "../model/reconcile-units.ts";
 import type { ResolvedProject } from "../model/resolution.ts";
@@ -34,7 +32,6 @@ import { readPinSource, samePinSource } from "../read/pin-source.ts";
 import {
   HUMAN_GRANTS_DIRECTORY,
   PRIORITY_CLASSES_DIRECTORY,
-  SECRETS_DIRECTORY,
   STABLE_ADDRESSES_DIRECTORY,
 } from "../adapters/shared/paths.ts";
 import type { RenderedObject } from "../objects/deliverable.ts";
@@ -56,7 +53,6 @@ interface Artifact {
 }
 
 const ESTATE = ESTATE_ARTIFACT;
-const SECRETS = SECRETS_DIRECTORY;
 const HUMAN_GRANTS = HUMAN_GRANTS_DIRECTORY;
 
 // Unit names are distinct within the list they sort, so `<=` would order the
@@ -76,14 +72,7 @@ const units = (names: readonly string[]): string[] =>
 function unitsOf(
   { name, files }: Artifact,
   projects: readonly ResolvedProject[],
-  platform: PlatformIntentDocument,
 ): SourceUnit[] {
-  const declaring = (application: string | undefined): string[] =>
-    projects
-      .filter(({ project, applications }) =>
-        applications.some(({ id }) => holds(application, project, id)),
-      )
-      .map(({ project }) => unitOf(project));
   // The Node Agents' Project declares nothing, and follows nothing: an agent
   // needs only its node (spec/v1/14-platform-intent.md#node-agents).
   if (name === NODE_PROJECT)
@@ -111,10 +100,8 @@ function unitsOf(
       },
     ];
   }
-  // The estate's artifact holds the catalog of a datastore the old path runs,
-  // with the job that writes its documents, in a unit that follows the Secret
-  // Store's project; and the Human Grants' bindings, in a unit that follows
-  // nothing, since a built-in role is the cluster's own.
+  // The estate's artifact holds the Human Grants' bindings, in a unit that
+  // follows nothing, since a built-in role is the cluster's own.
   const carries = (directory: string): boolean =>
     files.some(({ path }) => path.startsWith(`${directory}/`));
   return [
@@ -146,15 +133,6 @@ function unitsOf(
           },
         ]
       : []),
-    ...(carries(SECRETS)
-      ? [
-          {
-            name: SECRETS_UNIT,
-            path: SECRETS,
-            after: declaring(platform.secretStore),
-          },
-        ]
-      : []),
   ];
 }
 
@@ -169,11 +147,10 @@ function unitsOf(
  * repository, the signer and the pull Secret, follows the Platform document
  * all the same.
  *
- * A unit follows only units `delivered` holds: a Project still on the old path
- * has no unit on this one, which would never become Ready, and is already
- * running where the old path put it. A Project's artifact that moves and is
- * not yet `pinned` is a first delivery, the handover's, and recreates the
- * Deployments it cannot take over in place.
+ * A unit follows only units `delivered` holds: one no artifact holds would
+ * never become Ready. A Project's artifact that moves and is not yet `pinned`
+ * is a first delivery, and recreates the Deployments it cannot take over in
+ * place.
  */
 export function pinSources(
   moving: readonly Artifact[],
@@ -187,7 +164,7 @@ export function pinSources(
 ): PinSource[] {
   const onPath = new Set(
     delivered.flatMap((artifact) =>
-      unitsOf(artifact, projects, platform).map(({ name }) => name),
+      unitsOf(artifact, projects).map(({ name }) => name),
     ),
   );
   const { artifacts: published } = platform.bootstrap.flux;
@@ -209,7 +186,7 @@ export function pinSources(
       renderPinSource(
         name === ESTATE ? ESTATE_SOURCE : sourceOf(name),
         name,
-        unitsOf(artifact, projects, platform).map((unit) => ({
+        unitsOf(artifact, projects).map((unit) => ({
           ...unit,
           after: unit.after.filter((followed) => onPath.has(followed)),
           ...(Object.keys(rollout).length === 0

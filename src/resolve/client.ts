@@ -120,7 +120,6 @@ export const gatedBy = (
  */
 export function gateAddressOf(
   forwardAuth: ForwardAuth,
-  platform: Pick<PlatformIntentDocument, "handover">,
   union: readonly EffectiveProject[],
 ): {
   readonly name: string;
@@ -130,7 +129,6 @@ export function gateAddressOf(
   // The union declares the provider, or E_UNKNOWN_FORWARD_AUTH_PROVIDER
   // refused the set.
   const { process, namespace, port } = surfaceHome(
-    platform,
     union,
     forwardAuth.provider,
     forwardAuth.surface,

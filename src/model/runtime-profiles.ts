@@ -79,24 +79,11 @@ export interface Home {
   readonly process: string;
 }
 
-/**
- * Where one Process of `application` serves: its project's namespace under its
- * own name, or, while its project is legacy, where the handover ledger states
- * the old path runs it (spec/v1/14-platform-intent.md#handover-ledger).
- */
-export function homeOf(
-  platform: Pick<PlatformIntentDocument, "handover">,
-  project: string,
-  application: string,
-  process: string,
-): Home {
-  const stated = platform.handover?.serving?.find(
-    (location) => location.application === application,
-  );
-  return stated === undefined
-    ? { namespace: namespaceOf(project), process }
-    : { namespace: stated.namespace, process: stated.instance ?? process };
-}
+/** Where one Process serves: its project's namespace, under its own name. */
+export const homeOf = (project: string, process: string): Home => ({
+  namespace: namespaceOf(project),
+  process,
+});
 
 /** The in-cluster address of one Process's port. */
 export const addressOf = ({ namespace, process }: Home, port: number): string =>
@@ -116,7 +103,6 @@ interface Declares {
 
 /** Where the Process of `application` that provides `surface` serves, and on which port, where one does. */
 export function surfaceHome(
-  platform: Pick<PlatformIntentDocument, "handover">,
   projects: readonly Declares[],
   application: string | undefined,
   surface: string,
@@ -127,19 +113,18 @@ export function surfaceHome(
         for (const process of processes) {
           const port = process.provides?.[surface];
           if (port !== undefined)
-            return { ...homeOf(platform, project, id, process.name), port };
+            return { ...homeOf(project, process.name), port };
         }
   return undefined;
 }
 
 /** The address of the Process of `application` that provides `surface`, where one does. */
 export function surfaceAddress(
-  platform: Pick<PlatformIntentDocument, "handover">,
   projects: readonly Declares[],
   application: string | undefined,
   surface: string,
 ): string | undefined {
-  const home = surfaceHome(platform, projects, application, surface);
+  const home = surfaceHome(projects, application, surface);
   return home === undefined ? undefined : addressOf(home, home.port);
 }
 
@@ -149,7 +134,6 @@ export function surfaceAddress(
  * nothing where the union declares no such provider.
  */
 export const forwardAuthEndpoint = (
-  platform: Pick<PlatformIntentDocument, "handover">,
   projects: readonly Declares[],
   forwardAuth: {
     readonly provider: string;
@@ -157,12 +141,7 @@ export const forwardAuthEndpoint = (
     readonly path: string;
   },
 ): string | undefined => {
-  const home = surfaceHome(
-    platform,
-    projects,
-    forwardAuth.provider,
-    forwardAuth.surface,
-  );
+  const home = surfaceHome(projects, forwardAuth.provider, forwardAuth.surface);
   // The edge asks the provider's Stable Address, so a move of the provider
   // repoints the middleware with everything else
   // (spec/v1/16-dependencies.md#the-stable-address).
@@ -191,12 +170,7 @@ export const collectorEndpoint = (
   projects: readonly Declares[],
 ): string | undefined =>
   endpoint(
-    surfaceAddress(
-      platform,
-      projects,
-      platform.telemetry?.collector,
-      OTLP_SURFACE,
-    ),
+    surfaceAddress(projects, platform.telemetry?.collector, OTLP_SURFACE),
   );
 
 /**
@@ -207,9 +181,7 @@ export const gateEndpoint = (
   platform: PlatformIntentDocument,
   projects: readonly Declares[],
 ): string | undefined =>
-  endpoint(
-    surfaceAddress(platform, projects, platform.delivery?.gate, GATE_SURFACE),
-  );
+  endpoint(surfaceAddress(projects, platform.delivery?.gate, GATE_SURFACE));
 
 /**
  * The Projects that declare the Release Gate: the delivery machinery's own.
@@ -238,7 +210,6 @@ export const reporterEndpoint = (
 ): string | undefined =>
   endpoint(
     surfaceAddress(
-      platform,
       gateProjects(platform, projects),
       platform.delivery?.reporter,
       REPORTER_SURFACE,
@@ -250,7 +221,7 @@ export const secretStoreAddress = (
   platform: PlatformIntentDocument,
   projects: readonly Declares[],
 ): string | undefined =>
-  surfaceAddress(platform, projects, platform.secretStore, GATE_SURFACE);
+  surfaceAddress(projects, platform.secretStore, GATE_SURFACE);
 
 /** The endpoint the secrets operator connects to the Secret Store through. */
 export const secretStoreEndpoint = (

@@ -2226,7 +2226,8 @@
         "create",
         "update",
         "patch",
-        "delete"
+        "delete",
+        "deletecollection"
       ]
     },
     "ApiScope": {

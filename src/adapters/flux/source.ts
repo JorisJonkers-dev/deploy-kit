@@ -73,9 +73,9 @@ export const CLAIM_HEALTH = {
 
 /**
  * The patch a Project's first delivery applies: every Deployment it holds is
- * marked for recreation. A live Deployment that the old path applied selects
- * on fewer labels than the render's, and a selector is immutable, so taking it
- * over in place is refused (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+ * marked for recreation. A live Deployment of the same name that another
+ * applier left selects on fewer labels than the render's, and a selector is
+ * immutable, so taking it over in place is refused.
  * Nothing else is marked: a claim recreated is a claim emptied.
  */
 export const RECREATE_DEPLOYMENTS = {

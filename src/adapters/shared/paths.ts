@@ -7,12 +7,6 @@
 /** The root of everything estate-scoped: the `_estate` artifact's tree. */
 export const ESTATE_DIRECTORY = "estate";
 
-/**
- * Where the estate-scoped policy job and its documents land, while a
- * datastore the old path runs has a catalog the estate path applies.
- */
-export const SECRETS_DIRECTORY = `${ESTATE_DIRECTORY}/vso-secrets`;
-
 /** Where the Human Grants' bindings land: the platform's, and no Project's. */
 export const HUMAN_GRANTS_DIRECTORY = `${ESTATE_DIRECTORY}/human-grants`;
 /** Where the Stable Addresses live (spec/v1/16-dependencies.md#the-stable-address). */

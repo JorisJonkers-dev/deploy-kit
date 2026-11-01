@@ -9,7 +9,6 @@ import type {
 } from "../model/effective-intent.ts";
 import { ownsDatabases } from "../model/project-intent-queries.ts";
 import type { EgressPeer } from "../model/resolved-deployment.ts";
-import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import { homeOf } from "../model/runtime-profiles.ts";
 import { consumedOf } from "../model/consumer-label.ts";
 
@@ -33,7 +32,6 @@ const edgesOf = ({ dependsOn }: EffectiveProcess) => dependsOn ?? [];
 export function databaseEdgeOf(
   application: EffectiveApplication,
   union: readonly EffectiveProject[],
-  platform: Pick<PlatformIntentDocument, "handover">,
 ): { readonly peer: Egress; readonly consumes: string } | undefined {
   return application.processes
     .flatMap(edgesOf)
@@ -49,7 +47,7 @@ export function databaseEdgeOf(
                     {
                       peer: {
                         rule: "datastore" as const,
-                        ...homeOf(platform, project, id, name),
+                        ...homeOf(project, name),
                         port: provides[edge.surface] as number,
                       },
                       consumes: consumedOf(id, edge.surface),
@@ -66,5 +64,4 @@ export function databaseEdgeOf(
 export const datastoreOf = (
   application: EffectiveApplication,
   union: readonly EffectiveProject[],
-  platform: Pick<PlatformIntentDocument, "handover">,
-): Egress | undefined => databaseEdgeOf(application, union, platform)?.peer;
+): Egress | undefined => databaseEdgeOf(application, union)?.peer;

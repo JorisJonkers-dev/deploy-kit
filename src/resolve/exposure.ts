@@ -60,11 +60,10 @@ const baselineOf = (exposure: Exposure): Middleware => ({
  * E_NO_FORWARD_AUTH_ENDPOINT refused the Platform document).
  */
 function forwardAuthStep(
-  platform: PlatformIntentDocument,
   union: readonly EffectiveProject[],
   forwardAuth: ForwardAuth,
 ): Middleware {
-  const endpoint = forwardAuthEndpoint(platform, union, forwardAuth);
+  const endpoint = forwardAuthEndpoint(union, forwardAuth);
   return {
     kind: "forward-auth" as const,
     ...(endpoint === undefined ? {} : { endpoint }),
@@ -86,7 +85,7 @@ function middlewareOf(
     // A tier that carries `authenticated` names its endpoint, or
     // E_NO_FORWARD_AUTH_ENDPOINT refused the Platform document.
     ...(audience === "authenticated" && gate
-      ? [forwardAuthStep(platform, union, tier.forwardAuth as ForwardAuth)]
+      ? [forwardAuthStep(union, tier.forwardAuth as ForwardAuth)]
       : []),
     baselineOf(exposure),
     ...(route.redirectTo === undefined
@@ -143,7 +142,7 @@ function resolveOne(
 ): ResolvedExposure {
   const tier = tierFor(exposure.audience, platform);
   // The tier's proxy is declared, or E_UNKNOWN_TIER_PROXY refused the set.
-  const [proxy] = peersOf(platform, tier.traefik, union);
+  const [proxy] = peersOf(tier.traefik, union);
   const gated = gatedBy(application, exposure);
   const precedence = precedenceAmong([
     ...exposure.routes,
@@ -183,7 +182,7 @@ function resolveOne(
       ...resolved.routes,
       {
         ...GATE_ROUTE,
-        gate: gateAddressOf(tier.forwardAuth as ForwardAuth, platform, union),
+        gate: gateAddressOf(tier.forwardAuth as ForwardAuth, union),
         audience: exposure.audience,
         precedence: precedence(GATE_ROUTE),
         // The Gate answers here itself, so nothing asks it first.

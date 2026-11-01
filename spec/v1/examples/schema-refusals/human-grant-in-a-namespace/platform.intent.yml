@@ -206,21 +206,6 @@ policyJob:
   cpu: 10m
   deadline: 120s
 
-# Which delivery path each Project is on while the estate moves off
-# fleet-infra's deploy/production branch, one Project at a time
-# (spec/v1/60-setup.md#handing-over-one-project-at-a-time). No Project is on
-# both, and after retireBy the old path is removed.
-handover:
-  retireBy: 2027-03-31
-  legacy: [auth, data, knowledge, notes]
-  estate: [delivery, edge, knowledge-platform, observability, secrets]
-  # Where the old path keeps the legacy Postgres's administrative login, which
-  # applies the catalog of the estate path's databases until data moves.
-  serving:
-    - application: platform-postgres
-      namespace: data-system
-      admin: { path: secret/data/platform/postgres, user: postgres.user, password: postgres.password }
-
 # Things the estate runs and does not deploy, that an Application depends on. A fact
 # with an address, resolvable by an edge -- not a hole, so no review date
 # (docs/adr/model/0024-dependency-edges-resolve-against-the-union.md).

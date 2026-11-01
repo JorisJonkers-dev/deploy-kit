@@ -3,10 +3,9 @@
 # product (deploy-kit spec/v1/examples/auth/auth.project.yml).
 #
 # The Project is `auth`, so the namespace derives as `auth-system`, where both already run.
-# It moves from fleet-infra to the estate path in the three changes of deploy-kit
-# spec/v1/60-setup.md#handing-over-one-project-at-a-time (#80). Each value below is read from
-# the live objects, and each Process's environment from the old path's Deployment, in
-# env/<process>/base.env beside this file.
+# Its pin delivers it (deploy-kit spec/v1/60-setup.md#one-delivery-path). Each value below
+# was read from the live objects, and each Process's environment from the Deployment that
+# ran it before, in env/<process>/base.env beside this file.
 
 apiVersion: intent.jorisjonkers.dev/v1
 kind: Project

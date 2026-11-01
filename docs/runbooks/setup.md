@@ -3,8 +3,7 @@
 How a cluster comes to be delivered from `JorisJonkers-dev/estate`: what has to
 exist before anything renders, the order it is put there in, and what proves
 the estate path delivers. It is the procedure for a new cluster and for a
-cluster move. Handing a running Project over from `fleet-infra` is the other
-runbook, [`handover.md`](handover.md).
+cluster move.
 
 This is a runbook, not a rule. The bootstrap set is
 [chapter 14](../../spec/v1/14-platform-intent.md#the-bootstrap-set)'s, the
@@ -18,20 +17,12 @@ which say themselves what each stage writes.
 
 ## Who provides what
 
-The estate is mid-handover, so part of what the estate path needs is still
-`fleet-infra`'s.
-
-| what | while any Project is `legacy` | once the old path is retired |
-|---|---|---|
-| hosts, k3s, the node facts | `JorisJonkers-dev/nix-config` | the same |
-| Flux's controllers, and the `flux-system/platform` source that reads the estate | `fleet-infra`'s `flux-system` | the same: `fleet-infra` ends holding only the Flux bootstrap |
-| Vault | `fleet-infra`, in `data-system` | the estate's `secrets` Project, in `secrets-system` ([#663](https://github.com/JorisJonkers-dev/deploy-kit/issues/663)) |
-| the CRDs of the bootstrap set | the old path's charts, and Flagger's from `bootstrap/cluster.sh` | the bootstrap set; how it is applied on a new cluster is not yet written ([#381](https://github.com/JorisJonkers-dev/deploy-kit/issues/381)) |
-| the foundation: edge, observability, data, `node` | the old path | the estate's pins |
-| every other Project | the estate's pins | the same |
-
-The order the foundation leaves the old path in is
-[`handover.md`](handover.md#which-project-goes-next)'s.
+| what | who |
+|---|---|
+| hosts, k3s, the node facts | `JorisJonkers-dev/nix-config` |
+| Flux's controllers, and the `flux-system/platform` source that reads the estate | `fleet-infra`'s `flux-system`, until JorisJonkers-dev/estate#211 settles their owner |
+| the CRDs of the bootstrap set | Flagger's from `bootstrap/cluster.sh`; how the rest are applied on a new cluster is not yet written ([#381](https://github.com/JorisJonkers-dev/deploy-kit/issues/381)) |
+| every Project, the foundation and `node` among them | the estate's pins |
 
 ## Once per organization, and once per key
 

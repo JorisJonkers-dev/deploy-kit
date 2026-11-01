@@ -224,10 +224,7 @@ jobs:
           # in one run. An error isolates the fragment it names and composition
           # runs again over the rest; only a refused Platform document, or an
           # error no changed fragment caused, exits 1 and composes nothing
-          # (spec/v1/40-composition.md#a-refused-project-is-isolated). A
-          # Project the handover ledger still puts on the old path is composed
-          # and checked, never delivered, and the estate-scoped artifact waits
-          # until none is (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
+          # (spec/v1/40-composition.md#a-refused-project-is-isolated).
           # shellcheck disable=SC2086 # LOCK is two options or none
           npx --no-install deploy-kit compose \
             --platform platform/ \

@@ -93,7 +93,7 @@ chapter's hard dependency on [chapter 40](40-composition.md).
 | browser origin allow-lists | `auth-api` hand-maintains `AUTH_CORS_ALLOWED_ORIGINS` with nine hostnames |
 | rotation blast radius | "who breaks if I rotate this?" is the reader set of a Secret Subtree **path**, computed over readers of the path and never over declared key sets |
 
-Two lists the old path also kept by hand are not inbound derivations, though
+Two lists `fleet-infra` once kept by hand are not inbound derivations, though
 this table once counted them. The Gatus endpoint list (41 derived references in
 288 lines) is one check per route of each exposure, which is the Application's
 own: each Application renders its external checks in its own Project's share.
@@ -303,17 +303,13 @@ as the Vault policy job applies the Vault documents, and for the same reason:
 writing to a live datastore is an act by an identity with privilege, which is
 delivery.
 
-**What it names.** A datastore's applied catalog names every consuming project
-the handover ledger puts on `estate`, or every consuming project where the
-Platform document carries no ledger. A `legacy` project's database stays the old
-path's until the project moves, so the estate path never takes over a database
-an old-path Application still owns.
+**What it names.** A datastore's applied catalog names every consuming
+project.
 
 **Where it runs.** For each Process whose engine names a `catalog` method, where
 the platform names the Vault policy job and the applied catalog names a
 database or a key, the render derives one identity, `<process>-catalog`, in the
-datastore's namespace, or the namespace a `serving` location states while the
-datastore's Project is `legacy`. Its objects are its datastore's own: they are
+datastore's namespace. Its objects are its datastore's own: they are
 in the artifact of the Project that runs the datastore, applied by that
 Project's unit with the datastore itself, so the method signs in once the
 datastore answers and retries until it does
@@ -322,12 +318,8 @@ The same unit's own Vault policy job writes the method's role, and the unit
 follows the Secret Store's Platform Project
 ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)); an Application of
 another Project that reads the database follows that unit through its required
-edge. While the datastore's Project is `legacy` it has no unit on the estate
-path, so its catalog's objects and documents are in the estate-scoped artifact
-instead, in the `estate-vso-secrets` Reconcile Unit, beside the estate-scoped
-policy job that writes them. No Project's unit follows that one: a reader
-retries until its database exists. Either way the catalog never waits on a
-namespace or a Process that the unit applying it does not bring up:
+edge. The catalog never waits on a namespace or a Process that the unit
+applying it does not bring up:
 
 | object | holds |
 |---|---|
@@ -343,7 +335,7 @@ order, for each database the catalog names:
 3. It **adopts** a database that exists and is owned by another role: that
    role's objects in it are reassigned to the owner role, once, and the role
    becomes a member of the owner role, so whatever still signs in as it keeps
-   its access until its old path is retired. A run reassigns what an adopted
+   its access. A run reassigns what an adopted
    role has created since. Adopting hands on whatever the role holds, so a
    database is adopted only from a role with no attribute beyond owning that
    owns no other database; any other, a superuser's among them, fails the run
@@ -369,14 +361,10 @@ catalog names:
 It never deletes a bucket, a key or a grant, and a run applied twice changes
 nothing the second time.
 
-**The admin login.** While the datastore's Project is `legacy`, the method signs
-in with the login the old path keeps, which the datastore's `serving` location
-names as `admin` ([chapter 14](14-platform-intent.md#handover-ledger)); a legacy
-datastore with no `admin` applies no catalog. Once the Project moves, it signs
-in with the derived `secret/data/<project>/<process>/catalog`, keys `user` and
-`password`, or `token` for an object store, which the platform's operator
-writes, as for a backup's and a move's login. A location whose `admin` is not
-the shape its engine's catalog signs in with applies no catalog.
+**The admin login.** The method signs in with the derived
+`secret/data/<project>/<process>/catalog`, keys `user` and `password`, or
+`token` for an object store, which the platform's operator writes, as for a
+backup's and a move's login.
 
 ## Process identity
 
@@ -421,9 +409,8 @@ engine's surface, the Secret Store, the cluster's DNS and the API server.
 | `auth` | `auth` | `auth-api`, `auth-ui` | `auth-api`, `auth-ui` | `auth-system-auth-api`, `auth-system-auth-ui` |
 | `knowledge` | `knowledge`, `knowledge-ingest` | `knowledge-api`; `knowledge-ingest-worker` | `knowledge-api`, `knowledge-ingest-worker` | `knowledge-system-knowledge-api`, `knowledge-system-knowledge-ingest-worker` |
 
-The live cluster carries `auth-api` as that Process's role today. A role is
-renamed when its Project is handed over to this path, by the Vault policy job
-writing the new name; the old one is reported and a human removes it
+A role is renamed by the Vault policy job writing the new name; the old one is
+reported and a human removes it
 ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 
 A `<application>-<process>` prefix is what the project file makes absurd. Application
@@ -600,11 +587,8 @@ policy change in any consumer's Project, which is what lets it happen at once,
 and the rules narrow to the one remaining Instance when the source is retired.
 
 A peer on another Application is admitted, and reached, where it runs: the
-`<project>-system` of the project that declares it, under its Process's name.
-While that project is still `legacy`, the old path may run it elsewhere, so the
-peer is where the handover ledger's `serving` states it runs, and so is the
-address a Process is handed for it
-([chapter 14](14-platform-intent.md#handover-ledger)).
+`<project>-system` of the project that declares it, under its Process's name,
+and so is the address a Process is handed for it.
 
 ### The consumer label
 
@@ -630,9 +614,9 @@ an address, and the model renders no policy for what answers there.
 
 The label is rendered only from an edge the union resolved, on pods only this
 model renders, in namespaces only it manages, so a pod carries it only where a
-declaration someone owns put it there. A consumer the old path still runs
-carries no label, so a provider's policy admits it once its Project is handed
-over; until then the policy set is render-only
+declaration someone owns put it there. A consumer no render applies carries
+no label, so a provider's policy does not admit it, which is why the policy set
+stays render-only until every consumer carries one
 ([Audit before enforce](#audit-before-enforce)).
 
 A label's name is at most 63 characters of letters, digits, `-`, `_` and `.`,
@@ -1108,8 +1092,8 @@ an object is the defect.
 
 Every rendered object is reachable from at least one declaration or one pinned
 input. An object with no inbound edge is hand-written, and must become derived
-before its Project hands over
-([chapter 30](30-deliverables.md#a-projects-handover-diff)).
+before its Project is adopted
+([chapter 30](30-deliverables.md#coverage)).
 
 This is the property that was violated seven ways over: `reachability.yml`, both
 edge catalogs, both IngressRoutes and the Gatus endpoint each declared

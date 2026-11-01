@@ -616,28 +616,6 @@ function ungatedRefusals(
   );
 }
 
-/** While the handover lasts, every Project is on one path the ledger names. */
-function handoverRefusals(
-  project: ProjectIntentDocument,
-  platform: PlatformIntentDocument,
-): Omit<Diagnostic, "document">[] {
-  const { handover } = platform;
-  if (handover === undefined) return [];
-  const onPath =
-    handover.legacy?.includes(project.project) === true ||
-    handover.estate?.includes(project.project) === true;
-  return onPath
-    ? []
-    : [
-        {
-          code: "E_HANDOVER_UNLISTED",
-          path: "",
-          message: `the handover ledger puts project ${project.project} on no delivery path`,
-          hint: "Name the Project in the Platform document's `handover.legacy` or `handover.estate`.",
-        },
-      ];
-}
-
 /** A continuous Application is gated, and the gate analyses at the platform's cadence. */
 function deliveryRefusals(
   project: ProjectIntentDocument,
@@ -815,7 +793,6 @@ function projectRefusals(
   refusals.push(...runnerRefusals(project, platform));
   refusals.push(...ungatedRefusals(project, platform));
   refusals.push(...deliveryRefusals(project, platform));
-  refusals.push(...handoverRefusals(project, platform));
   for (const [a, application] of project.applications.entries()) {
     const at = `/applications/${a}`;
     for (const [e, exposure] of (application.exposure ?? []).entries()) {
@@ -1136,7 +1113,6 @@ export function setDiagnostics(
         ),
       ) ||
       forwardAuthEndpoint(
-        platform.document,
         projects.map(({ document }) => document),
         tier.forwardAuth,
       ) !== undefined
@@ -1262,39 +1238,6 @@ export function setDiagnostics(
           },
         ],
   );
-  // A stated location stands for an Application the old path still runs, and
-  // an instance for its one Process.
-  const legacy = new Set(platform.document.handover?.legacy);
-  const serving: Diagnostic[] =
-    platform.document.handover?.serving?.flatMap((location, index) =>
-      projects.flatMap(({ document }) =>
-        document.applications
-          .filter(({ id }) => id === location.application)
-          .flatMap(({ processes }) =>
-            !legacy.has(document.project)
-              ? [
-                  {
-                    code: "E_HANDOVER_SERVING" as const,
-                    document: platform.name,
-                    path: `/handover/serving/${String(index)}`,
-                    message: `the handover ledger states where ${location.application} serves, but its project ${document.project} is not legacy`,
-                    hint: "Remove the location in the change that moves the Project to `estate`.",
-                  },
-                ]
-              : location.instance !== undefined && processes.length > 1
-                ? [
-                    {
-                      code: "E_HANDOVER_SERVING" as const,
-                      document: platform.name,
-                      path: `/handover/serving/${String(index)}`,
-                      message: `the handover ledger states one instance for ${location.application}, which runs ${String(processes.length)} Processes`,
-                      hint: "State only the namespace, or split the Application.",
-                    },
-                  ]
-                : [],
-          ),
-      ),
-    ) ?? [];
   return [
     ...proxies,
     ...unfiltered(platform),
@@ -1310,7 +1253,6 @@ export function setDiagnostics(
     ...secrets,
     ...issuing,
     ...enrolled,
-    ...serving,
     ...exhaustedRefusals(platform, projects),
     ...nodePortRefusals(platform, projects),
     ...proxyRefusals(platform, projects),

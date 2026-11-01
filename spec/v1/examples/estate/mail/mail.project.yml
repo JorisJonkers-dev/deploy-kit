@@ -1,9 +1,8 @@
 # deploy-kit Project Intent for the estate's mail server, Stalwart.
 #
 # The Project is `mail`, so the namespace derives as `mail-system`, where Stalwart already runs.
-# It is on the estate path since JorisJonkers-dev/deploy-kit#656
-# (deploy-kit spec/v1/60-setup.md#handing-over-one-project-at-a-time): its pin delivers it,
-# adopted in place, on the live claim `stalwart-data`. `auth`, `outline` and `overleaf` send
+# Its pin delivers it (deploy-kit spec/v1/60-setup.md#one-delivery-path), adopted in place
+# on the live claim `stalwart-data` in JorisJonkers-dev/deploy-kit#656. `auth`, `outline` and `overleaf` send
 # their mail through it. It publishes with the Platform document, on this repository's
 # releases, and its images are in images.lock.yml.
 #

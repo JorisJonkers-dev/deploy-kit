@@ -45,7 +45,7 @@ export function resolveEdge(
         for (const process of declared.processes)
           if (process.provides?.[surface] !== undefined) {
             const peer = {
-              ...homeOf(platform, home, application, process.name),
+              ...homeOf(home, process.name),
               port: served.port,
             };
             // While the provider moves out of another namespace, its source

@@ -80,6 +80,8 @@ export const API_VERBS = [
   "update",
   "patch",
   "delete",
+  // An operator that empties its own cache on start clears it in one call.
+  "deletecollection",
 ] as const;
 export const DELIVERIES = ["env", "file", "self"] as const;
 /** Where a Process may egress beyond what its edges derive: public IPv4 only. */

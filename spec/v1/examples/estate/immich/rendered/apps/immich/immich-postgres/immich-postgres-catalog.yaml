@@ -81,7 +81,7 @@ spec:
           image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:378f721245ba80ffe79fe43c9cdbbd29c76ebb865bbbccfe8561e91ef280e70c
           env:
             - name: VAULT_ADDR
-              value: http://vault.data-system.svc.cluster.local:8200
+              value: http://vault.secrets-system.svc.cluster.local:8200
             - name: VAULT_ROLE
               value: immich-system-immich-postgres-catalog
             - name: CATALOG_FILE
@@ -173,7 +173,7 @@ spec:
               image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:378f721245ba80ffe79fe43c9cdbbd29c76ebb865bbbccfe8561e91ef280e70c
               env:
                 - name: VAULT_ADDR
-                  value: http://vault.data-system.svc.cluster.local:8200
+                  value: http://vault.secrets-system.svc.cluster.local:8200
                 - name: VAULT_ROLE
                   value: immich-system-immich-postgres-catalog
                 - name: CATALOG_FILE

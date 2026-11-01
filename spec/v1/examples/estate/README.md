@@ -80,15 +80,9 @@ holds them.
 
 Each tree was compared with the Rendered artifact production delivers for that
 Project, `ghcr.io/jorisjonkers-dev/render/<project>` at the digest the estate's
-pin names, and differs from it in two ways only, both composition's rather than
-the Project's, besides the em-dashes above:
+pin names, and differs from it in one way only, composition's rather than the
+Project's, besides the em-dashes above:
 
-- **Routes.** Composition holds every Project's routes back while the edge is
-  still `legacy` in the handover ledger, so the old path's Traefik stays the
-  only source of them
-  ([chapter 60](../../60-setup.md#handing-over-one-project-at-a-time)). These
-  trees carry them, as every worked tree does: each exposure's `route-*.yaml`
-  and its line in the unit's `kustomization.yaml`.
 - **The release patches.** Composition labels each unit's pods with the
   release it delivers by patches in the Project's `kustomization.yaml`
   ([chapter 55](../../55-delivery.md#rendered-artifacts-and-pins)); a render of
