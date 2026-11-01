@@ -300,10 +300,13 @@ the same set of paths. The grammar stays the one statement of the schema: the
 check holds nothing the grammar says, only the two scalar limits it cannot, a
 rate limit's request count and period.
 
-A plain scalar holds no colon: the lexer cannot tell `sha256:6f1c` from a key
-without looking past the colon, so a value that carries one, a digest, a URL or
-a timestamp, is quoted in the authored files and in the pinned inputs alike: the
-snapshot's `capturedAt` is written quoted.
+The lexer's scalar terminal holds no colon and no comma, because it cannot tell
+`sha256:6f1c` from a key, or a flow's separator from content, without looking
+past them. The block token source looks instead: a colon no space follows, and
+a comma outside any flow collection, join the parts on either side into one
+plain scalar, as YAML reads them, so `0.0.0.0:12345` in a flow sequence and
+`--resources=pods,nodes` in a block one are each one value. A colon a space
+follows still ends a key.
 
 A route's and a scrape's `process` and `surface` are cross-references, linked by
 a scope provider that offers the Processes of the Application holding them and the
