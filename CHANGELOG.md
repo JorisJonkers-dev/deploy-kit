@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.8.1...v1.9.0) (2026-11-01)
+
+
+### Features
+
+* **model:** remove the handover ledger, and let an API rule name deletecollection ([#788](https://github.com/JorisJonkers-dev/deploy-kit/issues/788)) ([e1fd528](https://github.com/JorisJonkers-dev/deploy-kit/commit/e1fd5281953af9a9840ad7554add3db7e7f2f341)), closes [#721](https://github.com/JorisJonkers-dev/deploy-kit/issues/721) [#781](https://github.com/JorisJonkers-dev/deploy-kit/issues/781)
+
 ## [1.8.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.8.0...v1.8.1) (2026-11-01)
 
 
