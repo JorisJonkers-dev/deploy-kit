@@ -329,6 +329,37 @@ describe("the kubernetes adapter", () => {
     );
   });
 
+  // deploy-kit#781: the Vault Secrets Operator clears its client cache with
+  // one DeleteAllOf on start, and fails to start without the verb.
+  it("spells a rule that clears a collection in one call, as an operator emptying its own cache does", () => {
+    const rendered = renderKubernetes(
+      edited(undefined, () => ({
+        api: {
+          ...API,
+          rules: [
+            {
+              group: "core",
+              objects: ["secrets"],
+              verbs: ["delete", "deletecollection"],
+              scope: "cluster",
+            },
+          ],
+        },
+      })),
+    );
+    const [role] = objectsAt(rendered, "notes/rbac.yaml") as {
+      rules: unknown[];
+    }[];
+
+    expect(role?.rules).toStrictEqual([
+      {
+        apiGroups: [""],
+        resources: ["secrets"],
+        verbs: ["delete", "deletecollection"],
+      },
+    ]);
+  });
+
   it("binds a Process that holds API access to a ClusterRole of its declared rules, the core group spelled as Kubernetes spells it", () => {
     const rendered = renderKubernetes(edited(undefined, () => ({ api: API })));
     const metadata = {

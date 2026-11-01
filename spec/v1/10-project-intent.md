@@ -3361,7 +3361,7 @@ already told them, and the lines reaching them made the model harder to read.
 | `PlaceholderKind` | `Placeholder.kind` | `secret`, `dependency`, `exposure`, `identity`, `client` |
 | `SignInMode` | `Client.signIn` | `native`, `gated`, `token` |
 | `ClientCredential` | `Client.credential` | `secret`, `pkce` |
-| `ApiVerb` | `ApiRule.verbs` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete` |
+| `ApiVerb` | `ApiRule.verbs` | `get`, `list`, `watch`, `create`, `update`, `patch`, `delete`, `deletecollection` |
 | `ApiScope` | `ApiRule.scope` | `namespace`, `cluster` |
 
 ### Absent or `none`
