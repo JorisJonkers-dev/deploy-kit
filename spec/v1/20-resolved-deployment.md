@@ -1291,6 +1291,19 @@ so what a Project waits on is the store itself, never an estate-scoped unit.
 A `required: false` edge orders nothing ([chapter 55](55-delivery.md#release-order)),
 so two projects that name each other optionally do not wait on each other.
 
+**The Secret Store's own Project follows nothing.** Every unit that holds a
+grant follows it, so any unit it followed in turn would close a cycle with the
+first such unit: a store routed through a proxy whose Project reads its
+certificate from that store waits on the proxy, which waits on the store
+([#780](https://github.com/JorisJonkers-dev/deploy-kit/issues/780)). Its route
+and its edges are applied with it, and answer once their proxy and providers
+come up. The order the units follow must be acyclic: a Project whose unit
+follows itself through any others is refused (`E_RECONCILE_CYCLE`), naming
+the other units on its cycle, rather than rendered as a deadlock Flux never
+leaves. Required edges between Applications are acyclic
+(`E_DEPENDENCY_CYCLE`), but their projection onto Projects, joined by the
+proxy and store edges above, need not be.
+
 **A Project owns every object it delivers**
 ([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)).
 Every object that exists because of one Project is planned under that
@@ -1357,7 +1370,8 @@ position; a wrong order is fixed by correcting the dependency declaration that
 produced it. And an Application's objects may split across units with nothing
 declaring that they do, as `agents-login`'s do, which is what makes a partially
 applied Application hard to read. A dependency cycle becomes a build failure
-(`E_DEPENDENCY_CYCLE`) rather than a reconcile deadlock.
+(`E_DEPENDENCY_CYCLE`, and `E_RECONCILE_CYCLE` among the units) rather than a
+reconcile deadlock.
 
 **The Reconcile Unit orders; it does not make anything atomic.** Ordering is
 derived from the graph. Atomicity is the **Application boundary itself**

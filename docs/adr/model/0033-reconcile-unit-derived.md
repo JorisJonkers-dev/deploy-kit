@@ -76,6 +76,10 @@ own output, the uniform `apps-core` string is not a fallback to restore.
   owner, in one more indirection between symptom and fix.
 - A dependency cycle becomes a build failure instead of a reconcile deadlock,
   paid by whoever introduces the cycle, at build time rather than in the cluster.
+  That holds for the units as well as the edges: the edges a route and a grant
+  derive can close a cycle no required edge does, so the Secret Store's own
+  Project follows nothing, since every unit holding a grant follows it, and a
+  cycle that remains is refused before composition renders it.
 - A Project's routes are its own, in its own unit, which follows the Project
   that declares each proxy its exposures' tiers name, so a refused route holds
   its own Project and no other

@@ -1266,6 +1266,85 @@ ${serving("notes-proxy")}`,
     ).toStrictEqual([]);
   });
 
+  // deploy-kit#780: the store's Project routed through the edge, whose
+  // Project holds grants and so follows the store, closed a cycle.
+  it("orders the Secret Store's own Project after nothing, though it is routed and reaches another Project", () => {
+    const store = projects(
+      `  - id: notes
+    exposure:
+      - name: app
+        host: notes.jorisjonkers.dev
+        audience: anonymous
+        routes:
+          - { path: /, match: prefix, process: notes-api, surface: http }
+    processes:
+${serving(
+  "notes-api",
+  `        dependsOn:
+          - { application: otel-collector, surface: otlp }
+`,
+)}`,
+      {
+        platform: (platform) =>
+          platform.replace(
+            "secretStore: secrets/vault",
+            "secretStore: notes/notes",
+          ),
+      },
+    );
+
+    expect(
+      projectNamed(store, "notes").applications[0]?.reconcileAfter ?? [],
+    ).toStrictEqual([]);
+  });
+
+  it("refuses Projects whose units wait on each other, naming the cycle, rather than rendering a deadlock", () => {
+    const result = resolve(
+      `  - id: notes
+    processes:
+${serving(
+  "notes-api",
+  `        dependsOn:
+          - { application: otel-collector, surface: otlp }
+`,
+)}  - id: notes-proxy
+    processes:
+${serving("notes-proxy")}`,
+      {
+        platform: (platform) =>
+          platform
+            .replace(
+              "traefik: edge/traefik-public",
+              "traefik: notes/notes-proxy",
+            )
+            .replace(/\n {4}address: edge-frankfurt[^\n]*/, ""),
+      },
+    );
+
+    const hint =
+      "Mark a required edge on the cycle `required: false`, if its Process starts without that peer, or move the Application that closes the cycle into the Project it waits on.";
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      {
+        code: "E_RECONCILE_CYCLE",
+        document: "observability/observability.project.yml",
+        path: "/applications/5",
+        message:
+          "apps-observability follows apps-notes, which follows apps-observability again, so no unit on the cycle applies first",
+        hint,
+        involves: ["minimal/notes.project.yml"],
+      },
+      {
+        code: "E_RECONCILE_CYCLE",
+        document: "minimal/notes.project.yml",
+        path: "/applications/0",
+        message:
+          "apps-notes follows apps-observability, which follows apps-notes again, so no unit on the cycle applies first",
+        hint,
+        involves: ["observability/observability.project.yml"],
+      },
+    ]);
+  });
+
   it("refuses an edge to a surface neither the Application nor the register provides, rather than writing no address", () => {
     expect(
       codesOf(

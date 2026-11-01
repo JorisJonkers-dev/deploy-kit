@@ -366,6 +366,7 @@ because the vocabulary they were written in had no path to declare: the
 | every provider an edge targets carries an address and the port for that surface ([chapter 14](14-platform-intent.md#providers)) | `E_PROVIDER_WITHOUT_COORDINATES` |
 | every route's `surface` is provided by the Process that route names | `E_UNKNOWN_SURFACE` |
 | the graph of **required** edges is acyclic | `E_DEPENDENCY_CYCLE` |
+| the order the Reconcile Units follow is acyclic ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)) | `E_RECONCILE_CYCLE` |
 | no edge's alias takes the name of a Service its Project renders, or a name another Application's alias takes in that Project ([chapter 16](16-dependencies.md#the-alias)) | `E_ALIAS_COLLISION` |
 | every exposure's audience is carryable by some tier | `E_NO_TIER_FOR_AUDIENCE` |
 
