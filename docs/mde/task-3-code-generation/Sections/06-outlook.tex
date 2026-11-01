@@ -1,0 +1,10 @@
+\section{Outlook}
+\label{sec:outlook}
+
+The project continues in a new repository with one Rust codebase for the
+compiler and in-cluster service. The web interface remains in Vue and uses
+the Rust API. The oracle files and parity method carry over: the Rust
+compiler must match the committed files under \path{spec/v1/examples/}, and a
+difference between implementations remains a defect in one of them. The
+model-driven implementation (\path{emf/}) will be retired after the grade is recorded;
+it served as the model-driven reference against which the oracles were first checked.
