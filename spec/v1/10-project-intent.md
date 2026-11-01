@@ -441,7 +441,7 @@ plus per-Process identity ([0031](../../docs/adr/model/0031-identity-per-process
 | the eight Shared Intent families | file header | no | `secrets`, `env`, `dependsOn`, `assets`, `writablePaths`, `placement`, `cutover`, `startupBudget`, each held by every Process in the file ([Shared intent](#shared-intent)). `memory` and `cpu` are refused here: `E_SHARED_QUANTITY`. |
 | `id` | Application | yes | The one referencable identity, estate-unique. The repository or product name. |
 | `description` | Application | no | What the Application does, in one plain sentence of at most 160 characters. It derives and renders nothing ([Describing an Application and a Process](#describing-an-application-and-a-process)). |
-| `observability` | Application | no | `{scrape {process, surface, path}}`, or absent. Absent means no monitoring is rendered ([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)). Never raised to the project. See [Observability](#observability). |
+| `observability` | Application | no | `{scrape {process, surface, path, honorLabels}}`, or absent. Absent means no monitoring is rendered ([0025](../../docs/adr/model/0025-observability-is-one-optional-block.md)). Never raised to the project. See [Observability](#observability). |
 | `processes` | Application | yes | One or more. They switch together. |
 | the eight Shared Intent families | Application | no | The same eight, held by every Process of this Application ([Shared intent](#shared-intent)). The level a family is written at is an author's choice about where the fact belongs, never about what it means. |
 | `exposure` | Application | no | The hostnames this Application serves and how each routes into its Processes. On the Application, not the Process: one hostname fronts two processes in the live `auth` case. An Application nothing reaches from outside declares none. See [Exposure](#exposure). |
@@ -2319,6 +2319,20 @@ genuinely varies ( `/actuator/prometheus`, `/api/actuator/prometheus`,
 `/metrics`) so it is authored, and a platform that guessed would collect
 nothing and report success.
 
+**An exporter that describes other objects says so.** kube-state-metrics labels
+each series with the namespace and pod of the object it reports, and a proxy
+labels each with the service it routed to; scraped as any target is, those
+labels give way to the scrape's own, so every series names the exporter. Such a
+scrape declares `honorLabels: true`, and the derived monitor keeps the target's
+labels where they collide. It is a fact about what the exporter publishes, so
+it is authored beside the path, and it defaults to false: an Application that
+publishes only its own metrics has nothing to keep.
+
+```yaml
+observability:
+  scrape: {process: kube-state-metrics, surface: http, path: /metrics, honorLabels: true}
+```
+
 The whole block sits on the **Application** and is never raised to the project
 header, for the same reason `owner` is: what is scraped is a per-Application
 fact. `process` points into the Application's own Processes, which is what lets one
@@ -2328,7 +2342,8 @@ anything.
 ### What the model derives, and what it does not
 
 From `scrape` the model derives the **ServiceMonitor or PodMonitor**: its
-target, its port name and its path are the declared surface and path, and the
+target, its port name and its path are the declared surface and path, it keeps
+the target's labels where `honorLabels` says so, and the
 cadence is the one estate-wide value in the Platform document
 ([chapter 14](14-platform-intent.md#monitor-cadence)). Nothing about
 that needs a monitoring stack's opinion, so it stays a Deliverable like any
@@ -2345,7 +2360,7 @@ platform-assigned.
 
 | concern | where it lives |
 |---|---|
-| `scrape {process, surface, path}` | authored, per Application |
+| `scrape {process, surface, path, honorLabels}` | authored, per Application |
 | ServiceMonitor / PodMonitor | derived by the model, from `scrape` and `provides` |
 | scrape cadence | the Platform document, one value for the estate |
 | rule expressions, severity, receivers | the monitoring stack's own rule groups and the Platform document's routing |

@@ -191,6 +191,7 @@ function monitorsOf(project: ResolvedProject): Deliverable[] {
       path: scrape.path,
       interval: scrape.interval,
       scrapeTimeout: scrape.timeout,
+      ...(scrape.honorLabels === true ? { honorLabels: true } : {}),
     };
     // Flagger copies `instance` unchanged, so a series keeps its job.
     const selection = {
