@@ -48,7 +48,10 @@ export interface Outcome {
   readonly stderr: string;
 }
 
-/** What a command reads from outside its arguments: the clock and the toolkit's own release. */
+/**
+ * What a command reads from outside its arguments: the clock and the toolkit's
+ * own release. `compose --now` stands in for the clock, which is then not read.
+ */
 export interface World {
   readonly now: () => string;
   readonly toolkitVersion: string;
@@ -71,6 +74,11 @@ const REF = "ref";
 const PUBLISHED = "published";
 /** A pin source, in the directory the Estate repository names for its artifact. */
 const SOURCE = "source.yaml";
+/**
+ * An instant as the composition lock records when a composition ran: RFC 3339,
+ * in UTC, so a lock written at `--now` reads back as one.
+ */
+const INSTANT = compositionLock.shape.metadata.shape.generatedAt;
 
 export const USAGE_TEXT = `usage:
   deploy-kit --help
@@ -80,7 +88,8 @@ export const USAGE_TEXT = `usage:
   deploy-kit compose --fragments <directory> --participants <file> --cluster-state <file>
                      --schema-package-integrity <sha256:...> --out <directory>
                      [--platform <directory>] [--held <directory>] [--pins <file>]
-                     [--sources <directory>] [--lock <file> --lock-commit <sha>] [--json]
+                     [--sources <directory>] [--lock <file> --lock-commit <sha>]
+                     [--now <RFC 3339 instant>] [--json]
   deploy-kit generate identity <file|directory>... --lang <${IDENTITY_LANGUAGES.join("|")}>
                      [--application <id>] [--package <name>] [--out <file> [--check]] [--json]
 `;
@@ -100,6 +109,7 @@ const OPTIONS = {
   sources: { type: "string" },
   lock: { type: "string" },
   "lock-commit": { type: "string" },
+  now: { type: "string" },
   "cluster-state": { type: "string" },
   participants: { type: "string" },
   "images-lock": { type: "string" },
@@ -422,6 +432,14 @@ function compose(values: Options, json: boolean, world: World): Outcome {
           "out",
         ]);
   if (absent !== undefined) return usage(`--${absent} is required`);
+  // The one clock reading of the run (spec/v1/40-composition.md#participants):
+  // the instant --now names, so a replay composes at the moment its lock
+  // records, or the clock where it names none.
+  const now = INSTANT.safeParse(values.now ?? world.now());
+  if (!now.success)
+    return usage(
+      "--now takes an RFC 3339 instant in UTC, such as 2026-10-02T09:00:00Z",
+    );
   // No --platform is a Platform document that published nothing, which the
   // participants list refuses: it is not a call made wrongly.
   const platform =
@@ -489,7 +507,7 @@ function compose(values: Options, json: boolean, world: World): Outcome {
       schemaPackageIntegrity: given(values, "schema-package-integrity"),
       schemaVersion: SCHEMA_VERSION,
       toolkitVersion: world.toolkitVersion,
-      generatedAt: world.now(),
+      generatedAt: now.data,
     },
   );
   if (!result.ok) return refused(result.diagnostics, json);

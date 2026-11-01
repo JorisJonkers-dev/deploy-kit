@@ -118,11 +118,12 @@ node src/cli/index.ts publish spec/v1/examples/minimal/notes.project.yml \
 
 # Compose the estate from pulled fragments, each directory holding a fragment, the
 # `ref` its pull resolved and when it was `published`, against the participants
-# list, and write the artifacts, the lock and what to report.
+# list, and write the artifacts, the lock and what to report. --now composes as of
+# that RFC 3339 instant in UTC instead of the clock: a replay passes its lock's generatedAt.
 node src/cli/index.ts compose --fragments fragments/ --participants participants.yml \
   --cluster-state cluster-state.yml --schema-package-integrity <sha256:...> --out composed/ \
   [--platform platform/] [--held held/] [--pins pins.json] [--sources projects/] \
-  [--lock lock.json --lock-commit <commit>]
+  [--lock lock.json --lock-commit <commit>] [--now 2026-10-02T09:00:00Z]
 
 # Write an Application's App Roles, Client id and Principal contract version in its
 # language, from its project file and the Platform document; --check fails a stale file.

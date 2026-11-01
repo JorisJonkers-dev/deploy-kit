@@ -572,7 +572,9 @@ the files declare.
 deterministic: packing the same inputs twice gives one digest, so it carries no
 time. The workflow that pulls it records the time beside the reference it
 resolved, from the registry's own record of the push, and composition reads
-staleness from there against the one clock reading of its run.
+staleness from there against the one clock reading of its run, which the lock
+records as `generatedAt`. `deploy-kit compose --now <instant>` makes that
+reading an RFC 3339 instant the caller names, in UTC, in place of the clock.
 
 **`maxAge` defaults to 7 days.** The number is measured, not chosen for
 roundness: `CHANGELOG.md` records 26 releases between 2026-06-09 and 2026-08-20 (
@@ -777,7 +779,9 @@ The lock's JSON Schema, generated from the model and shipped in the package, is
 change, and which render did that produce" without diffing published artefacts.
 
 Re-composing from a recorded lock pins every fragment by digest, runs the recorded
-toolkit version, and must yield the identical `composedDigest`. Combined with
+toolkit version, passes the lock's `generatedAt` as `--now` so every
+participant's age is judged at the moment the lock records rather than the
+moment of the replay, and must yield the identical `composedDigest`. Combined with
 chapter 20's pinned-input rule and chapter 30's `renderHash`, that gives one
 unbroken chain from a published fragment to a rendered file.
 
