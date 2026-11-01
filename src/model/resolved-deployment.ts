@@ -1082,6 +1082,8 @@ const resolvedScrape = z
     path: text,
     interval: duration,
     timeout: duration,
+    // Kept as authored: true only where the scrape says so.
+    honorLabels: z.literal(true).exactOptional(),
     // The labels the monitoring stack selects every monitor by, as the
     // Platform document's `monitors` names them.
     labels: z.record(text, text).exactOptional(),

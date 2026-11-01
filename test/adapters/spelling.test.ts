@@ -1739,6 +1739,42 @@ describe("the prometheus adapter", () => {
     },
   );
 
+  // spec/v1/10-project-intent.md#observability: an exporter that
+  // describes other objects keeps their labels.
+  it.each([
+    ["stop-start", "endpoints"],
+    ["blue-green", "podMetricsEndpoints"],
+  ] as const)(
+    "keeps the target's labels on a %s Process's monitor only where the scrape honours them",
+    (switchover, key) => {
+      const endpointOf = (honorLabels: boolean | undefined) => {
+        const rendered = renderPrometheus(
+          edited(
+            ({ scrape }) => ({
+              scrape:
+                scrape === undefined || honorLabels === undefined
+                  ? scrape
+                  : {
+                      ...scrape,
+                      ...(honorLabels ? { honorLabels: true as const } : {}),
+                    },
+            }),
+            () => ({ switchover }),
+          ),
+        );
+        const spec = (
+          rendered[0]?.objects[0] as
+            { spec: Record<string, unknown[]> } | undefined
+        )?.spec;
+        return spec?.[key]?.[0] as Record<string, unknown> | undefined;
+      };
+
+      expect(endpointOf(true)?.["honorLabels"]).toBe(true);
+      expect(endpointOf(false)).not.toHaveProperty("honorLabels");
+      expect(endpointOf(undefined)).not.toHaveProperty("honorLabels");
+    },
+  );
+
   it("stops at a scraped Process that switches nothing, whose monitor waits on its slice", () => {
     expect(() =>
       renderPrometheus(edited(undefined, () => ({ switchover: undefined }))),

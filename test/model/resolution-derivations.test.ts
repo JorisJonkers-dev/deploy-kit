@@ -3417,6 +3417,19 @@ ${serving("notes-api")}${serving("notes-web")}`);
     ]);
   });
 
+  it("carries a scrape's honorLabels through only where it is true", () => {
+    const scrapeOf = (flag: string) =>
+      application(`  - id: notes
+    observability:
+      scrape: { process: notes-api, surface: http, path: /metrics${flag} }
+    processes:
+${serving("notes-api")}`).scrape;
+
+    expect(scrapeOf(", honorLabels: true")?.honorLabels).toBe(true);
+    expect(scrapeOf(", honorLabels: false")).not.toHaveProperty("honorLabels");
+    expect(scrapeOf("")).not.toHaveProperty("honorLabels");
+  });
+
   it("admits no metrics stack where the platform names none", () => {
     expect(
       named(

@@ -709,6 +709,9 @@ export function resolveApplication(
             path: scrape.path,
             interval: context.platform.monitors.interval,
             timeout: context.platform.monitors.timeout,
+            ...(scrape.honorLabels === true
+              ? { honorLabels: true as const }
+              : {}),
             ...(context.platform.monitors.labels === undefined
               ? {}
               : { labels: context.platform.monitors.labels }),

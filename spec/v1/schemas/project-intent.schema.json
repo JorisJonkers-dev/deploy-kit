@@ -736,6 +736,9 @@
         "path": {
           "type": "string",
           "minLength": 1
+        },
+        "honorLabels": {
+          "type": "boolean"
         }
       },
       "required": [

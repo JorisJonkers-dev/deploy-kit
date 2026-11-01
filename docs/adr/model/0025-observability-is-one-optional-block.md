@@ -43,6 +43,13 @@ declared surface, the path and the cadence, so it is a Deliverable of the
 monitoring stack: PromQL in a tenant's project file would be a mechanism in
 layer 1.
 
+**What the exporter publishes is the author's to say.** An exporter that
+describes other objects (kube-state-metrics, a proxy) labels its series with
+theirs, and only its author knows it does. Without `honorLabels` the scrape's
+own labels win, every series names the exporter, and a rule joined on namespace
+and pod silently matches nothing it means; the estate's alerts did exactly that.
+The monitoring stack cannot guess it from the series, so the scrape states it.
+
 **A surface, not a port.** `scrape` names a surface, so the port has one
 declaring site, and a sidecar's surface can be scraped without the sidecar
 authoring anything ([0015](0015-sidecars-are-process-vocabulary.md)).

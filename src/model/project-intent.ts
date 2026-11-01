@@ -529,6 +529,9 @@ const scrape = z
     process: processReference,
     surface: surfaceReference,
     path: text,
+    // An exporter whose series describe other objects keeps their labels
+    // (spec/v1/10-project-intent.md#observability).
+    honorLabels: z.boolean().exactOptional(),
   })
   .meta({ id: "Scrape" });
 

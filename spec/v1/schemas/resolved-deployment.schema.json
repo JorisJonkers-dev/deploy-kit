@@ -513,6 +513,10 @@
           "type": "string",
           "pattern": "^\\d+(ms|s|m|h)$"
         },
+        "honorLabels": {
+          "type": "boolean",
+          "const": true
+        },
         "labels": {
           "type": "object",
           "propertyNames": {
