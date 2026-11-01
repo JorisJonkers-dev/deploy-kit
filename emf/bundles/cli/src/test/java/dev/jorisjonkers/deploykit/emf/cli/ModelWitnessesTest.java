@@ -411,8 +411,9 @@ class ModelWitnessesTest {
         String publicProxy = rendered("edge", "apps/edge/traefik-public/workload.yaml");
 
         assertThat(publicProxy)
-                .contains("- name: tcp-80\n              containerPort: 8000\n              hostPort: 80\n")
-                .contains("- name: tcp-443\n              containerPort: 8443\n              hostPort: 443\n")
+                .contains("- name: web\n              containerPort: 8000\n              hostPort: 80\n")
+                .contains("- name: websecure\n              containerPort: 8443\n              hostPort: 443\n")
+                .doesNotContain("- name: tcp-80\n")
                 .contains("- --certificatesresolvers.public-frankfurt.acme.email=hostmaster@jorisjonkers.dev\n")
                 .contains("- --certificatesresolvers.public-frankfurt.acme.storage=/acme/public-frankfurt.json\n")
                 .contains("- --certificatesresolvers.public-frankfurt.acme.dnschallenge.provider=cloudflare\n")

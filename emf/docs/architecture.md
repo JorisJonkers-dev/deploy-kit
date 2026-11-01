@@ -265,7 +265,10 @@ The Xtext grammar parses the same authored `.project.yml` and
 read the pinned inputs: `node-contract.yml`, `images.lock.yml` and
 `cluster-state.yml` beside the Platform document, and `migration-proof.yml`
 beside a project file. An Asset's file is read as text, never parsed: what is in
-it is the Application's, not the model's. Each grammar inherits the project grammar's
+it is the Application's, not the model's. A rule-group file is the one exception,
+read by `DataFile` in the `cli` bundle as the YAML or JSON it is into a generic
+tree in the pinned extent, because its groups are written into the monitoring
+stack's PrometheusRule as the file writes them, keys and types and all. Each grammar inherits the project grammar's
 terminals, block tokens and scalars as the Platform grammar does, imports the
 pinned-inputs metamodel, and adds only its own rules
 ([0075](adr/emf/0075-xtext-parses-the-authored-yaml-into-the-metamodel.md)). It covers the YAML
@@ -297,10 +300,13 @@ the same set of paths. The grammar stays the one statement of the schema: the
 check holds nothing the grammar says, only the two scalar limits it cannot, a
 rate limit's request count and period.
 
-A plain scalar holds no colon: the lexer cannot tell `sha256:6f1c` from a key
-without looking past the colon, so a value that carries one, a digest, a URL or
-a timestamp, is quoted in the authored files and in the pinned inputs alike: the
-snapshot's `capturedAt` is written quoted.
+The lexer's scalar terminal holds no colon and no comma, because it cannot tell
+`sha256:6f1c` from a key, or a flow's separator from content, without looking
+past them. The block token source looks instead: a colon no space follows, and
+a comma outside any flow collection, join the parts on either side into one
+plain scalar, as YAML reads them, so `0.0.0.0:12345` in a flow sequence and
+`--resources=pods,nodes` in a block one are each one value. A colon a space
+follows still ends a key.
 
 A route's and a scrape's `process` and `surface` are cross-references, linked by
 a scope provider that offers the Processes of the Application holding them and the

@@ -1,0 +1,26 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hindsight-release-gate
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"1000ms","threshold":3},"deadline":"1200s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"hindsight-api","readiness":{"path":"/health","port":8888},"waitsFor":[{"application":"hindsight-embedding","process":"tei-embedding"},{"application":"hindsight-reranker","process":"tei-reranker"}]},{"process":"hindsight-worker","readiness":{"path":"/health","port":8889},"waitsFor":[{"application":"hindsight-embedding","process":"tei-embedding"},{"application":"hindsight-reranker","process":"tei-reranker"}]}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hindsight-external-checks
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  hindsight-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"hindsight","name":"hindsight-api-1","url":"https://hindsight-api.jorisjonkers.dev/mcp/default"},{"conditions":["[STATUS] < 500"],"group":"hindsight","name":"hindsight-api-2","url":"https://hindsight-api.jorisjonkers.dev/mcp/default/"},{"conditions":["[STATUS] < 500"],"group":"hindsight","name":"hindsight-api-3","url":"https://hindsight-api.jorisjonkers.dev/v1/default/banks/default/"},{"conditions":["[STATUS] < 500"],"group":"hindsight","name":"hindsight-private-1","url":"https://hindsight-private.jorisjonkers.dev/mcp/private"},{"conditions":["[STATUS] < 500"],"group":"hindsight","name":"hindsight-private-2","url":"https://hindsight-private.jorisjonkers.dev/mcp/private/"},{"conditions":["[STATUS] < 500"],"group":"hindsight","name":"hindsight-private-3","url":"https://hindsight-private.jorisjonkers.dev/v1/default/banks/private/"}]}

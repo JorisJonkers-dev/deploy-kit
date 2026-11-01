@@ -1,0 +1,81 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: immich-server
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-server
+    app.kubernetes.io/instance: immich-server
+    app.kubernetes.io/part-of: immich
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: immich-server
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: edge-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: traefik-public
+      ports:
+        - protocol: TCP
+          port: 2283
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/immich.http: "true"
+      ports:
+        - protocol: TCP
+          port: 2283
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: immich-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: immich-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: valkey
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: immich-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: immich-ml
+      ports:
+        - protocol: TCP
+          port: 3003
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

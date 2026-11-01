@@ -1,0 +1,44 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: immich-server
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-server
+    app.kubernetes.io/instance: immich-server
+    app.kubernetes.io/part-of: immich
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: immich-system-immich-server
+    serviceAccount: immich-server
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultDynamicSecret
+metadata:
+  name: immich-server-database-creds-immich-owner
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-server
+    app.kubernetes.io/instance: immich-server
+    app.kubernetes.io/part-of: immich
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: immich-server
+  mount: database
+  path: creds/immich-owner
+  destination:
+    name: immich-server-database-creds-immich-owner
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: immich-server

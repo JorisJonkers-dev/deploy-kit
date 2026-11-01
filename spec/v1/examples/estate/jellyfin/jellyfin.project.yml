@@ -1,0 +1,53 @@
+# deploy-kit Project Intent for jellyfin, built by this repository to run as deploy (1000:1000)
+# under a read-only root filesystem.
+#
+# jellyfin reads the media library's folders at the paths its database names and transcodes on
+# the T1000. Its config holds the database, users and watch history, which the platform's
+# file-backup copies nightly; the metadata it downloads and its transcodes are claims of their own,
+# never backed up, because jellyfin fetches and writes them again.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: jellyfin # the namespace derives: jellyfin-system
+owner: joris
+
+applications:
+  - id: jellyfin
+    processes:
+      - name: jellyfin
+        lifecycle: application
+        image: jellyfin
+        runtime: none
+        engine: files # keys the nightly copy of its config
+        provides:
+          http: 8096
+        libraries:
+          # Written: Jellyfin saves each item's .nfo metadata beside the media (#19).
+          - { library: media, mountAt: /media/Series, subPath: Series, access: write }
+          - { library: media, mountAt: /media/Films, subPath: Films, access: write }
+        placement:
+          memory: 4Gi
+          cpu: 1000m
+          gpu: { class: transcode, model: [t1000] } # NVENC on the card beside the library
+        writablePaths: [/tmp]
+        probes:
+          readiness: { path: /health, port: 8096 }
+          liveness: { path: /health, port: 8096 }
+        startupBudget: 300s
+        cutover: interrupted # one pod on its config's ReadWriteOnce claim
+        volumes:
+          - claim: jellyfin-config
+            mountAt: /config
+            size: 15Gi
+            durability: recoverable # the database, users, watch history and plugins
+          - claim: jellyfin-metadata
+            mountAt: /config/metadata
+            size: 10Gi
+            durability: reconstructible # posters and artwork, fetched again on a library scan
+          - claim: jellyfin-cache
+            mountAt: /cache
+            size: 30Gi
+            durability: reconstructible # transcodes and image resizes
+

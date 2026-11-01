@@ -1,0 +1,123 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tei-embedding
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: tei-embedding
+    app.kubernetes.io/instance: tei-embedding
+    app.kubernetes.io/part-of: hindsight-embedding
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  progressDeadlineSeconds: 3000
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tei-embedding
+      app.kubernetes.io/instance: tei-embedding
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tei-embedding
+        app.kubernetes.io/instance: tei-embedding
+        app.kubernetes.io/part-of: hindsight-embedding
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/tei-embedding: cpu-1.8.3
+    spec:
+      serviceAccountName: tei-embedding
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-gtx-960m-1
+      containers:
+        - name: tei-embedding
+          image: ghcr.io/jorisjonkers-dev/hindsight-tei@sha256:9f22e6be4f59ba5137771051026c72e67e55e613dc1d531232fab109274e2a15
+          ports:
+            - name: http
+              containerPort: 8091
+          env:
+            - name: AUTO_TRUNCATE
+              value: "true"
+            - name: HOSTNAME
+              value: 0.0.0.0
+            - name: MAX_BATCH_TOKENS
+              value: "2048"
+            - name: MAX_CLIENT_BATCH_SIZE
+              value: "256"
+            - name: MODEL_ID
+              value: BAAI/bge-m3
+            - name: PAYLOAD_LIMIT
+              value: "10000000"
+            - name: PORT
+              value: "8091"
+            - name: TOKENIZATION_WORKERS
+              value: "2"
+            - name: HOME
+              value: /tmp
+          resources:
+            requests:
+              memory: 3Gi
+              cpu: 2000m
+            limits:
+              memory: 3Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tei-embedding-models
+              mountPath: /data
+            - name: writable-tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8091
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8091
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8091
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 180
+      volumes:
+        - name: tei-embedding-models
+          persistentVolumeClaim:
+            claimName: tei-embedding-models
+        - name: writable-tmp
+          emptyDir:
+            sizeLimit: 64Mi

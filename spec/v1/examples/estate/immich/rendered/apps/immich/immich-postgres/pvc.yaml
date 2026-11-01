@@ -1,0 +1,41 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres
+    app.kubernetes.io/instance: immich-postgres
+    app.kubernetes.io/part-of: immich-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data-backup
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres
+    app.kubernetes.io/instance: immich-postgres
+    app.kubernetes.io/part-of: immich-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi

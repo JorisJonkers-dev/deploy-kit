@@ -1,0 +1,14 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - alertrules.yaml
+  - flux-podmonitor.yaml
+  - k3s-monitors.yaml
+  - pvc.yaml
+  - rbac.yaml
+  - service.yaml
+  - serviceaccount.yaml
+  - servicemonitor.yaml
+  - workload.yaml

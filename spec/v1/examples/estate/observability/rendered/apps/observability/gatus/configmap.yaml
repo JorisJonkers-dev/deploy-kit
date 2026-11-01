@@ -1,0 +1,41 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gatus-external-checks
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/part-of: gatus
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  gatus-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"observability","name":"gatus-status-1","url":"https://status.jorisjonkers.dev/"}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gatus-gatus-yaml-591cbcc558
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: gatus
+    app.kubernetes.io/instance: gatus
+    app.kubernetes.io/part-of: gatus
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  gatus.yaml: |
+    # Gatus's own settings, as fleet-infra's gatus-config ConfigMap holds them. Its
+    # endpoints are not here: each Project renders its own external checks, and
+    # the checks sidecar writes each as a file beside this one
+    # (deploy-kit spec/v1/14-platform-intent.md#the-foundation-is-declared).
+    metrics: true
+    storage:
+      type: sqlite
+      path: /data/data.db
+    ui:
+      title: jorisjonkers.dev status
+      description: Uptime for every route the estate renders.
+      header: jorisjonkers.dev

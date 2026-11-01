@@ -28,10 +28,6 @@ final class ShippedFiles {
     static final String ALERT_RULES_NOT_FOUND = "E_ALERT_RULES_NOT_FOUND";
     static final String ALERT_RULES_WITHOUT_GROUPS = "E_ALERT_RULES_WITHOUT_GROUPS";
 
-    /** A top-level `groups:` key with a list after it, block or flow. */
-    private static final Pattern GROUPS = Pattern.compile(
-            "(?m)^groups:[ \\t]*(?:#.*)?\\n(?:[ \\t]*(?:#.*)?\\n)*[ \\t]*- |^groups:[ \\t]*\\[[ \\t]*[^\\]\\s]");
-
     /** A dashboard of one project whose file holds a uid, by where it is written. */
     record Placed(String document, String path, String uid) {}
 
@@ -74,7 +70,7 @@ final class ShippedFiles {
                             document,
                             path,
                             "no file " + rules.getFrom() + " is read beside the project file"));
-                } else if (!GROUPS.matcher(content.get()).find()) {
+                } else if (DataFile.groups(content.get()).isEmpty()) {
                     refusals.add(new Diagnostic(
                             ALERT_RULES_WITHOUT_GROUPS,
                             document,

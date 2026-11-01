@@ -1,0 +1,44 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: alertmanager
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/instance: alertmanager
+    app.kubernetes.io/part-of: alertmanager
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: observability-system-alertmanager
+    serviceAccount: alertmanager
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: alertmanager-platform-observability
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/instance: alertmanager
+    app.kubernetes.io/part-of: alertmanager
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: alertmanager
+  mount: secret
+  type: kv-v2
+  path: platform/observability
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: alertmanager-platform-observability
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

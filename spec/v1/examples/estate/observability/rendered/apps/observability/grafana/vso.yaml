@@ -1,0 +1,74 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: grafana
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/part-of: grafana
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: observability-system-grafana
+    serviceAccount: grafana
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: grafana-platform-observability
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/part-of: grafana
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: grafana
+  mount: secret
+  type: kv-v2
+  path: platform/observability
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: grafana-platform-observability
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: grafana
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: grafana-observability-system-grafana-admin
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/part-of: grafana
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: grafana
+  mount: secret
+  type: kv-v2
+  path: observability-system/grafana-admin
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: grafana-observability-system-grafana-admin
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: grafana

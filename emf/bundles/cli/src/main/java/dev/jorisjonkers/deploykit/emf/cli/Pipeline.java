@@ -281,10 +281,13 @@ public final class Pipeline {
     private static List<AssetFile> assetFiles(Project project, Path file) throws IOException {
         // An Asset, mounted or seeded, and every dashboard and alert rules file the project names
         // are read from beside it; only an Asset's absence is refused before resolution.
+        // A rule-group file is also read as the data it holds, which its rules are written from.
         List<String> named = new ArrayList<>();
+        List<String> rules = new ArrayList<>();
         EcoreUtil2.getAllContentsOfType(project, AssetDeclaration.class).forEach(asset -> named.add(asset.getFrom()));
         EcoreUtil2.getAllContentsOfType(project, Dashboard.class).forEach(board -> named.add(board.getFrom()));
-        EcoreUtil2.getAllContentsOfType(project, AlertRules.class).forEach(rules -> named.add(rules.getFrom()));
+        EcoreUtil2.getAllContentsOfType(project, AlertRules.class).forEach(group -> rules.add(group.getFrom()));
+        named.addAll(rules);
         List<AssetFile> read = new ArrayList<>();
         for (String from : named) {
             Path beside = besideProject(file, from).orElseThrow();
@@ -292,6 +295,9 @@ public final class Pipeline {
             assetFile.setProject(project.getProject());
             assetFile.setFrom(from);
             assetFile.setContent(Files.readString(beside, StandardCharsets.UTF_8));
+            if (rules.contains(from)) {
+                assetFile.setData(DataFile.read(assetFile.getContent()).orElse(null));
+            }
             read.add(assetFile);
         }
         return read;

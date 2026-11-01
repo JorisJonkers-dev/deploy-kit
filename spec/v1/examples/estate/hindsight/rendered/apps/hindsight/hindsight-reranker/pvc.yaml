@@ -1,0 +1,19 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tei-reranker-models
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: tei-reranker
+    app.kubernetes.io/instance: tei-reranker
+    app.kubernetes.io/part-of: hindsight-reranker
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi

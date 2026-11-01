@@ -104,7 +104,9 @@ class ShippedFilesTest {
                 "groups:\n- name: api\n",
                 "groups: # the rule groups\n\n  # first\n  - name: api\n",
                 "groups: [ {name: api} ]\n",
-                "# rules\ngroups:\n  - name: api\n"
+                "# rules\ngroups:\n  - name: api\n",
+                "  groups:\n  - name: api\n",
+                "{\n  \"groups\": [\n    {\"name\": \"api\"}\n  ]\n}\n"
             })
     void aListUnderATopLevelGroupsKeyHoldsGroups(String content) {
         assertThat(check(project(List.of(), List.of("r.yaml")), Map.of("r.yaml", content), new ArrayList<>()))
@@ -113,7 +115,15 @@ class ShippedFilesTest {
 
     @ParameterizedTest
     @ValueSource(
-            strings = {"", "groups:\n", "groups: []\n", "groups: [ ]\n", "  groups:\n  - name: api\n", "groups: api\n"})
+            strings = {
+                "",
+                "groups:\n",
+                "groups: []\n",
+                "groups: [ ]\n",
+                "groups: api\n",
+                "- groups: [a]\n",
+                "groups: [a\n"
+            })
     void anythingElseHoldsNone(String content) {
         assertThat(check(project(List.of(), List.of("r.yaml")), Map.of("r.yaml", content), new ArrayList<>()))
                 .extracting(Diagnostic::code)

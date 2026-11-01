@@ -1,0 +1,256 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: prometheus-token
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kubernetes.io/service-account.name: prometheus
+type: kubernetes.io/service-account-token
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: observability-system-prometheus-k3s
+  labels:
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes/metrics
+    verbs:
+      - get
+  - nonResourceURLs:
+      - /metrics
+    verbs:
+      - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: observability-system-prometheus-k3s
+  labels:
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: observability-system-prometheus-k3s
+subjects:
+  - kind: ServiceAccount
+    name: prometheus
+    namespace: observability-system
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: kubelet
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  jobName: kubelet
+  kubernetesSDConfigs:
+    - role: Node
+  scheme: HTTPS
+  metricsPath: /metrics
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+  honorLabels: true
+  honorTimestamps: true
+  authorization:
+    type: Bearer
+    credentials:
+      name: prometheus-token
+      key: token
+  tlsConfig:
+    insecureSkipVerify: true
+  relabelings:
+    - sourceLabels:
+        - __address__
+      regex: (.+):\d+
+      replacement: $1:10250
+      targetLabel: __address__
+    - sourceLabels:
+        - __meta_kubernetes_node_name
+      targetLabel: node
+    - sourceLabels:
+        - __metrics_path__
+      targetLabel: metrics_path
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: kubelet-cadvisor
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  jobName: kubelet
+  kubernetesSDConfigs:
+    - role: Node
+  scheme: HTTPS
+  metricsPath: /metrics/cadvisor
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+  honorLabels: true
+  honorTimestamps: true
+  authorization:
+    type: Bearer
+    credentials:
+      name: prometheus-token
+      key: token
+  tlsConfig:
+    insecureSkipVerify: true
+  relabelings:
+    - sourceLabels:
+        - __address__
+      regex: (.+):\d+
+      replacement: $1:10250
+      targetLabel: __address__
+    - sourceLabels:
+        - __meta_kubernetes_node_name
+      targetLabel: node
+    - sourceLabels:
+        - __metrics_path__
+      targetLabel: metrics_path
+  metricRelabelings:
+    - action: drop
+      sourceLabels:
+        - __name__
+      regex: container_cpu_(cfs_throttled_seconds_total|load_average_10s|system_seconds_total|user_seconds_total)
+    - action: drop
+      sourceLabels:
+        - __name__
+      regex: container_fs_(io_current|io_time_seconds_total|io_time_weighted_seconds_total|reads_merged_total|sector_reads_total|sector_writes_total|writes_merged_total)
+    - action: drop
+      sourceLabels:
+        - __name__
+      regex: container_memory_(mapped_file|swap)
+    - action: drop
+      sourceLabels:
+        - __name__
+      regex: container_(file_descriptors|tasks_state|threads_max)
+    - action: drop
+      sourceLabels:
+        - __name__
+      regex: container_spec.*
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: kubelet-probes
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  jobName: kubelet
+  kubernetesSDConfigs:
+    - role: Node
+  scheme: HTTPS
+  metricsPath: /metrics/probes
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+  honorLabels: true
+  honorTimestamps: true
+  authorization:
+    type: Bearer
+    credentials:
+      name: prometheus-token
+      key: token
+  tlsConfig:
+    insecureSkipVerify: true
+  relabelings:
+    - sourceLabels:
+        - __address__
+      regex: (.+):\d+
+      replacement: $1:10250
+      targetLabel: __address__
+    - sourceLabels:
+        - __meta_kubernetes_node_name
+      targetLabel: node
+    - sourceLabels:
+        - __metrics_path__
+      targetLabel: metrics_path
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: apiserver
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  jobLabel: component
+  selector:
+    matchLabels:
+      component: apiserver
+      provider: kubernetes
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: https
+      scheme: https
+      interval: 30s
+      scrapeTimeout: 10s
+      authorization:
+        type: Bearer
+        credentials:
+          name: prometheus-token
+          key: token
+      tlsConfig:
+        ca:
+          configMap:
+            name: kube-root-ca.crt
+            key: ca.crt
+        serverName: kubernetes
+      metricRelabelings:
+        - action: drop
+          sourceLabels:
+            - __name__
+            - le
+          regex: (etcd_request|apiserver_request_slo|apiserver_request_sli|apiserver_request)_duration_seconds_bucket;(0\.15|0\.2|0\.3|0\.35|0\.4|0\.45|0\.6|0\.7|0\.8|0\.9|1\.25|1\.5|1\.75|2|3|3\.5|4|4\.5|6|7|8|9|15|20|40|45|50)(\.0)?
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: coredns
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  jobLabel: k8s-app
+  selector:
+    matchLabels:
+      k8s-app: kube-dns
+  namespaceSelector:
+    matchNames:
+      - kube-system
+  podMetricsEndpoints:
+    - portNumber: 9153
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - targetLabel: job
+          replacement: coredns

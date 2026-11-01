@@ -1,0 +1,70 @@
+# deploy-kit Project Intent for tribelt: one Go Process with its own database on
+# the platform's Postgres, signing people in to /stats through auth.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: tribelt # the namespace derives: tribelt-system
+owner: joris
+
+applications:
+  - id: tribelt
+    migration: self # AUTO_MIGRATE applies the migrations on start
+
+    exposure:
+      - name: public
+        host: tribelt.jorisjonkers.dev
+        audience: anonymous # pages are public; /stats runs its own OIDC flow
+        routes:
+          - { path: /, match: prefix, process: tribelt, surface: http }
+
+    processes:
+      - name: tribelt
+        lifecycle: application
+        image: tribelt # an alias; the lock resolves digest, uid and gid
+        runtime: none # a static Go binary needs no Runtime Profile
+
+        provides:
+          http: 8080
+
+        dependsOn:
+          # The login the edge derives: the owner role's, since tribelt migrates itself,
+          # issued by the Secret Store and rotated with a restart.
+          - application: platform-postgres
+            surface: postgres
+            credentials: { delivery: env, rotation: { tolerates: restart } }
+          - { application: auth, surface: http }
+
+        secrets:
+          - path: secret/data/platform/tribelt
+            # The search-console keys stay out until Vault holds them: tribelt runs without them.
+            keys: [oidc.client_secret]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+          # The Vault policy job writes each key once, if absent, starting from the value
+          # the old path holds, and never overwrites it.
+          - path: secret/data/tribelt-system/keys
+            keys:
+              - name: session_key
+                generate: { adopt: "secret/data/platform/tribelt#session_key" }
+              - name: visitor_hmac_key
+                generate: { adopt: "secret/data/platform/tribelt#visitor_hmac_key" }
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+
+        placement:
+          memory: 128Mi
+          cpu: 25m
+
+        writablePaths: [/tmp]
+
+        probes:
+          readiness: { path: /readyz, port: 8080 }
+          liveness: { path: /healthz, port: 8080 }
+
+        startupBudget: 60s # covers the migrations
+
+        cutover: continuous

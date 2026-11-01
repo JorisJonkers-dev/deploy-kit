@@ -1,0 +1,40 @@
+# deploy-kit Project Intent for jellyseerr (seerr), built by this repository to run as deploy
+# (1000:1000) under a read-only root filesystem. Its SQLite database holds the requests, users and
+# settings, and the platform's file-backup copies it nightly.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: jellyseerr # the namespace derives: jellyseerr-system
+owner: joris
+
+applications:
+  - id: jellyseerr
+    processes:
+      - name: jellyseerr
+        lifecycle: application
+        image: jellyseerr
+        runtime: none
+        engine: files # keys the nightly copy of its config
+        provides:
+          http: 5055
+        dependsOn: # optional: it starts without them
+          - { application: jellyfin, surface: http, required: false }
+          - { application: sonarr, surface: http, required: false }
+          - { application: radarr, surface: http, required: false }
+        placement:
+          memory: 768Mi
+          cpu: 200m
+          disk: { media: [nvme, ssd] } # its SQLite database stays off the SD cards
+        writablePaths: [/tmp]
+        probes:
+          readiness: { path: /api/v1/settings/public, port: 5055 }
+          liveness: { path: /api/v1/settings/public, port: 5055 }
+        startupBudget: 120s
+        cutover: interrupted # one pod on its config's ReadWriteOnce claim
+        volumes:
+          - claim: jellyseerr-config
+            mountAt: /app/config
+            size: 2Gi
+            durability: recoverable # its SQLite database: requests, users and settings

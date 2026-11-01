@@ -61,6 +61,10 @@ spec:
             - name: imaps
               containerPort: 993
               hostPort: 993
+            - name: tcp-2525
+              containerPort: 25
+              hostPort: 2525
+              protocol: TCP
           env:
             - name: HOME
               value: /tmp

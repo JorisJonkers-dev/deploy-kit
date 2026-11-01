@@ -1,0 +1,98 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-policy
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: vault-policy
+    app.kubernetes.io/instance: vault-policy
+    app.kubernetes.io/part-of: vault-policy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  schedule: "@hourly"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vault-policy
+        app.kubernetes.io/instance: vault-policy
+        app.kubernetes.io/part-of: vault-policy
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+    spec:
+      backoffLimit: 6
+      activeDeadlineSeconds: 3000
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: vault-policy
+            app.kubernetes.io/instance: vault-policy
+            app.kubernetes.io/part-of: vault-policy
+            app.kubernetes.io/managed-by: deploy-kit
+            app.kubernetes.io/component: none
+          annotations:
+            image.jorisjonkers.dev/vault-policy: 0.15.2
+        spec:
+          serviceAccountName: vault-policy
+          automountServiceAccountToken: true
+          restartPolicy: OnFailure
+          activeDeadlineSeconds: 300
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values:
+                          - frankfurt-contabo-1
+                          - enschede-gtx-960m-1
+                          - enschede-t1000-1
+          containers:
+            - name: vault-policy
+              image: ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:d834c4c8734f9d0a5d81494d097837550c7ce19ae3d269719c2e115c86022a19
+              env:
+                - name: VAULT_ADDR
+                  value: http://vault.data-system.svc.cluster.local:8200
+                - name: VAULT_ROLE
+                  value: policy-admin
+                - name: POLICIES_DIR
+                  value: /policies
+              resources:
+                requests:
+                  memory: 64Mi
+                  cpu: 10m
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: policies
+                  mountPath: /policies
+                  readOnly: true
+          volumes:
+            - name: policies
+              configMap:
+                name: vault-policy-ba8823d7d927
+                items:
+                  - key: hindsight-system-hindsight-api.policy.json
+                    path: hindsight-system-hindsight-api.policy.json
+                  - key: hindsight-system-hindsight-api.role.json
+                    path: hindsight-system-hindsight-api.role.json
+                  - key: hindsight-system-hindsight-worker.policy.json
+                    path: hindsight-system-hindsight-worker.policy.json
+                  - key: hindsight-system-hindsight-worker.role.json
+                    path: hindsight-system-hindsight-worker.role.json

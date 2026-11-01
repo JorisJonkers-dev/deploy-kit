@@ -1,0 +1,81 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tempo
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: tempo
+    app.kubernetes.io/instance: tempo
+    app.kubernetes.io/part-of: tempo
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: tempo
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: prometheus
+      ports:
+        - protocol: TCP
+          port: 3200
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/tempo.http: "true"
+      ports:
+        - protocol: TCP
+          port: 3200
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/tempo.otlp: "true"
+      ports:
+        - protocol: TCP
+          port: 4317
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/tempo.otlp-http: "true"
+      ports:
+        - protocol: TCP
+          port: 4318
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: prometheus
+      ports:
+        - protocol: TCP
+          port: 9090
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

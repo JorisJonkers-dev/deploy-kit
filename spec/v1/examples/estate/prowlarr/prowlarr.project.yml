@@ -1,0 +1,47 @@
+# deploy-kit Project Intent for prowlarr, built by this repository to run as deploy (1000:1000)
+# under a read-only root filesystem, with flaresolverr beside it as a sidecar.
+#
+# Both leave through the platform's VPN: one pod, one tunnel, one exit address, which is what the
+# Cloudflare clearance flaresolverr earns is tied to. prowlarr reaches it on localhost.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: prowlarr # the namespace derives: prowlarr-system
+owner: joris
+
+applications:
+  - id: prowlarr
+    processes:
+      - name: prowlarr
+        lifecycle: application
+        image: prowlarr
+        runtime: none
+        engine: files # keys the nightly copy of its config
+        provides:
+          http: 9696
+        dependsOn: # optional: it starts without them
+          - { application: sonarr, surface: http, required: false }
+          - { application: radarr, surface: http, required: false }
+        vpn: { forwardedPort: false } # indexers are fetched, nothing dials in
+        placement:
+          memory: 512Mi
+          cpu: 200m
+          disk: { media: [nvme, ssd] } # its SQLite database stays off the SD cards
+        sidecars:
+          - name: flaresolverr
+            image: flaresolverr
+            memory: 768Mi
+            cpu: 300m
+        writablePaths: [/tmp] # prowlarr's temporary files, and flaresolverr's Chrome profile
+        probes:
+          readiness: { path: /ping, port: 9696 }
+          liveness: { path: /ping, port: 9696 }
+        startupBudget: 180s
+        cutover: interrupted # one pod on its config's ReadWriteOnce claim
+        volumes:
+          - claim: prowlarr-config
+            mountAt: /config
+            size: 2Gi
+            durability: recoverable # indexers, apps and history

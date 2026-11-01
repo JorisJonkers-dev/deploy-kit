@@ -1,0 +1,9 @@
+{
+  "path": {
+    "database/creds/immich-owner": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

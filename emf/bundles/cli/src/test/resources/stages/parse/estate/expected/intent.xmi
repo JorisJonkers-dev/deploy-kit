@@ -1274,6 +1274,7 @@
     <applications id="stalwart">
       <l4Exposure address="mail-node" port="25" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.1"/>
       <l4Exposure address="mail-node" port="993" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.2"/>
+      <l4Exposure address="mail-node" port="2525" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.1"/>
       <exposure name="admin" host="mail.jorisjonkers.dev" audience="authenticated">
         <routes path="/" match="exact" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.0" redirectTo="/admin/"/>
         <routes path="/" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.0"/>

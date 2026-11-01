@@ -1,0 +1,103 @@
+# deploy-kit Project Intent for the estate's admin dashboard: one Process serving the API and the
+# embedded web app, reading the project's Postgres database. Shape follows spec/v1/examples/minimal
+# and spec/v1/examples/knowledge in JorisJonkers-dev/deploy-kit.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: estate-dashboard # the namespace derives: estate-dashboard-system; the database: estate-dashboard_db
+owner: joris
+
+applications:
+  - id: estate-dashboard
+    # The binary applies its goose migrations at startup (db/migrations), so it holds the owner
+    # role and startupBudget covers the migration.
+    migration: self
+
+    # No observability block: the dashboard serves no /metrics yet.
+    exposure:
+      - name: public
+        host: estate.jorisjonkers.dev # the host auth-api registered the dashboard's OIDC client for
+        # Two checks, on purpose. The edge's forward-auth admits only a browser signed in to
+        # auth, so nobody else reaches the host at all. Behind it the dashboard is an OIDC client
+        # of auth with a session of its own, and refuses every request without a live admin
+        # session (openapi/v1/openapi.yaml): being signed in is not being an admin, and the edge
+        # cannot tell the two apart.
+        audience: authenticated
+        contentPolicy: strict
+        routes:
+          - { path: /, match: prefix, process: estate-dashboard, surface: http }
+
+    processes:
+      - name: estate-dashboard
+        lifecycle: application
+        image: estate-dashboard # an alias; the lock resolves digest, uid and gid
+        runtime: none # a static Go binary needs no Runtime Profile
+
+        provides:
+          http: 8080 # matches the default ADDR; above 1024, so no CAP_NET_BIND_SERVICE
+
+        dependsOn:
+          # The project's database, and the login this edge derives: the owner role's, since the
+          # dashboard migrates itself, issued by the Secret Store and rotated with a restart.
+          - application: platform-postgres
+            surface: postgres
+            credentials: { delivery: env, rotation: { tolerates: restart } }
+          # Signing in and every renewal call auth: discovery, its keys and its token endpoint.
+          - { application: auth, surface: http }
+          # Each gated Application's release-gate inputs and the gate's record of it, from the
+          # gate's GET /releases, so the dashboard holds no ConfigMap access of its own. This edge
+          # is what the gate's derived policy admits it by.
+          - { application: release-gate, surface: http }
+
+        # What signing in needs and nobody else reads: the client secret auth registered for
+        # `estate-dashboard`, and the key the session cookie and the stored refresh tokens are
+        # sealed with. One document, because its reader set is this one Process. Both are read
+        # once, at startup (deploy/env/estate-dashboard/base.env).
+        secrets:
+          - path: secret/data/estate-dashboard-system/sign-in
+            keys: [oidc-client-secret, session-key, github-token]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+
+        # Read-only by design: it reads delivery and writes nothing in the cluster. Its one write
+        # anywhere is an Alertmanager silence, over HTTP, which no Kubernetes verb grants.
+        api:
+          reason: >-
+            the dashboard shows each Project's Flux source and unit, each member's Canary, the
+            pods each Project runs and the images every pod runs, and each image's versions from
+            the Deployment revisions, so it gets, lists and watches those, and nothing else
+          rules:
+            - group: core
+              objects: [pods]
+              verbs: [get, list, watch]
+            - group: apps
+              objects: [replicasets]
+              verbs: [get, list, watch]
+            - group: source.toolkit.fluxcd.io
+              objects: [ocirepositories]
+              verbs: [get, list, watch]
+            - group: kustomize.toolkit.fluxcd.io
+              objects: [kustomizations]
+              verbs: [get, list, watch]
+            - group: flagger.app
+              objects: [canaries]
+              verbs: [get, list, watch]
+
+        # 96Mi was OOMKilled on 2026-10-27 while one Project's rollout page read Loki, GitHub,
+        # Prometheus and the Release Gate at once; the page now reads every 5s while a release is
+        # in flight.
+        placement:
+          memory: 256Mi
+          cpu: 50m
+
+        probes:
+          readiness: { path: /readyz, port: 8080 } # fails while Postgres does not answer
+          liveness: { path: /healthz, port: 8080 }
+
+        startupBudget: 30s # covers the migrations
+
+        # No volumes, so a continuous cutover is honourable.
+        cutover: continuous

@@ -1,0 +1,137 @@
+# deploy-kit Project Intent for auth: the API in this repository and the sign-in UI in
+# JorisJonkers-dev/auth-ui, one Application, because a new UI against an old API is a broken
+# product (deploy-kit spec/v1/examples/auth/auth.project.yml).
+#
+# The Project is `auth`, so the namespace derives as `auth-system`, where both already run.
+# It moves from fleet-infra to the estate path in the three changes of deploy-kit
+# spec/v1/60-setup.md#handing-over-one-project-at-a-time (#80). Each value below is read from
+# the live objects, and each Process's environment from the old path's Deployment, in
+# env/<process>/base.env beside this file.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: auth # the namespace derives: auth-system
+owner: joris
+
+applications:
+  - id: auth
+    # Flyway applies the schema when auth-api starts (api/src/main/resources/db/migration).
+    migration: self
+
+    observability:
+      scrape:
+        process: auth-api
+        surface: http
+        path: /api/actuator/prometheus
+
+    exposure:
+      - name: public
+        host: auth.jorisjonkers.dev
+        audience: anonymous # the sign-in page cannot sit behind the sign-in it starts
+        routes:
+          - { path: /api/, match: prefix, process: auth-api, surface: http }
+          - { path: /.well-known/, match: prefix, process: auth-api, surface: http }
+          - { path: /, match: prefix, process: auth-ui, surface: http }
+
+    processes:
+      - name: auth-api
+        lifecycle: application
+        image: auth-api # an alias; the lock resolves digest, uid and gid
+        runtime: jvm
+
+        provides:
+          http: 8081
+
+        # Each live pod uses about 800Mi; the model sets request to limit. The heap cap,
+        # MaxRAMPercentage=55 in JAVA_TOOL_OPTIONS, follows to about 1.1Gi.
+        placement:
+          memory: 2Gi
+          cpu: 400m
+
+        writablePaths: [/tmp]
+
+        dependsOn:
+          - { application: platform-postgres, surface: postgres }
+          - { application: platform-valkey, surface: redis }
+          - { application: platform-rabbitmq, surface: amqp }
+          - { application: stalwart, surface: submission } # confirmation and reset mail
+
+        probes:
+          readiness: { path: /api/actuator/health/readiness, port: 8081 }
+          liveness: { path: /api/actuator/health/liveness, port: 8081 }
+
+        startupBudget: 600s # the live startup probe allows 120 checks 5s apart
+
+        cutover: continuous
+
+        replicas:
+          count: 2
+          reason: >-
+            Every signed-in route and every OIDC client waits on this Process, so a second pod
+            keeps sign-in up while one restarts.
+
+        # Each OIDC client's secret, the submission account's password, the login of its
+        # database and of RabbitMQ, and the transit key its tokens are signed with.
+        secrets:
+          - path: secret/data/auth-api
+            keys:
+              - auth.clients.estate-dashboard.secret
+              - auth.clients.findability-explorer.secret
+              - auth.clients.grafana.secret
+              - auth.clients.grimoire.secret
+              - auth.clients.n8n.secret
+              - auth.clients.outline.secret
+              - auth.clients.tribelt.secret
+              - auth.clients.vault.secret
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+          - path: secret/data/platform/mail
+            keys: [account.password]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+          - path: secret/data/platform/postgres
+            keys: [auth.user, auth.password]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+          - path: secret/data/platform/rabbitmq
+            keys: [rabbitmq.user, rabbitmq.password]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+          # Signs its tokens, and reads the key's public part for its JWKS
+          # (transit/keys/auth-api-jwt), on the derived role auth-system-auth-api.
+          - engine: transit
+            key: auth-api-jwt
+            operations: [sign, read]
+            delivery: self
+            rotation: { tolerates: reload }
+
+      - name: auth-ui
+        lifecycle: application
+        image: auth-ui # built in JorisJonkers-dev/auth-ui
+        runtime: static
+
+        provides:
+          http: 8080 # the unprivileged nginx: no capability to bind a port below 1024
+
+        placement:
+          memory: 192Mi
+          cpu: 100m
+
+        # The unprivileged nginx keeps its pid and temp files under /tmp.
+        writablePaths: [/tmp]
+
+        probes:
+          readiness: { path: /, port: 8080 }
+          liveness: { path: /, port: 8080 }
+
+        # A cold start on a Raspberry Pi outlasted 30s and failed a canary, which rolled
+        # auth-api back with it.
+        startupBudget: 120s
+
+        cutover: continuous

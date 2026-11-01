@@ -26,3 +26,16 @@ spec:
             severity: critical
           annotations:
             summary: "{{ $labels.job }} on {{ $labels.instance }} is down"
+    - name: breadth
+      interval: 1m
+      limit: 10
+      rules:
+        - record: breadth:up:sum
+          expr: |
+            sum(up)
+              by (job)
+          labels: {}
+          annotations:
+            paged: false
+            runbook: null
+            note: say "up"

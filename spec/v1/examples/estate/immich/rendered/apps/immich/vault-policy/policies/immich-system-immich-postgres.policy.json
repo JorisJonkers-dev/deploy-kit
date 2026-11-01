@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/platform/media/immich-postgres": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/media/immich-postgres": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

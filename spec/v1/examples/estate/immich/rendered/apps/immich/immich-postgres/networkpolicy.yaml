@@ -1,0 +1,102 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: immich-postgres
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres
+    app.kubernetes.io/instance: immich-postgres
+    app.kubernetes.io/part-of: immich-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: immich-postgres
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              app.kubernetes.io/managed-by: deploy-kit
+          podSelector:
+            matchLabels:
+              consumes.deploy-kit.jorisjonkers.dev/immich-postgres.postgres: "true"
+      ports:
+        - protocol: TCP
+          port: 5432
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: immich-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: immich-postgres-backup
+      ports:
+        - protocol: TCP
+          port: 5432
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: vault
+      ports:
+        - protocol: UDP
+          port: 8200
+        - protocol: TCP
+          port: 8200
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: immich-postgres-backup
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres-backup
+    app.kubernetes.io/instance: immich-postgres-backup
+    app.kubernetes.io/part-of: immich-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: immich-postgres-backup
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: immich-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: immich-postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="ASCII"?>
-<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:pinnedinputs="https://jorisjonkers.dev/deploy-kit/pinned-inputs/1">
+<xmi:XMI xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:pinnedinputs="https://jorisjonkers.dev/deploy-kit/pinned-inputs/1">
   <pinnedinputs:AssetFile project="agents" from="config/hermes/config.yaml" content="# A stand-in for hermes's configuration, written for this example: the live&#xA;# file is fleet-infra's, and this repository does not copy it. hermes expands&#xA;# each ${VAR} below from its own environment as it reads the file, so the file&#xA;# holds no secret: the values reach hermes through its env file&#xA;# (spec/v1/10-project-intent.md#seeded-assets).&#xA;model:&#xA;  provider: openrouter&#xA;  default: anthropic/claude-sonnet-4.5&#xA;mcp_servers:&#xA;  github:&#xA;    url: https://api.githubcopilot.com/mcp/&#xA;    headers:&#xA;      Authorization: Bearer ${GITHUB_PAT}&#xA;  context7:&#xA;    url: https://mcp.context7.com/mcp&#xA;"/>
   <pinnedinputs:MigrationProof apiVersion="proof.jorisjonkers.dev/v1" kind="MigrationProof" schemaVersion="1.0.0">
     <applications id="auth" testedAgainst="sha256:2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a" nonTransactional="false"/>
@@ -10,7 +10,112 @@
   <pinnedinputs:AssetFile project="data" from="config/garage.toml" content="# Garage's own configuration, an Asset: nothing in it is derived. The RPC&#xA;# secret and the admin token come from the environment.&#xA;metadata_dir = &quot;/var/lib/garage/meta&quot;&#xA;data_dir = &quot;/var/lib/garage/data&quot;&#xA;db_engine = &quot;lmdb&quot;&#xA;&#xA;# A consistent copy of the metadata database, which the backup archives in&#xA;# place of the live one.&#xA;metadata_snapshots_dir = &quot;/var/lib/garage/snapshots&quot;&#xA;metadata_auto_snapshot_interval = &quot;6h&quot;&#xA;&#xA;replication_factor = 1&#xA;rpc_bind_addr = &quot;[::]:3901&quot;&#xA;&#xA;[s3_api]&#xA;s3_region = &quot;garage&quot;&#xA;api_bind_addr = &quot;[::]:3900&quot;&#xA;&#xA;[admin]&#xA;api_bind_addr = &quot;[::]:3903&quot;&#xA;"/>
   <pinnedinputs:AssetFile project="data" from="dashboards/rabbitmq.json" content="{&#xA;  &quot;__inputs&quot;: [&#xA;    {&#xA;      &quot;name&quot;: &quot;DS_PROMETHEUS&quot;,&#xA;      &quot;label&quot;: &quot;Prometheus&quot;,&#xA;      &quot;type&quot;: &quot;datasource&quot;,&#xA;      &quot;pluginId&quot;: &quot;prometheus&quot;&#xA;    }&#xA;  ],&#xA;  &quot;uid&quot;: &quot;rabbitmq&quot;,&#xA;  &quot;title&quot;: &quot;RabbitMQ&quot;,&#xA;  &quot;tags&quot;: [&quot;rabbitmq&quot;, &quot;messaging&quot;],&#xA;  &quot;editable&quot;: false,&#xA;  &quot;refresh&quot;: &quot;30s&quot;,&#xA;  &quot;time&quot;: { &quot;from&quot;: &quot;now-1h&quot;, &quot;to&quot;: &quot;now&quot; },&#xA;  &quot;panels&quot;: [&#xA;    {&#xA;      &quot;id&quot;: 1,&#xA;      &quot;title&quot;: &quot;Queue Messages (Ready)&quot;,&#xA;      &quot;type&quot;: &quot;timeseries&quot;,&#xA;      &quot;gridPos&quot;: { &quot;h&quot;: 8, &quot;w&quot;: 12, &quot;x&quot;: 0, &quot;y&quot;: 0 },&#xA;      &quot;datasource&quot;: { &quot;type&quot;: &quot;prometheus&quot;, &quot;uid&quot;: &quot;${DS_PROMETHEUS}&quot; },&#xA;      &quot;targets&quot;: [&#xA;        { &quot;expr&quot;: &quot;rabbitmq_queue_messages_ready&quot;, &quot;legendFormat&quot;: &quot;{{queue}} ready&quot; }&#xA;      ]&#xA;    }&#xA;  ],&#xA;  &quot;schemaVersion&quot;: 39&#xA;}&#xA;"/>
   <pinnedinputs:AssetFile project="mail" from="config/manifest.json" content="{&#xA;  &quot;domains&quot;: [{ &quot;name&quot;: &quot;jorisjonkers.dev&quot; }],&#xA;  &quot;accounts&quot;: [{ &quot;name&quot;: &quot;postmaster&quot;, &quot;domain&quot;: &quot;jorisjonkers.dev&quot; }]&#xA;}&#xA;"/>
-  <pinnedinputs:AssetFile project="observability" from="rules/platform.yaml" content="# The platform's own alert rules, carried by the monitoring stack's Prometheus&#xA;# (spec/v1/10-project-intent.md#alert-rules). A rule's `severity` label picks&#xA;# the route the Platform document's monitoring block declares for it.&#xA;groups:&#xA;  - name: platform&#xA;    rules:&#xA;      - alert: JobFailed&#xA;        expr: kube_job_status_failed > 0&#xA;        for: 5m&#xA;        labels:&#xA;          severity: warning&#xA;        annotations:&#xA;          summary: &quot;Job {{ $labels.namespace }}/{{ $labels.job_name }} failed&quot;&#xA;      - alert: TargetDown&#xA;        expr: up == 0&#xA;        for: 10m&#xA;        labels:&#xA;          severity: critical&#xA;        annotations:&#xA;          summary: &quot;{{ $labels.job }} on {{ $labels.instance }} is down&quot;&#xA;"/>
+  <pinnedinputs:AssetFile project="observability" from="rules/platform.yaml" content="# The platform's own alert rules, carried by the monitoring stack's Prometheus&#xA;# (spec/v1/10-project-intent.md#alert-rules). A rule's `severity` label picks&#xA;# the route the Platform document's monitoring block declares for it.&#xA;groups:&#xA;  - name: platform&#xA;    rules:&#xA;      - alert: JobFailed&#xA;        expr: kube_job_status_failed > 0&#xA;        for: 5m&#xA;        labels:&#xA;          severity: warning&#xA;        annotations:&#xA;          summary: &quot;Job {{ $labels.namespace }}/{{ $labels.job_name }} failed&quot;&#xA;      - alert: TargetDown&#xA;        expr: up == 0&#xA;        for: 10m&#xA;        labels:&#xA;          severity: critical&#xA;        annotations:&#xA;          summary: &quot;{{ $labels.job }} on {{ $labels.instance }} is down&quot;&#xA;  # The breadth case's group: a file is read as the YAML it is, so a number, a&#xA;  # boolean, a null and an empty mapping reach the PrometheusRule as written.&#xA;  - name: breadth&#xA;    interval: 1m&#xA;    limit: 10&#xA;    rules:&#xA;      - record: breadth:up:sum&#xA;        expr: |&#xA;          sum(up)&#xA;            by (job)&#xA;        labels: {}&#xA;        annotations: {paged: false, runbook: null, note: 'say &quot;up&quot;'}&#xA;">
+    <data xsi:type="pinnedinputs:DatumMap">
+      <entries key="groups">
+        <value xsi:type="pinnedinputs:DatumList">
+          <items xsi:type="pinnedinputs:DatumMap">
+            <entries key="name">
+              <value xsi:type="pinnedinputs:DatumScalar" text="platform"/>
+            </entries>
+            <entries key="rules">
+              <value xsi:type="pinnedinputs:DatumList">
+                <items xsi:type="pinnedinputs:DatumMap">
+                  <entries key="alert">
+                    <value xsi:type="pinnedinputs:DatumScalar" text="JobFailed"/>
+                  </entries>
+                  <entries key="expr">
+                    <value xsi:type="pinnedinputs:DatumScalar" text="kube_job_status_failed > 0"/>
+                  </entries>
+                  <entries key="for">
+                    <value xsi:type="pinnedinputs:DatumScalar" text="5m"/>
+                  </entries>
+                  <entries key="labels">
+                    <value xsi:type="pinnedinputs:DatumMap">
+                      <entries key="severity">
+                        <value xsi:type="pinnedinputs:DatumScalar" text="warning"/>
+                      </entries>
+                    </value>
+                  </entries>
+                  <entries key="annotations">
+                    <value xsi:type="pinnedinputs:DatumMap">
+                      <entries key="summary">
+                        <value xsi:type="pinnedinputs:DatumScalar" text="Job {{ $labels.namespace }}/{{ $labels.job_name }} failed"/>
+                      </entries>
+                    </value>
+                  </entries>
+                </items>
+                <items xsi:type="pinnedinputs:DatumMap">
+                  <entries key="alert">
+                    <value xsi:type="pinnedinputs:DatumScalar" text="TargetDown"/>
+                  </entries>
+                  <entries key="expr">
+                    <value xsi:type="pinnedinputs:DatumScalar" text="up == 0"/>
+                  </entries>
+                  <entries key="for">
+                    <value xsi:type="pinnedinputs:DatumScalar" text="10m"/>
+                  </entries>
+                  <entries key="labels">
+                    <value xsi:type="pinnedinputs:DatumMap">
+                      <entries key="severity">
+                        <value xsi:type="pinnedinputs:DatumScalar" text="critical"/>
+                      </entries>
+                    </value>
+                  </entries>
+                  <entries key="annotations">
+                    <value xsi:type="pinnedinputs:DatumMap">
+                      <entries key="summary">
+                        <value xsi:type="pinnedinputs:DatumScalar" text="{{ $labels.job }} on {{ $labels.instance }} is down"/>
+                      </entries>
+                    </value>
+                  </entries>
+                </items>
+              </value>
+            </entries>
+          </items>
+          <items xsi:type="pinnedinputs:DatumMap">
+            <entries key="name">
+              <value xsi:type="pinnedinputs:DatumScalar" text="breadth"/>
+            </entries>
+            <entries key="interval">
+              <value xsi:type="pinnedinputs:DatumScalar" text="1m"/>
+            </entries>
+            <entries key="limit">
+              <value xsi:type="pinnedinputs:DatumScalar" text="10" kind="number"/>
+            </entries>
+            <entries key="rules">
+              <value xsi:type="pinnedinputs:DatumList">
+                <items xsi:type="pinnedinputs:DatumMap">
+                  <entries key="record">
+                    <value xsi:type="pinnedinputs:DatumScalar" text="breadth:up:sum"/>
+                  </entries>
+                  <entries key="expr">
+                    <value xsi:type="pinnedinputs:DatumScalar" text="sum(up)&#xA;  by (job)&#xA;"/>
+                  </entries>
+                  <entries key="labels">
+                    <value xsi:type="pinnedinputs:DatumMap"/>
+                  </entries>
+                  <entries key="annotations">
+                    <value xsi:type="pinnedinputs:DatumMap">
+                      <entries key="paged">
+                        <value xsi:type="pinnedinputs:DatumScalar" text="false" kind="boolean"/>
+                      </entries>
+                      <entries key="runbook">
+                        <value xsi:type="pinnedinputs:DatumScalar" text="null" kind="null"/>
+                      </entries>
+                      <entries key="note">
+                        <value xsi:type="pinnedinputs:DatumScalar" text="say &quot;up&quot;"/>
+                      </entries>
+                    </value>
+                  </entries>
+                </items>
+              </value>
+            </entries>
+          </items>
+        </value>
+      </entries>
+    </data>
+  </pinnedinputs:AssetFile>
   <pinnedinputs:ClusterState apiVersion="state.jorisjonkers.dev/v1" kind="ClusterState" schemaVersion="1.0.0" cluster="production" capturedAt="2026-09-30T00:00:00Z">
     <bindings claim="coverage-data" node="enschede-pi-1"/>
     <placements process="coverage-api" node="enschede-pi-1"/>

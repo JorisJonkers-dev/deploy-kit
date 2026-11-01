@@ -2974,7 +2974,7 @@
   app.kubernetes.io/managed-by: deploy-kit
 [/template]
 
-[comment One PrometheusRule per rule file, its groups as written. /]
+[comment One PrometheusRule per rule file, its groups as the file writes them. /]
 [template private objects(d : resolveddeployment::AlertRulesFile)]
   [for (f : resolveddeployment::ResolvedAlertRules | d.application.alertRules)]
     ---
@@ -2987,34 +2987,8 @@
         [d.application.applicationLabels()/]
     spec:
       groups:
-    [for (g : resolveddeployment::AlertRuleGroup | f.groups)]
-          - name: [g.name.scalar()/]
-            rules:
-      [for (r : resolveddeployment::AlertRule | g.rules)]
-                [r.alertRule()/]
-      [/for]
-    [/for]
+    [f.groups->collect(g | g.item('    '))->sep('\n')/]
   [/for]
-[/template]
-
-[template private alertRule(r : resolveddeployment::AlertRule)]
-  - alert: [r.alert.scalar()/]
-    expr: [r.expr.scalar()/]
-  [if (r.duration <> null)]
-      for: [r.duration.scalar()/]
-  [/if]
-  [if (r.labels->notEmpty())]
-      labels:
-    [for (l : resolveddeployment::KeyValue | r.labels)]
-          [l.key/]: [l.value.scalar()/]
-    [/for]
-  [/if]
-  [if (r.annotations->notEmpty())]
-      annotations:
-    [for (l : resolveddeployment::KeyValue | r.annotations)]
-          [l.key/]: [l.value.scalar()/]
-    [/for]
-  [/if]
 [/template]
 
 [comment The one routing of every alert: by severity to its receiver, and an alert that matches no
@@ -3750,18 +3724,74 @@
 [query private chomping(content : String) : String =
   if content.endsWith('\n\n') then '|+' else if content.endsWith('\n') then '|' else '|-' endif endif /]
 
-[comment A block scalar's body: every line under `indent`, a blank line left blank. /]
+[comment A block scalar's body: every line under `indent`, a blank line left blank. The line the
+  call stands on ends the last line, so one line break is left for it to write, unless the body
+  keeps its trailing ones: a line that already ends in a break gets none more. /]
 [query private blockOf(content : String, indent : String) : String =
-  (if content.endsWith('\n') then content.substring(1, content.size() - 1) else content endif)
+  (if content.endsWith('\n') and not content.endsWith('\n\n') then content.substring(1, content.size() - 1) else content endif)
     .replaceAll('(?m)^(?=.)', indent) /]
 
-[comment A string scalar, double-quoted where a YAML 1.1 reader, which the Kubernetes API is,
+[comment Whether a string scalar is quoted: where a YAML 1.1 reader, which the Kubernetes API is,
   would read it as null, a boolean, an integer, a float or a timestamp, or where a plain scalar
-  cannot hold it, and written plain otherwise. /]
+  cannot hold it. /]
+[query private quoted(value : String) : Boolean =
+  value.matches('|~|null|Null|NULL|y|Y|yes|Yes|YES|n|N|no|No|NO|true|True|TRUE|false|False|FALSE|on|On|ON|off|Off|OFF|[-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?[0-9][0-9_]*|[-+]?0x[0-9a-fA-F_]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+|[-+]?([0-9][0-9_]*)?[.][0-9_]*([eE][-+]?[0-9]+)?|[-+]?[0-9][0-9_]*[eE][-+]?[0-9]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+[.][0-9_]*|[-+]?[.](inf|Inf|INF)|[.](nan|NaN|NAN)|[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}(([Tt]| +)[0-9]{1,2}:[0-9]{2}:[0-9]{2}([.][0-9]*)?( *(Z|[-+][0-9]{1,2}(:[0-9]{2})?))?)?')
+    or value.unplain() /]
+
+[comment A string scalar, double-quoted where it is quoted, and written plain otherwise. /]
 [query private scalar(value : String) : String =
-  if value.matches('|~|null|Null|NULL|y|Y|yes|Yes|YES|n|N|no|No|NO|true|True|TRUE|false|False|FALSE|on|On|ON|off|Off|OFF|[-+]?0b[0-1_]+|[-+]?0[0-7_]+|[-+]?[0-9][0-9_]*|[-+]?0x[0-9a-fA-F_]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+|[-+]?([0-9][0-9_]*)?[.][0-9_]*([eE][-+]?[0-9]+)?|[-+]?[0-9][0-9_]*[eE][-+]?[0-9]+|[-+]?[0-9][0-9_]*(:[0-5]?[0-9])+[.][0-9_]*|[-+]?[.](inf|Inf|INF)|[.](nan|NaN|NAN)|[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}(([Tt]| +)[0-9]{1,2}:[0-9]{2}:[0-9]{2}([.][0-9]*)?( *(Z|[-+][0-9]{1,2}(:[0-9]{2})?))?)?')
-    or value.unplain()
-  then '"' + value + '"' else value endif /]
+  if value.quoted() then '"' + value + '"' else value endif /]
+
+[comment A string scalar of a rule-group file, as the production implementation's YAML writer writes
+  it: plain where it can be, single-quoted where it holds a double quote and no single one, and
+  double-quoted, escaped, otherwise. /]
+[query private written(value : String) : String =
+  if not value.quoted() then value
+  else if value.contains('"') and not value.contains('\'') then '\'' + value + '\''
+  else '"' + value.replaceAll('\\\\', '\\\\\\\\').replaceAll('"', '\\\\"') + '"' endif endif /]
+
+[comment A value of a rule-group file as an item of a block sequence at `indent`: the dash, and the
+  value after it, a collection's first line on the dash's own line. /]
+[query private item(d : resolveddeployment::Datum, indent : String) : String =
+  indent + '- ' + (if d.oclIsKindOf(resolveddeployment::DatumScalar)
+    then d.oclAsType(resolveddeployment::DatumScalar).inline(indent + '  ')
+    else if d.hollow() then d.hollowText()
+    else d.lines(indent + '  ').substring(indent.size() + 3) endif endif) /]
+
+[comment An entry of a mapping at `indent`: its key, and its value after it, a collection's lines
+  under it, a sequence's indented as far as a mapping's. /]
+[query private entry(e : resolveddeployment::DatumEntry, indent : String) : String =
+  indent + e.key.written() + ':' + (if e.value.oclIsKindOf(resolveddeployment::DatumScalar)
+    then ' ' + e.value.oclAsType(resolveddeployment::DatumScalar).inline(indent + '  ')
+    else if e.value.hollow() then ' ' + e.value.hollowText()
+    else '\n' + e.value.lines(indent + '  ') endif endif) /]
+
+[comment A mapping's or a sequence's lines at `indent`. /]
+[query private lines(d : resolveddeployment::Datum, indent : String) : String =
+  if d.oclIsKindOf(resolveddeployment::DatumMap)
+  then d.oclAsType(resolveddeployment::DatumMap).entries->collect(e | e.entry(indent))->sep('\n')->toString()
+  else d.oclAsType(resolveddeployment::DatumList).items->collect(i | i.item(indent))->sep('\n')->toString() endif /]
+
+[comment Whether a mapping or a sequence holds nothing, which is written on its key's line. /]
+[query private hollow(d : resolveddeployment::Datum) : Boolean =
+  if d.oclIsKindOf(resolveddeployment::DatumMap) then d.oclAsType(resolveddeployment::DatumMap).entries->isEmpty()
+  else d.oclAsType(resolveddeployment::DatumList).items->isEmpty() endif /]
+
+[query private hollowText(d : resolveddeployment::Datum) : String =
+  if d.oclIsKindOf(resolveddeployment::DatumMap) then '{}' else '[]' endif /]
+
+[comment A scalar after its key or its dash: a number, a boolean or a null as its text, a string of
+  several lines as a literal block scalar under `indent`, and any other string as written. /]
+[query private inline(s : resolveddeployment::DatumScalar, indent : String) : String =
+  if s.kind <> resolveddeployment::DatumKind::string then s.text
+  else if s.text.contains('\n') and not s.text.matches('(?s).*\n[\t ]+') then
+    '|' + (if s.text.matches('(?s)[ \n]* .*') then '2' else '' endif) + s.text.blockChomp() + '\n'
+      + (if s.text.endsWith('\n') then s.text.substring(1, s.text.size() - 1) else s.text endif).replaceAll('(?m)^(?=.)', indent)
+  else s.text.written() endif endif /]
+
+[comment How a block scalar of a string keeps its trailing line breaks: none, one, or every one. /]
+[query private blockChomp(value : String) : String =
+  if value.matches('(?s).*\n[\n\t ]*\n') then '+' else if value.endsWith('\n') then '' else '-' endif endif /]
 
 [comment Whether a plain scalar cannot hold the value: it opens on an indicator, holds a mapping's
   separator or a comment's, ends on a colon, or opens or ends on a space. /]

@@ -1,0 +1,159 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: hindsight-api
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-api
+    app.kubernetes.io/instance: hindsight-api
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    estate.jorisjonkers.dev/revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: hindsight-system-hindsight-api
+    serviceAccount: hindsight-api
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: hindsight-api-platform-hindsight
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-api
+    app.kubernetes.io/instance: hindsight-api
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    estate.jorisjonkers.dev/revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  vaultAuthRef: hindsight-api
+  mount: secret
+  type: kv-v2
+  path: platform/hindsight
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: hindsight-api-platform-hindsight
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: hindsight-api-primary
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultDynamicSecret
+metadata:
+  name: hindsight-api-database-creds-hindsight-owner
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-api
+    app.kubernetes.io/instance: hindsight-api
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    estate.jorisjonkers.dev/revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  vaultAuthRef: hindsight-api
+  mount: database
+  path: creds/hindsight-owner
+  destination:
+    name: hindsight-api-database-creds-hindsight-owner
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: hindsight-api-primary
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: hindsight-worker
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-worker
+    app.kubernetes.io/instance: hindsight-worker
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    estate.jorisjonkers.dev/revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: hindsight-system-hindsight-worker
+    serviceAccount: hindsight-worker
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: hindsight-worker-platform-hindsight
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-worker
+    app.kubernetes.io/instance: hindsight-worker
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    estate.jorisjonkers.dev/revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  vaultAuthRef: hindsight-worker
+  mount: secret
+  type: kv-v2
+  path: platform/hindsight
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: hindsight-worker-platform-hindsight
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: hindsight-worker-primary
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultDynamicSecret
+metadata:
+  name: hindsight-worker-database-creds-hindsight-owner
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-worker
+    app.kubernetes.io/instance: hindsight-worker
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    estate.jorisjonkers.dev/revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+    kustomize.toolkit.fluxcd.io/prune: disabled
+spec:
+  vaultAuthRef: hindsight-worker
+  mount: database
+  path: creds/hindsight-owner
+  destination:
+    name: hindsight-worker-database-creds-hindsight-owner
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: hindsight-worker-primary

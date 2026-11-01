@@ -65,8 +65,8 @@
       <startup period="5s" timeout="5s" failures="4">
         <target xsi:type="resolveddeployment:HttpTarget" path="/ping" port="8080"/>
       </startup>
-      <surfaces name="web" port="8000"/>
-      <surfaces name="websecure" port="8443"/>
+      <surfaces name="web" port="8000" hostPort="80"/>
+      <surfaces name="websecure" port="8443" hostPort="443"/>
       <surfaces name="admin" port="8080"/>
       <placement>
         <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
@@ -98,8 +98,6 @@
       <arguments>--log.format=json</arguments>
       <arguments>--accesslog=true</arguments>
       <arguments>--accesslog.format=json</arguments>
-      <nodePorts name="tcp-80" port="80" protocol="TCP" targetPort="8000"/>
-      <nodePorts name="tcp-443" port="443" protocol="TCP" targetPort="8443"/>
     </processes>
   </applications>
   <applications id="traefik-lan" revision="sha256:4f156f47ce7482a317e66a1d09f955a7af35720b34ab8d3a44d7f5df74bcb48d" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0">

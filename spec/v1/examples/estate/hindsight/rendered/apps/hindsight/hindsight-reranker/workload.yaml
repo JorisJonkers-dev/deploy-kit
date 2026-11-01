@@ -1,0 +1,121 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tei-reranker
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: tei-reranker
+    app.kubernetes.io/instance: tei-reranker
+    app.kubernetes.io/part-of: hindsight-reranker
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  progressDeadlineSeconds: 2100
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tei-reranker
+      app.kubernetes.io/instance: tei-reranker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tei-reranker
+        app.kubernetes.io/instance: tei-reranker
+        app.kubernetes.io/part-of: hindsight-reranker
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+      annotations:
+        image.jorisjonkers.dev/tei-reranker: cpu-1.8.3
+    spec:
+      serviceAccountName: tei-reranker
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+      containers:
+        - name: tei-reranker
+          image: ghcr.io/jorisjonkers-dev/hindsight-tei@sha256:9f22e6be4f59ba5137771051026c72e67e55e613dc1d531232fab109274e2a15
+          ports:
+            - name: http
+              containerPort: 8092
+          env:
+            - name: AUTO_TRUNCATE
+              value: "true"
+            - name: HOSTNAME
+              value: 0.0.0.0
+            - name: MAX_BATCH_TOKENS
+              value: "2048"
+            - name: MODEL_ID
+              value: cross-encoder/mmarco-mMiniLMv2-L12-H384-v1
+            - name: PORT
+              value: "8092"
+            - name: REVISION
+              value: 1427fd652930e4ba29e8149678df786c240d8825
+            - name: TOKENIZATION_WORKERS
+              value: "1"
+            - name: HOME
+              value: /tmp
+          resources:
+            requests:
+              memory: 2Gi
+              cpu: 1000m
+            limits:
+              memory: 2Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tei-reranker-models
+              mountPath: /data
+            - name: writable-tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8092
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8092
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8092
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 120
+      volumes:
+        - name: tei-reranker-models
+          persistentVolumeClaim:
+            claimName: tei-reranker-models
+        - name: writable-tmp
+          emptyDir:
+            sizeLimit: 64Mi

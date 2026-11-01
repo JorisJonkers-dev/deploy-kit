@@ -1,0 +1,19 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: alertmanager-data
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/instance: alertmanager
+    app.kubernetes.io/part-of: alertmanager
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

@@ -1,0 +1,138 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-server
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-server
+    app.kubernetes.io/instance: immich-server
+    app.kubernetes.io/part-of: immich
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  progressDeadlineSeconds: 1200
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: immich-server
+      app.kubernetes.io/instance: immich-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: immich-server
+        app.kubernetes.io/instance: immich-server
+        app.kubernetes.io/part-of: immich
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+        consumes.deploy-kit.jorisjonkers.dev/immich-postgres.postgres: "true"
+        consumes.deploy-kit.jorisjonkers.dev/platform-valkey.redis: "true"
+        consumes.deploy-kit.jorisjonkers.dev/immich-ml.http: "true"
+      annotations:
+        image.jorisjonkers.dev/immich-server: v2.7.5
+    spec:
+      serviceAccountName: immich-server
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        supplementalGroups:
+          - 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - enschede-t1000-1
+      containers:
+        - name: immich-server
+          image: ghcr.io/jorisjonkers-dev/immich-server@sha256:27481bd56870bca87008370925d7bf66a212da803980aa975d60f8383971fe2a
+          ports:
+            - name: http
+              containerPort: 2283
+          env:
+            - name: DB_DATABASE_NAME
+              value: immich_db
+            - name: DB_HOSTNAME
+              value: immich-postgres
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: immich-server-database-creds-immich-owner
+                  key: password
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: immich-server-database-creds-immich-owner
+                  key: username
+            - name: IMMICH_ML_HOST
+              value: immich-ml
+            - name: IMMICH_ML_PORT
+              value: "3003"
+            - name: REDIS_HOSTNAME
+              value: platform-valkey
+            - name: REDIS_PORT
+              value: "6379"
+            - name: TZ
+              value: Europe/Amsterdam
+            - name: HOME
+              value: /tmp
+          resources:
+            requests:
+              memory: 3Gi
+              cpu: 2000m
+            limits:
+              memory: 3Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: library-media
+              mountPath: /data
+              subPath: Photos
+            - name: writable-tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /api/server/ping
+              port: 2283
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /api/server/ping
+              port: 2283
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /api/server/ping
+              port: 2283
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+      volumes:
+        - name: library-media
+          persistentVolumeClaim:
+            claimName: library-media
+        - name: writable-tmp
+          emptyDir:
+            sizeLimit: 64Mi

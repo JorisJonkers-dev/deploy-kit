@@ -1,0 +1,28 @@
+{
+  "path": {
+    "secret/data/immich/immich-postgres/catalog": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/immich/immich-postgres/catalog": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "database/roles/immich-owner": {
+      "capabilities": [
+        "create",
+        "read",
+        "update"
+      ]
+    },
+    "database/roles/immich-data": {
+      "capabilities": [
+        "create",
+        "read",
+        "update"
+      ]
+    }
+  }
+}

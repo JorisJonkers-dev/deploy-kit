@@ -1,0 +1,72 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-data-backup
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres-backup
+    app.kubernetes.io/instance: immich-postgres-backup
+    app.kubernetes.io/part-of: immich-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  schedule: 15 3 * * *
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: immich-postgres-backup
+            app.kubernetes.io/instance: immich-postgres-backup
+            app.kubernetes.io/part-of: immich-postgres
+            app.kubernetes.io/managed-by: deploy-kit
+            app.kubernetes.io/component: none
+          annotations:
+            image.jorisjonkers.dev/backup: 0.15.0
+        spec:
+          serviceAccountName: immich-postgres-backup
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            fsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: backup
+              image: ghcr.io/jorisjonkers-dev/delivery/postgres-backup@sha256:6d8370f988bda1b17b3b35cc7d455ea7ecb8ec8f828a90af987492dda5704793
+              env:
+                - name: BACKUP_RETAIN
+                  value: "14"
+                - name: BACKUP_HOST
+                  value: immich-postgres.immich-system.svc.cluster.local
+                - name: BACKUP_PORT
+                  value: "5432"
+              envFrom:
+                - secretRef:
+                    name: immich-postgres-backup-immich-immich-postgres-backup
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: postgres-data
+                readOnly: true
+            - name: backup
+              persistentVolumeClaim:
+                claimName: postgres-data-backup

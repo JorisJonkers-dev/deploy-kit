@@ -1,0 +1,331 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hindsight-api
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-api
+    app.kubernetes.io/instance: hindsight-api
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  progressDeadlineSeconds: 1200
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hindsight-api
+      app.kubernetes.io/instance: hindsight-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hindsight-api
+        app.kubernetes.io/instance: hindsight-api
+        app.kubernetes.io/part-of: hindsight
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+        consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
+        consumes.deploy-kit.jorisjonkers.dev/hindsight-embedding.http: "true"
+        consumes.deploy-kit.jorisjonkers.dev/hindsight-reranker.http: "true"
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+      annotations:
+        image.jorisjonkers.dev/hindsight-api: 0.9.2
+    spec:
+      serviceAccountName: hindsight-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - frankfurt-contabo-1
+                      - enschede-gtx-960m-1
+                      - enschede-t1000-1
+      containers:
+        - name: hindsight-api
+          image: ghcr.io/jorisjonkers-dev/hindsight@sha256:627d1cf183685a64011a54fc1ff117dd34f31c5c65e2db669aeaa32b5bef0528
+          ports:
+            - name: http
+              containerPort: 8888
+          env:
+            - name: HINDSIGHT_API_EMBEDDINGS_PROVIDER
+              value: tei
+            - name: HINDSIGHT_API_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-api-platform-hindsight
+                  key: mistral_api_key
+            - name: HINDSIGHT_API_LLM_BASE_URL
+              value: https://api.mistral.ai/v1
+            - name: HINDSIGHT_API_LLM_MODEL
+              value: mistral-small-2603
+            - name: HINDSIGHT_API_LLM_PROVIDER
+              value: openai
+            - name: HINDSIGHT_API_PORT
+              value: "8888"
+            - name: HINDSIGHT_API_RERANKER_1_PROVIDER
+              value: rrf
+            - name: HINDSIGHT_API_RERANKER_MAX_CANDIDATES
+              value: "20"
+            - name: HINDSIGHT_API_RERANKER_PROVIDER
+              value: tei
+            - name: HINDSIGHT_API_RERANKER_TEI_HTTP_TIMEOUT
+              value: "10"
+            - name: HINDSIGHT_DB_HOST
+              value: platform-postgres
+            - name: HINDSIGHT_DB_NAME
+              value: hindsight_db
+            - name: HINDSIGHT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-api-database-creds-hindsight-owner
+                  key: password
+            - name: HINDSIGHT_DB_PORT
+              value: "5432"
+            - name: HINDSIGHT_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-api-database-creds-hindsight-owner
+                  key: username
+            - name: HINDSIGHT_EMBEDDINGS_HOST
+              value: tei-embedding
+            - name: HINDSIGHT_EMBEDDINGS_PORT
+              value: "8091"
+            - name: HINDSIGHT_RERANKER_HOST
+              value: tei-reranker
+            - name: HINDSIGHT_RERANKER_PORT
+              value: "8092"
+            - name: HINDSIGHT_ROLE
+              value: api
+            - name: MKL_NUM_THREADS
+              value: "2"
+            - name: OMP_NUM_THREADS
+              value: "2"
+            - name: HOME
+              value: /tmp
+          resources:
+            requests:
+              memory: 768Mi
+              cpu: 500m
+            limits:
+              memory: 768Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: writable-tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8888
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8888
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: 8888
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+      volumes:
+        - name: writable-tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hindsight-worker
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-worker
+    app.kubernetes.io/instance: hindsight-worker
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  progressDeadlineSeconds: 1200
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hindsight-worker
+      app.kubernetes.io/instance: hindsight-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: hindsight-worker
+        app.kubernetes.io/instance: hindsight-worker
+        app.kubernetes.io/part-of: hindsight
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+        consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
+        consumes.deploy-kit.jorisjonkers.dev/hindsight-embedding.http: "true"
+        consumes.deploy-kit.jorisjonkers.dev/hindsight-reranker.http: "true"
+        gated.deploy-kit.jorisjonkers.dev/release-gate: "true"
+      annotations:
+        image.jorisjonkers.dev/hindsight-worker: 0.9.2
+    spec:
+      serviceAccountName: hindsight-worker
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - frankfurt-contabo-1
+                      - enschede-gtx-960m-1
+                      - enschede-t1000-1
+      containers:
+        - name: hindsight-worker
+          image: ghcr.io/jorisjonkers-dev/hindsight@sha256:627d1cf183685a64011a54fc1ff117dd34f31c5c65e2db669aeaa32b5bef0528
+          ports:
+            - name: worker
+              containerPort: 8889
+          env:
+            - name: HINDSIGHT_API_EMBEDDINGS_PROVIDER
+              value: tei
+            - name: HINDSIGHT_API_LLM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-worker-platform-hindsight
+                  key: mistral_api_key
+            - name: HINDSIGHT_API_LLM_BASE_URL
+              value: https://api.mistral.ai/v1
+            - name: HINDSIGHT_API_LLM_MODEL
+              value: mistral-small-2603
+            - name: HINDSIGHT_API_LLM_PROVIDER
+              value: openai
+            - name: HINDSIGHT_API_PORT
+              value: "8889"
+            - name: HINDSIGHT_API_RERANKER_1_PROVIDER
+              value: rrf
+            - name: HINDSIGHT_API_RERANKER_MAX_CANDIDATES
+              value: "20"
+            - name: HINDSIGHT_API_RERANKER_PROVIDER
+              value: tei
+            - name: HINDSIGHT_API_RERANKER_TEI_HTTP_TIMEOUT
+              value: "10"
+            - name: HINDSIGHT_API_WORKER_BATCH_SIZE
+              value: "10"
+            - name: HINDSIGHT_API_WORKER_HTTP_PORT
+              value: "8889"
+            - name: HINDSIGHT_API_WORKER_MAX_RETRIES
+              value: "3"
+            - name: HINDSIGHT_API_WORKER_POLL_INTERVAL_MS
+              value: "500"
+            - name: HINDSIGHT_DB_HOST
+              value: platform-postgres
+            - name: HINDSIGHT_DB_NAME
+              value: hindsight_db
+            - name: HINDSIGHT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-worker-database-creds-hindsight-owner
+                  key: password
+            - name: HINDSIGHT_DB_PORT
+              value: "5432"
+            - name: HINDSIGHT_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: hindsight-worker-database-creds-hindsight-owner
+                  key: username
+            - name: HINDSIGHT_EMBEDDINGS_HOST
+              value: tei-embedding
+            - name: HINDSIGHT_EMBEDDINGS_PORT
+              value: "8091"
+            - name: HINDSIGHT_RERANKER_HOST
+              value: tei-reranker
+            - name: HINDSIGHT_RERANKER_PORT
+              value: "8092"
+            - name: HINDSIGHT_ROLE
+              value: worker
+            - name: MKL_NUM_THREADS
+              value: "2"
+            - name: OMP_NUM_THREADS
+              value: "2"
+            - name: HOME
+              value: /tmp
+          resources:
+            requests:
+              memory: 1536Mi
+              cpu: 500m
+            limits:
+              memory: 1536Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: writable-tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8889
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8889
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+            initialDelaySeconds: 0
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8889
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+      volumes:
+        - name: writable-tmp
+          emptyDir:
+            sizeLimit: 64Mi

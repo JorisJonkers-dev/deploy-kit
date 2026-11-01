@@ -63,6 +63,41 @@ public final class Outputs {
     public static final String EXIT = "exit";
 
     /**
+     * The real estate's documents at the commit the examples under {@code estate/} were taken at: its
+     * Platform document and pinned inputs, and every Project it composes, so a case under it resolves
+     * and renders against the union production composed it in.
+     */
+    private static final List<String> ESTATE = List.of(
+            "estate/platform.intent.yml",
+            "estate/node-contract.yml",
+            "estate/images.lock.yml",
+            "estate/cluster-state.yml",
+            "estate/arr/arr.project.yml",
+            "estate/auth/auth.project.yml",
+            "estate/data/data.project.yml",
+            "estate/delivery/delivery.project.yml",
+            "estate/edge/edge.project.yml",
+            "estate/estate-dashboard/estate-dashboard.project.yml",
+            "estate/findability-explorer/findability-explorer.project.yml",
+            "estate/grimoire/grimoire.project.yml",
+            "estate/hindsight/hindsight.project.yml",
+            "estate/home-portal/home-portal.project.yml",
+            "estate/immich/immich.project.yml",
+            "estate/jellyfin/jellyfin.project.yml",
+            "estate/jellyseerr/jellyseerr.project.yml",
+            "estate/karakeep/karakeep.project.yml",
+            "estate/mail/mail.project.yml",
+            "estate/n8n/n8n.project.yml",
+            "estate/observability/observability.project.yml",
+            "estate/outline/outline.project.yml",
+            "estate/overleaf/overleaf.project.yml",
+            "estate/prowlarr/prowlarr.project.yml",
+            "estate/qbittorrent/qbittorrent.project.yml",
+            "estate/secrets/secrets.project.yml",
+            "estate/tribelt/tribelt.project.yml",
+            "estate/utility/utility.project.yml");
+
+    /**
      * The cases this implementation resolves, each with the project it resolves and the set of
      * documents it is read with: the case's own documents, the foundation it composes with, and the
      * pinned inputs beside the Platform document (spec/v1/20-resolved-deployment.md#pinned-inputs).
@@ -95,7 +130,11 @@ public final class Outputs {
             Map.entry("utility", new Resolving("utility", withFoundation())),
             // The Node Agents, which no project file declares: the Platform document and the node
             // contract derive them.
-            Map.entry("node", new Resolving("node", withFoundation())));
+            Map.entry("node", new Resolving("node", withFoundation())),
+            // The real estate's Projects, each read with the whole estate it was composed in.
+            Map.entry("estate/hindsight", new Resolving("hindsight", ESTATE)),
+            Map.entry("estate/immich", new Resolving("immich", ESTATE)),
+            Map.entry("estate/observability", new Resolving("observability", ESTATE)));
 
     /** The Platform document, its pinned inputs and the foundation every case composes with, then {@code own}. */
     private static List<String> withFoundation(String... own) {

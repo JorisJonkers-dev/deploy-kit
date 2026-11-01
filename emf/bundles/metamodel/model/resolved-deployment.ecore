@@ -944,19 +944,32 @@
   <!-- One rule file of the monitoring stack, named for its Application and its base name, and its groups as written. -->
   <eClassifiers xsi:type="ecore:EClass" name="ResolvedAlertRules">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="groups" lowerBound="1" upperBound="-1" eType="#//AlertRuleGroup" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="groups" lowerBound="1" upperBound="-1" eType="#//Datum" containment="true"/>
   </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="AlertRuleGroup">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="rules" lowerBound="1" upperBound="-1" eType="#//AlertRule" containment="true"/>
+  <!-- A value a rule-group file holds, as the file writes it: a mapping, a sequence or a scalar. -->
+  <eClassifiers xsi:type="ecore:EClass" name="Datum" abstract="true"/>
+  <!-- A mapping, its entries in the order the file writes them. -->
+  <eClassifiers xsi:type="ecore:EClass" name="DatumMap" eSuperTypes="#//Datum">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="entries" upperBound="-1" eType="#//DatumEntry" containment="true"/>
   </eClassifiers>
-  <!-- An alerting rule: what it alerts as, on what expression, held how long, and its labels and annotations. -->
-  <eClassifiers xsi:type="ecore:EClass" name="AlertRule">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="alert" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="expr" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="duration" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="annotations" upperBound="-1" eType="#//KeyValue" containment="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="DatumEntry">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="value" lowerBound="1" eType="#//Datum" containment="true"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EClass" name="DatumList" eSuperTypes="#//Datum">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="items" upperBound="-1" eType="#//Datum" containment="true"/>
+  </eClassifiers>
+  <!-- A scalar: its text, and what YAML's core schema reads it as. A number's text is the
+       number as JSON writes it, and an empty scalar's is `null`. -->
+  <eClassifiers xsi:type="ecore:EClass" name="DatumScalar" eSuperTypes="#//Datum">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="text" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="kind" lowerBound="1" eType="#//DatumKind"/>
+  </eClassifiers>
+  <eClassifiers xsi:type="ecore:EEnum" name="DatumKind">
+    <eLiterals name="string"/>
+    <eLiterals name="number" value="1"/>
+    <eLiterals name="boolean" value="2"/>
+    <eLiterals name="empty" value="3" literal="null"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="KeyValue">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="key" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>

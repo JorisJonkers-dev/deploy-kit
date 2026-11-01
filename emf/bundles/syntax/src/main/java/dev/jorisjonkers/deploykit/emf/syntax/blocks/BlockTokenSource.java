@@ -33,6 +33,9 @@ public class BlockTokenSource implements TokenSource {
     private final BlockTokens types;
     private final Deque<Integer> blocks = new ArrayDeque<>();
     private final Queue<Token> pending = new ArrayDeque<>();
+    /** Tokens read ahead of the one being decided and handed back, which are read before the delegate's next. */
+    private final Deque<Token> ahead = new ArrayDeque<>();
+
     private boolean lineStart = true;
     private boolean afterDash = false;
     private int flowDepth = 0;
@@ -48,9 +51,14 @@ public class BlockTokenSource implements TokenSource {
     @Override
     public Token nextToken() {
         while (pending.isEmpty()) {
-            read(delegate.nextToken());
+            read(pull());
         }
         return pending.remove();
+    }
+
+    /** The next token: one handed back first, then the delegate's. */
+    private Token pull() {
+        return ahead.isEmpty() ? delegate.nextToken() : ahead.pop();
     }
 
     @Override
@@ -102,9 +110,80 @@ public class BlockTokenSource implements TokenSource {
                 blocks.push(token.getCharPositionInLine());
                 pending.add(marker(types.begin(), token));
             }
-            pending.add(token);
             afterDash = token.getType() == types.dash();
+            if (afterDash) {
+                pending.add(token);
+            } else {
+                joined(token);
+            }
         }
+    }
+
+    /**
+     * A plain scalar whose parts a colon or a comma joins with no space between them: the parts become
+     * one scalar token spanning them, as YAML reads them. A colon is content where no space follows it
+     * ({@code 0.0.0.0:80}, {@code http://x}), and a comma wherever no flow collection is open ({@code
+     * - --a=b,c}). A token nothing joins is left as it is, and a colon that ends a key is still read as
+     * one.
+     */
+    private void joined(Token first) {
+        Token last = first;
+        Token next = pull();
+        while (touches(next)) {
+            if (inScalar(last) || inScalar(next)) {
+                last = next;
+                next = pull();
+            } else if (KEY.equals(next.getText())) {
+                Token after = pull();
+                if (!touches(after)) {
+                    ahead.push(after);
+                    break;
+                }
+                last = after;
+                next = pull();
+            } else {
+                break;
+            }
+        }
+        emit(first, last);
+        read(next);
+    }
+
+    /** Whether {@code token} is a comma YAML reads as content: one outside any flow collection. */
+    private boolean inScalar(Token token) {
+        return flowDepth == 0 && token.getType() == types.separator();
+    }
+
+    /** {@code first} as it is, or with every token up to {@code last} as one scalar. */
+    private void emit(Token first, Token last) {
+        pending.add(first == last ? first : spanning(first, last));
+    }
+
+    /**
+     * Whether {@code next} can be part of the scalar the token before it ends: anything but the end of
+     * the file, a space, a comment or a bracket. Every character of the file has its token, so a token
+     * that is none of those starts where the one before it ends.
+     */
+    private boolean touches(Token next) {
+        int type = next.getType();
+        return type != Token.EOF
+                && type != types.whitespace()
+                && type != types.comment()
+                && !types.opensFlow(type)
+                && !types.closesFlow(type);
+    }
+
+    /** One scalar token covering the source from {@code first} to {@code last}, where {@code first} sits. */
+    private CommonToken spanning(Token first, Token last) {
+        CommonToken start = (CommonToken) first;
+        CommonToken end = (CommonToken) last;
+        CommonToken scalar = new CommonToken(
+                types.scalar(), start.getInputStream().substring(start.getStartIndex(), end.getStopIndex()));
+        scalar.setLine(start.getLine());
+        scalar.setCharPositionInLine(start.getCharPositionInLine());
+        scalar.setStartIndex(start.getStartIndex());
+        scalar.setStopIndex(end.getStopIndex());
+        return scalar;
     }
 
     /**
@@ -120,7 +199,7 @@ public class BlockTokenSource implements TokenSource {
         }
         List<Token> words = new ArrayList<>(List.of(first));
         List<Token> between = new ArrayList<>();
-        Token next = delegate.nextToken();
+        Token next = pull();
         while (continues(next)) {
             if (next.getType() == types.whitespace()) {
                 between.add(next);
@@ -128,21 +207,13 @@ public class BlockTokenSource implements TokenSource {
                 between.clear();
                 words.add(next);
             }
-            next = delegate.nextToken();
+            next = pull();
         }
         if (words.size() == 1) {
             pending.add(first);
             afterDash = false;
         } else {
-            CommonToken start = (CommonToken) first;
-            CommonToken last = (CommonToken) words.get(words.size() - 1);
-            CommonToken scalar = new CommonToken(
-                    types.scalar(), start.getInputStream().substring(start.getStartIndex(), last.getStopIndex()));
-            scalar.setLine(start.getLine());
-            scalar.setCharPositionInLine(start.getCharPositionInLine());
-            scalar.setStartIndex(start.getStartIndex());
-            scalar.setStopIndex(last.getStopIndex());
-            pending.add(scalar);
+            pending.add(spanning(first, words.get(words.size() - 1)));
             afterDash = false;
         }
         between.forEach(this::read);
@@ -170,7 +241,7 @@ public class BlockTokenSource implements TokenSource {
         CommonToken marker = (CommonToken) fold;
         List<Token> trailing = new ArrayList<>();
         Token last = marker;
-        Token next = delegate.nextToken();
+        Token next = pull();
         while (next.getType() != Token.EOF && inBlock(next)) {
             if (next.getType() == types.whitespace()) {
                 trailing.add(next);
@@ -178,7 +249,7 @@ public class BlockTokenSource implements TokenSource {
                 trailing.clear();
                 last = next;
             }
-            next = delegate.nextToken();
+            next = pull();
         }
         int end = ((CommonToken) last).getStopIndex();
         String raw = marker.getInputStream().substring(marker.getStartIndex(), end);

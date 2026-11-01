@@ -1,0 +1,91 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  name: alertmanager
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/instance: alertmanager
+    app.kubernetes.io/part-of: alertmanager
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  image: quay.io/prometheus/alertmanager@sha256:690c7b525f4367aa91f73e2f91c632206d32e97c6384bdbf2fb7a861b420340d
+  version: v0.34.0
+  replicas: 1
+  serviceAccountName: alertmanager
+  automountServiceAccountToken: false
+  podMetadata:
+    labels:
+      app.kubernetes.io/part-of: alertmanager
+      app.kubernetes.io/component: none
+    annotations:
+      image.jorisjonkers.dev/alertmanager: v0.34.0
+  portName: http
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  - frankfurt-contabo-1
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 50m
+    limits:
+      memory: 128Mi
+  containers:
+    - name: alertmanager
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      volumeMounts:
+        - name: alertmanager-data
+          mountPath: /alertmanager
+      readinessProbe:
+        httpGet:
+          path: /-/ready
+          port: 9093
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+        initialDelaySeconds: 0
+      livenessProbe:
+        httpGet:
+          path: /-/healthy
+          port: 9093
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+        initialDelaySeconds: 0
+      startupProbe:
+        httpGet:
+          path: /-/healthy
+          port: 9093
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 6
+  volumes:
+    - name: alertmanager-data
+      persistentVolumeClaim:
+        claimName: alertmanager-data
+  alertmanagerConfigSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: deploy-kit
+  alertmanagerConfigMatcherStrategy:
+    type: None

@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: observability-system
+  labels:
+    dashboards: grafana
+    app.kubernetes.io/part-of: grafana
+    app.kubernetes.io/managed-by: deploy-kit
+spec:
+  external:
+    url: http://grafana.observability-system:3000
+    adminUser:
+      name: grafana-observability-system-grafana-admin
+      key: user
+    adminPassword:
+      name: grafana-observability-system-grafana-admin
+      key: password

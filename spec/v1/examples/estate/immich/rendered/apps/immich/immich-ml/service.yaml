@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: immich-ml
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-ml
+    app.kubernetes.io/instance: immich-ml
+    app.kubernetes.io/part-of: immich-ml
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: immich-ml
+  ports:
+    - name: http
+      port: 3003
+      targetPort: http
