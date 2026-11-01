@@ -89,5 +89,7 @@ the Project's:
   ([chapter 55](../../55-delivery.md#rendered-artifacts-and-pins)); a render of
   the set alone knows no release.
 
-The model-driven implementation under `emf/` is held to the same oracles: see
-its `OracleDistanceTest`.
+The model-driven implementation under `emf/` is held to the same oracles, at
+distance 0 on all three: each Project's intent, its dependency edges and its
+share of the tree. It compares no `resolved.<application>.json`, which binds
+the production implementation only, as every other worked example's does.
