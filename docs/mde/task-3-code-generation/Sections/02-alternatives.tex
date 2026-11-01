@@ -96,8 +96,8 @@ claimed beyond the constructs the module uses.
 \subsubsection{Templates Rather Than a Serialiser}
 \label{sec:m2t-templates}
 
-The production implementation uses visitors or APIs: a YAML library and a JSON encoder
-write typed objects. The model-driven implementation uses templates without a subsequent
+The alternative is a serialiser: a visitor writes typed objects through a YAML library
+and a JSON encoder. The model-driven implementation uses templates without a subsequent
 formatting pass.
 
 The criterion is that one reviewed artefact determines the output bytes. A template
