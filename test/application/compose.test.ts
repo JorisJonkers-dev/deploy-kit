@@ -478,6 +478,147 @@ describe("composeEstate", () => {
     expect(compose({ fragments: [...RELEASES].reverse() })).toEqual(FIRST);
   });
 
+  // REQ-167 (docs/requirements.md) and deploy-kit#791: a release labelled every pod of its Project, so it
+  // restarted the Applications it left alone; the Secret Store came back sealed.
+  describe("the release label on each Application", () => {
+    /** data released again with only platform-rabbitmq's memory changed. */
+    const RABBITMQ = (body: string): string =>
+      body.replace(
+        "          memory: 2Gi       # the broker",
+        "          memory: 3Gi       # the broker",
+      );
+    const indexOf = (composition: Composition): string =>
+      composition.artifacts
+        .find(({ name }) => name === "data")
+        ?.files.find(({ path }) => path === "apps/data/kustomization.yaml")
+        ?.text ?? "";
+    const keptBy = (index: string): Record<string, string> =>
+      Object.fromEntries(
+        (
+          (
+            parse(index) as {
+              patches?: {
+                patch: string;
+                target: { labelSelector?: string };
+              }[];
+            }
+          ).patches ?? []
+        ).flatMap(({ patch, target }) =>
+          target.labelSelector === undefined
+            ? []
+            : [
+                [
+                  target.labelSelector.replace(
+                    "app.kubernetes.io/part-of=",
+                    "",
+                  ),
+                  /app\.kubernetes\.io\/version: "([^"]+)"/.exec(patch)?.[1] ??
+                    "",
+                ],
+              ],
+        ),
+      );
+    const releasing = () =>
+      RELEASES.map((fragment) =>
+        fragment.manifest.spec.project === "data"
+          ? release("data", "1.1.0", RABBITMQ)
+          : fragment,
+      );
+
+    it("relabels only the Applications a release changed, and keeps every other's label", () => {
+      const composed = after({ fragments: releasing() });
+
+      expect(
+        composed.artifacts.find(({ name }) => name === "data")?.moves,
+      ).toBe(true);
+      expect(keptBy(indexOf(composed))).toStrictEqual({
+        "asset-sync": "1.0.0",
+        "platform-garage": "1.0.0",
+        "platform-mongo": "1.0.0",
+        "platform-postgres": "1.0.0",
+        "platform-valkey": "1.0.0",
+      });
+      expect(indexOf(composed)).toContain('app.kubernetes.io/version: "1.1.0"');
+      expect(composed.lock.spec.fragments.data?.released).toStrictEqual({
+        "asset-sync": "1.0.0",
+        "platform-garage": "1.0.0",
+        "platform-mongo": "1.0.0",
+        "platform-postgres": "1.0.0",
+        "platform-rabbitmq": "1.1.0",
+        "platform-valkey": "1.0.0",
+      });
+    });
+
+    it("labels every Application with the release on a Project's first composition", () => {
+      expect(keptBy(indexOf(FIRST))).toStrictEqual({});
+      expect(
+        new Set(Object.values(FIRST.lock.spec.fragments.data?.released ?? {})),
+      ).toStrictEqual(new Set(["1.0.0"]));
+    });
+
+    it("reads a lock written before it recorded releases as the Project's own release, so the upgrade restarts nothing", () => {
+      const { released: _released, ...older } = FIRST.lock.spec.fragments
+        .data as NonNullable<typeof FIRST.lock.spec.fragments.data>;
+      const composed = after({
+        fragments: releasing(),
+        previous: {
+          lock: {
+            ...FIRST.lock,
+            spec: {
+              ...FIRST.lock.spec,
+              fragments: { ...FIRST.lock.spec.fragments, data: older },
+            },
+          },
+          commit: hex("estate-commit", 40),
+        },
+      });
+
+      expect(keptBy(indexOf(composed))["platform-postgres"]).toBe("1.0.0");
+      expect(keptBy(indexOf(composed))["platform-rabbitmq"]).toBeUndefined();
+    });
+
+    it("records the Project's own release for each Application whose pin stays under a lock that recorded none", () => {
+      const { released: _released, ...older } = FIRST.lock.spec.fragments
+        .data as NonNullable<typeof FIRST.lock.spec.fragments.data>;
+      const again = after({
+        previous: {
+          lock: {
+            ...FIRST.lock,
+            spec: {
+              ...FIRST.lock.spec,
+              fragments: { ...FIRST.lock.spec.fragments, data: older },
+            },
+          },
+          commit: hex("estate-commit", 40),
+        },
+      });
+
+      expect(again.artifacts.find(({ name }) => name === "data")?.moves).toBe(
+        false,
+      );
+      expect(
+        new Set(Object.values(again.lock.spec.fragments.data?.released ?? {})),
+      ).toStrictEqual(new Set(["1.0.0"]));
+    });
+
+    it("keeps what the previous lock recorded for a Project whose pin stays", () => {
+      const once = after({ fragments: releasing() });
+      const again = compose({
+        fragments: releasing(),
+        held: [...RELEASES, release("data", "1.1.0", RABBITMQ)],
+        pins: pinned(once),
+        previous: { lock: once.lock, commit: hex("estate-commit", 40) },
+      });
+
+      expect(again.artifacts.find(({ name }) => name === "data")?.moves).toBe(
+        false,
+      );
+      expect(again.lock.spec.fragments.data?.released).toStrictEqual(
+        once.lock.spec.fragments.data?.released,
+      );
+    });
+  });
+
   it("moves no pin for a Project whose render did not change", () => {
     const again = after({});
 

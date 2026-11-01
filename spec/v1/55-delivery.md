@@ -124,7 +124,18 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   targets `CronJob` and sets it under
   `spec.jobTemplate.spec.template.metadata.labels`. Each sets it to the
   release's `version`, quoted so it stays a string, as a strategic merge that
-  touches no selector. The label travels in the artifact, never in the pin
+  touches no selector. **An Application the release leaves alone keeps its
+  label**: where its revision is the one the previous lock records, the index
+  carries the same two patches again after these, targeted at the labelSelector
+  `app.kubernetes.io/part-of=<application>`, setting the release the lock's
+  `released` names for it ([chapter 40](40-composition.md#the-composition-lock)),
+  or, in a lock written before `released`, the Project's `version` there. Its pod
+  templates are then byte for byte the ones applied, so a release restarts only
+  what it changed; a label that moved on every pod would restart a Secret Store
+  for a change elsewhere in its Project, and a restarted store comes back
+  sealed ([#791](https://github.com/JorisJonkers-dev/deploy-kit/issues/791)).
+  The lock records each Application's `released` as the release it is labelled
+  with, and a Project whose pin stays keeps the one it recorded. The label travels in the artifact, never in the pin
   source, so the one fetch that brings a new image brings its label: a label
   written on the source's Kustomization could be applied to the artifact it
   replaces, before that one is fetched, and roll every pod twice

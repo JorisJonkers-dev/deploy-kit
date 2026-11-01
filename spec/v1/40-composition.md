@@ -748,6 +748,9 @@ spec:
       revisions:                      # each Application's revision, as rendered
         knowledge: sha256:…
         knowledge-ingest: sha256:…
+      released:                       # the release that last changed each Application, chapter 55
+        knowledge: 2.1.2
+        knowledge-ingest: 2.0.0
       sourceSha: 22b9d33…             # the full 40-digit commit
       inputsSha: 84021c5…             # 64 hex digits, no algorithm prefix
     intent-data: {…}

@@ -95,11 +95,16 @@ export const RECREATE_DEPLOYMENTS = {
 export const VERSION_LABEL = "app.kubernetes.io/version";
 
 /**
- * Label every pod template a unit applies with its release; a selector is
- * never touched. Composition writes these into a moving Project's index, in
- * the artifact itself (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
+ * Label every pod template a unit applies with its release, or, given an
+ * Application, only that Application's; a selector is never touched.
+ * Composition writes these into a moving Project's index, in the artifact
+ * itself (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
  */
-export const versionPatches = (version: string) => {
+export const versionPatches = (version: string, application?: string) => {
+  const of =
+    application === undefined
+      ? {}
+      : { labelSelector: `app.kubernetes.io/part-of=${application}` };
   const labelled = (depth: number): string[] =>
     [
       "template:",
@@ -118,7 +123,7 @@ export const versionPatches = (version: string) => {
         ...labelled(1),
         "",
       ].join("\n"),
-      target: { kind: "Deployment|StatefulSet|DaemonSet|Job" },
+      target: { kind: "Deployment|StatefulSet|DaemonSet|Job", ...of },
     },
     {
       patch: [
@@ -132,7 +137,7 @@ export const versionPatches = (version: string) => {
         ...labelled(3),
         "",
       ].join("\n"),
-      target: { kind: "CronJob" },
+      target: { kind: "CronJob", ...of },
     },
   ] as const;
 };

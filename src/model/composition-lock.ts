@@ -24,6 +24,10 @@ const lockedFragment = z
     schemaVersion: semver,
     version: semver,
     revisions: z.record(text, digest),
+    // The release that last changed each Application's render, which its
+    // pods are labelled with: an Application a release leaves alone keeps
+    // the label it has, so its pods do not restart.
+    released: z.record(text, semver).exactOptional(),
     sourceSha: commit,
     inputsSha: z.string().regex(/^[a-f0-9]{64}$/),
   })
