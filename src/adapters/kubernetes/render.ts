@@ -594,9 +594,10 @@ function sidecarOf(
 /**
  * The ports a container listens on, one per surface, and a host port for each
  * port a client dials on a node's own address
- * (spec/v1/30-deliverables.md#how-each-adapter-spells-the-projection): on the
- * surface's own entry where the client dials the surface's port over TCP, and
- * on one of its own, named as the resolved port is, where it does not.
+ * (spec/v1/10-project-intent.md#l4-exposure): on the surface's own entry where
+ * the client reaches the surface over TCP, whatever port it dials, and on one
+ * of its own, named as the resolved port is, where it does not. A container
+ * port and protocol appear once: server-side apply keys the list by them.
  */
 function portsOf(
   surfaces: NonNullable<ResolvedProcess["surfaces"]>,
@@ -607,27 +608,24 @@ function portsOf(
   const onNode = (l4Exposure ?? []).flatMap((exposure) =>
     exposure.kind === "node" ? exposure.ports : [],
   );
-  // A port's target is its surface's own port, so a TCP port the client
-  // dials at that same number is the surface's entry with a host port.
-  const merges = ({
-    port,
-    protocol,
-    targetPort,
-  }: (typeof onNode)[number]): boolean =>
-    protocol === "tcp" && port === targetPort;
+  // Each surface takes the first TCP port that reaches it.
+  const merged = new Set<(typeof onNode)[number]>();
+  const container = surfaces.map(({ name, port }) => {
+    const dialled = onNode.find(
+      (entry) =>
+        !merged.has(entry) &&
+        entry.surface === name &&
+        entry.protocol === "tcp" &&
+        entry.targetPort === port,
+    );
+    if (dialled === undefined) return { name, containerPort: port };
+    merged.add(dialled);
+    return { name, containerPort: port, hostPort: dialled.port };
+  });
   return [
-    ...surfaces.map(({ name, port }) => {
-      const dialled = onNode.find(
-        (entry) => entry.surface === name && merges(entry),
-      );
-      return {
-        name,
-        containerPort: port,
-        ...(dialled === undefined ? {} : { hostPort: dialled.port }),
-      };
-    }),
+    ...container,
     ...onNode
-      .filter((entry) => !merges(entry))
+      .filter((entry) => !merged.has(entry))
       .map(({ name, port, protocol, targetPort }) => ({
         name,
         containerPort: targetPort,
