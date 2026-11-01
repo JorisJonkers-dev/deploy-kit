@@ -50,17 +50,105 @@
       </placement>
     </processes>
   </applications>
-  <applications id="prometheus" revision="sha256:204cba805d94f16f01a7c56d2dc1f70db34d05d148b6f0831db899f6a416b10e" project="observability" namespace="observability-system" reconcileUnit="/0/@reconcileUnits.0">
+  <applications id="prometheus" revision="sha256:8487c5fe430a29d10508eb19695c09386211f013596168ffc29b657e01bdf8a6" project="observability" namespace="observability-system" reconcileUnit="/0/@reconcileUnits.0">
     <alertRules name="prometheus-platform">
-      <groups name="platform">
-        <rules alert="JobFailed" expr="kube_job_status_failed > 0" duration="5m">
-          <labels key="severity" value="warning"/>
-          <annotations key="summary" value="Job {{ $labels.namespace }}/{{ $labels.job_name }} failed"/>
-        </rules>
-        <rules alert="TargetDown" expr="up == 0" duration="10m">
-          <labels key="severity" value="critical"/>
-          <annotations key="summary" value="{{ $labels.job }} on {{ $labels.instance }} is down"/>
-        </rules>
+      <groups xsi:type="resolveddeployment:DatumMap">
+        <entries key="name">
+          <value xsi:type="resolveddeployment:DatumScalar" text="platform"/>
+        </entries>
+        <entries key="rules">
+          <value xsi:type="resolveddeployment:DatumList">
+            <items xsi:type="resolveddeployment:DatumMap">
+              <entries key="alert">
+                <value xsi:type="resolveddeployment:DatumScalar" text="JobFailed"/>
+              </entries>
+              <entries key="expr">
+                <value xsi:type="resolveddeployment:DatumScalar" text="kube_job_status_failed > 0"/>
+              </entries>
+              <entries key="for">
+                <value xsi:type="resolveddeployment:DatumScalar" text="5m"/>
+              </entries>
+              <entries key="labels">
+                <value xsi:type="resolveddeployment:DatumMap">
+                  <entries key="severity">
+                    <value xsi:type="resolveddeployment:DatumScalar" text="warning"/>
+                  </entries>
+                </value>
+              </entries>
+              <entries key="annotations">
+                <value xsi:type="resolveddeployment:DatumMap">
+                  <entries key="summary">
+                    <value xsi:type="resolveddeployment:DatumScalar" text="Job {{ $labels.namespace }}/{{ $labels.job_name }} failed"/>
+                  </entries>
+                </value>
+              </entries>
+            </items>
+            <items xsi:type="resolveddeployment:DatumMap">
+              <entries key="alert">
+                <value xsi:type="resolveddeployment:DatumScalar" text="TargetDown"/>
+              </entries>
+              <entries key="expr">
+                <value xsi:type="resolveddeployment:DatumScalar" text="up == 0"/>
+              </entries>
+              <entries key="for">
+                <value xsi:type="resolveddeployment:DatumScalar" text="10m"/>
+              </entries>
+              <entries key="labels">
+                <value xsi:type="resolveddeployment:DatumMap">
+                  <entries key="severity">
+                    <value xsi:type="resolveddeployment:DatumScalar" text="critical"/>
+                  </entries>
+                </value>
+              </entries>
+              <entries key="annotations">
+                <value xsi:type="resolveddeployment:DatumMap">
+                  <entries key="summary">
+                    <value xsi:type="resolveddeployment:DatumScalar" text="{{ $labels.job }} on {{ $labels.instance }} is down"/>
+                  </entries>
+                </value>
+              </entries>
+            </items>
+          </value>
+        </entries>
+      </groups>
+      <groups xsi:type="resolveddeployment:DatumMap">
+        <entries key="name">
+          <value xsi:type="resolveddeployment:DatumScalar" text="breadth"/>
+        </entries>
+        <entries key="interval">
+          <value xsi:type="resolveddeployment:DatumScalar" text="1m"/>
+        </entries>
+        <entries key="limit">
+          <value xsi:type="resolveddeployment:DatumScalar" text="10" kind="number"/>
+        </entries>
+        <entries key="rules">
+          <value xsi:type="resolveddeployment:DatumList">
+            <items xsi:type="resolveddeployment:DatumMap">
+              <entries key="record">
+                <value xsi:type="resolveddeployment:DatumScalar" text="breadth:up:sum"/>
+              </entries>
+              <entries key="expr">
+                <value xsi:type="resolveddeployment:DatumScalar" text="sum(up)&#xA;  by (job)&#xA;"/>
+              </entries>
+              <entries key="labels">
+                <value xsi:type="resolveddeployment:DatumMap"/>
+              </entries>
+              <entries key="annotations">
+                <value xsi:type="resolveddeployment:DatumMap">
+                  <entries key="paged">
+                    <value xsi:type="resolveddeployment:DatumScalar" text="false" kind="boolean"/>
+                  </entries>
+                  <entries key="runbook">
+                    <value xsi:type="resolveddeployment:DatumScalar" text="null" kind="null"/>
+                  </entries>
+                  <entries key="note">
+                    <value xsi:type="resolveddeployment:DatumScalar" text="say &quot;up&quot;"/>
+                  </entries>
+                </value>
+              </entries>
+            </items>
+          </value>
+        </entries>
       </groups>
     </alertRules>
     <fluxScrape namespace="flux-system" port="8080" path="/metrics" interval="30s" timeout="10s">

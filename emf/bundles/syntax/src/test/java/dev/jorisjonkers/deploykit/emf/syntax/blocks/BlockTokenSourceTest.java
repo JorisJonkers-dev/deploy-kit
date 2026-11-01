@@ -211,6 +211,43 @@ class BlockTokenSourceTest {
     }
 
     @Test
+    void anItemWhosePartsACommaJoinsIsOnePlainScalarOutsideAFlow() {
+        assertThat(blocks("a:\n  - --r=x,y,z\n  - b\n"))
+                .containsExactly("a", ":", "BEGIN", "-", "BEGIN", "--r=x,y,z", "END", "-", "BEGIN", "b", "END", "END");
+        // A comma that ends the scalar, or a comment, a flow or the end of the file after it, ends the value.
+        assertThat(blocks("- x, y\n")).containsExactly("-", "BEGIN", "x,", "y", "END");
+        assertThat(blocks("- x,#c\n")).containsExactly("-", "BEGIN", "x,", "END");
+        assertThat(blocks("- x,[y]\n")).containsExactly("-", "BEGIN", "x,", "BEGIN", "y", "END", "END");
+        assertThat(blocks("- x,")).containsExactly("-", "BEGIN", "x,", "END");
+        // Inside a flow collection the comma still separates.
+        assertThat(blocks("a: [x,y]\n")).containsExactly("a", ":", "BEGIN", "x", "y", "END");
+    }
+
+    @Test
+    void aColonNoSpaceFollowsIsPartOfThePlainScalarItSitsIn() {
+        assertThat(blocks("a: [run, --addr=0.0.0.0:80]\n"))
+                .containsExactly("a", ":", "BEGIN", "run", "--addr=0.0.0.0:80", "END");
+        assertThat(blocks("- http://x:8080/y\n")).containsExactly("-", "BEGIN", "http://x:8080/y", "END");
+        // A colon a space, a line break or the end of the file follows ends a key, as before.
+        assertThat(blocks("- b: 1\n")).containsExactly("-", "BEGIN", "b", ":", "1", "END");
+        assertThat(blocks("a:\n  b:")).containsExactly("a", ":", "BEGIN", "b", ":", "END");
+    }
+
+    @Test
+    void aPlainScalarACommaJoinsSitsWhereItsFirstPartSatAndCoversItsSourceOnce() {
+        String source = "- --r=x,y # c\n";
+        CommonToken scalar = (CommonToken) tokens(source).stream()
+                .filter(token -> token.getText().equals("--r=x,y"))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(scalar.getLine()).isEqualTo(1);
+        assertThat(scalar.getCharPositionInLine()).isEqualTo(2);
+        assertThat(scalar.getStartIndex()).isEqualTo(2);
+        assertThat(scalar.getStopIndex()).isEqualTo(8);
+    }
+
+    @Test
     void aFlowSequenceIsAnEmptyBlockRatherThanAnItem() {
         assertThat(blocks("a: []\n")).containsExactly("a", ":", "BEGIN", "END");
     }

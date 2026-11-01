@@ -2,6 +2,8 @@ package dev.jorisjonkers.deploykit.emf.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.jorisjonkers.deploykit.emf.metamodel.descriptor.DependencyEdges;
+import dev.jorisjonkers.deploykit.emf.metamodel.json.CanonicalJson;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -98,6 +100,29 @@ class RenderedTreeTest {
                 .isEmpty();
 
         assertSameTree(out, List.of(Examples.of("knowledge-platform/rendered"), platformShare()));
+    }
+
+    /**
+     * Each real estate Project worked under {@code estate/}, read with the whole estate it was taken
+     * from, parses to its committed intent, resolves to its committed edges and renders, alone, to its
+     * committed share of the tree.
+     */
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({"hindsight", "immich", "observability"})
+    void aRealEstateProjectIsItsCommittedOraclesByteForByte(String project, @TempDir Path out) throws IOException {
+        Outputs.Resolving resolving = Outputs.RESOLVED.get("estate/" + project);
+        List<Path> documents = resolving.documents().stream().map(Examples::of).toList();
+        Path example = Examples.of("estate/" + project);
+
+        assertThat(CanonicalJson.write(Pipeline.intent(example.resolve(project + ".project.yml"))
+                        .intent()))
+                .isEqualTo(Files.readString(example.resolve("expected/intent.json")));
+        assertThat(CanonicalJson.write(DependencyEdges.of(
+                        Pipeline.resolve(documents, project, Outputs.INTEGRITY).deployment())))
+                .isEqualTo(Files.readString(example.resolve("expected/" + DependencyEdges.NAME)));
+        assertThat(Pipeline.render(documents, List.of(project), Outputs.INTEGRITY, out))
+                .isEmpty();
+        assertSameTree(out.resolve("apps"), example.resolve("rendered/apps"));
     }
 
     @Test

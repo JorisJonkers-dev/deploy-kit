@@ -265,7 +265,10 @@ The Xtext grammar parses the same authored `.project.yml` and
 read the pinned inputs: `node-contract.yml`, `images.lock.yml` and
 `cluster-state.yml` beside the Platform document, and `migration-proof.yml`
 beside a project file. An Asset's file is read as text, never parsed: what is in
-it is the Application's, not the model's. Each grammar inherits the project grammar's
+it is the Application's, not the model's. A rule-group file is the one exception,
+read by `DataFile` in the `cli` bundle as the YAML or JSON it is into a generic
+tree in the pinned extent, because its groups are written into the monitoring
+stack's PrometheusRule as the file writes them, keys and types and all. Each grammar inherits the project grammar's
 terminals, block tokens and scalars as the Platform grammar does, imports the
 pinned-inputs metamodel, and adds only its own rules
 ([0075](adr/emf/0075-xtext-parses-the-authored-yaml-into-the-metamodel.md)). It covers the YAML
