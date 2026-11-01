@@ -9,6 +9,7 @@ import { resolveNodeAgents } from "../resolve/node-agents.ts";
 import { forwardAuthEndpoint } from "../model/runtime-profiles.ts";
 import type { ResolvedForwardAuth } from "../adapters/traefik/shared-middlewares.ts";
 import { pinnedDiagnostics } from "../check/pinned-inputs.ts";
+import { reconcileCycles } from "../check/reconcile-order.ts";
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type { ScopedEnv } from "../model/env.ts";
 import type { ImagesLockDocument } from "../model/images-lock.ts";
@@ -367,6 +368,14 @@ export function resolveIntentSet(
       resolveUnion({ ...set, projects }, digests, schemaPackageIntegrity, hash),
     hash,
   );
+  const documents = new Map(
+    projects.map(({ name, value }) => [value.document.project, name]),
+  );
+  const cycles = reconcileCycles(
+    resolved,
+    (project) => documents.get(project) as string,
+  );
+  if (cycles.length > 0) return { ok: false, diagnostics: cycles };
   const job = resolvePolicyJob(set);
   const { jobs: catalogs, homes } = resolveCatalogJobs(set, job);
   const events = resolveEvents(set);

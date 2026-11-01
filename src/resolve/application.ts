@@ -336,13 +336,24 @@ const synced = (processes: readonly ResolvedProcess[]): boolean =>
  * the Project that declares each proxy an exposure's tier names
  * (spec/v1/20-resolved-deployment.md#the-reconcile-unit). An optional edge
  * orders nothing (spec/v1/55-delivery.md#release-order), so two projects that
- * name each other optionally never wait on each other.
+ * name each other optionally never wait on each other. The Secret Store's own
+ * Project follows nothing, since every unit holding a grant follows it.
  */
 function reconcileAfter(
   application: EffectiveApplication,
   context: ApplicationContext,
   exposure: readonly ResolvedExposure[],
 ): string[] {
+  // The worked Secret Store's Project holds that one Application, so `every`
+  // finds the same Project.
+  // Stryker disable MethodExpression
+  const store = context.union.find(({ project, applications }) =>
+    applications.some(({ id }) =>
+      holds(context.platform.secretStore, project, id),
+    ),
+  )?.project;
+  // Stryker restore MethodExpression
+  if (store === context.project) return [];
   const providers = application.processes.flatMap(({ dependsOn }) =>
     // A missing list and any fallback resolve no provider alike.
     // Stryker disable next-line ArrayDeclaration
@@ -396,20 +407,9 @@ function reconcileAfter(
   // E_NO_SECRET_STORE refuses a holder under a platform that names no store,
   // and a catalog is derived only beside one, so a held Application always
   // finds it.
-  // The worked Secret Store's Project holds that one Application, so `every`
-  // finds the same Project.
-  // Stryker disable MethodExpression
-  const store = context.union.find(({ project, applications }) =>
-    applications.some(({ id }) =>
-      holds(context.platform.secretStore, project, id),
-    ),
-  )?.project;
-  // Stryker restore MethodExpression
   const secrets =
     // Stryker disable next-line ConditionalExpression: as above.
-    held && store !== undefined && store !== context.project
-      ? [unitOf(store)]
-      : [];
+    held && store !== undefined ? [unitOf(store)] : [];
   // A route needs its tier's proxy, which the Project that declares it brings
   // up; the route is in this Project's own unit
   // (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
