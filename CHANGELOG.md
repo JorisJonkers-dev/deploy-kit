@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.7.1...v1.8.0) (2026-11-01)
+
+
+### Features
+
+* **model:** let a scrape keep its target's labels, for an exporter that describes other objects ([#784](https://github.com/JorisJonkers-dev/deploy-kit/issues/784)) ([b865b26](https://github.com/JorisJonkers-dev/deploy-kit/commit/b865b2602494933e5ae5fd02b133995ed50a78d2))
+
 ## [1.7.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.7.0...v1.7.1) (2026-11-01)
 
 
