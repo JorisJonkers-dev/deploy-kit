@@ -3718,11 +3718,9 @@ describe("a tier's proxy", () => {
       };
     }[];
     expect(workload?.spec.template.spec.containers[0]?.ports).toStrictEqual([
-      { name: "web", containerPort: 8000 },
-      { name: "websecure", containerPort: 8443 },
+      { name: "web", containerPort: 8000, hostPort: 80 },
+      { name: "websecure", containerPort: 8443, hostPort: 443 },
       { name: "admin", containerPort: 8080 },
-      { name: "tcp-80", containerPort: 8000, hostPort: 80, protocol: "TCP" },
-      { name: "tcp-443", containerPort: 8443, hostPort: 443, protocol: "TCP" },
     ]);
     expect(JSON.stringify(workload?.spec.template.spec.affinity)).toContain(
       '"values":["frankfurt-contabo-1"]',
