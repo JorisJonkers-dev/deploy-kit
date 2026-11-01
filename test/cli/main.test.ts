@@ -120,7 +120,7 @@ function unsigned(document: string): string {
 /** A participants list that expects every project of the union, and the Platform document. */
 const LISTED = `participants:\n${["jorisjonkers.dev", ...PROJECTS.map(([, name]) => name)].map((name) => `  ${name}: {}\n`).join("")}`;
 
-/** Every fragment pulled into one workspace, under a ledger whose delivered Projects the adapters spell. */
+/** Every fragment pulled into one workspace. */
 function pulled(): string {
   const root = mkdtempSync(join(temporary(), "compose-"));
   for (const [document, name] of PROJECTS)
@@ -148,11 +148,7 @@ function pulled(): string {
         /\n {2}# Admitted to their own namespace alone[^\n]*\n {2}namespaceHolders: \[[^\]]*\]\n/,
         "\n",
       )
-      .replace(", agents/kubernetes-mcp-server]", "]")
-      .replace(
-        /\nhandover:\n(?: {2}.*\n)+/,
-        "\nhandover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, delivery, edge, knowledge]\n  estate: [notes, observability, secrets]\n",
-      ),
+      .replace(", agents/kubernetes-mcp-server]", "]"),
   );
   published(document, "estate", join(root, "platform"));
   writeFileSync(join(root, "participants.yml"), LISTED);
@@ -506,7 +502,7 @@ describe("deploy-kit compose", () => {
       join(root, "platform"),
     );
     expect(composeIn(root, "--out", join(root, "unlocked")).stdout).toBe(
-      "composed 2 artifacts; pins move for: observability, secrets\n",
+      "composed 7 artifacts; pins move for: _estate, data, delivery, edge, node, observability, secrets\n",
     );
 
     // The Project's own release, published with the lock its build wrote.
@@ -537,7 +533,7 @@ describe("deploy-kit compose", () => {
     expect(composeIn(root, "--out", join(root, "shared"))).toEqual({
       code: 0,
       stdout:
-        "composed 3 artifacts; pins move for: notes, observability, secrets\n",
+        "composed 8 artifacts; pins move for: _estate, data, delivery, edge, node, notes, observability, secrets\n",
       stderr: "",
     });
   });
@@ -549,7 +545,7 @@ describe("deploy-kit compose", () => {
     expect(first).toEqual({
       code: 0,
       stdout:
-        "composed 3 artifacts; pins move for: notes, observability, secrets\n",
+        "composed 8 artifacts; pins move for: _estate, data, delivery, edge, node, notes, observability, secrets\n",
       stderr: "",
     });
     expect(
@@ -597,18 +593,21 @@ describe("deploy-kit compose", () => {
     // REQ-056 (docs/requirements.md): one Rollout per Project whose pin
     // moves, as the release that published its fragment names itself.
     expect(report.rollouts).toEqual(
-      ["notes", "observability", "secrets"].map((project) => ({
-        project,
-        repository: `JorisJonkers-dev/${project}`,
-        sha: hex(project, 40),
-        environment: "production",
-        version: "1.0.0",
-        // Where the release is reachable, for each with an exposure.
-        ...({
-          notes: { url: "https://notes.jorisjonkers.dev" },
-          observability: { url: "https://grafana.jorisjonkers.dev" },
-        }[project] ?? {}),
-      })),
+      ["data", "delivery", "edge", "notes", "observability", "secrets"].map(
+        (project) => ({
+          project,
+          repository: `JorisJonkers-dev/${project}`,
+          sha: hex(project, 40),
+          environment: "production",
+          version: "1.0.0",
+          // Where the release is reachable, for each with an exposure.
+          ...({
+            data: { url: "https://rabbitmq.jorisjonkers.dev" },
+            notes: { url: "https://notes.jorisjonkers.dev" },
+            observability: { url: "https://grafana.jorisjonkers.dev" },
+          }[project] ?? {}),
+        }),
+      ),
     );
     // REQ-051 (docs/requirements.md): an artifact with no pin yet has its pin
     // source written, at the path the Estate repository commits it under.
@@ -618,15 +617,14 @@ describe("deploy-kit compose", () => {
         "utf8",
       ),
     ).toBe(
-      // The committed file's release is another commit, and edge is still on
-      // the old path here, so the unit follows no edge unit; the rest is the
-      // same.
-      readFileSync(example("pins/rendered/projects/notes/source.yaml"), "utf8")
-        .replace(
-          /(event\.toolkit\.fluxcd\.io\/sha: ).*/,
-          `$1${hex("notes", 40)}`,
-        )
-        .replace("  dependsOn:\n    - name: apps-edge\n", ""),
+      // The committed file's release is another commit; the rest is the same.
+      readFileSync(
+        example("pins/rendered/projects/notes/source.yaml"),
+        "utf8",
+      ).replace(
+        /(event\.toolkit\.fluxcd\.io\/sha: ).*/,
+        `$1${hex("notes", 40)}`,
+      ),
     );
 
     const pins = join(root, "pins.json");
@@ -655,7 +653,7 @@ describe("deploy-kit compose", () => {
       join(root, "again"),
     );
 
-    expect(again.stdout).toBe("composed 3 artifacts; pins move for: none\n");
+    expect(again.stdout).toBe("composed 8 artifacts; pins move for: none\n");
     // Pinned already, so no source is written a second time.
     expect(existsSync(join(root, "again", "projects"))).toBe(false);
     expect(
@@ -700,7 +698,7 @@ describe("deploy-kit compose", () => {
       );
 
     expect(against("same").stdout).toBe(
-      "composed 3 artifacts; pins move for: none\n",
+      "composed 8 artifacts; pins move for: none\n",
     );
     expect(existsSync(join(root, "same", "projects"))).toBe(false);
 
@@ -710,7 +708,7 @@ describe("deploy-kit compose", () => {
         source(name).replace("interval: 10m", "interval: 1h"),
       );
     expect(against("stale").stdout).toBe(
-      "composed 3 artifacts; pins move for: none; sources rewritten for: notes, observability\n",
+      "composed 8 artifacts; pins move for: none; sources rewritten for: notes, observability\n",
     );
     expect(readdirSync(join(root, "stale", "projects"))).toStrictEqual([
       "notes",
@@ -735,7 +733,7 @@ describe("deploy-kit compose", () => {
     );
 
     expect(composeIn(root, "--out", join(root, "out")).stdout).toBe(
-      "composed 2 artifacts; pins move for: observability, secrets\n",
+      "composed 7 artifacts; pins move for: _estate, data, delivery, edge, node, observability, secrets\n",
     );
   });
 
@@ -745,8 +743,8 @@ describe("deploy-kit compose", () => {
     writeFileSync(
       document,
       readFileSync(document, "utf8").replace(
-        "estate: [notes, observability, secrets]",
-        "estate: [notes, observability, secrets, data]",
+        "{severity: critical, receiver: discord, repeat: 4h}",
+        "{severity: critical, receiver: pager, repeat: 4h}",
       ),
     );
     const refusal = composeIn(root, "--out", join(root, "out"), "--json");
@@ -756,7 +754,7 @@ describe("deploy-kit compose", () => {
       (JSON.parse(refusal.stdout) as { code: string }[]).map(
         ({ code }) => code,
       ),
-    ).toContain("E_HANDOVER_BOTH_PATHS");
+    ).toContain("E_UNKNOWN_RECEIVER");
     expect(existsSync(join(root, "out"))).toBe(false);
   });
 
@@ -791,7 +789,7 @@ describe("deploy-kit compose", () => {
     );
 
     expect(again.stdout).toBe(
-      "composed 3 artifacts; pins move for: notes, observability, secrets\n",
+      "composed 8 artifacts; pins move for: _estate, data, delivery, edge, node, notes, observability, secrets\n",
     );
     const lock = JSON.parse(
       readFileSync(join(root, "again", "lock.json"), "utf8"),

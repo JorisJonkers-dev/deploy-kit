@@ -18,10 +18,7 @@ import {
 } from "../../src/index.ts";
 import { ADAPTERS, type Adapter } from "../../src/adapters/registry.ts";
 import { renderKubernetes } from "../../src/adapters/kubernetes/render.ts";
-import {
-  collisions,
-  renderResolvedSet,
-} from "../../src/application/render-intent-set.ts";
+import { collisions } from "../../src/application/render-intent-set.ts";
 import type { ResolvedProject } from "../../src/model/resolution.ts";
 import type { Canary } from "../../src/objects/custom.ts";
 import { DESCRIPTION_LENGTH } from "../../src/model/project-intent.ts";
@@ -456,11 +453,6 @@ describe("renderIntentSet", () => {
       expect(asTree(artifact(after.value, "data"))).not.toStrictEqual(
         asTree(artifact(before.value, "data")),
       );
-      expect(
-        Object.keys(asTree(artifact(after.value, "_estate"))).filter((path) =>
-          path.startsWith("estate/vso-secrets/"),
-        ),
-      ).toStrictEqual([]);
     });
 
     it("is not rendered where the render holds no document for it to write", () => {
@@ -1367,7 +1359,7 @@ describe("renderIntentSet", () => {
 describe("the database catalog", () => {
   const PLATFORM = "platform/platform.intent.yml";
   const LOCK = "platform/images.lock.yml";
-  /** The estate-scoped files of a render of the knowledge platform. */
+  /** auth's files, for a second reader of the datastore. */
   const AUTH = [
     "auth/auth.project.yml",
     "auth/env/auth-api/base.env",
@@ -1385,9 +1377,11 @@ describe("the database catalog", () => {
       name,
       text: (edits[name] ?? ((same: string) => same))(text(name)),
     }));
-  const estate = (
-    edits: Readonly<Record<string, (text: string) => string>> = {},
-    projects: readonly string[] = ["knowledge-platform"],
+  /** One artifact of a render of the given projects. */
+  const share = (
+    edits: Readonly<Record<string, (text: string) => string>>,
+    projects: readonly string[],
+    name: string,
     more: readonly string[] = [],
   ): Record<string, string> => {
     const result = renderIntentSet(set(edits, more), { ...OPTIONS, projects });
@@ -1395,16 +1389,22 @@ describe("the database catalog", () => {
       throw new Error(
         JSON.stringify(result.diagnostics.map(({ code }) => code)),
       );
-    return asTree(artifact(result.value, "_estate"));
+    return asTree(artifact(result.value, name));
   };
-  const CATALOG = "estate/vso-secrets/postgres-catalog.yaml";
+  /** The datastore's own share, beside a project that reads it. */
+  const owned = (
+    edits: Readonly<Record<string, (text: string) => string>> = {},
+    more: readonly string[] = [],
+  ): Record<string, string> =>
+    share(edits, ["data", "knowledge-platform"], "data", more);
+  const CATALOG = "apps/data/platform-postgres/postgres-catalog.yaml";
   const catalogOf = (tree: Record<string, string>) =>
     JSON.parse(
       /catalog\.json: \|\n {4}(.*)\n/.exec(tree[CATALOG] ?? "")?.[1] ?? "null",
     ) as { admin: unknown; databases: unknown[] } | null;
 
-  it("names each estate-path project that reads the datastore, and signs in with the old path's login", () => {
-    const catalog = catalogOf(estate());
+  it("names each project that reads the datastore, and signs in with the derived login", () => {
+    const catalog = catalogOf(owned());
 
     expect(catalog?.databases).toStrictEqual([
       {
@@ -1414,16 +1414,16 @@ describe("the database catalog", () => {
       },
     ]);
     expect(catalog?.admin).toStrictEqual({
-      path: "secret/data/platform/postgres",
-      user: "postgres.user",
-      password: "postgres.password",
+      path: "secret/data/data/postgres/catalog",
+      user: "user",
+      password: "password",
     });
   });
 
   // REQ-159 (docs/requirements.md): the method's hourly run gives up within
   // the hour, as the Vault policy job's does; its one-shot Job does not.
   it("gives up the method's hourly run within the hour, while its one-shot Job retries until it succeeds", () => {
-    const limits = parseAllDocuments(estate()[CATALOG] ?? "")
+    const limits = parseAllDocuments(owned()[CATALOG] ?? "")
       .map(
         (document) =>
           document.toJS() as {
@@ -1453,7 +1453,7 @@ describe("the database catalog", () => {
   // deploy-kit#572: the method reaches the datastore as every consumer does,
   // so the datastore's consumer rule admits it.
   it("labels the method's Job and CronJob pods with the datastore surface's consumer label", () => {
-    const labels = parseAllDocuments(estate()[CATALOG] ?? "")
+    const labels = parseAllDocuments(owned()[CATALOG] ?? "")
       .map((document) => document.toJS() as Record<string, unknown>)
       .flatMap((object) => {
         const spec = object["spec"] as
@@ -1481,84 +1481,15 @@ describe("the database catalog", () => {
       });
   });
 
-  it("leaves out a project still on the old path, and renders nothing for no reader", () => {
-    const legacy = estate({
-      [PLATFORM]: (document) =>
-        document
-          .replace(
-            "legacy: [auth, data, knowledge, notes]",
-            "legacy: [auth, data, knowledge, knowledge-platform, notes]",
-          )
-          .replace(
-            "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-            "estate: [agents, delivery, edge, identity, mail, observability, secrets, utility]",
-          ),
-    });
-
-    expect(
-      Object.keys(legacy).filter((path) => path.includes("catalog")),
-    ).toStrictEqual([]);
-  });
-
-  it("renders nothing where the engine names no catalog method, or the old path names no login", () => {
-    const noMethod = estate({
+  it("renders nothing where the engine names no catalog method", () => {
+    const noMethod = owned({
       [PLATFORM]: (document) =>
         document.replace(", catalog: postgres-catalog,", ","),
     });
-    const noLogin = estate({
-      [PLATFORM]: (document) =>
-        document.replace(/\n {6}admin: \{[^}]*\}\n/, "\n"),
-    });
-
-    for (const tree of [noMethod, noLogin])
-      expect(
-        Object.keys(tree).filter((path) => path.includes("postgres-catalog")),
-      ).toStrictEqual([]);
-  });
-
-  /** The platform with the datastore's own Project on the estate path, and no old-path location. */
-  const MOVED = {
-    [PLATFORM]: (document: string) =>
-      document
-        .replace(
-          "legacy: [auth, data, knowledge, notes]",
-          "legacy: [auth, knowledge, notes]",
-        )
-        .replace(
-          "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-          "estate: [agents, data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-        )
-        .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
-  };
-  /** One artifact of a render of the given projects. */
-  const share = (
-    edits: Readonly<Record<string, (text: string) => string>>,
-    projects: readonly string[],
-    name: string,
-  ): Record<string, string> => {
-    const result = renderIntentSet(set(edits, []), { ...OPTIONS, projects });
-    if (!result.ok)
-      throw new Error(
-        JSON.stringify(result.diagnostics.map(({ code }) => code)),
-      );
-    return asTree(artifact(result.value, name));
-  };
-  const OWNED = "apps/data/platform-postgres/postgres-catalog.yaml";
-
-  it("signs in with the derived login once the datastore is on the estate path", () => {
-    const moved = share(MOVED, ["data", "knowledge-platform"], "data");
 
     expect(
-      JSON.parse(
-        /catalog\.json: \|\n {4}(.*)\n/.exec(moved[OWNED] ?? "")?.[1] ?? "null",
-      ),
-    ).toMatchObject({
-      admin: {
-        path: "secret/data/data/postgres/catalog",
-        user: "user",
-        password: "password",
-      },
-    });
+      Object.keys(noMethod).filter((path) => path.includes("postgres-catalog")),
+    ).toStrictEqual([]);
   });
 
   // spec/v1/16-dependencies.md#the-mesh-tunnel: the method's pods are in its
@@ -1567,21 +1498,15 @@ describe("the database catalog", () => {
   it("admits the tunnel port beside every peer but DNS in an enrolled datastore Project's method", () => {
     const policyOf = (enrolled: boolean) =>
       parseAllDocuments(
-        share(
-          {
-            [PLATFORM]: (document: string) => {
-              const moved = MOVED[PLATFORM](document);
-              return enrolled
-                ? moved.replace(
-                    "\nhardening:",
-                    "\nmesh:\n  enrolled: [data]\nhardening:",
-                  )
-                : moved;
-            },
-          },
-          ["data", "knowledge-platform"],
-          "data",
-        )["apps/data/platform-postgres/postgres-catalog-networkpolicy.yaml"] ??
+        owned({
+          [PLATFORM]: (document: string) =>
+            enrolled
+              ? document.replace(
+                  "\nhardening:",
+                  "\nmesh:\n  enrolled: [data]\nhardening:",
+                )
+              : document,
+        })["apps/data/platform-postgres/postgres-catalog-networkpolicy.yaml"] ??
           "",
       )
         .map((document) => document.toJS() as unknown)
@@ -1605,13 +1530,9 @@ describe("the database catalog", () => {
     ).toStrictEqual([[5432], [8200], [53, 53]]);
   });
 
-  it("is applied from the datastore's own Project once that Project is on the estate path, and from no estate-scoped unit", () => {
-    const owner = share(MOVED, ["data", "knowledge-platform"], "data");
-    const estateScoped = share(
-      MOVED,
-      ["data", "knowledge-platform"],
-      "_estate",
-    );
+  it("is applied from the datastore's own Project, and from no estate-scoped unit", () => {
+    const owner = owned();
+    const estateScoped = share({}, ["data", "knowledge-platform"], "_estate");
 
     expect(
       Object.keys(owner).filter((path) => path.includes("catalog")),
@@ -1619,7 +1540,7 @@ describe("the database catalog", () => {
       "apps/data/platform-garage/garage-catalog-networkpolicy.yaml",
       "apps/data/platform-garage/garage-catalog.yaml",
       "apps/data/platform-postgres/postgres-catalog-networkpolicy.yaml",
-      OWNED,
+      CATALOG,
       "apps/data/vault-policy/policies/data-system-garage-catalog.policy.json",
       "apps/data/vault-policy/policies/data-system-garage-catalog.role.json",
       "apps/data/vault-policy/policies/data-system-postgres-catalog.policy.json",
@@ -1629,73 +1550,25 @@ describe("the database catalog", () => {
       "  - postgres-catalog.yaml\n",
     );
     // The name the model-driven implementation derives from the same catalog and method.
-    expect(owner[OWNED]).toContain("  name: postgres-catalog-565e7844099d\n");
+    expect(owner[CATALOG]).toContain("  name: postgres-catalog-565e7844099d\n");
     expect(
-      Object.keys(estateScoped).filter((path) =>
-        path.startsWith("estate/vso-secrets/"),
-      ),
+      Object.keys(estateScoped).filter((path) => path.includes("catalog")),
     ).toStrictEqual([]);
   });
 
-  it("hands the datastore's own catalog identity to its own Project's Vault policy job", () => {
-    const owner = share(MOVED, ["data", "knowledge-platform"], "data");
+  it("is handed to its own Project's Vault policy job, and is never listed by an index for its policy", () => {
+    const owner = owned();
 
     expect(owner["apps/data/vault-policy/configmap.yaml"]).toContain(
       "data-system-postgres-catalog.policy.json",
     );
-  });
-
-  it("stops a render whose catalogs the old path runs sit in two namespaces, since one estate-scoped job writes one namespace's names", () => {
-    const result = resolveIntentSet(set({}, []), OPTIONS);
-    if (!result.ok) throw new Error("the set does not resolve");
-    const [legacy] = result.value.catalogJobs ?? [];
-    if (legacy === undefined) throw new Error("no catalog method");
-    const second = {
-      ...legacy,
-      identity: "other-catalog",
-      namespace: "other-system",
-      role: "other-system-other-catalog",
-    };
-
-    expect(() =>
-      renderResolvedSet(
-        {
-          ...result.value,
-          catalogJobs: [legacy, second],
-        },
-        { ...OPTIONS, projects: ["knowledge-platform"] },
-      ),
-    ).toThrow(
-      "catalogs the old path runs in data-system and other-system: one estate-scoped policy job writes one namespace's names",
+    expect(owner["apps/data/vault-policy/kustomization.yaml"]).not.toContain(
+      "data-system-postgres-catalog.policy.json",
     );
   });
 
-  it("writes an old-path catalog from the estate in its own namespace, beside a catalog its datastore's Project applies itself", () => {
-    const result = resolveIntentSet(set(MOVED, []), OPTIONS);
-    if (!result.ok) throw new Error("the set does not resolve");
-    const [owned] = result.value.catalogJobs ?? [];
-    if (owned === undefined) throw new Error("no catalog method");
-    const legacy = {
-      ...owned,
-      identity: "other-catalog",
-      namespace: "other-system",
-      role: "other-system-other-catalog",
-    };
-    const rendered = renderResolvedSet(
-      { ...result.value, catalogJobs: [owned, legacy] },
-      { ...OPTIONS, projects: ["data", "knowledge-platform"] },
-    );
-    if (!rendered.ok) throw new Error("the set does not render");
-
-    expect(
-      asTree(artifact(rendered.value, "_estate"))[
-        "estate/vso-secrets/serviceaccount.yaml"
-      ],
-    ).toContain("  namespace: other-system\n");
-  });
-
-  it("is not rendered by a render that holds only a reader, once the datastore's own Project is on the estate path", () => {
-    const result = renderIntentSet(set(MOVED, []), {
+  it("is not rendered by a render that holds only a reader", () => {
+    const result = renderIntentSet(set({}, []), {
       ...OPTIONS,
       projects: ["knowledge-platform"],
     });
@@ -1708,19 +1581,8 @@ describe("the database catalog", () => {
     ).toStrictEqual([]);
   });
 
-  it("is handed to the Vault policy job, and is never listed by an index for its policy", () => {
-    const tree = estate();
-
-    expect(tree["estate/vso-secrets/configmap.yaml"]).toContain(
-      "data-system-postgres-catalog.policy.json",
-    );
-    expect(tree["estate/vso-secrets/kustomization.yaml"]).not.toContain(
-      "networkpolicy",
-    );
-  });
-
   it("is recreated when the compiler alone changes its pod template, and its hourly copy is not", () => {
-    const documents = (estate()[CATALOG] ?? "").split("---\n");
+    const documents = (owned()[CATALOG] ?? "").split("---\n");
     const job = documents.find((document) => document.includes("kind: Job\n"));
     const cron = documents.find((document) =>
       document.includes("kind: CronJob\n"),
@@ -1736,7 +1598,7 @@ describe("the database catalog", () => {
   it("is a new Job when its method's image changes", () => {
     const nameOf = (tree: Record<string, string>) =>
       /name: (postgres-catalog-[0-9a-f]{12})\n/.exec(tree[CATALOG] ?? "")?.[1];
-    const bumped = estate({
+    const bumped = owned({
       [LOCK]: (document) =>
         document.replace(
           "sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c",
@@ -1745,26 +1607,12 @@ describe("the database catalog", () => {
     });
 
     expect(nameOf(bumped)).toMatch(/^postgres-catalog-/);
-    expect(nameOf(bumped)).not.toBe(nameOf(estate()));
+    expect(nameOf(bumped)).not.toBe(nameOf(owned()));
   });
 
-  it("renders where the render holds one project of its catalog, which names every reader in name order", () => {
+  it("names every reader in name order", () => {
     // auth reads the same datastore, and its files are read after the knowledge platform's.
-    const both = {
-      [PLATFORM]: (document: string) =>
-        document
-          .replace(
-            "legacy: [auth, data, knowledge, notes]",
-            "legacy: [data, knowledge, notes]",
-          )
-          .replace(
-            "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-            "estate: [agents, auth, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-          ),
-    };
-    const tree = estate(both, ["knowledge-platform"], AUTH);
-
-    expect(catalogOf(tree)?.databases).toStrictEqual([
+    expect(catalogOf(owned({}, AUTH))?.databases).toStrictEqual([
       { name: "auth_db", owner: "auth-owner", data: "auth-data" },
       {
         name: "knowledge-platform_db",
@@ -1774,19 +1622,7 @@ describe("the database catalog", () => {
     ]);
   });
 
-  it("is not rendered where the render holds no project its catalog names, and is where it holds one of several", () => {
-    const files = (tree: Record<string, string>) =>
-      Object.keys(tree).filter((path) => path.includes("catalog"));
-
-    expect(files(estate({}, ["delivery"]))).toStrictEqual([]);
-    // Composition never renders a Project the old path still delivers, so no
-    // render holds the datastore's own Project beside it.
-    expect(files(estate({}, ["delivery", "knowledge-platform"]))).toContain(
-      CATALOG,
-    );
-  });
-
-  it("derives no method for an engine whose entry names no surface, or a legacy datastore whose ledger states no location", () => {
+  it("derives no method for an engine whose entry names no surface, or where the platform names no policy job", () => {
     const resolved = (
       edits: Readonly<Record<string, (text: string) => string>>,
     ) => {
@@ -1805,41 +1641,14 @@ describe("the database catalog", () => {
       [PLATFORM]: (document: string) =>
         document.replace(" surface: postgres, catalog:", " catalog:"),
     };
-    const noServing = {
-      [PLATFORM]: (document: string) =>
-        document.replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
-    };
-    const noReader = {
-      [PLATFORM]: (document: string) =>
-        document
-          .replace(
-            "legacy: [auth, data, knowledge, notes]",
-            "legacy: [auth, data, knowledge, knowledge-platform, notes]",
-          )
-          .replace(
-            "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-            "estate: [agents, delivery, edge, identity, mail, observability, secrets, utility]",
-          ),
-    };
-
-    const otherLocation = {
-      [PLATFORM]: (document: string) =>
-        document.replace(
-          "application: platform-postgres",
-          "application: elsewhere",
-        ),
-    };
     const noJob = {
       [PLATFORM]: (document: string) =>
         document.replace(/\npolicyJob:\n( {2}.*\n)+/, "\n"),
     };
 
     expect(resolved({})).toHaveLength(1);
-    expect(resolved(otherLocation)).toBeUndefined();
     expect(resolved(noJob)).toBeUndefined();
     expect(resolved(noSurface)).toBeUndefined();
-    expect(resolved(noServing)).toBeUndefined();
-    expect(resolved(noReader)).toBeUndefined();
   });
 
   it("names the Secret Store connection after the datastore's Process, so two datastores of one engine never share it", () => {
@@ -1868,18 +1677,10 @@ describe("the database catalog", () => {
     });
   });
 
-  it("finds the datastore's own location among the ledger's, and reaches it, the store and DNS", () => {
-    const others = {
-      [PLATFORM]: (document: string) =>
-        document.replace(
-          "  serving:\n",
-          "  serving:\n    - application: elsewhere\n      namespace: other-system\n      admin: { path: secret/data/other, user: u, password: p }\n",
-        ),
-    };
-    const result = resolveIntentSet(set(others, []), OPTIONS);
+  it("reaches the datastore, the store and DNS", () => {
+    const result = resolveIntentSet(set({}, []), OPTIONS);
     const job = result.ok ? result.value.catalogJobs?.[0] : undefined;
 
-    expect(job?.catalog.admin.path).toBe("secret/data/platform/postgres");
     expect(job?.egress.map(({ rule }) => rule)).toStrictEqual([
       "datastore",
       "secret-store",
@@ -1920,7 +1721,7 @@ describe("the bucket catalog", () => {
   const KP = "knowledge-platform/knowledge-platform.project.yml";
   const render = (
     edits: Readonly<Record<string, (text: string) => string>> = {},
-    projects: readonly string[] = ["knowledge-platform"],
+    projects: readonly string[] = ["data", "knowledge-platform"],
   ) => {
     const result = renderIntentSet(
       [
@@ -1942,8 +1743,11 @@ describe("the bucket catalog", () => {
     JSON.parse(
       /catalog\.json: \|\n {4}(.*)\n/.exec(tree[path] ?? "")?.[1] ?? "null",
     );
-  const ESTATE = "estate/vso-secrets/garage-catalog.yaml";
   const OWNED = "apps/data/platform-garage/garage-catalog.yaml";
+  /** The store's own share. */
+  const owned = (
+    edits: Readonly<Record<string, (text: string) => string>> = {},
+  ): Record<string, string> => asTree(artifact(render(edits), "data"));
   /** A second edge of the project, naming one bucket again and one more. */
   const TWO_EDGES = {
     [KP]: (document: string) =>
@@ -1953,11 +1757,9 @@ describe("the bucket catalog", () => {
       ),
   };
 
-  it("names each estate-path project's key and its buckets, and signs in with the old path's token", () => {
-    expect(
-      catalogIn(asTree(artifact(render(TWO_EDGES), "_estate")), ESTATE),
-    ).toStrictEqual({
-      admin: { path: "secret/data/platform/garage", token: "admin-token" },
+  it("names each project's key and its buckets, and signs in with the derived token", () => {
+    expect(catalogIn(owned(TWO_EDGES), OWNED)).toStrictEqual({
+      admin: { path: "secret/data/data/garage/catalog", token: "token" },
       host: "garage.data-system.svc.cluster.local",
       keys: [
         {
@@ -1975,19 +1777,14 @@ describe("the bucket catalog", () => {
 
   it("names one key per project, in name order", () => {
     const keys = catalogIn(
-      asTree(
-        artifact(
-          render({
-            "mail/mail.project.yml": (document) =>
-              document.replace(
-                "      - name: stalwart\n",
-                "      - name: stalwart\n        dependsOn:\n          - { application: platform-garage, surface: s3, buckets: [archive] }\n",
-              ),
-          }),
-          "_estate",
-        ),
-      ),
-      ESTATE,
+      owned({
+        "mail/mail.project.yml": (document) =>
+          document.replace(
+            "      - name: stalwart\n",
+            "      - name: stalwart\n        dependsOn:\n          - { application: platform-garage, surface: s3, buckets: [archive] }\n",
+          ),
+      }),
+      OWNED,
     ) as { keys: { name: string; buckets: string[] }[] };
 
     expect(keys.keys.map(({ name, buckets }) => [name, buckets])).toStrictEqual(
@@ -2070,16 +1867,17 @@ describe("the bucket catalog", () => {
     ]);
     expect(
       resolve({
-        [PLATFORM]: (document) =>
-          document
-            .replace(
-              "legacy: [auth, data, knowledge, notes]",
-              "legacy: [auth, data, knowledge, knowledge-platform, notes]",
-            )
-            .replace(
-              "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-              "estate: [agents, delivery, edge, identity, mail, observability, secrets, utility]",
-            ),
+        [KP]: (document) =>
+          document.replace(
+            "        dependsOn:\n          - { application: platform-garage, surface: s3, buckets: [assets] }\n",
+            "",
+          ),
+        // Nor reads the key it no longer holds.
+        "knowledge-platform/env/karakeep/base.env": (env) =>
+          env
+            .split("\n")
+            .filter((line) => !line.includes("dependency:platform-garage"))
+            .join("\n"),
       }),
     ).toStrictEqual([]);
   });
@@ -2105,38 +1903,15 @@ describe("the bucket catalog", () => {
     expect(policy("hindsight-worker")).toStrictEqual([]);
   });
 
-  it("signs in with the derived token once the store's Project is on the estate path", () => {
-    const moved = {
-      [PLATFORM]: (document: string) =>
-        document
-          .replace(
-            "legacy: [auth, data, knowledge, notes]",
-            "legacy: [auth, knowledge, notes]",
-          )
-          .replace(
-            "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-            "estate: [agents, data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-          )
-          .replace(/\n {2}serving:\n( {4}.*\n| {6}.*\n)+/, "\n"),
-    };
-    const tree = asTree(
-      artifact(render(moved, ["data", "knowledge-platform"]), "data"),
-    );
-
-    expect(catalogIn(tree, OWNED)).toMatchObject({
-      admin: { path: "secret/data/data/garage/catalog", token: "token" },
-    });
-  });
-
-  it("is applied by no method where the engine names none, the old path's login is a user's, or no reader is on the estate path", () => {
+  it("is applied by no method where the engine names none", () => {
     const garage = (
       edits: Readonly<Record<string, (text: string) => string>>,
     ) =>
-      Object.keys(asTree(artifact(render(edits), "_estate"))).filter((path) =>
+      Object.keys(owned(edits)).filter((path) =>
         path.includes("garage-catalog"),
       );
 
-    expect(garage({})).toContain(ESTATE);
+    expect(garage({})).toContain(OWNED);
     expect(
       garage({
         [PLATFORM]: (document) =>
@@ -2146,46 +1921,18 @@ describe("the bucket catalog", () => {
           ),
       }),
     ).toStrictEqual([]);
-    expect(
-      garage({
-        [PLATFORM]: (document) =>
-          document.replace(
-            "admin: { path: secret/data/platform/garage, token: admin-token }",
-            "admin: { path: secret/data/platform/garage, user: u, password: p }",
-          ),
-      }),
-    ).toStrictEqual([]);
-    expect(
-      garage({
-        [PLATFORM]: (document) =>
-          document
-            .replace(
-              "legacy: [auth, data, knowledge, notes]",
-              "legacy: [auth, data, knowledge, knowledge-platform, notes]",
-            )
-            .replace(
-              "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-              "estate: [agents, delivery, edge, identity, mail, observability, secrets, utility]",
-            ),
-      }),
-    ).toStrictEqual([]);
   });
 
   it("applies the catalog over the engine's surface where its entry names no catalog surface", () => {
-    const tree = asTree(
-      artifact(
-        render({
-          [PLATFORM]: (document) =>
-            document.replace(
-              "catalog: garage-catalog, catalogSurface: admin }",
-              "surface: admin, catalog: garage-catalog }",
-            ),
-        }),
-        "_estate",
-      ),
-    );
+    const tree = owned({
+      [PLATFORM]: (document) =>
+        document.replace(
+          "catalog: garage-catalog, catalogSurface: admin }",
+          "surface: admin, catalog: garage-catalog }",
+        ),
+    });
 
-    expect(catalogIn(tree, ESTATE)).toMatchObject({ port: 3903 });
+    expect(catalogIn(tree, OWNED)).toMatchObject({ port: 3903 });
   });
 });
 
@@ -2547,6 +2294,7 @@ describe("each container's software version", () => {
     );
   const knowledgePlatform = (
     edits: Readonly<Record<string, (text: string) => string>> = {},
+    projects: readonly string[] = ["knowledge-platform"],
   ) => {
     const result = renderIntentSet(
       [
@@ -2556,7 +2304,7 @@ describe("each container's software version", () => {
         name,
         text: (edits[name] ?? ((same: string) => same))(text(name)),
       })),
-      { ...OPTIONS, projects: ["knowledge-platform"] },
+      { ...OPTIONS, projects },
     );
     if (!result.ok)
       throw new Error(
@@ -2682,15 +2430,19 @@ describe("each container's software version", () => {
   it("annotates a database catalog's pod with its method's version", () => {
     const tree = asTree(
       artifact(
-        knowledgePlatform({ [LOCK]: versioned("postgres-catalog", "1.0.1") }),
-        "_estate",
+        knowledgePlatform({ [LOCK]: versioned("postgres-catalog", "1.0.1") }, [
+          "data",
+          "knowledge-platform",
+        ]),
+        "data",
       ),
     );
 
     expect(
-      jobTemplates(tree, "estate/vso-secrets/postgres-catalog.yaml").map(
-        ({ metadata }) => metadata.annotations,
-      ),
+      jobTemplates(
+        tree,
+        "apps/data/platform-postgres/postgres-catalog.yaml",
+      ).map(({ metadata }) => metadata.annotations),
     ).toStrictEqual([{ "image.jorisjonkers.dev/postgres-catalog": "1.0.1" }]);
   });
 
@@ -3347,27 +3099,13 @@ describe("the forward-auth Middleware", () => {
 
   // REQ-111 (docs/requirements.md): the edge asks the provider's Stable
   // Address, and only the Stable Address follows where the provider runs.
-  it("asks the provider's Stable Address, which follows the provider where the handover ledger says the old path runs it", () => {
-    const legacy = (document: string) =>
-      document
-        .replace(
-          "legacy: [auth, data, knowledge, notes]",
-          "legacy: [auth, data, identity, knowledge, notes]",
-        )
-        .replace(
-          "estate: [agents, delivery, edge, identity, ",
-          "estate: [agents, delivery, edge, ",
-        )
-        .replace(
-          "  serving:\n",
-          "  serving:\n    - application: identity\n      namespace: auth-system\n      instance: auth-api\n",
-        );
-    const address = (
-      forwardAuth(legacy) as { forwardAuth: { address: string } }
-    ).forwardAuth.address;
+  it("asks the provider's Stable Address, which follows the provider", () => {
+    const same = (document: string) => document;
+    const address = (forwardAuth(same) as { forwardAuth: { address: string } })
+      .forwardAuth.address;
     const estate = asTree(
       artifact(
-        render({ "platform/platform.intent.yml": legacy }, ["edge"]),
+        render({ "platform/platform.intent.yml": same }, ["edge"]),
         "_estate",
       ),
     );
@@ -3379,7 +3117,7 @@ describe("the forward-auth Middleware", () => {
       "  name: identity-http\n",
     );
     expect(estate["estate/stable-addresses/services.yaml"]).toContain(
-      "externalName: auth-api.auth-system.svc.cluster.local\n",
+      "externalName: identity.identity-system.svc.cluster.local\n",
     );
   });
 });

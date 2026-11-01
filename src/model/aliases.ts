@@ -49,7 +49,7 @@ const IP = /^[\d.]+$|:/;
 export function servedOf(
   { application, surface }: Named,
   union: readonly Serving[],
-  platform: Pick<PlatformIntentDocument, "handover" | "providers">,
+  platform: Pick<PlatformIntentDocument, "providers">,
   clusterState?: ClusterStateDocument,
 ): Served | undefined {
   for (const { project, applications } of union)
@@ -58,7 +58,7 @@ export function servedOf(
         for (const process of declared.processes) {
           const port = process.provides?.[surface];
           if (port !== undefined) {
-            const home = homeOf(platform, project, application, process.name);
+            const home = homeOf(project, process.name);
             const serving =
               clusterState === undefined
                 ? undefined

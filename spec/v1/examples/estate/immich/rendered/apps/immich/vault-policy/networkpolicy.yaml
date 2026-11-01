@@ -22,7 +22,7 @@ spec:
     - to:
         - namespaceSelector:
             matchLabels:
-              kubernetes.io/metadata.name: data-system
+              kubernetes.io/metadata.name: secrets-system
           podSelector:
             matchLabels:
               app.kubernetes.io/instance: vault

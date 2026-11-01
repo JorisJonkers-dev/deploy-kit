@@ -45,12 +45,12 @@ with the same schema refusals
 
 The Platform document's classes and how they compose. A policy keyed by a
 closed vocabulary is a class with one optional field per literal, so a policy
-the platform does not offer is a field it does not write. Ten fields refer
+the platform does not offer is a field it does not write. Nine fields refer
 into another document: a tier's `traefik`, each name in `delivery.machinery`,
 `delivery.gate`, `delivery.reporter`, each name in `apiAccess.holders`,
 `telemetry.collector`, `telemetry.metrics` and `secretStore` each name a
-[privileged role](#privileged-roles)'s holder, and the `handover` ledger and
-each library's `grants` name projects.
+[privileged role](#privileged-roles)'s holder, and each library's `grants`
+name projects.
 
 ### Privileged roles
 
@@ -69,9 +69,7 @@ something a project file claims by publishing a name
 A Platform document is checked on its own and together with the project files
 read beside it. On its own, a tier that carries `authenticated` needs its
 `forwardAuth` ([Tiers](#tiers)), no group is granted one role twice
-(`E_DUPLICATE_HUMAN_GRANT`, [Human grants](#human-grants)), and the `handover`
-ledger puts no Project on both delivery paths (`E_HANDOVER_BOTH_PATHS`,
-[chapter 60](60-setup.md#handing-over-one-project-at-a-time)). Together, every reference one makes into the
+(`E_DUPLICATE_HUMAN_GRANT`, [Human grants](#human-grants)). Together, every reference one makes into the
 other resolves and every policy one asks for the other offers:
 
 | condition | error |
@@ -113,8 +111,6 @@ other resolves and every policy one asks for the other offers:
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application moves its schema with a changelog and no Process of it switches `blue-green`: none is `continuous`, or the Application is `delivery.machinery` | `E_MIGRATION_UNGATED` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
-| a project file names a project the `handover` ledger puts on neither delivery path | `E_HANDOVER_UNLISTED` |
-| a `handover.serving` location names an Application a project file read beside it declares in a Project the ledger does not put on `legacy`, or states an `instance` for an Application of more than one Process | `E_HANDOVER_SERVING` |
 | a change derives a [Move](55-delivery.md#moves) of a Process whose `engine` entry carries no `move` | `E_MOVE_UNSUPPORTED` |
 | a change derives a Move and the platform declares no `delivery.move` | `E_NO_MOVE_POLICY` |
 | a Process declares `availability: replicated` and its `engine` entry maps no mechanism to it | `E_AVAILABILITY_UNSUPPORTED` |
@@ -248,8 +244,8 @@ bootstrap:
 
 Everything not in this table is a declared Application or a derived Node Agent.
 Growing the table is a decision recorded here, and a component that should be
-declared and is not is found by its Project's handover diff
-([chapter 30](30-deliverables.md#a-projects-handover-diff)).
+declared and is not is found when its Project is adopted
+([chapter 30](30-deliverables.md#coverage)).
 
 MetalLB's CRDs ship with a conversion webhook stanza that points at its
 controller's webhook Service. No admission or conversion webhook is rendered,
@@ -468,8 +464,8 @@ refuse one there, and composition, which always reads the contract, does.
 
 The agents are the **`node` Project**, which no project file declares: every
 object it holds is derived from the catalog, the node contract and the pools,
-in `node-system`, under one Reconcile Unit and one pin, and the handover ledger
-hands it to the estate path like any other Project. It follows nothing, since
+in `node-system`, under one Reconcile Unit and one pin, delivered like any
+other Project. It follows nothing, since
 an agent needs only its node.
 
 The speakers find each other by memberlist, so a node that leaves the network
@@ -522,7 +518,7 @@ acme:                                  # how an acme tier's proxy registers and 
 | `listener` | whether the edge terminates TLS |
 | `certificates` | how certificates are issued for what it terminates |
 | `certificateFrom` | optional, on a `tls` tier that issues `none`: the Secret Store path holding the certificate its proxy serves, as `tls.crt` and `tls.key` ([below](#tiers)) |
-| `forwardAuth` | who authenticates for it: `provider`, a declared Application as `<project>/<application>`; `surface`, the surface one of its Processes answers on; `path`, where it answers; and optional `responseHeaders`, the headers the edge hands on to the route's Process. Never a URL: the edge asks the provider's Process where it runs, which follows the provider through a move and through the handover ledger's `serving` location while its Project is legacy. Required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)); a provider whose Project the set holds and which declares no such Application or surface is `E_UNKNOWN_FORWARD_AUTH_PROVIDER`. The Project that declares the tier's proxy renders the `forward-auth` Middleware ([chapter 30](30-deliverables.md#shared-middlewares)) |
+| `forwardAuth` | who authenticates for it: `provider`, a declared Application as `<project>/<application>`; `surface`, the surface one of its Processes answers on; `path`, where it answers; and optional `responseHeaders`, the headers the edge hands on to the route's Process. Never a URL: the edge asks the provider's Process where it runs, which follows the provider through a move. Required where `authenticated` is carried, `E_NO_FORWARD_AUTH_ENDPOINT` otherwise ([0023](../../docs/adr/model/0023-exposure-is-declared-by-audience.md)); a provider whose Project the set holds and which declares no such Application or surface is `E_UNKNOWN_FORWARD_AUTH_PROVIDER`. The Project that declares the tier's proxy renders the `forward-auth` Middleware ([chapter 30](30-deliverables.md#shared-middlewares)) |
 | `proxiedBy` | `cloudflare`, or absent. Who forwards clients' requests to this edge, which decides the address a route's `rateLimit` counts a client by: absent, the connection's own address; `cloudflare`, the address Cloudflare forwards in `CF-Connecting-IP`, since every connection then comes from a Cloudflare edge. State it only when every request reaches the tier through Cloudflare, since a client that reaches the edge directly writes that header itself ([0110](../../docs/adr/model/0110-a-route-may-bound-its-request-rate.md)). An exposure that is not `proxied` is the one exception the model draws: its routes count by the connection's address, whatever this says ([0127](../../docs/adr/model/0127-an-exposure-may-bypass-the-dns-providers-proxy.md)) |
 | `traefik` | the platform Application whose proxy this tier is, as `<project>/<application>` ([privileged roles](#privileged-roles)); an Application its Project does not declare is `E_UNKNOWN_TIER_PROXY` |
 | `ingressClass` | the ingress class this tier's proxy admits routes of, a Kubernetes name. Every route rendered for the tier carries it, and external-dns writes a record for a route by the same annotation, so one Traefik never serves another tier's routes. Optional in the document, but an exposure on a tier that names none is `E_TIER_WITHOUT_INGRESS_CLASS`: its routes would be admitted by no proxy |
@@ -1437,8 +1433,7 @@ policyJob:
 
 What every Vault policy job runs with: the job each Project's own unit carries
 to write that Project's rendered Vault policies, auth roles and generated keys
-into the Secret Store, and, while a datastore the old path runs has a catalog,
-the one estate-scoped job that writes that catalog's
+into the Secret Store
 ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied),
 [0087](../../docs/adr/model/0087-in-cluster-consumers-read-the-render.md)). Each is
 derived, like a backup and a migration, from facts the platform states and no
@@ -1523,56 +1518,6 @@ the worked [`secrets`](examples/secrets/secrets.project.yml) project. The field
 is optional, and a platform that omits it offers no store: nothing it resolves
 may hold a grant, copy a backup off-cluster or run a managed migration, each of
 which reads a credential from the store (`E_NO_SECRET_STORE`).
-
-## Handover ledger
-
-```yaml
-handover:
-  retireBy: 2027-03-31
-  legacy: [auth, data, edge, knowledge, notes, secrets]
-  estate: [delivery, observability]
-  serving:                       # where the old path runs what the estate path reaches
-    - application: vault
-      namespace: data-system
-    - application: traefik-public
-      namespace: ingress-system
-      instance: traefik-ingress-system
-    - application: platform-postgres
-      namespace: data-system
-      admin: {path: secret/data/platform/postgres, user: postgres.user, password: postgres.password}
-```
-
-Which delivery path each Project is on while the estate moves off `fleet-infra`:
-`legacy` is still applied by the old path, `estate` by its pin, and `retireBy` is
-the date the old path is removed. A Project on both is `E_HANDOVER_BOTH_PATHS`,
-checked on this document alone; a project file read beside it and named on
-neither is `E_HANDOVER_UNLISTED`. The steps are
-[chapter 60](60-setup.md#handing-over-one-project-at-a-time)'s. The block is
-optional, and is removed once `legacy` is empty.
-
-**`serving` says where the old path actually runs a `legacy` Application** that
-the estate path reaches: the Secret Store a grant reads, the tier's Traefik a
-route is admitted from, a datastore an edge names. The old path did not place
-them where their own declarations do, so while their Project is `legacy`, the
-estate path reaches each one at its stated `namespace`, through the `instance`
-label its pods and its Service carry (the Process's own name where `instance` is
-left out). Every peer a policy admits or reaches, every address a Process is
-handed, and the Vault policy job's own namespace follow the statement. A
-location stands only while its Project is `legacy`, and is removed in the
-change that moves the Project to `estate`, which then runs it where its
-declaration says; a location for an Application of an `estate` Project, or one
-`instance` for an Application of more than one Process, is `E_HANDOVER_SERVING`.
-A location naming an Application no project file read beside it declares is not
-refused, as the ledger's own names are not.
-
-**`admin` says where the old path keeps a datastore's administrative login**,
-for a datastore whose engine owns databases: the KV document's `path`, and the
-keys of its `user` and `password`; or, for an object store, the `path` and the
-key of the one admin `token` its admin API takes. A location whose login is not
-the one its engine's catalog signs in with applies no catalog. While the datastore's Project is `legacy`, its
-catalog is applied with that login
-([chapter 16](16-dependencies.md#applying-the-catalog)); once the Project moves,
-the location goes, and with it the `admin` the estate path no longer reads.
 
 ## Providers
 

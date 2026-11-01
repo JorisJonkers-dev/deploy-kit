@@ -896,9 +896,8 @@ route names none ([chapter 14](14-platform-intent.md#tiers)).
 
 The endpoint is the provider's Process, where it runs:
 `http://<process>.<namespace>.svc.cluster.local:<port><path>`, the namespace
-its Project's, or the handover ledger's `serving` location while that Project
-is legacy. No URL is authored, so the address follows the provider through a
-[Move](#the-move) and through its handover
+its Project's. No URL is authored, so the address follows the provider through
+a [Move](#the-move)
 ([#396](https://github.com/JorisJonkers-dev/deploy-kit/issues/396)); an
 earlier version of this section had the tier write the URL, which then had to
 be edited by hand at every move. A set that holds no file of the provider's
@@ -1271,7 +1270,7 @@ The posture is platform policy and a Process authors none of it. There is no
 per-control relaxation carried with a reason, because that is an override under
 another name and it outlives the image that justified it. An image that cannot
 meet `restricted` is `E_HARDENING_UNMET`; the fix is the image, and until it is
-replaced the Process stays on the old path.
+replaced the Process is not delivered.
 
 ## The Reconcile Unit
 
@@ -1318,15 +1317,14 @@ outlive its provider's move between Projects, and the Human Grants, because
 each is the Platform document's and no Project's
 ([chapter 14](14-platform-intent.md#human-grants)).
 
-Three kinds of unit belong to no Project, because what each applies is
-estate-scoped ([chapter 30](30-deliverables.md#path-allocation)). The first two stay; the last
-moves where its last column says:
+Two kinds of unit belong to no Project, because what each applies is
+estate-scoped ([chapter 30](30-deliverables.md#path-allocation)), and each stays
+estate-scoped, as its last column says:
 
 | unit | applies | follows | moves to |
 |---|---|---|---|
 | `estate-stable-addresses`, where a delivered Project resolves a Stable Address | `estate/stable-addresses/`: the `estate-system` Namespace and one `ExternalName` Service per Stable Address ([chapter 16](16-dependencies.md#the-stable-address)) | nothing: an `ExternalName` needs no target to exist | stays |
 | `estate-human-grants`, where the Platform document declares any Human Grant | `estate/human-grants/`: one `ClusterRoleBinding` per grant ([chapter 30](30-deliverables.md#how-each-adapter-spells-the-projection)) | nothing: a built-in cluster role is the cluster's own, and no Project's unit follows it | nowhere: a grant is no Project's |
-| `estate-vso-secrets`, while a datastore the old path runs has a catalog the estate path applies | `estate/vso-secrets/`: that catalog's Jobs and its documents, and the estate-scoped policy job that writes them ([The catalog methods](#the-catalog-methods)); every Project writes its own documents from its own unit ([#548](https://github.com/JorisJonkers-dev/deploy-kit/issues/548)) | the unit of the project that declares the Secret Store, which the job writes into; no Project's unit follows it, and a reader of that database retries until it exists | the datastore's own Project's unit, once that Project leaves the old path ([#482](https://github.com/JorisJonkers-dev/deploy-kit/issues/482)) |
 
 It is the unit the estate-scoped artifact's pin applies
 ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)). A Project's routes
@@ -1339,7 +1337,7 @@ alone.
 No such unit is named `apps-`, and no such directory is under `apps/`. That
 prefix and that directory are a Project's own: `apps-<project>` and
 `apps/<project>/` hold for every Project whatever it is called, so a Project
-named `edge` or `vso-secrets` renders, is published and is pinned like any
+named `edge` or `stable-addresses` renders, is published and is pinned like any
 other, and nothing estate-scoped can be mistaken for its share.
 
 ![The Reconcile Unit DAG](diagrams/20-reconcile-unit-dag.drawio.svg)
@@ -1401,8 +1399,7 @@ derivation does not change with its consumers; only their number does.
 One element of the estate-wide document belongs to no Application: `policyJob`,
 what every Vault policy job runs with: each Project's own job, which writes that
 Project's rendered Vault policies, auth roles and generated keys into the
-Secret Store, and the estate-scoped one that writes the catalog of a datastore
-the old path still runs
+Secret Store
 ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)).
 It is derived where the Platform document names the job
 ([chapter 14](14-platform-intent.md#the-vault-policy-job)) and a Secret Store
@@ -1427,15 +1424,15 @@ documents, which exist only once the render does.
 
 ### The catalog methods
 
-`catalogJobs` holds, beside it, one method per datastore whose catalog the
-estate path applies ([chapter 16](16-dependencies.md#applying-the-catalog)),
+`catalogJobs` holds, beside it, one method per datastore whose catalog is
+applied ([chapter 16](16-dependencies.md#applying-the-catalog)),
 derived only where `policyJob` is, since the policy job writes each method's
 own Vault role:
 
 | field | authority | derived from |
 |---|---|---|
 | `identity` | derived | `<process>-catalog`, for the datastore's Process |
-| `namespace` | derived | the datastore's, or its `serving` location's while its Project is `legacy` |
+| `namespace` | derived | the datastore's |
 | `image`, `uid`, `gid` | pinned | the images lock's entry for the engine's `catalog` alias |
 | `role` | derived | `<namespace>-<identity>`, the auth role the render writes for it |
 | `address` | derived | the Secret Store's endpoint, as `policyJob`'s |
@@ -1443,9 +1440,9 @@ own Vault role:
 | `eligibleNodes` | pool | `policyJob`'s |
 | `catalog.host`, `catalog.port` | derived | the datastore's Service, on its engine's `catalogSurface`, or its `surface` where it names none |
 | `catalog.connection` | derived | a database catalog's: the engine's name, the Secret Store's database connection |
-| `catalog.admin` | platform-assigned | the `serving` location's `admin` while the datastore's Project is `legacy`; else `secret/data/<project>/<process>/catalog`, keys `user` and `password`, or `token` for an object store |
-| `catalog.databases` | derived | a database catalog's: for each project on the estate path an edge of which reaches the datastore, in name order: `<project>_db`, `<project>-owner`, `<project>-data` |
-| `catalog.keys` | derived | a bucket catalog's: for each project on the estate path an edge of which names buckets in the store, in name order: its `name`, the project; its `path`, `secret/data/<project>/<process>/s3`; and its `buckets`, `<project>-<name>` for each name its edges give, in name order ([chapter 16](16-dependencies.md#the-bucket-catalog)) |
+| `catalog.admin` | platform-assigned | `secret/data/<project>/<process>/catalog`, keys `user` and `password`, or `token` for an object store |
+| `catalog.databases` | derived | a database catalog's: for each project an edge of which reaches the datastore, in name order: `<project>_db`, `<project>-owner`, `<project>-data` |
+| `catalog.keys` | derived | a bucket catalog's: for each project an edge of which names buckets in the store, in name order: its `name`, the project; its `path`, `secret/data/<project>/<process>/s3`; and its `buckets`, `<project>-<name>` for each name its edges give, in name order ([chapter 16](16-dependencies.md#the-bucket-catalog)) |
 | `consumes` | derived | the surface the catalog is applied over, as the [consumer label](16-dependencies.md#the-consumer-label) the method's pods carry names it, which the datastore's policy admits |
 | `egress` | derived | the datastore on its surface, the Secret Store on its `http` surface, and the cluster's DNS |
 

@@ -1564,7 +1564,7 @@ vocabulary, no `allow` list and no `hardening: privileged` shorthand: an image
 that needs root, a writable root filesystem, a dropped capability back other
 than the `NET_BIND_SERVICE` a low port derives, or a relaxed syscall filter is
 `E_HARDENING_UNMET` at composition. The fix is the
-image; until it is replaced, the Process stays on the old path.
+image; until it is replaced, the Process is not delivered.
 
 An escape hatch in the DSL is the thing this model exists to remove. A per-field
 relaxation carried with a reason is an override under another name, and it

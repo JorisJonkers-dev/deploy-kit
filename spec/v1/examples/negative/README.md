@@ -25,9 +25,7 @@ fixture is read beside the worked foundation: the Platform document and its
 pinned inputs under [`../platform/`](../platform/platform.intent.yml), and the
 `delivery`, `edge`, `observability` and `secrets` projects. The identity
 invariants need no Platform document; the references resolve against its
-providers as well as the union, so they are answered only beside it. Each
-fixture's projects are ones the worked handover ledger names, so nothing else
-is refused on the way.
+providers as well as the union, so they are answered only beside it.
 
 **Order does not matter.** Every collision is refused at each of its sides, so
 the same fragments yield the same diagnostics whichever is read first, and the

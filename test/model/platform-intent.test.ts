@@ -242,38 +242,14 @@ describe("parsePlatformIntent", () => {
     ]);
   });
 
-  it("refuses a handover ledger that puts a Project on both paths, naming each", () => {
-    // Two sources applying one Project prune each other
-    // (spec/v1/60-setup.md#handing-over-one-project-at-a-time).
-    const ledger = (lists: string): string =>
-      WORKED.replace(
-        /\nhandover:\n( {2}.*\n)+/,
-        `\nhandover:\n  retireBy: 2027-03-31\n${lists}`,
-      );
-    const messages = (text: string) => {
-      const result = parsePlatformIntent(text);
-      return result.ok
-        ? []
-        : result.diagnostics.map(({ code, path, message }) => ({
-            code,
-            path,
-            message,
-          }));
-    };
-
+  // deploy-kit#721: one delivery path, so the ledger that split the estate
+  // between two is no field of the document.
+  it("refuses a handover ledger, which no Platform document holds any more", () => {
     expect(
-      messages(
-        ledger("  legacy: [auth, data, notes]\n  estate: [notes, auth]\n"),
+      refusalsOf(
+        `${WORKED}handover:\n  retireBy: 2027-03-31\n  estate: [auth]\n`,
       ),
-    ).toStrictEqual([
-      {
-        code: "E_HANDOVER_BOTH_PATHS",
-        path: "/handover",
-        message: "the handover ledger puts notes, auth on both delivery paths",
-      },
-    ]);
-    expect(messages(ledger("  legacy: [auth]\n"))).toStrictEqual([]);
-    expect(messages(ledger("  estate: [auth]\n"))).toStrictEqual([]);
+    ).toStrictEqual([{ code: "schema", path: "/handover" }]);
   });
 
   it("refuses YAML outside the subset before the schema runs", () => {

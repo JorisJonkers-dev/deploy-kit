@@ -22,23 +22,6 @@ function forwardAuthRefusals(document: PlatformIntentDocument): Diagnostic[] {
   );
 }
 
-/** A Project is on one delivery path at a time, never on both. */
-function handoverRefusals(document: PlatformIntentDocument): Diagnostic[] {
-  const legacy = new Set(document.handover?.legacy);
-  const both =
-    document.handover?.estate?.filter((project) => legacy.has(project)) ?? [];
-  return both.length === 0
-    ? []
-    : [
-        {
-          code: "E_HANDOVER_BOTH_PATHS",
-          path: "/handover",
-          message: `the handover ledger puts ${both.join(", ")} on both delivery paths`,
-          hint: "Keep each Project in `legacy` until its handover, then move it to `estate`.",
-        },
-      ];
-}
-
 /** A class that derives a backup says when it runs and how many copies it keeps. */
 function durabilityRefusals(document: PlatformIntentDocument): Diagnostic[] {
   return Object.entries(document.durability).flatMap(([durability, policy]) =>
@@ -192,7 +175,6 @@ export const platformDiagnostics = (
 ): readonly Diagnostic[] => [
   ...forwardAuthRefusals(document),
   ...tierRefusals(document),
-  ...handoverRefusals(document),
   ...durabilityRefusals(document),
   ...humanGrantRefusals(document),
   ...receiverRefusals(document),

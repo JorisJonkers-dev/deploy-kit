@@ -4,7 +4,7 @@ status: proposed
 claim: open
 owner: joris
 date: 2026-09-24
-normative: spec/v1/60-setup.md#handing-over-one-project-at-a-time
+normative: spec/v1/60-setup.md#one-delivery-path
 rests-on: ["0001"]
 ---
 
@@ -18,9 +18,10 @@ composed and diffed but never delivered. A Project's first delivery recreates
 its Deployments once, since a live selector cannot be updated in place, and
 never touches a claim. While a Project is `legacy`, the estate path reaches its
 Applications where the ledger states the old path runs them. The old path is
-removed on the ledger's `retireBy` date. The steps are
-[chapter 60](../../../spec/v1/60-setup.md#handing-over-one-project-at-a-time)'s;
-the pin is [0051](0051-a-project-is-delivered-as-a-signed-artifact.md)'s.
+removed on the ledger's `retireBy` date, and the ledger with it once `legacy`
+is empty, so the model that remains has one delivery path
+([chapter 60](../../../spec/v1/60-setup.md#one-delivery-path)); the pin is
+[0051](0051-a-project-is-delivered-as-a-signed-artifact.md)'s.
 
 ## Rests on
 

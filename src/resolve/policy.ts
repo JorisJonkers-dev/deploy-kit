@@ -46,15 +46,14 @@ export interface PolicyContext {
 
 /** Every Process of `application`, each as a peer in its own namespace. */
 export const peersOf = (
-  platform: Pick<PlatformIntentDocument, "handover">,
   application: string | undefined,
   union: readonly EffectiveProject[],
 ): { readonly namespace: string; readonly process: string }[] =>
   union.flatMap(({ project, applications }) =>
     applications
       .filter(({ id }) => holds(application, project, id))
-      .flatMap(({ id, processes }) =>
-        processes.map(({ name }) => homeOf(platform, project, id, name)),
+      .flatMap(({ processes }) =>
+        processes.map(({ name }) => homeOf(project, name)),
       ),
   );
 
@@ -89,27 +88,23 @@ export function ingressOf(
         const tier = context.platform.tiers.find(({ audiences }) =>
           audiences.includes(audience),
         ) as PlatformIntentDocument["tiers"][number];
-        return peersOf(context.platform, tier.traefik, context.union).map(
-          (peer): Ingress => ({
-            rule: "tier-proxy",
-            ...peer,
-            port: port(route.surface),
-          }),
-        );
+        return peersOf(tier.traefik, context.union).map((peer): Ingress => ({
+          rule: "tier-proxy",
+          ...peer,
+          port: port(route.surface),
+        }));
       }),
   );
   const scrape = application.observability?.scrape;
   const metrics =
     scrape?.process === process.name
-      ? peersOf(
-          context.platform,
-          context.platform.telemetry?.metrics,
-          context.union,
-        ).map((peer): Ingress => ({
-          rule: "metrics-stack",
-          ...peer,
-          port: port(scrape.surface),
-        }))
+      ? peersOf(context.platform.telemetry?.metrics, context.union).map(
+          (peer): Ingress => ({
+            rule: "metrics-stack",
+            ...peer,
+            port: port(scrape.surface),
+          }),
+        )
       : [];
   // Every surface admits the pods that carry its consumer label, whoever
   // declares them: the policy reads the Process's own surfaces, never the
@@ -188,7 +183,7 @@ export function gateIngressOf(
   const { gate } = context.platform.delivery as NonNullable<
     PlatformIntentDocument["delivery"]
   >;
-  return peersOf(context.platform, gate, context.union).map((peer) => ({
+  return peersOf(gate, context.union).map((peer) => ({
     rule: "release-gate",
     ...peer,
     port: served.port,
@@ -215,14 +210,14 @@ export function storeOf(
     .flatMap(({ project, applications }) =>
       applications
         .filter(({ id }) => holds(context.platform.secretStore, project, id))
-        .flatMap(({ id, processes }) =>
+        .flatMap(({ processes }) =>
           processes.flatMap(({ name, provides }) =>
             provides?.[STORE_SURFACE] === undefined
               ? []
               : [
                   {
                     rule: "secret-store" as const,
-                    ...homeOf(context.platform, project, id, name),
+                    ...homeOf(project, name),
                     port: provides[STORE_SURFACE],
                   },
                 ],
@@ -271,7 +266,7 @@ export function scrapeEgressOf(
   if (!holds(platform.telemetry?.metrics, context.project, application.id))
     return [];
   const targets = context.union.flatMap(({ project, applications }) =>
-    applications.flatMap(({ id, observability, processes }): Egress[] => {
+    applications.flatMap(({ observability, processes }): Egress[] => {
       const scrape = observability?.scrape;
       if (scrape === undefined) return [];
       // A scrape names a surface its Process provides, or E_UNKNOWN_PROCESS
@@ -282,7 +277,7 @@ export function scrapeEgressOf(
       return [
         {
           rule: "scrape-target",
-          ...homeOf(platform, project, id, scrape.process),
+          ...homeOf(project, scrape.process),
           port: target.provides?.[scrape.surface] as number,
         },
       ];

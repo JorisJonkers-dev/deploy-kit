@@ -248,8 +248,8 @@ composes as if nothing happened.
   the Platform document caused), stop the composition: there is nothing to
   isolate, and no pin moves.
 - **A Project that has never composed** has no earlier fragment to stay at. It is
-  left out of the render and its handover waits; it was not delivered, so
-  nothing is pruned.
+  left out of the render until it composes; it was not delivered, so nothing
+  is pruned.
 - **It is reported, not hidden.** Every isolation is a composition-side
   notification on the commit that published the fragment
   ([chapter 55](55-delivery.md#notifications)), and the lock records which

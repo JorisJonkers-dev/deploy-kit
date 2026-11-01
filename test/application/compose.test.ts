@@ -67,12 +67,6 @@ const PROJECTS: Readonly<Record<string, readonly [string, readonly string[]]>> =
     secrets: ["secrets", ["secrets.project.yml", "config/vault.hcl"]],
   };
 
-/** The ledger these tests compose under: the Projects whose render the adapters spell, delivered. */
-const LEDGER = `handover:
-  retireBy: 2027-03-31
-  legacy: [auth, data, delivery, edge, knowledge]
-  estate: [notes, observability, secrets]
-`;
 /** The line of the worked Platform document that names its Reporter. */
 const REPORTER = "  reporter: delivery/reporter\n";
 /** The worked Platform document's sign-in provider, which no Project here declares. */
@@ -87,10 +81,9 @@ const CLIENT = /\n {4}client:\n(?: {6}.*\n)+/;
 const HUMAN_GRANTS = /\nhumanGrants:\n(?: {2}.*\n)+/;
 /** The worked Platform document's priority classes, which every render holds. */
 const PRIORITY = /\npriority:\n(?: {2}.*\n)+/;
-/** The worked Platform document under `ledger`, admitting no API holder these fragments leave out. */
-const withLedger = (platform: string, ledger: string): string =>
+/** The worked Platform document, admitting no API holder these fragments leave out. */
+const admitted = (platform: string): string =>
   platform
-    .replace(/\nhandover:\n(?: {2}.*\n)+/, `\n${ledger}`)
     .replace(
       /\n {2}# Admitted to their own namespace alone[^\n]*\n {2}namespaceHolders: \[[^\]]*\]\n/,
       "\n",
@@ -157,13 +150,12 @@ const PLATFORM: Fragment = {
       // holds what each test below gives it; their own tests name them again.
       // Without a sign-in provider, since no Project composed here declares a
       // Client (CLIENT).
-      text: withLedger(
+      text: admitted(
         text("platform/platform.intent.yml")
           .replace(REPORTER, "")
           .replace(SIGN_IN, "\n")
           .replace(HUMAN_GRANTS, "\n")
           .replace(PRIORITY, "\n"),
-        LEDGER,
       ),
     },
     { name: "node-contract.yml", text: text("platform/node-contract.yml") },
@@ -230,22 +222,19 @@ function compose(
   return result.value;
 }
 
-/**
- * A handover under which data is still legacy and notes, on the estate path,
- * reads its Postgres: the estate-scoped artifact then holds that datastore's
- * catalog, the one thing it holds once every Project owns its own objects.
- */
-const LEGACY_CATALOG =
-  "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, edge, knowledge, observability]\n  estate: [delivery, notes, secrets]\n  serving:\n    - application: platform-postgres\n      namespace: data-system\n      admin: { path: secret/data/platform/postgres, user: postgres.user, password: postgres.password }\n";
-const readsTheLegacyPostgres = (body: string): string =>
+const readsPostgres = (body: string): string =>
   body
     .replace("  - id: notes\n", "  - id: notes\n    migration: none\n")
     .replace(
       "        runtime: node\n",
       "        runtime: node\n        dependsOn:\n          - { application: platform-postgres, surface: postgres }\n",
     );
-/** A composition whose estate-scoped artifact holds a legacy datastore's catalog. */
-function withLegacyCatalog(
+/** The worked Platform document's Human Grants, which the estate-scoped artifact then holds. */
+const GRANTS = (
+  text("platform/platform.intent.yml").match(HUMAN_GRANTS) as RegExpMatchArray
+)[0].slice(1);
+/** A composition in which notes reads data's Postgres, beside an estate-scoped artifact. */
+function readingPostgres(
   input: Partial<ComposeInput> = {},
   platform: Fragment = PLATFORM,
 ): Composition {
@@ -253,14 +242,14 @@ function withLegacyCatalog(
     platform: {
       ...platform,
       files: platform.files.map((file) =>
-        file.name === "platform.intent.yml"
-          ? { ...file, text: withLedger(file.text, LEGACY_CATALOG) }
+        file.name === "platform.intent.yml" && !HUMAN_GRANTS.test(file.text)
+          ? { ...file, text: file.text + GRANTS }
           : file,
       ),
     },
     fragments: RELEASES.map((fragment) =>
       fragment.manifest.spec.project === "notes"
-        ? release("notes", "1.0.0", readsTheLegacyPostgres)
+        ? release("notes", "1.0.0", readsPostgres)
         : fragment,
     ),
     ...input,
@@ -311,6 +300,11 @@ const paged = (body: string): string => body;
 describe("composeEstate", () => {
   it("composes a clean union: every delivered Project published, every Project locked at its release", () => {
     expect(FIRST.artifacts.map(({ name, moves }) => [name, moves])).toEqual([
+      ["_estate", true],
+      ["data", true],
+      ["delivery", true],
+      ["edge", true],
+      ["node", true],
       ["notes", true],
       ["observability", true],
       ["secrets", true],
@@ -467,8 +461,8 @@ describe("composeEstate", () => {
   });
 
   it("moves no pin of the estate-scoped artifact, which labels no release", () => {
-    const pins = pinned(withLegacyCatalog());
-    const again = withLegacyCatalog({
+    const pins = pinned(readingPostgres());
+    const again = readingPostgres({
       pins: {
         ...pins,
         _estate: { ...(pins["_estate"] as Pin), labelled: null },
@@ -487,11 +481,8 @@ describe("composeEstate", () => {
   it("moves no pin for a Project whose render did not change", () => {
     const again = after({});
 
-    expect(again.artifacts.map(({ moves }) => moves)).toEqual([
-      false,
-      false,
-      false,
-    ]);
+    expect(again.artifacts.every(({ moves }) => !moves)).toBe(true);
+    expect(again.artifacts).toHaveLength(FIRST.artifacts.length);
     expect(again.lock.spec.previousLockDigest).toBe(sha256Hasher(FIRST.lock));
     expect(again.lock.spec.lockChain).toEqual([
       {
@@ -567,19 +558,19 @@ describe("composeEstate", () => {
   // deploy-kit#559: a Project released on its own never fails the run for
   // every other Project.
   it("isolates a provider that drops a Surface an unchanged consumer still names, and composes the consumer", () => {
-    const first = withLegacyCatalog();
+    const first = readingPostgres();
     const dropped = release("data", "1.1.0", (body) =>
       body.replace("          postgres: 5432\n", "          pg: 5432\n"),
     );
-    const composed = withLegacyCatalog({
+    const composed = readingPostgres({
       fragments: RELEASES.map((fragment) =>
         fragment.manifest.spec.project === "notes"
-          ? release("notes", "1.0.0", readsTheLegacyPostgres)
+          ? release("notes", "1.0.0", readsPostgres)
           : fragment.manifest.spec.project === "data"
             ? dropped
             : fragment,
       ),
-      held: [...RELEASES, release("notes", "1.0.0", readsTheLegacyPostgres)],
+      held: [...RELEASES, release("notes", "1.0.0", readsPostgres)],
       pins: pinned(first),
       previous: { lock: first.lock, commit: hex("estate-commit", 40) },
     });
@@ -594,7 +585,7 @@ describe("composeEstate", () => {
   });
 
   it("blames an unchanged consumer's refusal only on the changed fragments it names, not on those another fragment's refusal names", () => {
-    const first = withLegacyCatalog();
+    const first = readingPostgres();
     // data drops what notes names, and itself names a Surface secrets does
     // not hold; secrets changes too, but nothing of its own is refused.
     const dropped = release("data", "1.1.0", (body) =>
@@ -605,17 +596,17 @@ describe("composeEstate", () => {
           "        runtime: none\n        dependsOn:\n          - { application: vault, surface: nope }\n",
         ),
     );
-    const composed = withLegacyCatalog({
+    const composed = readingPostgres({
       fragments: RELEASES.map((fragment) =>
         fragment.manifest.spec.project === "notes"
-          ? release("notes", "1.0.0", readsTheLegacyPostgres)
+          ? release("notes", "1.0.0", readsPostgres)
           : fragment.manifest.spec.project === "data"
             ? dropped
             : fragment.manifest.spec.project === "secrets"
               ? release("secrets", "1.1.0")
               : fragment,
       ),
-      held: [...RELEASES, release("notes", "1.0.0", readsTheLegacyPostgres)],
+      held: [...RELEASES, release("notes", "1.0.0", readsPostgres)],
       pins: pinned(first),
       previous: { lock: first.lock, commit: hex("estate-commit", 40) },
     });
@@ -630,17 +621,14 @@ describe("composeEstate", () => {
 
   it("isolates a consumer that newly names a Surface its provider does not hold", () => {
     const consumer = release("notes", "1.1.0", (body) =>
-      readsTheLegacyPostgres(body).replace(
-        "surface: postgres }",
-        "surface: pg }",
-      ),
+      readsPostgres(body).replace("surface: postgres }", "surface: pg }"),
     );
-    const first = withLegacyCatalog();
-    const composed = withLegacyCatalog({
+    const first = readingPostgres();
+    const composed = readingPostgres({
       fragments: RELEASES.map((fragment) =>
         fragment.manifest.spec.project === "notes" ? consumer : fragment,
       ),
-      held: [...RELEASES, release("notes", "1.0.0", readsTheLegacyPostgres)],
+      held: [...RELEASES, release("notes", "1.0.0", readsPostgres)],
       pins: pinned(first),
       previous: { lock: first.lock, commit: hex("estate-commit", 40) },
     });
@@ -659,6 +647,11 @@ describe("composeEstate", () => {
     });
 
     expect(composed.artifacts.map(({ name }) => name)).toEqual([
+      "_estate",
+      "data",
+      "delivery",
+      "edge",
+      "node",
       "observability",
       "secrets",
     ]);
@@ -744,28 +737,6 @@ describe("composeEstate", () => {
       "notes",
       "secrets",
     ]);
-  });
-
-  it("delivers nothing while the ledger hands no Project to the estate path", () => {
-    const composed = compose({
-      platform: {
-        ...PLATFORM,
-        files: PLATFORM.files.map((file) =>
-          file.name === "platform.intent.yml"
-            ? {
-                ...file,
-                text: withLedger(
-                  file.text,
-                  "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, data, delivery, edge, knowledge, notes, observability, secrets]\n",
-                ),
-              }
-            : file,
-        ),
-      },
-    });
-
-    expect(composed.artifacts).toEqual([]);
-    expect(Object.keys(composed.lock.spec.fragments)).toHaveLength(7);
   });
 
   it("holds a paused Project's pin, though its newest fragment composes", () => {
@@ -950,9 +921,9 @@ describe("composeEstate", () => {
             file.name === "platform.intent.yml"
               ? {
                   ...file,
-                  text: withLedger(
-                    file.text,
-                    `handover:\n  retireBy: 2027-03-31\n  legacy: [data, delivery, edge]\n  estate: [notes, observability, secrets, data]\n`,
+                  text: file.text.replace(
+                    "{severity: critical, receiver: discord, repeat: 4h}",
+                    "{severity: critical, receiver: pager, repeat: 4h}",
                   ),
                 }
               : file,
@@ -973,133 +944,7 @@ describe("composeEstate", () => {
       result.ok
         ? []
         : result.diagnostics.map(({ code, document }) => [code, document]),
-    ).toEqual([["E_HANDOVER_BOTH_PATHS", "_platform/platform.intent.yml"]]);
-  });
-
-  // deploy-kit#286 and REQ-088 (docs/requirements.md): a Project is
-  // delivered while the old path still serves the edge, so its routes wait
-  // until the edge itself is on the estate path, whatever else is legacy.
-  it("delivers no route while the edge is legacy, and each Project's own routes once it is not", () => {
-    const under = (ledger: string): Composition =>
-      compose({
-        platform: {
-          ...PLATFORM,
-          files: PLATFORM.files.map((file) =>
-            file.name === "platform.intent.yml"
-              ? { ...file, text: withLedger(file.text, ledger) }
-              : file,
-          ),
-        },
-      });
-    const routes = (composition: Composition) =>
-      (composition.artifacts.find(({ name }) => name === "data")?.files ?? [])
-        .map(({ path }) => path)
-        .filter((path) => path.includes("/route-"));
-    const handingOver = under(
-      "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n",
-    );
-
-    expect(routes(handingOver)).toStrictEqual([]);
-    expect(
-      routes(
-        under(
-          "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, knowledge, notes, observability, secrets]\n  estate: [data, delivery, edge]\n",
-        ),
-      ),
-    ).toStrictEqual([
-      "apps/data/platform-rabbitmq/route-lan.yaml",
-      "apps/data/platform-rabbitmq/route-management.yaml",
-    ]);
-    // One legacy proxy holds every route back, though another tier's proxy
-    // is on the estate path.
-    const split = compose({
-      platform: {
-        ...PLATFORM,
-        files: PLATFORM.files.map((file) =>
-          file.name === "platform.intent.yml"
-            ? {
-                ...file,
-                text: withLedger(
-                  file.text
-                    .replace(
-                      "traefik: edge/traefik-lan",
-                      "traefik: data/platform-rabbitmq",
-                    )
-                    // The broker serves no tier's surfaces, so the tier names
-                    // no address.
-                    .replace(/\n {4}address: lan-edge[^\n]*/, ""),
-                  "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n",
-                ),
-              }
-            : file,
-        ),
-      },
-    });
-    expect(split.artifacts.map(({ name }) => name)).toContain("data");
-    expect(routes(split)).toStrictEqual([]);
-    expect(routes(under(""))).toStrictEqual([
-      "apps/data/platform-rabbitmq/route-lan.yaml",
-      "apps/data/platform-rabbitmq/route-management.yaml",
-    ]);
-    // data's own unit applies its own policy job, and waits on no
-    // estate-scoped unit, nor on a Platform Project still on the old path.
-    const data = handingOver.sources.find(({ name }) => name === "data")?.text;
-    expect(data).not.toContain("estate-");
-    expect(data).not.toContain("apps-secrets");
-    expect(data).not.toContain("apps-edge");
-    // Where no Project's render holds anything else estate-scoped, the
-    // estate-scoped artifact holds only the Stable Addresses its Projects
-    // resolve.
-    expect(
-      handingOver.artifacts
-        .find(({ name }) => name === "_estate")
-        ?.files.every(({ path }) =>
-          path.startsWith("estate/stable-addresses/"),
-        ),
-    ).toBe(true);
-  });
-
-  it("reaches a legacy Application where the handover ledger states it serves", () => {
-    const composed = compose({
-      platform: {
-        ...PLATFORM,
-        files: PLATFORM.files.map((file) =>
-          file.name === "platform.intent.yml"
-            ? {
-                ...file,
-                text: withLedger(
-                  file.text,
-                  "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, observability, secrets]\n  estate: [data, delivery, notes]\n  serving:\n    - application: vault\n      namespace: data-system\n    - application: traefik-public\n      namespace: ingress-system\n      instance: traefik-ingress-system\n",
-                ),
-              }
-            : file,
-        ),
-      },
-    });
-    const text = (name: string): string =>
-      (
-        composed.artifacts.find((artifact) => artifact.name === name)?.files ??
-        []
-      )
-        .map((file) => file.text)
-        .join("\n");
-
-    expect(composed.conditions).toEqual([]);
-    // data's own Vault policy job writes into the Vault the old path runs.
-    expect(text("data")).toContain("name: vault-policy\n");
-    // A grant reads the Secret Store at its stated address, and a routed
-    // Process admits the Traefik that serves it.
-    expect(text("data")).toContain(
-      "http://vault.data-system.svc.cluster.local:8200",
-    );
-    expect(text("data")).not.toContain("secrets-system");
-    expect(text("notes")).toContain(
-      "kubernetes.io/metadata.name: ingress-system",
-    );
-    expect(text("notes")).toContain(
-      "app.kubernetes.io/instance: traefik-ingress-system",
-    );
-    expect(text("notes")).not.toContain("edge-system");
+    ).toEqual([["E_UNKNOWN_RECEIVER", "_platform/platform.intent.yml"]]);
   });
 
   it("asks for every held fragment a reference names, and composes every Project when no ledger is kept", () => {
@@ -1123,7 +968,7 @@ describe("composeEstate", () => {
           ...PLATFORM,
           files: PLATFORM.files.map((file) =>
             file.name === "platform.intent.yml"
-              ? { ...file, text: withLedger(file.text, "") }
+              ? { ...file, text: admitted(file.text) }
               : file,
           ),
         },
@@ -1231,8 +1076,8 @@ describe("composeEstate, for a Retry", () => {
   });
 
   it("renders nothing for a Retry on the estate-scoped artifact, which is no Project's release", () => {
-    const pins = pinned(withLegacyCatalog());
-    const again = withLegacyCatalog({
+    const pins = pinned(readingPostgres());
+    const again = readingPostgres({
       pins: {
         ...pins,
         _estate: { ...(pins["_estate"] as Pin), annotations: RETRY },
@@ -1293,7 +1138,7 @@ describe("composeEstate, for an artifact whose pin moves", () => {
         ...PLATFORM,
         files: PLATFORM.files.map((file) =>
           file.name === "platform.intent.yml"
-            ? { ...file, text: withLedger(file.text, "") }
+            ? { ...file, text: admitted(file.text) }
             : file,
         ),
       },
@@ -1324,7 +1169,7 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     // Each is published where its source points: the estate's beside the
     // Projects' repository, since an OCI name cannot start with an underscore.
     expect(
-      withLegacyCatalog()
+      readingPostgres()
         .artifacts.filter(({ name }) => ["_estate", "notes"].includes(name))
         .map(({ name, repository }) => [name, repository]),
     ).toStrictEqual([
@@ -1442,7 +1287,7 @@ describe("composeEstate, for an artifact whose pin moves", () => {
           file.name === "platform.intent.yml"
             ? {
                 ...file,
-                text: withLedger(file.text, "").replace(
+                text: admitted(file.text).replace(
                   "      repository: ghcr.io/jorisjonkers-dev/render\n",
                   "      repository: ghcr.io/jorisjonkers-dev/render\n      pullSecret: render-pull\n",
                 ),
@@ -1521,7 +1366,7 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     const first = delivered();
 
     // No pin yet: every Project's source is a first delivery, the handover's.
-    expect(recreating(withLegacyCatalog())).toContainEqual(["_estate", false]);
+    expect(recreating(readingPostgres())).toContainEqual(["_estate", false]);
     expect(recreating(first)).toStrictEqual([
       ["_estate", false],
       ["data", true],
@@ -1548,18 +1393,10 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     ).toStrictEqual([["notes", false]]);
   });
 
-  it("gives the catalog of a datastore the old path runs a unit of its own, which follows the Secret Store's Project, and orders each unit's followers by name", () => {
-    const estateArtifact = {
-      name: "_estate",
-      files: [
-        "estate/vso-secrets/kustomization.yaml",
-        "estate/vso-secrets/postgres-catalog.yaml",
-      ].map((path) => ({ path, adapter: "kubernetes", text: "" })),
-    };
+  it("orders each unit's followers by name", () => {
     const sources = pinSources(
-      [estateArtifact, { name: "notes", files: [] }],
+      [{ name: "notes", files: [] }],
       [
-        estateArtifact,
         ...["data", "edge", "notes", "secrets"].map((name) => ({
           name,
           files: [],
@@ -1619,18 +1456,6 @@ describe("composeEstate, for an artifact whose pin moves", () => {
           spec.dependsOn,
         ]);
 
-    expect(units("_estate")).toStrictEqual([
-      [
-        "estate-vso-secrets",
-        "./estate/vso-secrets",
-        [{ name: "apps-secrets" }],
-      ],
-    ]);
-    expect(
-      objectsOf("_estate")
-        .filter(({ kind }) => kind === "OCIRepository")
-        .map(({ metadata }) => metadata.name),
-    ).toStrictEqual(["estate"]);
     expect(units("notes")).toStrictEqual([
       [
         "apps-notes",
@@ -1644,11 +1469,10 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     ]);
   });
 
-  it("writes a source only for what it delivers: a Project still on the old path has none", () => {
+  it("writes a source for every artifact it delivers", () => {
     expect(FIRST.sources.map(({ name }) => name)).toStrictEqual(
       FIRST.artifacts.map(({ name }) => name),
     );
-    expect(FIRST.sources.map(({ name }) => name)).not.toContain("data");
   });
 });
 
@@ -2464,10 +2288,10 @@ describe("composeEstate, over the fragments' shares of the images lock", () => {
       files: [
         {
           name: "platform.intent.yml.draft",
-          text: withLedger(
-            text("platform/platform.intent.yml"),
-            LEDGER,
-          ).replace("backup: postgres-backup", "backup: unlocked-backup"),
+          text: admitted(text("platform/platform.intent.yml")).replace(
+            "backup: postgres-backup",
+            "backup: unlocked-backup",
+          ),
         },
         ...PLATFORM.files,
       ],
@@ -2572,7 +2396,7 @@ describe("composeEstate, for an artifact whose pin stays", () => {
         ...PLATFORM,
         files: PLATFORM.files.map((file) =>
           file.name === "platform.intent.yml"
-            ? { ...file, text: edit(withLedger(file.text, "")) }
+            ? { ...file, text: edit(admitted(file.text)) }
             : file,
         ),
       },
@@ -2640,26 +2464,22 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     // The Projects resolve Stable Addresses, so the estate holds them.
     expect(NAMES).toContain("_estate");
 
-    // Every Project handed back to the old path: no render holds anything,
-    // the estate's included, and its committed source goes with the rest.
-    const emptied = withPlatform(
-      (platform) =>
-        `${platform}handover:\n  retireBy: 2027-03-31\n  legacy: [${NAMES.filter((name) => name !== "_estate").join(", ")}]\n`,
-      settled,
-    );
-
-    expect(emptied.removedSources).toContain("projects/_estate/source.yaml");
-    expect(emptied.sources).toStrictEqual([]);
-
-    // A Project still delivered that resolves no Stable Address leaves the
-    // estate-scoped artifact empty, and its source goes all the same.
+    // A union of Projects that resolve no Stable Address leaves the
+    // estate-scoped artifact empty, and its committed source goes.
+    const unlinked = (body: string): string =>
+      body.replace(/\n( +)dependsOn:\n(?:\1 +- .*\n)+/g, "\n");
     const alone = withPlatform(
       (platform) =>
-        `${platform}handover:\n  retireBy: 2027-03-31\n  legacy: [${NAMES.filter((name) => name !== "_estate" && name !== "secrets").join(", ")}]\n  estate: [secrets]\n`,
-      settled,
+        platform.replace(/\n {4}forwardAuth:\n(?: {6}.*\n)+/g, "\n"),
+      {
+        fragments: RELEASES.map((fragment) =>
+          release(fragment.manifest.spec.project, "1.0.0", unlinked),
+        ),
+        sources: settled.sources,
+      },
     );
 
-    expect(alone.artifacts.map(({ name }) => name)).toContain("secrets");
+    expect(alone.artifacts.map(({ name }) => name)).not.toContain("_estate");
     expect(alone.removedSources).toStrictEqual([
       "projects/_estate/source.yaml",
     ]);
@@ -2669,11 +2489,11 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     expect(withPlatform((same) => same, settled).removedSources).toStrictEqual(
       [],
     );
-    const estate = withLegacyCatalog().sources.find(
+    const estate = readingPostgres().sources.find(
       ({ name }) => name === "_estate",
     );
     expect(
-      withLegacyCatalog({ sources: { _estate: estate?.text ?? "" } })
+      readingPostgres({ sources: { _estate: estate?.text ?? "" } })
         .removedSources,
     ).toStrictEqual([]);
   });
@@ -2872,71 +2692,6 @@ describe("composeEstate, for an artifact whose pin stays", () => {
     );
   });
 
-  // The unit that provisions secrets follows the Secret Store's unit, which
-  // is on the estate path only once its Project has handed over.
-  it("gives a unit the unit it follows as soon as that one hands over, though its own pin stays", () => {
-    const under = (
-      ledger: string,
-      input: Partial<ComposeInput> = {},
-    ): Composition =>
-      compose({
-        platform: {
-          ...PLATFORM,
-          files: PLATFORM.files.map((file) =>
-            file.name === "platform.intent.yml"
-              ? { ...file, text: withLedger(file.text, ledger) }
-              : file,
-          ),
-        },
-        ...input,
-      });
-    const followedBySecrets = (body: string | undefined) =>
-      objectsOf(body ?? "").find(
-        ({ kind, spec }) =>
-          kind === "Kustomization" && spec.dependsOn !== undefined,
-      )?.spec.dependsOn;
-    const before = under(
-      "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n",
-    );
-    expect(
-      followedBySecrets(
-        before.sources.find(({ name }) => name === "data")?.text,
-      ),
-    ).toBeUndefined();
-    const handedOver = {
-      held: RELEASES,
-      pins: pinned(before),
-      previous: { lock: before.lock, commit: hex("estate-commit", 40) },
-    };
-    const LEDGER_AFTER =
-      "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability]\n  estate: [data, delivery, secrets]\n";
-
-    const after = under(LEDGER_AFTER, {
-      ...handedOver,
-      sources: committedBy(before),
-    });
-
-    expect(
-      after.artifacts.filter(({ moves }) => moves).map(({ name }) => name),
-    ).toStrictEqual(["secrets"]);
-    expect(after.sources.map(({ name }) => name)).toStrictEqual([
-      "data",
-      "secrets",
-    ]);
-    const [data, secrets] = after.sources;
-    expect(followedBySecrets(data?.text)).toStrictEqual([
-      { name: "apps-secrets" },
-    ]);
-    expect(repositoryOf(data?.text ?? "")?.ref?.digest).toBe(digestOf("data"));
-    // The Project that hands over is a first delivery, at no digest yet.
-    expect(repositoryOf(secrets?.text ?? "")?.ref?.digest).toBe(UNPUBLISHED);
-    expect(recreates(secrets?.text ?? "")).toBe(true);
-    // With no committed source to compare, the edge waits for a pin move.
-    expect(
-      under(LEDGER_AFTER, handedOver).sources.map(({ name }) => name),
-    ).toStrictEqual(["secrets"]);
-  });
-
   it("refuses to go on from a committed source that names no digest", () => {
     expect(() =>
       withPlatform((same) => same, {
@@ -2998,17 +2753,21 @@ describe("composeEstate, for a Rollout", () => {
   const heavier = (body: string): string =>
     body.replace("memory: 256Mi", "memory: 320Mi");
 
-  it("records one for every Project whose pin moves, and none for the estate-scoped artifact", () => {
-    const first = withLegacyCatalog();
+  it("records one for every Project whose pin moves, and none for the estate-scoped artifact or the Node Agents'", () => {
+    const first = readingPostgres();
     const projects = first.artifacts
       .map(({ name }) => name)
-      .filter((name) => name !== "_estate");
+      .filter((name) => name !== "_estate" && name !== "node");
 
     expect(first.artifacts.map(({ name }) => name)).toContain("_estate");
     expect(first.artifacts.every(({ moves }) => moves)).toBe(true);
-    expect(first.rollouts).toStrictEqual(
-      projects.map((project) => identityOf(project)),
+    expect(first.rollouts.map(({ project }) => project)).toStrictEqual(
+      projects,
     );
+    // Each carries its Project's first exposure, where it has one.
+    expect(
+      first.rollouts.find(({ project }) => project === "observability")?.url,
+    ).toBe("https://grafana.jorisjonkers.dev");
   });
 
   it("is reachable at its Project's first exposure, over the scheme the tier's listener serves", () => {
@@ -3053,7 +2812,7 @@ describe("composeEstate, for a Rollout", () => {
         "event.toolkit.fluxcd.io/url": "https://notes.jorisjonkers.dev",
       },
     });
-    const estate = annotated(sourceOf(withLegacyCatalog(), "_estate"));
+    const estate = annotated(sourceOf(readingPostgres(), "_estate"));
     expect(Object.keys(estate)).not.toStrictEqual([]);
     expect(Object.values(estate)).toStrictEqual(
       Object.keys(estate).map(() => undefined),
@@ -3146,10 +2905,8 @@ describe("composeEstate, for a Rollout", () => {
 // Project's own artifact holds the route Flux's events about its unit take to
 // it, applied by that unit (spec/v1/55-delivery.md#rollouts).
 describe("composeEstate, for the route Flux's events take", () => {
-  const LEGACY =
-    "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, edge, knowledge, notes, observability, secrets]\n  estate: [data, delivery]\n";
-  /** A composition under `ledger`, the Platform document naming its Reporter or not. */
-  const composed = (ledger: string, named: boolean): Composition =>
+  /** A composition, the Platform document naming its Reporter or not. */
+  const composed = (named: boolean): Composition =>
     compose({
       platform: {
         ...PLATFORM,
@@ -3157,15 +2914,12 @@ describe("composeEstate, for the route Flux's events take", () => {
           file.name === "platform.intent.yml"
             ? {
                 ...file,
-                text: withLedger(
-                  named
-                    ? file.text.replace(
-                        "  gate: delivery/release-gate\n",
-                        `  gate: delivery/release-gate\n${REPORTER}`,
-                      )
-                    : file.text,
-                  ledger,
-                ),
+                text: named
+                  ? file.text.replace(
+                      "  gate: delivery/release-gate\n",
+                      `  gate: delivery/release-gate\n${REPORTER}`,
+                    )
+                  : file.text,
               }
             : file,
         ),
@@ -3180,7 +2934,7 @@ describe("composeEstate, for the route Flux's events take", () => {
       .filter((path) => path.startsWith(`apps/${name}/rollout-events/`));
 
   it("holds each Project's own Provider and Alert in its own artifact, and nothing estate-scoped for them", () => {
-    const whole = composed("", true);
+    const whole = composed(true);
 
     expect(events(whole, "data")).toStrictEqual([
       "apps/data/rollout-events/alert.yaml",
@@ -3213,44 +2967,7 @@ describe("composeEstate, for the route Flux's events take", () => {
   });
 
   it("holds neither where the platform names no Reporter", () => {
-    expect(events(composed("", false), "data")).toStrictEqual([]);
-  });
-
-  it("delivers the route with each Project while another is legacy, and nothing estate-scoped", () => {
-    const handingOver = composed(LEGACY, true);
-
-    expect(events(handingOver, "data")).not.toStrictEqual([]);
-    // Nothing estate-scoped but the Stable Addresses its Projects resolve.
-    expect(
-      filesOf(handingOver, "_estate").filter(
-        ({ path }) => !path.startsWith("estate/stable-addresses/"),
-      ),
-    ).toStrictEqual([]);
-  });
-});
-
-// While a datastore the old path runs has a catalog an estate-path Project
-// reads, the estate-scoped artifact holds that catalog alone during the
-// handover, applied by its own unit after the Secret Store's Project.
-describe("composeEstate, for the catalog of a datastore the old path runs", () => {
-  it("delivers the catalog's Jobs and documents alone, by a unit that follows the Secret Store's Project", () => {
-    const composed = withLegacyCatalog();
-    const estate = composed.artifacts.find(({ name }) => name === "_estate");
-
-    expect(estate?.files.map(({ path }) => path)).toContain(
-      "estate/vso-secrets/postgres-catalog.yaml",
-    );
-    // The catalog alone, beside the Stable Addresses its Projects resolve.
-    expect(
-      estate?.files.every(
-        ({ path }) =>
-          path.startsWith("estate/vso-secrets/") ||
-          path.startsWith("estate/stable-addresses/"),
-      ),
-    ).toBe(true);
-    expect(
-      composed.sources.find(({ name }) => name === "_estate")?.text,
-    ).toContain("name: estate-vso-secrets");
+    expect(events(composed(false), "data")).toStrictEqual([]);
   });
 });
 
@@ -3273,7 +2990,7 @@ describe("composeEstate, for the Human Grants", () => {
     ),
   });
 
-  it("delivers the bindings estate-scoped, by a unit that follows nothing, whatever the ledger hands over", () => {
+  it("delivers the bindings estate-scoped, by a unit that follows nothing", () => {
     const composed = compose({ platform: granting(PLATFORM) });
     const estate = composed.artifacts.find(({ name }) => name === "_estate");
 
@@ -3313,7 +3030,11 @@ describe("composeEstate, for the Human Grants", () => {
     const source =
       composed.sources.find(({ name }) => name === "_estate")?.text ?? "";
 
-    expect(estate?.files.map(({ path }) => path)).toStrictEqual([
+    expect(
+      estate?.files
+        .map(({ path }) => path)
+        .filter((path) => !path.startsWith("estate/stable-addresses/")),
+    ).toStrictEqual([
       "estate/priority-classes/kustomization.yaml",
       "estate/priority-classes/priorityclasses.yaml",
     ]);
@@ -3322,8 +3043,8 @@ describe("composeEstate, for the Human Grants", () => {
     expect(source).not.toContain("dependsOn");
   });
 
-  it("holds both estate-scoped units beside each other where the catalog is held too", () => {
-    const composed = withLegacyCatalog({}, granting(PLATFORM));
+  it("holds the Human Grants' unit beside the Stable Addresses'", () => {
+    const composed = compose({ platform: granting(PLATFORM) });
     const estate = composed.artifacts.find(({ name }) => name === "_estate");
     const source = composed.sources.find(({ name }) => name === "_estate");
 
@@ -3331,27 +3052,16 @@ describe("composeEstate, for the Human Grants", () => {
       "estate/human-grants/clusterrolebindings.yaml",
     );
     expect(source?.text).toContain("name: estate-human-grants");
-    expect(source?.text).toContain("name: estate-vso-secrets");
+    expect(source?.text).toContain("name: estate-stable-addresses");
   });
 });
 
 // REQ-060 (docs/requirements.md): a Rollback takes no backup of its own.
 describe("composeEstate, for a Rollback", () => {
-  const HANDED_OVER =
-    "handover:\n  retireBy: 2027-03-31\n  legacy: [auth, delivery, edge, knowledge, notes, observability]\n  estate: [data, secrets]\n";
-  const PLATFORM_HANDED_OVER: Fragment = {
-    ...PLATFORM,
-    files: PLATFORM.files.map((file) =>
-      file.name === "platform.intent.yml"
-        ? { ...file, text: withLedger(file.text, HANDED_OVER) }
-        : file,
-    ),
-  };
-
   it("renders no backup of its own, and nothing estate-scoped, for a Project paused to roll back", () => {
-    const first = compose({ platform: PLATFORM_HANDED_OVER });
+    const first = compose({ platform: PLATFORM });
     const asked = compose({
-      platform: PLATFORM_HANDED_OVER,
+      platform: PLATFORM,
       fragments: RELEASES.map((fragment) =>
         fragment.manifest.spec.project === "data"
           ? release("data", "1.1.0")
@@ -3380,19 +3090,7 @@ describe("composeEstate, for a Rollback", () => {
 // composes once, as the target of a Move from the Project holding its active
 // Instance, in every order the fragments arrive.
 describe("composeEstate, for an Application moving between Projects", () => {
-  const LEDGERED = `handover:
-  retireBy: 2027-03-31
-  legacy: [auth, data, delivery, edge, knowledge]
-  estate: [notes, observability, secrets, store]
-`;
-  const platform: Fragment = {
-    ...PLATFORM,
-    files: PLATFORM.files.map((file) =>
-      file.name === "platform.intent.yml"
-        ? { ...file, text: withLedger(file.text, LEDGERED) }
-        : file,
-    ),
-  };
+  const platform: Fragment = PLATFORM;
   // store declares notes as notes does, in a namespace of its own.
   const notes = release("notes");
   const store: Fragment = {

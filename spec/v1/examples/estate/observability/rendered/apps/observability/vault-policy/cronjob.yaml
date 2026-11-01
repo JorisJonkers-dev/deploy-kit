@@ -62,7 +62,7 @@ spec:
               image: ghcr.io/jorisjonkers-dev/delivery/vault-policy@sha256:d834c4c8734f9d0a5d81494d097837550c7ce19ae3d269719c2e115c86022a19
               env:
                 - name: VAULT_ADDR
-                  value: http://vault.data-system.svc.cluster.local:8200
+                  value: http://vault.secrets-system.svc.cluster.local:8200
                 - name: VAULT_ROLE
                   value: policy-admin
                 - name: POLICIES_DIR

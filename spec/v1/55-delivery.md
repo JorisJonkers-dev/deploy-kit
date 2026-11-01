@@ -39,7 +39,7 @@ What is in scope, and the section that specifies each:
 | who hears about a refusal, a hold or a failed step, and where | [Notifications](#notifications) |
 | why rotating a secret is not a release | [Secret rotation](#secret-rotation) |
 | what the render leaves to Flagger | [What the render leaves to Flagger](#what-the-render-leaves-to-flagger) |
-| how a Project moves off the old path | [chapter 60](60-setup.md#handing-over-one-project-at-a-time) |
+| why every Project has one delivery path | [chapter 60](60-setup.md#one-delivery-path) |
 
 What is not in scope:
 
@@ -82,17 +82,11 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   `_estate`, published and pinned exactly like a Project's, at the sibling
   repository `<repository>-estate`: an OCI repository's path components start
   with a letter or a digit, and nothing below `<repository>/` is the estate's,
-  so no Project can ever name it. While the estate is handed
-  over, a Project still on the old path is rendered and checked but not
-  published, and the `_estate` artifact holds `estate-stable-addresses`, the
-  Stable Addresses the delivered Projects resolve, `estate-human-grants`, the
-  Human Grants' bindings, whatever the ledger hands over, and `estate-vso-secrets`
-  while a datastore the old path runs has a catalog the estate path applies,
-  that catalog's Jobs and the estate-scoped policy job that writes its
-  documents. No Project's unit depends on any of them. While the edge, a Project
-  that declares a tier's proxy, is on the old path, no Project's artifact
-  carries a route either, since the old path still serves the edge
-  ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)).
+  so no Project can ever name it. Every Project the union holds is published.
+  The `_estate` artifact holds `estate-stable-addresses`, the Stable Addresses
+  the delivered Projects resolve, `estate-human-grants`, the Human Grants'
+  bindings, and `estate-priority-classes`. No Project's unit depends on any of
+  them.
 - **The `_estate` artifact holds only what no Project can own.** A Project
   owns every object it delivers
   ([0116](../../docs/adr/model/0116-a-project-owns-every-object-it-delivers.md)),
@@ -161,8 +155,7 @@ ghcr.io/jorisjonkers-dev/render/auth@sha256:…     one Rendered artifact per Pr
   they are only written differently: a Pause is written by another tool, whose
   quoting is its own. A file written while its pin stays keeps its `ref.digest`,
   so it deploys nothing. Removing a Project's file takes it off the estate path, which
-  only a handover step reversed or a Project's retirement does
-  ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)). After publishing, composition commits to the
+  only a Project's retirement does. After publishing, composition commits to the
   estate repository's `main` the rewritten source of every Project whose
   artifact changed, at its new `ref.digest`, and with it every source rewritten
   while its pin stayed, marked `[ci skip]` so the estate repository's push checks
@@ -212,20 +205,19 @@ as a grant's refresh is in [chapter 30](30-deliverables.md#vault-configuration-i
 | `Kustomization`, one per Reconcile Unit the artifact holds | name | the unit's ([chapter 20](20-resolved-deployment.md#the-reconcile-unit)) |
 | | `annotations` | on a Project's unit alone, its Rollout ([Rollouts](#rollouts)): `event.toolkit.fluxcd.io/repository`, `sha`, `environment` and `version`, and `url` where the Rollout has one, written when the pin moves. A file written while its pin stays keeps the ones it is committed with, and the estate-scoped artifact's units carry none |
 | | `sourceRef`, `path` | the `OCIRepository` above, and the unit's directory in the artifact |
-| | `dependsOn` | every unit this one follows that is on the estate path, by name, in name order; absent where it follows none. A unit of a Project still on the old path ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is left out: it has no Kustomization here, so Flux would wait on it for ever, and the Project is already running where the old path put it. The first composition after that Project hands over rewrites the source, whether or not the dependent's own pin moves, and the edge returns then |
+| | `dependsOn` | every unit this one follows that an artifact of the composition holds, by name, in name order; absent where it follows none. A unit no artifact holds is left out: it has no Kustomization here, so Flux would wait on it for ever. The first composition whose artifacts hold it again rewrites the source, whether or not the dependent's own pin moves, and the edge returns then |
 | | `interval`, `prune`, `wait` | `10m`, `true`, `true`: a unit is Ready when what it applied is, so a Job that fails holds every unit that follows it |
 | | `healthCheckExprs` | one entry, for `v1` `PersistentVolumeClaim`: `current` when the claim is `Bound`, or `Pending` with no `volume.kubernetes.io/selected-node` annotation. `local-path` binds a claim on its first consumer's node, and a backup claim's only consumer is its nightly `CronJob`, so without this a fresh Project would stay not Ready until its first backup. The scheduler writes that annotation as soon as it places a consumer, so a claim still `Pending` after that holds the unit, as Flux's default reading of a claim would. A claim waiting for a Process's pod adds nothing to the check: the pod's controller is not Ready until the claim binds |
-| | `patches` | on a Project's first delivery alone, the one that hands it over ([chapter 60](60-setup.md#handing-over-one-project-at-a-time)), first one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector the old path set differently rather than refuse it. A rewrite that leaves the pin where it is keeps it, since the first delivery may not have been applied yet; the first rewrite that moves the pin drops it, and it is absent from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied. No patch labels a pod with its release: that label travels in the artifact ([Rendered artifacts and pins](#rendered-artifacts-and-pins)) |
+| | `patches` | on a Project's first delivery alone ([chapter 60](60-setup.md#one-delivery-path)), first one patch, targeting kind `Deployment`, that annotates each `kustomize.toolkit.fluxcd.io/force: Enabled`, so Flux recreates a Deployment whose selector another applier set differently rather than refuse it. A rewrite that leaves the pin where it is keeps it, since the first delivery may not have been applied yet; the first rewrite that moves the pin drops it, and it is absent from the estate-scoped artifact's source. No other kind is marked: a claim recreated is a claim emptied. No patch labels a pod with its release: that label travels in the artifact ([Rendered artifacts and pins](#rendered-artifacts-and-pins)) |
 
-A Project's artifact holds its one unit, its own Vault policy job among what
-it applies, its own routes among them once the edge is on the estate path. The
-estate-scoped artifact holds `estate-stable-addresses`, which follows nothing,
-where a delivered Project resolves a Stable Address, `estate-human-grants`,
-which follows nothing, where the Platform document declares a Human Grant, and `estate-vso-secrets`
-where it carries the catalog of a datastore the old path still runs. A unit the artifact gains changes what
-it holds, so its pin moves and the rewritten source applies the new unit, and
-a Project's routes arriving when the edge leaves the old path move its pin
-once. The rewrite keeps the annotations a Pause, a Rollback or a Retry
+A Project's artifact holds its one unit, its own Vault policy job and its own
+routes among what it applies. The estate-scoped artifact holds
+`estate-stable-addresses`, which follows nothing, where a delivered Project
+resolves a Stable Address, `estate-human-grants`, which follows nothing, where
+the Platform document declares a Human Grant, and `estate-priority-classes`,
+which follows nothing, where it declares the priority classes. A unit the
+artifact gains changes what it holds, so its pin moves and the rewritten source
+applies the new unit. The rewrite keeps the annotations a Pause, a Rollback or a Retry
 recorded on the pin ([Pause and Rollback](#pause-and-rollback)).
 
 Once the estate-scoped artifact holds nothing, composition publishes none and
@@ -234,7 +226,7 @@ writes no source for it, and names its committed source in `removedSources` of
 would pin an artifact no composition publishes again, and its units would hold
 whatever they last applied. Deleting it lets Flux prune the source and its
 units, which hold nothing by then. A Project's own source is never removed
-this way: a Project leaves the estate through its handover, not through an
+this way: a Project leaves the estate through its retirement, not through an
 empty render.
 
 ## Pause and Rollback

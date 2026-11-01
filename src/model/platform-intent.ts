@@ -439,43 +439,6 @@ const apiAccessPolicy = z
   })
   .meta({ id: "ApiAccessPolicy" });
 
-// Which delivery path each Project is on while the estate moves off the old
-// one (spec/v1/60-setup.md#handing-over-one-project-at-a-time): `legacy` is
-// still delivered by the old path, `estate` by its pin, and `retireBy` is the
-// date after which the old path is removed. `serving` states where the old
-// path runs a legacy Application the estate path reaches: the namespace its
-// pods run in, and the instance label they and their Service carry where it is
-// not the Process's own name.
-// The KV document where the old path keeps a datastore's administrative
-// login, and the keys of its user and password, or of the one token an object
-// store's admin API takes.
-const adminLogin = z.union([
-  z
-    .strictObject({ path: text, user: text, password: text })
-    .meta({ id: "AdminLogin" }),
-  z.strictObject({ path: text, token: text }).meta({ id: "AdminToken" }),
-]);
-
-const servingLocation = z
-  .strictObject({
-    // A name, not a reference: an Application no file read declares is not
-    // refused, as the ledger's own Project names are not.
-    application: text,
-    namespace: text,
-    instance: text.exactOptional(),
-    admin: adminLogin.exactOptional(),
-  })
-  .meta({ id: "ServingLocation" });
-
-const handoverLedger = z
-  .strictObject({
-    retireBy: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    legacy: z.array(text).min(1).exactOptional(),
-    estate: z.array(text).min(1).exactOptional(),
-    serving: z.array(servingLocation).min(1).exactOptional(),
-  })
-  .meta({ id: "HandoverLedger" });
-
 // Where telemetry is sent (spec/v1/14-platform-intent.md#telemetry): the
 // declared Application whose `otlp` surface every exporting Runtime Profile is
 // handed, named as a tier names its proxy.
@@ -838,7 +801,6 @@ export const platformIntent = z
     apiAccess: apiAccessPolicy.exactOptional(),
     policyJob: vaultPolicyJob.exactOptional(),
     seeder: seeder.exactOptional(),
-    handover: handoverLedger.exactOptional(),
     providers: z.array(provider).min(1).exactOptional(),
     libraries: z
       .record(text, libraryDeclaration)

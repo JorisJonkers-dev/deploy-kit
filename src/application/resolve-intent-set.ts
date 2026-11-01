@@ -416,11 +416,7 @@ export function resolveIntentSet(
       forwardAuths: set.platform.tiers.flatMap(
         ({ traefik, forwardAuth }): ResolvedForwardAuth[] => {
           if (forwardAuth === undefined) return [];
-          const address = forwardAuthEndpoint(
-            set.platform,
-            set.projects,
-            forwardAuth,
-          );
+          const address = forwardAuthEndpoint(set.projects, forwardAuth);
           return address === undefined
             ? []
             : [

@@ -671,11 +671,6 @@ Project composes as usual. Not a **Pause**: nobody asked for it, and it ends
 when a fragment that composes is published
 ([chapter 40](spec/v1/40-composition.md#a-refused-project-is-isolated)).
 
-**Handover ledger**: the Platform document's record of which delivery path each
-Project is on while the estate moves off `fleet-infra`: the **old path** or the
-**estate path**, never both, until a retirement date ends the old one
-([chapter 60](spec/v1/60-setup.md#handing-over-one-project-at-a-time)).
-
 **Switchover**: how an Application's new version replaces the old one:
 blue/green, where its new Processes start beside the old and receive traffic
 only once every member has passed analysis; stop-start, where the old stop
@@ -694,8 +689,7 @@ Release Gate inside the provider's release as sync, lag, fence, final lag,
 flip, unfence and reverse; ended by the source's retirement after the platform's
 retention ([chapter 55](spec/v1/55-delivery.md#moves),
 [0094](docs/adr/model/0094-a-move-is-derived-from-one-authored-edit.md)). Not a
-**Migration**, which moves a schema, and not a **Handover**, which moves a
-Project between delivery paths.
+**Migration**, which moves a schema.
 
 **Fence**: the Move step that stops writes on the source Instance and closes
 its client connections. The write pause runs from the fence to the unfence on

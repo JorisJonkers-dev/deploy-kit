@@ -608,14 +608,7 @@ interface Delivered {
   readonly cluster: string;
 }
 
-/**
- * A resolved union rendered for the Projects the ledger hands to the estate
- * path; a legacy one is composed and checked, never published
- * (spec/v1/60-setup.md#handing-over-one-project-at-a-time). Routes flip with
- * the edge's own handover: while a Project that declares a tier's proxy is
- * legacy, the old path's Traefik serves the edge, so no Project's share carries
- * a route, which would be a second source for it.
- */
+/** A resolved union rendered for every Project it holds, the Node Agents' among them. */
 function deliver(
   input: Composing,
   resolved: ResolvedSet,
@@ -623,24 +616,14 @@ function deliver(
 ): Result<Delivered> {
   // A resolved set holds a Platform document that parsed.
   const platform = platformOf(input.platform);
-  const ledger = platform.handover;
+  // The Node Agents' Project declares nothing, so no fragment names it: every
+  // node runs an agent, so it is always delivered.
   const rendered = renderResolvedSet(resolved, {
     ...options,
-    routes: !platform.tiers.some(({ traefik }) =>
-      // A missing legacy list and an empty one hold no edge alike.
-      // Stryker disable next-line ArrayDeclaration
-      (ledger?.legacy ?? []).includes(traefik.slice(0, traefik.indexOf("/"))),
-    ),
-    // The Node Agents' Project declares nothing, so no fragment names it:
-    // every node runs an agent, so it is always the estate's, and the ledger
-    // hands it over like any other.
     projects: [
       ...resolved.projects.map(({ project }) => project),
       NODE_PROJECT,
-    ].filter(
-      (project) =>
-        ledger === undefined || ledger.estate?.includes(project) === true,
-    ),
+    ],
   });
   return rendered.ok
     ? {

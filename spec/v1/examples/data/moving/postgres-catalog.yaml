@@ -15,7 +15,7 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: postgres-catalog-d83cbeba5875
+  name: postgres-catalog-565e7844099d
   namespace: data-system
   labels:
     app.kubernetes.io/name: postgres-catalog
@@ -26,12 +26,12 @@ metadata:
 immutable: true
 data:
   catalog.json: |
-    {"admin":{"password":"postgres.password","path":"secret/data/platform/postgres","user":"postgres.user"},"connection":"postgres","databases":[{"data":"knowledge-platform-data","name":"knowledge-platform_db","owner":"knowledge-platform-owner"}],"host":"postgres.data-system.svc.cluster.local","port":5432}
+    {"admin":{"password":"password","path":"secret/data/data/postgres/catalog","user":"user"},"connection":"postgres","databases":[{"data":"knowledge-platform-data","name":"knowledge-platform_db","owner":"knowledge-platform-owner"}],"host":"postgres.data-system.svc.cluster.local","port":5432}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: postgres-catalog-d83cbeba5875
+  name: postgres-catalog-565e7844099d
   namespace: data-system
   labels:
     app.kubernetes.io/name: postgres-catalog
@@ -106,7 +106,7 @@ spec:
       volumes:
         - name: catalog
           configMap:
-            name: postgres-catalog-d83cbeba5875
+            name: postgres-catalog-565e7844099d
             items:
               - key: catalog.json
                 path: catalog.json
@@ -199,7 +199,7 @@ spec:
           volumes:
             - name: catalog
               configMap:
-                name: postgres-catalog-d83cbeba5875
+                name: postgres-catalog-565e7844099d
                 items:
                   - key: catalog.json
                     path: catalog.json

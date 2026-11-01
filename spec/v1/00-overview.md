@@ -175,9 +175,9 @@ the test-substrate measurement exists; it gates nothing in v1. Review date
 **2026-11-30**: co-testing still unstarted then is cut from planning, not
 extended. The named failure
 mode this rule exists to prevent is not collapse but partial completion with
-both delivery paths live, which is why adoption
-([chapter 60](60-setup.md#handing-over-one-project-at-a-time)) is to hand
-Projects over one at a time and retire the old path by a date.
+both delivery paths live, which is why adoption moved Projects one at a time
+until a single path delivered them all
+([chapter 60](60-setup.md#one-delivery-path)).
 
 Live-defect fixes ride independently of both scopes: the unpinned foundation
 charts and this repository's own unpinned CI are operational fixes that proceed
@@ -224,7 +224,7 @@ repository already uses between a chapter and an ADR.
 | [`16-dependencies.md`](16-dependencies.md) | dependency edges, the Stable Address, per-Process identity, derived network policy, the derivation map | drawn |
 | [`17-sign-in.md`](17-sign-in.md) | the `client` block, Sign-in Modes, what the edge derives from a Client, the `Client` object, client credentials and their placeholders | not yet |
 | [`20-resolved-deployment.md`](20-resolved-deployment.md) | the Resolved Deployment, the authority table in one place, the pinned input set including ClusterState, derived mechanics, the one capacity exception, the Reconcile Unit, publish-back | drawn |
-| [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, a Project's handover diff, coverage | drawn |
+| [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, coverage | drawn |
 | [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout | drawn |
 | [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Application contract changes, lock lifecycle | drawn |
 | [`55-delivery.md`](55-delivery.md) | delivery: rendered artifacts and pins, blue/green switchover, the Release Gate, held releases, migrations, release order, failure and undo, Moves | not yet |
@@ -236,7 +236,7 @@ over it:
 
 1. **Provenance**, no Deliverable has in-degree zero. An object reachable from no
    declaration is hand-written, and must become derived before its Project
-   hands over. This is what was violated seven ways over by
+   is adopted. This is what was violated seven ways over by
    `kb.jorisjonkers.dev`.
 2. **Single authority**, no field of a Deliverable has two declaring sites.
    Checked against the renderer's attribution table, not the diagram, because
@@ -359,8 +359,8 @@ through, with the deciding ADR named.
    - **Owner:** joris.
    - **Settled by:** one grading pass per field against the contention test,
      landed either as a decision in `docs/adr/model/` with a `normative:` pointer into
-     chapter 10, or as an explicit rejection with the live objects left on the old
-     path until their Project hands over.
+     chapter 10, or as an explicit rejection with the live objects left out of
+     the render until their Project declares them.
    - **Blocks:** approving chapter 10; the availability half of item 4.
 
 6. **Whether the composed union may span clusters** (chapter 40). The lock is
