@@ -41,7 +41,9 @@ is not hypothetical.
 There is no `version` in the set, and the render writes none. A pod does need
 to say which release it ran, so that it and its logs can be tied to a release,
 so composition puts `app.kubernetes.io/version` on every pod template and
-`Job` a Project's unit applies, from the release the pin moves to
+`Job` a Project's unit applies, from the release that last changed its
+Application: the release the pin moves to for an Application it changed, and
+the one the lock recorded for one it left alone
 ([0099](0099-a-rollout-is-a-github-deployment-driven-by-the-clusters-events.md)).
 It stays out of the render for the reason the Rollout does: the release is the
 fragment's claim about itself, and in the render it would make every release a
@@ -133,7 +135,11 @@ first render rather than after.
 - `component` carries `runtime`, so a Process changing runtime rewrites a
   label; harmless, and it means the label tracks a declaration rather than a
   guess, paid by nobody.
-- `app.kubernetes.io/version` moves on every pin move, so a release that
-  changes only an object without pods, a policy or a route, still rolls its
-  pods. Paid on each such release, in restarts, for pods that always say
-  which release they ran.
+- `app.kubernetes.io/version` moves only for an Application whose revision
+  moved, so a release that changes one Application restarts no other. A
+  label that moved on every pod restarted the Secret Store for a change
+  elsewhere in its Project, and it came back sealed
+  ([#791](https://github.com/JorisJonkers-dev/deploy-kit/issues/791)). A pod
+  then says which release last changed it, not the newest release of its
+  Project, and the lock carries one more map to say it; paid by a reader who
+  wants the Project's newest release, who reads the lock.

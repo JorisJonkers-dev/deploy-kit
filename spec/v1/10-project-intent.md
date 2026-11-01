@@ -523,7 +523,8 @@ fixed: the rewrite is Flagger's, on an object the render never writes.
 
 `app.kubernetes.io/version` is not in the set, and the render never writes it.
 Composition puts it on every pod template and every `Job` a Project's unit
-applies, set to the release its pin moves to, in the index the published
+applies, set to the release that last changed its Application, the release its
+pin moves to for one it changed, in the index the published
 artifact carries
 ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)), so a pod, and every
 line it logs, says which release it ran. It is never a selector: it moves with

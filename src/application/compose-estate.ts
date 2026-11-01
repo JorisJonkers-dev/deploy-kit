@@ -699,19 +699,57 @@ function retriedFiles(
 /**
  * A moving Project's artifact as it is published: its share of the rendered
  * tree, with its unit's index patched to label every pod it applies with the
- * release the pin moves to (spec/v1/55-delivery.md#rendered-artifacts-and-pins).
- * The label travels inside the artifact, so the one fetch that brings the new
- * image brings the label with it; written on the pin source instead, Flux could
- * apply the old artifact under the new label first. The content hash still
- * covers the share alone, so a release that renders nothing new moves no pin.
+ * release the pin moves to, save an Application's whose render that release
+ * left alone, which keeps the release that last changed it
+ * (spec/v1/55-delivery.md#rendered-artifacts-and-pins). A label that moved on
+ * an unchanged pod template would restart it for nothing. The label travels
+ * inside the artifact, so the one fetch that brings the new image brings the
+ * label with it; written on the pin source instead, Flux could apply the old
+ * artifact under the new label first. The content hash still covers the share
+ * alone, so a release that renders nothing new moves no pin.
  */
 const releasedFiles = (
   files: readonly RenderedFile[],
   project: string,
   version: string,
+  released: Readonly<Record<string, string>>,
   serialize: Serializer,
 ): readonly RenderedFile[] =>
-  patchedFiles(files, project, versionPatches(version), serialize);
+  patchedFiles(
+    files,
+    project,
+    [
+      ...versionPatches(version),
+      // Later patches win, so each Application left alone keeps its label.
+      ...Object.entries(released)
+        .filter(([, kept]) => kept !== version)
+        .sort(([a], [b]) => byText(a, b))
+        .flatMap(([application, kept]) => versionPatches(kept, application)),
+    ],
+    serialize,
+  );
+
+/**
+ * The release that last changed each of a Project's Applications: the one it
+ * is released at where its revision moved, or where the previous lock records
+ * none for it, and otherwise what the previous lock says, or, for a lock
+ * written before it said, the release that lock records for the Project,
+ * which labelled all its pods.
+ */
+function releasedOf(
+  project: ResolvedProject,
+  version: string,
+  previous: CompositionLockDocument["spec"]["fragments"][string] | undefined,
+): Record<string, string> {
+  return Object.fromEntries(
+    project.applications.map(({ id, revision }) => [
+      id,
+      previous !== undefined && previous.revisions[id] === revision
+        ? (previous.released?.[id] ?? previous.version)
+        : version,
+    ]),
+  );
+}
 
 function composition(
   input: Composing,
@@ -724,6 +762,16 @@ function composition(
   const held = (name: string, annotation: string): boolean =>
     annotation in (input.pins[name]?.annotations ?? {});
   const published = platformOf(input.platform).bootstrap.flux.artifacts;
+  const earlier = input.previous?.lock.spec.fragments ?? {};
+  // A Project whose pin stays relabels nothing, so it keeps what it recorded.
+  const releases = new Map(
+    projects.map((project) => {
+      const before = earlier[project.project];
+      const version = (candidates.get(project.project) as Fragment).manifest
+        .spec.version;
+      return [project.project, releasedOf(project, version, before)];
+    }),
+  );
   const artifacts = rendered.map(({ name, files: share }): ComposedArtifact => {
     const resolved = projects.find(({ project }) => project === name);
     const pin = input.pins[name];
@@ -746,7 +794,13 @@ function composition(
     return {
       name,
       files: labelled
-        ? releasedFiles(files, name, released.spec.version, options.serialize)
+        ? releasedFiles(
+            files,
+            name,
+            released.spec.version,
+            releases.get(name) ?? {},
+            options.serialize,
+          )
         : files,
       contentHash,
       repository: artifactRepositoryOf(published.repository, name),
@@ -766,17 +820,39 @@ function composition(
     };
   });
 
-  const locked = (fragment: Fragment, revisions: Record<string, string>) => ({
+  const locked = (
+    fragment: Fragment,
+    revisions: Record<string, string>,
+    released?: Record<string, string>,
+  ) => ({
     ref: fragment.ref,
     project: fragment.manifest.spec.project,
     repository: fragment.manifest.metadata.repository,
     schemaVersion: fragment.manifest.spec.schemaVersion,
     version: fragment.manifest.spec.version,
     revisions,
+    ...(released === undefined ? {} : { released }),
     sourceSha: fragment.manifest.metadata.sourceSha,
     inputsSha: fragment.manifest.spec.inputsSha,
   });
   type Locked = ReturnType<typeof locked>;
+  // A Project whose pin moved relabelled its pods as derived; one whose pin
+  // stayed relabelled nothing, so its pods keep what the previous lock says.
+  const moved = new Set(
+    artifacts.filter(({ moves }) => moves).map(({ name }) => name),
+  );
+  const keptReleases = (
+    project: string,
+    applications: readonly { readonly id: string }[],
+  ): Record<string, string> => {
+    const before = earlier[project];
+    if (moved.has(project) || before === undefined)
+      return releases.get(project) ?? {};
+    return (
+      before.released ??
+      Object.fromEntries(applications.map(({ id }) => [id, before.version]))
+    );
+  };
   const entries: [string, Locked][] = [
     [input.platform.manifest.spec.project, locked(input.platform, {})],
     ...projects.map(({ project, applications }): [string, Locked] => [
@@ -786,6 +862,7 @@ function composition(
         Object.fromEntries(
           applications.map(({ id, revision }) => [id, revision]),
         ),
+        keptReleases(project, applications),
       ),
     ]),
   ];
