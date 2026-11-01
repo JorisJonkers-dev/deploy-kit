@@ -242,8 +242,8 @@ match the whole value and cover the empty string, tilde, null, the boolean words
 (\texttt{y}, \texttt{yes}, \texttt{on} and their opposites), integers in every
 YAML~1.1 base, floats and timestamps.
 YAML~1.1 rules are deliberate: Kubernetes tooling decodes through
-\texttt{sigs.k8s.io/yaml}, which follows YAML~1.1 implicit types, and the production
-implementation writes with \texttt{version: "1.1"} (\path{src/infrastructure/serializer.ts}).
+\texttt{sigs.k8s.io/yaml}, which follows YAML~1.1 implicit types, and the oracles are
+written under the same rules.
 A value such as \texttt{on} would reach the API server as a boolean if written as a plain scalar;
 unnecessary quoting costs only bytes. The string \texttt{50} is written \texttt{"50"}.
 Values a YAML reader would misread are also quoted: those opening on an indicator
@@ -324,7 +324,7 @@ Each of the five choices produced a value beyond the reach of model-level tests.
 These values are now derived once during resolution and only written by templates.
 The trees remained identical byte for byte, except that a redirect step previously
 named as a security profile by \texttt{middlewareName} is now named for its Route, as
-in the production implementation.
+in the oracles.
 
 \begin{table}[!htbp]
 \centering
