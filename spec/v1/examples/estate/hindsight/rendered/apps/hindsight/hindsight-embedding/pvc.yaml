@@ -1,0 +1,19 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tei-embedding-models
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: tei-embedding
+    app.kubernetes.io/instance: tei-embedding
+    app.kubernetes.io/part-of: hindsight-embedding
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 8Gi

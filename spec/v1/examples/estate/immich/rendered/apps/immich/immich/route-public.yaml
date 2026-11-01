@@ -1,0 +1,32 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: immich-public
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/part-of: immich
+    app.kubernetes.io/managed-by: deploy-kit
+  annotations:
+    kubernetes.io/ingress.class: traefik-public
+    external-dns.alpha.kubernetes.io/target: ingress.jorisjonkers.dev
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: Host(`immich.jorisjonkers.dev`) && PathPrefix(`/`)
+      priority: 999
+      middlewares:
+        - name: forward-auth
+          namespace: edge-system
+        - name: security-headers
+          namespace: edge-system
+      services:
+        - name: immich-server
+          namespace: immich-system
+          port: 2283
+  tls:
+    certResolver: public-frankfurt

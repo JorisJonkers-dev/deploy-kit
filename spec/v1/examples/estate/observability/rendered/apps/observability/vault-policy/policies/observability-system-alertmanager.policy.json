@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/platform/observability": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/platform/observability": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

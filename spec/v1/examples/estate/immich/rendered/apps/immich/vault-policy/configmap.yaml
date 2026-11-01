@@ -1,0 +1,31 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-policy-526b983f5235
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: vault-policy
+    app.kubernetes.io/instance: vault-policy
+    app.kubernetes.io/part-of: vault-policy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  immich-system-immich-postgres-backup.policy.json: |
+    {"path":{"secret/data/immich/immich-postgres/backup":{"capabilities":["read"]},"secret/metadata/immich/immich-postgres/backup":{"capabilities":["read"]}}}
+  immich-system-immich-postgres-backup.role.json: |
+    {"bound_service_account_names":["immich-postgres-backup"],"bound_service_account_namespaces":["immich-system"],"token_policies":["immich-system-immich-postgres-backup"]}
+  immich-system-immich-postgres-catalog.policy.json: |
+    {"path":{"database/roles/immich-data":{"capabilities":["create","read","update"]},"database/roles/immich-owner":{"capabilities":["create","read","update"]},"secret/data/immich/immich-postgres/catalog":{"capabilities":["read"]},"secret/metadata/immich/immich-postgres/catalog":{"capabilities":["read"]}}}
+  immich-system-immich-postgres-catalog.role.json: |
+    {"bound_service_account_names":["immich-postgres-catalog"],"bound_service_account_namespaces":["immich-system"],"token_policies":["immich-system-immich-postgres-catalog"]}
+  immich-system-immich-postgres.policy.json: |
+    {"path":{"secret/data/platform/media/immich-postgres":{"capabilities":["read"]},"secret/metadata/platform/media/immich-postgres":{"capabilities":["read"]}}}
+  immich-system-immich-postgres.role.json: |
+    {"bound_service_account_names":["immich-postgres"],"bound_service_account_namespaces":["immich-system"],"token_policies":["immich-system-immich-postgres"]}
+  immich-system-immich-server.policy.json: |
+    {"path":{"database/creds/immich-owner":{"capabilities":["read"]}}}
+  immich-system-immich-server.role.json: |
+    {"bound_service_account_names":["immich-server"],"bound_service_account_namespaces":["immich-system"],"token_policies":["immich-system-immich-server"]}

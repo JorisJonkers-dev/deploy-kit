@@ -1,0 +1,110 @@
+# deploy-kit Project Intent for karakeep: the bookmark service, the headless chrome it crawls
+# with, and the meilisearch index it searches, each built by this repository to run as a numeric
+# non-root user under a read-only root filesystem.
+#
+# karakeep's state is in Garage: assets through its S3 store, and both SQLite databases restored
+# on start and streamed back by Litestream. Its /data is scratch, so it may run on any node its
+# image does. Only the search index has a volume, and karakeep can rebuild it.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: karakeep # the namespace derives: karakeep-system
+owner: joris
+
+applications:
+  - id: karakeep
+    exposure:
+      - name: public
+        host: karakeep.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: karakeep, surface: http }
+    processes:
+      - name: karakeep
+        lifecycle: application
+        image: karakeep # this repository's image; the lock resolves digest, uid and gid
+        runtime: none
+        provides:
+          http: 3000
+        dependsOn:
+          - { application: karakeep-chrome, surface: cdp }
+          - { application: karakeep-search, surface: http }
+        secrets:
+          # The session secret, the meilisearch key and the LLM key, where the old path keeps them.
+          - path: secret/data/platform/karakeep
+            keys: [nextauth_secret, meili_master_key, mistral_api_key]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+          # karakeep's own Garage key, scoped to its buckets. Garage's key id is GK and 24 hex
+          # digits, the first 24 of key_hex.
+          - path: secret/data/karakeep-system/garage
+            keys:
+              - name: s3.key_hex
+                generate: { bytes: 16, encoding: hex }
+              - name: s3.secret
+                generate: { bytes: 32, encoding: hex }
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        placement:
+          memory: 2Gi
+          cpu: 1000m
+          arch: [amd64] # karakeep's image is published for amd64 only
+        # The restored databases, and the workers' downloads.
+        writablePaths: [/data, /tmp]
+        probes:
+          readiness: { path: /api/health, port: 3000 }
+          liveness: { path: /api/health, port: 3000 }
+        startupBudget: 300s # restoring the databases and migrating come first
+        # Litestream allows one writer per replica; a second pod would fork the databases.
+        cutover: interrupted
+
+  - id: karakeep-chrome
+    processes:
+      - name: karakeep-chrome
+        lifecycle: application
+        image: karakeep-chrome
+        runtime: none
+        provides:
+          cdp: 9222
+        placement:
+          memory: 2Gi
+          cpu: 1000m
+        writablePaths: [/tmp]
+        probes:
+          readiness: { tcp: 9222 }
+          liveness: { tcp: 9222 }
+        startupBudget: 120s
+        cutover: continuous # karakeep reconnects to a new browser on its own
+
+  - id: karakeep-search
+    processes:
+      - name: karakeep-search
+        lifecycle: application
+        image: karakeep-search # meilisearch
+        runtime: none
+        provides:
+          http: 7700
+        secrets:
+          - path: secret/data/platform/karakeep
+            keys: [meili_master_key]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        placement:
+          memory: 1Gi
+          cpu: 500m
+        writablePaths: [/tmp]
+        probes:
+          readiness: { path: /health, port: 7700 }
+          liveness: { path: /health, port: 7700 }
+        startupBudget: 150s
+        cutover: interrupted # one pod on a ReadWriteOnce index
+        volumes:
+          - claim: search-data
+            mountAt: /meili_data
+            size: 20Gi
+            durability: reconstructible # karakeep reindexes every bookmark into it

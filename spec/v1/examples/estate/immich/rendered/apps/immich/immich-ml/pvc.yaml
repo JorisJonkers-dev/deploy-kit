@@ -1,0 +1,19 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ml-cache
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-ml
+    app.kubernetes.io/instance: immich-ml
+    app.kubernetes.io/part-of: immich-ml
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi

@@ -341,8 +341,11 @@ test("every rendered kind is a column of the deliverables matrix", () => {
   // address pools it stands for.
   const perNode = new Set(["IPAddressPool", "L2Advertisement"]);
   const kinds = new Set<string>();
-  for (const file of walk(join(spec, "examples")).filter((f) =>
-    f.endsWith(".yaml"),
+  // Only a file of Kubernetes objects names a rendered kind: an Application's
+  // own config file beside its project file may carry a `kind` of its own, as
+  // kube-state-metrics' CustomResourceState does, and is no Deliverable.
+  for (const file of walk(join(spec, "examples")).filter(
+    (f) => f.endsWith(".yaml") && /^apiVersion: /m.test(read(f)),
   ))
     for (const m of read(file).matchAll(/^kind: (\w+)$/gm))
       kinds.add(m[1] ?? "");

@@ -1,0 +1,238 @@
+# deploy-kit Project Intent for the delivery machinery: the Applications that perform a switch and
+# are never switched by one, and the ClusterState Collector and the Reporter beside them. The
+# Platform document names Flagger and the Release Gate in `delivery.machinery`, the gate in
+# `delivery.gate` and the Reporter in `delivery.reporter`, so this file is the one project the
+# platform owns outright
+# (deploy-kit spec/v1/14-platform-intent.md#delivery-policy). Its examples/delivery is this file's
+# model.
+#
+# Flagger and the Release Gate answer `continuous`: they keep serving while they cut over. A gate
+# cannot gate its own release and nothing gates Flagger's, so each derives a rolling switchover
+# (deploy-kit spec/v1/55-delivery.md#the-release-gate).
+#
+# All four call the Kubernetes API, which no other Process of the estate does. Each declares what
+# it asks and why, in `api`, and the Platform document admits the four by name in
+# `apiAccess.holders`; the render derives each one's ClusterRole, its binding and its token from
+# that (deploy-kit spec/v1/16-dependencies.md#kubernetes-api-access-is-declared-and-admitted).
+#
+# The Vault policy job this repository also builds is not declared here: it is derived, from the
+# Platform document's `policyJob` (deploy-kit spec/v1/14-platform-intent.md#the-vault-policy-job).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: delivery # the namespace derives: delivery-system
+owner: joris
+
+applications:
+  - id: flagger
+    processes:
+      - name: flagger
+        lifecycle: application
+        image: flagger # a third-party image; the lock resolves digest, uid and gid
+        runtime: none
+        provides:
+          http: 8080
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        writablePaths: [/tmp]
+        # Flagger asks the Release Gate its three questions. This is the one edge to the gate, so
+        # the gate's derived policy admits Flagger and nobody else.
+        dependsOn:
+          - { application: release-gate, surface: http }
+        api:
+          reason: >-
+            Flagger switches every blue-green Process, so it scales its Deployment, generates its
+            Services and copies, and records the Canary
+          rules:
+            - group: flagger.app
+              objects: [canaries, canaries/status]
+              verbs: [get, list, watch, update, patch]
+            # Flagger lists both at start and exits when it cannot (2026-10-14:
+            # "metrictemplates.flagger.app is forbidden: ... cannot list resource
+            # \"metrictemplates\""). It reads them, never writes them.
+            - group: flagger.app
+              objects: [metrictemplates, alertproviders]
+              verbs: [get, list, watch]
+            # No `delete` on anything: what Flagger makes it makes as the Canary's own, and the
+            # cluster collects it with the Canary. A verb a running Flagger turns out to need is
+            # added here with the refusal that shows it.
+            - group: apps
+              objects: [deployments]
+              verbs: [get, list, watch, create, update, patch]
+            - group: autoscaling
+              objects: [horizontalpodautoscalers]
+              verbs: [get, list, watch, create, update, patch]
+            - group: core
+              objects: [services, configmaps]
+              verbs: [get, list, watch, create, update, patch]
+            # Reading a Secret a pod names is how Flagger learns it is excluded from
+            # configuration tracking; it copies none, so it writes none.
+            - group: core
+              objects: [secrets]
+              verbs: [get]
+            - group: core
+              objects: [events]
+              verbs: [create, update, patch]
+        probes:
+          readiness: { path: /healthz, port: 8080 }
+          liveness: { path: /healthz, port: 8080 }
+        startupBudget: 30s
+        cutover: continuous
+
+  - id: release-gate
+    # The gate serves each round of tending at /metrics, to the metrics stack alone
+    # (JorisJonkers-dev/delivery#22): a rolling Process, scraped through a ServiceMonitor over its
+    # own Service. The alerts are fleet-infra's `platform-release-gate` group.
+    observability:
+      scrape: { process: release-gate, surface: http, path: /metrics }
+    processes:
+      - name: release-gate
+        lifecycle: application
+        image: release-gate # built from this repository's Dockerfile
+        runtime: none # a static Go binary needs no Runtime Profile
+        provides:
+          http: 8080 # Flagger's webhooks; matches the default ADDR
+        placement:
+          memory: 64Mi
+          cpu: 25m
+        # The warmup after promotion crosses the internet to the edge, at a public address only;
+        # its checks during analysis reach each member by the member label instead.
+        egress:
+          to: internet
+          reason: >-
+            after promotion the gate requests a released Application's paths through each of its
+            public hostnames, so the request crosses the edge to the new primary and warms the
+            caches nearest the cluster
+        api:
+          reason: >-
+            the Release Gate answers Flagger from what the cluster holds, so it reads each gated
+            Application's inputs, Canaries, Deployments, Jobs and pods; it finds the gated
+            Applications by listing ConfigMaps, keeps each one's release record in a ConfigMap of
+            its own in its own namespace, so it writes ConfigMaps nowhere else, unsuspends the migration Jobs it starts, and deletes a gated Application's
+            Vault sync objects of an older revision once it serves the new one
+          rules:
+            - group: core
+              objects: [configmaps]
+              verbs: [get, list]
+            # Every release record is in the gate's own namespace (JorisJonkers-dev/delivery#21).
+            - group: core
+              objects: [configmaps]
+              verbs: [create, update]
+              scope: namespace
+            - group: core
+              objects: [pods]
+              verbs: [list]
+            - group: apps
+              objects: [deployments]
+              verbs: [get]
+            - group: batch
+              objects: [jobs]
+              verbs: [list, patch]
+            - group: flagger.app
+              objects: [canaries]
+              verbs: [get]
+            - group: secrets.hashicorp.com
+              objects: [vaultauths, vaultstaticsecrets, vaultdynamicsecrets]
+              verbs: [list, delete]
+        probes:
+          readiness: { path: /readyz, port: 8080 }
+          liveness: { path: /healthz, port: 8080 }
+        startupBudget: 10s
+        cutover: continuous
+
+  # The ClusterState Collector: not machinery, since it switches nothing, so it is not in
+  # `delivery.machinery`. It captures on its own interval and holds no state, so stopping it for
+  # a release costs one capture: `interrupted`.
+  - id: collector
+    processes:
+      - name: collector
+        lifecycle: application
+        image: collector # built from this repository's Dockerfile
+        runtime: none
+        provides:
+          http: 8080 # its probes; nothing calls it
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        api:
+          reason: >-
+            the Collector captures where each bound claim and each rendered pod is, so it lists the
+            three kinds that say so, cluster-wide, and writes nothing
+          rules:
+            - group: core
+              objects: [persistentvolumes, persistentvolumeclaims, pods]
+              verbs: [get, list]
+        # Its GitHub App: the one credential that may write cluster-state.yml to the Estate
+        # repository. Delivered as variables, which is the delivery the render spells today.
+        secrets:
+          - path: secret/data/delivery-system/collector
+            keys: [app-id, installation-id, private-key]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        probes:
+          readiness: { path: /readyz, port: 8080 }
+          # Whether a capture succeeded within twice its interval: a Collector that stopped
+          # succeeding is restarted.
+          liveness: { path: /fresh, port: 8080 }
+        startupBudget: 10s
+        cutover: interrupted
+
+  # The Reporter: keeps every Rollout's GitHub Deployment current, stage by stage, as the cluster
+  # moves the release (deploy-kit spec/v1/55-delivery.md#rollouts). Not machinery either: it
+  # reports and decides nothing. The Platform document names it in `delivery.reporter`, which
+  # has to be an Application of this file, the one that declares the Release Gate, with a Process
+  # that provides `http`: that surface is where Flux's notification controller posts every event
+  # about a unit, and the one peer its derived policy admits.
+  - id: reporter
+    processes:
+      - name: reporter
+        lifecycle: application
+        image: reporter # built from this repository's Dockerfile
+        runtime: none
+        provides:
+          http: 8080 # Flux's events, at /flux, and its probes
+        # Each release's warmup is the Release Gate's to record, so a Rollout ends on what the
+        # gate's GET /releases says (deploy-kit spec/v1/55-delivery.md#the-release-gate).
+        dependsOn:
+          - { application: release-gate, surface: http }
+        placement:
+          memory: 64Mi
+          cpu: 10m
+        api:
+          reason: >-
+            the Reporter reads each Project's unit and the source it is pinned by, the Canaries
+            the unit applied, and a settled member's Deployment and its primary, to tell where
+            the release stands, and writes nothing to the cluster
+          rules:
+            - group: kustomize.toolkit.fluxcd.io
+              objects: [kustomizations]
+              verbs: [list]
+            - group: source.toolkit.fluxcd.io
+              objects: [ocirepositories]
+              verbs: [get]
+            - group: flagger.app
+              objects: [canaries]
+              verbs: [get]
+            - group: apps
+              objects: [deployments]
+              verbs: [get]
+        # Its GitHub App: deployments write and nothing else, on every repository that releases
+        # to the estate. Delivered as variables, like the Collector's.
+        secrets:
+          - path: secret/data/delivery-system/reporter
+            keys: [app-id, installation-id, private-key]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        probes:
+          readiness: { path: /readyz, port: 8080 }
+          # Whether a pass succeeded within twice its interval: a Reporter that stopped
+          # succeeding is restarted.
+          liveness: { path: /fresh, port: 8080 }
+        startupBudget: 10s
+        # It holds nothing a restart loses: it reads where every Rollout stands again.
+        cutover: interrupted

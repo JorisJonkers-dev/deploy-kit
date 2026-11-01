@@ -1,0 +1,43 @@
+# deploy-kit Project Intent for qBittorrent, built by this repository to run as deploy (1000:1000)
+# under a read-only root filesystem.
+#
+# Every peer connection runs through the platform's VPN, which forwards it a port for peers to
+# dial; the image moves its listen port onto that port as the provider changes it. Torrents seed
+# from the seeding library and complete into the media library's Completed folder, where the arr
+# apps import them.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: qbittorrent # the namespace derives: qbittorrent-system
+owner: joris
+
+applications:
+  - id: qbittorrent
+    processes:
+      - name: qbittorrent
+        lifecycle: application
+        image: qbittorrent
+        runtime: none
+        engine: files # keys the nightly copy of its config
+        provides:
+          http: 8080
+        vpn: { forwardedPort: true } # peers dial the port the provider forwards
+        libraries:
+          - { library: media, mountAt: /media/Completed, subPath: Completed, access: write }
+          - { library: seeding, mountAt: /media/Seeding, access: write }
+        placement:
+          memory: 2Gi
+          cpu: 1000m
+        writablePaths: [/tmp]
+        probes:
+          readiness: { path: /, port: 8080 }
+          liveness: { path: /, port: 8080 }
+        startupBudget: 180s
+        cutover: interrupted # one pod on its config's ReadWriteOnce claim
+        volumes:
+          - claim: qbittorrent-config
+            mountAt: /config
+            size: 5Gi
+            durability: recoverable # every torrent's resume data and the settings

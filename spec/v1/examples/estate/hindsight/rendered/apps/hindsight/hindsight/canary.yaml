@@ -1,0 +1,145 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: hindsight-api
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-api
+    app.kubernetes.io/instance: hindsight-api
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hindsight-api
+  progressDeadlineSeconds: 1200
+  service:
+    port: 8888
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: hindsight
+          process: hindsight-api
+          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          paths: /mcp/default /mcp/default/ /mcp/private /mcp/private/ /v1/default/banks/default/ /v1/default/banks/private/
+          readiness: /health
+          hostnames: hindsight-api.jorisjonkers.dev hindsight-private.jorisjonkers.dev
+          errorRate: 1%
+          latency: 1000ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: hindsight
+          process: hindsight-api
+          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          paths: /mcp/default /mcp/default/ /mcp/private /mcp/private/ /v1/default/banks/default/ /v1/default/banks/private/
+          readiness: /health
+          hostnames: hindsight-api.jorisjonkers.dev hindsight-private.jorisjonkers.dev
+          errorRate: 1%
+          latency: 1000ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: hindsight
+          process: hindsight-api
+          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          paths: /mcp/default /mcp/default/ /mcp/private /mcp/private/ /v1/default/banks/default/ /v1/default/banks/private/
+          readiness: /health
+          hostnames: hindsight-api.jorisjonkers.dev hindsight-private.jorisjonkers.dev
+          errorRate: 1%
+          latency: 1000ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: hindsight
+          process: hindsight-api
+          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          paths: /mcp/default /mcp/default/ /mcp/private /mcp/private/ /v1/default/banks/default/ /v1/default/banks/private/
+          readiness: /health
+          hostnames: hindsight-api.jorisjonkers.dev hindsight-private.jorisjonkers.dev
+          errorRate: 1%
+          latency: 1000ms
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: hindsight-worker
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-worker
+    app.kubernetes.io/instance: hindsight-worker
+    app.kubernetes.io/part-of: hindsight
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hindsight-worker
+  progressDeadlineSeconds: 1200
+  service:
+    port: 8889
+    targetPort: worker
+    portName: worker
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: hindsight
+          process: hindsight-worker
+          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          readiness: /health
+          errorRate: 1%
+          latency: 1000ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: hindsight
+          process: hindsight-worker
+          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          readiness: /health
+          errorRate: 1%
+          latency: 1000ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: hindsight
+          process: hindsight-worker
+          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          readiness: /health
+          errorRate: 1%
+          latency: 1000ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: hindsight
+          process: hindsight-worker
+          revision: sha256:23cd90fab07eb40c877170f878b00e2522ffdf9ca7c8349ba350f315f74a10dd
+          readiness: /health
+          errorRate: 1%
+          latency: 1000ms

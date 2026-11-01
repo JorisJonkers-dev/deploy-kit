@@ -1,0 +1,73 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: hindsight-control-plane
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: hindsight-control-plane
+    app.kubernetes.io/instance: hindsight-control-plane
+    app.kubernetes.io/part-of: hindsight-control-plane
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  provider: kubernetes
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hindsight-control-plane
+  progressDeadlineSeconds: 840
+  service:
+    port: 3000
+    targetPort: http
+    portName: http
+  analysis:
+    interval: 30s
+    iterations: 4
+    threshold: 3
+    webhooks:
+      - name: may-start
+        type: confirm-rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-start
+        metadata:
+          application: hindsight-control-plane
+          process: hindsight-control-plane
+          revision: sha256:681d1be36d52a614e48f9819919bece61b8ead0381184203a94b4fc38b7dadd9
+          paths: /
+          hostnames: hindsight.jorisjonkers.dev
+          errorRate: 1%
+          latency: 1000ms
+      - name: checks
+        type: rollout
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/checks
+        metadata:
+          application: hindsight-control-plane
+          process: hindsight-control-plane
+          revision: sha256:681d1be36d52a614e48f9819919bece61b8ead0381184203a94b4fc38b7dadd9
+          paths: /
+          hostnames: hindsight.jorisjonkers.dev
+          errorRate: 1%
+          latency: 1000ms
+      - name: may-promote
+        type: confirm-promotion
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/may-promote
+        metadata:
+          application: hindsight-control-plane
+          process: hindsight-control-plane
+          revision: sha256:681d1be36d52a614e48f9819919bece61b8ead0381184203a94b4fc38b7dadd9
+          paths: /
+          hostnames: hindsight.jorisjonkers.dev
+          errorRate: 1%
+          latency: 1000ms
+      - name: rollback
+        type: rollback
+        url: http://release-gate.delivery-system.svc.cluster.local:8080/rollback
+        metadata:
+          application: hindsight-control-plane
+          process: hindsight-control-plane
+          revision: sha256:681d1be36d52a614e48f9819919bece61b8ead0381184203a94b4fc38b7dadd9
+          paths: /
+          hostnames: hindsight.jorisjonkers.dev
+          errorRate: 1%
+          latency: 1000ms

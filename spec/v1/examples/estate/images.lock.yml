@@ -1,0 +1,531 @@
+# The images lock: every image the platform's own projects and policies name,
+# by digest, with the user it runs as (deploy-kit
+# spec/v1/20-resolved-deployment.md#the-images-lock). The Platform fragment
+# carries it beside platform.intent.yml; each application Project carries its
+# own share in its fragment.
+#
+# Resolved on 2026-10-07: each tag is the image fleet-infra runs today, or,
+# where fleet-infra runs none yet, the newest stable release, named as such.
+# `uid` and `gid` are the image's own numeric user, read from the pushed
+# image, or, where the image names its user or runs as root, the user it runs
+# as under the restricted posture. `version` is the software inside the image,
+# as its own release names it: the image's org.opencontainers.image.version
+# label where it carries one, otherwise the tag or the version environment
+# variable the pinned digest was resolved from (JorisJonkers-dev/workspace#140).
+#
+# The backup methods and the Vault policy job are built by
+# JorisJonkers-dev/delivery, each release writing them into its images lock
+# artifact; they are pinned here from delivery 0.9.2. The Platform document
+# names them, and a fragment is never resolved from another Project's share,
+# so this lock holds them rather than delivery's fragment.
+apiVersion: lock.jorisjonkers.dev/v1
+kind: ImagesLock
+schemaVersion: 1.0.0
+name: estate
+
+images:
+  # traefik chart 41.4.0, which fleet-infra runs, ships v3.7.12. The image
+  # runs as root by default; the chart runs it as 65532.
+  traefik:
+    repository: docker.io/library/traefik
+    digest: "sha256:9c2a54d87f76f5c2f5f2682c68394af92fb12c0a2686798d6462a3f84bd78eaf"
+    uid: 65532
+    gid: 65532
+    version: "v3.7.12"
+
+  # 1.21.4, which fleet-infra runs. The image starts as root and drops to its
+  # own `vault` user, uid 100 and gid 1000, which is what it runs as here.
+  vault:
+    repository: docker.io/hashicorp/vault
+    digest: "sha256:4e33b126a59c0c333b76fb4e894722462659a6bec7c48c9ee8cea56fccfd2569"
+    uid: 100
+    gid: 1000
+    version: "1.21.4"
+
+  # Not run by fleet-infra yet: 0.162.0, the newest stable release.
+  otel-collector:
+    repository: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib
+    digest: "sha256:39923a8e431bd1f57be82411999d389fcfe40857492e4365456d97a4c1f74be6"
+    uid: 10001
+    gid: 10001
+    version: "0.162.0"
+
+  # The observability Project's images, each at the digest its live pod runs
+  # in fleet-infra's `observability` namespace (read 2026-10-29). `uid` and
+  # `gid` are the image's own numeric user; where the image names its user
+  # (`nobody`, `pyroscope`) or runs as root (gatus, alloy, the checks
+  # sidecar's python), the user it runs as under the restricted posture.
+  prometheus-operator:
+    repository: quay.io/prometheus-operator/prometheus-operator
+    digest: "sha256:e52bb28fd41c98dd407c7a8cba8bdcfe7eabd7447e250afaf1fe7bb816dedbff"
+    uid: 65534
+    gid: 65534
+    version: "v0.93.1"
+  kube-state-metrics:
+    repository: registry.k8s.io/kube-state-metrics/kube-state-metrics
+    digest: "sha256:42cfe3723a5f058171c627537fb57a3ea0f26e4380fa18555a95cb1a1b4cfc5b"
+    uid: 65534 # nobody
+    gid: 65534
+    version: "v2.20.0"
+  alertmanager:
+    repository: quay.io/prometheus/alertmanager
+    digest: "sha256:690c7b525f4367aa91f73e2f91c632206d32e97c6384bdbf2fb7a861b420340d"
+    uid: 65534 # nobody
+    gid: 65534
+    version: "v0.34.0"
+  grafana-operator:
+    repository: ghcr.io/grafana/grafana-operator
+    digest: "sha256:e0fdb5b64f3ac485a6356646ae7fd252fe92db34c6e7675db5fab5b35e054edb"
+    uid: 65532
+    gid: 65532
+    version: "v5.25.0"
+  grafana:
+    repository: docker.io/grafana/grafana
+    digest: "sha256:2175aaa91c96733d86d31cf270d5310b278654b03f5718c59de12a865380a31f"
+    uid: 472
+    gid: 472
+    version: "12.3.1"
+  loki:
+    repository: docker.io/grafana/loki
+    digest: "sha256:44148ad243c07957113baea950ee5ba9b0c8eff8d7e38ff3cc1c0af705790945"
+    uid: 10001
+    gid: 10001
+    version: "3.6.11"
+  tempo:
+    repository: docker.io/grafana/tempo
+    digest: "sha256:65a5789759435f1ef696f1953258b9bbdb18eb571d5ce711ff812d2e128288a4"
+    uid: 10001
+    gid: 10001
+    version: "2.9.0"
+  pyroscope:
+    repository: docker.io/grafana/pyroscope
+    digest: "sha256:86a9ee7448487409ead8ada78789de7b78b739711b92b5d7224a1a54abf3eeb2"
+    uid: 10001 # pyroscope
+    gid: 10001
+    version: "2.3.1"
+  # The DaemonSet's v1.19.2; the image runs as root, and owns its own
+  # directories as 473.
+  alloy:
+    repository: docker.io/grafana/alloy
+    digest: "sha256:b8ec653c44235fbe910879145dac3597d66b0aaecf60bcbbe82580767771a839"
+    uid: 473
+    gid: 473
+    version: "v1.19.2"
+  # Live: docker.io/twinproduction/gatus, which runs as root.
+  gatus:
+    repository: docker.io/twinproduction/gatus
+    digest: "sha256:c5f210d095fa78e6efaa20ffeb14803f2ba4f10615e16a6d12087697149617f0"
+    uid: 65534
+    gid: 65534
+    version: "v5.36.0"
+  # The checks sidecar: kiwigrid's k8s-sidecar 2.5.0, the image fleet-infra's
+  # Grafana already runs to gather its data sources. The worked example's
+  # ghcr.io/jorisjonkers-dev/platform/gatus-checks was never built.
+  gatus-checks:
+    repository: docker.io/kiwigrid/k8s-sidecar
+    digest: "sha256:a6b3f707f883108376514489a94d6629109a327b2978e1d826cd104c4ca436df"
+    uid: 65534
+    gid: 65534
+    version: "2.5.0"
+
+  # v3.14.0-distroless, the prometheus kube-prometheus-stack 90.0.0 runs in
+  # fleet-infra.
+  prometheus:
+    repository: quay.io/prometheus/prometheus
+    digest: "sha256:50c707e96da5ade383cb1707790576480485e93de06aa60ad8802cb5f744bd0a"
+    uid: 65532
+    gid: 65532
+    version: "v3.14.0"
+
+  # v0.1.0. Its image names its user (`liquibase`); this is that user's number
+  # (JorisJonkers-dev/liquibase-runner#5 states it numerically in the image).
+  liquibase-runner:
+    repository: ghcr.io/jorisjonkers-dev/liquibase-runner
+    digest: "sha256:f19a170f0285818c105939da633053b5800a7cc5d1efb4f2d8211e040bb134af"
+    uid: 1001
+    gid: 1001
+    version: "0.1.0"
+
+  # Built by JorisJonkers-dev/delivery 0.2.0. Each runs as 65532:65532 by
+  # number; the backup CronJob runs a method as its plan's uid and gid.
+  vault-policy: # delivery 0.15.2, which accepts read on a transit key
+    repository: ghcr.io/jorisjonkers-dev/delivery/vault-policy
+    digest: "sha256:d834c4c8734f9d0a5d81494d097837550c7ce19ae3d269719c2e115c86022a19"
+    uid: 65532
+    gid: 65532
+    version: "0.15.2"
+  postgres-catalog: # delivery 0.15.0, which applies the database catalog
+    repository: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog
+    digest: "sha256:378f721245ba80ffe79fe43c9cdbbd29c76ebb865bbbccfe8561e91ef280e70c"
+    uid: 65532
+    gid: 65532
+    version: "0.15.0"
+  # The platform's VPN, run as root beside each attached Process.
+  gluetun:
+    repository: docker.io/qmcgaw/gluetun
+    digest: "sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027"
+    uid: 0
+    gid: 0
+    version: "v3.41.3"
+  file-backup:
+    repository: ghcr.io/jorisjonkers-dev/delivery/file-backup
+    digest: "sha256:ea816e11b0b78689ad5d00a2438d6d5ec4cddf08ceb2be67c45eb4688cbe774f"
+    uid: 65532
+    gid: 65532
+    version: "0.15.0"
+  postgres-backup:
+    repository: ghcr.io/jorisjonkers-dev/delivery/postgres-backup
+    digest: "sha256:6d8370f988bda1b17b3b35cc7d455ea7ecb8ec8f828a90af987492dda5704793"
+    uid: 65532
+    gid: 65532
+    version: "0.15.0"
+  rabbitmq-backup:
+    repository: ghcr.io/jorisjonkers-dev/delivery/rabbitmq-backup
+    digest: "sha256:1f940b83fa4d3d3e18ee08dfd09a76c60e249cee97ca31718aac981bcdf3b562"
+    uid: 65532
+    gid: 65532
+    version: "0.15.0"
+
+  # The data and mail projects' images, resolved on 2026-10-15 as the digest
+  # each live pod runs. fleet-infra still delivers both projects; these pin
+  # what their fragments compose against until each is handed over. Where the
+  # image starts as root and drops to its own user, the uid and gid are that
+  # user's, read with `id` in the live container.
+  postgres: # pgvector/pgvector:pg17
+    repository: docker.io/pgvector/pgvector
+    digest: "sha256:feb68f4f15446397d8cac7f4fe48fe4586de83160d1fc48b46283312d1a33966"
+    uid: 999
+    gid: 999
+    version: "17.10"
+  postgres-exporter: # v0.20.1, as `nobody`
+    repository: quay.io/prometheuscommunity/postgres-exporter
+    digest: "sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e"
+    uid: 65534
+    gid: 65534
+    version: "v0.20.1"
+  rabbitmq: # 4.2-management-alpine
+    repository: docker.io/library/rabbitmq
+    digest: "sha256:c7afed4c4ebebaea7fb32ac9d2db4c5ae1da8c535f13cf1fa0f77e3fa8a9959b"
+    uid: 100
+    gid: 101
+    version: "4.2.5"
+  valkey: # 8-alpine
+    repository: docker.io/valkey/valkey
+    digest: "sha256:1cb6b20b70d927560cc4cc5397b5f045e74aa603ff7696274778880bb6fadc75"
+    uid: 999
+    gid: 1000
+    version: "8.1.6"
+  valkey-exporter: # oliver006/redis_exporter v1.90.0-alpine, which names its user by number
+    repository: docker.io/oliver006/redis_exporter
+    digest: "sha256:136a6aac1258bcb41449272fe0de1d71e65f8cd69514efb2a410b2fd2239a3ba"
+    uid: 59000
+    gid: 59000
+    version: "v1.90.0"
+  # 1.10.0, which fleet-infra runs. The image names its user (`nodejs`); this is
+  # that user's number, read from the running pod.
+  outline:
+    repository: docker.io/outlinewiki/outline
+    digest: "sha256:cc9f1f05fd7cd316745b5fc9cfe01e681b1b4cf97705d1d812a5c778d7986cfd"
+    uid: 1001
+    gid: 1001
+    version: "1.10.0"
+  stalwart: # v0.16.20
+    repository: docker.io/stalwartlabs/stalwart
+    digest: "sha256:74ca4f7f6885fe302f38a99381f36a208547afce1033d8734d9e6d8d3eba7446"
+    uid: 2000
+    gid: 2000
+    version: "v0.16.20"
+  # 0.4.2. Its image names no user, so it ran as root on the old path; on the
+  # estate path it runs as stalwart's 2000, the pod's user.
+  stalwart-provisioner:
+    repository: ghcr.io/jorisjonkers-dev/stalwart-provisioner
+    digest: "sha256:124a9d73c246c1af9e52620b3ad337f28fb08c0faee0834450f6b572383b1b77"
+    uid: 0
+    gid: 0
+    version: "0.4.2"
+  # utility's two, the images fleet-infra runs today (read from the live pods on
+  # 2026-10-29). AdGuard's image names no user and runs as root on the old path;
+  # here it runs as 1000, the gid the old pods' fsGroup used, keeping only
+  # NET_BIND_SERVICE, for DNS on 53. headlamp's image names its user (`headlamp`); this is that user's
+  # number, as the old path's chart runs it.
+  adguard:
+    repository: docker.io/adguard/adguardhome
+    digest: "sha256:aba9e3bf0613be3ba3755e1fc311b126e2c24bec25e18b6483894a88283074f0"
+    uid: 1000
+    gid: 1000
+    version: "v0.107.79"
+  headlamp:
+    repository: ghcr.io/headlamp-k8s/headlamp
+    digest: "sha256:db3f0e0fc58d358d41daa3fe7fc852437552c7ee873c3645470f7b86a8e0db49"
+    uid: 100
+    gid: 101
+    version: "v0.45.0"
+  # The seeder (platform.intent.yml's seeder; deploy-kit
+  # spec/v1/14-platform-intent.md#the-seeder): Docker Hub's busybox 1.37.0, its
+  # multi-arch index, which runs as nobody. It copies adguard's seeded
+  # configuration onto its conf directory before each start, as the Process's
+  # own user. Pinned as deploy-kit's worked example pins it.
+  busybox:
+    repository: docker.io/library/busybox
+    digest: "sha256:a7dbc319b1438115a207e11930dc4bb3e643dcb3ec0bdd694bb36cd8fad289ec"
+    uid: 65534
+    gid: 65534
+    version: "1.37.0"
+  # The Node Agents (platform.intent.yml's nodeAgents), the images fleet-infra
+  # runs today: each digest is the imageID of every live pod of its agent, read
+  # 2026-10-29, so no node pulls anything at the handover. The device plugin,
+  # the card counters and the L4 speaker run as root, as the catalog's
+  # privileges need; the host metrics and the speaker's controller as the
+  # image's own user.
+  nvidia-device-plugin:
+    repository: nvcr.io/nvidia/k8s-device-plugin
+    digest: "sha256:a61ba9fd8efb82f3a79f877f7580e02c1e8e7593f62473644bc9c79e315c3312"
+    uid: 0
+    gid: 0
+    version: "v0.20.0"
+  dcgm-exporter:
+    repository: nvcr.io/nvidia/k8s/dcgm-exporter
+    digest: "sha256:613ab03c11d442fd960ff515f547e9921537454a712d08160bc8f677f89f1c35"
+    uid: 0
+    gid: 0
+    version: "4.6.0-4.8.3"
+  node-exporter:
+    repository: quay.io/prometheus/node-exporter
+    digest: "sha256:8c9bac11973b94b59be88d6e11fee4429aa743c8846cdc75d65b18db33f6a106"
+    uid: 65532
+    gid: 65532
+    version: "v1.12.1"
+  # MetalLB, which announces the LAN edge's pool, resolved on 2026-10-29 from
+  # the tags fleet-infra runs.
+  metallb-speaker:
+    repository: quay.io/metallb/speaker
+    digest: "sha256:c6a5b25b2e1fba610a57b2db4bb8141d7c133569d561a8cc29e38ca5113efbc4"
+    uid: 0
+    gid: 0
+    version: "v0.15.3"
+  metallb-controller:
+    repository: quay.io/metallb/controller
+    digest: "sha256:6698ccc54c380913816ed1fd0758637ec87dd79da419c4ab170a2c26c158ab89"
+    uid: 65534
+    gid: 65534
+    version: "v0.15.3"
+
+  # arr's share, from its fragment
+  bazarr:
+    repository: "ghcr.io/jorisjonkers-dev/bazarr"
+    digest: "sha256:53729902f2c9262a55c3090337a4ed5d84f7b74b2cd524843313dcb2551aede2"
+    uid: 1000
+    gid: 1000
+    version: "1.6.1"
+  radarr:
+    repository: "ghcr.io/jorisjonkers-dev/radarr"
+    digest: "sha256:8d3d07af7e0609ec436ff53410f36a37273cd1989b068bd3a44fecf921ec1f48"
+    uid: 1000
+    gid: 1000
+    version: "6.3.0.10514-ls314"
+  sonarr:
+    repository: "ghcr.io/jorisjonkers-dev/sonarr"
+    digest: "sha256:53210e41032cdaabb09634aafed4de734de3a95222be669c142fa621f09689c6"
+    uid: 1000
+    gid: 1000
+    version: "4.0.19.2979-ls322"
+
+  # auth's share, from its fragment
+  auth-api:
+    repository: "ghcr.io/jorisjonkers-dev/auth-api/auth-api"
+    digest: "sha256:01869b5e2104ea57495649c65faf9cad24e8592d75093353d3d0fe0a13556877"
+    uid: 65532
+    gid: 65532
+    version: "0.21.4"
+  auth-ui:
+    repository: "ghcr.io/jorisjonkers-dev/auth-ui"
+    digest: "sha256:614789bd111466b3abc882947dbdc2c6fd0e3b66e6553979c9f1395feb3adddd"
+    uid: 101
+    gid: 101
+    version: "0.7.0"
+
+  # delivery's share, from its fragment
+  collector:
+    repository: "ghcr.io/jorisjonkers-dev/delivery/collector"
+    digest: "sha256:f3be77dda314f541c4604e9a46de27656360dcb3c7f975816176ae8845ae541b"
+    uid: 65532
+    gid: 65532
+    version: "0.16.1"
+  flagger:
+    repository: "ghcr.io/fluxcd/flagger"
+    digest: "sha256:15b372d35012f9ae450f9030bc82217369c0aee082ed5a5225830010cf972b2b"
+    uid: 65534
+    gid: 65534
+    version: "1.45.0"
+  release-gate:
+    repository: "ghcr.io/jorisjonkers-dev/delivery/release-gate"
+    digest: "sha256:a2ec9c6d5f3ab641e1e260ac52bbaab55e52fe2777e2c951f2ee1383b50695f4"
+    uid: 65532
+    gid: 65532
+    version: "0.16.1"
+  reporter:
+    repository: "ghcr.io/jorisjonkers-dev/delivery/reporter"
+    digest: "sha256:e22a7aa26e440521dc6ca9337512011c9afc588e1e5044ac9ca318df0caebffa"
+    uid: 65532
+    gid: 65532
+    version: "0.16.1"
+
+  # estate-dashboard's share, from its fragment
+  estate-dashboard:
+    repository: "ghcr.io/jorisjonkers-dev/estate-dashboard"
+    digest: "sha256:5b4a5192db0a39cd0ed0b4c43c4241443903b1551395ee2ef56d0f0182231db4"
+    uid: 65532
+    gid: 65532
+    version: "0.10.0"
+
+  # findability-explorer's share, from its fragment
+  findability-explorer:
+    repository: "ghcr.io/jorisjonkers-dev/findability-explorer"
+    digest: "sha256:5ae629dbde7a985fe80da4221fe83680ad61a5f3e0d374646649bdba62c70a83"
+    uid: 65532
+    gid: 65532
+    version: "1.11.1"
+
+  # grimoire's share, from its fragment
+  grimoire:
+    repository: "ghcr.io/jorisjonkers-dev/grimoire"
+    digest: "sha256:462efa597677b2bf8b795d42551690b86262623c87525be819fd6aeee7faa992"
+    uid: 65532
+    gid: 65532
+    version: "1.5.0"
+
+  # hindsight's share, from its fragment
+  hindsight:
+    repository: "ghcr.io/jorisjonkers-dev/hindsight"
+    digest: "sha256:627d1cf183685a64011a54fc1ff117dd34f31c5c65e2db669aeaa32b5bef0528"
+    uid: 1000
+    gid: 1000
+    version: "0.9.2"
+  hindsight-control-plane:
+    repository: "ghcr.io/jorisjonkers-dev/hindsight-control-plane"
+    digest: "sha256:788b7e87d3f8886a00f163da8f0eaeb605e2d99c627b2ce65c1e4aff2b77811c"
+    uid: 1000
+    gid: 1000
+    version: "0.9.2"
+  hindsight-tei:
+    repository: "ghcr.io/jorisjonkers-dev/hindsight-tei"
+    digest: "sha256:9f22e6be4f59ba5137771051026c72e67e55e613dc1d531232fab109274e2a15"
+    uid: 1000
+    gid: 1000
+    version: "cpu-1.8.3"
+
+  # home-portal's share, from its fragment
+  home-portal:
+    repository: "ghcr.io/jorisjonkers-dev/home-portal"
+    digest: "sha256:dccc674b0d273f48371609ff686671c57f59742fec9c1514e99b8fcb04fe2363"
+    uid: 101
+    gid: 101
+    version: "0.15.0"
+
+  # immich's share, from its fragment
+  immich-ml:
+    repository: "ghcr.io/jorisjonkers-dev/immich-ml"
+    digest: "sha256:dbc0978344d9dd4bdfc3baf6ce938f34bbbf44bb34b157686bee951e40b41fad"
+    uid: 1000
+    gid: 1000
+    version: "v2.7.5"
+  immich-postgres:
+    repository: "ghcr.io/jorisjonkers-dev/immich-postgres"
+    digest: "sha256:c6efbd4a5f2d125f899d2fe965fe312bebbab2d8fda9e120e007f047a117f279"
+    uid: 70
+    gid: 70
+    version: "14-vectorchord0.4.3-pgvector0.8.1-pgvectors0.2.0"
+  immich-server:
+    repository: "ghcr.io/jorisjonkers-dev/immich-server"
+    digest: "sha256:27481bd56870bca87008370925d7bf66a212da803980aa975d60f8383971fe2a"
+    uid: 1000
+    gid: 1000
+    version: "v2.7.5"
+
+  # jellyfin's share, from its fragment
+  jellyfin:
+    repository: "ghcr.io/jorisjonkers-dev/jellyfin"
+    digest: "sha256:038275dfc03ca4ef53dd1c16e77b1b087ab31d277e04781acf200782cd6a3fe4"
+    uid: 1000
+    gid: 1000
+    version: "12.3"
+
+  # jellyseerr's share, from its fragment
+  jellyseerr:
+    repository: "ghcr.io/jorisjonkers-dev/jellyseerr"
+    digest: "sha256:46cec9f9d4649d5eb354eb38f7b5bdcd8a733c5a8ed5f9da995e3038bbaeefeb"
+    uid: 1000
+    gid: 1000
+    version: "v3.5.0"
+
+  # karakeep's share, from its fragment
+  karakeep:
+    repository: "ghcr.io/jorisjonkers-dev/karakeep"
+    digest: "sha256:5feed144295ccba34e0b7a0732c6fb770c13131950d59709c7bb9b704a8c0071"
+    uid: 1000
+    gid: 1000
+    version: "0.33.2"
+  karakeep-chrome:
+    repository: "ghcr.io/jorisjonkers-dev/karakeep-chrome"
+    digest: "sha256:ac90cce5edd783a2482c1df2eed3f7413ca54a07342ece65238b17e81b60c630"
+    uid: 65534
+    gid: 65534
+    version: "151.0.7922.47"
+  karakeep-search:
+    repository: "ghcr.io/jorisjonkers-dev/karakeep-search"
+    digest: "sha256:2ad67e69c48df491a672a20fe719d8be1a02417206854607d7166b7f915a984b"
+    uid: 1000
+    gid: 1000
+    version: "v1.55.0"
+
+  # n8n's share, from its fragment
+  n8n:
+    repository: "ghcr.io/jorisjonkers-dev/n8n"
+    digest: "sha256:eeefa67c406d0fad0d70f323e3f73348852e041b77b93b0c576b55f8be42f956"
+    uid: 1000
+    gid: 1000
+    version: "2.45.2"
+
+  # overleaf's share, from its fragment
+  overleaf:
+    repository: "ghcr.io/jorisjonkers-dev/overleaf"
+    digest: "sha256:579d53f374b2152eae6dd299701cc13d5b4cb738d697331e1182b7b16c0d679f"
+    uid: 33
+    gid: 33
+    version: "6.3.0"
+  overleaf-redis:
+    repository: "ghcr.io/jorisjonkers-dev/overleaf-redis"
+    digest: "sha256:2bc7b577248295bf2cb9a037a0d2f1b1eb8ca6f44163c8c4156c7cb04753a876"
+    uid: 999
+    gid: 1000
+    version: "7.4-alpine"
+
+  # prowlarr's share, from its fragment
+  flaresolverr:
+    repository: "ghcr.io/jorisjonkers-dev/flaresolverr"
+    digest: "sha256:91566b78a8464b6a911833089800ffef5fcf7497a37b9e2f34dec4d1657294a3"
+    uid: 1000
+    gid: 1000
+    version: "v3.5.2"
+  prowlarr:
+    repository: "ghcr.io/jorisjonkers-dev/prowlarr"
+    digest: "sha256:6ac0d073cfdb5afcbdaed3c4b42b82922868b61fe4ee9b7db7dcc81db4dbff52"
+    uid: 1000
+    gid: 1000
+    version: "2.5.2.5491-ls158"
+
+  # qbittorrent's share, from its fragment
+  qbittorrent:
+    repository: "ghcr.io/jorisjonkers-dev/qbittorrent"
+    digest: "sha256:2d932d17581f1b78dd949a95a2770d7eb4ef62a675e5931fc107336904318d62"
+    uid: 1000
+    gid: 1000
+    version: "5.2.3_v2.0.14-ls474"
+
+  # tribelt's share, from its fragment
+  tribelt:
+    repository: "ghcr.io/jorisjonkers-dev/tribelt"
+    digest: "sha256:05d70d4485a52546dc521cabc9d42996364229821dcaeeac66cfdec6659d4eaf"
+    uid: 65532
+    gid: 65532
+    version: "0.12.0"

@@ -1,0 +1,90 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: immich-postgres
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres
+    app.kubernetes.io/instance: immich-postgres
+    app.kubernetes.io/part-of: immich-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: immich-system-immich-postgres
+    serviceAccount: immich-postgres
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: immich-postgres-platform-media-immich-postgres
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres
+    app.kubernetes.io/instance: immich-postgres
+    app.kubernetes.io/part-of: immich-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: immich-postgres
+  mount: secret
+  type: kv-v2
+  path: platform/media/immich-postgres
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: immich-postgres-platform-media-immich-postgres
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: immich-postgres
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: immich-postgres-backup
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres-backup
+    app.kubernetes.io/instance: immich-postgres-backup
+    app.kubernetes.io/part-of: immich-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultConnectionRef: secret-store
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: immich-system-immich-postgres-backup
+    serviceAccount: immich-postgres-backup
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: immich-postgres-backup-immich-immich-postgres-backup
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres-backup
+    app.kubernetes.io/instance: immich-postgres-backup
+    app.kubernetes.io/part-of: immich-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: immich-postgres-backup
+  mount: secret
+  type: kv-v2
+  path: immich/immich-postgres/backup
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: immich-postgres-backup-immich-immich-postgres-backup
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled

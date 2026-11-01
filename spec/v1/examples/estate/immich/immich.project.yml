@@ -1,0 +1,107 @@
+# deploy-kit Project Intent for immich: the server, its machine learning and its own Postgres
+# (vectorchord), each built by this repository to run non-root under a read-only root
+# filesystem.
+#
+# The photos stay on the media library, mounted from the Platform document's `media`; the job
+# queue is the platform's Valkey. Machine learning runs on CPU until deploy-kit renders a GPU
+# request (JorisJonkers-dev/deploy-kit#398).
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: immich # the namespace derives: immich-system
+owner: joris
+
+applications:
+  - id: immich
+    migration: self # the server migrates immich_db on start
+    exposure:
+      - name: public
+        host: immich.jorisjonkers.dev
+        audience: authenticated
+        routes:
+          - { path: /, match: prefix, process: immich-server, surface: http }
+    processes:
+      - name: immich-server
+        lifecycle: application
+        image: immich-server # runs as deploy (1000:1000), who owns the media library
+        runtime: none
+        provides:
+          http: 2283
+        dependsOn:
+          # immich_db and its roles are the catalog's, applied to immich's own Postgres.
+          - application: immich-postgres
+            surface: postgres
+            credentials: { delivery: env, rotation: { tolerates: restart } }
+          - { application: platform-valkey, surface: redis }
+          - { application: immich-ml, surface: http }
+        libraries:
+          - library: media
+            mountAt: /data
+            subPath: Photos
+            access: write
+        placement:
+          memory: 3Gi
+          cpu: 2000m
+        writablePaths: [/tmp]
+        probes:
+          readiness: { path: /api/server/ping, port: 2283 }
+          liveness: { path: /api/server/ping, port: 2283 }
+        startupBudget: 300s # the server migrates its database before it serves
+        cutover: interrupted # one server runs the job queue's workers
+
+  - id: immich-ml
+    processes:
+      - name: immich-ml
+        lifecycle: application
+        image: immich-ml # machine learning on CPU
+        runtime: none
+        provides:
+          http: 3003
+        placement:
+          memory: 4Gi
+          cpu: 2000m
+        writablePaths: [/tmp]
+        probes:
+          readiness: { path: /ping, port: 3003 }
+          liveness: { path: /ping, port: 3003 }
+        startupBudget: 600s
+        cutover: interrupted # one pod on a ReadWriteOnce cache
+        volumes:
+          - claim: ml-cache
+            mountAt: /cache
+            size: 10Gi
+            durability: reconstructible # the models download again
+
+  - id: immich-postgres
+    processes:
+      - name: immich-postgres
+        lifecycle: application
+        image: immich-postgres # postgres 14 with vectorchord, as uid 70
+        runtime: none
+        engine: postgres # keys the nightly dump and the database catalog
+        provides:
+          postgres: 5432
+        secrets:
+          # The superuser initdb created, where the old path keeps it.
+          - path: secret/data/platform/media/immich-postgres
+            keys: [postgres.password]
+            access: read
+            delivery: env
+            rotation: { tolerates: restart }
+        placement:
+          memory: 2Gi
+          cpu: 1000m
+          disk: { media: [nvme, ssd] } # a database on a card or a spinning disk is too slow
+        writablePaths: [/var/run/postgresql, /tmp]
+        probes:
+          readiness: { tcp: 5432 }
+          liveness: { tcp: 5432 }
+        startupBudget: 300s
+        cutover: interrupted # one pod on a ReadWriteOnce claim
+        volumes:
+          - claim: postgres-data
+            mountAt: /var/lib/postgresql/data
+            size: 20Gi
+            durability: recoverable # albums, faces and metadata; the photos are on the library

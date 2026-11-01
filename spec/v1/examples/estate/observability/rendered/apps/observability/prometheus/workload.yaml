@@ -1,0 +1,113 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/instance: prometheus
+    app.kubernetes.io/part-of: prometheus
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  image: quay.io/prometheus/prometheus@sha256:50c707e96da5ade383cb1707790576480485e93de06aa60ad8802cb5f744bd0a
+  version: v3.14.0
+  replicas: 1
+  serviceAccountName: prometheus
+  automountServiceAccountToken: true
+  priorityClassName: platform-critical-app
+  podMetadata:
+    labels:
+      app.kubernetes.io/part-of: prometheus
+      app.kubernetes.io/component: none
+      consumes.deploy-kit.jorisjonkers.dev/alertmanager.http: "true"
+    annotations:
+      image.jorisjonkers.dev/prometheus: v3.14.0
+  portName: http
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    fsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values:
+                  - frankfurt-contabo-1
+  resources:
+    requests:
+      memory: 3Gi
+      cpu: 200m
+    limits:
+      memory: 3Gi
+  containers:
+    - name: prometheus
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      volumeMounts:
+        - name: prometheus-data
+          mountPath: /prometheus
+      readinessProbe:
+        httpGet:
+          path: /-/ready
+          port: 9090
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+        initialDelaySeconds: 0
+      livenessProbe:
+        httpGet:
+          path: /-/healthy
+          port: 9090
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+        initialDelaySeconds: 0
+      startupProbe:
+        httpGet:
+          path: /-/healthy
+          port: 9090
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 60
+  volumes:
+    - name: prometheus-data
+      persistentVolumeClaim:
+        claimName: prometheus-data
+  scrapeInterval: 30s
+  scrapeTimeout: 10s
+  evaluationInterval: 30s
+  serviceMonitorSelector: {}
+  serviceMonitorNamespaceSelector: {}
+  podMonitorSelector: {}
+  podMonitorNamespaceSelector: {}
+  scrapeConfigSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: deploy-kit
+  scrapeConfigNamespaceSelector: {}
+  ruleSelector:
+    matchLabels:
+      app.kubernetes.io/managed-by: deploy-kit
+  ruleNamespaceSelector: {}
+  alerting:
+    alertmanagers:
+      - namespace: observability-system
+        name: alertmanager
+        port: http
+        apiVersion: v2
+  retention: 15d
+  enableRemoteWriteReceiver: true
+  enableFeatures:
+    - exemplar-storage

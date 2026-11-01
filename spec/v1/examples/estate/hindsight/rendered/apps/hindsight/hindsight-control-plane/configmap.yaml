@@ -1,0 +1,26 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hindsight-control-plane-release-gate
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/part-of: hindsight-control-plane
+    app.kubernetes.io/managed-by: deploy-kit
+data:
+  releaseGate.json: |
+    {"analysis":{"errorRate":"1%","interval":"30s","iterations":4,"latency":"1000ms","threshold":3},"deadline":"840s","endpoint":"http://release-gate.delivery-system.svc.cluster.local:8080","members":[{"process":"hindsight-control-plane","readiness":{"tcp":3000}}]}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hindsight-control-plane-external-checks
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/part-of: hindsight-control-plane
+    app.kubernetes.io/managed-by: deploy-kit
+    estate.jorisjonkers.dev/external-checks: "true"
+data:
+  hindsight-control-plane-external-checks.yaml: |
+    {"endpoints":[{"conditions":["[STATUS] < 500"],"group":"hindsight","name":"hindsight-control-plane-public-1","url":"https://hindsight.jorisjonkers.dev/"}]}

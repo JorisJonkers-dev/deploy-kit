@@ -1,0 +1,11 @@
+{
+  "bound_service_account_names": [
+    "hindsight-worker"
+  ],
+  "bound_service_account_namespaces": [
+    "hindsight-system"
+  ],
+  "token_policies": [
+    "hindsight-system-hindsight-worker"
+  ]
+}

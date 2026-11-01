@@ -1,0 +1,14 @@
+{
+  "path": {
+    "secret/data/immich/immich-postgres/backup": {
+      "capabilities": [
+        "read"
+      ]
+    },
+    "secret/metadata/immich/immich-postgres/backup": {
+      "capabilities": [
+        "read"
+      ]
+    }
+  }
+}

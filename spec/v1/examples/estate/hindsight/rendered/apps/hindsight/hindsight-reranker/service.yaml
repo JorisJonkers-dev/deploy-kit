@@ -1,0 +1,20 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tei-reranker
+  namespace: hindsight-system
+  labels:
+    app.kubernetes.io/name: tei-reranker
+    app.kubernetes.io/instance: tei-reranker
+    app.kubernetes.io/part-of: hindsight-reranker
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: tei-reranker
+  ports:
+    - name: http
+      port: 8092
+      targetPort: http

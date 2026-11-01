@@ -1,0 +1,203 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: immich-postgres-catalog
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres-catalog
+    app.kubernetes.io/instance: immich-postgres-catalog
+    app.kubernetes.io/part-of: immich-postgres-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: immich-postgres-catalog-afe1ba0dc2cf
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres-catalog
+    app.kubernetes.io/instance: immich-postgres-catalog
+    app.kubernetes.io/part-of: immich-postgres-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+immutable: true
+data:
+  catalog.json: |
+    {"admin":{"password":"password","path":"secret/data/immich/immich-postgres/catalog","user":"user"},"connection":"immich-postgres","databases":[{"data":"immich-data","name":"immich_db","owner":"immich-owner"}],"host":"immich-postgres.immich-system.svc.cluster.local","port":5432}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: immich-postgres-catalog-afe1ba0dc2cf
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres-catalog
+    app.kubernetes.io/instance: immich-postgres-catalog
+    app.kubernetes.io/part-of: immich-postgres-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+  annotations:
+    kustomize.toolkit.fluxcd.io/force: Enabled
+spec:
+  backoffLimit: 2147483647
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: immich-postgres-catalog
+        app.kubernetes.io/instance: immich-postgres-catalog
+        app.kubernetes.io/part-of: immich-postgres-catalog
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+        consumes.deploy-kit.jorisjonkers.dev/immich-postgres.postgres: "true"
+      annotations:
+        image.jorisjonkers.dev/immich-postgres-catalog: 0.15.0
+    spec:
+      serviceAccountName: immich-postgres-catalog
+      automountServiceAccountToken: true
+      restartPolicy: OnFailure
+      activeDeadlineSeconds: 300
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - frankfurt-contabo-1
+                      - enschede-gtx-960m-1
+                      - enschede-t1000-1
+      containers:
+        - name: immich-postgres-catalog
+          image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:378f721245ba80ffe79fe43c9cdbbd29c76ebb865bbbccfe8561e91ef280e70c
+          env:
+            - name: VAULT_ADDR
+              value: http://vault.data-system.svc.cluster.local:8200
+            - name: VAULT_ROLE
+              value: immich-system-immich-postgres-catalog
+            - name: CATALOG_FILE
+              value: /catalog/catalog.json
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: 10m
+            limits:
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: catalog
+              mountPath: /catalog
+              readOnly: true
+      volumes:
+        - name: catalog
+          configMap:
+            name: immich-postgres-catalog-afe1ba0dc2cf
+            items:
+              - key: catalog.json
+                path: catalog.json
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: immich-postgres-catalog
+  namespace: immich-system
+  labels:
+    app.kubernetes.io/name: immich-postgres-catalog
+    app.kubernetes.io/instance: immich-postgres-catalog
+    app.kubernetes.io/part-of: immich-postgres-catalog
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  schedule: "@hourly"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    metadata:
+      labels:
+        app.kubernetes.io/name: immich-postgres-catalog
+        app.kubernetes.io/instance: immich-postgres-catalog
+        app.kubernetes.io/part-of: immich-postgres-catalog
+        app.kubernetes.io/managed-by: deploy-kit
+        app.kubernetes.io/component: none
+    spec:
+      backoffLimit: 6
+      activeDeadlineSeconds: 3000
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: immich-postgres-catalog
+            app.kubernetes.io/instance: immich-postgres-catalog
+            app.kubernetes.io/part-of: immich-postgres-catalog
+            app.kubernetes.io/managed-by: deploy-kit
+            app.kubernetes.io/component: none
+            consumes.deploy-kit.jorisjonkers.dev/immich-postgres.postgres: "true"
+          annotations:
+            image.jorisjonkers.dev/immich-postgres-catalog: 0.15.0
+        spec:
+          serviceAccountName: immich-postgres-catalog
+          automountServiceAccountToken: true
+          restartPolicy: OnFailure
+          activeDeadlineSeconds: 300
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: kubernetes.io/hostname
+                        operator: In
+                        values:
+                          - frankfurt-contabo-1
+                          - enschede-gtx-960m-1
+                          - enschede-t1000-1
+          containers:
+            - name: immich-postgres-catalog
+              image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:378f721245ba80ffe79fe43c9cdbbd29c76ebb865bbbccfe8561e91ef280e70c
+              env:
+                - name: VAULT_ADDR
+                  value: http://vault.data-system.svc.cluster.local:8200
+                - name: VAULT_ROLE
+                  value: immich-system-immich-postgres-catalog
+                - name: CATALOG_FILE
+                  value: /catalog/catalog.json
+              resources:
+                requests:
+                  memory: 64Mi
+                  cpu: 10m
+                limits:
+                  memory: 64Mi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: catalog
+                  mountPath: /catalog
+                  readOnly: true
+          volumes:
+            - name: catalog
+              configMap:
+                name: immich-postgres-catalog-afe1ba0dc2cf
+                items:
+                  - key: catalog.json
+                    path: catalog.json

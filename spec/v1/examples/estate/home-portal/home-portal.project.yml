@@ -1,0 +1,55 @@
+# deploy-kit Project Intent for home-portal, the estate's landing page: a static
+# site with one Process and no storage, secrets or dependency.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+
+project: home-portal # the namespace derives: home-portal-system
+owner: joris
+
+applications:
+  - id: home-portal
+    # nginx exposes no metrics, so the Application declares no observability
+    # block and wants no monitoring.
+
+    exposure:
+      - name: public
+        host: jorisjonkers.dev
+        audience: anonymous
+        routes:
+          - path: /
+            match: prefix
+            process: home-portal
+            surface: http
+
+    processes:
+      - name: home-portal
+        lifecycle: application
+        image: home-portal # nginx serving the built site; the lock resolves digest, uid and gid
+        runtime: static
+
+        provides:
+          http: 8080 # the unprivileged nginx: no capability to bind a port below 1024
+
+        # nginx serving static files needs a few megabytes per worker.
+        placement:
+          memory: 64Mi
+          cpu: 20m
+
+        # The unprivileged nginx writes its pid file and temp files under /tmp.
+        writablePaths: [/tmp]
+
+        # The SPA's index is the only page there is, so both probes read it.
+        probes:
+          readiness:
+            path: /
+            port: 8080
+          liveness:
+            path: /
+            port: 8080
+
+        startupBudget: 10s
+
+        # No volumes and no state, so a continuous cutover is honourable.
+        cutover: continuous

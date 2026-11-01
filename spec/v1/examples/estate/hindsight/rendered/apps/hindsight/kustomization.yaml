@@ -1,0 +1,14 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - aliases.yaml
+  - hindsight
+  - hindsight-control-plane
+  - hindsight-embedding
+  - hindsight-reranker
+  - namespace.yaml
+  - rollout-events
+  - vault-policy
+  - vaultconnection.yaml

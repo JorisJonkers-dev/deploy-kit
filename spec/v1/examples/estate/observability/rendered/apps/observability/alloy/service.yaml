@@ -1,0 +1,23 @@
+# GENERATED. Never hand-edit.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alloy
+  namespace: observability-system
+  labels:
+    app.kubernetes.io/name: alloy
+    app.kubernetes.io/instance: alloy
+    app.kubernetes.io/part-of: alloy
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  selector:
+    app.kubernetes.io/instance: alloy
+  ports:
+    - name: http
+      port: 12345
+      targetPort: http
+    - name: faro
+      port: 12347
+      targetPort: faro
