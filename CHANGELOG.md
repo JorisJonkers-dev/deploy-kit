@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.7.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.6.0...v1.7.0) (2026-11-01)
+
+
+### Features
+
+* **compose:** take the current time as --now ([#776](https://github.com/JorisJonkers-dev/deploy-kit/issues/776)) ([a1cf392](https://github.com/JorisJonkers-dev/deploy-kit/commit/a1cf392412d208f1209cfa6b09c100ee68e138d3))
+* **emf:** finish bringing the model-driven implementation level with main ([#751](https://github.com/JorisJonkers-dev/deploy-kit/issues/751)) ([bee0d84](https://github.com/JorisJonkers-dev/deploy-kit/commit/bee0d8499383cc79b1a078fd1e2290515c2e91d2))
+
 ## [1.6.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.5.0...v1.6.0) (2026-10-30)
 
 
