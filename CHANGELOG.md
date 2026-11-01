@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.9.0...v1.9.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **delivery:** relabel only the Applications a release changed, so it restarts nothing else ([#792](https://github.com/JorisJonkers-dev/deploy-kit/issues/792)) ([e6ac288](https://github.com/JorisJonkers-dev/deploy-kit/commit/e6ac288538291e0d2357019cc3979e8ac85b148e)), closes [#791](https://github.com/JorisJonkers-dev/deploy-kit/issues/791)
+
 ## [1.9.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.8.1...v1.9.0) (2026-11-01)
 
 
