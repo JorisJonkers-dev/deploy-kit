@@ -12,6 +12,7 @@ import { parse, parseAllDocuments, stringify } from "yaml";
 import {
   composeEstate,
   type ComposeInput,
+  type ComposeOptions,
   type Composition,
   type Fragment,
   type Pin,
@@ -205,7 +206,10 @@ const expecting = (
 
 const EXPECTED = expecting(RELEASES);
 
-function compose(input: Partial<ComposeInput> = {}): Composition {
+function compose(
+  input: Partial<ComposeInput> = {},
+  options: ComposeOptions = OPTIONS,
+): Composition {
   const result = composeEstate(
     {
       ...EXPECTED,
@@ -219,7 +223,7 @@ function compose(input: Partial<ComposeInput> = {}): Composition {
       },
       ...input,
     },
-    OPTIONS,
+    options,
   );
   if (!result.ok)
     throw new Error(JSON.stringify(result.diagnostics.map(({ code }) => code)));
@@ -1747,6 +1751,24 @@ describe("composeEstate, against the participants list", () => {
       stale.statuses.find(({ repository }) => repository.endsWith("/notes"))
         ?.description,
     ).toBe("notes 1.0.0 isolated: E_PARTICIPANT_STALE");
+  });
+
+  // REQ-165 (docs/requirements.md): the one clock reading is the caller's.
+  it("judges each participant's age at the instant the caller gives, and records that instant as when it ran", () => {
+    const at = (generatedAt: string) =>
+      compose(publishedAt("2026-09-25T09:00:00Z"), { ...OPTIONS, generatedAt });
+
+    const within = at("2026-10-02T09:00:00Z");
+    expect(notes(within).isolated).toBeUndefined();
+    expect(within.lock.metadata.generatedAt).toBe("2026-10-02T09:00:00Z");
+
+    // The same publish, one second later by the caller's instant, is stale.
+    const past = at("2026-10-02T09:00:01Z");
+    expect(notes(past).isolated).toStrictEqual({
+      refused: NOTES.ref,
+      codes: ["E_PARTICIPANT_STALE"],
+    });
+    expect(past.lock.metadata.generatedAt).toBe("2026-10-02T09:00:01Z");
   });
 
   it("holds a stale participant's newer fragment back, at the one it last composed at", () => {
