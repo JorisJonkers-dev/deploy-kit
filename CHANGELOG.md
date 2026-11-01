@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.7.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.7.0...v1.7.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **render:** write a host port on its surface's entry, so a container port appears once ([#777](https://github.com/JorisJonkers-dev/deploy-kit/issues/777)) ([d74ab2f](https://github.com/JorisJonkers-dev/deploy-kit/commit/d74ab2fdd20a56f3546f0f43ea3a80c367d4cef2))
+
+## [1.7.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.6.0...v1.7.0) (2026-11-01)
+
+
+### Features
+
+* **compose:** take the current time as --now ([#776](https://github.com/JorisJonkers-dev/deploy-kit/issues/776)) ([a1cf392](https://github.com/JorisJonkers-dev/deploy-kit/commit/a1cf392412d208f1209cfa6b09c100ee68e138d3))
+* **emf:** finish bringing the model-driven implementation level with main ([#751](https://github.com/JorisJonkers-dev/deploy-kit/issues/751)) ([bee0d84](https://github.com/JorisJonkers-dev/deploy-kit/commit/bee0d8499383cc79b1a078fd1e2290515c2e91d2))
+
 ## [1.6.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.5.0...v1.6.0) (2026-10-30)
 
 

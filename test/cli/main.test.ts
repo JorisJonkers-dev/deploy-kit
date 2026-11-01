@@ -873,6 +873,67 @@ describe("deploy-kit compose", () => {
     ]);
   });
 
+  // REQ-165 (docs/requirements.md): a replay composes at the instant its lock records.
+  it("composes as of the instant --now names, judging each participant's age and recording the run at it", () => {
+    const root = pulled();
+    // Six days before the clock, and seven days and a second before --now.
+    writeFileSync(
+      join(root, "fragments", "notes", "published"),
+      "2026-09-26T09:00:00Z\n",
+    );
+    const lockAt = (out: string) =>
+      JSON.parse(readFileSync(join(root, out, "lock.json"), "utf8")) as {
+        metadata: { generatedAt: string };
+        spec: { isolated?: Record<string, unknown> };
+      };
+
+    expect(composeIn(root, "--out", join(root, "clock")).code).toBe(0);
+    expect(lockAt("clock").metadata.generatedAt).toBe(WORLD.now());
+    expect(lockAt("clock").spec.isolated).toBeUndefined();
+
+    expect(
+      composeIn(
+        root,
+        "--out",
+        join(root, "replay"),
+        "--now",
+        "2026-10-03T09:00:01Z",
+      ).code,
+    ).toBe(0);
+    expect(lockAt("replay").metadata.generatedAt).toBe("2026-10-03T09:00:01Z");
+    expect(lockAt("replay").spec.isolated).toStrictEqual({
+      notes: {
+        refused: readFileSync(
+          join(root, "fragments", "notes", "ref"),
+          "utf8",
+        ).trim(),
+        codes: ["E_PARTICIPANT_STALE"],
+      },
+    });
+  });
+
+  it("asks for an instant a lock can record as --now, and writes nothing", () => {
+    const root = pulled();
+    const wrong = `--now takes an RFC 3339 instant in UTC, such as 2026-10-02T09:00:00Z\n${USAGE_TEXT}`;
+    for (const now of [
+      "yesterday",
+      "2026-10-02",
+      "2026-10-02T11:00:00+02:00",
+      "",
+    ])
+      expect(
+        composeIn(root, "--out", join(root, "out"), "--now", now),
+        now,
+      ).toEqual({ code: 2, stdout: "", stderr: wrong });
+    // A --now with no value after it names no instant either.
+    expect(composeIn(root, "--out", join(root, "out"), "--now")).toEqual({
+      code: 2,
+      stdout: "",
+      stderr: wrong,
+    });
+    expect(existsSync(join(root, "out"))).toBe(false);
+  });
+
   it("asks for the publish time a pull records beside each reference", () => {
     const root = pulled();
     rmSync(join(root, "fragments", "notes", "published"));

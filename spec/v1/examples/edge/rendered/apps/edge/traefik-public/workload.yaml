@@ -78,18 +78,12 @@ spec:
           ports:
             - name: web
               containerPort: 8000
+              hostPort: 80
             - name: websecure
               containerPort: 8443
+              hostPort: 443
             - name: admin
               containerPort: 8080
-            - name: tcp-80
-              containerPort: 8000
-              hostPort: 80
-              protocol: TCP
-            - name: tcp-443
-              containerPort: 8443
-              hostPort: 443
-              protocol: TCP
           env:
             - name: CF_DNS_API_TOKEN
               valueFrom:
