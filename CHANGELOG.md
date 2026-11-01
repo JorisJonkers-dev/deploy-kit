@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.8.0...v1.8.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **model:** order the Secret Store's Project after nothing, and refuse a cycle among the Reconcile Units ([#786](https://github.com/JorisJonkers-dev/deploy-kit/issues/786)) ([a6831ef](https://github.com/JorisJonkers-dev/deploy-kit/commit/a6831ef699aaa524ca9e238cd2ff1b7b7ae88c91)), closes [#780](https://github.com/JorisJonkers-dev/deploy-kit/issues/780)
+
 ## [1.8.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.7.1...v1.8.0) (2026-11-01)
 
 
