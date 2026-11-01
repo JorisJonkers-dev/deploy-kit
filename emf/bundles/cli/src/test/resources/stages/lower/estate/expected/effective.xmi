@@ -1370,6 +1370,7 @@
       </processes>
       <l4Exposure address="mail-node" port="25" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.1"/>
       <l4Exposure address="mail-node" port="993" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.2"/>
+      <l4Exposure address="mail-node" port="2525" process="/9/@applications.0/@processes.0" surface="/9/@applications.0/@processes.0/@provides.1"/>
     </applications>
   </projectintent:EffectiveProject>
   <projectintent:EffectiveProject project="notes" owner="joris">

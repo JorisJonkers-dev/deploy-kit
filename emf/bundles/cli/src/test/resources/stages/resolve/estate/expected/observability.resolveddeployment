@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:d303c9c70fff6bd674e107c213f62850af95e3c762fd403c65adc2a5d73089d7" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:06b9b8cea850373efb674952aefaeb9a704ee567aa6814cd79fd975bd214b91d" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests name="agents" digest="sha256:7a710b34e13d2be9c7ddfceb239b6c8e099137f760cb7a3ebb5a7d71dead88d9"/>
     <inputDigests name="auth" digest="sha256:9ede7056e41341c9040da4b17b9e1fdcf074966ed07fff0c288a2f989614d0d8"/>
     <inputDigests name="coverage" digest="sha256:af367531489d73e62a23d0d336832069223ff3797500a82fddf0901a1204c877"/>
@@ -10,7 +10,7 @@
     <inputDigests name="identity" digest="sha256:a495f34c57b72802be980417998d579bcf5ba63b1a3d3ca2df47819fdcc9eaf0"/>
     <inputDigests name="knowledge" digest="sha256:09e444ec41eebbeec2e9f54401fbbe30a00e5037e5ba01e116d5a3f2656bfa48"/>
     <inputDigests name="knowledge-platform" digest="sha256:bbd782977092ebeb77ec78072d4f005b9f8b3c010ae7d5d8e5341a90b7dcb2dd"/>
-    <inputDigests name="mail" digest="sha256:8969188e8126f46258197d242d12043030ca47510845267a03f066a6e31883f9"/>
+    <inputDigests name="mail" digest="sha256:fc79bd8dd5f3b845c92de5eb32e7f2409d1a2954a1569c69e27efb6158b0701d"/>
     <inputDigests name="notes" digest="sha256:7876ff722429a69629d175a67bf8c4199f5e12b84c4a237b171bbd9048411918"/>
     <inputDigests name="observability" digest="sha256:33ca6b450c57377ce5f26545ebd0130a845ecd98ab1d00932c09d6b328bf2fc9"/>
     <inputDigests name="secrets" digest="sha256:61b3e6297211ea60f4e5d7c2aecc744d000a4898eb70cc1f229d9905ca1dc749"/>

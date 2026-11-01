@@ -1144,9 +1144,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 	surfaces := self.provides->collect(s | object ResolvedSurface {
 		name := s.key;
 		port := s.value;
-		hostPort := l4Of(self)->select(e | e.surface = s and addressOf(e.address).oclIsKindOf(NodeAddress)
-				and e.port = s.value and e.protocol = L4Protocol::tcp)
-			->collect(e | e.port)->any(true);
+		hostPort := hostPortOf(self, s);
 	});
 	l4Services := l4ServicesOf(self);
 	-- A Process that serves DNS resolves through the platform's upstream nameservers.
@@ -3809,9 +3807,19 @@ query tierL4Of(p : PI::Process) : Sequence(Tuple(address : String, port : Intege
 			surface = p.provides->select(e | e.key = s)->any(true)}))->asSequence();
 
 -- The ports on a node's own address that are not a surface's own number over TCP.
+-- The host port a surface's own entry carries: the first TCP port a client dials on a node's own
+-- address to reach it, whatever port that is, so a container port and protocol appear once, as
+-- server-side apply keys the list by them.
+query hostPortOf(p : PI::Process, s : Surface) : Integer =
+	let ports : Sequence(Integer) = l4Of(p)->select(e | e.surface = s
+			and addressOf(e.address).oclIsKindOf(NodeAddress) and e.protocol = L4Protocol::tcp)
+		->collect(e | e.port)->asSequence() in
+	if ports->isEmpty() then null else ports->min() endif;
+
+-- Every port a client dials on a node's own address that no surface's own entry carries.
 query edgeNodePortsOf(p : PI::Process) : Sequence(L4Port) =
 	l4Of(p)->select(e | addressOf(e.address).oclIsKindOf(NodeAddress)
-			and not (e.protocol = L4Protocol::tcp and e.port = e.surface.value))
+			and not (e.protocol = L4Protocol::tcp and e.port = hostPortOf(p, e.surface)))
 		->sortedBy(e | e.port * 2 + (if e.protocol = L4Protocol::tcp then 0 else 1 endif))
 		->collect(e | object L4Port {
 			name := e.protocol.toString() + '-' + e.port.toString();
