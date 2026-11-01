@@ -4,11 +4,10 @@ Everything needed to get an application deployed: the **model** an application a
 writes, the **decision record** that justifies every rule in it, and, as it
 lands, the **compiler** that turns that model into deployable artifacts.
 
-> **Status: pre-implementation.** The model and its decision surface are here
-> and enforced by CI. The compiler is being brought over from
-> [`deploy-config-schema`](https://github.com/JorisJonkers-dev/deploy-config-schema),
-> which stays alive and authoritative until this repository can render the
-> estate. Nothing here deploys anything yet.
+> **Status: in production.** The estate is rendered and delivered by this
+> compiler, through [the estate repository](https://github.com/JorisJonkers-dev/estate).
+> It replaced [`deploy-config-schema`](https://github.com/JorisJonkers-dev/deploy-config-schema),
+> which is archived.
 
 ## What is in here
 

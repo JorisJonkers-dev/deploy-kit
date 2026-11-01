@@ -151,8 +151,7 @@ tool runs it.
   generated file. Specify a second applier, a push path, a field manager or
   a co-test gate in `spec/v1` (delivery is Flux pulling a pinned render,
   [chapter 55](spec/v1/55-delivery.md)). Cite a bare ADR number. Commit on a detached
-  HEAD, or to a path the hygiene guard denies. Treat `deploy-config-schema` as
-  dead.
+  HEAD, or to a path the hygiene guard denies.
 
 ## Claiming a ticket
 
@@ -284,9 +283,9 @@ up to date with every shape at once, and only then does the `emf` job rejoin
   from the root's sequence. Check both registers before taking a number, and
   lint with `node scripts/lint-adrs.ts emf`.
 
-`deploy-config-schema` is the repository this one replaces. It stays alive
-and authoritative until `deploy-kit` can render the estate; do not treat it
-as dead.
+`deploy-config-schema` is the repository this one replaced. `deploy-kit`
+renders and delivers the whole estate, so it is archived: read it for
+history, never as a source of truth.
 
 ## MDE coursework material
 
