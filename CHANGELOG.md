@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.7.0...v1.7.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* **render:** write a host port on its surface's entry, so a container port appears once ([#777](https://github.com/JorisJonkers-dev/deploy-kit/issues/777)) ([d74ab2f](https://github.com/JorisJonkers-dev/deploy-kit/commit/d74ab2fdd20a56f3546f0f43ea3a80c367d4cef2))
+
 ## [1.7.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.6.0...v1.7.0) (2026-11-01)
 
 
