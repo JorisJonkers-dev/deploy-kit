@@ -28,7 +28,10 @@ class DataFileTest {
         if (datum instanceof DatumList list) {
             return list.getItems().stream().map(DataFileTest::json).collect(Collectors.joining(",", "[", "]"));
         }
-        DatumScalar scalar = (DatumScalar) datum;
+        return quoted((DatumScalar) datum);
+    }
+
+    private static String quoted(DatumScalar scalar) {
         return scalar.getKind() == DatumKind.STRING ? "\"" + scalar.getText() + "\"" : scalar.getText();
     }
 
