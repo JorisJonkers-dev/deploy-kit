@@ -1023,6 +1023,35 @@ describe("the refusal fixtures", () => {
       `        cutover: interrupted\n        volumes:\n          - { claim: ${claim}, mountAt: /data, size: 1Gi, durability: reconstructible }\n`,
     );
 
+  it("names every tier a proxy serves, and asks where the Kubernetes API answers", () => {
+    // The one proxy serves a second tier too.
+    const result = checkIntentSet(
+      filesOf("no-api-access-policy").map((file) => ({
+        ...file,
+        text: file.text.replace(
+          "    traefik: refusals/edge-proxy\n",
+          "    traefik: refusals/edge-proxy\n  - name: guests\n    audiences: [anonymous]\n    listener: tls\n    certificates: acme\n    traefik: refusals/edge-proxy\n",
+        ),
+      })),
+    );
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, message, hint }) => ({
+            code,
+            message,
+            hint,
+          })),
+    ).toStrictEqual([
+      {
+        code: "E_NO_API_ACCESS_POLICY",
+        message:
+          "edge-proxy is the proxy of the tier lan, guests, which reads its routes through the Kubernetes API, and the platform says nowhere where the API answers",
+        hint: "Declare the Platform document's `apiAccess`, with the `server` the API answers at.",
+      },
+    ]);
+  });
+
   it("refuses a volume under the claim an acme tier derives on its proxy's Process", () => {
     expect(
       codeIn(
