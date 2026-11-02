@@ -50,8 +50,10 @@ repository: the Eclipse simultaneous release at a dated build, named in
 `emf.target` with each unit at an exact version, so EMF, Xtext, OCL,
 QVT-Operational and Acceleo arrive at versions released together. The one
 Maven Central artifact outside the test libraries is the ANTLR 3 generator the
-Xtext generator calls. The one unit the tests alone use is EMF Compare's core,
-from the same release ([Stage tests](#stage-tests)). JDK 21.
+Xtext generator calls. The units the tests alone use come from the same
+release: EMF Compare's core ([Stage tests](#stage-tests)), and ATL's EMFTVM
+runtime and compiler, which run the benchmark's ATL port of the lowering and
+nothing else ([the benchmark](benchmarks.md)). JDK 21.
 No Eclipse IDE, workspace or launch configuration is part of the build: every
 step CI runs is `mvn verify` from `emf/`. The projects are nonetheless kept
 loadable in Eclipse Modeling Tools for the course's examiners: they import as
