@@ -317,7 +317,7 @@ the transformation and lower all 24 estate Projects.
 
 |  | lower.qvto | lower.atl |
 |---|---|---|
-| lines | 474 | 629 |
+| lines | 474 | 630 |
 | lines of code (not blank, not a comment) | 366 | 493 |
 | mappings / rules | 54 | 34 matched, 21 lazy |
 | of which only dispatch to a subtype (`disjuncts`) | 8 | – |
