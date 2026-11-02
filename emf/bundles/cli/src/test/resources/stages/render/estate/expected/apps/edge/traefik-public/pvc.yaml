@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: acme
+  name: traefik-public-acme
   namespace: edge-system
   labels:
     app.kubernetes.io/name: traefik-public

@@ -15,7 +15,7 @@
     <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
-  <applications id="traefik-public" revision="sha256:5bc86d0e90eac1eed4fe59668b79b7c77f0c6c94b347584e3b278995f294b1e1" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+  <applications id="traefik-public" revision="sha256:9fe5c0ebe3dc9b2ed97ef3fe19f77cbf2e4a4d4250c38dc92c8c26f96e991235" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
     <processes name="traefik-public" identity="traefik-public" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" serving="traefik-public" servingLabel="app.kubernetes.io/instance" deadline="180s" replicas="1" memory="128Mi" cpu="50m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app" home="/tmp">
       <api reason="the proxy reads every route of its tier and what each names, cluster-wide">
         <rules group="core">
@@ -71,7 +71,7 @@
       <placement>
         <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
       </placement>
-      <volumes claim="acme" mountAt="/acme" size="16Mi"/>
+      <volumes claim="traefik-public-acme" mountAt="/acme" size="16Mi"/>
       <secrets path="secret/data/platform/cloudflare" access="read" delivery="env" destination="traefik-public-platform-cloudflare">
         <keys>CF_DNS_API_TOKEN</keys>
         <restartTargets>traefik-public</restartTargets>

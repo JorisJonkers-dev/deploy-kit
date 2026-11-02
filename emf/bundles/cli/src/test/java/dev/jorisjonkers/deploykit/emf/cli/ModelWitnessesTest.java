@@ -425,7 +425,7 @@ class ModelWitnessesTest {
                 .contains("- --certificatesresolvers.public-frankfurt.acme.dnschallenge.provider=cloudflare\n")
                 .contains("secretKeyRef:\n                  name: traefik-public-platform-cloudflare\n")
                 .contains("key: CF_DNS_API_TOKEN\n");
-        assertThat(rendered("edge", "apps/edge/traefik-public/pvc.yaml")).contains("  name: acme\n");
+        assertThat(rendered("edge", "apps/edge/traefik-public/pvc.yaml")).contains("  name: traefik-public-acme\n");
         assertThat(rendered("edge", "apps/edge/traefik-lan/service.yaml"))
                 .contains("metallb.io/address-pool: lan-edge\n")
                 .contains("- name: tcp-80\n      port: 80\n      protocol: TCP\n      targetPort: 8000\n");
@@ -1521,5 +1521,56 @@ class ModelWitnessesTest {
                                 + "              verbs: [get, list, watch, create, update, patch, delete, deletecollection]\n"));
         assertThat(Files.readString(clearing.resolve("apps/secrets/vault-secrets-operator/rbac.yaml")))
                 .contains("      - delete\n      - deletecollection\n");
+    }
+
+    @Test
+    void anAcmeTiersClaimIsNamedForItsProxysProcessAndAVolumeUnderItIsRefused(@TempDir Path work) throws IOException {
+        assertThat(rendered("edge", "apps/edge/traefik-public/pvc.yaml")).contains("  name: traefik-public-acme\n");
+
+        // Two acme tiers' proxies in one Project hold two claims.
+        Path both = renderedWith(
+                "edge",
+                work.resolve("both"),
+                new Edit(
+                        "platform/platform.intent.yml",
+                        "    listener: plain\n    certificates: none\n    traefik: edge/traefik-lan",
+                        "    listener: tls\n    certificates: acme\n    traefik: edge/traefik-lan"),
+                new Edit(
+                        "edge/edge.project.yml",
+                        "          web: 8000\n          admin: 8080\n",
+                        "          web: 8000\n          websecure: 8443\n          admin: 8080\n"));
+        assertThat(Files.readString(both.resolve("apps/edge/traefik-public/pvc.yaml")))
+                .contains("  name: traefik-public-acme\n");
+        assertThat(Files.readString(both.resolve("apps/edge/traefik-lan/pvc.yaml")))
+                .contains("  name: traefik-lan-acme\n");
+
+        assertThat(claiming(work.resolve("acme"), "edge-proxy-acme", "certificates: acme"))
+                .containsExactly("/applications/0/processes/0/volumes/0");
+        assertThat(claiming(work.resolve("other"), "edge-proxy-data", "certificates: acme"))
+                .isEmpty();
+        assertThat(claiming(work.resolve("none"), "edge-proxy-acme", "certificates: none"))
+                .isEmpty();
+    }
+
+    /**
+     * The paths {@code E_DUPLICATE_CLAIM} refuses in the acme proxy fixture, its proxy given a volume
+     * under {@code claim} and its tier issuing {@code certificates}.
+     */
+    private static List<String> claiming(Path work, String claim, String certificates) throws IOException {
+        copy(Examples.of("refusals/acme-proxy-replicated"), work);
+        Path platform = work.resolve("platform.intent.yml");
+        Files.writeString(platform, Files.readString(platform).replace("certificates: acme", certificates));
+        Path project = work.resolve("refusals.project.yml");
+        Files.writeString(
+                project,
+                Files.readString(project)
+                        .replace(
+                                "        cutover: continuous\n",
+                                "        cutover: interrupted\n        volumes:\n          - { claim: " + claim
+                                        + ", mountAt: /data, size: 1Gi, durability: reconstructible }\n"));
+        return Pipeline.check(List.of(platform, project)).stream()
+                .filter(diagnostic -> diagnostic.code().equals("E_DUPLICATE_CLAIM"))
+                .map(Diagnostic::path)
+                .toList();
     }
 }

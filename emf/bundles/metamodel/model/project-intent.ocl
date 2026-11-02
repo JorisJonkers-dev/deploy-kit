@@ -64,12 +64,17 @@ context Volume
 
 	-- A project's Processes share one namespace, and a claim is named as
 	-- written: a volume reserving a claim an earlier volume of the project
-	-- already holds would mount the same PersistentVolumeClaim.
+	-- already holds would mount the same PersistentVolumeClaim, and one under the
+	-- claim an acme tier derives on its proxy's Process, `<process>-acme`, would
+	-- mount the proxy's ACME state (spec/v1/14-platform-intent.md#tiers).
 	inv E_DUPLICATE_CLAIM:
 		let project : Project = oclContainer().oclContainer().oclContainer().oclAsType(Project) in
 		let volumes : Sequence(Volume) = project.applications.processes.volumes in
 		volumes->select(v | volumes->indexOf(v) < volumes->indexOf(self))
 			->collect(v | v.reserved)->excludesAll(reserved)
+		and not project.applications.processes->exists(q |
+			claim = q.name + '-acme'
+				and Tier.allInstances()->exists(t | t.certificates = CertificateSource::acme and q.answers(t)))
 
 context Rotation
 	-- An environment variable is read once, when the process starts.
@@ -934,12 +939,16 @@ context Process
 
 	-- The Process of an Application a tier names as its proxy that provides every surface the
 	-- tier's listener derives, the first that does: the one that answers the tier.
-	def: answersTier : Boolean =
-		Tier.allInstances()->exists(t | t.traefik <> null and
+	def: answersTier : Boolean = Tier.allInstances()->exists(t | answers(t))
+
+	-- Whether this Process answers tier `t`: the first of its proxy's Processes that provides every
+	-- surface the tier's listener derives.
+	def: answers(t : Tier) : Boolean =
+		t.traefik <> null and
 			let answering : OrderedSet(Process) = t.traefik.processes->select(q |
 				q.provides->keys()->includes('web')
 				and (t.listener = Listener::tls implies q.provides->keys()->includes('websecure'))) in
-			answering->notEmpty() and answering->first() = self)
+			answering->notEmpty() and answering->first() = self
 
 	-- A tier's proxy reads its routes through the Kubernetes API, and the platform says where
 	-- the API answers only in its `apiAccess` (spec/v1/14-platform-intent.md#tiers).

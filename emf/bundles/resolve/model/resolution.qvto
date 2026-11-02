@@ -3687,7 +3687,9 @@ query AnalysisCheck::spelling() : String =
 -- the arguments and the shared Middlewares its tiers derive on it, which no project file writes.
 
 property ACME_REASON : String = 'ACME issuance and its DNS challenge';
-property ACME_CLAIM : String = 'acme';
+-- The claim an acme tier derives on its proxy's Process is named for it, `<process>-acme`: a
+-- Project's Processes share one namespace, so two proxies never share one.
+property ACME_CLAIM : String = '-acme';
 property ACME_MOUNT : String = '/acme';
 property ACME_SIZE : String = '16Mi';
 property DNS_TOKEN_KEY : String = 'CF_DNS_API_TOKEN';
@@ -3758,7 +3760,7 @@ query edgeNodePortsOf(p : PI::Process) : Sequence(L4Port) =
 
 query edgeVolumesOf(p : PI::Process) : Sequence(ResolvedVolume) =
 	if edgeAcme(p) then Sequence{object ResolvedVolume {
-		claim := ACME_CLAIM;
+		claim := p.name + ACME_CLAIM;
 		mountAt := ACME_MOUNT;
 		size := ACME_SIZE;
 		durability := RD::DurabilityClass::reconstructible;
