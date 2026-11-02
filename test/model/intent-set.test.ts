@@ -930,6 +930,15 @@ describe("the Node Agent catalog across documents", () => {
     expect(refusalsOf(withPlatform(noPools))).toStrictEqual([]);
   });
 
+  it("reads no node contract a set holds without a Platform document", () => {
+    expect(
+      refusalsOf([
+        ...WORKED.filter(({ name }) => name !== "platform/platform.intent.yml"),
+        { name: "platform/node-contract.yml", text: "nodes: one\n" },
+      ]),
+    ).toStrictEqual([]);
+  });
+
   it("refuses a node contract that does not read, at the contract", () => {
     expect(
       refusalsOf(

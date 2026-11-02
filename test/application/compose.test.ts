@@ -1610,6 +1610,56 @@ describe("composeEstate, for an artifact whose pin moves", () => {
     ]);
   });
 
+  it("lets a unit follow only units an artifact it delivers holds", () => {
+    const sources = pinSources(
+      [{ name: "notes", files: [] }],
+      ["data", "notes", "secrets"].map((name) => ({ name, files: [] })),
+      [
+        { project: "data", applications: [{ id: "postgres" }] },
+        {
+          project: "notes",
+          applications: [
+            {
+              id: "web",
+              reconcileAfter: ["apps-secrets", "apps-data", "apps-edge"],
+            },
+          ],
+        },
+        { project: "secrets", applications: [{ id: "vault" }] },
+      ] as never,
+      {
+        tiers: [],
+        secretStore: "secrets/vault",
+        bootstrap: {
+          flux: {
+            sourceRef: "flux-system/platform",
+            artifacts: {
+              repository: "ghcr.io/x/render",
+              signer: { issuer: "i", subject: "s" },
+            },
+          },
+        },
+      } as never,
+      serialize,
+    );
+    const followed = (
+      parseAllDocuments(
+        sources.find((source) => source.name === "notes")?.text ?? "",
+      ) as { toJS(): unknown }[]
+    )
+      .map(
+        (document) =>
+          document.toJS() as { kind: string; spec: { dependsOn?: unknown } },
+      )
+      .filter(({ kind }) => kind === "Kustomization")
+      .map(({ spec }) => spec.dependsOn);
+
+    // No artifact holds the edge's unit, so notes does not wait on it.
+    expect(followed).toStrictEqual([
+      [{ name: "apps-data" }, { name: "apps-secrets" }],
+    ]);
+  });
+
   it("writes a source for every artifact it delivers", () => {
     expect(FIRST.sources.map(({ name }) => name)).toStrictEqual(
       FIRST.artifacts.map(({ name }) => name),

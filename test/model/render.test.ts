@@ -1495,6 +1495,17 @@ describe("the database catalog", () => {
     );
     // The name the model-driven implementation derives from the same catalog and method.
     expect(owner[CATALOG]).toContain("  name: postgres-catalog-565e7844099d\n");
+    // A bucket catalog's method writes each project's key where it reads it.
+    const garage = JSON.parse(
+      owner[
+        "apps/data/vault-policy/policies/data-system-garage-catalog.policy.json"
+      ] ?? "{}",
+    ) as { path: Record<string, { capabilities: string[] }> };
+    expect(
+      Object.entries(garage.path)
+        .filter(([, { capabilities }]) => capabilities.includes("create"))
+        .map(([path]) => path),
+    ).toStrictEqual(["secret/data/knowledge-platform/garage/s3"]);
     expect(
       Object.keys(estateScoped).filter((path) => path.includes("catalog")),
     ).toStrictEqual([]);
@@ -4359,11 +4370,11 @@ describe("the metrics stack's scrapes", () => {
     expect(
       Object.keys(unrecorded).filter((path) => path.includes("flux")),
     ).toStrictEqual([]);
-    expect(
-      peers(unrecorded, "prometheus").filter((peer) =>
-        JSON.stringify(peer).includes("flux"),
+    expect(peers(unrecorded, "prometheus")).toStrictEqual(
+      peers(tree(), "prometheus").filter(
+        (peer) => !JSON.stringify(peer).includes("flux"),
       ),
-    ).toStrictEqual([]);
+    );
   });
 });
 
@@ -4430,6 +4441,59 @@ describe("what a container runs, and what it holds in memory", () => {
     });
     expect(hermes.containers[0]?.resources.requests.memory).toBe("3Gi");
     expect(hermes.containers[0]?.args).toStrictEqual(["gateway", "run"]);
+  });
+
+  it("writes a sidecar's authored command and arguments on its own container", () => {
+    const tree = asTree(
+      artifact(
+        render(
+          {
+            "data/data.project.yml": (text) =>
+              text.replace(
+                "          - name: postgres-exporter\n            image: postgres-exporter\n",
+                "          - name: postgres-exporter\n            image: postgres-exporter\n            command: [/bin/postgres_exporter]\n            args: [--log.level=warn]\n",
+              ),
+          },
+          ["data"],
+        ),
+        "data",
+      ),
+    );
+    const exporter = workloadOf(
+      tree,
+      "apps/data/platform-postgres/workload.yaml",
+    ).spec.template.spec.containers.find(
+      ({ name }) => name === "postgres-exporter",
+    );
+
+    expect([exporter?.command, exporter?.args]).toStrictEqual([
+      ["/bin/postgres_exporter"],
+      ["--log.level=warn"],
+    ]);
+  });
+
+  it("keeps a container's memory as written where it holds no path in memory", () => {
+    const tree = asTree(
+      artifact(
+        render(
+          {
+            "data/data.project.yml": (text) =>
+              text.replace(
+                "          memory: 2Gi           # request == limit",
+                "          memory: 2048Mi",
+              ),
+          },
+          ["data"],
+        ),
+        "data",
+      ),
+    );
+    const [postgres] = workloadOf(
+      tree,
+      "apps/data/platform-postgres/workload.yaml",
+    ).spec.template.spec.containers;
+
+    expect(postgres?.resources.requests.memory).toBe("2048Mi");
   });
 });
 
