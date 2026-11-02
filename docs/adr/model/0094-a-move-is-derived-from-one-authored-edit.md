@@ -4,25 +4,30 @@ status: accepted
 claim: open
 owner: joris
 date: 2026-10-09
-normative: spec/v1/55-delivery.md#moves
+normative: spec/v1/50-lifecycle.md#a-provider-that-moves
 rests-on: ["0001", "0005", "0006"]
 ---
 
-# A Move is derived from one authored edit, and the Release Gate runs it as sync, lag, fence, flip, unfence and reverse inside the provider's release
+# The model carries no provider's data between Instances: the derived Move that did so while the estate left its old delivery path is removed
 
-A provider's owner edits one thing: the engine version its image is locked at,
-the Project it is declared in, or the placement its data must satisfy. When the
-data cannot follow that edit in place, composition derives a **Move** from the
-active Instance ClusterState records to a new one, and nothing about it is
-authored. The Release Gate runs it inside the provider's release as Jobs, each
-under a move identity that exists only while the Move is open: the write pause
-runs from the fence to the unfence, bounded by the platform's timeout, and the
-source is kept with the target replicating back into it for the platform's
-retention, after which composition derives its retirement. A Move that cannot
-replicate back is refused unless the owner acknowledges it. What derives a
-Move and what layer 2 carries for it are
-[chapter 20](../../../spec/v1/20-resolved-deployment.md#the-move)'s; the steps
-are [chapter 55](../../../spec/v1/55-delivery.md#moves)'s.
+A provider's data stays with the Instance that holds it. A change the data
+cannot follow in place (an engine version its data does not load, another
+Project, a placement away from the bound volume) is the owner's to carry, by
+hand, from the provider's backups, and the model only refuses the placement it
+cannot honour; what remains is
+[chapter 50](../../../spec/v1/50-lifecycle.md#a-provider-that-moves)'s.
+
+From 2026-10-09 the model derived a **Move** for such a change instead: the
+owner edited one thing, composition compared it with the active Instance
+ClusterState recorded, and the Release Gate ran sync, lag, fence, flip, unfence
+and reverse as Jobs inside the provider's release, keeping the source for a
+retention window. It existed to carry data across the migration off the
+previous delivery path, a consequence of the old deployment method rather than
+a lasting part of the model (the maintainer, 2026-10-30). Every Project is on
+the estate path, so it is removed with its refusals, its Platform document
+fields and the ClusterState records it read
+([#807](https://github.com/JorisJonkers-dev/deploy-kit/issues/807)). The
+sections below record why it was built that way.
 
 ## Rests on
 
@@ -100,22 +105,18 @@ target, and the old Project keeps rendering the source until its retirement
 
 ## Reversibility
 
-Undo cost today: the derivation, the gate's steps and one field: a week.
-Becomes irreversible once: a provider has been moved under the model and its
-retired source deleted, since the record of where its data came from is then
-only the Move's.
+Undo cost today: restoring the derivation, the gate's steps and the fields
+from git history, and building the method images the Move never had: weeks.
+No provider was moved under the model, so no data's history depends on it.
 
 ## Consequences
 
-- A provider's version bump can now pause its writes, for as long as the final
-  lag and the flip take, paid by its consumers in retries.
-- Every engine that wants Moves needs a method image and two catalog facts
-  ([0095](0095-each-engine-states-how-its-data-moves.md)), paid by the platform
-  owner once per engine.
-- Retention costs a second copy of the data and a running replication for the
-  platform's window, paid in storage.
-- A retired source's claim leaves the render but, carrying
+- A provider's major version bump, a Project change or a placement away from
+  its data is a manual migration from backups, with the outage it takes, paid
+  by the owner per change.
+- The Stable Address stays: Flux keeps its target current, and a consumer
+  still reaches a provider that changes Project by one name
+  ([0093](0093-a-provider-is-reached-through-its-stable-address.md)).
+- A claim left in an old namespace stays bound, carrying
   [0018](0018-durability-class-derives-a-backup.md)'s prune-disabled mark,
-  stays bound until deleted by hand, paid in node storage until someone does.
-- Neither implementation carries Moves until
-  [#324](https://github.com/JorisJonkers-dev/deploy-kit/issues/324) lands.
+  until deleted by hand, paid in node storage until someone does.

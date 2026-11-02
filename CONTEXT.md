@@ -364,13 +364,6 @@ an edge into it derives a bucket catalog; `mongo` is a document store
 backed up over its wire protocol, with no catalog until a consumer needs one
 ([0019](docs/adr/model/0019-engine-is-process-vocabulary.md)).
 
-**Move method**: an engine's image that performs each step of a Move, and the
-two facts a Move is derived from: which version change breaks the data in
-place (`breaksOn`), and when the method can replicate back (`reverse`). Carried
-by the engine's entry in the Platform document
-([chapter 14](spec/v1/14-platform-intent.md#move-methods),
-[0095](docs/adr/model/0095-each-engine-states-how-its-data-moves.md)).
-
 **Durability policy**: the platform's terms for one Durability Class: the
 backup window, the retention count, and the off-cluster destination with the
 key its copies are encrypted to. Carried by the Platform Intent, never authored
@@ -512,8 +505,8 @@ placement reads
 ([0048](docs/adr/model/0048-node-facts-are-authored-once.md)).
 
 **Stable Address**: the name a consumer reaches a provider's Surface by,
-`<application>-<surface>` in `estate-system`, whichever Instance serves it. An
-alias, not a proxy: it flips new connections and names no port of its own
+`<application>-<surface>` in `estate-system`, wherever the provider runs. An
+alias, not a proxy: it repoints new connections and names no port of its own
 ([chapter 16](spec/v1/16-dependencies.md#the-stable-address),
 [0093](docs/adr/model/0093-a-provider-is-reached-through-its-stable-address.md)).
 
@@ -678,23 +671,9 @@ before the new start; or rolling, pod by pod with no gate, for delivery
 machinery alone ([chapter 55](spec/v1/55-delivery.md#switchover)).
 
 **Instance**: one running copy of an engine Process's data and the version
-serving it, in one namespace and on one node. A Process has one active Instance,
-and two only while a Move is open: the source and the target
-([chapter 20](spec/v1/20-resolved-deployment.md#the-move)).
-
-**Move**: how a provider changes to an Instance its data must be carried to,
-because its new version cannot read the data in place or because it now runs
-somewhere else. Derived from one authored edit, never declared; run by the
-Release Gate inside the provider's release as sync, lag, fence, final lag,
-flip, unfence and reverse; ended by the source's retirement after the platform's
-retention ([chapter 55](spec/v1/55-delivery.md#moves),
-[0094](docs/adr/model/0094-a-move-is-derived-from-one-authored-edit.md)). Not a
-**Migration**, which moves a schema.
-
-**Fence**: the Move step that stops writes on the source Instance and closes
-its client connections. The write pause runs from the fence to the unfence on
-the target, bounded by the platform's move timeout
-([chapter 55](spec/v1/55-delivery.md#moves)).
+serving it, in one namespace and on one node. A Process has one Instance; the
+model carries no data from one Instance to another
+([chapter 50](spec/v1/50-lifecycle.md#a-provider-that-moves)).
 
 **Primary**: the copy of a `blue-green` Process that serves between releases,
 promoted into by Flagger once the barrier opens; the render never writes it

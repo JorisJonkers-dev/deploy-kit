@@ -52,14 +52,6 @@ import {
 import { migrationOf } from "./migration.ts";
 import { operatedWorkloadOf } from "./operated.ts";
 import { RESTRICTED, postureOf, withHome } from "./posture.ts";
-import {
-  asInstance,
-  instanceSelectorOf,
-  instancesOf,
-  moveOf,
-  relabelled,
-  type Instance,
-} from "./move.ts";
 import { wholeSeconds } from "../shared/durations.ts";
 import {
   isSynced,
@@ -68,7 +60,6 @@ import {
   type KvGrant,
 } from "../shared/holders.ts";
 import {
-  CREATED_ONCE,
   applicationLabels,
   consumerLabelsOf,
   MEMBER_LABEL,
@@ -1607,79 +1598,22 @@ const meshLabelOf = ({
   mesh === undefined ? {} : { "istio.io/dataplane-mode": mesh.dataplane };
 
 /** Every Deliverable of one project this adapter owns, kustomizations aside. */
-/** Whether an Instance renders as its Process always has: the one that serves it, under its name. */
-const plain = (instance: Instance, process: ResolvedProcess): boolean =>
-  instance.name === process.name && process.move === undefined;
-
-/**
- * Each Instance's workload. An Instance other than the Process's own carries
- * its Process's instance label; a source a Move is carrying data out of is
- * created once, so the render never rewrites what still serves.
- */
-function instanceWorkloadsOf(
+/** A Process's workload, or the object its operator runs it from. */
+const processWorkloadOf = (
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
-): RenderedObject[] {
+): RenderedObject =>
   // The operator runs the monitoring stack's Prometheus and Alertmanager.
-  if (process.operated !== undefined)
-    return [
-      operatedWorkloadOf(
+  process.operated === undefined
+    ? workloadOf(process, application)
+    : operatedWorkloadOf(
         process,
         application,
         podTemplateOf(process, application),
-      ),
-    ];
-  return instancesOf(process, application).map((instance) => {
-    const workload = asInstance(
-      workloadOf(instance.process, application),
-      instance.name,
-    );
-    // An Application moving to another Project serves from here, untouched,
-    // until its Move retires it.
-    return instance.frozen || application.departing === true
-      ? {
-          ...workload,
-          metadata: { ...workload.metadata, annotations: CREATED_ONCE },
-        }
-      : workload;
-  });
-}
-
-/** Each Instance's Service, which selects that Instance's pods alone. */
-function instanceServicesOf(
-  process: ResolvedProcess,
-  application: ResolvedApplicationDocument,
-): Service[] {
-  return instancesOf(process, application).map((instance) => {
-    if (plain(instance, process)) return serviceOf(process, application);
-    const service = asInstance(
-      serviceOf(instance.process, application),
-      instance.name,
-    );
-    return {
-      ...service,
-      spec: {
-        ...service.spec,
-        selector: instanceSelectorOf(instance, process.name),
-      },
-    };
-  });
-}
-
-/**
- * The Process as the Instance that serves it runs: the source of an open Move
- * it renders, or else the one Instance it has, whose claims its backups copy.
- */
-const servingOf = (
-  process: ResolvedProcess,
-  application: ResolvedApplicationDocument,
-): ResolvedProcess =>
-  (instancesOf(process, application) as [Instance])[0].process;
+      );
 
 export function renderKubernetes(project: ResolvedProject): Deliverable[] {
   const [first] = project.applications;
-  // A Project whose one Application has moved out of it keeps its namespace,
-  // where the retired source's claim stays bound until it is deleted by hand.
   const namespace = namespaceOf(project.project);
   const libraries = libraryObjectsOf(project, namespace);
   const aliases = aliasesOf(project, namespace);
@@ -1727,7 +1661,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
       const files: [string, RenderedObject[]][] = [
         [
           "workload.yaml",
-          processes.flatMap((p) => instanceWorkloadsOf(p, application)),
+          processes.map((p) => processWorkloadOf(p, application)),
         ],
         ["client.yaml", clientOf(application)],
         [
@@ -1748,27 +1682,16 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
           processes.filter(scaled).map((p) => budgetOf(p, application)),
         ],
         ["migration.yaml", migrationOf(application)],
-        ["move.yaml", processes.flatMap((p) => moveOf(p, application))],
         [
           "service.yaml",
           [
             ...processes
               .filter((p) => !blueGreen(p) && p.surfaces !== undefined)
-              .flatMap((p) => instanceServicesOf(p, application)),
+              .map((p) => serviceOf(p, application)),
             ...processes.flatMap((p) => l4ServicesOf(p, application)),
           ],
         ],
-        [
-          "pvc.yaml",
-          processes.flatMap((p) =>
-            instancesOf(p, application).flatMap((instance) =>
-              relabelled(
-                claimsOf(instance.process, application),
-                instance.name,
-              ),
-            ),
-          ),
-        ],
+        ["pvc.yaml", processes.flatMap((p) => claimsOf(p, application))],
         [
           "configmap.yaml",
           [
@@ -1777,12 +1700,7 @@ export function renderKubernetes(project: ResolvedProject): Deliverable[] {
             ...processes.flatMap((p) => configMapsOf(p, application)),
           ],
         ],
-        [
-          "backup.yaml",
-          processes.flatMap((p) =>
-            backupsOf(servingOf(p, application), application),
-          ),
-        ],
+        ["backup.yaml", processes.flatMap((p) => backupsOf(p, application))],
         ["rbac.yaml", processes.flatMap((p) => rbacOf(p, application))],
       ];
       // A file holds at least one object, or it is not written.

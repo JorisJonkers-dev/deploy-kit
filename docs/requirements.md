@@ -33,7 +33,7 @@ files. Each file holds the same three-column table.
 | [`intent.md`](requirements/intent.md) | the authored documents before resolution: parsing, the metamodel and its JSON Schemas, refusals, env files, Shared Intent, canonical oracle JSON |
 | [`resolution.md`](requirements/resolution.md) | layer 2 as a whole: the Resolved Deployment, Application revisions, Aliases and Stable Addresses, the foundation, the render of the composed union |
 | [`processes.md`](requirements/processes.md) | one Process's pod: containers, sidecars, Assets, placement, GPU, VPN, Spread, priority, lifecycle, API access, egress, the Hardening Class |
-| [`volumes-and-engines.md`](requirements/volumes-and-engines.md) | state: Volumes and Durability Classes, backups, Engines and catalog methods, Edge credentials, Migrations, Moves, Seeded Assets |
+| [`volumes-and-engines.md`](requirements/volumes-and-engines.md) | state: Volumes and Durability Classes, backups, Engines and catalog methods, Edge credentials, Migrations, Seeded Assets |
 | [`exposures-and-tiers.md`](requirements/exposures-and-tiers.md) | the edge: Exposures, Routes, Tiers and Edge proxies, L4 Addresses, Tier DNS, TLS, rate limits, Shared Middlewares, Upstream nameservers |
 | [`sign-in.md`](requirements/sign-in.md) | sign-in: forward-auth, Clients and Sign-in Modes, Identity files |
 | [`grants-and-secrets.md`](requirements/grants-and-secrets.md) | secrets: Grants and their delivery, Static secrets, Generated and Optional keys, the Vault Secrets Operator, the Vault policy job |

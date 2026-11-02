@@ -7,9 +7,7 @@ import type { DependencyEdge } from "../model/project-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import { homeOf } from "../model/runtime-profiles.ts";
 import { reachOf, servedOf, type Named } from "../model/aliases.ts";
-import type { ClusterStateDocument } from "../model/cluster-state.ts";
 import { brokenInvariant } from "../model/internal-failure.ts";
-import { departingFromOf } from "../model/move.ts";
 
 export type ResolvedEdge = NonNullable<ResolvedProcess["dependencies"]>[number];
 
@@ -30,7 +28,6 @@ export function resolveEdge(
   union: readonly EffectiveProject[],
   platform: PlatformIntentDocument,
   project: string,
-  clusterState?: ClusterStateDocument,
 ): ResolvedEdge {
   const { application, surface } = edge;
   const served = servedOf(edge, union, platform);
@@ -44,30 +41,11 @@ export function resolveEdge(
       if (declared.id === application)
         for (const process of declared.processes)
           if (process.provides?.[surface] !== undefined) {
-            const peer = {
-              ...homeOf(home, process.name),
-              port: served.port,
-            };
-            // While the provider moves out of another namespace, its source
-            // there serves until the Move retires it.
-            const from =
-              clusterState === undefined
-                ? undefined
-                : departingFromOf(
-                    clusterState,
-                    platform,
-                    application,
-                    process.name,
-                    peer.namespace,
-                  );
             return {
               application,
               surface,
               ...reach,
-              peers: [
-                peer,
-                ...(from === undefined ? [] : [{ ...peer, namespace: from }]),
-              ],
+              peers: [{ ...homeOf(home, process.name), port: served.port }],
             };
           }
   return { application, surface, ...reach };

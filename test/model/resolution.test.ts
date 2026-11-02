@@ -412,30 +412,6 @@ describe("resolveIntentSet", () => {
     };
     const knowledgePlatform = () => project(composed(), "knowledge-platform");
 
-    // REQ-112 (docs/requirements.md): platform-postgres moving from 16 to 17,
-    // the worked Move: ClusterState records 16 serving, the lock pins 17, the
-    // Move is acknowledged, since postgres's method cannot reverse, and the
-    // knowledge platform's edge names the surface whose address it flips.
-    it("resolves platform-postgres moving from 16 to 17 to its committed projection, byte for byte", () => {
-      const projects = composed({
-        "platform/cluster-state.yml": (body) =>
-          `${body}instances:\n  - {application: platform-postgres, instance: postgres, version: 16.4.0, namespace: data-system, node: enschede-t1000-1}\n`,
-        "data/data.project.yml": (body) =>
-          body.replace(
-            "      - name: postgres\n",
-            "      - name: postgres\n        rollback: forward-only # the worked Move: 16 to 17, which postgres's method cannot reverse\n",
-          ),
-      });
-
-      expect(
-        canonicalJson(
-          project(projects, "data").applications.find(
-            ({ id }) => id === "platform-postgres",
-          ),
-        ),
-      ).toBe(text("data/expected/resolved.moving.json"));
-    });
-
     it("resolves hindsight, three Processes released together, to its committed projection, byte for byte", () => {
       expect(
         canonicalJson(

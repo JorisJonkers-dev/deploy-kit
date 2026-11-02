@@ -227,7 +227,7 @@ repository already uses between a chapter and an ADR.
 | [`30-deliverables.md`](30-deliverables.md) | adapters, the adapter port, attribution, coverage | drawn |
 | [`40-composition.md`](40-composition.md) | Intent Fragments, participants and the staleness bound, schema versioning and rollout | drawn |
 | [`50-lifecycle.md`](50-lifecycle.md) | model-level lifecycle: Release Unit switchover, expand/contract for cross-Application contract changes, lock lifecycle | drawn |
-| [`55-delivery.md`](55-delivery.md) | delivery: rendered artifacts and pins, blue/green switchover, the Release Gate, held releases, migrations, release order, failure and undo, Moves | not yet |
+| [`55-delivery.md`](55-delivery.md) | delivery: rendered artifacts and pins, blue/green switchover, the Release Gate, held releases, migrations, release order, failure and undo | not yet |
 | [`60-setup.md`](60-setup.md) | bootstrap order, secrets at rest, CNI selection, node facts, restore, onboarding and adoption | drawn |
 
 **Chapter 16's derivation map is the load-bearing artefact**, and its value is
@@ -390,20 +390,14 @@ through, with the deciding ADR named.
      composition.
    - **Blocks:** nothing in v1's render.
 
-8. **Specified ahead of both implementations.** The
-   [Stable Address](16-dependencies.md#the-stable-address), the derived
-   [Move](55-delivery.md#moves) with its [layer-2 element](20-resolved-deployment.md#the-move)
-   and [engine methods](14-platform-intent.md#move-methods),
-   [`availability`](10-project-intent.md#availability),
-   [`rollback`](10-project-intent.md#rollback) and
+8. **Specified ahead of both implementations.**
+   [`availability`](10-project-intent.md#availability) and
    [Infrastructure Intent](15-infrastructure-intent.md) are specified before
    either implementation carries them, so the worked examples' oracle files
-   still resolve `${dependency:…}` to a Process's own Service and read node
-   facts from the per-node files.
+   read node facts from the per-node files.
    - **Owner:** joris.
-   - **Settled by:** #324: both implementations, the schemas, and a
-     hand-written Postgres 16 to 17 move example with its resolved oracle,
-     after which every code these sections define leaves the pending list of
+   - **Settled by:** #324: both implementations and the schemas, after which
+     every code these sections define leaves the pending list of
      `scripts/lint-codes.ts`.
    - **Blocks:** rendering any of them; until #324 lands, a render carries
      none, and a provider changes the way it did before.
