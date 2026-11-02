@@ -4779,6 +4779,44 @@ describe("a seeded Asset", () => {
     expect(hermes().pod.initContainers?.[0]).not.toHaveProperty("env");
   });
 
+  it("mounts each volume and writable path some seeded Asset lands on, where Assets land on both", () => {
+    const result = renderIntentSet(
+      [
+        ...files({
+          [AGENTS]: (text) =>
+            text.replace(
+              SEEDED,
+              `${SEEDED}          - { from: config/hermes/second.yaml, seedAt: /tmp/second.yaml }\n`,
+            ),
+        }),
+        { name: "agents/config/hermes/second.yaml", text: "second: true\n" },
+      ],
+      { ...OPTIONS, projects: ["agents"] },
+    );
+    if (!result.ok)
+      throw new Error(
+        JSON.stringify(result.diagnostics.map(({ code }) => code)),
+      );
+    const pod = (
+      parseAllDocuments(
+        asTree(artifact(result.value, "agents"))[
+          "apps/agents/hermes/workload.yaml"
+        ] ?? "",
+      )
+        .map((document) => document.toJS() as Record<string, unknown>)
+        .find(({ kind }) => kind === "Deployment") as {
+        spec: { template: { spec: Pod } };
+      }
+    ).spec.template.spec;
+    const [seed] = pod.initContainers ?? [];
+
+    expect(
+      seed?.volumeMounts
+        ?.filter(({ readOnly }) => readOnly !== true)
+        .map(({ mountPath }) => mountPath),
+    ).toStrictEqual(["/opt/data", "/tmp"]);
+  });
+
   it("seeds onto a writable path, mounting it into the step under the name the Process mounts it by", () => {
     const tree = asTree(artifact(render(undefined, ["utility"]), "utility"));
     const pod = (
