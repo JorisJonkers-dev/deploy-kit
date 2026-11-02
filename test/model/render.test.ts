@@ -3488,6 +3488,26 @@ describe("a tier's proxy", () => {
     ).toBe(false);
   });
 
+  // REQ-169 (docs/requirements.md): an acme tier's proxy re-owns its volume
+  // only while the volume's root does not match, so the ACME state file keeps
+  // the mode Traefik requires of it.
+  it("leaves an acme proxy's state file as Traefik wrote it, and no other pod's volumes", () => {
+    const policyOf = (path: string) =>
+      (
+        objectsOf(path) as {
+          spec: {
+            template: {
+              spec: { securityContext: { fsGroupChangePolicy?: string } };
+            };
+          };
+        }[]
+      )[0]?.spec.template.spec.securityContext.fsGroupChangePolicy;
+    expect([
+      policyOf("apps/edge/traefik-public/workload.yaml"),
+      policyOf("apps/edge/traefik-lan/workload.yaml"),
+    ]).toStrictEqual(["OnRootMismatch", undefined]);
+  });
+
   it("keeps an acme tier's state on its own claim, reads the DNS token, and reaches out", () => {
     const [workload] = objectsOf("apps/edge/traefik-public/workload.yaml") as {
       spec: {
