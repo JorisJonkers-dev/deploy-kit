@@ -51,6 +51,42 @@ cd emf
 JDK 21 is required; the wrapper downloads the pinned Maven, and Tycho the
 bundles `emf.target` pins.
 
+## A fast local loop
+
+The full build runs every gate, so a one-line change to a transformation
+waits minutes. While editing, build the bundles without the parity tier,
+offline, run only the test that covers the change, and skip the gates. This
+takes about half a minute:
+
+```sh
+cd emf
+./mvnw -o -Pquick verify -pl '!tests/parity' -Dtest=StageTest -Dsurefire.failIfNoSpecifiedTests=false
+```
+
+- `-Pquick` skips the JaCoCo agent and its coverage floor, PIT and the
+  Spotless check. It runs the tests. CI never passes it, so every gate still
+  runs on the pull request.
+- `-pl '!tests/parity'` builds every bundle and leaves out the parity tier;
+  the full build runs it. `bundles/cli` holds the pipeline tests, including
+  the stage cases. Maven's `-am` cannot stand in here: a bundle names the bundles
+  it needs in its `META-INF/MANIFEST.MF`, not its POM, so `-pl bundles/cli -am`
+  builds `cli` alone and Tycho cannot resolve the bundles it requires.
+- `-o` works offline once one full build has filled the local repository.
+- `-Dtest=<class>` runs one test class, or `<class>#<method>` one method.
+  `-Dsurefire.failIfNoSpecifiedTests=false` lets the modules that have no
+  such test pass.
+- `-Dgolden.update=true` rewrites the stage goldens from what the stages now
+  write, for review in `git diff`.
+
+[`mvnd`](https://github.com/apache/maven-mvnd), the Maven daemon, keeps a warm
+JVM between builds and takes the same arguments. It is optional: nothing here
+needs it.
+
+On a managed machine an antivirus scanner can slow every file Maven and Tycho
+read and write. Excluding the local Maven repository and the `target/`
+directories from scanning is a request to the machine's IT department, not a
+setting in this repository.
+
 ## Opening in Eclipse
 
 For examiners, in Eclipse Modeling Tools 2026-06 with the OCL, QVT-Operational
