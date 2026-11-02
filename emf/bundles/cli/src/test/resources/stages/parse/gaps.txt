@@ -10,7 +10,6 @@ DatabaseGrant.role is never set in a parse case's input
 DatabaseGrant.rotation is never set in a parse case's input
 Datastore.etcd is never used in a parse case's input
 Engine.valkey is never used in a parse case's input
-Generate.adopt is never set in a parse case's input
 PolicyController.cni is never used in a parse case's input
 PolicyController.none is never used in a parse case's input
 SignInMode.token is never used in a parse case's input
@@ -63,8 +62,6 @@ project-intent.schema.json /applications[]/placement/gpu/vendor is never present
 project-intent.schema.json /applications[]/placement/memory is never present in a parse case's input
 project-intent.schema.json /applications[]/processes[]/dependsOn[]/credentials/rotation/maxAge is never present in a parse case's input
 project-intent.schema.json /applications[]/processes[]/dependsOn[]/required is never present in a parse case's input
-project-intent.schema.json /applications[]/processes[]/secrets[]/keys[]/generate is never present in a parse case's input
-project-intent.schema.json /applications[]/processes[]/secrets[]/keys[]/generate/adopt is never present in a parse case's input
 project-intent.schema.json /applications[]/processes[]/secrets[]/keys[]/generate/bytes is never present in a parse case's input
 project-intent.schema.json /applications[]/processes[]/secrets[]/keys[]/generate/encoding is never present in a parse case's input
 project-intent.schema.json /applications[]/processes[]/secrets[]/role is never present in a parse case's input

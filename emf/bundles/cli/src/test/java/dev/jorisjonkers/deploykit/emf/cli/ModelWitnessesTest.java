@@ -1372,6 +1372,45 @@ class ModelWitnessesTest {
                 .contains("E_NO_SECRET_STORE platform.intent.yml /tiers/1/certificateFrom");
     }
 
+    /**
+     * A generated key that adopts a value keeps the location it adopts from through the lowering, so
+     * the Vault policy job is handed that path and key beside the key's defaults: the same edit the
+     * production implementation's render test makes to the {@code data} example.
+     */
+    @Test
+    void aGeneratedKeyThatAdoptsAValueHandsTheVaultPolicyJobTheLocationItAdoptsFrom(@TempDir Path work)
+            throws IOException {
+        Path adopting = renderedWith(
+                "data",
+                work,
+                new Edit(
+                        "data/data.project.yml",
+                        "          - path: secret/data/platform/postgres/exporter\n"
+                                + "            keys: [datasource]\n",
+                        "          - path: secret/data/data-system/exporter\n"
+                                + "            keys: [{ name: datasource, generate: { adopt: "
+                                + "\"secret/data/platform/postgres/exporter#datasource\" } }]\n"
+                                + "            access: read\n"
+                                + "            delivery: file\n"
+                                + "            mountAt: /run/secrets/exporter\n"
+                                + "            fileMode: \"0400\"\n"
+                                + "            rotation: {tolerates: restart}\n"
+                                + "          - path: secret/data/platform/postgres/exporter\n"
+                                + "            keys: [datasource]\n"));
+
+        assertThat(Files.readString(adopting.resolve("apps/data/vault-policy/policies/data-system.generated.json")))
+                .isEqualTo("{\n  \"keys\": [\n    {\n"
+                        + "      \"path\": \"secret/data/data-system/exporter\",\n"
+                        + "      \"key\": \"datasource\",\n"
+                        + "      \"bytes\": 32,\n"
+                        + "      \"encoding\": \"hex\",\n"
+                        + "      \"adopt\": {\n"
+                        + "        \"path\": \"secret/data/platform/postgres/exporter\",\n"
+                        + "        \"key\": \"datasource\"\n"
+                        + "      }\n"
+                        + "    }\n  ]\n}\n");
+    }
+
     @Test
     void theMonitoringStacksGrafanaRendersItsInstanceReadsOneGeneratedAdminAndDerivesItsDataSources(@TempDir Path work)
             throws IOException {

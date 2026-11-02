@@ -22,6 +22,33 @@ spec:
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
+  name: postgres-data-system-exporter
+  namespace: data-system
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: postgres
+    app.kubernetes.io/part-of: platform-postgres
+    app.kubernetes.io/managed-by: deploy-kit
+    app.kubernetes.io/component: none
+spec:
+  vaultAuthRef: postgres
+  mount: secret
+  type: kv-v2
+  path: data-system/exporter
+  refreshAfter: 10m
+  hmacSecretData: true
+  destination:
+    name: postgres-data-system-exporter
+    create: true
+    annotations:
+      flagger.app/config-tracking: disabled
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: postgres
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
   name: postgres-platform-postgres-exporter
   namespace: data-system
   labels:
