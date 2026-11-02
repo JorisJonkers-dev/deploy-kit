@@ -36,16 +36,27 @@ function workflows(): Workflow[] {
 }
 
 /**
- * Every workflow step that runs the Maven wrapper, as the directory it runs
- * in. A step is the text between two list markers at the same indent, and the
- * directory is its `working-directory`, or the repository root without one.
+ * Every workflow step that runs the Maven wrapper, with the workflow it sits
+ * in. A step is the text between two list markers at the same indent.
  */
-function mavenSteps(files: readonly Workflow[]): string[] {
+function mavenStepTexts(
+  files: readonly Workflow[],
+): { readonly workflow: string; readonly text: string }[] {
   return files.flatMap((file) =>
     file.text
       .split(/\n(?= {6}- )/)
       .filter((step) => /\bmvnw\b/.test(step))
-      .map((step) => /'working-directory':\s*'([^']+)'/.exec(step)?.[1] ?? "."),
+      .map((step) => ({ workflow: file.name, text: step })),
+  );
+}
+
+/**
+ * Every workflow step that runs the Maven wrapper, as the directory it runs
+ * in: its `working-directory`, or the repository root without one.
+ */
+function mavenSteps(files: readonly Workflow[]): string[] {
+  return mavenStepTexts(files).map(
+    (step) => /'working-directory':\s*'([^']+)'/.exec(step.text)?.[1] ?? ".",
   );
 }
 
@@ -56,19 +67,14 @@ function mavenSteps(files: readonly Workflow[]): string[] {
  * skip the gates it exists to run.
  */
 function quickProfileErrors(files: readonly Workflow[]): string[] {
-  return files.flatMap((file) =>
-    file.text
-      .split(/\n(?= {6}- )/)
-      .filter(
-        (step) =>
-          /\bmvnw\b/.test(step) &&
-          /(?:-P\s*|--activate-profiles[=\s]+)(?:[\w-]+,)*quick\b/.test(step),
-      )
-      .map(
-        () =>
-          `${file.name} passes the quick profile to the Maven wrapper, which skips the gates CI runs`,
-      ),
-  );
+  return mavenStepTexts(files)
+    .filter((step) =>
+      /(?:-P\s*|--activate-profiles[=\s]+)(?:[\w-]+,)*quick\b/.test(step.text),
+    )
+    .map(
+      (step) =>
+        `${step.workflow} passes the quick profile to the Maven wrapper, which skips the gates CI runs`,
+    );
 }
 
 /** Every problem with the Maven steps and the reactor under `root`. */
