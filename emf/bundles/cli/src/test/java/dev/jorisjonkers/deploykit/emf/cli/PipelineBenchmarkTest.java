@@ -38,7 +38,7 @@ import org.junit.jupiter.api.io.TempDir;
  *       before lowering;
  *   <li><b>lower</b>: every Project of the union lowered, {@link Lowering#lower} as shipped;
  *   <li><b>resolve</b>: one Project resolved against the union by {@code resolution.qvto}, loaded
- *       once ({@link QvtoResolution}); {@link Resolution#resolve} loads it on every call, and that load
+ *       once ({@link QvtoResolution}), as {@link Resolution#resolve} loads it once per JVM; the load
  *       is timed apart, in {@link #loadingEachTransformation};
  *   <li><b>render</b>: the Resolved Deployments rendered to files, {@link Rendering#render}, which
  *       parses the templates on every call, as shipped.
@@ -54,6 +54,9 @@ class PipelineBenchmarkTest {
 
     /** The shipped resolutions {@link #theHeapASeriesOfShippedResolutionsKeeps} runs. */
     private static final int SERIES = 40;
+
+    /** The most full collections {@link #reachable} asks for before it takes the heap as settled. */
+    private static final int COLLECTIONS = 10;
 
     /** The resolution every series runs, loaded on first use and then reused. */
     private static QvtoResolution resolution;
@@ -119,7 +122,7 @@ class PipelineBenchmarkTest {
     private static long reachable() {
         MemoryMXBean memory = ManagementFactory.getMemoryMXBean();
         long used = Long.MAX_VALUE;
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < COLLECTIONS; i++) {
             System.gc();
             long now = memory.getHeapMemoryUsage().getUsed();
             if (now >= used) {

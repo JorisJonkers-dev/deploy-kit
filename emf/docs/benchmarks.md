@@ -25,7 +25,7 @@ What can be measured is time, so this document measures two things:
 1. every stage of the pipeline as it ships, so the share of time each
    transformation takes is known;
 2. one transformation written in both languages and held equal: the
-   **lowering**, `lower.qvto` (473 lines, 54 mappings), ported to ATL on
+   **lowering**, `lower.qvto` (474 lines, 54 mappings), ported to ATL on
    EMFTVM. The resolution (`resolution.qvto`, 4,212 lines) is where the
    report's two reasons apply, and it was not ported; see
    [What the numbers do not support](#what-the-numbers-do-not-support).
@@ -66,15 +66,18 @@ What can be measured is time, so this document measures two things:
   - *check*: the documents read again, checked against the OCL constraints,
     the names and the pinned inputs, and joined to their env files
     (`Pipeline.authored`, what the pipeline does before lowering);
-  - *lower*: every Project of the union lowered by `Lowering.lower`, which
-    loads `lower.qvto` on each call, as shipped;
+  - *lower*: every Project of the union lowered by `Lowering.lower`, as
+    shipped. When the tables of the next two sections were measured it loaded
+    `lower.qvto` on each call; it now loads it once per JVM, and
+    [Loading each transformation once](#loading-each-transformation-once)
+    measures the change;
   - *resolve*: one Project resolved against the union by `resolution.qvto`
-    **loaded once and reused**. `Resolution.resolve` loads it again on every
-    call; that load is timed apart ([Loading](#loading-a-transformation)),
-    because every load stays reachable for the life of the JVM (about 8.5 MB
-    each), and a series of hundreds of shipped calls exhausted a 16 GiB heap.
-    The suite checks, per example, that the reused resolution writes what the
-    shipped one writes;
+    **loaded once and reused**, as `Resolution.resolve` now loads it. The load
+    is timed apart ([Loading](#loading-a-transformation)). When these tables
+    were measured, `Resolution.resolve` loaded it on every call and every load
+    stayed reachable for the life of the JVM, so a series of hundreds of
+    shipped calls exhausted a 16 GiB heap. The suite checks, per example, that
+    the reused resolution writes what the shipped one writes;
   - *render*: the Resolved Deployments rendered to files by
     `Rendering.render`, which parses the Acceleo templates on every call, as
     shipped.
@@ -91,8 +94,8 @@ What can be measured is time, so this document measures two things:
   its env files attached, as the pipeline lowers it. `knowledge` is left out:
   no union resolves it, because no lock holds its images. "Loaded once" is a
   QVTo `TransformationExecutor` loaded once and an EMFTVM `ExecEnvPool` whose
-  module was compiled once; "per call" is the shipped `Lowering.lower`, and
-  the ATL source compiled for each Project.
+  module was compiled once; "per call" is `lower.qvto` loaded for each
+  Project, and the ATL source compiled for each Project.
 
 ## The machine
 
@@ -149,20 +152,21 @@ to an order of magnitude between runs.
 ### Loading a transformation
 
 Warm, parse and compile only, as `Lowering.lower` and `Resolution.resolve`
-each do on every call.
+each did on every call when these tables were measured, and now do once per
+JVM.
 
 | transformation | lines | load ms (parse, compile) |
 |---|---|---|
 | lower.qvto | 473 | 15.1 [14.1–15.5] |
 | resolution.qvto | 4212 | 109 [108–111] |
 
-So a shipped resolution costs about 110 ms of loading on top of the execution
-above, and a shipped lowering about 15 ms of loading on top of well under a
+So loading on every call cost a resolution about 110 ms on top of the
+execution above, and a lowering about 15 ms on top of well under a
 millisecond of execution. Every load of `resolution.qvto` also stays
-reachable for the life of the JVM (about 8.5 MB each, measured over repeated
-calls); one reused executor does not grow. A command-line run makes one call
-per Project and exits, so it does not notice; a long-lived process would.
-`lower.qvto`, which imports no blackbox, does not keep its loads.
+reachable for the life of the JVM, about 8 MiB each; one reused executor does
+not grow. `lower.qvto`, which imports no blackbox, does not keep its loads.
+Both now load once per JVM:
+[Loading each transformation once](#loading-each-transformation-once).
 
 ## The pipeline over the estate, growing
 
@@ -203,6 +207,39 @@ with the shipped `Lowering.lower` and `Resolution.resolve`.
 A cold run of `minimal` takes about 3.8 s, of which 2.7 s are *read* and
 *check*: class loading and the first Xtext and OCL setups. The transformations
 together (lower, resolve, render) are about 1.1 s cold.
+
+## Loading each transformation once
+
+`Lowering.lower` and `Resolution.resolve` now load their transformation once
+per JVM and reuse it, each call with an execution context and model extents
+of its own
+([JorisJonkers-dev/deploy-kit#826](https://github.com/JorisJonkers-dev/deploy-kit/issues/826)).
+Every stage golden, rendered tree and oracle comparison is unchanged. Both
+measures come from `-Pbenchmark` runs on one machine in one session, first
+on `main`, then on the change:
+
+| measure | before | after |
+|---|---|---|
+| lowering, the estate's 24 Projects, as shipped (ms) | 174 [172–177] | 7.82 [7.63–7.99] |
+| lowering, per Project, as shipped (ms) | 7.25 | 0.33 |
+| lowering, a worked example's union (9 to 24 Projects), as shipped (ms) | 64.7–179 | 3.17–13.7 |
+| heap kept per shipped resolution, over 40 in one JVM (MiB) | 8.24 | 0.00 |
+
+The lowering rows are the *lower* column of the two pipeline suites: warm,
+`median [p25–p75]` of 10 runs, the per-Project row being the 24-Project
+median divided by 24. The heap row is `PipelineBenchmarkTest`'s series of 40
+shipped resolutions of `minimal`'s `notes`, the heap still in use after full
+collections read before and after it and the difference divided by 40.
+Lowering now costs about what its execution costs
+([Execution, growing](#execution-growing): 7.62 ms loaded once).
+
+The columns the change does not touch moved between the two runs too: *read*
+was up to a quarter faster after, and *resolve* and *render* of the largest
+examples up to a third slower (`estate/observability` resolved in 232 ms
+before and 310 ms after, with the resolution loaded once in both). The cause
+was not isolated. The suite's JVM held about 14 GiB still reachable in both
+runs, close to its 16 GiB maximum, and this laptop's run-to-run noise is wide
+([The machine](#the-machine)). So those columns are not re-tabulated here.
 
 ## QVTo against ATL
 
@@ -284,10 +321,11 @@ ATL takes 0.94× to 1.46× QVTo's time per Project (median 1.12×), and
 
 The estate's first *n* Projects, all lowered, milliseconds. Left: each
 transformation loaded once (QVTo `TransformationExecutor`, EMFTVM
-`ExecEnvPool`). Right: loaded for every Project, which is how
-`Lowering.lower` ships, against the ATL source compiled for every Project.
+`ExecEnvPool`). Right: `lower.qvto` loaded for every Project, which is how
+`Lowering.lower` shipped when this was measured, against the ATL source
+compiled for every Project.
 
-| Projects | objects | QVTo ms (loaded once) | ATL ms (compiled once) | ATL / QVTo | QVTo ms (loaded per Project, as shipped) | ATL ms (compiled per Project) | ATL / QVTo |
+| Projects | objects | QVTo ms (loaded once) | ATL ms (compiled once) | ATL / QVTo | QVTo ms (loaded per Project) | ATL ms (compiled per Project) | ATL / QVTo |
 |---|---|---|---|---|---|---|---|
 | 1 | 43 | 0.28 [0.27–0.29] | 0.31 [0.30–0.32] | 1.11× | 12.8 [12.5–13.1] | 179 [175–179] | 13.94× |
 | 4 | 346 | 1.56 [1.53–1.64] | 1.73 [1.71–1.79] | 1.11× | 36.9 [36.2–37.5] | 783 [749–847] | 21.24× |
@@ -322,8 +360,8 @@ the transformation and lower all 24 estate Projects.
 
 |  | lower.qvto | lower.atl |
 |---|---|---|
-| lines | 473 | 624 |
-| lines of code (not blank, not a comment) | 365 | 488 |
+| lines | 474 | 625 |
+| lines of code (not blank, not a comment) | 366 | 489 |
 | mappings / rules | 54 | 33 matched, 21 lazy |
 | of which only dispatch to a subtype (`disjuncts`) | 8 | – |
 | queries / helpers | 9 | 35 |
@@ -331,7 +369,7 @@ the transformation and lower all 24 estate Projects.
 The port is a third longer in lines of code. QVTo's eight `disjuncts` mappings
 become helpers on each subtype (ATL dispatches a helper on the runtime type);
 QVTo's `init` variables become attribute helpers on `Process`, which ATL
-caches per object; and 41 conditional writes move into imperative `do`
+caches per object; and 42 conditional writes move into imperative `do`
 blocks.
 
 ### What ATL made hard
@@ -349,7 +387,7 @@ Each of these was met while porting, and each is visible in
 2. **A binding is unconditional.** An unsettable feature must be written
    only where the source states it, or the Effective Intent states what no
    author wrote. EMFTVM writes a null it is given, which marks the feature
-   set, and a binding has no `if`. So 41 conditional writes sit in imperative
+   set, and a binding has no `if`. So 42 conditional writes sit in imperative
    `do` blocks: the rule shape QVTo writes declaratively with
    `if … then x := … endif`.
 3. **A lazy rule with a `do` block answers the block, not its target.** The
@@ -395,10 +433,12 @@ What the numbers support:
   about 0.4 s more, mostly compiling its source, against a cold run of
   nearly 4 s.
 - **Where time goes:** parsing and checking dominate both warm (55–63%) and
-  cold (about 70%). Of the transformations, the measurable waste is loading:
-  the shipped lowering spends more than 95% of its time loading `lower.qvto` once
-  per Project, and every shipped resolution loads `resolution.qvto` (about
-  110 ms) and keeps it.
+  cold (about 70%). Of the transformations, the measurable waste was
+  loading: the lowering spent more than 95% of its time loading `lower.qvto`
+  once per Project, and every resolution loaded `resolution.qvto` (about
+  110 ms) and kept it. Both now load once per JVM: lowering the estate's 24
+  Projects takes 7.8 ms instead of 174 ms, and a series of resolutions keeps
+  no heap per call instead of about 8 MiB.
 
 What they do not support:
 

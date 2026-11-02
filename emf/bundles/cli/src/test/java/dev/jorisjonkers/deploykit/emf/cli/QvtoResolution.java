@@ -13,22 +13,20 @@ import org.eclipse.m2m.qvt.oml.TransformationExecutor;
 
 /**
  * The shipped resolution, {@code resolution.qvto}, with its transformation loaded once and reused, so
- * the benchmark times its execution apart from its loading (docs/benchmarks.md#method).
- * {@link Resolution#resolve} loads it on every call, and every load it makes stays reachable for the
- * life of the JVM: a series of hundreds of calls exhausts the heap, where one loaded executor does not
- * grow.
+ * the benchmark times its execution apart from its loading (docs/benchmarks.md#method), and can load
+ * it again on its own to time the load.
  */
 final class QvtoResolution {
 
     private final TransformationExecutor executor;
 
     private QvtoResolution(List<EObject> intent, List<EObject> pinned, String project) {
-        // The shipped entry point registers the blackbox the transformation imports, once per JVM.
+        // The shipped entry point registers the blackbox the transformation imports, which a load needs.
         Resolution.resolve(intent, pinned, project, Outputs.INTEGRITY);
         executor = load();
     }
 
-    /** {@code resolution.qvto} parsed, compiled and loaded: what {@link Resolution#resolve} does first on every call. */
+    /** {@code resolution.qvto} parsed, compiled and loaded: what {@link Resolution#resolve} does on its first call. */
     static TransformationExecutor load() {
         TransformationExecutor executor = new TransformationExecutor(
                 URI.createURI(Resolution.class.getResource("/resolution.qvto").toString()));
