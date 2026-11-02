@@ -7,7 +7,10 @@ import { memoryPathsOf, seedsAssets } from "../model/project-intent.ts";
 import { ACME_MOUNT } from "../model/tier-proxy.ts";
 import { foundationOf, type AcmePolicy } from "../model/platform-intent.ts";
 import type { L4Hold } from "../model/l4-addresses.ts";
-import type { ClusterStateDocument } from "../model/cluster-state.ts";
+import {
+  boundToOf,
+  type ClusterStateDocument,
+} from "../model/cluster-state.ts";
 import type {
   EffectiveApplication,
   EffectiveProcess,
@@ -55,8 +58,6 @@ import {
 import { consumedOf } from "../model/consumer-label.ts";
 import { clientSecretPath } from "./client.ts";
 import { resolveEdge } from "./dependencies.ts";
-import { boundToOf, servingOf } from "../model/move.ts";
-import { resolveMove } from "./move.ts";
 import {
   resolveSpawns,
   SPAWN_REASON,
@@ -612,26 +613,12 @@ export function resolveProcess(
   const switchover = switchoverOf(process, context.machinery);
   const spawns = resolveSpawns(process, context);
   const placement = placementOf(process, context);
-  const move = resolveMove(process, placement, {
-    platform: context.platform,
-    lock: context.lock,
-    clusterState: context.clusterState,
-    union: context.union,
-    project: context.project,
-    application: context.application,
-  });
   const environment = [
     ...environmentOf(process, context),
     ...spawnEnvironmentOf(spawns),
   ];
   const dependencies = (process.dependsOn ?? []).map((edge) =>
-    resolveEdge(
-      edge,
-      context.union,
-      context.platform,
-      context.project,
-      context.clusterState,
-    ),
+    resolveEdge(edge, context.union, context.platform, context.project),
   );
   const volumes = resolveVolumes(
     process,
@@ -660,17 +647,8 @@ export function resolveProcess(
   const consumes = dependencies
     .filter(({ peers }) => peers !== undefined)
     .map(({ application, surface }) => consumedOf(application, surface));
-  // The Instance a Move made serves under its own name.
-  const serving = servingOf(
-    context.clusterState,
-    context.application,
-    process.name,
-  )?.name;
   return {
     name: process.name,
-    ...(serving === undefined || serving === process.name
-      ? {}
-      : { instance: serving }),
     lifecycle: process.lifecycle,
     runtime: process.runtime,
     identity: process.name,
@@ -736,8 +714,6 @@ export function resolveProcess(
       : { internetEgress: { reason: process.egress.reason } }),
     ...probesOf(process, context.platform),
     placement,
-    // A change the data cannot follow in place derives a Move.
-    ...(move === undefined ? {} : { move }),
     ...(volumes.length === 0 ? {} : { volumes }),
     ...(libraries.length === 0 ? {} : { libraries }),
     ...(secrets.length === 0 ? {} : { secrets }),

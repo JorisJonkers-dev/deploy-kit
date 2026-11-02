@@ -232,12 +232,18 @@ it:
   provider's namespace, so a provider that changes Project or node changes no
   consumer's declaration and no consumer's render. There is nothing to expand
   and nothing to contract.
-- **What a provider's data can be read by.** A datastore whose new version
-  cannot read its old data cannot serve beside its old self on one copy of
-  that data, and two copies that both accept writes diverge. That change is a
-  [Move](55-delivery.md#moves): the new Instance is filled while the old one
-  serves, writes pause for as long as the last of them takes to cross, and the
-  Stable Address flips every consumer at once.
+- **What a provider's data can be read by, and where it sits.** A datastore
+  whose new version cannot read its old data cannot serve beside its old self
+  on one copy of that data, and a claim stays in the namespace and on the node
+  it was bound in. The model carries no data from one Instance to another
+  ([0094](../../docs/adr/model/0094-a-move-is-derived-from-one-authored-edit.md)):
+  a change the data cannot follow in place (an engine version its data does
+  not load, another Project, a placement away from the bound volume) is the
+  owner's to carry, by hand, from the provider's backups. A placement that
+  excludes the bound volume's node is `E_DISK_BINDING_CONFLICT`
+  ([chapter 20](20-resolved-deployment.md#cluster-state)), and a claim left
+  behind in another namespace stays bound, since a namespace and a claim are
+  never pruned ([chapter 30](30-deliverables.md#flagger-ready-objects)).
 
 What still needs expand and contract is a change to what a provider *offers*:
 a surface added, removed or moved to another port, a database renamed, a

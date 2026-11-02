@@ -37,10 +37,10 @@ the worked set declaring or defaulting `single`, and the first engine to offer
 than a Move.** A primary with streaming replicas survives a node drain and
 upgrades its minor versions by switching primary with seconds of failed writes
 and no lost data. It does not upgrade a PostgreSQL major version, because a
-physical replica must run its primary's major; that remains a Move
-([0094](0094-a-move-is-derived-from-one-authored-edit.md)). The two compose:
-replication for node loss and minor upgrades, a Move for majors and
-relocations.
+physical replica must run its primary's major; that remains a manual
+migration from backups ([0094](0094-a-move-is-derived-from-one-authored-edit.md)).
+The two compose: replication for node loss and minor upgrades, a manual
+migration for majors and relocations.
 
 **The word before the mechanism.** Choosing a replication operator (one per
 engine, with its CRDs, which [0002](0002-kubernetes-is-the-substrate-for-one-applier.md)

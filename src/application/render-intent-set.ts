@@ -236,8 +236,6 @@ const meshIn = (
   resolved: ResolvedSet,
   project: string,
 ): { mesh?: NonNullable<ResolvedPolicyJob["mesh"]> } => {
-  // A Project this render holds resolved; one whose one Application moved out
-  // of it holds none, and enrols nothing.
   // The Node Agents' Project resolves no Application, and enrols nothing.
   const [first] =
     resolved.projects.find((held) => held.project === project)?.applications ??

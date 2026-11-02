@@ -4,18 +4,23 @@ status: accepted
 claim: open
 owner: joris
 date: 2026-10-09
-normative: spec/v1/14-platform-intent.md#move-methods
+normative: spec/v1/14-platform-intent.md#engines
 rests-on: ["0002", "0005"]
 ---
 
-# Each engine states how its data moves: a method image, which version change breaks the data in place, and when it can replicate back
+# An engine states no move method: the method image, `breaksOn` and `reverse` left the Platform document with the Move
 
-An engine's entry in the Platform document carries, beside its backup method,
-an optional `move`: the image that performs each step of a Move, `breaksOn`,
-the component of the engine's version whose change makes a Move rather than a
-switchover, and `reverse`, when the method can replicate from the new Instance
-back to the old. The fields and the fixed contract of the image are
-[chapter 14](../../../spec/v1/14-platform-intent.md#move-methods)'s.
+An engine's entry in the Platform document names its backup method and, where
+it applies one, its catalog method, and nothing about moving its data
+([chapter 14](../../../spec/v1/14-platform-intent.md#engines)). While the model
+derived a Move ([0094](0094-a-move-is-derived-from-one-authored-edit.md)),
+the entry also carried an optional `move`: the image that performed each step,
+`breaksOn`, the component of the engine's version whose change made a Move
+rather than a switchover, and `reverse`, when the method could replicate back.
+The Move is removed, and the field, its refusals and the version shape it
+required of an engine's image went with it
+([#807](https://github.com/JorisJonkers-dev/deploy-kit/issues/807)). The
+sections below record why it was built that way.
 
 ## Rests on
 
@@ -70,19 +75,11 @@ for an engine's image. Bumping it is moving the digest, the owner's one edit.
 
 ## Reversibility
 
-Undo cost today: three optional fields and a version in the lock: hours.
-Becomes irreversible once: a Move has run with a method image, since its steps
-are then what the estate's data history depends on.
+Undo cost today: three optional fields restored from git history and a method
+image per engine built and rehearsed: weeks. No method image was ever built.
 
 ## Consequences
 
-- Each engine that supports Moves needs a method image, built and rehearsed,
-  paid by the platform owner once per engine.
-- An engine's image in the images lock must record its version, paid by
-  whatever writes the lock.
-- An engine whose reverse is unrehearsed refuses rollback by replication until
-  its drill runs, paid by the owners of its Processes as `rollback:
-  forward-only` acknowledgements.
-- The engine vocabulary stays the four values chapter 10 lists until an engine
-  gains a method; adding MySQL, MariaDB or MongoDB is a vocabulary change in the
-  same pull request as its method.
+- An engine's image may record its version in any shape, as every other image
+  does ([0114](0114-every-images-lock-entry-records-its-version.md)).
+- Adding an engine to the vocabulary needs no method beyond its backup.

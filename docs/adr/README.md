@@ -155,9 +155,9 @@ and linted by the same script with `emf` as its root.
 | [0090](model/0090-composition-unions-each-fragments-share-of-the-images-lock.md) | Composition unions each fragment's share of the images lock, and an alias locked two ways is refused at the fragment that changed | settled |
 | [0091](model/0091-a-backup-identity-has-a-policy-of-its-own.md) | A backup identity has a network policy of its own, from facts the platform states: the surface its method dumps and where its off-cluster copy goes | settled |
 | [0092](model/0092-api-access-is-declared-on-the-process-and-admitted-by-the-platform.md) | A Process declares the Kubernetes API access it needs, and the Platform document admits who may hold any | settled |
-| [0095](model/0095-each-engine-states-how-its-data-moves.md) | Each engine states how its data moves: a method image, which version change breaks the data in place, and when it can replicate back | open |
+| [0095](model/0095-each-engine-states-how-its-data-moves.md) | An engine states no move method: the method image, `breaksOn` and `reverse` left the Platform document with the Move | open |
 | [0113](model/0113-a-privileged-role-names-the-project-that-holds-it.md) | A privileged role names the Project that holds it, as `<project>/<application>`, and an Application id alone binds no role | open |
-| [0114](model/0114-every-images-lock-entry-records-its-version.md) | Every images lock entry records its version, and a missing one is refused apart from an engine's version of the wrong shape | settled |
+| [0114](model/0114-every-images-lock-entry-records-its-version.md) | Every images lock entry records its version, and a missing one is refused | settled |
 | [0118](model/0118-a-human-grant-is-declared-in-the-platform-document.md) | A human grant is declared in the Platform document: a group, a built-in cluster role and a reason, rendered estate-scoped | open |
 | [0121](model/0121-flux-is-scraped-where-the-bootstrap-set-records-its-metrics.md) | Flux is scraped where the bootstrap set records its metrics, and the metrics stack's egress reaches every scrape port | open |
 | [0146](model/0146-the-operator-runs-the-monitoring-stacks-prometheus-and-alertmanager.md) | The Prometheus operator runs the monitoring stack's Prometheus and Alertmanager, from objects the render writes for their Processes | open |
@@ -185,7 +185,7 @@ and linted by the same script with `emf` as its root.
 | [0085](model/0085-composition-isolates-a-refused-project.md) | Composition isolates a refused Project, and every other Project still composes | open |
 | [0086](model/0086-the-collector-runs-in-the-cluster.md) | The ClusterState Collector runs in the cluster, reads only, and commits the snapshot when it changes | open |
 | [0087](model/0087-in-cluster-consumers-read-the-render.md) | An in-cluster job applies each Project's rendered Vault policies, and the Release Gate reads its inputs from a rendered ConfigMap | open |
-| [0094](model/0094-a-move-is-derived-from-one-authored-edit.md) | A Move is derived from one authored edit, and the Release Gate runs it as sync, lag, fence, flip, unfence and reverse inside the provider's release | open |
+| [0094](model/0094-a-move-is-derived-from-one-authored-edit.md) | The model carries no provider's data between Instances: the derived Move that did so while the estate left its old delivery path is removed | open |
 | [0099](model/0099-a-rollout-is-a-github-deployment-driven-by-the-clusters-events.md) | A Rollout is a GitHub Deployment that composition names and the cluster's own events drive | open |
 | [0111](model/0111-a-member-starts-after-the-stop-start-providers-of-its-project.md) | A gated member starts only after the stop-start Processes it requires in its own Project have started | open |
 | [0142](model/0142-a-rendered-namespace-is-never-pruned.md) | Every namespace the render writes is never pruned, whatever it holds | open |

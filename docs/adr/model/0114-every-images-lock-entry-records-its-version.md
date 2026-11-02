@@ -7,12 +7,10 @@ normative: spec/v1/20-resolved-deployment.md#the-images-lock
 rests-on: ["0006"]
 ---
 
-# Every images lock entry records its version, and a missing one is refused apart from an engine's version of the wrong shape
+# Every images lock entry records its version, and a missing one is refused
 
 Every entry of the images lock records the version of the software inside its
-image. An entry without one is refused at its alias. That refusal is a
-different one from the refusal of an engine's image whose version cannot key
-a Move.
+image. An entry without one is refused at its alias.
 
 ## Rests on
 
@@ -43,16 +41,6 @@ reaches every path that reads a lock: `publish --images-lock` refuses the
 share before a fragment carries it, and composition refuses a share, or the
 platform's lock, before resolution runs.
 
-**A missing version and an engine's unreadable version stay two refusals.**
-An engine whose Platform entry names a `move` reads one component off its
-image's version to decide whether a change is a Move
-([0095](0095-each-engine-states-how-its-data-moves.md)), so that version has a
-required shape. That is a rule about one kind of image and about the shape of
-a value that is present. A version absent from any entry is a different
-defect, with a different owner and a different fix. Folding both into one
-code would make the code mean "absent, or present and the wrong shape for a
-Move", and a reader of the refusal could not tell which.
-
 ## Alternatives
 
 | option | cost if taken | why rejected |
@@ -60,7 +48,6 @@ Move", and a reader of the refusal could not tell which.
 | Keep `version` optional | nothing to change | a publisher that stops recording it goes unnoticed, and its pods silently lose the annotation |
 | Refuse a missing version only where a pod would be annotated | a narrower rule | every image a Process runs is annotated, so the narrower rule is the same rule with a harder test |
 | Report the missing field as a schema refusal | no new code | a schema refusal names the field, not the alias, and gives no hint about where the version comes from |
-| Fold the engine-version refusal into this one | one code fewer | one code would name two defects with different fixes, and the Move rule's scope would blur into every image's |
 
 ## Reversibility
 
@@ -76,5 +63,3 @@ the annotation it renders.
 - An images lock written before every publisher recorded versions is no
   longer accepted. The estate moves to the release that enforces this only
   after every participant's newest fragment carries a version for every entry.
-- The engine-version refusal keeps its own code and its own chapter rule, and
-  stays pending until an engine names a `move`.

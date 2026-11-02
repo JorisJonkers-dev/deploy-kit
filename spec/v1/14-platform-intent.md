@@ -111,8 +111,6 @@ other resolves and every policy one asks for the other offers:
 | an Application moves its schema with a changelog and the platform declares no `migration` policy | `E_NO_MIGRATION_POLICY` |
 | an Application moves its schema with a changelog and no Process of it switches `blue-green`: none is `continuous`, or the Application is `delivery.machinery` | `E_MIGRATION_UNGATED` |
 | an Application's cutover is `continuous` and the platform declares no `delivery` policy | `E_NO_DELIVERY_POLICY` |
-| a change derives a [Move](55-delivery.md#moves) of a Process whose `engine` entry carries no `move` | `E_MOVE_UNSUPPORTED` |
-| a change derives a Move and the platform declares no `delivery.move` | `E_NO_MOVE_POLICY` |
 | a Process declares `availability: replicated` and its `engine` entry maps no mechanism to it | `E_AVAILABILITY_UNSUPPORTED` |
 
 A refusal names the document it points into as well as the path, because the
@@ -929,55 +927,6 @@ from the Secret Store itself, at the location the catalog names, and runs as the
 user the images lock records for it. A run that applies nothing new changes
 nothing, so it is safe to repeat.
 
-### Move methods
-
-An engine whose data can be carried from one Instance to another names how, in
-the same entry, the same way: as an image, and as the two facts about the
-engine a [Move](55-delivery.md#moves) is derived from
-([0095](../../docs/adr/model/0095-each-engine-states-how-its-data-moves.md)).
-
-```yaml
-engines:
-  postgres:
-    backup: postgres-backup
-    surface: postgres
-    move: {image: postgres-move, breaksOn: major, reverse: same-major}
-```
-
-| field | means |
-|---|---|
-| `move.image` | the method: one image whose entrypoint performs each step of a Move for this engine, named by the step it is handed |
-| `move.breaksOn` | which change of the engine's version leaves the data unreadable in place, so that the change is a Move rather than a switchover: `major` or `minor`, read off the `version` the images lock records ([chapter 20](20-resolved-deployment.md#the-images-lock)) |
-| `move.reverse` | when the method can replicate from the new Instance back to the old one, which a lossless rollback needs: `always`, `same-major` or `never` |
-
-An entry with no `move` offers none: a change that needs one, of an engine whose
-entry carries no `move`, is `E_MOVE_UNSUPPORTED`, and a Process of that engine
-keeps the binding its data already has ([chapter 20](20-resolved-deployment.md#cluster-state)).
-`reverse` is a statement about the engine that only running it can confirm, so
-each value carries the drill that settled it in the Platform document's own
-repository; an engine whose reverse direction has not been rehearsed says
-`never`, which costs a rollback its replication and nothing else.
-
-What the method image is handed is fixed, as a backup method's is: the step it
-performs as `MOVE_STEP` (`start`, `sync`, `lag`, `fence`, `flip`, `unfence`,
-`reverse`; the final lag is a second `lag`), the source and target Instances'
-hosts and the engine's `surface` port as `MOVE_SOURCE_HOST`,
-`MOVE_TARGET_HOST` and `MOVE_PORT`, the Stable Addresses the flip updates and
-their namespace as `MOVE_FLIPS`, comma-joined, and `MOVE_FLIP_NAMESPACE`, and
-where it logs in to the Secret Store as `VAULT_ADDR`, `VAULT_ROLE` and
-`VAULT_CREDENTIALS_PATH`, the path of the credential it logs in with. That credential is derived, one per
-Process with an open Move, the Secret Store's
-`secret/data/<project>/<process>/move`, held by the move identity alone
-([chapter 16](16-dependencies.md#process-identity)); the platform's operator
-writes it, because only the method knows what it logs in as. A step exits zero
-when it holds and non-zero when it does not; the `lag` step exits zero only
-once the target has applied everything the source has committed.
-
-What each engine's method does at each step is the method's, and the
-engine catalog in [`docs/research/provider-moves.md`](../../docs/research/provider-moves.md#a-move-method-per-engine)
-records the mechanism each one can use, with its sources. The facts this
-document states are the two a derivation needs, and no more.
-
 ## Monitor cadence
 
 ```yaml
@@ -1298,26 +1247,6 @@ facts, all the platform's:
   ([chapter 55](55-delivery.md#the-release-gate)). All five are required: a
   threshold nobody stated is not one the gate enforces. No Application authors
   its own, so every one is held to the same two numbers.
-- **`move`** bounds a [Move](55-delivery.md#moves): `timeout`, how long the
-  steps from the fence to the unfence may take before the gate puts the source
-  back, and `retention`, how long the source Instance is kept, with reverse
-  replication running, once the flip has held. `memory` and `cpu` are what
-  each of its step Jobs requests, the method being a client of the engine
-  rather than the engine. All four are the platform's: the write pause a
-  timeout allows and the storage a retention costs are estate decisions, not
-  an Application's.
-
-```yaml
-delivery:
-  move:
-    timeout: 300s
-    retention: 7d
-    memory: 128Mi
-    cpu: 100m
-```
-
-A platform that omits `move` offers no Move: a change that derives one is
-`E_NO_MOVE_POLICY`.
 
 The platform owns the machinery's Applications in a project file of its own, the
 worked [`delivery`](examples/delivery/delivery.project.yml) project, whose
@@ -1702,17 +1631,6 @@ classDiagram
         +ApplicationId gate
         +ApplicationId reporter
     }
-    class MoveMethod {
-        +ImageAlias image
-        +MoveBreak breaksOn
-        +MoveReverse reverse
-    }
-    class MovePolicy {
-        +Duration timeout
-        +Duration retention
-        +Quantity memory
-        +Quantity cpu
-    }
     class AnalysisPolicy {
         +Duration interval
         +int iterations
@@ -1829,7 +1747,6 @@ classDiagram
     Platform "1" *-- "0..1" ApiAccessPolicy : apiAccess
     Platform "1" *-- "0..1" VaultPolicyJob : policyJob
     DeliveryPolicy "1" *-- "1" AnalysisPolicy : analysis
-    DeliveryPolicy "1" *-- "0..1" MovePolicy : move
     Platform "1" *-- "0..*" Provider : providers
     Platform "1" *-- "0..*" Library : libraries
     Platform "1" *-- "0..*" GpuVendor : gpus
@@ -1857,5 +1774,4 @@ classDiagram
     DurabilityPolicy "1" *-- "0..1" OffClusterCopy : offCluster
     OffClusterCopy "1" *-- "1..*" DestinationRange : egress
     EnginePolicies "1" *-- "0..5" EnginePolicy : per engine
-    EnginePolicy "1" *-- "0..1" MoveMethod : move
 ```

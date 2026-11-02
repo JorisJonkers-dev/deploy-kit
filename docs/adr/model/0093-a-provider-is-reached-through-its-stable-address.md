@@ -49,8 +49,8 @@ alias they all share moves them together.
 per surface and nothing in the connection path. Its limits are known and
 bounded: it cannot remap a port, so a port change stays expand-and-contract
 ([chapter 50](../../../spec/v1/50-lifecycle.md#expand-and-contract)); it flips
-new connections only, so closing old ones is the Fence's job
-([0094](0094-a-move-is-derived-from-one-authored-edit.md)); and network policy
+new connections only, so a consumer follows a new target when it reconnects;
+and network policy
 never names a Service, so egress still names the pods of each Instance. The
 survey behind these limits, including the DNS caching on the path, is
 [`docs/research/provider-moves.md`](../../research/provider-moves.md#indirection).

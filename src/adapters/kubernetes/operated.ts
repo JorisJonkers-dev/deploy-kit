@@ -49,12 +49,11 @@ function notYet(process: ResolvedProcess): void {
       process.libraries,
       process.l4Exposure,
       process.spawns,
-      process.move,
       process.command,
     ].some((held) => held !== undefined)
   )
     throw notSupported(
-      `${process.name}: a Process the operator runs that holds a sidecar, a seeded Asset, a VPN, a GPU, a library, an L4 Address, a spawn template, a Move or a command, is not rendered yet`,
+      `${process.name}: a Process the operator runs that holds a sidecar, a seeded Asset, a VPN, a GPU, a library, an L4 Address, a spawn template or a command, is not rendered yet`,
     );
 }
 
