@@ -1031,6 +1031,25 @@ describe("the refusal fixtures", () => {
         claiming("edge-proxy-acme"),
       ),
     ).toStrictEqual(["/applications/0/processes/0/volumes/0"]);
+    const result = checkIntentSet(
+      filesOf("acme-proxy-replicated").map((file) => ({
+        ...file,
+        text: claiming("edge-proxy-acme")(file.text),
+      })),
+    );
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics
+            .filter(({ code }) => code === "E_DUPLICATE_CLAIM")
+            .map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message:
+          "the volume claiming edge-proxy-acme reserves the claim an acme tier derives on its proxy's Process for the ACME state",
+        hint: "Rename the claim: `<process>-acme` is the acme tier's, on its proxy's Process.",
+      },
+    ]);
   });
 
   it("lets a proxy's volume take another claim, or that one on a tier that issues none", () => {

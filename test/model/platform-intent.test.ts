@@ -291,6 +291,18 @@ describe("parsePlatformIntent", () => {
     ).toStrictEqual([
       { code: "E_NO_SECRET_STORE", path: "/tiers/1/certificateFrom" },
     ]);
+    const result = parsePlatformIntent(text);
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ message, hint }) => ({ message, hint })),
+    ).toStrictEqual([
+      {
+        message:
+          "tier lan reads its certificate from secret/data/platform/tls/wildcard, and no Secret Store holds it",
+        hint: "Name the platform's `secretStore`, or drop `certificateFrom`.",
+      },
+    ]);
   });
 
   it("refuses a tier's certificate on a tier that terminates no TLS", () => {
@@ -311,6 +323,33 @@ describe("parsePlatformIntent", () => {
         code: "E_CERTIFICATE_FROM_UNSERVED",
         message:
           "tier lan reads a certificate from secret/data/platform/tls/wildcard, and terminates no TLS, so its proxy would serve it for nothing",
+      },
+    ]);
+  });
+
+  it("refuses a tier's certificate on a tier that issues its own through acme", () => {
+    expect(
+      ((result) =>
+        result.ok
+          ? []
+          : result.diagnostics.map(({ code, path, message }) => ({
+              code,
+              path,
+              message,
+            })))(
+        parsePlatformIntent(
+          WORKED.replace(
+            "certificates: acme\n",
+            "certificates: acme\n    certificateFrom: secret/data/platform/tls/wildcard\n",
+          ),
+        ),
+      ),
+    ).toStrictEqual([
+      {
+        code: "E_CERTIFICATE_FROM_UNSERVED",
+        path: "/tiers/0/certificateFrom",
+        message:
+          "tier public-frankfurt reads a certificate from secret/data/platform/tls/wildcard, and issues its own through acme, so its proxy would serve it for nothing",
       },
     ]);
   });
