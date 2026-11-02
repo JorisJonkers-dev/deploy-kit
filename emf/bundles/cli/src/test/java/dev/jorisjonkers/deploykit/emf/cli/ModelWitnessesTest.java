@@ -18,7 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The model behaviours of the behaviour ledger that landed in the production implementation after
- * this one was frozen (docs/witnesses.md): each test renders or checks the worked examples, or one
+ * the Task 3 hand-in (docs/witnesses.md): each test renders or checks the worked examples, or one
  * with a single edit, and asserts the one behaviour its name states, in the rendered file or the
  * refusal the production implementation's test asserts too.
  */
@@ -1374,8 +1374,9 @@ class ModelWitnessesTest {
 
     /**
      * A generated key that adopts a value keeps the location it adopts from through the lowering, so
-     * the Vault policy job is handed that path and key beside the key's defaults: the same edit the
-     * production implementation's render test makes to the {@code data} example.
+     * the Vault policy job is handed that path and key beside the key's defaults. The adopting key and
+     * the expected document are the production implementation's render test's; the grant is
+     * delivered as a file here, since a {@code self} grant needs an env file that wires a Vault client.
      */
     @Test
     void aGeneratedKeyThatAdoptsAValueHandsTheVaultPolicyJobTheLocationItAdoptsFrom(@TempDir Path work)

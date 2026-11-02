@@ -24,7 +24,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * How far this implementation is from the production implementation's oracles under {@code
- * spec/v1/examples/}, which moved on after the freeze. Every oracle is compared through the stage
+ * spec/v1/examples/}, which move on before each catch-up. Every oracle is compared through the stage
  * harness's comparator; the cases in {@link #PASSING} must match it exactly, and every other case
  * prints one line saying how many differences it is from passing. A case that passes and is not
  * listed fails too, so the list grows with each catch-up slice and never lags behind it.

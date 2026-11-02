@@ -88,7 +88,9 @@ when this record's two-implementation half goes with it
 ## Consequences
 
 - An oracle file changes in the pull request that changes the behaviour it
-  records, and both implementations go red until both are fixed.
+  records, the production implementation goes red until it is fixed, and the
+  model-driven implementation's `OracleDistanceTest` shows the gap until a
+  catch-up closes it.
 - The behaviour ledger gains a production-only marker, and the model-driven
   witness check skips rows carrying it.
 - The constraint parity test is to be written, owned by joris, and fails first

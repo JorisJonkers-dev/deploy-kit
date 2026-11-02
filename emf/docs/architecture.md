@@ -55,7 +55,10 @@ release: EMF Compare's core ([Stage tests](#stage-tests)), and ATL's EMFTVM
 runtime and compiler, which run the benchmark's ATL port of the lowering and
 nothing else ([the benchmark](benchmarks.md)). JDK 21.
 No Eclipse IDE, workspace or launch configuration is part of the build: every
-step CI runs is `mvn verify` from `emf/`. The projects are nonetheless kept
+step CI runs is `mvn verify` from `emf/`. `.mvn/maven.config` turns on Maven
+Resolver's file-lock sync context, so several builds on one machine, such as
+parallel worktrees, can share one local repository (`-Dmaven.repo.local=<path>`,
+outside `~/.m2`) without corrupting it. The projects are nonetheless kept
 loadable in Eclipse Modeling Tools for the course's examiners: they import as
 existing Maven projects, the metamodels open, the Xtext-generated editor reports
 OCL constraint violations while a source file is edited, and committed launch
