@@ -3,40 +3,40 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: postgres-catalog
+  name: garage-catalog
   namespace: data-system
   labels:
-    app.kubernetes.io/name: postgres-catalog
-    app.kubernetes.io/instance: postgres-catalog
-    app.kubernetes.io/part-of: postgres-catalog
+    app.kubernetes.io/name: garage-catalog
+    app.kubernetes.io/instance: garage-catalog
+    app.kubernetes.io/part-of: garage-catalog
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: postgres-catalog-d83cbeba5875
+  name: garage-catalog-3b4fd9d75003
   namespace: data-system
   labels:
-    app.kubernetes.io/name: postgres-catalog
-    app.kubernetes.io/instance: postgres-catalog
-    app.kubernetes.io/part-of: postgres-catalog
+    app.kubernetes.io/name: garage-catalog
+    app.kubernetes.io/instance: garage-catalog
+    app.kubernetes.io/part-of: garage-catalog
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
 immutable: true
 data:
   catalog.json: |
-    {"admin":{"password":"postgres.password","path":"secret/data/platform/postgres","user":"postgres.user"},"connection":"postgres","databases":[{"data":"knowledge-platform-data","name":"knowledge-platform_db","owner":"knowledge-platform-owner"}],"host":"postgres.data-system.svc.cluster.local","port":5432}
+    {"admin":{"path":"secret/data/data/garage/catalog","token":"token"},"host":"garage.data-system.svc.cluster.local","keys":[{"buckets":["knowledge-platform-assets"],"name":"knowledge-platform","path":"secret/data/knowledge-platform/garage/s3"}],"port":3903}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: postgres-catalog-d83cbeba5875
+  name: garage-catalog-3b4fd9d75003
   namespace: data-system
   labels:
-    app.kubernetes.io/name: postgres-catalog
-    app.kubernetes.io/instance: postgres-catalog
-    app.kubernetes.io/part-of: postgres-catalog
+    app.kubernetes.io/name: garage-catalog
+    app.kubernetes.io/instance: garage-catalog
+    app.kubernetes.io/part-of: garage-catalog
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
   annotations:
@@ -46,16 +46,16 @@ spec:
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: postgres-catalog
-        app.kubernetes.io/instance: postgres-catalog
-        app.kubernetes.io/part-of: postgres-catalog
+        app.kubernetes.io/name: garage-catalog
+        app.kubernetes.io/instance: garage-catalog
+        app.kubernetes.io/part-of: garage-catalog
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
-        consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
+        consumes.deploy-kit.jorisjonkers.dev/platform-garage.admin: "true"
       annotations:
-        image.jorisjonkers.dev/postgres-catalog: 1.0.0
+        image.jorisjonkers.dev/garage-catalog: 1.0.0
     spec:
-      serviceAccountName: postgres-catalog
+      serviceAccountName: garage-catalog
       automountServiceAccountToken: true
       restartPolicy: OnFailure
       activeDeadlineSeconds: 120
@@ -78,13 +78,13 @@ spec:
                       - enschede-gtx-960m-1
                       - frankfurt-contabo-1
       containers:
-        - name: postgres-catalog
-          image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c
+        - name: garage-catalog
+          image: ghcr.io/jorisjonkers-dev/delivery/garage-catalog@sha256:3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e
           env:
             - name: VAULT_ADDR
               value: http://vault.secrets-system.svc.cluster.local:8200
             - name: VAULT_ROLE
-              value: data-system-postgres-catalog
+              value: data-system-garage-catalog
             - name: CATALOG_FILE
               value: /catalog/catalog.json
           resources:
@@ -106,7 +106,7 @@ spec:
       volumes:
         - name: catalog
           configMap:
-            name: postgres-catalog-d83cbeba5875
+            name: garage-catalog-3b4fd9d75003
             items:
               - key: catalog.json
                 path: catalog.json
@@ -114,12 +114,12 @@ spec:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: postgres-catalog
+  name: garage-catalog
   namespace: data-system
   labels:
-    app.kubernetes.io/name: postgres-catalog
-    app.kubernetes.io/instance: postgres-catalog
-    app.kubernetes.io/part-of: postgres-catalog
+    app.kubernetes.io/name: garage-catalog
+    app.kubernetes.io/instance: garage-catalog
+    app.kubernetes.io/part-of: garage-catalog
     app.kubernetes.io/managed-by: deploy-kit
     app.kubernetes.io/component: none
 spec:
@@ -128,9 +128,9 @@ spec:
   jobTemplate:
     metadata:
       labels:
-        app.kubernetes.io/name: postgres-catalog
-        app.kubernetes.io/instance: postgres-catalog
-        app.kubernetes.io/part-of: postgres-catalog
+        app.kubernetes.io/name: garage-catalog
+        app.kubernetes.io/instance: garage-catalog
+        app.kubernetes.io/part-of: garage-catalog
         app.kubernetes.io/managed-by: deploy-kit
         app.kubernetes.io/component: none
     spec:
@@ -139,16 +139,16 @@ spec:
       template:
         metadata:
           labels:
-            app.kubernetes.io/name: postgres-catalog
-            app.kubernetes.io/instance: postgres-catalog
-            app.kubernetes.io/part-of: postgres-catalog
+            app.kubernetes.io/name: garage-catalog
+            app.kubernetes.io/instance: garage-catalog
+            app.kubernetes.io/part-of: garage-catalog
             app.kubernetes.io/managed-by: deploy-kit
             app.kubernetes.io/component: none
-            consumes.deploy-kit.jorisjonkers.dev/platform-postgres.postgres: "true"
+            consumes.deploy-kit.jorisjonkers.dev/platform-garage.admin: "true"
           annotations:
-            image.jorisjonkers.dev/postgres-catalog: 1.0.0
+            image.jorisjonkers.dev/garage-catalog: 1.0.0
         spec:
-          serviceAccountName: postgres-catalog
+          serviceAccountName: garage-catalog
           automountServiceAccountToken: true
           restartPolicy: OnFailure
           activeDeadlineSeconds: 120
@@ -171,13 +171,13 @@ spec:
                           - enschede-gtx-960m-1
                           - frankfurt-contabo-1
           containers:
-            - name: postgres-catalog
-              image: ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c
+            - name: garage-catalog
+              image: ghcr.io/jorisjonkers-dev/delivery/garage-catalog@sha256:3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e3a5b7d9f1c3e5a7b9d1f3c5e
               env:
                 - name: VAULT_ADDR
                   value: http://vault.secrets-system.svc.cluster.local:8200
                 - name: VAULT_ROLE
-                  value: data-system-postgres-catalog
+                  value: data-system-garage-catalog
                 - name: CATALOG_FILE
                   value: /catalog/catalog.json
               resources:
@@ -199,7 +199,7 @@ spec:
           volumes:
             - name: catalog
               configMap:
-                name: postgres-catalog-d83cbeba5875
+                name: garage-catalog-3b4fd9d75003
                 items:
                   - key: catalog.json
                     path: catalog.json

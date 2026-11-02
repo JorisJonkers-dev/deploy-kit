@@ -236,6 +236,7 @@ mapping Scrape::copy() : Scrape {
 	path := self.path;
 	process := self.process.resolveone(Process);
 	surface := self.surface.resolveone(Surface);
+	if self.honorLabels <> null then honorLabels := self.honorLabels endif;
 }
 
 mapping Exposure::copy() : Exposure {

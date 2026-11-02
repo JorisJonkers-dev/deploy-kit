@@ -70,10 +70,6 @@ property TAG_DIGITS : Integer = 12;
 -- What a library's volume and claim both state: a local volume holds a directory, never a size.
 property LIBRARY_SIZE : String = '1Gi';
 
--- Where the catalog of a datastore the old path still runs, and the job that writes its
--- documents, land: estate-scoped, beside the model of each Project that reads it.
-property ESTATE_SECRETS : String = 'estate/vso-secrets/';
-
 -- The units an Application's routes wait on: the unit of each Project that declares a proxy one
 -- of its exposures' tiers names, unless it is the Application's own
 -- (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
@@ -81,24 +77,24 @@ query proxiesAfter(app : EffectiveApplication, prj : String) : Sequence(String) 
 	app.exposure->collect(e | projectOf(tierFor(e.audience).traefik.id))
 		->select(p | p <> null and p <> prj)->collect(p | unitOf(p))->asSequence();
 
--- Whether a catalog method's datastore is run by a Project on the estate path, whose own
--- resolution plans it.
-query ownedOnEstatePath(c : ResolvedCatalogJob) : Boolean =
-	projects->exists(prj | not legacy(prj.project) and prj.applications->exists(app |
-		app.processes->exists(p | (ownsDatabases(p) or ownsBuckets(p)) and c.identity = p.name + '-catalog'
-			and c.namespace = homeNamespace(prj.project, app.id))));
-
 -- Where a Project's own Vault policy job lands, and the documents it writes beside it.
 query policyJobRoot(prj : String) : String = 'apps/' + prj + '/vault-policy/';
 query policiesOf(prj : String) : String = policyJobRoot(prj) + 'policies/';
 
 -- The unit a Project waits on before a Process of it may hold a credential: the unit of the
--- Platform Project that declares the Secret Store each Project writes its own roles into, unless
--- it is that Project (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+-- Platform Project that declares the Secret Store each Project writes its own roles into
+-- (spec/v1/20-resolved-deployment.md#the-reconcile-unit). The store's own Project follows
+-- nothing, so it never reaches here.
 query secretsAfter(prj : String) : Sequence(String) =
 	if estate.secretStore = null then Sequence{} else
 	let store : String = projectOf(estate.secretStore.id) in
-	if store = null or store = prj then Sequence{} else Sequence{unitOf(store)} endif endif;
+	if store = null then Sequence{} else Sequence{unitOf(store)} endif endif;
+
+-- Whether `prj` declares the Secret Store. Its unit follows nothing: every unit that holds a
+-- grant follows it, so any unit it followed would close a cycle
+-- (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+query holdsStore(prj : String) : Boolean =
+	estate.secretStore <> null and projectOf(estate.secretStore.id) = prj;
 
 main() {
 	assert fatal (unversioned()->isEmpty())
@@ -150,32 +146,30 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 		result.deliverables[MigrationFile]->forEach(planned) {
 			planned.upTag := tagOf(planned.application.revision);
 		};
-		-- A datastore this project runs on the estate path applies its own catalog from this
-		-- project's unit (spec/v1/16-dependencies.md#applying-the-catalog). Its Vault documents
-		-- stay the policy job's, planned with it.
-		if (not legacy(self.project)) {
-			self.applications->forEach(app) {
-				app.processes->select(p | ownsDatabases(p) or ownsBuckets(p))->forEach(p) {
-					var root : String := 'apps/' + self.project + '/' + app.id + '/';
-					result.catalogJobs->select(c | c.identity = p.name + '-catalog'
-							and c.namespace = homeNamespace(self.project, app.id))->forEach(c) {
-						result.deliverables += c.catalogFilesUnder(root);
-						var index : IndexFile := result.deliverables[IndexFile]
-							->select(i | i.path = root + 'kustomization.yaml')->any(true);
-						-- Every Application's directory has its index: applicationFiles plans one.
-						assert fatal (index <> null) with log('no index under ' + root);
-						index.resources := index.resources->append(c.identity + '.yaml')->sortedBy(r | r);
-						-- Its own policy and role, which this Project's own job writes.
-						result.deliverables += object CatalogJobFile {
-							path := policiesOf(self.project) + c.role + '.policy.json';
-							adapter := AdapterName::vaultPolicy;
-							part := 'policy'; job := c; };
-						result.deliverables += object VaultRoleFile {
-							path := policiesOf(self.project) + c.role + '.role.json';
-							adapter := AdapterName::vaultPolicy;
-							namespace := c.namespace;
-							identity := c.identity; };
-					};
+		-- A datastore this project runs applies its own catalog from this project's unit
+		-- (spec/v1/16-dependencies.md#applying-the-catalog). Its Vault documents stay the policy
+		-- job's, planned with it.
+		self.applications->forEach(app) {
+			app.processes->select(p | ownsDatabases(p) or ownsBuckets(p))->forEach(p) {
+				var root : String := 'apps/' + self.project + '/' + app.id + '/';
+				result.catalogJobs->select(c | c.identity = p.name + '-catalog'
+						and c.namespace = namespaceOf(self.project))->forEach(c) {
+					result.deliverables += c.catalogFilesUnder(root);
+					var index : IndexFile := result.deliverables[IndexFile]
+						->select(i | i.path = root + 'kustomization.yaml')->any(true);
+					-- Every Application's directory has its index: applicationFiles plans one.
+					assert fatal (index <> null) with log('no index under ' + root);
+					index.resources := index.resources->append(c.identity + '.yaml')->sortedBy(r | r);
+					-- Its own policy and role, which this Project's own job writes.
+					result.deliverables += object CatalogJobFile {
+						path := policiesOf(self.project) + c.role + '.policy.json';
+						adapter := AdapterName::vaultPolicy;
+						part := 'policy'; job := c; };
+					result.deliverables += object VaultRoleFile {
+						path := policiesOf(self.project) + c.role + '.role.json';
+						adapter := AdapterName::vaultPolicy;
+						namespace := c.namespace;
+						identity := c.identity; };
 				};
 			};
 		};
@@ -187,40 +181,6 @@ mapping EffectiveProject::deployment() : ResolvedDeployment {
 			var top : IndexFile := result.deliverables[IndexFile]
 				->select(i | i.path = 'apps/' + self.project + '/kustomization.yaml')->any(true);
 			top.resources := top.resources->append('vault-policy')->sortedBy(r | r);
-		};
-		-- While a datastore the old path still runs has a catalog that names this Project's
-		-- database, this Project's resolution plans that catalog, and the estate-scoped job that
-		-- writes its documents in the datastore's namespace, as estate-scoped output beside its own
-		-- model (spec/v1/16-dependencies.md#applying-the-catalog). Every Project that reads it
-		-- plans the same files, so a render of several writes each once.
-		var legacyCatalogs : Sequence(ResolvedCatalogJob) := result.catalogJobs->select(c |
-			not ownedOnEstatePath(c) and (c.catalog.databases->exists(db | db.name = self.project + '_db')
-				or c.catalog.keys->exists(k | k.name = self.project)))->asSequence();
-		if (legacyCatalogs->notEmpty()) {
-			-- One estate-scoped job writes one namespace's names: its writer is confined to them.
-			assert fatal (legacyCatalogs.namespace->asSet()->size() = 1)
-				with log('catalogs the old path runs in more than one namespace');
-			legacyCatalogs->forEach(c) {
-				result.deliverables += c.catalogFilesUnder(ESTATE_SECRETS);
-				result.deliverables += object CatalogJobFile {
-					path := ESTATE_SECRETS + 'policies/' + c.role + '.policy.json';
-					adapter := AdapterName::vaultPolicy;
-					part := 'policy'; job := c; };
-				result.deliverables += object VaultRoleFile {
-					path := ESTATE_SECRETS + 'policies/' + c.role + '.role.json';
-					adapter := AdapterName::vaultPolicy;
-					namespace := c.namespace;
-					identity := c.identity; };
-			};
-			result.deliverables += policyJobFiles(result.policyJob, result.deliverables->select(d |
-				d.path.startsWith(ESTATE_SECRETS + 'policies/'))->asSequence(), ESTATE_SECRETS,
-				legacyCatalogs->first().namespace);
-			var estateIndex : IndexFile := result.deliverables[IndexFile]
-				->select(i | i.path = ESTATE_SECRETS + 'kustomization.yaml')->any(true);
-			if (estateIndex <> null) {
-				estateIndex.resources := estateIndex.resources->asSequence()
-					->union(legacyCatalogs->collect(c | c.identity + '.yaml')->asSequence())->sortedBy(r | r);
-			};
 		};
 		-- The route Flux's events about this Project's unit take to the Reporter, where the
 		-- platform names one: its own Provider and Alert, in Flux's namespace, applied by this
@@ -258,6 +218,7 @@ query unitOf(prj : String) : String = 'apps-' + prj;
 -- (spec/v1/20-resolved-deployment.md#the-reconcile-unit). An optional edge
 -- orders nothing (spec/v1/55-delivery.md#release-order).
 query afterOf(prj : EffectiveProject) : Sequence(String) =
+	if holdsStore(prj.project) then Sequence{} else
 	(prj.applications.processes.dependsOn
 		->select(e | not (e.required = false))
 		->collect(e | projectOf(e.application))
@@ -268,7 +229,7 @@ query afterOf(prj : EffectiveProject) : Sequence(String) =
 			or prj.applications->exists(a | managed(a) or appliesCatalog(a))
 		then secretsAfter(prj.project) else Sequence{} endif)
 	->union(prj.applications->collect(a | proxiesAfter(a, prj.project))->flatten()))
-	->asSet()->sortedBy(n | n)->asSequence();
+	->asSet()->sortedBy(n | n)->asSequence() endif;
 
 -- The project of the union that declares `application`, where one does.
 query projectOf(application : String) : String =
@@ -622,6 +583,8 @@ mapping EffectiveApplication::application(in prj : EffectiveProject) : ResolvedA
 			path := self.observability.scrape.path;
 			interval := estate.monitors.interval;
 			timeout := estate.monitors.timeout;
+			-- Kept as authored: true only where the scrape says so.
+			honorLabels := self.observability.scrape.honorLabels = true;
 			-- What the metrics stack selects its monitors by, as the platform names it.
 			labels := estate.monitors.labels->sortedBy(l | l.key)
 				->collect(l | object KeyValue { key := l.key; value := l.value; });
@@ -729,8 +692,8 @@ query datastoreOf(app : EffectiveApplication) : Sequence(PolicyPeer) =
 			->select(p | ownsDatabases(p) and p.provides->exists(s | s.key = e.surface))
 			->collect(p | object PolicyPeer {
 				rule := 'datastore';
-				namespace := homeNamespace(prj.project, e.application);
-				process := homeProcess(e.application, p.name);
+				namespace := namespaceOf(prj.project);
+				process := p.name;
 				port := p.provides->select(s | s.key = e.surface)->any(true).value;
 			})))->flatten()->asSequence();
 
@@ -759,8 +722,8 @@ query catalogSurfaceOf(p : PI::Process) : String =
 -- names the Vault policy job: the method's role is written first
 -- (spec/v1/16-dependencies.md#applying-the-catalog).
 query appliesCatalog(app : EffectiveApplication) : Boolean =
-	estate.policyJob <> null and estate.engines.postgres <> null and estate.engines.postgres.catalog <> null
-		and app.processes->exists(p | ownsDatabases(p));
+	estate.policyJob <> null and app.processes->exists(p | (ownsDatabases(p) or ownsBuckets(p))
+		and enginePolicyOf(p) <> null and enginePolicyOf(p).catalog <> null);
 
 query unreached(application : String) : PolicyPeer {
 	assert fatal (false) with log(application + ': a migration whose Application reaches no surface of the datastore holding its database is not checked yet');
@@ -823,25 +786,22 @@ query catalogJobsOf() : Sequence(ResolvedCatalogJob) =
 			else catalogJobOf(prj.project, app.id, p) endif)))
 		->flatten()->select(j | j <> null)->asSequence() endif;
 
--- The projects on the estate path whose Processes name buckets in one object store, each with
--- the buckets it names, as the store holds them (spec/v1/16-dependencies.md#the-bucket-catalog).
+-- The projects whose Processes name buckets in one object store, each with the buckets it
+-- names, as the store holds them (spec/v1/16-dependencies.md#the-bucket-catalog).
 query bucketReadersOf(application : String) : Sequence(Tuple(name : String, buckets : Sequence(String))) =
-	projects->select(r | not legacy(r.project))->sortedBy(r | r.project)->collect(r |
+	projects->sortedBy(r | r.project)->collect(r |
 		Tuple{name = r.project, buckets = r.applications.processes.dependsOn
 			->select(e | e.application = application)->collect(e | e.buckets)->flatten()
 			->collect(b | r.project + '-' + b)->asSet()->sortedBy(b | b)->asSequence()})
 		->select(k | k.buckets->notEmpty())->asSequence();
 
 -- An object store's method: its catalog is the key each reading project is given, written by
--- an admin token, the derived one on the estate path or the ledger's while its project is legacy.
+-- the derived admin token.
 query bucketCatalogJobOf(prj : String, application : String, p : PI::Process) : ResolvedCatalogJob =
-	let ns : String = homeNamespace(prj, application) in
-	let proc : String = homeProcess(application, p.name) in
+	let ns : String = namespaceOf(prj) in
+	let proc : String = p.name in
 	let readers : Sequence(Tuple(name : String, buckets : Sequence(String))) = bucketReadersOf(application) in
-	let tokens : Sequence(AdminToken) = stated(application)
-		->select(l | l.admin <> null and l.admin.oclIsKindOf(AdminToken))
-		->collect(l | l.admin.oclAsType(AdminToken))->asSequence() in
-	if readers->isEmpty() or (legacy(prj) and tokens->isEmpty()) then null else
+	if readers->isEmpty() then null else
 	let own : LockedImage = locked(enginePolicyOf(p).catalog) in
 	let surface : String = catalogSurfaceOf(p) in
 	let surfacePort : Integer = p.provides->select(s | s.key = surface)->any(true).value in
@@ -862,13 +822,10 @@ query bucketCatalogJobOf(prj : String, application : String, p : PI::Process) : 
 		catalog := object ResolvedCatalog {
 			host := proc + '.' + ns + '.svc.cluster.local';
 			port := surfacePort;
-			admin := if legacy(prj) then object CatalogAdmin {
-					path := tokens->first().path;
-					token := tokens->first().token;
-				} else object CatalogAdmin {
-					path := 'secret/data/' + prj + '/' + p.name + '/catalog';
-					token := 'token';
-				} endif;
+			admin := object CatalogAdmin {
+				path := 'secret/data/' + prj + '/' + p.name + '/catalog';
+				token := 'token';
+			};
 			keys := readers->collect(k | object CatalogKey {
 				name := k.name;
 				path := 'secret/data/' + k.name + '/' + p.name + '/s3';
@@ -883,23 +840,16 @@ query bucketCatalogJobOf(prj : String, application : String, p : PI::Process) : 
 				rule := 'cluster-dns'; namespace := estate.substrate.clusterDns; port := DNS_PORT; });
 	} endif;
 
--- Whether a project's database is still the old path's.
-query legacy(prj : String) : Boolean =
-	estate.handover <> null and estate.handover.legacy->includes(prj);
-
--- One datastore's method, where an estate-path project reads a database from it and it has a
--- login to sign in with: the old path's while its project is legacy, the derived one after.
+-- One datastore's method, where a project reads a database from it, signing in with the
+-- derived login.
 query catalogJobOf(prj : String, application : String, p : PI::Process) : ResolvedCatalogJob =
-	let ns : String = homeNamespace(prj, application) in
-	let proc : String = homeProcess(application, p.name) in
-	let readers : Sequence(String) = projects->select(r | not legacy(r.project)
-		and r.applications->exists(a | let d : Sequence(PolicyPeer) = datastoreOf(a) in
+	let ns : String = namespaceOf(prj) in
+	let proc : String = p.name in
+	let readers : Sequence(String) = projects->select(r |
+		r.applications->exists(a | let d : Sequence(PolicyPeer) = datastoreOf(a) in
 			d->notEmpty() and d->first().namespace = ns and d->first().process = proc))
 		->collect(r | r.project)->sortedBy(n | n)->asSequence() in
-	let logins : Sequence(AdminLogin) = stated(application)
-		->select(l | l.admin <> null and l.admin.oclIsKindOf(AdminLogin))
-		->collect(l | l.admin.oclAsType(AdminLogin))->asSequence() in
-	if readers->isEmpty() or (legacy(prj) and logins->isEmpty()) then null else
+	if readers->isEmpty() then null else
 	let own : LockedImage = locked(estate.engines.postgres.catalog) in
 	let surfacePort : Integer = p.provides->select(s | s.key = estate.engines.postgres.surface)->any(true).value in
 	let named : String = p.name + '-catalog' in
@@ -920,15 +870,11 @@ query catalogJobOf(prj : String, application : String, p : PI::Process) : Resolv
 			host := proc + '.' + ns + '.svc.cluster.local';
 			port := surfacePort;
 			connection := p.name;
-			admin := if legacy(prj) then object CatalogAdmin {
-					path := logins->first().path;
-					user := logins->first().user;
-					password := logins->first().password;
-				} else object CatalogAdmin {
-					path := 'secret/data/' + prj + '/' + p.name + '/catalog';
-					user := 'user';
-					password := 'password';
-				} endif;
+			admin := object CatalogAdmin {
+				path := 'secret/data/' + prj + '/' + p.name + '/catalog';
+				user := 'user';
+				password := 'password';
+			};
 			databases := readers->collect(r | object CatalogDatabase {
 				name := r + '_db';
 				owner := r + '-owner';
@@ -1511,23 +1457,6 @@ query owner(p : PI::Process) : String =
 query applicationOf(p : PI::Process) : String =
 	projects.applications->select(a | a.processes->includes(p))->first().id;
 
--- Where the handover ledger states the old path runs `application`: one
--- location, or none (spec/v1/14-platform-intent.md#handover-ledger).
-query stated(application : String) : Sequence(ServingLocation) =
-	if estate.handover = null then Sequence{}
-	else estate.handover.serving->select(l | l.application = application)->asSequence() endif;
-
--- Where one Process of `application` serves: its project's namespace under its
--- own name, or, while its project is legacy, where the ledger states it runs.
-query homeNamespace(prj : String, application : String) : String =
-	if stated(application)->isEmpty() then namespaceOf(prj)
-	else stated(application)->first().namespace endif;
-
-query homeProcess(application : String, process : String) : String =
-	if stated(application)->isEmpty() then process
-	else if stated(application)->first().instance = null then process
-	else stated(application)->first().instance endif endif;
-
 query engineMethod(p : PI::Process) : String =
 	if not p.oclAsType(ECORE::EObject).states('engine') then unengined(p)
 	else enginePolicyOf(p).backup endif;
@@ -1675,16 +1604,16 @@ query edgeOf(e : DependencyEdge, consumer : String) : ResolvedEdge =
 	if providers->notEmpty() then
 		let first : Tuple(project : String, process : PI::Process) = providers->first() in
 		let at : Integer = first.process.provides->select(s | s.key = e.surface)->any(true).value in
-		let host : String = homeProcess(e.application, first.process.name) + '.'
-			+ homeNamespace(first.project, e.application) + '.svc.cluster.local' in
+		let host : String = first.process.name + '.'
+			+ namespaceOf(first.project) + '.svc.cluster.local' in
 		object ResolvedEdge {
 			application := e.application;
 			surface := e.surface;
 			address := dialled(e, host, consumer) + ':' + at.toString();
 			target := aliasTarget(e, host, consumer);
 			peers := Sequence{object PolicyPeer {
-				namespace := homeNamespace(first.project, e.application);
-				process := homeProcess(e.application, first.process.name);
+				namespace := namespaceOf(first.project);
+				process := first.process.name;
 				port := at;
 			}};
 		}
@@ -1710,8 +1639,8 @@ query homeHostOf(e : DependencyEdge) : String =
 			->select(p | p.provides->exists(s | s.key = e.surface))
 			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
 	if providers->notEmpty() then
-		homeProcess(e.application, providers->first().process.name) + '.'
-			+ homeNamespace(providers->first().project, e.application) + '.svc.cluster.local'
+		providers->first().process.name + '.'
+			+ namespaceOf(providers->first().project) + '.svc.cluster.local'
 	else
 		let registered : Sequence(Provider) = estate.providers
 			->select(r | r.name = e.application and r.surfaces->exists(s | s.key = e.surface))->asSequence() in
@@ -2145,7 +2074,7 @@ query surfaceAddress(application : String, surface : String) : String =
 			->collect(p | Tuple{project = prj.project, process = p}))->flatten() in
 	if providers->isEmpty() then null
 	else let first : Tuple(project : String, process : PI::Process) = providers->first() in
-		homeProcess(application, first.process.name) + '.' + homeNamespace(first.project, application)
+		first.process.name + '.' + namespaceOf(first.project)
 			+ '.svc.cluster.local:' + first.process.provides->select(s | s.key = surface)->any(true).value.toString()
 	endif;
 
@@ -2194,8 +2123,7 @@ mapping Exposure::exposure(in app : EffectiveApplication, in prj : EffectiveProj
 	listener := if tierFor(self.audience).listener = Listener::tls then 'tls' else 'plain' endif;
 	certificates := if tierFor(self.audience).certificates = CertificateSource::acme then 'acme' else 'none' endif;
 	proxyApplication := tierFor(self.audience).traefik.id;
-	proxyNamespace := homeNamespace(projectOf(tierFor(self.audience).traefik.id),
-		tierFor(self.audience).traefik.id);
+	proxyNamespace := namespaceOf(projectOf(tierFor(self.audience).traefik.id));
 	ingressClass := tierFor(self.audience).ingressClass;
 	-- The name the tier publishes the host behind, or, where the exposure is not
 	-- proxied, the tier's own address (spec/v1/14-platform-intent.md#tiers).
@@ -2230,8 +2158,7 @@ query precedenceOf(r : Route, routes : Collection(Route)) : Integer =
 -- a route's own beside its IngressRoute, by the route's position.
 query middlewareOf(r : Route, exposure : Exposure, app : EffectiveApplication, prj : EffectiveProject)
 		: Sequence(MiddlewareStep) =
-	let proxy : String = homeNamespace(projectOf(tierFor(exposure.audience).traefik.id),
-		tierFor(exposure.audience).traefik.id) in
+	let proxy : String = namespaceOf(projectOf(tierFor(exposure.audience).traefik.id)) in
 	let own : String = app.id + '-' + exposure.name + '-' + exposure.routes->indexOf(r).toString() in
 	(if r.audienceOf(exposure) = Audience::authenticated and asksTheGate(app, exposure)
 		then Sequence{object MiddlewareStep {
@@ -2906,8 +2833,8 @@ query storePeers() : Sequence(PolicyPeer) =
 		let first : Tuple(project : String, process : PI::Process) = providers->first() in
 		Sequence{object PolicyPeer {
 			rule := 'secret-store';
-			namespace := homeNamespace(first.project, estate.secretStore.id);
-			process := homeProcess(estate.secretStore.id, first.process.name);
+			namespace := namespaceOf(first.project);
+			process := first.process.name;
 			port := first.process.provides->select(s | s.key = HTTP_SURFACE)->any(true).value;
 		}}
 	endif;
@@ -2916,8 +2843,8 @@ query storePeers() : Sequence(PolicyPeer) =
 query peersOf(application : String, at : Integer, admits : String)
 		: Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
 	projects->collect(prj | prj.applications->select(a | a.id = application).processes
-		->collect(p | Tuple{rule = admits, namespace = homeNamespace(prj.project, application),
-			process = homeProcess(application, p.name), port = at}))
+		->collect(p | Tuple{rule = admits, namespace = namespaceOf(prj.project),
+			process = p.name, port = at}))
 		->flatten();
 
 -- The port of `application`'s Process that provides this surface.
@@ -3224,6 +3151,7 @@ query ResolvedApplication::elementJson(src : EffectiveApplication, prj : Effecti
 -- records them per Application: every other project its edges reach, and the
 -- secrets unit wherever one of its Processes holds a grant.
 query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(String) =
+	if holdsStore(prj.project) then Sequence{} else
 	(app.processes.dependsOn
 		-- An optional edge orders nothing (spec/v1/55-delivery.md#release-order).
 		->select(e | not (e.required = false))
@@ -3235,7 +3163,7 @@ query appAfterOf(app : EffectiveApplication, prj : EffectiveProject) : Sequence(
 			or managed(app) or appliesCatalog(app)
 		then secretsAfter(prj.project) else Sequence{} endif)
 	->union(proxiesAfter(app, prj.project)))
-	->asSet()->sortedBy(n | n)->asSequence();
+	->asSet()->sortedBy(n | n)->asSequence() endif;
 
 query ReleaseGate::json() : String = obj(Sequence{
 	Tuple{k = 'endpoint', v = str(self.endpoint)},
@@ -4059,8 +3987,8 @@ query obsScrapeEgress(app : EffectiveApplication) : Sequence(PolicyPeer) =
 	if estate.telemetry = null or estate.telemetry.metrics.id <> app.id then Sequence{} else
 	let targets : Sequence(Tuple(rule : String, namespace : String, process : String, port : Integer)) =
 		projects->collect(prj | prj.applications->select(a | a.observability <> null and a.observability.scrape <> null)
-			->collect(a | Tuple{rule = 'scrape-target', namespace = homeNamespace(prj.project, a.id),
-				process = homeProcess(a.id, a.observability.scrape.process.name),
+			->collect(a | Tuple{rule = 'scrape-target', namespace = namespaceOf(prj.project),
+				process = a.observability.scrape.process.name,
 				port = a.observability.scrape.surface.value}))->flatten() in
 	named(targets->asOrderedSet()->asSequence()->sortedBy(t | t.namespace + '/' + t.process + '/' + t.port.toString())->asSequence())
 	->union(if estate.bootstrap.flux.metrics = null then Sequence{} else Sequence{object PolicyPeer {
@@ -4231,8 +4159,7 @@ query gateProcessOf(exposure : Exposure) : PI::Process =
 -- The derived route: the Gate's Service, with the exposure's security headers and no forward-auth.
 query gateRouteOf(exposure : Exposure, app : EffectiveApplication) : ResolvedRoute =
 	let fa : ForwardAuth = tierFor(exposure.audience).forwardAuth in
-	let proxy : String = homeNamespace(projectOf(tierFor(exposure.audience).traefik.id),
-		tierFor(exposure.audience).traefik.id) in
+	let proxy : String = namespaceOf(projectOf(tierFor(exposure.audience).traefik.id)) in
 	object ResolvedRoute {
 		path := GATE_PATH;
 		match := RD::Match::prefix;
@@ -4240,7 +4167,7 @@ query gateRouteOf(exposure : Exposure, app : EffectiveApplication) : ResolvedRou
 		precedence := precedenceWith(-GATE_PATH.size(), exposureRanks(exposure, app));
 		gate := object GateRoute {
 			name := gateProcessOf(exposure).name;
-			namespace := homeNamespace(projectOf(fa.provider.id), fa.provider.id);
+			namespace := namespaceOf(projectOf(fa.provider.id));
 			port := fa.surface.portOf(fa.provider.id);
 		};
 		middleware := Sequence{object MiddlewareStep {

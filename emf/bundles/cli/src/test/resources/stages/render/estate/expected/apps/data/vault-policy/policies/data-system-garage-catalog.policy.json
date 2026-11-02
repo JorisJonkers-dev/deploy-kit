@@ -1,11 +1,11 @@
 {
   "path": {
-    "secret/data/platform/garage": {
+    "secret/data/data/garage/catalog": {
       "capabilities": [
         "read"
       ]
     },
-    "secret/metadata/platform/garage": {
+    "secret/metadata/data/garage/catalog": {
       "capabilities": [
         "read"
       ]

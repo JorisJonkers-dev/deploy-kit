@@ -33,14 +33,20 @@ class ModelWitnessesTest {
     /** One change to a worked example: {@code from} becomes {@code to} in {@code file}. */
     private record Edit(String file, String from, String to) {}
 
+    /**
+     * The render of {@code example}, or, named {@code <example>:<project>}, of another project its set
+     * reads, such as the datastore's own project that applies a catalog.
+     */
     private static Path tree(String example) {
         return TREES.computeIfAbsent(example, name -> {
             try {
-                Outputs.Resolving resolving = Outputs.RESOLVED.get(name);
+                String[] named = name.split(":", 2);
+                Outputs.Resolving resolving = Outputs.RESOLVED.get(named[0]);
                 List<Path> files =
                         resolving.documents().stream().map(Examples::of).toList();
-                Path out = shared.resolve(name);
-                assertThat(Pipeline.render(files, List.of(resolving.project()), Outputs.INTEGRITY, out))
+                Path out = shared.resolve(name.replace(':', '-'));
+                String project = named.length == 1 ? resolving.project() : named[1];
+                assertThat(Pipeline.render(files, List.of(project), Outputs.INTEGRITY, out))
                         .isEmpty();
                 return out;
             } catch (IOException e) {
@@ -497,9 +503,11 @@ class ModelWitnessesTest {
 
     @Test
     void anEdgeIntoAnObjectStoreThatNamesBucketsDerivesItsCatalogAndHandsTheConsumerItsKey() throws IOException {
-        String catalog = rendered("knowledge-platform", "estate/vso-secrets/garage-catalog.yaml");
+        String catalog = rendered("knowledge-platform:data", "apps/data/platform-garage/garage-catalog.yaml");
 
         assertThat(catalog)
+                // Applied with the derived admin token, from the store's own Project.
+                .contains("{\"admin\":{\"path\":\"secret/data/data/garage/catalog\",\"token\":\"token\"}")
                 .contains("\"keys\":[{\"buckets\":[\"knowledge-platform-assets\"],\"name\":\"knowledge-platform\","
                         + "\"path\":\"secret/data/knowledge-platform/garage/s3\"}]");
         assertThat(rendered("knowledge-platform", "apps/knowledge-platform/karakeep/vso.yaml"))
@@ -1253,7 +1261,7 @@ class ModelWitnessesTest {
     void anHourlyPolicyOrCatalogRunGivesUpWithinTheHourAndTheOneShotJobRetriesUntilItSucceeds() {
         for (String[] hourly : new String[][] {
             {"auth", "apps/auth/vault-policy/cronjob.yaml"},
-            {"knowledge-platform", "estate/vso-secrets/postgres-catalog.yaml"}
+            {"knowledge-platform:data", "apps/data/platform-postgres/postgres-catalog.yaml"}
         }) {
             assertThat(object(
                             rendered(hourly[0], hourly[1]),
@@ -1482,5 +1490,36 @@ class ModelWitnessesTest {
                         ""));
         assertThat(unrecorded.resolve("apps/observability/prometheus/k3s-monitors.yaml"))
                 .doesNotExist();
+    }
+
+    /**
+     * An exporter whose series describe other objects keeps their labels where its scrape says so, and
+     * only there (spec/v1/10-project-intent.md#observability); and an API rule may name {@code
+     * deletecollection}, which an operator that empties its own cache on start needs (deploy-kit#781).
+     */
+    @Test
+    void aScrapeKeepsItsTargetsLabelsOnlyWhereItSaysSoAndAnApiRuleMayNameDeletecollection(@TempDir Path work)
+            throws IOException {
+        assertThat(rendered("minimal", "apps/notes/notes/podmonitor.yaml")).doesNotContain("honorLabels");
+        Path honoring = renderedWith(
+                "minimal",
+                work.resolve("honoring"),
+                new Edit(
+                        "minimal/notes.project.yml",
+                        "        path: /metrics\n",
+                        "        path: /metrics\n        honorLabels: true\n"));
+        assertThat(Files.readString(honoring.resolve("apps/notes/notes/podmonitor.yaml")))
+                .contains("      scrapeTimeout: 10s\n      honorLabels: true\n");
+
+        Path clearing = renderedWith(
+                "secrets",
+                work.resolve("clearing"),
+                new Edit(
+                        "secrets/secrets.project.yml",
+                        "vaultconnections/status]\n              verbs: [get, list, watch, create, update, patch, delete]\n",
+                        "vaultconnections/status]\n"
+                                + "              verbs: [get, list, watch, create, update, patch, delete, deletecollection]\n"));
+        assertThat(Files.readString(clearing.resolve("apps/secrets/vault-secrets-operator/rbac.yaml")))
+                .contains("      - delete\n      - deletecollection\n");
     }
 }

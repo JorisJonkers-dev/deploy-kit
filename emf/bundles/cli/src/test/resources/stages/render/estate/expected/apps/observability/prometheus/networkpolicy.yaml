@@ -57,7 +57,7 @@ spec:
               kubernetes.io/metadata.name: data-system
           podSelector:
             matchLabels:
-              app.kubernetes.io/instance: primary
+              app.kubernetes.io/instance: postgres
       ports:
         - protocol: UDP
           port: 9187

@@ -3,7 +3,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vault-policy-e9176474966e
+  name: vault-policy-21f32d75adfe
   namespace: data-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -17,6 +17,10 @@ data:
     {"path":{"secret/data/platform/garage/web-key":{"capabilities":["read"]},"secret/metadata/platform/garage/web-key":{"capabilities":["read"]}}}
   data-system-asset-sync.role.json: |
     {"bound_service_account_names":["asset-sync"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-asset-sync"]}
+  data-system-garage-catalog.policy.json: |
+    {"path":{"secret/data/data/garage/catalog":{"capabilities":["read"]},"secret/data/knowledge-platform/garage/s3":{"capabilities":["create","read","update"]},"secret/metadata/data/garage/catalog":{"capabilities":["read"]}}}
+  data-system-garage-catalog.role.json: |
+    {"bound_service_account_names":["garage-catalog"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-garage-catalog"]}
   data-system-garage.policy.json: |
     {"path":{"secret/data/platform/garage":{"capabilities":["read"]},"secret/metadata/platform/garage":{"capabilities":["read"]}}}
   data-system-garage.role.json: |
@@ -29,6 +33,10 @@ data:
     {"path":{"secret/data/data/postgres/backup":{"capabilities":["read"]},"secret/data/platform/backup/off-cluster":{"capabilities":["read"]},"secret/metadata/data/postgres/backup":{"capabilities":["read"]},"secret/metadata/platform/backup/off-cluster":{"capabilities":["read"]}}}
   data-system-postgres-backup.role.json: |
     {"bound_service_account_names":["postgres-backup"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-postgres-backup"]}
+  data-system-postgres-catalog.policy.json: |
+    {"path":{"database/roles/auth-data":{"capabilities":["create","read","update"]},"database/roles/auth-owner":{"capabilities":["create","read","update"]},"database/roles/knowledge-data":{"capabilities":["create","read","update"]},"database/roles/knowledge-owner":{"capabilities":["create","read","update"]},"database/roles/knowledge-platform-data":{"capabilities":["create","read","update"]},"database/roles/knowledge-platform-owner":{"capabilities":["create","read","update"]},"secret/data/data/postgres/catalog":{"capabilities":["read"]},"secret/metadata/data/postgres/catalog":{"capabilities":["read"]}}}
+  data-system-postgres-catalog.role.json: |
+    {"bound_service_account_names":["postgres-catalog"],"bound_service_account_namespaces":["data-system"],"token_policies":["data-system-postgres-catalog"]}
   data-system-postgres.policy.json: |
     {"path":{"secret/data/platform/postgres/exporter":{"capabilities":["read"]},"secret/metadata/platform/postgres/exporter":{"capabilities":["read"]}}}
   data-system-postgres.role.json: |

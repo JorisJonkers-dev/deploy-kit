@@ -76,7 +76,8 @@ AlertRules returns AlertRules:
 Scrape returns Scrape:
 	(('process' ':' process=[Process|Text])
 	& ('surface' ':' surface=[Surface|Text])
-	& ('path' ':' path=Text));
+	& ('path' ':' path=Text)
+	& ('honorLabels' ':' honorLabels=Bool)?);
 
 Exposure returns Exposure:
 	(('name' ':' name=Text)
@@ -366,21 +367,21 @@ Keyword:
 	'application' | 'applications' | 'arch' | 'args' | 'arm64' | 'assets' | 'audience' | 'authenticated' | 'backChannelLogoutPath' |
 	'base64' | 'base64url' | 'buckets' | 'bytes' | 'capabilities' | 'changelog' | 'claim' | 'class' | 'client' | 'cluster' |
 	'command' | 'contentPolicy' | 'continuous' | 'count' | 'cpu' | 'create' | 'credential' | 'credentials' | 'custody' | 'cutover' |
-	'dashboards' | 'database' | 'decrypt' | 'delete' | 'delivery' | 'dependsOn' | 'description' | 'disk' | 'durability' | 'egress' |
-	'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' | 'exposure' | 'false' | 'file' | 'fileMode' | 'files' | 'forward-only' |
-	'forwardedPort' | 'from' | 'gated' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' | 'host' | 'iconPath' | 'id' |
-	'image' | 'init' | 'internal' | 'internet' | 'interrupted' | 'irreplaceable' | 'job' | 'jvm' | 'key' | 'keys' | 'kind' | 'kv' |
-	'l4Exposure' | 'label' | 'lan' | 'launchPath' | 'libraries' | 'library' | 'lifecycle' | 'list' | 'liveness' | 'match' |
-	'maxAge' | 'media' | 'memory' | 'migration' | 'model' | 'mongo' | 'mountAt' | 'name' | 'namespace' | 'native' | 'node' |
-	'none' | 'nvme' | 'objects' | 'observability' | 'operations' | 'optional' | 'owner' | 'parked' | 'patch' | 'path' | 'per' |
-	'pkce' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' | 'probes' | 'process' | 'processes' | 'project' |
-	'protectedPath' | 'protocol' | 'provides' | 'proxied' | 'python' | 'rabbitmq' | 'rateLimit' | 'read' | 'readiness' | 'reason' |
-	'reconstructible' | 'recoverable' | 'redirectPaths' | 'redirectTo' | 'reload' | 'replicas' | 'requests' | 'required' |
-	'restart' | 'role' | 'roles' | 'rollback' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' | 's3' | 'schedule' |
-	'scheduled' | 'schemaVersion' | 'scope' | 'scrape' | 'secret' | 'secrets' | 'seedAt' | 'self' | 'self-renew' | 'self-roll' |
-	'sidecars' | 'sign' | 'signIn' | 'site' | 'size' | 'spawns' | 'ssd' | 'startupBudget' | 'static' | 'strict' | 'subPath' |
-	'surface' | 'tcp' | 'to' | 'token' | 'tolerates' | 'transit' | 'true' | 'udp' | 'update' | 'valkey' | 'vendor' | 'verbs' |
-	'verify' | 'volumes' | 'vpn' | 'watch' | 'workflow' | 'writablePaths' | 'write';
+	'dashboards' | 'database' | 'decrypt' | 'delete' | 'deletecollection' | 'delivery' | 'dependsOn' | 'description' | 'disk' |
+	'durability' | 'egress' | 'encoding' | 'encrypt' | 'engine' | 'env' | 'exact' | 'exposure' | 'false' | 'file' | 'fileMode' |
+	'files' | 'forward-only' | 'forwardedPort' | 'from' | 'gated' | 'generate' | 'get' | 'gpu' | 'group' | 'hdd' | 'hex' |
+	'honorLabels' | 'host' | 'iconPath' | 'id' | 'image' | 'init' | 'internal' | 'internet' | 'interrupted' | 'irreplaceable' |
+	'job' | 'jvm' | 'key' | 'keys' | 'kind' | 'kv' | 'l4Exposure' | 'label' | 'lan' | 'launchPath' | 'libraries' | 'library' |
+	'lifecycle' | 'list' | 'liveness' | 'match' | 'maxAge' | 'media' | 'memory' | 'migration' | 'model' | 'mongo' | 'mountAt' |
+	'name' | 'namespace' | 'native' | 'node' | 'none' | 'nvme' | 'objects' | 'observability' | 'operations' | 'optional' | 'owner' |
+	'parked' | 'patch' | 'path' | 'per' | 'pkce' | 'placement' | 'port' | 'postgres' | 'prefix' | 'prepare' | 'probes' | 'process' |
+	'processes' | 'project' | 'protectedPath' | 'protocol' | 'provides' | 'proxied' | 'python' | 'rabbitmq' | 'rateLimit' | 'read' |
+	'readiness' | 'reason' | 'reconstructible' | 'recoverable' | 'redirectPaths' | 'redirectTo' | 'reload' | 'replicas' |
+	'requests' | 'required' | 'restart' | 'role' | 'roles' | 'rollback' | 'rotate' | 'rotation' | 'routes' | 'rules' | 'runtime' |
+	's3' | 'schedule' | 'scheduled' | 'schemaVersion' | 'scope' | 'scrape' | 'secret' | 'secrets' | 'seedAt' | 'self' |
+	'self-renew' | 'self-roll' | 'sidecars' | 'sign' | 'signIn' | 'site' | 'size' | 'spawns' | 'ssd' | 'startupBudget' | 'static' |
+	'strict' | 'subPath' | 'surface' | 'tcp' | 'to' | 'token' | 'tolerates' | 'transit' | 'true' | 'udp' | 'update' | 'valkey' |
+	'vendor' | 'verbs' | 'verify' | 'volumes' | 'vpn' | 'watch' | 'workflow' | 'writablePaths' | 'write';
 
 enum Lifecycle returns Lifecycle:
 	application='application' | job='job' | prepare='prepare' | scheduled='scheduled';
@@ -437,7 +438,8 @@ enum AccessTier returns AccessTier:
 	read='read' | selfRenew='self-renew' | selfRoll='self-roll' | custody='custody';
 
 enum ApiVerb returns ApiVerb:
-	get='get' | list='list' | watch='watch' | create='create' | update='update' | patch='patch' | delete='delete';
+	get='get' | list='list' | watch='watch' | create='create' | update='update' | patch='patch' | delete='delete' |
+	deletecollection='deletecollection';
 
 enum EgressTarget returns EgressTarget:
 	internet='internet';

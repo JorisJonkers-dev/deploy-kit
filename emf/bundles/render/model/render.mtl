@@ -533,6 +533,9 @@
         path: [d.scrapePath/]
         interval: [d.interval/]
         scrapeTimeout: [d.timeout/]
+  [if (d.process.application().scrape.honorLabels)]
+          honorLabels: true
+  [/if]
 [/template]
 
 [template private objects(d : resolveddeployment::SwitchoverFile)]

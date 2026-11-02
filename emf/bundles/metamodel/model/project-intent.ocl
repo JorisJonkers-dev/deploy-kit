@@ -101,11 +101,6 @@ context Route
 		oclContainer().oclAsType(Exposure).routes
 			->select(r | r.path = self.path and r.match = self.match)->first() = self
 
-context HandoverLedger
-	-- A Project is on one delivery path at a time: two would each apply it.
-	inv E_HANDOVER_BOTH_PATHS:
-		legacy->forAll(project | not estate->includes(project))
-
 context Tier
 	-- An authenticated route reaches the proxy with nothing to ask whether the
 	-- visitor is allowed in unless the tier names the endpoint that decides.
@@ -594,24 +589,6 @@ context Credentials
 		(Platform.allInstances()->notEmpty() and Application.allInstances().id->includes(edge.application))
 			implies Application.allInstances()->exists(a | a.id = edge.application and a.ownsDatabases)
 
-context Project
-	-- While the estate moves off the old path, every Project read beside the
-	-- Platform document is on exactly one of them, named in its ledger.
-	inv E_HANDOVER_UNLISTED:
-		Platform.allInstances()->forAll(handover = null
-			or handover.legacy->includes(self.project)
-			or handover.estate->includes(self.project))
-
-context ServingLocation
-	-- A location stands for an Application the old path still runs, so its
-	-- Project is legacy; and one instance stands for one Process.
-	inv E_HANDOVER_SERVING:
-		let ledger : HandoverLedger = oclContainer().oclAsType(HandoverLedger) in
-		Project.allInstances()->forAll(p |
-			p.applications->select(a | a.id = self.application)->forAll(a |
-				ledger.legacy->includes(p.project)
-				and (self.instance <> null implies a.processes->size() = 1)))
-
 -- Every refusal resolution used to stop at (deploy-kit#204), each answered here
 -- over the authored model with its env files attached, at the Process or the
 -- Application the production implementation names.
@@ -814,20 +791,12 @@ context DependencyEdge
 		else if oclContainer().oclIsKindOf(Application) then oclContainer().oclContainer().oclAsType(Project)
 		else oclContainer().oclAsType(Project) endif endif
 
-	-- Where the provider serves: its Process's Service, where the handover
-	-- ledger states the old path runs it, or the address a provider records.
+	-- Where the provider serves: its Process's Service, in its project's
+	-- namespace, or the address a provider records.
 	def: served : String =
 		if providing->notEmpty() then
 			let p : Process = providing->any(true) in
-			let stated : Bag(ServingLocation) = Platform.allInstances()->select(f | f.handover <> null)
-				.handover.serving->select(l | l.application = application) in
-			if stated->isEmpty() then
-				p.name + '.' + p.oclContainer().oclContainer().oclAsType(Project).project + '-system.svc.cluster.local'
-			else
-				let location : ServingLocation = stated->asSequence()->first() in
-				(if location.instance = null then p.name else location.instance endif)
-				+ '.' + location.namespace + '.svc.cluster.local'
-			endif
+			p.name + '.' + p.oclContainer().oclContainer().oclAsType(Project).project + '-system.svc.cluster.local'
 		else
 			let addresses : Bag(String) = Platform.allInstances().providers
 				->select(v | v.name = application and v.surfaces->includes(surface))->collect(v | v.address) in
@@ -862,6 +831,59 @@ context DependencyEdge
 		(Platform.allInstances()->notEmpty() and required <> false) implies
 			not holders->exists(h | providing->exists(p |
 				p = h or p.requiredPeers->closure(q | q.requiredPeers)->includes(h)))
+
+-- The order the Reconcile Units follow (spec/v1/20-resolved-deployment.md#the-reconcile-unit),
+-- read off the authored union as resolution derives it, Project by Project.
+
+context Application
+	-- Whether a Process of the Application holds a credential the Secret Store issues, whose role
+	-- is written first: a grant at any level, a VPN, an edge into a database, a Client secret it
+	-- reads or, on the sign-in provider, writes, a managed migration, or a catalog its datastore
+	-- applies.
+	def: holdsGrant : Boolean =
+		(migration <> null and migration.oclIsKindOf(ManagedMigration))
+		or processes->exists(pr | pr.secrets->notEmpty() or pr.levelsAbove->exists(l | l.secrets->notEmpty())
+			or pr.vpn <> null or pr.reachesDatabase
+			or pr.placeholdersOf(PlaceholderKind::client)->exists(p | p.source = 'secret'))
+		or (Platform.allInstances()->exists(p | p.signIn <> null and p.signIn.provider = self)
+			and Application.allInstances()->exists(a | a.client <> null and a.client.credential = ClientCredential::secret))
+		or Platform.allInstances()->exists(p | p.policyJob <> null and processes->exists(pr |
+			let named : EnginePolicy =
+				if pr.engine = Engine::postgres then p.engines.postgres
+				else if pr.engine = Engine::s3 then p.engines.s3 else null endif endif in
+			named <> null and named.catalog <> null))
+
+	-- The Projects whose units this Application's share of its Project's unit follows: each a
+	-- required edge reaches, the Secret Store's where it holds a grant, and the one that declares
+	-- each proxy its exposures' tiers name. The Secret Store's own Project follows nothing, since
+	-- every unit holding a grant follows it.
+	def: follows : Set(Project) =
+		let own : Project = oclContainer().oclAsType(Project) in
+		let stores : Set(Project) = Platform.allInstances()->select(p | p.secretStore <> null)
+			->collect(p | p.secretStore.oclContainer())->select(c | c <> null and c.oclIsKindOf(Project))
+			->collect(c | c.oclAsType(Project))->asSet() in
+		if stores->includes(own) then Set{} else
+			(processes->collect(pr | pr.heldEdges)->select(e | e.required <> false)
+				->collect(e | Application.allInstances()->select(a | a.id = e.application))
+				->collect(a | a.oclContainer().oclAsType(Project))->asSet()
+			->union(if holdsGrant then stores else Set{} endif)
+			->union(exposure->select(x | x.tier <> null)->collect(x | x.tier.traefik.oclContainer())
+				->select(c | c <> null and c.oclIsKindOf(Project))->collect(c | c.oclAsType(Project))->asSet()))
+			->excluding(own)
+		endif
+
+	-- A unit that follows itself through any others is a deadlock Flux never leaves, so its
+	-- Project is refused at the first Application that follows a unit on the cycle.
+	inv E_RECONCILE_CYCLE:
+		let own : Project = oclContainer().oclAsType(Project) in
+		Platform.allInstances()->isEmpty() or not own.reach->includes(own)
+			or (let cycle : Set(Project) = own.reach->select(q | q <> own and q.reach->includes(own)) in
+				own.applications->select(a | a.follows->exists(q | cycle->includes(q)))->first() <> self)
+
+context Project
+	-- Every Project whose unit this one's follows, itself only through a cycle.
+	def: reach : Set(Project) =
+		applications->collect(a | a.follows)->asSet()->closure(q | q.applications->collect(a | a.follows)->asSet())
 
 -- The rules main's catch-up added (spec/v1/14-platform-intent.md, spec/v1/17-sign-in.md).
 

@@ -505,7 +505,7 @@
     </applications>
     <applications id="platform-rabbitmq">
       <observability>
-        <scrape process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.2" path="/metrics"/>
+        <scrape process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.2" path="/metrics" honorLabels="true"/>
       </observability>
       <exposure name="management" host="rabbitmq.jorisjonkers.dev" audience="authenticated">
         <routes path="/" process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.1"/>
@@ -1744,6 +1744,7 @@
             <verbs>update</verbs>
             <verbs>patch</verbs>
             <verbs>delete</verbs>
+            <verbs>deletecollection</verbs>
           </rules>
           <rules group="core">
             <objects>secrets</objects>

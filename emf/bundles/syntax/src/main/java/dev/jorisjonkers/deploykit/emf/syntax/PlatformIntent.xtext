@@ -30,7 +30,6 @@ Platform returns Platform:
 	& ('delivery' ':' BEGIN delivery=DeliveryPolicy END)?
 	& ('apiAccess' ':' BEGIN apiAccess=ApiAccessPolicy END)?
 	& ('policyJob' ':' BEGIN policyJob=VaultPolicyJob END)?
-	& ('handover' ':' BEGIN handover=HandoverLedger END)?
 	& ('providers' ':' BEGIN (DASH BEGIN providers+=Provider END)+ END)?
 	& ('libraries' ':' BEGIN libraries+=Library+ END)?
 	& ('gpus' ':' BEGIN gpus+=GpuVendor+ END)?
@@ -86,30 +85,6 @@ ApiServerMetrics returns ApiServerMetrics:
 
 CoreDnsMetrics returns CoreDnsMetrics:
 	'port' ':' port=Port;
-
-HandoverLedger returns HandoverLedger:
-	(('retireBy' ':' retireBy=Text)
-	& ('legacy' ':' BEGIN (DASH BEGIN legacy+=Text END | legacy+=Text)+ END)?
-	& ('estate' ':' BEGIN (DASH BEGIN estate+=Text END | estate+=Text)+ END)?
-	& ('serving' ':' BEGIN (DASH BEGIN serving+=ServingLocation END)+ END)?);
-
-ServingLocation returns ServingLocation:
-	(('application' ':' application=Text)
-	& ('namespace' ':' namespace=Text)
-	& ('instance' ':' instance=Text)?
-	& ('admin' ':' BEGIN admin=AdminCredential END)?);
-
-// Where the old path keeps a datastore's administrative login: a user and password, or a token.
-// Spelled out key order by key order: both open on `path`.
-AdminCredential returns AdminCredential:
-	{AdminLogin} 'path' ':' path=Text 'user' ':' user=Text 'password' ':' password=Text
-	| {AdminLogin} 'path' ':' path=Text 'password' ':' password=Text 'user' ':' user=Text
-	| {AdminLogin} 'user' ':' user=Text 'path' ':' path=Text 'password' ':' password=Text
-	| {AdminLogin} 'user' ':' user=Text 'password' ':' password=Text 'path' ':' path=Text
-	| {AdminLogin} 'password' ':' password=Text 'path' ':' path=Text 'user' ':' user=Text
-	| {AdminLogin} 'password' ':' password=Text 'user' ':' user=Text 'path' ':' path=Text
-	| {AdminToken} 'path' ':' path=Text 'token' ':' token=Text
-	| {AdminToken} 'token' ':' token=Text 'path' ':' path=Text;
 
 FluxSource returns FluxSource:
 	(('sourceRef' ':' sourceRef=Text)
@@ -428,20 +403,19 @@ PlatformKeyword:
 	'bootstrap' | 'breaksOn' | 'catalog' | 'catalogSurface' | 'certificateFrom' | 'certificates' | 'cidr' | 'cloudflare' |
 	'cluster-admin' | 'clusterDns' | 'clusterRole' | 'cni' | 'collector' | 'contract' | 'controller' | 'coreDns' | 'crds' |
 	'critical' | 'criticalApplications' | 'data' | 'datasource' | 'datastore' | 'deadline' | 'destination' | 'direct' |
-	'discord' | 'dns' | 'dnsProvider' | 'edit' | 'email' | 'embedded' | 'engines' | 'enrolled' | 'ephemeral' |
-	'errorRate' | 'estate' | 'etcd' | 'failures' | 'flux' | 'forwardAuth' | 'gate' | 'gid' | 'gpu-device' | 'gpu-metrics' |
-	'gpus' | 'grafana' | 'grants' | 'handover' | 'hardening' | 'holders' | 'humanGrants' | 'imagePull' | 'ingressClass' |
-	'instance' | 'interval' | 'issuer' | 'iterations' | 'k3s' | 'kubelet' | 'kubernetesVersion' | 'l4-speaker' |
-	'l4Addresses' | 'labels' | 'latency' | 'legacy' | 'listener' | 'loki' | 'machinery' | 'major' | 'mesh' | 'metadata' |
-	'metrics' | 'minor' | 'monitoring' | 'monitors' | 'move' | 'namespaceHolders' | 'networkPolicyController' | 'never' |
-	'node-metrics' | 'nodeAgents' | 'nodeContract' | 'offCluster' | 'password' | 'period' | 'plain' | 'policyJob' |
-	'pool' | 'priority' | 'prometheus' | 'provider' | 'providers' | 'proxiedBy' | 'pullSecret' | 'pyroscope' | 'range' |
-	'receiver' | 'receivers' | 'recipient' | 'repeat' | 'reporter' | 'repository' | 'resource' | 'responseHeaders' |
-	'restricted' | 'retain' | 'retention' | 'retireBy' | 'reverse' | 'runner' | 'runtimeClass' | 'same-major' |
-	'secretsEncryption' | 'secretStore' | 'seeder' | 'server' | 'serverCount' | 'service' | 'serving' | 'settings' |
-	'severity' | 'signer' | 'sourceRef' | 'sqlite' | 'stores' | 'subject' | 'substrate' | 'surfaces' | 'target' |
-	'telemetry' | 'tempo' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' | 'upstreamNameservers' |
-	'user' | 'value' | 'vault' | 'view' | 'webhook';
+	'discord' | 'dns' | 'dnsProvider' | 'edit' | 'email' | 'embedded' | 'engines' | 'enrolled' | 'ephemeral' | 'errorRate' |
+	'etcd' | 'failures' | 'flux' | 'forwardAuth' | 'gate' | 'gid' | 'gpu-device' | 'gpu-metrics' | 'gpus' | 'grafana' |
+	'grants' | 'hardening' | 'holders' | 'humanGrants' | 'imagePull' | 'ingressClass' | 'instance' | 'interval' | 'issuer' |
+	'iterations' | 'k3s' | 'kubelet' | 'kubernetesVersion' | 'l4-speaker' | 'l4Addresses' | 'labels' | 'latency' |
+	'listener' | 'loki' | 'machinery' | 'major' | 'mesh' | 'metadata' | 'metrics' | 'minor' | 'monitoring' | 'monitors' |
+	'move' | 'namespaceHolders' | 'networkPolicyController' | 'never' | 'node-metrics' | 'nodeAgents' | 'nodeContract' |
+	'offCluster' | 'period' | 'plain' | 'policyJob' | 'pool' | 'priority' | 'prometheus' | 'provider' | 'providers' |
+	'proxiedBy' | 'pullSecret' | 'pyroscope' | 'range' | 'receiver' | 'receivers' | 'recipient' | 'repeat' | 'reporter' |
+	'repository' | 'resource' | 'responseHeaders' | 'restricted' | 'retain' | 'retention' | 'reverse' | 'runner' |
+	'runtimeClass' | 'same-major' | 'secretsEncryption' | 'secretStore' | 'seeder' | 'server' | 'serverCount' | 'service' |
+	'settings' | 'severity' | 'signer' | 'sourceRef' | 'sqlite' | 'stores' | 'subject' | 'substrate' | 'surfaces' |
+	'target' | 'telemetry' | 'tempo' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' |
+	'upstreamNameservers' | 'value' | 'vault' | 'view' | 'webhook';
 
 enum Datastore returns Datastore:
 	sqlite='sqlite' | etcd='etcd';

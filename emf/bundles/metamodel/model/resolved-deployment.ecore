@@ -183,6 +183,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Kept as authored: true only where the scrape says so, the monitor then keeping its target's labels. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="honorLabels" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <!-- The labels the metrics stack selects a monitor by, which the render's own never give way to. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
   </eClassifiers>

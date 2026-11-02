@@ -11,7 +11,7 @@ metadata:
     kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   type: ExternalName
-  externalName: primary.data-system.svc.cluster.local
+  externalName: postgres.data-system.svc.cluster.local
 ---
 apiVersion: v1
 kind: Service

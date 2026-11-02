@@ -460,7 +460,7 @@
       <l4Exposure address="lan-mqtt" port="1883" process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.3"/>
       <dashboards from="dashboards/rabbitmq.json"/>
       <observability>
-        <scrape process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.2" path="/metrics"/>
+        <scrape process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.2" path="/metrics" honorLabels="true"/>
       </observability>
       <exposure name="management" host="rabbitmq.jorisjonkers.dev" audience="authenticated">
         <routes path="/" process="/3/@applications.1/@processes.0" surface="/3/@applications.1/@processes.0/@provides.1"/>
@@ -1714,28 +1714,6 @@
       <server cidr="10.43.0.1/32" port="443"/>
     </apiAccess>
     <policyJob image="vault-policy" role="policy-admin" memory="64Mi" cpu="10m" deadline="120s"/>
-    <handover retireBy="2027-03-31">
-      <legacy>auth</legacy>
-      <legacy>data</legacy>
-      <legacy>knowledge</legacy>
-      <legacy>notes</legacy>
-      <estate>agents</estate>
-      <estate>coverage</estate>
-      <estate>delivery</estate>
-      <estate>edge</estate>
-      <estate>identity</estate>
-      <estate>knowledge-platform</estate>
-      <estate>mail</estate>
-      <estate>observability</estate>
-      <estate>secrets</estate>
-      <estate>utility</estate>
-      <serving application="platform-postgres" namespace="data-system" instance="primary">
-        <admin xsi:type="projectintent:AdminLogin" path="secret/data/platform/postgres" user="postgres.user" password="postgres.password"/>
-      </serving>
-      <serving application="platform-garage" namespace="data-system">
-        <admin xsi:type="projectintent:AdminToken" path="secret/data/platform/garage" token="admin-token"/>
-      </serving>
-    </handover>
     <providers name="stalwart" address="10.0.0.12">
       <surfaces key="smtp" value="25"/>
       <surfaces key="http" value="8080"/>
@@ -1843,6 +1821,7 @@
             <verbs>update</verbs>
             <verbs>patch</verbs>
             <verbs>delete</verbs>
+            <verbs>deletecollection</verbs>
           </rules>
           <rules group="core">
             <objects>secrets</objects>
