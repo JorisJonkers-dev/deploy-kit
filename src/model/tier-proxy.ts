@@ -101,8 +101,11 @@ export const exposuresOf = (
   ...tierExposuresOf(platform, project, application),
 ];
 
-/** Where an acme tier's proxy keeps its ACME state, on the claim the tier derives. */
-export const ACME_CLAIM = "acme";
+/**
+ * The claim an acme tier derives on its proxy's Process, named for that Process:
+ * a Project's Processes share one namespace, so two proxies never share one.
+ */
+export const acmeClaimOf = (process: string): string => `${process}-acme`;
 export const ACME_MOUNT = "/acme";
 export const ACME_SIZE = "16Mi";
 
