@@ -43,8 +43,9 @@ class ProjectIntentOclTest {
     }
 
     /**
-     * The metamodel file, answering its nsURI in this resource set alone: the document imports the
-     * package by nsURI, and a test elsewhere in this JVM may have registered the generated one globally.
+     * The metamodel file the document imports, answering its nsURI in this resource set alone, as an
+     * editor's registry does: a test elsewhere in this JVM may have registered the generated package
+     * globally, and the models must be read through the file.
      */
     private static EPackage metamodel(ResourceSet resources) {
         EPackage intent = (EPackage) resources
