@@ -130,7 +130,7 @@ useful when a generator varies by platform. Here there is one target and no
 variant to override; shared templates (label set, peer selector, consumer
 label) serve nearly every kind. Splitting by kind would require imports throughout;
 one module retains a single namespace. The cost is a large file navigated by template name:
-3772 lines holding 113 templates and 33 queries.
+3607 lines holding 109 templates and 41 queries.
 
 YAML generation calls one overloaded \texttt{objects} template, which Acceleo resolves by the Deliverable's
 runtime type (a polymorphic template in the course's terms). It replaced a chain

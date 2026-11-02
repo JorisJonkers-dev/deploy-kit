@@ -40,7 +40,7 @@ results into one model for a single rendering run. Templates read no files,
 environment variables or system clock: all other inputs are consumed beforehand
 and represented as model features.
 Each Deliverable has a \texttt{path} relative to the output root, assigned by the
-resolution stage. The metamodel has 41 concrete Deliverable kinds
+resolution stage. The metamodel has 40 concrete Deliverable kinds
 (\path{emf/bundles/metamodel/model/resolved-deployment.ecore}), each with a template
 family of its own.
 
@@ -121,7 +121,7 @@ or Vault name with two owners, reporting \texttt{E\_PATH\_COLLISION}
 \subsection{One Template per Deliverable Kind}
 \label{sec:m2t-kinds}
 
-The submitted module supports 41 Deliverable kinds in nine families
+The module supports 40 Deliverable kinds in nine families
 (Table~\ref{tab:kinds}). Each YAML family uses an \texttt{objects}
 template overloaded on its receiver type. Acceleo selects the overload by runtime type
 rather than string comparison: these are polymorphic templates in the course's sense.
@@ -141,17 +141,16 @@ Process workload & \texttt{WorkloadFile}, \texttt{SwitchoverFile}, \texttt{Servi
 Identity and access & \texttt{IdentityFile}, \texttt{RbacFile}, \texttt{NetworkPolicyFile}, \texttt{ClientFile}, \texttt{HumanGrantFile} & ServiceAccount; Role or ClusterRole and binding; NetworkPolicy; sign-in \texttt{Client}; bindings for human groups \\
 Routing & \texttt{IngressRouteFile}, \texttt{AliasFile}, \texttt{SharedMiddlewareFile}, \texttt{StableAddressFile}, \texttt{AddressPoolFile}, \texttt{TlsStoreFile} & Traefik IngressRoute with rate-limit Middleware; \texttt{ExternalName} Service; shared Middlewares; Stable Address Service; MetalLB \texttt{IPAddressPool} and \texttt{L2Advertisement}; default \texttt{TLSStore} \\
 Storage and configuration & \texttt{ClaimFile}, \texttt{LibraryFile}, \texttt{ConfigMapFile}, \texttt{BackupFile} & PersistentVolume and Claim; immutable ConfigMap per Asset; backup CronJob \\
-Jobs & \texttt{MigrationFile}, \texttt{MoveFile}, \texttt{PolicyJobFile}, \texttt{CatalogJobFile} & Suspended Migration Jobs; Move Jobs with their Role; Vault policy and catalog Jobs by \texttt{part} \\
+Jobs & \texttt{MigrationFile}, \texttt{PolicyJobFile}, \texttt{CatalogJobFile} & Suspended Migration Jobs; Vault policy and catalog Jobs by \texttt{part} \\
 Observability & \texttt{MonitorFile}, \texttt{EventsFile}, \texttt{DashboardFile}, \texttt{GrafanaFile}, \texttt{AlertRulesFile}, \texttt{AlertingFile}, \texttt{FluxMonitorFile}, \texttt{K3sMonitorsFile} & ServiceMonitor or PodMonitor; Flux Provider and Alert; \texttt{GrafanaDashboard}; \texttt{Grafana}; \texttt{PrometheusRule}; \texttt{AlertmanagerConfig}; Flux's PodMonitor; k3s scrapes \\
 Secrets & \texttt{SecretFile}, \texttt{ConnectionFile} & \texttt{VaultAuth}, \texttt{VaultStaticSecret}, \texttt{VaultDynamicSecret}; \texttt{VaultConnection} \\
 Vault documents (JSON) & \texttt{VaultPolicyFile}, \texttt{VaultRoleFile}, \texttt{GeneratedKeysFile} & Policy, auth role and generated-key documents; no header \\
 \hline
 \end{tabular}
-\caption{The 41 Deliverable Kinds in Nine Families}
+\caption{The 40 Deliverable Kinds in Nine Families}
 \label{tab:kinds}
 \end{table}
 
-\texttt{MoveFile} renders a Move handed to it, kept for the migration (Section~\ref{sec:since-task2}).
 A Deliverable represents a file rather than an object. Policy Jobs and catalog methods
 are exceptions: the \texttt{part} attribute assigns each of their five objects to a
 separate file, so each is planned and pruned as a separate Deliverable.
@@ -301,7 +300,7 @@ safe only while the model restricts them to characters that need none.
 \subsection{Queries: Formatting and Selection}
 \label{sec:m2t-queries}
 
-The module contains 33 queries as submitted, counting each overload. Seven earlier
+The module contains 41 queries, counting each overload. Seven earlier
 queries were removed because they chose values, and the
 choices are now represented by model features: \texttt{allowsAt}, \texttt{policyPaths},
 \texttt{catalogAllows}, \texttt{catalogPaths}, \texttt{middlewareName},

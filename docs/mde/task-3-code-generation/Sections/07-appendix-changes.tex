@@ -16,14 +16,14 @@ model-driven implementation, not the model, form a group of their own. The
 change set was derived from the repository's git history rather than a
 comparison of complete models, so each row summarises a commit's effect.
 
-File sizes indicate the extent of the changes. As submitted, the Project Intent
-metamodel, which also holds the Platform Intent classes, has 137 classes and
-441 features, the Resolved Deployment metamodel 133 classes and 619 features,
-and the Pinned Inputs metamodel 15 classes and 67 features. The resolution
-transformation has 4276 lines, 10 mappings and 305 queries, and the lowering
+File sizes indicate the extent of the changes. The Project Intent
+metamodel, which also holds the Platform Intent classes, has 129 classes and
+419 features, the Resolved Deployment metamodel 133 classes and 594 features,
+and the Pinned Inputs metamodel 18 classes and 60 features. The resolution
+transformation has 4212 lines, 10 mappings and 300 queries, and the lowering
 has 473 lines and 54 mappings, compared with about 1700 and 340 lines in the
 Task~2 design section. The 134-line estate pass was removed. The Acceleo
-module has 3772 lines.
+module has 3607 lines.
 
 \subsection{Source Metamodel (Project Intent)}
 \label{sec:appendix-source}
@@ -229,7 +229,7 @@ Version on every entry & Each images-lock entry gains \texttt{version}, a \textt
 Rejection of missing versions & The grammar accepts an entry without \texttt{version}; resolution rejects it as \texttt{E\_IMAGE\_VERSION\_MISSING}. & This identifies the model entry, whereas a grammar error would identify only the line. \\
 Root rejected & An image locked with uid 0 is rejected as \texttt{E\_IMAGE\_RUNS\_AS\_ROOT}. & The hardening posture requires a non-root uid, which a root image cannot supply. \\
 \multicolumn{3}{l}{\textit{ClusterState snapshot}} \\
-Backups removed & The snapshot's rollback-backup list and annotation are removed. & Rollback uses scheduled backups, so the snapshot no longer records an unused backup. \\
+Backups removed & The snapshot's rollback-backup list and annotation are removed. & The snapshot no longer records a backup nothing reads. \\
 \hline
 \end{tabular}
 \caption{Changes to the Pinned Inputs Since Task~2: Images Lock; ClusterState Snapshot}
