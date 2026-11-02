@@ -26,6 +26,7 @@
       <unit id="org.eclipse.m2m.qvt.oml.runtime" version="3.11.0.v20260601-1451"/>
       <unit id="org.eclipse.acceleo.aql" version="4.2.2"/>
       <unit id="org.eclipse.acceleo.query" version="8.1.2"/>
+      <unit id="org.eclipse.emf.compare" version="3.5.3.202605071334"/>
     </location>
   </locations>
 </target>
