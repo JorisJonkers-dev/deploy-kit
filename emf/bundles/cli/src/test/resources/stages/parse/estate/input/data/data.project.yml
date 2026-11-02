@@ -270,6 +270,8 @@ applications:
         process: rabbitmq
         surface: metrics    # the prometheus plugin's own listener
         path: /metrics
+        # Its series describe queues and connections, labelled as the plugin publishes them.
+        honorLabels: true
 
     # THE HOST DOES NOT FOLLOW THE APPLICATION ID, and this Application is the estate's
     # evidence for authoring hostnames rather than deriving them: the Application is

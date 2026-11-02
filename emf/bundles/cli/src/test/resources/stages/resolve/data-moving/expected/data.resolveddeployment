@@ -195,11 +195,42 @@
     <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
     <egress rule="cluster-dns" namespace="kube-system" port="53"/>
   </policyJob>
+  <catalogJobs identity="postgres-catalog" namespace="data-system" image="ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c" imageVersion="1.0.0" uid="65532" gid="65532" role="data-system-postgres-catalog" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <catalog host="postgres.data-system.svc.cluster.local" port="5432" connection="postgres">
+      <admin path="secret/data/data/postgres/catalog" user="user" password="password"/>
+      <databases name="knowledge-platform_db" owner="knowledge-platform-owner" data="knowledge-platform-data"/>
+    </catalog>
+    <consumes>platform-postgres.postgres</consumes>
+    <egress rule="datastore" namespace="data-system" process="postgres" port="5432"/>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    <policy path="secret/data/data/postgres/catalog">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/metadata/data/postgres/catalog">
+      <allows>read</allows>
+    </policy>
+    <policy path="database/roles/knowledge-platform-owner">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+    <policy path="database/roles/knowledge-platform-data">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+  </catalogJobs>
   <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/data/platform-postgres/kustomization.yaml">
     <resources>move.yaml</resources>
     <resources>backup.yaml</resources>
     <resources>configmap.yaml</resources>
+    <resources>postgres-catalog.yaml</resources>
     <resources>pvc.yaml</resources>
     <resources>service.yaml</resources>
     <resources>serviceaccount.yaml</resources>
@@ -229,4 +260,6 @@
     </policies>
   </deliverables>
   <deliverables xsi:type="resolveddeployment:MoveFile" path="apps/data/platform-postgres/move.yaml" process="/0/@applications.0/@processes.0"/>
+  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="apps/data/platform-postgres/postgres-catalog.yaml" part="objects" name="postgres-catalog-565e7844099d" catalogJson="{&quot;admin&quot;:{&quot;password&quot;:&quot;password&quot;,&quot;path&quot;:&quot;secret/data/data/postgres/catalog&quot;,&quot;user&quot;:&quot;user&quot;},&quot;connection&quot;:&quot;postgres&quot;,&quot;databases&quot;:[{&quot;data&quot;:&quot;knowledge-platform-data&quot;,&quot;name&quot;:&quot;knowledge-platform_db&quot;,&quot;owner&quot;:&quot;knowledge-platform-owner&quot;}],&quot;host&quot;:&quot;postgres.data-system.svc.cluster.local&quot;,&quot;port&quot;:5432}" job="/0/@catalogJobs.0"/>
+  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="apps/data/platform-postgres/postgres-catalog-networkpolicy.yaml" adapter="networking" part="networkpolicy" job="/0/@catalogJobs.0"/>
 </resolveddeployment:ResolvedDeployment>

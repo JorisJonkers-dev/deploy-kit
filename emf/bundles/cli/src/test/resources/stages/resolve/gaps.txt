@@ -1,10 +1,3 @@
-CatalogJobFile is never instantiated by a resolve case
-CatalogJobFile.adapter is never set by a resolve case
-CatalogJobFile.catalogJson is never set by a resolve case
-CatalogJobFile.job is never set by a resolve case
-CatalogJobFile.name is never set by a resolve case
-CatalogJobFile.part is never set by a resolve case
-CatalogJobFile.path is never set by a resolve case
 ContentPolicy.admin is never used in a resolve case's input
 ContentPolicy.workflow is never used in a resolve case's input
 ControllerKind.statefulSet is never used by a resolve case

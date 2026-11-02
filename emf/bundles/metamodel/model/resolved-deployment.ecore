@@ -183,6 +183,8 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- Kept as authored: true only where the scrape says so, the monitor then keeping its target's labels. -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="honorLabels" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <!-- The labels the metrics stack selects a monitor by, which the render's own never give way to. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="labels" upperBound="-1" eType="#//KeyValue" containment="true"/>
   </eClassifiers>
@@ -320,6 +322,10 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="surfaces" upperBound="-1" eType="#//ResolvedSurface" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="placement" lowerBound="1" eType="#//ResolvedPlacement" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="volumes" upperBound="-1" eType="#//ResolvedVolume" containment="true"/>
+    <!-- Whether the Process keeps an acme tier's certificate state on its volume, which no group may
+         read, so the volume is re-owned only while its root does not match
+         (spec/v1/14-platform-intent.md#tiers). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="keepsAcmeState" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//ResolvedLibraryMount" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="secrets" upperBound="-1" eType="#//ResolvedGrant" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="assets" upperBound="-1" eType="#//ResolvedAsset" containment="true"/>

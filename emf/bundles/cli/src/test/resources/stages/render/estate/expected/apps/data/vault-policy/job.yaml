@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vault-policy-e9176474966e
+  name: vault-policy-21f32d75adfe
   namespace: data-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -77,12 +77,16 @@ spec:
       volumes:
         - name: policies
           configMap:
-            name: vault-policy-e9176474966e
+            name: vault-policy-21f32d75adfe
             items:
               - key: data-system-asset-sync.policy.json
                 path: data-system-asset-sync.policy.json
               - key: data-system-asset-sync.role.json
                 path: data-system-asset-sync.role.json
+              - key: data-system-garage-catalog.policy.json
+                path: data-system-garage-catalog.policy.json
+              - key: data-system-garage-catalog.role.json
+                path: data-system-garage-catalog.role.json
               - key: data-system-garage.policy.json
                 path: data-system-garage.policy.json
               - key: data-system-garage.role.json
@@ -95,6 +99,10 @@ spec:
                 path: data-system-postgres-backup.policy.json
               - key: data-system-postgres-backup.role.json
                 path: data-system-postgres-backup.role.json
+              - key: data-system-postgres-catalog.policy.json
+                path: data-system-postgres-catalog.policy.json
+              - key: data-system-postgres-catalog.role.json
+                path: data-system-postgres-catalog.role.json
               - key: data-system-postgres.policy.json
                 path: data-system-postgres.policy.json
               - key: data-system-postgres.role.json

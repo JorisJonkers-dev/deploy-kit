@@ -33,14 +33,20 @@ class ModelWitnessesTest {
     /** One change to a worked example: {@code from} becomes {@code to} in {@code file}. */
     private record Edit(String file, String from, String to) {}
 
+    /**
+     * The render of {@code example}, or, named {@code <example>:<project>}, of another project its set
+     * reads, such as the datastore's own project that applies a catalog.
+     */
     private static Path tree(String example) {
         return TREES.computeIfAbsent(example, name -> {
             try {
-                Outputs.Resolving resolving = Outputs.RESOLVED.get(name);
+                String[] named = name.split(":", 2);
+                Outputs.Resolving resolving = Outputs.RESOLVED.get(named[0]);
                 List<Path> files =
                         resolving.documents().stream().map(Examples::of).toList();
-                Path out = shared.resolve(name);
-                assertThat(Pipeline.render(files, List.of(resolving.project()), Outputs.INTEGRITY, out))
+                Path out = shared.resolve(name.replace(':', '-'));
+                String project = named.length == 1 ? resolving.project() : named[1];
+                assertThat(Pipeline.render(files, List.of(project), Outputs.INTEGRITY, out))
                         .isEmpty();
                 return out;
             } catch (IOException e) {
@@ -419,7 +425,7 @@ class ModelWitnessesTest {
                 .contains("- --certificatesresolvers.public-frankfurt.acme.dnschallenge.provider=cloudflare\n")
                 .contains("secretKeyRef:\n                  name: traefik-public-platform-cloudflare\n")
                 .contains("key: CF_DNS_API_TOKEN\n");
-        assertThat(rendered("edge", "apps/edge/traefik-public/pvc.yaml")).contains("  name: acme\n");
+        assertThat(rendered("edge", "apps/edge/traefik-public/pvc.yaml")).contains("  name: traefik-public-acme\n");
         assertThat(rendered("edge", "apps/edge/traefik-lan/service.yaml"))
                 .contains("metallb.io/address-pool: lan-edge\n")
                 .contains("- name: tcp-80\n      port: 80\n      protocol: TCP\n      targetPort: 8000\n");
@@ -497,9 +503,11 @@ class ModelWitnessesTest {
 
     @Test
     void anEdgeIntoAnObjectStoreThatNamesBucketsDerivesItsCatalogAndHandsTheConsumerItsKey() throws IOException {
-        String catalog = rendered("knowledge-platform", "estate/vso-secrets/garage-catalog.yaml");
+        String catalog = rendered("knowledge-platform:data", "apps/data/platform-garage/garage-catalog.yaml");
 
         assertThat(catalog)
+                // Applied with the derived admin token, from the store's own Project.
+                .contains("{\"admin\":{\"path\":\"secret/data/data/garage/catalog\",\"token\":\"token\"}")
                 .contains("\"keys\":[{\"buckets\":[\"knowledge-platform-assets\"],\"name\":\"knowledge-platform\","
                         + "\"path\":\"secret/data/knowledge-platform/garage/s3\"}]");
         assertThat(rendered("knowledge-platform", "apps/knowledge-platform/karakeep/vso.yaml"))
@@ -1253,7 +1261,7 @@ class ModelWitnessesTest {
     void anHourlyPolicyOrCatalogRunGivesUpWithinTheHourAndTheOneShotJobRetriesUntilItSucceeds() {
         for (String[] hourly : new String[][] {
             {"auth", "apps/auth/vault-policy/cronjob.yaml"},
-            {"knowledge-platform", "estate/vso-secrets/postgres-catalog.yaml"}
+            {"knowledge-platform:data", "apps/data/platform-postgres/postgres-catalog.yaml"}
         }) {
             assertThat(object(
                             rendered(hourly[0], hourly[1]),
@@ -1482,5 +1490,97 @@ class ModelWitnessesTest {
                         ""));
         assertThat(unrecorded.resolve("apps/observability/prometheus/k3s-monitors.yaml"))
                 .doesNotExist();
+    }
+
+    /**
+     * An exporter whose series describe other objects keeps their labels where its scrape says so, and
+     * only there (spec/v1/10-project-intent.md#observability); and an API rule may name {@code
+     * deletecollection}, which an operator that empties its own cache on start needs (deploy-kit#781).
+     */
+    @Test
+    void aScrapeKeepsItsTargetsLabelsOnlyWhereItSaysSoAndAnApiRuleMayNameDeletecollection(@TempDir Path work)
+            throws IOException {
+        assertThat(rendered("minimal", "apps/notes/notes/podmonitor.yaml")).doesNotContain("honorLabels");
+        Path honoring = renderedWith(
+                "minimal",
+                work.resolve("honoring"),
+                new Edit(
+                        "minimal/notes.project.yml",
+                        "        path: /metrics\n",
+                        "        path: /metrics\n        honorLabels: true\n"));
+        assertThat(Files.readString(honoring.resolve("apps/notes/notes/podmonitor.yaml")))
+                .contains("      scrapeTimeout: 10s\n      honorLabels: true\n");
+
+        Path clearing = renderedWith(
+                "secrets",
+                work.resolve("clearing"),
+                new Edit(
+                        "secrets/secrets.project.yml",
+                        "vaultconnections/status]\n              verbs: [get, list, watch, create, update, patch, delete]\n",
+                        "vaultconnections/status]\n"
+                                + "              verbs: [get, list, watch, create, update, patch, delete, deletecollection]\n"));
+        assertThat(Files.readString(clearing.resolve("apps/secrets/vault-secrets-operator/rbac.yaml")))
+                .contains("      - delete\n      - deletecollection\n");
+    }
+
+    @Test
+    void anAcmeTiersClaimIsNamedForItsProxysProcessAndAVolumeUnderItIsRefused(@TempDir Path work) throws IOException {
+        assertThat(rendered("edge", "apps/edge/traefik-public/pvc.yaml")).contains("  name: traefik-public-acme\n");
+
+        // Two acme tiers' proxies in one Project hold two claims.
+        Path both = renderedWith(
+                "edge",
+                work.resolve("both"),
+                new Edit(
+                        "platform/platform.intent.yml",
+                        "    listener: plain\n    certificates: none\n    traefik: edge/traefik-lan",
+                        "    listener: tls\n    certificates: acme\n    traefik: edge/traefik-lan"),
+                new Edit(
+                        "edge/edge.project.yml",
+                        "          web: 8000\n          admin: 8080\n",
+                        "          web: 8000\n          websecure: 8443\n          admin: 8080\n"));
+        assertThat(Files.readString(both.resolve("apps/edge/traefik-public/pvc.yaml")))
+                .contains("  name: traefik-public-acme\n");
+        assertThat(Files.readString(both.resolve("apps/edge/traefik-lan/pvc.yaml")))
+                .contains("  name: traefik-lan-acme\n");
+
+        assertThat(claiming(work.resolve("acme"), "edge-proxy-acme", "certificates: acme"))
+                .containsExactly("/applications/0/processes/0/volumes/0");
+        assertThat(claiming(work.resolve("other"), "edge-proxy-data", "certificates: acme"))
+                .isEmpty();
+        assertThat(claiming(work.resolve("none"), "edge-proxy-acme", "certificates: none"))
+                .isEmpty();
+    }
+
+    /**
+     * The paths {@code E_DUPLICATE_CLAIM} refuses in the acme proxy fixture, its proxy given a volume
+     * under {@code claim} and its tier issuing {@code certificates}.
+     */
+    private static List<String> claiming(Path work, String claim, String certificates) throws IOException {
+        copy(Examples.of("refusals/acme-proxy-replicated"), work);
+        Path platform = work.resolve("platform.intent.yml");
+        Files.writeString(platform, Files.readString(platform).replace("certificates: acme", certificates));
+        Path project = work.resolve("refusals.project.yml");
+        Files.writeString(
+                project,
+                Files.readString(project)
+                        .replace(
+                                "        cutover: continuous\n",
+                                "        cutover: interrupted\n        volumes:\n          - { claim: " + claim
+                                        + ", mountAt: /data, size: 1Gi, durability: reconstructible }\n"));
+        return Pipeline.check(List.of(platform, project)).stream()
+                .filter(diagnostic -> diagnostic.code().equals("E_DUPLICATE_CLAIM"))
+                .map(Diagnostic::path)
+                .toList();
+    }
+
+    @Test
+    void anAcmeProxysPodReownsItsVolumeOnlyWhileItsRootDoesNotMatchAndNoOtherPodSaysSo() {
+        assertThat(rendered("edge", "apps/edge/traefik-public/workload.yaml"))
+                .contains("        fsGroup: 65532\n        fsGroupChangePolicy: OnRootMismatch\n");
+        assertThat(rendered("edge", "apps/edge/traefik-lan/workload.yaml")).doesNotContain("fsGroupChangePolicy");
+        assertThat(rendered("data", "apps/data/platform-postgres/workload.yaml"))
+                .contains("fsGroup: ")
+                .doesNotContain("fsGroupChangePolicy");
     }
 }

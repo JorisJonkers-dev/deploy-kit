@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - backup.yaml
   - configmap.yaml
+  - postgres-catalog.yaml
   - pvc.yaml
   - service.yaml
   - serviceaccount.yaml

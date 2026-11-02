@@ -61,6 +61,9 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="process" lowerBound="1" eType="#//Process"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="surface" lowerBound="1" eType="#//Surface"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <!-- An exporter whose series describe other objects keeps their labels
+         (spec/v1/10-project-intent.md#observability). -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="honorLabels" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBooleanObject"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="Exposure">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -537,6 +540,8 @@
     <eLiterals name="update" value="4" literal="update"/>
     <eLiterals name="patch" value="5" literal="patch"/>
     <eLiterals name="delete" value="6" literal="delete"/>
+    <!-- An operator that empties its own cache on start clears it in one call. -->
+    <eLiterals name="deletecollection" value="7" literal="deletecollection"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="TransitOp">
     <eLiterals name="sign" literal="sign"/>
@@ -578,7 +583,6 @@
     <eStructuralFeatures xsi:type="ecore:EReference" name="delivery" eType="#//DeliveryPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="apiAccess" eType="#//ApiAccessPolicy" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="policyJob" eType="#//VaultPolicyJob" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="handover" eType="#//HandoverLedger" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="providers" upperBound="-1" eType="#//Provider" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="libraries" upperBound="-1" eType="#//Library" containment="true"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="gpus" upperBound="-1" eType="#//GpuVendor" containment="true"/>
@@ -675,34 +679,6 @@
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="CoreDnsMetrics">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
-  </eClassifiers>
-  <!-- Which delivery path each Project is on during the handover
-       (spec/v1/60-setup.md#handing-over-one-project-at-a-time). -->
-  <eClassifiers xsi:type="ecore:EClass" name="HandoverLedger">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retireBy" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="legacy" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="estate" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="serving" upperBound="-1" eType="#//ServingLocation" containment="true"/>
-  </eClassifiers>
-  <!-- Where the old path runs a legacy Application the estate path reaches
-       (spec/v1/14-platform-intent.md#handover-ledger). The application is a
-       name, not a reference: one no file read declares is not refused. -->
-  <eClassifiers xsi:type="ecore:EClass" name="ServingLocation">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="application" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="namespace" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="instance" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="admin" eType="#//AdminCredential" containment="true"/>
-  </eClassifiers>
-  <!-- How the policy job signs in to a legacy datastore: a user and password, or a token. -->
-  <eClassifiers xsi:type="ecore:EClass" name="AdminCredential" abstract="true">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="AdminToken" eSuperTypes="#//AdminCredential">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="token" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="AdminLogin" eSuperTypes="#//AdminCredential">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="user" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="password" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="FluxSource">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="sourceRef" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
