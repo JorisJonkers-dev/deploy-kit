@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.3](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.9.2...v1.9.3) (2026-11-02)
+
+
+### Bug Fixes
+
+* **kubernetes:** keep an acme proxy's state file private, so Traefik starts its resolver ([#803](https://github.com/JorisJonkers-dev/deploy-kit/issues/803)) ([1e6f3aa](https://github.com/JorisJonkers-dev/deploy-kit/commit/1e6f3aa70ac4ef3215aa07c53d61d64c01d18833))
+
 ## [1.9.2](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.9.1...v1.9.2) (2026-11-02)
 
 
