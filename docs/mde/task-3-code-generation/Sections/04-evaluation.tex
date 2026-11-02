@@ -26,7 +26,7 @@ output is compared with and the defects it can expose. Passing one check does no
 \hline
 Stage tests (\texttt{StageTest}) & 1. Stage seam & Committed expected files of each stage, each the next stage's input & A wrong value in any stage's output, named by its path \\
 Field coverage (\texttt{FieldCoverageTest}) & 1. Stage seam & Every feature, literal and kind the metamodels declare & A feature no case exercises \\
-Behaviour witnesses & 1. Stage seam & 85 model rows of the behaviour ledger & A model behaviour without a test \\
+Behaviour witnesses & 1. Stage seam & 87 model rows of the behaviour ledger & A model behaviour without a test \\
 Seam tests (\texttt{RenderingTest}) & 1. Template seam & Expected text written in the test & A wrong header, path or key order; a template that does not parse; files left by a failed run \\
 Composed union parity (\texttt{ParityTest}) & 2. CLI file interface & Committed trees of \texttt{minimal}, \texttt{data} and the platform's share & Any changed byte; a missing or extra file \\
 Per-Project output (\texttt{RenderedTreeTest}) & 2. CLI file interface & Committed trees of \texttt{minimal}, \texttt{data} and \texttt{delivery} & A file written into another Project's output \\
@@ -53,10 +53,10 @@ two stages cannot drift apart. A render case's expected files are copies of the 
 oracles, held to them byte for byte. \texttt{FieldCoverageTest} holds each stage's cases
 to every feature, enumeration literal and template dispatch its metamodels declare; the
 gaps left are listed per stage in \path{gaps.txt}, a baseline that may only shrink.
-Each of 85 model behaviours of the behaviour ledger has a JUnit witness, and three
-more are listed as pending (\path{emf/docs/witnesses.md}). The build enforces 100\% line and branch coverage
-(JaCoCo) and a 100\% mutation score (PIT) per module and fails below either; the
-suite has 662 tests.
+Each of 87 model behaviours of the behaviour ledger has a JUnit witness, and one
+more is pending (\path{emf/docs/witnesses.md}). Every build enforces 100\% line and
+branch coverage (JaCoCo) per module, a nightly build a 100\% mutation score (PIT);
+the suite has 786 tests.
 
 \textbf{Seam and file interface.} The seam tests in \path{emf/bundles/render} exercise
 \texttt{Rendering} without the pipeline. A template that does not parse must fail with Acceleo's diagnostic. A template that fails halfway (\path{halfway.mtl}) must leave the output root unchanged, as the sibling \path{.partial} directory guarantees. A deliberately unindented module
@@ -70,14 +70,14 @@ the composed union contains exactly the committed files, each identical byte for
 tree, that a second run writes the same bytes, and that a set containing an invalid
 document (\texttt{surface: grpc}, rejected with \texttt{E\_UNKNOWN\_SURFACE}) produces no
 files. \texttt{OracleDistanceTest} measures every oracle's distance from what the
-pipeline writes and holds 175 comparisons on an allowlist to an exact match.
+pipeline writes and holds 180 comparisons on an allowlist to an exact match.
 
 \textbf{External consumers.} \path{scripts/lint-manifests.ts} runs kubeconform 0.6.7 with
 \texttt{-kubernetes-version 1.36.5} and \texttt{-strict} against the default
 schemas, the datreeio CRD catalogue and the repository's \texttt{Client} schema,
 and checks every pod template against Pod Security's \texttt{restricted} profile;
 both checks have negative fixtures. \path{handin/scripts/dry-run.sh}, run as
-\texttt{dry-run.sh output "" generated}, applies them to the generated tree and takes about ten seconds. It then starts a disposable k3s cluster at v1.36.5, the production version, installs pinned CRDs for every non-core kind, creates the namespaces the output names and applies each Project's output and the platform's share with \texttt{-{}-dry-run=server}. An earlier attempt at 1.31 failed because the \texttt{GrafanaDashboard} CRD requires a newer API server. Network policies are absent from indexes and are applied file by file.
+\texttt{dry-run.sh output "" generated}, applies them to the generated tree and takes about ten seconds. It then starts a disposable k3s cluster at v1.36.5, the production version, installs pinned CRDs for every non-core kind, creates the namespaces the output names and applies each Project's output and the platform's share with \texttt{-{}-dry-run=server}. Network policies are absent from indexes and are applied file by file.
 
 \subsubsection{Oracles and Their Independence}
 \label{sec:oracles}
@@ -94,14 +94,17 @@ implementation and the limits of this independence.
 Every intermediate model and every output is structured data, so \texttt{Comparison}
 compares parsed content first and bytes last. JSON is read with Jackson, YAML with
 SnakeYAML's YAML~1.1 reader on both sides, as Kubernetes reads it, so a quoted
-\texttt{"on"} and a plain \texttt{on} still differ by type, and XMI is loaded into EMF
-and compared with its equality helper. Every difference is reported as a path into
-the document, with a list item named by its key:
+\texttt{"on"} and a plain \texttt{on} still differ by type. XMI is loaded into EMF and
+compared by EMF Compare 3.3. The models carry no identifiers, so the test-only
+\texttt{ModelDiff} pairs list items by a natural key (\texttt{name}, \texttt{id},
+\texttt{path} or a similar attribute unique among siblings, else a composite key) and
+labels a pair found by similarity alone. Every difference is a path, with a list item named by its key:
 \texttt{.spec.template.spec.containers[name="vault"].command: missing (expected a list of 1)}.
-Only when the content agrees are the bytes compared, and a difference there is
-reported as ``formatting only'', naming the first line that differs. Byte identity
-remains the bar: a formatting-only difference still fails. A failure names the field
-at fault instead of a line diff over the whole file, which sped up debugging.
+A swap of two Applications, 130 lines when compared index by index, is one line. A
+negative suite changes, unsets, removes, reorders and retargets every feature of every
+class in the stage models one at a time, about 2,000 differences; none compares equal.
+Only when the content agrees are the bytes compared; a difference there is reported as
+``formatting only'', and still fails.
 
 \subsection{Example Models}
 \label{sec:source-models}
@@ -142,6 +145,7 @@ Server dry-run, network policies & 2/2 & 12/12 & -- & 5/5 \\
 \end{table}
 
 The API server issued two warnings for \texttt{edge}'s public Traefik \texttt{Deployment}: two entry points are each declared twice. This reflects a modelling choice rather than a defect.
+Appendix~\ref{sec:appendix-performance} times each stage and compares the lowering with a port to ATL.
 
 \subsection{Defects Found}
 \label{sec:defects}

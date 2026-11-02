@@ -111,8 +111,9 @@ Task 1 scope and documented later features as deferred.
 
 For most of the project, output was compared only as bytes: a line diff across
 several hundred lines does not distinguish missing keys, extra keys and wrong values.
-The structured comparison of Section~\ref{sec:compare-alt} names each difference's
-path; adopting it from the start would have saved much debugging.
+The structured comparison of Section~\ref{sec:compare-alt}, with EMF Compare for
+models, names each difference's path. Adopted from the start, with each stage tested
+on its own, it would have named the stage and field at fault and saved much debugging.
 
 \subsection{What Was Learned}
 \label{sec:learned}
@@ -139,12 +140,5 @@ Most of the effort in model-driven tooling went into running it rather than mode
 The module's POM changed in at least ten commits, and the indentation rule was established
 experimentally. Build configuration and documented tool behaviour therefore deserve
 at least as much attention as metamodels.
-
-\subsubsection{Compare Parsed Documents Before Bytes}
-\label{sec:structural-oracles}
-
-Oracles should be compared as parsed documents first, then as bytes, and each
-stage tested on its own: a failure then names the stage and the field at fault
-(Section~\ref{sec:compare-alt}).
 
 % TODO(verify): the Task 0 approval date is recorded only as "September"; confirm the exact date from the course's Canvas record before the hand-in.

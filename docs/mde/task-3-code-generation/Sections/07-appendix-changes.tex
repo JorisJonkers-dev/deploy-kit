@@ -440,6 +440,45 @@ generating either implementation from the other. Committed oracle files hold
 both to the same result (Section~\ref{sec:evaluation}); this appendix only
 records the changes.
 
+\subsection{Performance, and QVT-Operational Against ATL}
+\label{sec:appendix-performance}
+
+Task~2 preferred QVT-Operational to ATL partly for execution cost. To test that
+claim, \path{emf/docs/benchmarks.md} times each stage and ports the lowering to ATL
+on EMFTVM 4.12. The port's output equals the QVT-Operational lowering's under
+\texttt{ModelDiff} for all 36 Project files of the examples (2564 objects; 51 of
+its 54 rules match an object). Times are medians with interquartile ranges over
+10 runs after 5 warm-up runs, on an Apple M4 Max with Java 21; cold times are 5
+fresh JVMs (Table~\ref{tab:app-perf}).
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\begin{tabular}{p{0.46\linewidth}p{0.15\linewidth}p{0.15\linewidth}p{0.10\linewidth}}
+\hline
+\textbf{Lowering} & \textbf{QVT-O} & \textbf{ATL} & \textbf{ATL/QVT-O} \\
+\hline
+Source: lines of code; rules & 365; 54 & 488; 33 + 21 lazy & -- \\
+24 estate Projects, 1703 objects, loaded once & 7.6 ms [7.5--7.8] & 8.9 ms [8.8--9.2] & 1.17 \\
+Load and compile the transformation, warm JVM & 23 ms & 280 ms & 12.4 \\
+Cold JVM: load and lower all 24 Projects & 487 ms & 911 ms & 1.87 \\
+\hline
+\end{tabular}
+\caption{The Lowering in QVT-Operational and in ATL}
+\label{tab:app-perf}
+\end{table}
+
+Executed, ATL takes 1.11 to 1.19 times as long at every estate size; both grow
+linearly. Neither difference matters to a run: checking the parsed documents (OCL,
+names, pinned inputs) is 55 to 63\% of a warm run, and a cold \texttt{minimal} run
+takes 3.8~s, 2.7~s of it read and check. Execution cost is therefore not a reason;
+the reason that holds is the resolution's, which reads the completed target to hash
+a release's revision and needs an explicit construction order, and was not ported.
+On the lowering, ATL needed 21 lazy rules for per-Process copies and 41 writes in
+imperative \texttt{do} blocks, as a binding cannot be conditional. The benchmark also
+found that the shipped lowering reloads its transformation for each Project (over
+95\% of its time), and that each resolution kept about 8.5~MB reachable.
+
 \section{The Production Implementation}
 \label{sec:appendix-production}
 
@@ -455,16 +494,11 @@ gained a rule, the model-driven implementation adopted it until both matched the
 oracles.
 
 This independence is partial: one author wrote both implementations, and the
-committed trees changed in the same commits as an implementation. A self-generated
-snapshot accepts defects present when it was taken; a shared expected tree exposes
-disagreements between implementations. Agreement rules out errors made by only one
-implementation, but cannot rule out a shared misreading of the specification.
-External checks address part of this remaining risk: schemas, profiles and clusters
-check Kubernetes requirements rather than the project's specification. Each check has
-limits: byte equality establishes expected text rather than correctness; schemas
-cannot establish that a \texttt{NetworkPolicy} permits the intended traffic; dry-runs
-reveal nothing about controller behaviour. The Pod Security check permits one named
-exception: the VPN sidecar.
+committed trees changed in the same commits as an implementation. Agreement rules
+out errors made by only one implementation, not a shared misreading of the
+specification; the external checks of Section~\ref{sec:evaluation} test Kubernetes'
+requirements rather than the specification. The Pod Security check permits one
+named exception: the VPN sidecar.
 % TODO(verify): confirm the review of committed trees was by the author alone
 
 % BIB: none needed in this section.
