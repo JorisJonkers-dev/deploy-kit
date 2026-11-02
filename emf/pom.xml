@@ -42,8 +42,8 @@
     <assertj.version>3.27.7</assertj.version>
     <archunit.version>1.5.1</archunit.version>
     <!-- Test scope only: the stage harness's comparator reads JSON and YAML 1.1 trees. -->
-    <jackson.version>2.22.3</jackson.version>
-    <snakeyaml.version>2.5</snakeyaml.version>
+    <jackson.version>2.22.4</jackson.version>
+    <snakeyaml.version>2.7</snakeyaml.version>
 
     <kotlin.version>2.4.21</kotlin.version>
 
