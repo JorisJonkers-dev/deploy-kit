@@ -28,33 +28,46 @@ public final class Resolution {
     private Resolution() {}
 
     /**
+     * The loaded transformation, made on first use, with the blackbox it imports registered first. A
+     * load stays reachable for the life of the JVM, so one load serves every call
+     * (emf/docs/benchmarks.md). Each call still gets an execution context and model extents of its
+     * own, and calls are sequential.
+     */
+    private static final class Loaded {
+        static final TransformationExecutor EXECUTOR = load();
+
+        private static TransformationExecutor load() {
+            ProjectIntentPackage.eINSTANCE.getName();
+            PinnedInputsPackage.eINSTANCE.getName();
+            ResolvedDeploymentPackage.eINSTANCE.getName();
+            TransformationExecutor.BlackboxRegistry.INSTANCE.registerModule(
+                    Hashing.class,
+                    // `resolve` is a keyword of the language, so the unit is not named for this package.
+                    Hashing.UNIT,
+                    Hashing.class.getSimpleName(),
+                    new String[] {EcorePackage.eNS_URI, ResolvedDeploymentPackage.eNS_URI});
+            return new TransformationExecutor(
+                    URI.createURI(Resolution.class.getResource(TRANSFORMATION).toString()));
+        }
+    }
+
+    /**
      * {@code project} of {@code intent}, resolved against {@code pinned}, recording {@code
      * schemaPackageIntegrity} in its provenance. A run the transformation stops is a derivation this
      * implementation does not reach yet, and it fails with what the transformation said.
      */
     public static ResolvedDeployment resolve(
             List<EObject> intent, List<EObject> pinned, String project, String schemaPackageIntegrity) {
-        ProjectIntentPackage.eINSTANCE.getName();
-        PinnedInputsPackage.eINSTANCE.getName();
-        ResolvedDeploymentPackage.eINSTANCE.getName();
-        TransformationExecutor.BlackboxRegistry.INSTANCE.registerModule(
-                Hashing.class,
-                // `resolve` is a keyword of the language, so the unit is not named for this package.
-                Hashing.UNIT,
-                Hashing.class.getSimpleName(),
-                new String[] {EcorePackage.eNS_URI, ResolvedDeploymentPackage.eNS_URI});
         ExecutionContextImpl context = new ExecutionContextImpl();
         context.setConfigProperty("project", project);
         context.setConfigProperty("integrity", schemaPackageIntegrity);
         BasicModelExtent target = new BasicModelExtent();
-        ExecutionDiagnostic run = new TransformationExecutor(URI.createURI(
-                        Resolution.class.getResource(TRANSFORMATION).toString()))
-                .execute(
-                        context,
-                        // An extent asks its list whether it holds a null, which an immutable list refuses to answer.
-                        new BasicModelExtent(new ArrayList<>(intent)),
-                        new BasicModelExtent(new ArrayList<>(pinned)),
-                        target);
+        ExecutionDiagnostic run = Loaded.EXECUTOR.execute(
+                context,
+                // An extent asks its list whether it holds a null, which an immutable list refuses to answer.
+                new BasicModelExtent(new ArrayList<>(intent)),
+                new BasicModelExtent(new ArrayList<>(pinned)),
+                target);
         if (run.getSeverity() != Diagnostic.OK || target.getContents().isEmpty()) {
             // A transformation that does not compile says why only in its children.
             StringBuilder why = new StringBuilder(project + " did not resolve: " + run);

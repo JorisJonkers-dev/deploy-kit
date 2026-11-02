@@ -574,6 +574,7 @@ lazy rule GenerateCopy {
 	to t : PI!Generate
 	do {
 		if (s.bytes.present) { t.bytes <- s.bytes; }
+		if (s.adopt.present) { t.adopt <- s.adopt; }
 		if (not s.encoding.absent) { t.encoding <- s.encoding; }
 		-- A lazy rule with a `do` block answers its last statement, not its target.
 		t;

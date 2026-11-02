@@ -21,7 +21,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 /**
  * The QVT-Operational lowering and its ATL port, head to head on the same inputs
  * (docs/benchmarks.md#qvto-against-atl): warm, with each transformation loaded once and reused, and
- * as the pipeline runs it, loaded for every call; the cost of loading alone; cold, in a fresh JVM;
+ * loaded for every Project; the cost of loading alone; cold, in a fresh JVM;
  * and the size of each source. {@link LoweringEquivalenceTest} holds the two outputs equal first.
  * Opt-in: {@code -Pbenchmark}.
  */
@@ -89,12 +89,15 @@ class LoweringBenchmarkTest {
         }
         for (int i = 0; i < SIZES.size(); i++) {
             List<Project> projects = estate.subList(0, SIZES.get(i));
-            Benchmark.Series shipped = Benchmark.measure(() -> all(projects, project -> Lowering.lower(project)));
+            // Each side loaded for every Project, whatever Lowering.lower does, so the pair stays a
+            // like-for-like comparison of loading and running together.
+            Benchmark.Series loaded = Benchmark.measure(
+                    () -> all(projects, project -> QvtoLowering.prepared().lower(project)));
             Benchmark.Series compiled = Benchmark.measure(() -> all(projects, project -> AtlLowering.once(project)));
-            String shippedCell = shipped.cell();
+            String loadedCell = loaded.cell();
             String compiledCell = compiled.cell();
-            String compiledRatio = ratio(compiled.median(), shipped.median());
-            rows.get(i).addAll(List.of(shippedCell, compiledCell, compiledRatio));
+            String compiledRatio = ratio(compiled.median(), loaded.median());
+            rows.get(i).addAll(List.of(loadedCell, compiledCell, compiledRatio));
         }
         Benchmark.report(
                 "lowering-estate-scaling.md",
@@ -107,7 +110,7 @@ class LoweringBenchmarkTest {
                                         "QVTo ms (loaded once)",
                                         "ATL ms (compiled once)",
                                         "ATL / QVTo",
-                                        "QVTo ms (loaded per Project, as shipped)",
+                                        "QVTo ms (loaded per Project)",
                                         "ATL ms (compiled per Project)",
                                         "ATL / QVTo"),
                                 rows));

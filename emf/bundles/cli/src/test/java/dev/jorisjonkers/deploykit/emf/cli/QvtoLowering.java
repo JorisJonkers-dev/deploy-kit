@@ -14,7 +14,7 @@ import org.eclipse.m2m.qvt.oml.TransformationExecutor;
 /**
  * The shipped QVT-Operational lowering, {@code lower.qvto}, with its transformation loaded once and
  * reused: the benchmark's match for {@link AtlLowering#prepared()} (docs/benchmarks.md). {@link
- * Lowering#lower} loads it again on every call, which is what the pipeline runs.
+ * Lowering#lower} loads it once per JVM too; this one can also be made afresh to time a load.
  */
 final class QvtoLowering {
 
