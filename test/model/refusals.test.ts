@@ -1015,6 +1015,39 @@ describe("the refusal fixtures", () => {
     ).toStrictEqual([]);
   });
 
+  // REQ-168 (docs/requirements.md): a volume a project file declares under the
+  // claim an acme tier derives on its proxy's Process is refused, at the volume.
+  const claiming = (claim: string) => (text: string) =>
+    text.replace(
+      "        cutover: continuous\n",
+      `        cutover: interrupted\n        volumes:\n          - { claim: ${claim}, mountAt: /data, size: 1Gi, durability: reconstructible }\n`,
+    );
+
+  it("refuses a volume under the claim an acme tier derives on its proxy's Process", () => {
+    expect(
+      codeIn(
+        "acme-proxy-replicated",
+        "E_DUPLICATE_CLAIM",
+        claiming("edge-proxy-acme"),
+      ),
+    ).toStrictEqual(["/applications/0/processes/0/volumes/0"]);
+  });
+
+  it("lets a proxy's volume take another claim, or that one on a tier that issues none", () => {
+    expect([
+      codeIn(
+        "acme-proxy-replicated",
+        "E_DUPLICATE_CLAIM",
+        claiming("edge-proxy-data"),
+      ),
+      codeIn("acme-proxy-replicated", "E_DUPLICATE_CLAIM", (text) =>
+        claiming("edge-proxy-acme")(
+          text.replace("certificates: acme", "certificates: none"),
+        ),
+      ),
+    ]).toStrictEqual([[], []]);
+  });
+
   it("filters no class for a tier that names none, after one that does", () => {
     expect(
       codeIn("tier-class-unfiltered", "E_TIER_CLASS_UNFILTERED", (text) =>

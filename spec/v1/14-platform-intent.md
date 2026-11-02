@@ -537,10 +537,11 @@ request is sent to TLS.
 
 **A tier that issues through `acme` owns its certificate.** On its own proxy it
 derives an ACME resolver named for the tier, a `reconstructible` claim that
-keeps the ACME state, and the DNS provider's token, read from the Secret Store
-path `acme.token` through the one secret delivery, as `CF_DNS_API_TOKEN` for
-Cloudflare. Nothing is shared between two proxies, and no `Certificate`, issuer
-or hand-written TLS store is rendered. An acme tier under a document with no
+keeps the ACME state, named `<process>-acme` for the proxy's Process, and the
+DNS provider's token, read from the Secret Store path `acme.token` through the
+one secret delivery, as `CF_DNS_API_TOKEN` for Cloudflare. Nothing is shared
+between two proxies, and no `Certificate`, issuer or hand-written TLS store is
+rendered. An acme tier under a document with no
 `acme` is `E_NO_ACME_POLICY`, and under one with no `secretStore`
 `E_NO_SECRET_STORE`. The ACME state sits on one claim, so the proxy runs one
 copy: `replicas` on any of its Processes is `E_ACME_PROXY_REPLICATED`. An edge

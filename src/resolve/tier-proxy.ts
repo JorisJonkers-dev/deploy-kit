@@ -11,7 +11,7 @@ import type {
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import type { ResolvedProcess } from "../model/resolved-deployment.ts";
 import {
-  ACME_CLAIM,
+  acmeClaimOf,
   CERTIFICATE_KEYS,
   ACME_MOUNT,
   ACME_SIZE,
@@ -67,7 +67,7 @@ export function deriveProxy(
         // Stryker disable next-line ArrayDeclaration
         ...(process.volumes ?? []),
         {
-          claim: ACME_CLAIM,
+          claim: acmeClaimOf(process.name),
           mountAt: ACME_MOUNT,
           size: ACME_SIZE,
           durability: "reconstructible",

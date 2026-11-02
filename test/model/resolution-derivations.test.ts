@@ -5801,6 +5801,37 @@ describe("a tier's address", () => {
     ]);
   });
 
+  // REQ-168 (docs/requirements.md): two acme tiers' proxies in one Project
+  // keep their ACME state on two claims, each named for its proxy's Process.
+  it("names each acme tier's claim for its proxy's Process, so two proxies in one Project hold two", () => {
+    const edge = projectNamed(
+      projects(one(serving("notes-api")), {
+        platform: (text) =>
+          text.replace(
+            "    listener: plain\n    certificates: none\n    traefik: edge/traefik-lan",
+            "    listener: tls\n    certificates: acme\n    traefik: edge/traefik-lan",
+          ),
+        foundation: (name, text) =>
+          name === "edge/edge.project.yml"
+            ? text.replace(
+                "          web: 8000\n          admin: 8080\n",
+                "          web: 8000\n          websecure: 8443\n          admin: 8080\n",
+              )
+            : text,
+      }),
+      "edge",
+    );
+    const claims = (id: string) =>
+      edge.applications
+        .find((candidate) => candidate.id === id)
+        ?.processes[0]?.volumes?.filter(({ mountAt }) => mountAt === "/acme")
+        .map(({ claim }) => claim);
+    expect([claims("traefik-public"), claims("traefik-lan")]).toStrictEqual([
+      ["traefik-public-acme"],
+      ["traefik-lan-acme"],
+    ]);
+  });
+
   it("derives an acme tier on the proxy's Process that answers it, and on no other Process of the proxy", () => {
     const [proxy, other] = application(
       one(`${answering}${serving("notes-worker")}`),
@@ -5810,7 +5841,10 @@ describe("a tier's address", () => {
       token: process?.environment?.some(
         ({ name }) => name === "CF_DNS_API_TOKEN",
       ),
-      claim: process?.volumes?.some(({ claim }) => claim === "acme") ?? false,
+      claim:
+        process?.volumes?.some(
+          ({ claim }) => claim === `${process.name}-acme`,
+        ) ?? false,
     });
     expect(derived(proxy)).toStrictEqual({ token: true, claim: true });
     expect(derived(other)).toStrictEqual({ token: false, claim: false });
@@ -5831,13 +5865,13 @@ describe("a tier's address", () => {
         storage: "/acme/public-frankfurt.json",
       },
     });
-    expect(proxy?.volumes?.find(({ claim }) => claim === "acme")).toMatchObject(
-      {
-        mountAt: "/acme",
-        size: "16Mi",
-        durability: "reconstructible",
-      },
-    );
+    expect(
+      proxy?.volumes?.find(({ claim }) => claim === "traefik-public-acme"),
+    ).toMatchObject({
+      mountAt: "/acme",
+      size: "16Mi",
+      durability: "reconstructible",
+    });
     expect(proxy?.secrets).toContainEqual({
       path: "secret/data/platform/cloudflare",
       keys: ["CF_DNS_API_TOKEN"],

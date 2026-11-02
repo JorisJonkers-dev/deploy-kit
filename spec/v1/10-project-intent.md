@@ -1393,9 +1393,11 @@ the Process's name, so a rename orphans the claim.
 named after `claim` as written, and a project's Processes share one namespace,
 so two volumes declaring one claim would mount one PVC, each Process writing its
 own data into the same directory. A volume whose durability derives a backup
-reserves its backup claim, `<claim>-backup`, as well. A volume that reserves a
-claim an earlier volume of the project already holds, in document order, is
-`E_DUPLICATE_CLAIM`, at that volume.
+reserves its backup claim, `<claim>-backup`, as well, and the Process of an
+acme tier's proxy holds the claim its tier derives, `<process>-acme`
+([chapter 14](14-platform-intent.md#tiers)). A volume that reserves a claim an
+earlier volume of the project already holds, in document order, or the one an
+acme tier derives, is `E_DUPLICATE_CLAIM`, at that volume.
 
 Durability is also the model's gate on destruction: a claim backing
 non-`reconstructible` data may not be removed as a side effect of a render. What

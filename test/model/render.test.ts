@@ -3501,11 +3501,11 @@ describe("a tier's proxy", () => {
     }[];
     const pod = workload?.spec.template.spec;
     expect(pod?.volumes).toContainEqual({
-      name: "acme",
-      persistentVolumeClaim: { claimName: "acme" },
+      name: "traefik-public-acme",
+      persistentVolumeClaim: { claimName: "traefik-public-acme" },
     });
     expect(pod?.containers[0]?.volumeMounts).toContainEqual({
-      name: "acme",
+      name: "traefik-public-acme",
       mountPath: "/acme",
     });
     expect(JSON.stringify(pod?.containers[0])).toContain(

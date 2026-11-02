@@ -978,9 +978,10 @@ On an acme tier, the Process of the tier's proxy carries a `resolver` in its
 derives and no author writes ([chapter 14](14-platform-intent.md#tiers)): named
 for the tier, with the account's `email`, the `dnsProvider` and the `storage`
 file on the claim. The tier also adds to the Process a `reconstructible`
-volume, `acme` at `/acme`, an `env` grant on the token's path whose key arrives
-as the variable the provider's client reads, and egress to the internet where
-none is declared: the certificate authority and the DNS provider are both
+volume at `/acme` on the claim `<process>-acme` (named for the Process, so two
+proxies in one Project never share one), an `env` grant on the token's path
+whose key arrives as the variable the provider's client reads, and egress to the
+internet where none is declared: the certificate authority and the DNS provider are both
 beyond the cluster.
 
 ## The release gate
