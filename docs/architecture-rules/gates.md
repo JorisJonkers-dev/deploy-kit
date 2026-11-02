@@ -5,7 +5,7 @@ Rules on this repository's own documents and pipeline.
 | id | family | the rule | enforced by | proved by |
 |---|---|---|---|---|
 | RULE-049 | gates | Every decision record satisfies the frontmatter, register, citation and normative-anchor contract | `npm:lint:adrs` | [test/adr-lint-negative.test.ts](../../test/adr-lint-negative.test.ts) `missing frontmatter block` |
-| RULE-050 | gates | Every relative link and heading anchor in Markdown git does not ignore, outside the frozen `emf/`, resolves | `npm:lint:links` | [test/link-contract.test.ts](../../test/link-contract.test.ts) `anchor #the-old-name not found` |
+| RULE-050 | gates | Every relative link and heading anchor in Markdown git does not ignore, outside `emf/`, resolves | `npm:lint:links` | [test/link-contract.test.ts](../../test/link-contract.test.ts) `anchor #the-old-name not found` |
 | RULE-051 | gates | Every rendered example object validates against its pinned Kubernetes or CRD schema | `npm:lint:manifests` | [test/manifest-contract.test.ts](../../test/manifest-contract.test.ts) `no rendered examples found` |
 | RULE-052 | gates | Every behaviour ledger row sits in an area file, parses, carries an id no other row carries, names a real non-empty test, and is cited by no dangling id | `npm:lint:requirements` | [test/requirements-lint-negative.test.ts](../../test/requirements-lint-negative.test.ts) `holds a row, which belongs in an area file` |
 | RULE-053 | gates | Every script, path, coverage number and Node version README.md and CONTRIBUTING.md name matches the repository | `npm:lint:docs` | [test/docs-contract.test.ts](../../test/docs-contract.test.ts) `is not a script in package.json` |

@@ -84,7 +84,7 @@ describe("codeErrors", () => {
     });
   });
 
-  it("neither counts nor checks the frozen emf/ tree", () => {
+  it("neither counts nor checks the emf/ tree", () => {
     const result = codeErrors(
       {
         "spec/v1/10-intent.md": chapter(ALPHA),

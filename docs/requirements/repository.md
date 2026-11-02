@@ -1,11 +1,11 @@
 # Repository contracts
 
-A behaviour of this repository's own tree: its decision records, links, documents, module boundaries, test harness, coverage, ledgers, specification codes and the frozen `emf/` wiring.
+A behaviour of this repository's own tree: its decision records, links, documents, module boundaries, test harness, coverage, ledgers, specification codes and the `emf/` wiring.
 
 | id | a contributor or a consumer can rely on | proved by |
 |---|---|---|
 | REQ-001 | Every decision record under `docs/adr/` and `emf/docs/adr/` satisfies its frontmatter, register and citation contract, and no number is used in both | [test/adr-contract.test.ts](../../test/adr-contract.test.ts) |
-| REQ-002 | Every relative link and heading anchor in Markdown git does not ignore, outside the frozen `emf/`, resolves to a real target | [test/link-contract.test.ts](../../test/link-contract.test.ts) |
+| REQ-002 | Every relative link and heading anchor in Markdown git does not ignore, outside `emf/`, resolves to a real target | [test/link-contract.test.ts](../../test/link-contract.test.ts) |
 | REQ-003 | Every rendered Kubernetes manifest in the worked examples validates against its pinned schema | [test/manifest-contract.test.ts](../../test/manifest-contract.test.ts) |
 | REQ-004 | The compiler's layer boundaries and module reachability are enforced on the dependency graph, not on review alone | [test/boundary-contract.test.ts](../../test/boundary-contract.test.ts) |
 | REQ-006 | No em-dash enters tracked text outside `docs/mde/` and `CHANGELOG.md` | [test/emdash.test.ts](../../test/emdash.test.ts) |

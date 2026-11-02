@@ -23,10 +23,12 @@ build time and commits neither. Constraint parity is a derived check: a test
 lists every specification code three ways (the Complete OCL invariant named by
 it, the TypeScript check named by it, the refusal fixture whose diagnostics name
 it) and fails on any gap. A behaviour row that proves a production-only oracle is
-marked production-only and needs no model-driven witness. The model-driven
-implementation is frozen at the tag `mde-task-3`, the MDE Task 3 hand-in, until
-one catch-up pull request after 1.0.0 brings it up to date: until then nothing
-holds it to the oracles, and a model change lands in TypeScript only.
+marked production-only and needs no model-driven witness. A model change lands
+in TypeScript and its oracle files first, and the model-driven implementation
+catches up in a pull request of its own, held to the same oracles by its own
+build: its tests and coverage gate run on every change to `emf/`, its mutation
+gate nightly, and it is not in `Pipeline Complete`, so it may trail `main`
+between catch-ups.
 
 ## Rests on
 
