@@ -50,7 +50,8 @@ repository: the Eclipse simultaneous release at a dated build, named in
 `emf.target` with each unit at an exact version, so EMF, Xtext, OCL,
 QVT-Operational and Acceleo arrive at versions released together. The one
 Maven Central artifact outside the test libraries is the ANTLR 3 generator the
-Xtext generator calls. JDK 21.
+Xtext generator calls. The one unit the tests alone use is EMF Compare's core,
+from the same release ([Stage tests](#stage-tests)). JDK 21.
 No Eclipse IDE, workspace or launch configuration is part of the build: every
 step CI runs is `mvn verify` from `emf/`. The projects are nonetheless kept
 loadable in Eclipse Modeling Tools for the course's examiners: they import as
@@ -508,12 +509,36 @@ golden update leaves such a case alone.
 
 `Comparison` compares by content first and bytes last: JSON as a Jackson tree,
 YAML as every document of the stream through SnakeYAML's YAML 1.1 reader on both
-sides, and XMI loaded into EMF and walked feature by feature, with
-`EcoreUtil.EqualityHelper` deciding. It reports every difference as a path, a
-list of named items by name, and a file whose content matches but whose bytes
-do not as one "formatting only" difference at the first line that parts.
-Jackson and SnakeYAML reach the bundles in test scope only, beside JUnit and
-AssertJ.
+sides, and XMI loaded into EMF and compared by EMF Compare. It reports every
+difference as a path, a list of named items by name, and a file whose content
+matches but whose bytes do not as one "formatting only" difference at the first
+line that parts. Jackson and SnakeYAML reach the bundles in test scope only,
+beside JUnit and AssertJ.
+
+Every comparison of two models in the tests goes through `ModelDiff`, the XMI
+branch of `Comparison` and `ResolutionTest`'s whole-model checks alike
+([0152](adr/emf/0152-emf-compare-decides-and-explains-every-model-comparison.md)):
+EMF Compare decides, and two models are equal only when it reports no
+difference. It pairs objects by natural key, a path from the root naming each
+list item by the first of `name`, `id`, `path`, `alias`, `key`, `project` and
+`from` unique among its siblings, else by one of those with another of them or
+an enumeration-typed attribute (an input digest's `input` and `name`), else by
+a single-valued reference to a keyed object (a gate member by its process). A
+root is keyed among its resource's roots, by position when it has no key. Two
+objects pair by key only when both sides key them alike; the rest, and every
+item with no key, are paired by similarity, and a line about an item with no
+key names it by index and says so. Each difference is one line at its keyed
+path: a changed attribute, a set feature beside an unset one, an added or
+removed subtree with its size, a move with both indexes, and a reference by its
+target's keyed path rather than its index fragment. `ModelDiffTest` holds each
+kind to its line, and changes, unsets, removes, reorders and retargets every
+feature of every class the stage goldens hold, one at a time, asserting none
+compares equal.
+
+EMF Compare is the one unit of `emf.target` the course does not name, and the
+tests alone use it: it reaches the `cli` bundle through `additional.bundles` in
+its `build.properties`, never through a manifest, and `EMF-021` fails a class a
+module ships that depends on it.
 
 Two more suites ride on the same cases. `FieldCoverageTest` lists, per stage,
 every feature of every concrete class a stage's documents can hold that no case

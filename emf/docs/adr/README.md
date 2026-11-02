@@ -47,3 +47,4 @@ Numbers come from the one estate-wide sequence shared with `docs/adr/`.
 | [0098](emf/0098-cross-file-invariants-navigate-an-estate-root.md) | Cross-file invariants navigate an Estate root that contains every document of a set, instead of reading the resource set through `allInstances()` | open |
 | [0143](emf/0143-a-refusal-is-decided-in-ocl-unless-the-model-cannot-hold-what-it-asks.md) | A refusal is decided in Complete OCL, unless the model cannot hold what it asks | settled |
 | [0151](emf/0151-a-rule-group-file-is-read-as-data-into-a-generic-tree.md) | A rule-group file is read as data into a generic tree, not into typed alert-rule classes | settled |
+| [0152](emf/0152-emf-compare-decides-and-explains-every-model-comparison.md) | EMF Compare decides and explains every comparison of two models in the tests, pairing objects by natural key | settled |
