@@ -23,16 +23,9 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.EAttribute;
-import org.eclipse.emf.ecore.EEnumLiteral;
-import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.EReference;
-import org.eclipse.emf.ecore.EStructuralFeature;
-import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.Yaml;
@@ -42,8 +35,8 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
  * The stage harness's one comparator: two files, or two trees of files, compared by what they hold
  * first and by their bytes last. JSON is read as a Jackson tree, YAML as every document of a stream
  * through SnakeYAML's YAML 1.1 reader on both sides, so a quoted {@code "true"} and a plain {@code
- * true} still differ by type, and XMI is loaded into EMF and walked feature by feature, with {@link
- * EcoreUtil.EqualityHelper} deciding. Every difference is reported, as a path into the file: {@code
+ * true} still differ by type, and XMI is loaded into EMF and compared by EMF Compare, keyed by
+ * each object's natural key (ModelDiff). Every difference is reported, as a path into the file: {@code
  * apps/x/workload.yaml#1 .spec.containers[0].env[3].value: expected "x", got "y"}. A file that holds
  * the same content in other bytes is one difference, "formatting only", naming the first line that
  * differs.
@@ -178,41 +171,25 @@ final class Comparison {
     }
 
     /**
-     * Every difference between two XMI files, each loaded on its own as if it were at {@code uri}.
-     * {@link EcoreUtil.EqualityHelper} decides whether they differ; the walk says where.
+     * Every difference between two XMI files, each loaded on its own as if it were at {@code uri}:
+     * EMF Compare decides whether they differ and says where (ModelDiff).
      */
     static List<String> xmi(String name, URI uri, byte[] expected, byte[] actual) {
-        List<String> differences = new ArrayList<>();
-        List<EObject> committed;
-        List<EObject> written;
+        Resource committed;
+        Resource written;
         try {
             committed = load(uri, expected);
             written = load(uri, actual);
         } catch (IOException | RuntimeException e) {
+            List<String> differences = new ArrayList<>();
             differences.add(name + ": not XMI: " + e.getMessage());
             return differences;
         }
-        if (new EcoreUtil.EqualityHelper().equals(committed, written)) {
-            return differences;
-        }
-        for (int i = 0; i < Math.max(committed.size(), written.size()); i++) {
-            String root = name + "#" + (i + 1);
-            if (i >= written.size()) {
-                differences.add(root + ": missing root");
-            } else if (i >= committed.size()) {
-                differences.add(root + ": extra root");
-            } else {
-                objects(root, "", committed.get(i), written.get(i), differences);
-            }
-        }
-        if (differences.isEmpty()) {
-            differences.add(name + ": differs where the walk does not look, by EcoreUtil.EqualityHelper");
-        }
-        return differences;
+        return new ArrayList<>(ModelDiff.differences(name, committed, written));
     }
 
-    /** The roots of {@code bytes} read as XMI at {@code uri}, in a resource set of their own. */
-    static List<EObject> load(URI uri, byte[] bytes) throws IOException {
+    /** {@code bytes} read as XMI at {@code uri}, in a resource set of their own. */
+    static Resource load(URI uri, byte[] bytes) throws IOException {
         ResourceSet resources = new ResourceSetImpl();
         resources
                 .getResourceFactoryRegistry()
@@ -220,90 +197,7 @@ final class Comparison {
                 .put(Resource.Factory.Registry.DEFAULT_EXTENSION, new XMIResourceFactoryImpl());
         Resource resource = resources.createResource(uri);
         resource.load(new ByteArrayInputStream(bytes), null);
-        return new ArrayList<>(resource.getContents());
-    }
-
-    private static void objects(String root, String at, EObject expected, EObject actual, List<String> out) {
-        if (expected.eClass() != actual.eClass()) {
-            out.add(where(root, at) + ": expected a " + expected.eClass().getName() + ", got a "
-                    + actual.eClass().getName());
-            return;
-        }
-        for (EStructuralFeature feature : expected.eClass().getEAllStructuralFeatures()) {
-            if (feature.isDerived()
-                    || feature.isTransient()
-                    || (feature instanceof EReference reference && reference.isContainer())) {
-                continue;
-            }
-            String path = at + "." + feature.getName();
-            if (expected.eIsSet(feature) != actual.eIsSet(feature)) {
-                out.add(where(root, path) + ": expected " + (expected.eIsSet(feature) ? "set" : "unset") + " "
-                        + feature(expected, feature) + ", got " + (actual.eIsSet(feature) ? "set" : "unset") + " "
-                        + feature(actual, feature));
-                continue;
-            }
-            List<?> committed = many(expected, feature);
-            List<?> written = many(actual, feature);
-            for (int i = 0; i < Math.max(committed.size(), written.size()); i++) {
-                String item = feature.isMany() ? path + "[" + i + "]" : path;
-                if (i >= written.size()) {
-                    out.add(where(root, item) + ": missing (expected " + element(committed.get(i)) + ")");
-                } else if (i >= committed.size()) {
-                    out.add(where(root, item) + ": extra (got " + element(written.get(i)) + ")");
-                } else {
-                    element(root, item, feature, committed.get(i), written.get(i), out);
-                }
-            }
-        }
-    }
-
-    private static void element(
-            String root, String at, EStructuralFeature feature, Object expected, Object actual, List<String> out) {
-        if (feature instanceof EReference reference && reference.isContainment()) {
-            objects(root, at, (EObject) expected, (EObject) actual, out);
-        } else if (feature instanceof EAttribute) {
-            if (!Objects.equals(expected, actual)) {
-                out.add(where(root, at) + ": expected " + element(expected) + ", got " + element(actual));
-            }
-        } else if (!element(expected).equals(element(actual))) {
-            out.add(where(root, at) + ": expected " + element(expected) + ", got " + element(actual));
-        }
-    }
-
-    /** A feature's values as a list, one value or none for a single-valued one. */
-    private static List<?> many(EObject owner, EStructuralFeature feature) {
-        Object value = owner.eGet(feature, false);
-        if (feature.isMany()) {
-            return (List<?>) value;
-        }
-        List<Object> one = new ArrayList<>();
-        if (value != null) {
-            one.add(value);
-        }
-        return one;
-    }
-
-    private static String feature(EObject owner, EStructuralFeature feature) {
-        return feature.isMany()
-                ? "(" + ((List<?>) owner.eGet(feature, false)).size() + " values)"
-                : element(owner.eGet(feature, false));
-    }
-
-    /** A value as a report shows it: a string quoted, an object by its class and where it is. */
-    private static String element(Object value) {
-        return switch (value) {
-            case null -> "null";
-            case String text -> quoted(text);
-            case EEnumLiteral literal -> literal.getName();
-            case EObject object ->
-                object.eIsProxy()
-                        ? "-> " + ((InternalEObject) object).eProxyURI()
-                        : object.eResource() == null
-                                ? object.eClass().getName()
-                                : object.eClass().getName() + " -> "
-                                        + EcoreUtil.getURI(object).fragment();
-            default -> String.valueOf(value);
-        };
+        return resource;
     }
 
     private static void values(String document, String at, Object expected, Object actual, List<String> out) {

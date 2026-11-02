@@ -5,15 +5,12 @@ import static org.assertj.core.groups.Tuple.tuple;
 
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeploymentPackage;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.emf.ecore.xmi.impl.XMIResourceFactoryImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -43,14 +40,6 @@ class ResolutionTest {
                 .resolve("emf/models/" + project + ".resolveddeployment");
         Resource resource = resources.getResource(URI.createFileURI(model.toString()), true);
         return (ResolvedDeployment) resource.getContents().get(0);
-    }
-
-    private static String xmi(ResolvedDeployment deployment) throws IOException {
-        Resource resource = new XMIResourceFactoryImpl().createResource(URI.createURI("resolved.xmi"));
-        resource.getContents().add(EcoreUtil.copy(deployment));
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        resource.save(out, null);
-        return out.toString(StandardCharsets.UTF_8);
     }
 
     @Test
@@ -211,9 +200,8 @@ class ResolutionTest {
     void minimalResolvesToTheHandWrittenTargetModel() throws IOException {
         ResolvedDeployment resolved = minimal();
 
-        assertThat(EcoreUtil.equals(resolved, expected("minimal")))
-                .as(xmi(resolved))
-                .isTrue();
+        assertThat(ModelDiff.differences("minimal.resolveddeployment", List.of(expected("minimal")), List.of(resolved)))
+                .isEmpty();
     }
 
     @Test
@@ -226,8 +214,8 @@ class ResolutionTest {
                 Outputs.INTEGRITY);
         assertThat(resolved.diagnostics()).isEmpty();
 
-        assertThat(EcoreUtil.equals(resolved.deployment(), expected("secrets")))
-                .as(xmi(resolved.deployment()))
-                .isTrue();
+        assertThat(ModelDiff.differences(
+                        "secrets.resolveddeployment", List.of(expected("secrets")), List.of(resolved.deployment())))
+                .isEmpty();
     }
 }

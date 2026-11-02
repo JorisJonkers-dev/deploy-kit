@@ -181,7 +181,7 @@ class ComparisonTest {
     }
 
     @Test
-    void anXmiModelIsWalkedFeatureByFeatureAndEqualityHelperDecides() throws IOException {
+    void anXmiModelIsComparedByEmfCompareAtKeyedPaths() throws IOException {
         URI uri = URI.createURI("file:/stages/render/x/expected/notes.resolveddeployment");
         byte[] expected = xmi(uri, deployment("notes-system", 1));
         byte[] renamed = xmi(uri, deployment("other-system", 1));
@@ -190,12 +190,13 @@ class ComparisonTest {
         assertThat(Comparison.xmi("m.xmi", uri, expected, xmi(uri, deployment("notes-system", 1))))
                 .isEmpty();
         assertThat(Comparison.xmi("m.xmi", uri, expected, renamed))
-                .containsExactly("m.xmi#1 .deliverables[0].namespace: expected \"notes-system\", got \"other-system\"");
+                .containsExactly("m.xmi#1 .deliverables[path=\"apps/notes/namespace.yaml\"].namespace: expected"
+                        + " \"notes-system\", got \"other-system\"");
+        // Two deliverables at one path share a key, so neither is keyed by it.
         assertThat(Comparison.xmi("m.xmi", uri, expected, longer))
-                .containsExactly("m.xmi#1 .deliverables[1]: extra (got NamespaceFile -> apps/notes/namespace.yaml)");
+                .containsExactly("m.xmi#1 .deliverables[1]: extra (got a NamespaceFile)" + ModelDiff.SIMILARITY);
         assertThat(Comparison.xmi("m.xmi", uri, longer, expected))
-                .containsExactly(
-                        "m.xmi#1 .deliverables[1]: missing (expected NamespaceFile -> apps/notes/namespace.yaml)");
+                .containsExactly("m.xmi#1 .deliverables[1]: missing (expected a NamespaceFile)" + ModelDiff.SIMILARITY);
     }
 
     @Test
@@ -206,13 +207,12 @@ class ComparisonTest {
         ResolvedDeployment other = ResolvedDeploymentFactory.eINSTANCE.createResolvedDeployment();
 
         assertThat(Comparison.xmi("m.xmi", uri, xmi(uri, deployment("notes-system", 1)), xmi(uri, unset)))
-                .singleElement()
-                .asString()
-                .isEqualTo("m.xmi#1 .deliverables[0].namespace: expected set \"notes-system\", got unset null");
+                .containsExactly("m.xmi#1 .deliverables[path=\"apps/notes/namespace.yaml\"].namespace: expected"
+                        + " \"notes-system\", got null");
         assertThat(Comparison.xmi("m.xmi", uri, xmi(uri, other, other), xmi(uri, other)))
-                .containsExactly("m.xmi#2: missing root");
+                .containsExactly("m.xmi#2: missing root (expected a ResolvedDeployment)");
         assertThat(Comparison.xmi("m.xmi", uri, xmi(uri, other), xmi(uri, other, other)))
-                .containsExactly("m.xmi#2: extra root");
+                .containsExactly("m.xmi#2: extra root (got a ResolvedDeployment)");
     }
 
     private static ResolvedDeployment deployment(String namespace, int files) {
