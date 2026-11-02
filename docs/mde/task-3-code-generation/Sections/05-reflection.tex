@@ -1,8 +1,8 @@
 \section{Reflection}
 \label{sec:reflection}
 
-The project ran from the Task 0 proposal in September to this submission on
-30 October. Figure~\ref{fig:timeline} places the three tasks, both presentations
+The project ran from the Task 0 proposal in September to this submission, which
+slipped past the 30 October deadline. Figure~\ref{fig:timeline} places the three tasks, both presentations
 and the project's phases on one timeline, beside the commits per day.
 
 \begin{figure}[!htbp]
@@ -18,7 +18,7 @@ and the project's phases on one timeline, beside the commits per day.
 
 The proposal fixed a closed set of inputs, an intermediate Resolved Deployment, a
 generated Deliverable Set and two implementations tested against the same examples,
-but left the build order open. Priorities shifted through six phases.
+but left the build order open. Priorities shifted through seven phases.
 \begin{itemize}
 \item 14 to 16 September: demonstrating that each tool could run, through the
   headless build, the oracle layout and the parity seam.
@@ -32,7 +32,10 @@ but left the build order open. Priorities shifted through six phases.
   the second presentation was on 22 October.
 \item 22 to 30 October: the model was refined in production and reached release
   1.0.0; the model-driven implementation adopted each change. In October, the
-  repository received 275 commits, 168 of which touched \path{spec/v1}.
+  repository received 292 commits, 181 of which touched \path{spec/v1}.
+\item 31 October to 2 November, past the deadline: EMF Compare took over every model
+  comparison, a benchmark with an ATL port of the lowering answered the Task~2
+  feedback (Appendix~\ref{sec:appendix-performance}), and the Move left the model.
 \end{itemize}
 Three factors drove these shifts: deadlines three weeks apart and then two, cases
 surfaced in production, and oracle changes the model-driven implementation had to
@@ -99,8 +102,8 @@ concerned output appearance, not transformation semantics.
 \subsubsection{Scope}
 \label{sec:scope}
 
-The scope was too large for one course. Between 14 September and 30 October, the
-repository received 341 commits across the specification, the production
+The scope was too large for one course. Between 14 September and 2 November, the
+repository received 391 commits across the specification, the production
 implementation and \path{emf/}, a second implementation of the whole compiler,
 and keeping the two level doubled every change. A smaller scope would
 have kept the parity, decision records and headless build, held the model at its
