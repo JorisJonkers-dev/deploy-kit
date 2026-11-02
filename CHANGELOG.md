@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.2](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.9.1...v1.9.2) (2026-11-02)
+
+
+### Bug Fixes
+
+* **model:** name an acme tier's claim for its proxy's Process, so two proxies in one Project hold two ([#800](https://github.com/JorisJonkers-dev/deploy-kit/issues/800)) ([211722e](https://github.com/JorisJonkers-dev/deploy-kit/commit/211722e49aeaaa20fe1031d1ee892ffb2b38651d)), closes [#798](https://github.com/JorisJonkers-dev/deploy-kit/issues/798)
+
 ## [1.9.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.9.0...v1.9.1) (2026-11-01)
 
 
