@@ -850,6 +850,11 @@ function podTemplateOf(
         ...(process.volumes === undefined || process.libraries !== undefined
           ? {}
           : { fsGroup: process.gid }),
+        // Traefik refuses ACME storage any group may read, and kubelet adds
+        // group access to a volume's files on every mount unless told not to.
+        ...(process.edgeProxy?.resolver === undefined
+          ? {}
+          : { fsGroupChangePolicy: "OnRootMismatch" as const }),
         ...(process.libraries === undefined
           ? {}
           : { supplementalGroups: groupsOf(process) }),

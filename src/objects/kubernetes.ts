@@ -204,6 +204,7 @@ export interface PodSpec {
     readonly runAsUser: number;
     readonly runAsGroup: number;
     readonly fsGroup?: number;
+    readonly fsGroupChangePolicy?: "OnRootMismatch";
     readonly supplementalGroups?: readonly number[];
     readonly seccompProfile: { readonly type: "RuntimeDefault" };
   };
