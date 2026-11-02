@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:9a538e85bb1918768f4b8b092c1d33bd5adbed349db4aabf9516728d134a7cae" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:fc1f6ec59bf62a75319510ba82dc53f1b2f82312e0b5e542f08c72a9fb837a65" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests name="agents" digest="sha256:7a710b34e13d2be9c7ddfceb239b6c8e099137f760cb7a3ebb5a7d71dead88d9"/>
     <inputDigests name="auth" digest="sha256:9ede7056e41341c9040da4b17b9e1fdcf074966ed07fff0c288a2f989614d0d8"/>
-    <inputDigests name="coverage" digest="sha256:af367531489d73e62a23d0d336832069223ff3797500a82fddf0901a1204c877"/>
+    <inputDigests name="coverage" digest="sha256:1f751a098eddff13dedcbe36bc16d79a56f81f11447921d8ea0d86477c96124c"/>
     <inputDigests name="data" digest="sha256:0a40e26292a5af6a8afba7a37611811a4655462190fefe9df9dfe8bd15e91165"/>
     <inputDigests name="delivery" digest="sha256:7399f88a5ed5dae0a18971a1dbcfd79053e4dc69e5ea3106d63b58a45a064448"/>
     <inputDigests name="edge" digest="sha256:e33f19a504f64a98a34b21bec0de37867d7f924a0df4d7b58f066eec4eb2347e"/>
@@ -15,10 +15,10 @@
     <inputDigests name="observability" digest="sha256:33ca6b450c57377ce5f26545ebd0130a845ecd98ab1d00932c09d6b328bf2fc9"/>
     <inputDigests name="secrets" digest="sha256:dc7b8c9531ce495089e3fe82d198aefac5439afde73e38f16873c277207a8749"/>
     <inputDigests name="utility" digest="sha256:a834788112fe0d6045472f11f9b9a87002ca9c3493547d6789e485a4f3d2983f"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:c9c9007580ebb8ec8946bbd42d32e905a3109f74ae029d44503f58979c1720de"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:b109cc19fe68d88ed8a7f661af58b4be831f98bdf080f88c207fcbf3116857a8"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
-    <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
-    <inputDigests input="cluster-state" name="production" digest="sha256:b623d2ffe37d94ed3dfd601c8ef7aa011ef349912b4428d1071d72099e4c54a8"/>
+    <inputDigests input="images-lock" name="estate" digest="sha256:e49a55aacca04097e4df07da4921a478f848a509cf5b8fce91dc2f851e37d895"/>
+    <inputDigests input="cluster-state" name="production" digest="sha256:5d3ae66e3fe2b89dcb9c0db533f6f8c5652323b3a024d9a1676ee637e5f73475"/>
   </provenance>
   <applications id="flagger" revision="sha256:e46cc6ea185eeccdae7b071e3b458f2f830dcce39ae296409cabc629dcced6a2" project="delivery" namespace="delivery-system" reconcileUnit="/0/@reconcileUnits.0">
     <processes name="flagger" identity="flagger" lifecycle="application" image="ghcr.io/fluxcd/flagger@sha256:5d1b8f3e7a2c9d4b6e0f1a3c5e7b9d2f4a6c8e0b1d3f5a7c9e2b4d6f8a0c1e3b" imageVersion="1.41.0" uid="10001" gid="10001" cutover="continuous" switchover="rolling" serving="flagger" servingLabel="app.kubernetes.io/instance" deadline="210s" replicas="1" memory="64Mi" cpu="10m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app" home="/tmp">

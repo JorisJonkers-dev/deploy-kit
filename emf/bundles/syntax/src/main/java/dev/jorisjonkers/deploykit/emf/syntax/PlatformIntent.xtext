@@ -173,13 +173,7 @@ EnginePolicy returns EnginePolicy:
 	(('backup' ':' backup=Text)
 	& ('surface' ':' surface=Text)?
 	& ('catalog' ':' catalog=Text)?
-	& ('catalogSurface' ':' catalogSurface=Text)?
-	& ('move' ':' BEGIN move=MoveMethod END)?);
-
-MoveMethod returns MoveMethod:
-	(('image' ':' image=Text)
-	& ('breaksOn' ':' breaksOn=MoveBreak)
-	& ('reverse' ':' reverse=MoveReverse));
+	& ('catalogSurface' ':' catalogSurface=Text)?);
 
 MonitorCadence returns MonitorCadence:
 	(('interval' ':' interval=Text)
@@ -225,14 +219,7 @@ DeliveryPolicy returns DeliveryPolicy:
 	(('machinery' ':' BEGIN (DASH BEGIN machinery+=[Application|Text] END | machinery+=[Application|Text])+ END)
 	& ('gate' ':' gate=[Application|Text])
 	& ('reporter' ':' reporter=[Application|Text])?
-	& ('analysis' ':' BEGIN analysis=AnalysisPolicy END)
-	& ('move' ':' BEGIN move=MovePolicy END)?);
-
-MovePolicy returns MovePolicy:
-	(('timeout' ':' timeout=Text)
-	& ('retention' ':' retention=Text)
-	& ('memory' ':' memory=Text)
-	& ('cpu' ':' cpu=Text));
+	& ('analysis' ':' BEGIN analysis=AnalysisPolicy END));
 
 AnalysisPolicy returns AnalysisPolicy:
 	(('interval' ':' interval=Text)
@@ -399,20 +386,20 @@ Text returns ecore::EString:
 	SCALAR | STRING | INT | Keyword | PlatformKeyword;
 
 PlatformKeyword:
-	'acme' | 'alertmanager' | 'always' | 'analysis' | 'apiAccess' | 'apiServer' | 'artifacts' | 'audiences' | 'backup' |
-	'bootstrap' | 'breaksOn' | 'catalog' | 'catalogSurface' | 'certificateFrom' | 'certificates' | 'cidr' | 'cloudflare' |
+	'acme' | 'alertmanager' | 'analysis' | 'apiAccess' | 'apiServer' | 'artifacts' | 'audiences' | 'backup' |
+	'bootstrap' | 'catalog' | 'catalogSurface' | 'certificateFrom' | 'certificates' | 'cidr' | 'cloudflare' |
 	'cluster-admin' | 'clusterDns' | 'clusterRole' | 'cni' | 'collector' | 'contract' | 'controller' | 'coreDns' | 'crds' |
 	'critical' | 'criticalApplications' | 'data' | 'datasource' | 'datastore' | 'deadline' | 'destination' | 'direct' |
 	'discord' | 'dns' | 'dnsProvider' | 'edit' | 'email' | 'embedded' | 'engines' | 'enrolled' | 'ephemeral' | 'errorRate' |
 	'etcd' | 'failures' | 'flux' | 'forwardAuth' | 'gate' | 'gid' | 'gpu-device' | 'gpu-metrics' | 'gpus' | 'grafana' |
 	'grants' | 'hardening' | 'holders' | 'humanGrants' | 'imagePull' | 'ingressClass' | 'instance' | 'interval' | 'issuer' |
 	'iterations' | 'k3s' | 'kubelet' | 'kubernetesVersion' | 'l4-speaker' | 'l4Addresses' | 'labels' | 'latency' |
-	'listener' | 'loki' | 'machinery' | 'major' | 'mesh' | 'metadata' | 'metrics' | 'minor' | 'monitoring' | 'monitors' |
-	'move' | 'namespaceHolders' | 'networkPolicyController' | 'never' | 'node-metrics' | 'nodeAgents' | 'nodeContract' |
+	'listener' | 'loki' | 'machinery' | 'mesh' | 'metadata' | 'metrics' | 'monitoring' | 'monitors' |
+	'namespaceHolders' | 'networkPolicyController' | 'node-metrics' | 'nodeAgents' | 'nodeContract' |
 	'offCluster' | 'period' | 'plain' | 'policyJob' | 'pool' | 'priority' | 'prometheus' | 'provider' | 'providers' |
 	'proxiedBy' | 'pullSecret' | 'pyroscope' | 'range' | 'receiver' | 'receivers' | 'recipient' | 'repeat' | 'reporter' |
-	'repository' | 'resource' | 'responseHeaders' | 'restricted' | 'retain' | 'retention' | 'reverse' | 'runner' |
-	'runtimeClass' | 'same-major' | 'secretsEncryption' | 'secretStore' | 'seeder' | 'server' | 'serverCount' | 'service' |
+	'repository' | 'resource' | 'responseHeaders' | 'restricted' | 'retain' | 'runner' |
+	'runtimeClass' | 'secretsEncryption' | 'secretStore' | 'seeder' | 'server' | 'serverCount' | 'service' |
 	'settings' | 'severity' | 'signer' | 'sourceRef' | 'sqlite' | 'stores' | 'subject' | 'substrate' | 'surfaces' |
 	'target' | 'telemetry' | 'tempo' | 'threshold' | 'tiers' | 'timeout' | 'tls' | 'traefik' | 'unsealed' |
 	'upstreamNameservers' | 'value' | 'vault' | 'view' | 'webhook';
@@ -437,12 +424,6 @@ enum DnsProvider returns DnsProvider:
 
 enum HumanGrantRole returns HumanGrantRole:
 	clusterAdmin='cluster-admin' | admin='admin' | edit='edit' | view='view';
-
-enum MoveBreak returns MoveBreak:
-	major='major' | minor='minor';
-
-enum MoveReverse returns MoveReverse:
-	always='always' | sameMajor='same-major' | never='never';
 
 enum HardeningClass returns HardeningClass:
 	restricted='restricted';

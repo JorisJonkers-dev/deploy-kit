@@ -166,8 +166,6 @@ class ShapesTest {
                         new Issue("/applications/0/migration", "does not match any shape the schema allows here"));
         assertThat(check(HEAD + migration + "\n      changelog: c.xml\n" + PROCESS))
                 .isEmpty();
-        assertThat(paths(indented("rollback: forward-only"))).isEmpty();
-        assertThat(paths(indented("rollback: back"))).containsExactly("/applications/0/processes/0/rollback");
     }
 
     @Test
