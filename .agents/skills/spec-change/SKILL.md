@@ -38,8 +38,8 @@ next.
 - **The diagrams**, under `spec/v1/diagrams/`: one drawn SVG per chapter, the
   editable draw.io source embedded, one palette, colour carrying the layer.
 - **The TypeScript declarations.** A model change lands in the TypeScript
-  production implementation only: `emf/` is frozen at the tag `mde-task-3`
-  ([`AGENTS.md`](../../../AGENTS.md#boundaries)). Nothing regenerates an
+  production implementation first; `emf/` catches up in a pull request of its
+  own ([`AGENTS.md`](../../../AGENTS.md#boundaries)). Nothing regenerates an
   oracle.
 
 ## Steps

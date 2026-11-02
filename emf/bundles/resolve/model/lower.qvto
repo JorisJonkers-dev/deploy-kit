@@ -93,7 +93,6 @@ mapping Process::lower(in app : Application, in prj : Project) : Process {
 	command := self.command;
 	args := self.args;
 	spawns := self.spawns->map copyFor(self);
-	if self.rollback <> null then rollback := object Rollback {} endif;
 
 	-- Every copy is keyed on its Process: a mapping's result is cached per source
 	-- object, and a containment feature would move one shared copy to the last

@@ -265,8 +265,7 @@ whose remaining set still fails produces no `ComposedIntent`.
 
 | invariant | error |
 |---|---|
-| Application Ids are unique across the union, except for one Application declared by two Projects while it [moves between them](#an-application-moving-between-projects) | `E_DUPLICATE_APPLICATION_ID` |
-| a Project does not stop declaring an Application whose [Move](55-delivery.md#moves) out of it is open | `E_MOVE_OPEN` |
+| Application Ids are unique across the union | `E_DUPLICATE_APPLICATION_ID` |
 | a project name is declared by exactly one fragment, so a project sits in exactly one repository | `E_DUPLICATE_PROJECT` |
 | Process names are unique within their project | `E_DUPLICATE_PROCESS_NAME` |
 | a `host` is unique across the composed union | `E_DUPLICATE_HOST` |
@@ -286,38 +285,16 @@ answering to one id would make an edge ambiguous wherever they live.
 
 #### An Application moving between Projects
 
-An Application changes Project by being declared in the new one before it stops
-being declared in the old one, and nothing else is written: no pairing, no
-field naming the other side
-([0094](../../docs/adr/model/0094-a-move-is-derived-from-one-authored-edit.md)).
-While two Projects declare one Id, the union holds it once, as the declaration
-whose namespace is **not** the one ClusterState records the Application's
-active Instance in, and composition derives a [Move](55-delivery.md#moves) from
-the active Instance to it ([chapter 20](20-resolved-deployment.md#the-move)).
-Every edge to the Id resolves to that one declaration, and every consumer keeps
-its [Stable Address](16-dependencies.md#the-stable-address).
-
-The old Project keeps rendering the source Instance until the Move retires it,
-so it may not stop declaring the Application while the Move is open: a fragment
-of it that does, while another Project declares the Application and its source
-still serves from the old Project's namespace, is `E_MOVE_OPEN`, and is isolated
-like any refused Project
-([A refused Project is isolated](#a-refused-project-is-isolated)), keeping its
-source Instance rendered. Its declaration resolves against the union as it
-stood before the Move, marked `departing` in layer 2
-([chapter 20](20-resolved-deployment.md#the-move)), and renders only what keeps
-the source serving: its Processes' workloads, created once so the render never
-rewrites them, their Services, claims, grants and policies. Its routes, Client,
-alerts, dashboards and migration are the target's alone. Every consumer's
-policy reaches the provider in both namespaces until the source retires.
-
-Once the source is retired, the old Project's declaration renders nothing, and
-its next release removes it. A Project left with no other Application keeps its
-namespace, where the retired source's claim stays bound until it is deleted by
-hand. Two Projects declaring one Id when neither namespace holds the active
-Instance, or when no Instance is active yet, is the ambiguity the invariant
-exists to refuse. A refusal of the old Project names its Applications where it
-declares them, the departing one counted.
+An Application changes Project by leaving the old one before the new one
+declares it: two Projects declaring one Id is `E_DUPLICATE_APPLICATION_ID`, and
+the later fragment is isolated
+([A refused Project is isolated](#a-refused-project-is-isolated)). Between the
+two releases the Application is not delivered. Once the new Project declares
+it, every edge to the Id resolves to that declaration, and every consumer keeps its
+[Stable Address](16-dependencies.md#the-stable-address). The model carries no
+data between the two namespaces: the old namespace is never pruned, so a claim
+the Application held there stays bound, and carrying its data over is the
+owner's ([chapter 50](50-lifecycle.md#a-provider-that-moves)).
 
 `E_DUPLICATE_PROCESS_NAME` is scoped to the **project**, not to the Application,
 because the Process name alone is the ServiceAccount and the Vault role name

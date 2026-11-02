@@ -479,18 +479,8 @@ into the lock. The render writes it on every pod that runs the image
 `publish` refuses the share before a fragment carries it, and composition
 refuses a share or the platform's lock before resolution runs
 ([0114](../../docs/adr/model/0114-every-images-lock-entry-records-its-version.md)).
-It is a refusal of its own, apart from `E_ENGINE_VERSION_MISSING` below, which
-holds a version that is present to the shape a Move reads.
 
-An image a Process runs whose engine's Platform entry names a
-[`move`](14-platform-intent.md#move-methods) records its `version` as
-`major.minor.patch`, the release the digest was resolved from: the component
-`move.breaksOn` names is read off it, and it is the one fact a
-[Move](#the-move) is derived from that a digest cannot carry. Such a Process
-whose image the lock records with a version of any other shape is
-`E_ENGINE_VERSION_MISSING`, at the Process's `image`. An engine whose entry
-names no `move` derives no Move, so its image's `version` takes any shape, as
-every other image's does: `files`, which a linuxserver image's
+A `version` takes any shape: `files`, which a linuxserver image's
 `6.3.0.10514-ls314` keys, as much as a `postgres` built on a composite tag. A version is recorded,
 never authored: bumping it is moving the digest, which is the one edit a
 provider's owner makes, so a version only ever changes with its digest.
@@ -552,9 +542,8 @@ the snapshot. Nothing reads the live cluster.
 
 | the snapshot enumerates | used by |
 |---|---|
-| PersistentVolume bindings, with the node holding each | recording where a Process's data already sits; `E_DISK_BINDING_CONFLICT` where a declared `disk` dimension contradicts the binding and the Process's engine has no move method |
+| PersistentVolume bindings, with the node holding each | recording where a Process's data already sits; `E_DISK_BINDING_CONFLICT` where a declared `disk` dimension contradicts the binding |
 | current placements | detecting a move before it is rendered |
-| each engine Process's active Instance: its version, namespace and node, and for an open Move, its phase and when its flip held | deriving a [Move](#the-move), and retiring its source |
 
 **What a node can hold is not on that list.** `allocatable`, `site`, `arch`,
 `gpus[]` and `disks[]` are *declared* platform facts: authored once per node and
@@ -581,9 +570,9 @@ still needs the arbitration [open item 5](#open-in-this-chapter) names.
 may first land; once the PersistentVolume exists, the binding recorded in the
 snapshot is the fact. A `disk` dimension that no longer admits the node holding
 the bound volume is never a silent re-placement, because moving the data is not
-a re-render. For a Process whose engine has a move method, the contradiction
-derives a [Move](#the-move) to a node the dimension admits; for any other
-Process it is `E_DISK_BINDING_CONFLICT` at composition, a build error.
+a re-render: it is `E_DISK_BINDING_CONFLICT` at composition, a build error, and
+carrying the data elsewhere is the owner's
+([chapter 50](50-lifecycle.md#a-provider-that-moves)).
 
 The snapshot is a document of its own:
 
@@ -595,17 +584,7 @@ cluster: production
 capturedAt: "2026-09-30T00:00:00Z"   # quoted: a plain scalar holds no colon
 bindings:   [{claim: postgres-data, node: enschede-t1000-1}]
 placements: [{process: postgres, node: enschede-t1000-1}]
-instances:
-  - {application: platform-postgres, instance: postgres, version: 17.2.0, namespace: data-system, node: enschede-t1000-1}
 ```
-
-`instances` is what the Release Gate records as serving, read by the Collector
-from the gate's own record ([chapter 55](55-delivery.md#moves)): its `name`,
-where a Move made it and it is not the Process's own, and an open Move adds its
-`target`, the `name`, `version`, `namespace` and, where it is bound, `node` of
-the Instance it is moving to, its `phase`, the [step](14-platform-intent.md#move-methods) it is
-at (`sync`, `lag`, `fence`, `unfence`, `reverse` or `retire`), and, once the
-flip has held, `flippedAt`.
 
 `capturedAt` is written quoted, as every value carrying a colon is in the
 documents the model reads. It is when the Collector first captured these facts, not when it last
@@ -816,9 +795,8 @@ A `local-path` volume binds to the node holding its PersistentVolume; that
 binding is a fact read from the pinned ClusterState snapshot, so recording it is
 an assignment like any other, a pure function of an input, carrying the
 provenance of the digest it came from. What it is not is a re-schedulable
-choice: moving the data is a [Move](#the-move), derived and run as one, never
-a re-render, and a declared `disk` dimension that contradicts the binding of a
-Process that cannot move is `E_DISK_BINDING_CONFLICT` rather than a quiet
+choice: moving the data is never a re-render, and a declared `disk` dimension
+that contradicts the binding is `E_DISK_BINDING_CONFLICT` rather than a quiet
 move.
 
 ### The GPU request
@@ -896,8 +874,8 @@ route names none ([chapter 14](14-platform-intent.md#tiers)).
 
 The endpoint is the provider's Process, where it runs:
 `http://<process>.<namespace>.svc.cluster.local:<port><path>`, the namespace
-its Project's. No URL is authored, so the address follows the provider through
-a [Move](#the-move)
+its Project's. No URL is authored, so the address follows the provider when
+it moves to another Project
 ([#396](https://github.com/JorisJonkers-dev/deploy-kit/issues/396)); an
 earlier version of this section had the tier write the URL, which then had to
 be edited by hand at every move. A set that holds no file of the provider's
@@ -1118,85 +1096,6 @@ not a Process of it holds a grant. An Application whose edges name no surface
 of the datastore holding its database has no address to migrate at, and
 resolution stops there. An Application declaring `self` or `none` carries no
 block.
-
-## The move
-
-A provider's data outlives its Instance, so a change that the data cannot follow
-in place is not a switchover: it is a **Move**, from the Instance that serves to
-a new one, run by the Release Gate inside the provider's release
-([chapter 55](55-delivery.md#moves),
-[0094](../../docs/adr/model/0094-a-move-is-derived-from-one-authored-edit.md)).
-Nobody declares a Move. Its owner edits one thing, the provider's version or
-where it runs, and composition derives the Move by comparing what the Process
-now resolves to with the active Instance the pinned ClusterState records
-([Cluster state](#cluster-state)):
-
-| the Process now resolves to | against the active Instance | derives |
-|---|---|---|
-| an engine `version` that differs from the active one in the component its engine's `move.breaksOn` names ([chapter 14](14-platform-intent.md#move-methods)) | a different version in that component | a Move |
-| a namespace other than the active Instance's: its Application was declared in another Project | a different namespace | a Move |
-| an eligible node set that excludes the node holding its bound volume | a binding the placement no longer admits | a Move |
-| any other change | | the Application's switchover, as before ([chapter 55](55-delivery.md#switchover)) |
-
-A Process with no `engine` has no data to carry, and a change of its namespace
-derives a Move with no sync: a second Instance in the new namespace, the flip of
-its [Stable Address](16-dependencies.md#the-stable-address), and the old
-Instance's retirement. That is how a stateless provider such as `auth` changes
-Project without its consumers noticing.
-
-Layer 2 carries, as the Process's `move`, per Process a Move is derived for:
-
-| field | derived from |
-|---|---|
-| `triggers` | which rows of the table above derived it: `version`, `namespace` or `binding` |
-| `source` | the active Instance in ClusterState: its `instance` name, version, namespace and node |
-| `target` | the Process as it now resolves: its image and version, namespace and eligible node set, and a volume of its own, the same size and Durability Class as the source's; its `instance` name where the gate recorded one, or where it runs in a namespace of its own, which keeps the Process's name. Beside its source, an unrecorded target is named `<process>-<tag>` by the render, the tag of the release that derived it ([chapter 55](55-delivery.md#moves)) |
-| `method` | the engine's `move.image`, through the images lock, with the user it runs as, the engine `surface`'s `port` it syncs over, the `credential` it logs in with, `read` on `secret/data/<project>/<process>/move` delivered `self`, and the `egress` its Jobs reach: both Instances on that port, the Secret Store and the cluster's DNS; absent for a Process with no engine |
-| `identity` | one per Process with an open Move, `<process>-move`, holding the method's credential and nothing else ([chapter 16](16-dependencies.md#process-identity)) |
-| `flips` | the Stable Addresses whose target is the source Instance: one per surface of the Process that an edge names |
-| `reversible` | the engine's `move.reverse` read against the two versions: `always` is true, `same-major` is true only when both versions share a major, `never` is false; true for a Process with no engine, which has no data to lose |
-| `bounds` | the Platform document's `delivery.move`: `timeout`, `retention`, and the `memory` and `cpu` each step Job requests ([chapter 14](14-platform-intent.md#delivery-policy)) |
-| `server` | where the Kubernetes API answers, which the flip writes to, where the Platform document's `apiAccess` says |
-| `phase` | the step ClusterState records the open Move at, where it records one |
-
-A Move whose `reversible` is false cannot keep the promise a rollback makes, so
-it is refused, `E_MOVE_IRREVERSIBLE`, unless the Process acknowledges it with
-`rollback: forward-only` ([chapter 10](10-project-intent.md#rollback)). The
-acknowledgement acknowledges one Move and nothing else: written where no
-irreversible Move is derived, it is `E_FORWARD_ONLY_UNUSED`, so it never
-outlives the release it was written for.
-
-**An Instance keeps the name it was made under.** A Process whose active
-Instance ClusterState records under a `name` of its own resolves with that
-name as its `instance`, and renders its workload, Service and claims under it:
-the data a Move carried lives in the target's claims, which no rename can
-reach. Every Instance's pods carry the Process's instance label, which every
-policy selects, and their own Instance's name label, which their workload and
-Service select. Once the flip has held, the Process resolves to the target's
-recorded name, and the Stable Address names the target.
-
-**An Application moving between Projects** resolves twice
-([chapter 40](40-composition.md#an-application-moving-between-projects)): in
-the Project it moves to, as the target, with its Move; and in the Project it
-moves out of, against the union as it stood before, marked `departing`, with no
-Move of its own and none of what the target alone renders, so that Project
-keeps its source serving until the Move retires it.
-
-**One Move at a time.** While a Process's Move is open (its source not yet
-retired), a second change that would derive another is `E_MOVE_OPEN`: the
-target of the first is not yet the Instance a second could start from. The
-pinned ClusterState records that target on the active Instance, and a Process
-that now resolves to a version or namespace other than it is the second change. A
-release that changes nothing a Move derives from leaves an open Move as it is.
-
-**Retirement is derived too.** Once ClusterState records the flip as held for
-longer than `retention`, composition derives the source's retirement: its
-Instance, its volume's claim and its reverse replication leave the render, and
-every rule that named both Instances narrows to the target. The source's claim
-carries the prune-disabled mark every backed-up claim does
-([0018](../../docs/adr/model/0018-durability-class-derives-a-backup.md)), so
-leaving the render does not delete it: it stays bound, with data the Move has
-already carried and kept replicated back, until it is deleted by hand.
 
 ## No overrides
 
@@ -2057,7 +1956,6 @@ classDiagram
     }
     class ResolvedProcess {
         +string name
-        +string instance
         +Lifecycle lifecycle
         +Runtime runtime
         +Identity identity
@@ -2085,13 +1983,6 @@ classDiagram
         +Quantity cpu
         +string selector
         +string[] consumes
-    }
-    class ResolvedMove {
-        +MoveTrigger[] triggers
-        +string identity
-        +string[] flips
-        +bool reversible
-        +MoveStep phase
     }
     class ResolvedGpu {
         +string resource
@@ -2378,7 +2269,6 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" ResolvedLibraryMount : libraries
     ResolvedProcess "1" *-- "0..*" ResolvedPoolExposure : l4Exposure
     ResolvedProcess "1" *-- "0..*" ResolvedSpawn : spawns
-    ResolvedProcess "1" *-- "0..1" ResolvedMove : move
     ResolvedProcess "1" *-- "0..*" ResolvedNodeExposure : l4Exposure
     ResolvedPoolExposure "1" *-- "1..*" ResolvedL4Port : ports
     ResolvedNodeExposure "1" *-- "1..*" ResolvedL4Port : ports

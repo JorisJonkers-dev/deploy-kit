@@ -50,7 +50,6 @@ applications:
         runtime: none
         command: [/bin/coverage]
         args: [serve, --verbose]
-        rollback: forward-only
         cutover: interrupted
         provides: { http: 8080 }
         placement:

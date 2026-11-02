@@ -109,15 +109,14 @@ specification, see [Delivery and co-testing](#delivery-and-co-testing).
 
 A consumer never learns where its provider runs. Every surface that at least one
 edge in the union names derives a **Stable Address**: a name that stays the same
-for as long as the surface exists, whichever Instance of the provider currently
-serves it
+for as long as the surface exists, wherever the provider runs
 ([0093](../../docs/adr/model/0093-a-provider-is-reached-through-its-stable-address.md)).
 
 | part | derives as |
 |---|---|
 | name | `<application>-<surface>`, an Application Id and a surface name joined; both are DNS labels, and the pair is unique because the Id is unique in the union and the surface is unique in its Application |
 | namespace | `estate-system`, one namespace for every Stable Address, rendered by the estate-scoped artifact ([chapter 55](55-delivery.md#rendered-artifacts-and-pins)), so that no Project's own namespace, and no move of a Project, changes it |
-| target | the active Instance's address for that surface: the Process's Service in its Project's namespace, or for a provider the Platform document records, its `address` ([chapter 14](14-platform-intent.md#providers)) |
+| target | the surface's address: the Process's Service in its Project's namespace, or for a provider the Platform document records, its `address` ([chapter 14](14-platform-intent.md#providers)) |
 | port | the surface's port, unchanged: the name is an alias, not a proxy, so it cannot remap a port |
 
 A consumer reaches the Stable Address,
@@ -133,19 +132,16 @@ The `kubernetes` adapter renders a Stable Address as a Service of type
 three consequences, all recorded here because they bound what a Stable Address
 can promise:
 
-- **It flips new connections, not old ones.** The cluster DNS answers with a
-  short TTL and a lookup after the flip returns the new target, but an
-  established connection stays where it is. Moving a provider's consumers
-  is therefore the job of the [Fence](55-delivery.md#moves), which closes the
-  old Instance's connections; a consumer must reconnect and resolve its
-  provider again when a connection drops, an obligation every consumer of a
-  surface carries.
+- **It repoints new connections, not old ones.** The cluster DNS answers with
+  a short TTL and a lookup after a new target is written returns it, but an
+  established connection stays where it is; a consumer must reconnect and
+  resolve its provider again when a connection drops, an obligation every
+  consumer of a surface carries.
 - **It cannot hide a port change.** A surface that changes its port still
   changes in two steps ([chapter 50](50-lifecycle.md#expand-and-contract)).
 - **It is not a policy target.** Network policy selects pods, never Services,
-  so a consumer's egress still names the provider's pods: while a
-  [Move](55-delivery.md#moves) is open, the pods of every Instance of the
-  provider ([The derived allow set](#the-derived-allow-set)).
+  so a consumer's egress still names the provider's pods
+  ([The derived allow set](#the-derived-allow-set)).
 
 An HTTP surface reached through name-based routing or TLS sees the Stable
 Address as its `Host` and as the name to present a certificate for; a provider
@@ -192,9 +188,8 @@ aliases would both take: `E_ALIAS_COLLISION`.
 
 An alias's `externalName` is the provider's Stable Address, so a provider's
 move changes no consumer's render: only the Stable Address, which the
-estate-scoped artifact delivers with the Projects that resolve it. Flux creates
-each Stable Address once and never updates it, because a [Move](55-delivery.md#moves)
-flips its target and a reconcile must not flip it back; its unit,
+estate-scoped artifact delivers with the Projects that resolve it, and Flux
+writes its target again whenever the provider's address changes; its unit,
 `estate-stable-addresses`, follows nothing, since an `ExternalName` needs no
 target to exist and a consumer resolves it again until its target answers.
 
@@ -364,7 +359,7 @@ nothing the second time.
 **The admin login.** The method signs in with the derived
 `secret/data/<project>/<process>/catalog`, keys `user` and `password`, or
 `token` for an object store, which the platform's operator writes, as for a
-backup's and a move's login.
+backup's login.
 
 ## Process identity
 
@@ -393,16 +388,7 @@ with a Process `c`, both derive `a-system-system-c`. Written under the name,
 the two claim one path, and a path has one owner: the render is refused with
 `E_PATH_COLLISION` ([chapter 30](30-deliverables.md#path-allocation)) before
 either document exists, so no project's role is ever written over another's.
-A backup identity, a migration identity and a move identity are named by the
-same rule. A **move identity**, `<process>-move`, exists only while a
-[Move](55-delivery.md#moves) of its Process is open: it holds the engine
-method's credential on both Instances and one Kubernetes permission, to update
-the Stable Addresses that name the source, and it leaves the render with the
-source's retirement. That permission is a Role in the Stable Addresses'
-namespace, `estate-system`, narrowed by name to those Stable Addresses and
-named `<namespace>-<process>-move`, as a cluster-wide name is, since that
-namespace holds every Project's; its policy reaches both Instances on the
-engine's surface, the Secret Store, the cluster's DNS and the API server.
+A backup identity and a migration identity are named by the same rule.
 
 | project | Application | Processes | ServiceAccount, in the project's namespace | Vault role and policy |
 |---|---|---|---|---|
@@ -577,14 +563,6 @@ producer.
 | to every pod carrying the member label, on any port | every Process of the Application the Platform document's `delivery.gate` names ([The member label](#the-member-label)) | egress |
 | from Flux's notification controller, to the Reporter's `http` surface | the Platform document's `delivery.reporter` naming the Application ([chapter 14](14-platform-intent.md#delivery-policy)): the first of its Processes that provides the surface, and no other. The peer is in the namespace `bootstrap.flux.sourceRef` names and is selected by the `app` label Flux's own install gives the controller, because Flux is in the bootstrap set and no Process, so nothing renders a label for it | ingress |
 | to where the Kubernetes API answers, by address | the Process's `api`, and the Platform document's `apiAccess.server` ([Kubernetes API access is declared and admitted](#kubernetes-api-access-is-declared-and-admitted)) | egress |
-| between a provider's Instances, on the surface its engine's move method syncs over | an open Move of the provider ([chapter 55](55-delivery.md#moves)): from the target Instance to the source while the sync runs, and back while reverse replication runs | egress and ingress |
-
-While a [Move](55-delivery.md#moves) of a provider is open, every rule above
-that names the provider's pods names the pods of **every** Instance of it: a
-consumer's egress admits the source and the target alike, and both admit the
-consumer. The flip of the [Stable Address](#the-stable-address) then needs no
-policy change in any consumer's Project, which is what lets it happen at once,
-and the rules narrow to the one remaining Instance when the source is retired.
 
 A peer on another Application is admitted, and reached, where it runs: the
 `<project>-system` of the project that declares it, under its Process's name,
@@ -1040,16 +1018,13 @@ Application says which host and path, the Process says which port.
 Two derived values are not columns. The **Application revision** is a digest
 over the resolved element, so it rests on every other assignment of its
 Application at once; it reaches the Canary's webhook metadata, the annotation on
-a gated Application's VSO objects, the migration Jobs' names and an open Move's
-target Instance ([chapter 20](20-resolved-deployment.md#the-application-revision)).
+a gated Application's VSO objects and the migration Jobs' names ([chapter 20](20-resolved-deployment.md#the-application-revision)).
 And every Deliverable's **path** is written by its adapter from `project` and
 `id`, which is what the `Kustomization` column records: no step derives a path
 plan ahead of the adapters.
 
-Three rows read zero in all four drawings. `owner` is carried into the
-Effective Intent and read by nothing that renders. `rollback` is read by a check
-alone, which refuses an irreversible Move it does not acknowledge, and derives
-no value. And the `hardening` assignment is recorded in the projection, while
+Two rows read zero in all four drawings. `owner` is carried into the
+Effective Intent and read by nothing that renders. And the `hardening` assignment is recorded in the projection, while
 the `kubernetes` adapter writes the one `restricted` posture as a constant.
 Each is [open below](#open-in-this-chapter) rather than hidden by the drawing.
 
@@ -1166,13 +1141,12 @@ gates a deploy is co-testing, and stays parked in
    exit criterion is [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)'s lab
    evaluation. That evaluation is 0035's own settling test and is recorded
    there, not here.
-3. **Three rows with out-degree zero.** [The derivation map](#the-derivation-map)
-   draws `owner`, `rollback` and the `hardening` assignment reaching nothing,
-   which [property 3](#3-no-dead-declarations-no-declaration-has-out-degree-zero)
+3. **Two rows with out-degree zero.** [The derivation map](#the-derivation-map)
+   draws `owner` and the `hardening` assignment reaching nothing, which
+   [property 3](#3-no-dead-declarations-no-declaration-has-out-degree-zero)
    forbids. `owner` is documented as who is notified, and nothing renders a
-   notification target; `rollback` acknowledges an irreversible Move, which is
-   admission rather than a derived value; `hardening` has one value, which the
-   `kubernetes` adapter writes without reading it.
+   notification target; `hardening` has one value, which the `kubernetes`
+   adapter writes without reading it.
    **Owner:** joris.
    **Settled by:** for each row, either a derivation the compiler performs, or
    a rule in this chapter that exempts an acknowledgement from property 3.
@@ -1201,7 +1175,7 @@ flowchart TB
 
     E -.->|"required: false"| N1["allow rule only,<br/>orders nothing"]
 
-    O3 -->|"externalName"| SA["Stable Address, estate-scoped<br/>platform-postgres-postgres.estate-system<br/>naming the active Instance"]
+    O3 -->|"externalName"| SA["Stable Address, estate-scoped<br/>platform-postgres-postgres.estate-system<br/>naming the Process's Service"]
     O4 --> B["+ baseline<br/>UDP/53 to cluster DNS"]
     B -.->|"only when the edge set is complete"| D["default-deny posture"]
     O5 -.-> PI["the provider's own ingress<br/>admits every pod carrying the label"]
@@ -1239,7 +1213,6 @@ flowchart LR
         d_egress["egress"]
         d_vpn["vpn"]
         d_spawns["spawns"]
-        d_rollback["rollback"]
         d_sec["secrets<br/>path, access, delivery"]
         d_dep["dependsOn<br/>+ credentials, buckets"]
         d_env["env files"]
@@ -1285,8 +1258,6 @@ flowchart LR
         a_spawn["spawn templates<br/>image, selector"]
         a_l4["L4 address + ports"]
         a_ns53["upstream nameservers"]
-        a_move["the Move<br/>source, target, method"]
-        a_inst["serving Instance"]
     end
 
     subgraph ASR["Assignments, wiring (layer 2)"]
@@ -1334,7 +1305,6 @@ flowchart LR
         k_libpv["library PersistentVolume + claim<br/>kubernetes"]
         k_alias["alias<br/>ExternalName Service<br/>kubernetes"]
         k_mig["migration Jobs + ServiceAccount<br/>kubernetes"]
-        k_movej["Move step Jobs<br/>+ identity, Role<br/>kubernetes"]
         k_stable["Stable Address<br/>ExternalName<br/>kubernetes"]
         k_kust["Kustomization<br/>per directory<br/>kubernetes"]
     end
@@ -1391,14 +1361,11 @@ flowchart LR
     d_name & d_spawns & p_plat & p_lock --> a_spawn
     d_l4 & d_name & d_prov & p_plat --> a_l4
     d_l4 & p_plat --> a_ns53
-    d_project & d_id & d_name & d_image & d_engine & d_prov & d_vol & d_dep --> a_move
-    d_place & p_plat & p_node & p_lock & p_cs --> a_move
-    d_id & d_name & p_cs --> a_inst
     d_project & d_id & d_mig & d_client & d_name & d_life & d_sec & d_dep --> a_grants
     d_env & p_plat --> a_grants
     d_mig & d_client & d_vol & d_vpn & d_sec & d_dep & p_plat --> a_store
-    d_project & d_prov & d_spawns & d_dep & p_plat & p_cs --> a_addr
-    d_prov & d_spawns & d_dep & p_plat & p_cs --> a_stable
+    d_project & d_prov & d_spawns & d_dep & p_plat --> a_addr
+    d_prov & d_spawns & d_dep & p_plat --> a_stable
     d_spawns & d_dep --> a_cons
     d_id & d_obs & d_exp & d_name & d_engine & d_prov & d_probes & d_cut --> a_in
     p_plat --> a_in
@@ -1427,10 +1394,10 @@ flowchart LR
     d_vol & d_place & a_ns & a_ident & a_img & a_uid & a_switch & a_start --> k_work
     a_dl & a_rep & a_spread & a_prio & a_nodes & a_bind & a_gpu & a_vpn --> k_work
     a_token & a_probe & a_writ & a_asset & a_lib & a_proxy & a_envr & a_l4 --> k_work
-    a_ns53 & a_move & a_inst & a_grants & a_cons & a_gate --> k_work
-    d_id & d_name & d_runtime & d_prov & a_ns & a_switch & a_move & a_inst --> k_svc
+    a_ns53 & a_grants & a_cons & a_gate --> k_work
+    d_id & d_name & d_runtime & d_prov & a_ns & a_switch --> k_svc
     d_id & d_name & d_runtime & a_ns & a_l4 --> k_lb
-    d_id & d_name & d_runtime & d_vol & a_ns & a_backup & a_move & a_inst --> k_pvc
+    d_id & d_name & d_runtime & d_vol & a_ns & a_backup --> k_pvc
     d_id & d_name & d_runtime & d_assets & a_ns & a_asset --> k_cm
     d_id & a_ns & a_gate --> k_gcm
     d_id & d_exp & d_name & d_runtime & d_prov & a_ns & a_switch & a_dl --> k_can
@@ -1444,20 +1411,19 @@ flowchart LR
     a_ns & a_lib --> k_libpv
     a_ns & a_addr --> k_alias
     d_id & a_ns & a_migp --> k_mig
-    d_id & d_name & a_ns & a_move --> k_movej
     a_stable --> k_stable
     d_project & d_id --> k_kust
     d_id & d_name & d_runtime & a_ns & a_probe & a_spawn & a_l4 & a_ns53 --> n_proc
-    a_move & a_addr & a_in & a_out & a_apir & a_inet & a_mesh --> n_proc
+    a_addr & a_in & a_out & a_apir & a_inet & a_mesh --> n_proc
     d_id & a_ns & a_spawn & a_mesh --> n_spawn
-    d_id & a_ns & a_backup & a_move & a_mesh & a_migp & a_cat & a_pjob --> n_ident
+    d_id & a_ns & a_backup & a_mesh & a_migp & a_cat & a_pjob --> n_ident
     d_project --> n_deny
     a_ns & a_store --> v_conn
-    d_id & d_name & d_runtime & a_ns & a_ident & a_vpn & a_backup & a_move --> v_auth
+    d_id & d_name & d_runtime & a_ns & a_ident & a_vpn & a_backup --> v_auth
     a_grants --> v_auth
     d_id & d_name & d_runtime & a_ns & a_switch & a_vpn & a_backup & a_grants --> v_sec
     a_gate --> v_sec
-    a_ns & a_ident & a_vpn & a_backup & a_move & a_grants & a_migp & a_cat --> v_pol
+    a_ns & a_ident & a_vpn & a_backup & a_grants & a_migp & a_cat --> v_pol
     a_ns & a_grants --> v_gen
     d_id & d_exp & d_prov & a_ns & a_tier & a_route --> t_ir
     p_plat & a_fauth --> t_mw

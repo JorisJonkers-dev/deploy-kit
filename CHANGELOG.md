@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.9.3...v1.10.0) (2026-11-02)
+
+
+### Features
+
+* **model:** remove the Move, now that every Project is on the estate path ([#812](https://github.com/JorisJonkers-dev/deploy-kit/issues/812)) ([ece4ab7](https://github.com/JorisJonkers-dev/deploy-kit/commit/ece4ab70bf123a4d3dbb11540e314f9f56554c4b)), closes [#807](https://github.com/JorisJonkers-dev/deploy-kit/issues/807)
+
 ## [1.9.3](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.9.2...v1.9.3) (2026-11-02)
 
 

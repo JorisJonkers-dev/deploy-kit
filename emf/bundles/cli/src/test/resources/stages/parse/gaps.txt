@@ -11,11 +11,6 @@ DatabaseGrant.rotation is never set in a parse case's input
 Datastore.etcd is never used in a parse case's input
 Engine.valkey is never used in a parse case's input
 Generate.adopt is never set in a parse case's input
-MoveStep.lag is never used in a parse case's input
-MoveStep.retire is never used in a parse case's input
-MoveStep.reverse is never used in a parse case's input
-MoveStep.sync is never used in a parse case's input
-MoveStep.unfence is never used in a parse case's input
 PolicyController.cni is never used in a parse case's input
 PolicyController.none is never used in a parse case's input
 SignInMode.token is never used in a parse case's input
@@ -37,24 +32,12 @@ platform-intent.schema.json /durability/recoverable/offCluster/egress[]/port is 
 platform-intent.schema.json /durability/recoverable/offCluster/recipient is never present in a parse case's input
 platform-intent.schema.json /engines/files/catalog is never present in a parse case's input
 platform-intent.schema.json /engines/files/catalogSurface is never present in a parse case's input
-platform-intent.schema.json /engines/files/move is never present in a parse case's input
-platform-intent.schema.json /engines/files/move/breaksOn is never present in a parse case's input
-platform-intent.schema.json /engines/files/move/image is never present in a parse case's input
-platform-intent.schema.json /engines/files/move/reverse is never present in a parse case's input
 platform-intent.schema.json /engines/files/surface is never present in a parse case's input
 platform-intent.schema.json /engines/mongo/catalog is never present in a parse case's input
 platform-intent.schema.json /engines/mongo/catalogSurface is never present in a parse case's input
-platform-intent.schema.json /engines/mongo/move is never present in a parse case's input
-platform-intent.schema.json /engines/mongo/move/breaksOn is never present in a parse case's input
-platform-intent.schema.json /engines/mongo/move/image is never present in a parse case's input
-platform-intent.schema.json /engines/mongo/move/reverse is never present in a parse case's input
 platform-intent.schema.json /engines/postgres/catalogSurface is never present in a parse case's input
 platform-intent.schema.json /engines/rabbitmq/catalog is never present in a parse case's input
 platform-intent.schema.json /engines/rabbitmq/catalogSurface is never present in a parse case's input
-platform-intent.schema.json /engines/s3/move is never present in a parse case's input
-platform-intent.schema.json /engines/s3/move/breaksOn is never present in a parse case's input
-platform-intent.schema.json /engines/s3/move/image is never present in a parse case's input
-platform-intent.schema.json /engines/s3/move/reverse is never present in a parse case's input
 platform-intent.schema.json /engines/s3/surface is never present in a parse case's input
 platform-intent.schema.json /engines/valkey/catalog is never present in a parse case's input
 platform-intent.schema.json /engines/valkey/catalogSurface is never present in a parse case's input

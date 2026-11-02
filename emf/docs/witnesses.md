@@ -22,7 +22,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **88** witnesses, and **3** pending.
+This list holds **87** witnesses, and **1** pending.
 
 | id | JUnit test |
 |---|---|
@@ -85,8 +85,7 @@ This list holds **88** witnesses, and **3** pending.
 | REQ-107 | `ModelWitnessesTest#aProcessThatSpawnsCreatesPodsFromItsTemplateAlone` |
 | REQ-108 | `ModelWitnessesTest#anAdmittedApiBlockWithNoRulesRendersNoRoleAndNoBindingBesideItsMountedToken` |
 | REQ-109 | `ModelWitnessesTest#anEdgeIntoAnObjectStoreThatNamesBucketsDerivesItsCatalogAndHandsTheConsumerItsKey` |
-| REQ-111 | `ModelWitnessesTest#everyStableAddressIsOneExternalNameCreatedOnceAndAConsumersAliasNamesItAlone` |
-| REQ-113 | `ModelWitnessesTest#anOpenMoveRendersItsFrozenSourceBesideItsTargetAndOneSuspendedJobPerStep` |
+| REQ-111 | `ModelWitnessesTest#everyStableAddressIsOneExternalNameKeptCurrentByFluxAndAConsumersAliasNamesItAlone` |
 | REQ-117 | `ModelWitnessesTest#everyCanaryAsksTheReleaseGateAFourthQuestionRollback` |
 | REQ-118 | `ModelWitnessesTest#theMetricsStackScrapesFluxsControllersWhereThePlatformRecordsTheirMetricsAndNowhereElse` |
 | REQ-119 | `ModelWitnessesTest#aProcessAndASidecarCarryTheCommandAndArgumentsTheyNameAsWrittenAndNamingNoneCarriesNone` |
@@ -120,5 +119,3 @@ This list holds **88** witnesses, and **3** pending.
 | id | why no witness yet | ticket |
 |---|---|---|
 | REQ-035 | `resolved.json` binds the production implementation only, so the shared claim is the rendered tree, which REQ-040's witness holds; the row's own last clause, knowledge's resolved edges, is resolved by neither implementation, and leaves with the example when knowledge-system retires ([the parity contract](../../docs/architecture.md#the-parity-contract)) | #272 |
-| REQ-110 | a Move is the production implementation's alone (the maintainer, 2026-10-30): this implementation renders a given Move and derives none, so neither the pinned Move facts nor `E_ENGINE_VERSION_MISSING` are asked here, and the Move leaves with the estate path ([#807](https://github.com/JorisJonkers-dev/deploy-kit/issues/807)) | #807 |
-| REQ-112 | a Move is the production implementation's alone (the maintainer, 2026-10-30): this implementation derives none, so `E_MOVE_UNSUPPORTED`, `E_NO_MOVE_POLICY` and `E_MOVE_OPEN` are not asked here, and the Move leaves with the estate path ([#807](https://github.com/JorisJonkers-dev/deploy-kit/issues/807)) | #807 |

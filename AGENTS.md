@@ -46,8 +46,7 @@ every rule a tool enforces on it.
 - Vitest for the suite, ESLint (`strictTypeChecked`, with type information)
   and Prettier for style, dependency-cruiser for the module graph, Stryker for
   mutation testing.
-- `emf/` is a second, separate stack, frozen at the tag `mde-task-3`: Maven
-  and Tycho on JDK 21, building Ecore, Xtext, OCL, QVT-Operational and
+- `emf/` is a second, separate stack: Maven and Tycho on JDK 21, building Ecore, Xtext, OCL, QVT-Operational and
   Acceleo. It has its own `AGENTS.md` equivalent in
   [`emf/docs/architecture.md`](emf/docs/architecture.md); this file only
   routes an agent into it, per [the parity contract](#the-model-driven-implementation-under-emf).
@@ -139,9 +138,9 @@ tool runs it.
   enforcement. Changing what `spec/v1` says the model means. Anything that
   touches release, publishing or rulesets.
 - **Always:** land a model change in TypeScript and in the oracle files it
-  affects, in one pull request. `emf/` is frozen at the tag `mde-task-3` for
-  the MDE Task 3 hand-in until one catch-up pull request after 1.0.0 brings
-  it up to date: do not edit it, and do not keep it in agreement. Check both ADR registers before taking a number.
+  affects, in one pull request. `emf/` follows in a pull request of its own,
+  held to the same oracle files by its own build. Check both ADR registers
+  before taking a number.
 - **Never:** generate one implementation from the other, regenerate an oracle
   file in CI, or add a root dependency on anything under `emf/`. Push to
   `main` or force-push a shared branch. Edit a version or `CHANGELOG.md` by
@@ -261,24 +260,23 @@ The MDE course requires the compiler to be built with Ecore, Xtext, OCL,
 QVT-Operational and Acceleo, so `emf/` holds the model-driven implementation:
 a second, hand-written Java implementation beside the TypeScript production
 implementation (Maven and Tycho, JDK 21, no Eclipse IDE to build, but
-loadable in Eclipse for the course's examiners). It is frozen at the tag
-`mde-task-3`, the commit handed in for MDE Task 3, while the concepts for
-1.0.0 land in TypeScript only. After 1.0.0 one catch-up pull request brings it
-up to date with every shape at once, and only then does the `emf` job rejoin
-`Pipeline Complete`:
+loadable in Eclipse for the course's examiners). A model change lands in
+TypeScript first, and `emf/` catches up in a pull request of its own, held to
+the same oracle files:
 
 - **The root stays TypeScript.** Every pom, module, check, ledger and
   decision of the Java side lives under `emf/`. The root references it only
-  from CI (the `emf` job, run by hand only and needed by no gate, the `emf`
-  ADR lint step and CodeQL's `java-kotlin` entry), `test/emf-wiring.test.ts`
+  from CI (the `emf` job, which runs the build with its tests and coverage gate
+  on every change to `emf/`, its mutation gate nightly, and is needed by no
+  gate; the `emf` ADR lint step; and CodeQL's `java-kotlin` entry), `test/emf-wiring.test.ts`
   with its ledger rows, the `emf` domain in `scripts/lint-adrs.ts` and its test, the release-please and Renovate
   configuration, and
   [`docs/architecture.md#the-parity-contract`](docs/architecture.md#the-parity-contract).
 - **Never generate one implementation from the other.** Both are tested,
   separately, against committed oracle files under `spec/v1/examples/`.
-- **A model change lands in TypeScript only.** `emf/` no longer has to agree
-  with the compiler or the oracle files; the links, meaning and codes lints
-  skip it.
+- **A model change lands in TypeScript first.** `emf/` may trail `main` between
+  catch-ups, and its `OracleDistanceTest` shows how far; the links, meaning
+  and codes lints skip it.
 - EMF decisions live in [`emf/docs/adr/`](emf/docs/adr/README.md), numbered
   from the root's sequence. Check both registers before taking a number, and
   lint with `node scripts/lint-adrs.ts emf`.
