@@ -49,6 +49,28 @@ function mavenSteps(files: readonly Workflow[]): string[] {
   );
 }
 
+/**
+ * Every workflow step that passes the `quick` profile to the Maven wrapper, by
+ * its workflow. The profile skips the coverage floor, PIT and the Spotless
+ * check for a local edit (emf/pom.xml), so a step that passes it would let CI
+ * skip the gates it exists to run.
+ */
+function quickProfileErrors(files: readonly Workflow[]): string[] {
+  return files.flatMap((file) =>
+    file.text
+      .split(/\n(?= {6}- )/)
+      .filter(
+        (step) =>
+          /\bmvnw\b/.test(step) &&
+          /(?:-P\s*|--activate-profiles[=\s]+)(?:[\w-]+,)*quick\b/.test(step),
+      )
+      .map(
+        () =>
+          `${file.name} passes the quick profile to the Maven wrapper, which skips the gates CI runs`,
+      ),
+  );
+}
+
 /** Every problem with the Maven steps and the reactor under `root`. */
 function mavenWiringErrors(files: readonly Workflow[], root: string): string[] {
   const errors: string[] = [];
@@ -127,6 +149,40 @@ describe("the model-driven build CI runs is the build in the tree", () => {
     expect(mavenWiringErrors([], root)).toEqual([
       "emf/pom.xml names module gone, which is not on disk",
     ]);
+  });
+});
+
+describe("CI never passes the model-driven build's quick profile", () => {
+  it("passes over this repository's workflows", () => {
+    expect(quickProfileErrors(workflows())).toEqual([]);
+  });
+
+  it.each([
+    ["-Pquick", "./mvnw -B -ntp verify -Pquick"],
+    ["-P quick", "./mvnw -B -ntp -P quick verify"],
+    ["a list of profiles", "./mvnw -B -ntp verify -Pbenchmark,quick"],
+    ["--activate-profiles", "./mvnw -B -ntp verify --activate-profiles=quick"],
+  ])("fails a step that passes it with %s", (_, run) => {
+    const quick = workflow(
+      "ci.yml",
+      MAVEN_STEP.replace("./mvnw -B -ntp verify", run),
+    );
+
+    expect(quickProfileErrors([quick])).toEqual([
+      "ci.yml passes the quick profile to the Maven wrapper, which skips the gates CI runs",
+    ]);
+  });
+
+  it("passes a step that names another profile", () => {
+    const benchmark = workflow(
+      "ci.yml",
+      MAVEN_STEP.replace(
+        "./mvnw -B -ntp verify",
+        "./mvnw -B -ntp verify -Pbenchmark -Dquickly=true",
+      ),
+    );
+
+    expect(quickProfileErrors([benchmark])).toEqual([]);
   });
 });
 
