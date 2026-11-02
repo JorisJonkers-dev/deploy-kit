@@ -124,7 +124,6 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="command" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="args" upperBound="-1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="spawns" upperBound="-1" eType="#//SpawnTemplate" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="rollback" eType="#//Rollback" containment="true"/>
   </eClassifiers>
   <!-- A Process whose traffic leaves through the platform's VPN, and whether it
        receives the forwarded port (spec/v1/10-project-intent.md#vpn-attachment). -->
@@ -366,12 +365,6 @@
   <!-- A Process kept declared and scaled to nothing, and why. -->
   <eClassifiers xsi:type="ecore:EClass" name="Parked">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="reason" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-  </eClassifiers>
-  <!-- A Process whose release is never rolled back: only `forward-only` is written. -->
-  <eClassifiers xsi:type="ecore:EClass" name="Rollback">
-    <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
-      <details key="scalar" value="forward-only"/>
-    </eAnnotations>
   </eClassifiers>
   <!-- A pod a Process creates through the API, from a template the platform renders. -->
   <eClassifiers xsi:type="ecore:EClass" name="SpawnTemplate">
@@ -749,7 +742,6 @@
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="surface" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="catalog" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" unsettable="true" name="catalogSurface" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="move" eType="#//MoveMethod" containment="true"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="MonitorCadence">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="interval" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
@@ -781,7 +773,6 @@
          `http` surface (spec/v1/55-delivery.md#rollouts); a platform may name none. -->
     <eStructuralFeatures xsi:type="ecore:EReference" name="reporter" eType="#//Application"/>
     <eStructuralFeatures xsi:type="ecore:EReference" name="analysis" lowerBound="1" eType="#//AnalysisPolicy" containment="true"/>
-    <eStructuralFeatures xsi:type="ecore:EReference" name="move" eType="#//MovePolicy" containment="true"/>
   </eClassifiers>
   <!-- Who may hold Kubernetes API access, and where the API answers
        (spec/v1/14-platform-intent.md#kubernetes-api-access): the Applications whose Processes
@@ -840,17 +831,6 @@
   <eClassifiers xsi:type="ecore:EClass" name="FluxMetrics">
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="port" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EIntegerObject"/>
     <eStructuralFeatures xsi:type="ecore:EAttribute" name="path" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="MoveMethod">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="image" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="breaksOn" lowerBound="1" eType="#//MoveBreak"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="reverse" lowerBound="1" eType="#//MoveReverse"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EClass" name="MovePolicy">
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="timeout" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="retention" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="memory" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
-    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cpu" lowerBound="1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EClass" name="MonitorLabel" instanceClassName="java.util.Map$Entry">
     <eAnnotations source="https://jorisjonkers.dev/deploy-kit/json">
@@ -989,15 +969,6 @@
     <eLiterals name="admin" value="1" literal="admin"/>
     <eLiterals name="edit" value="2" literal="edit"/>
     <eLiterals name="view" value="3" literal="view"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="MoveBreak">
-    <eLiterals name="major" literal="major"/>
-    <eLiterals name="minor" value="1" literal="minor"/>
-  </eClassifiers>
-  <eClassifiers xsi:type="ecore:EEnum" name="MoveReverse">
-    <eLiterals name="always" literal="always"/>
-    <eLiterals name="sameMajor" value="1" literal="same-major"/>
-    <eLiterals name="never" value="2" literal="never"/>
   </eClassifiers>
   <eClassifiers xsi:type="ecore:EEnum" name="Datastore">
     <eLiterals name="sqlite" literal="sqlite"/>

@@ -346,7 +346,7 @@ class OutputsTest {
         try (Stream<Path> tree = Files.walk(source)) {
             for (Path file : tree.filter(Files::isRegularFile)
                     .filter(file -> source.relativize(file).getNameCount() > 1)
-                    .filter(file -> !List.of("expected", "rendered", "moving")
+                    .filter(file -> !List.of("expected", "rendered")
                             .contains(source.relativize(file).getName(0).toString()))
                     .toList()) {
                 Path copied = target.getParent().resolve(source.relativize(file).toString());

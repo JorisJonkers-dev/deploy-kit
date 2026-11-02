@@ -517,12 +517,13 @@ class ModelWitnessesTest {
     }
 
     @Test
-    void everyStableAddressIsOneExternalNameCreatedOnceAndAConsumersAliasNamesItAlone() {
+    void everyStableAddressIsOneExternalNameKeptCurrentByFluxAndAConsumersAliasNamesItAlone() {
         String stable = object(
                 rendered("auth", "estate/stable-addresses/services.yaml"), "Service", "platform-postgres-postgres");
+        // Kept current: nothing asks Flux to create it once and leave it.
         assertThat(stable)
                 .contains("namespace: estate-system\n")
-                .contains("kustomize.toolkit.fluxcd.io/ssa: IfNotPresent\n")
+                .doesNotContain("kustomize.toolkit.fluxcd.io/ssa")
                 .contains("type: ExternalName\n  externalName: postgres.data-system.svc.cluster.local");
 
         assertThat(object(rendered("auth", "apps/auth/aliases.yaml"), "Service", "platform-postgres"))
@@ -530,28 +531,6 @@ class ModelWitnessesTest {
                 .contains("externalName: platform-postgres-postgres.estate-system.svc.cluster.local");
         assertThat(rendered("edge", "apps/edge/traefik-lan/middlewares.yaml"))
                 .contains(".estate-system.svc.cluster.local:");
-    }
-
-    @Test
-    void anOpenMoveRendersItsFrozenSourceBesideItsTargetAndOneSuspendedJobPerStep() throws IOException {
-        Map<String, byte[]> written = Stages.run("render", "data-moving");
-        String workload = new String(written.get("apps/data/platform-postgres/workload.yaml"));
-        String move = new String(written.get("apps/data/platform-postgres/move.yaml"));
-
-        assertThat(object(workload, "Deployment", "postgres"))
-                .contains("kustomize.toolkit.fluxcd.io/ssa: IfNotPresent\n");
-        assertThat(object(workload, "Deployment", "postgres-fe331b712e81"))
-                .contains("namespace: data-system\n")
-                .contains("app.kubernetes.io/instance: postgres\n");
-        for (String step : List.of("start", "sync", "lag", "fence")) {
-            assertThat(object(move, "Job", "postgres-move-" + step + "-fe331b712e81"))
-                    .contains("suspend: true\n")
-                    .contains("serviceAccountName: postgres-move\n");
-        }
-        assertThat(object(move, "Role", "data-system-postgres-move"))
-                .contains("namespace: estate-system\n")
-                .contains("- platform-postgres-postgres\n")
-                .contains("    verbs:\n      - get\n      - update\n      - patch");
     }
 
     @Test

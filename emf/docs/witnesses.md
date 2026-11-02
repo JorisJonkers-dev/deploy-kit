@@ -85,7 +85,7 @@ This list holds **87** witnesses, and **1** pending.
 | REQ-107 | `ModelWitnessesTest#aProcessThatSpawnsCreatesPodsFromItsTemplateAlone` |
 | REQ-108 | `ModelWitnessesTest#anAdmittedApiBlockWithNoRulesRendersNoRoleAndNoBindingBesideItsMountedToken` |
 | REQ-109 | `ModelWitnessesTest#anEdgeIntoAnObjectStoreThatNamesBucketsDerivesItsCatalogAndHandsTheConsumerItsKey` |
-| REQ-111 | `ModelWitnessesTest#everyStableAddressIsOneExternalNameCreatedOnceAndAConsumersAliasNamesItAlone` |
+| REQ-111 | `ModelWitnessesTest#everyStableAddressIsOneExternalNameKeptCurrentByFluxAndAConsumersAliasNamesItAlone` |
 | REQ-117 | `ModelWitnessesTest#everyCanaryAsksTheReleaseGateAFourthQuestionRollback` |
 | REQ-118 | `ModelWitnessesTest#theMetricsStackScrapesFluxsControllersWhereThePlatformRecordsTheirMetricsAndNowhereElse` |
 | REQ-119 | `ModelWitnessesTest#aProcessAndASidecarCarryTheCommandAndArgumentsTheyNameAsWrittenAndNamingNoneCarriesNone` |

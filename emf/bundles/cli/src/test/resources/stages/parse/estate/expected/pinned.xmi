@@ -119,10 +119,6 @@
   <pinnedinputs:ClusterState apiVersion="state.jorisjonkers.dev/v1" kind="ClusterState" schemaVersion="1.0.0" cluster="production" capturedAt="2026-09-30T00:00:00Z">
     <bindings claim="coverage-data" node="enschede-pi-1"/>
     <placements process="coverage-api" node="enschede-pi-1"/>
-    <instances application="coverage-api" instance="coverage-api" version="1.2.3" namespace="coverage-system" node="enschede-pi-1"/>
-    <instances application="coverage-api" instance="coverage-api-1" name="coverage-api-next" version="2.0.0" namespace="coverage-system" node="enschede-pi-1" phase="fence" flippedAt="2026-10-01T00:00:00Z">
-      <target name="coverage-api" version="2.0.0" namespace="coverage-next-system" node="enschede-pi-2"/>
-    </instances>
   </pinnedinputs:ClusterState>
   <pinnedinputs:ImagesLock apiVersion="lock.jorisjonkers.dev/v1" kind="ImagesLock" schemaVersion="1.0.0" name="estate">
     <images alias="asset-sync" repository="ghcr.io/jorisjonkers-dev/platform/asset-sync" digest="sha256:5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e" uid="65532" gid="65532" version="1.0.0"/>
@@ -154,7 +150,6 @@
     <images alias="traefik" repository="docker.io/library/traefik" digest="sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" uid="65532" gid="65532" version="v3.3.4"/>
     <images alias="vault" repository="docker.io/hashicorp/vault" digest="sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c" uid="100" gid="1000" version="1.18.5"/>
     <images alias="postgres-exporter" repository="quay.io/prometheuscommunity/postgres-exporter" digest="sha256:4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d" uid="65534" gid="65534" version="v0.17.1"/>
-    <images alias="postgres-move" repository="ghcr.io/jorisjonkers-dev/estate/postgres-move" digest="sha256:3d5f7a9c1e3b5d7f9a2c4e6b8d0f2a4c6e8b1d3f5a7c9e2b4d6f8a0c2e4b6d8f" uid="999" gid="999" version="1.0.0"/>
     <images alias="postgres" repository="docker.io/pgvector/pgvector" digest="sha256:9c1e3a5b7d9f1c3e5a7b9d1f3c5e7a9b1d3f5c7e9a1b3d5f7c9e1a3b5d7f9c1e" uid="999" gid="999" version="17.2.0"/>
     <images alias="rabbitmq" repository="docker.io/library/rabbitmq" digest="sha256:2d4f6b8a0c2e4d6f8b0a2c4e6d8f0b2a4c6e8d0f2b4a6c8e0d2f4b6a8c0e2d4f" uid="999" gid="999" version="4.0.7"/>
     <images alias="garage" repository="docker.io/dxflrs/garage" digest="sha256:8d0f2b4c6e8a0d2f4b6c8e0a2d4f6b8c0e2a4d6f8b0c2e4a6d8f0b2c4e6a8d0f" uid="1000" gid="1000" version="2.3.0"/>

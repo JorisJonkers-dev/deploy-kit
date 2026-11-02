@@ -151,10 +151,9 @@ engines:
   # over its wire protocol. A method that reads the volume alone names none.
   # `catalog` applies the database catalog its consumers' edges derive
   # (spec/v1/14-platform-intent.md#catalog-methods).
-  postgres: { backup: postgres-backup, surface: postgres, catalog: postgres-catalog, move: {image: postgres-move, breaksOn: major, reverse: never} } # reverse
-  # is never until the drill that settles it has run (spec/v1/14-platform-intent.md#move-methods)
-  rabbitmq: { backup: rabbitmq-backup, surface: management, move: {image: rabbitmq-move, breaksOn: minor, reverse: same-major} }
-  valkey: { backup: valkey-backup, surface: redis, move: {image: valkey-move, breaksOn: minor, reverse: always} }
+  postgres: { backup: postgres-backup, surface: postgres, catalog: postgres-catalog }
+  rabbitmq: { backup: rabbitmq-backup, surface: management }
+  valkey: { backup: valkey-backup, surface: redis }
   # No `catalog`: no mongo consumer needs a database of its own yet
   # (spec/v1/16-dependencies.md#the-database-catalog).
   mongo: { backup: mongo-backup, surface: mongo }
@@ -270,14 +269,6 @@ delivery:
     threshold: 3
     errorRate: 1%
     latency: 500ms
-  # A Move's write pause may last five minutes, its source is kept a week once
-  # the flip has held, and each of its step Jobs is a small client
-  # (spec/v1/14-platform-intent.md#delivery-policy).
-  move:
-    timeout: 300s
-    retention: 7d
-    memory: 128Mi
-    cpu: 100m
 
 # Who may hold Kubernetes API access, and where the API answers
 # (spec/v1/14-platform-intent.md#kubernetes-api-access). A Process declares

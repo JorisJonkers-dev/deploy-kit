@@ -23,18 +23,6 @@ GateProvider.application is never set by a resolve case
 GateProvider.process is never set by a resolve case
 Generate.adopt is never set in a resolve case's input
 IndexFile.namespace is never set by a resolve case
-MoveFile is never instantiated by a resolve case
-MoveFile.adapter is never set by a resolve case
-MoveFile.path is never set by a resolve case
-MoveFile.process is never set by a resolve case
-MoveStep is never instantiated by a resolve case
-MoveStep.command is never set by a resolve case
-MoveStep.lag is never used in a resolve case's input
-MoveStep.name is never set by a resolve case
-MoveStep.retire is never used in a resolve case's input
-MoveStep.reverse is never used in a resolve case's input
-MoveStep.sync is never used in a resolve case's input
-MoveStep.unfence is never used in a resolve case's input
 PolicyController.cni is never used in a resolve case's input
 PolicyController.none is never used in a resolve case's input
 PolicyPeer.protocol is never set by a resolve case
@@ -49,32 +37,9 @@ ResolvedAsset.seedAt is never set by a resolve case
 ResolvedClient.backChannelLogoutUri is never set by a resolve case
 ResolvedGeneratedKey.adoptKey is never set by a resolve case
 ResolvedGeneratedKey.adoptPath is never set by a resolve case
-ResolvedMove is never instantiated by a resolve case
-ResolvedMove.cpu is never set by a resolve case
-ResolvedMove.credentialsPath is never set by a resolve case
-ResolvedMove.egress is never set by a resolve case
-ResolvedMove.flipNamespace is never set by a resolve case
-ResolvedMove.flips is never set by a resolve case
-ResolvedMove.gid is never set by a resolve case
-ResolvedMove.identity is never set by a resolve case
-ResolvedMove.image is never set by a resolve case
-ResolvedMove.imageVersion is never set by a resolve case
-ResolvedMove.instancePeers is never set by a resolve case
-ResolvedMove.memory is never set by a resolve case
-ResolvedMove.port is never set by a resolve case
-ResolvedMove.role is never set by a resolve case
-ResolvedMove.secretStore is never set by a resolve case
-ResolvedMove.server is never set by a resolve case
-ResolvedMove.sourceHost is never set by a resolve case
-ResolvedMove.steps is never set by a resolve case
-ResolvedMove.tag is never set by a resolve case
-ResolvedMove.targetHost is never set by a resolve case
-ResolvedMove.uid is never set by a resolve case
 ResolvedPlacement.boundTo is never set by a resolve case
 ResolvedPlacement.from is never set by a resolve case
 ResolvedProcess.command is never set by a resolve case
-ResolvedProcess.instance is never set by a resolve case
-ResolvedProcess.move is never set by a resolve case
 ResolvedProcess.nameservers is never set by a resolve case
 ResolvedProcess.seeder is never set by a resolve case
 ResolvedProcess.spawns is never set by a resolve case

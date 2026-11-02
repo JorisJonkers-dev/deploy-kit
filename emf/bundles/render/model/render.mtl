@@ -92,9 +92,6 @@
       [if (p.process.backups()->notEmpty())]
         [p.process.backupPolicy()/]
       [/if]
-      [if (p.process.move <> null)]
-        [p.process.move.movePolicy(p.process)/]
-      [/if]
     [/for]
     [if (d.migration <> null)]
       [d.migration.migrationPolicy()/]
@@ -200,47 +197,6 @@
   [/if]
 [/template]
 
-[comment The move identity's own policy: what its Jobs reach, the Instances on the engine's surface,
-  the Secret Store and the cluster's DNS, and where the Kubernetes API answers, which the flip writes
-  to; and nothing in. /]
-[template private movePolicy(m : resolveddeployment::ResolvedMove, p : resolveddeployment::ResolvedProcess)]
-  ---
-  apiVersion: networking.k8s.io/v1
-  kind: NetworkPolicy
-  metadata:
-    name: [m.identity/]
-    namespace: [p.application().namespace/]
-    labels:
-      [m.identity.labelSet('none', p.application().id)/]
-  spec:
-    podSelector:
-      matchLabels:
-        app.kubernetes.io/instance: [m.identity/]
-    policyTypes:
-      - Ingress
-      - Egress
-    egress:
-  [for (peer : resolveddeployment::PolicyPeer | m.egress)]
-        - to:
-            [peer.peer()/]
-          ports:
-    [if (peer.rule = 'cluster-dns')]
-              - protocol: UDP
-                port: [peer.port/]
-    [/if]
-            - protocol: TCP
-              port: [peer.port/]
-  [/for]
-  [for (range : resolveddeployment::AdmittedRange | m.server)]
-        - to:
-            - ipBlock:
-                cidr: [range.cidr/]
-          ports:
-            - protocol: TCP
-              port: [range.port/]
-  [/for]
-[/template]
-
 [comment A backup identity's own policy. Every backup of a Process runs as the one identity, so
   the policy admits what all of them need: the Process they dump and the cluster's DNS, which
   every plan of the Process shares, and each range any of them copies off-cluster to, once.
@@ -305,21 +261,6 @@
               - protocol: [if (peer.protocol <> null)][peer.protocol/][else]TCP[/if]
                 port: [peer.port/]
     [/for]
-    [if (p.process.move <> null)]
-          - from:
-              - namespaceSelector:
-                  matchLabels:
-                    kubernetes.io/metadata.name: [p.process.application().namespace/]
-                podSelector:
-                  matchLabels:
-                    app.kubernetes.io/instance: [p.process.move.identity/]
-      [for (peer : resolveddeployment::PolicyPeer | p.process.move.instancePeers)]
-                [peer.peer()/]
-      [/for]
-            ports:
-              - protocol: TCP
-                port: [p.process.move.port/]
-    [/if]
   [/if]
     egress:
   [comment Every peer of every edge, in one loop: a loop within a loop indents its lines by
@@ -367,16 +308,6 @@
                 port: [peer.port/]
     [/if]
   [/for]
-  [comment An open Move's Instances reach each other on the engine's surface. /]
-  [if (p.process.move <> null)]
-        - to:
-    [for (peer : resolveddeployment::PolicyPeer | p.process.move.instancePeers)]
-              [peer.peer()/]
-    [/for]
-          ports:
-            - protocol: TCP
-              port: [p.process.move.port/]
-  [/if]
   [comment The nameservers a Process that serves DNS resolves through, by address: off the
     cluster, and answering on UDP and on TCP. /]
   [if (p.process.nameservers->notEmpty())]
@@ -465,10 +396,9 @@
     [p.labels()/]
 [/template]
 
-[comment An Instance a Move starts carries its Process's instance label, and its own name. /]
 [template private labels(p : resolveddeployment::ResolvedProcess)]
   app.kubernetes.io/name: [p.name/]
-  app.kubernetes.io/instance: [p.instanceName()/]
+  app.kubernetes.io/instance: [p.name/]
   app.kubernetes.io/part-of: [p.application().id/]
   app.kubernetes.io/managed-by: deploy-kit
   app.kubernetes.io/component: [p.component/]
@@ -702,126 +632,6 @@
               sizeLimit: [d.application.migration.scratch/]
 [/template]
 
-[comment An open Move: its identity, the Role in the estate's namespace that lets it update the one
-  Stable Address its flip moves, and one Job per step, named by the Move's tag, suspended and created
-  once: what runs a step writes `suspend` afterwards. /]
-[template private objects(d : resolveddeployment::MoveFile)]
-  ---
-  apiVersion: v1
-  kind: ServiceAccount
-  metadata:
-    name: [d.process.move.identity/]
-    namespace: [d.process.application().namespace/]
-    labels:
-      [d.process.move.identity.labelSet('none', d.process.application().id)/]
-  ---
-  apiVersion: rbac.authorization.k8s.io/v1
-  kind: Role
-  metadata:
-    name: [d.process.application().namespace/]-[d.process.move.identity/]
-    namespace: [d.process.move.flipNamespace/]
-    labels:
-      [d.process.move.identity.labelSet('none', d.process.application().id)/]
-  rules:
-    - apiGroups:
-        - ""
-      resources:
-        - services
-      resourceNames:
-        - [d.process.move.flips/]
-      verbs:
-        - get
-        - update
-        - patch
-  ---
-  apiVersion: rbac.authorization.k8s.io/v1
-  kind: RoleBinding
-  metadata:
-    name: [d.process.application().namespace/]-[d.process.move.identity/]
-    namespace: [d.process.move.flipNamespace/]
-    labels:
-      [d.process.move.identity.labelSet('none', d.process.application().id)/]
-  roleRef:
-    apiGroup: rbac.authorization.k8s.io
-    kind: Role
-    name: [d.process.application().namespace/]-[d.process.move.identity/]
-  subjects:
-    - kind: ServiceAccount
-      name: [d.process.move.identity/]
-      namespace: [d.process.application().namespace/]
-  [for (s : resolveddeployment::MoveStep | d.process.move.steps)]
-    [d.process.moveJob(s)/]
-  [/for]
-[/template]
-
-[template private moveJob(p : resolveddeployment::ResolvedProcess, s : resolveddeployment::MoveStep)]
-  ---
-  apiVersion: batch/v1
-  kind: Job
-  metadata:
-    name: [p.move.identity/]-[s.name/]-[p.move.tag/]
-    namespace: [p.application().namespace/]
-    labels:
-      [p.move.identity.labelSet('none', p.application().id)/]
-    annotations:
-      kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
-  spec:
-    suspend: true
-    backoffLimit: 0
-    template:
-      metadata:
-        labels:
-          [p.move.identity.labelSet('none', p.application().id)/]
-  [if (p.move.imageVersion <> null)]
-          annotations:
-            image.jorisjonkers.dev/move: [p.move.imageVersion.scalar()/]
-  [/if]
-      spec:
-        serviceAccountName: [p.move.identity/]
-        automountServiceAccountToken: true
-        restartPolicy: Never
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: [p.move.uid/]
-          runAsGroup: [p.move.gid/]
-          seccompProfile:
-            type: RuntimeDefault
-        containers:
-          - name: move
-            image: [p.move.image/]
-            env:
-              - name: MOVE_STEP
-                value: [s.command.scalar()/]
-              - name: MOVE_SOURCE_HOST
-                value: [p.move.sourceHost/]
-              - name: MOVE_TARGET_HOST
-                value: [p.move.targetHost/]
-              - name: MOVE_PORT
-                value: [p.move.port.toString().scalar()/]
-              - name: MOVE_FLIPS
-                value: [p.move.flips/]
-              - name: MOVE_FLIP_NAMESPACE
-                value: [p.move.flipNamespace/]
-              - name: VAULT_ADDR
-                value: [p.move.secretStore/]
-              - name: VAULT_ROLE
-                value: [p.move.role/]
-              - name: VAULT_CREDENTIALS_PATH
-                value: [p.move.credentialsPath/]
-            resources:
-              requests:
-                memory: [p.move.memory/]
-                cpu: [p.move.cpu/]
-              limits:
-                memory: [p.move.memory/]
-            securityContext:
-              allowPrivilegeEscalation: false
-              readOnlyRootFilesystem: true
-              capabilities:
-                drop:
-                  - ALL
-[/template]
-
 [template private webhook(p : resolveddeployment::ResolvedProcess, name : String, type : String)]
   - name: [name/]
     type: [type/]
@@ -892,10 +702,6 @@
   kind: [d.controller.toString()/]
   metadata:
     [p.metadata()/]
-  [if (p.frozen)]
-      annotations:
-        kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
-  [/if]
   spec:
   [if (p.switchover.toString() = 'blue-green')]
       strategy:
@@ -919,7 +725,7 @@
     selector:
       matchLabels:
         app.kubernetes.io/name: [p.name/]
-        app.kubernetes.io/instance: [p.instanceName()/]
+        app.kubernetes.io/instance: [p.name/]
     template:
       [p.pod('')/]
 [/template]
@@ -1304,7 +1110,7 @@
 [/template]
 
 [template private container(p : resolveddeployment::ResolvedProcess)]
-  - name: [p.instanceName()/]
+  - name: [p.name/]
     image: [p.image/]
   [if (p.command->notEmpty())]
       command:
@@ -1652,10 +1458,7 @@
         [p.metadata()/]
       spec:
         selector:
-      [if (p.instance <> null or p.move <> null)]
-            app.kubernetes.io/name: [p.name/]
-      [/if]
-          app.kubernetes.io/instance: [p.instanceName()/]
+          app.kubernetes.io/instance: [p.name/]
         ports:
       [for (s : resolveddeployment::ResolvedSurface | p.surfaces)]
             - name: [s.name/]
@@ -1714,8 +1517,8 @@
   [/for]
 [/template]
 
-[comment Every Stable Address, an ExternalName Service in the estate's namespace. Created once and
-  never overwritten by a later apply, so the flip of a Move is what moves it. /]
+[comment Every Stable Address, an ExternalName Service in the estate's namespace, kept current by
+  Flux like every other object of the render. /]
 [template private objects(d : resolveddeployment::StableAddressFile)]
   [for (a : resolveddeployment::Alias | d.addresses)]
     ---
@@ -1726,8 +1529,6 @@
       namespace: [d.namespace/]
       labels:
         app.kubernetes.io/managed-by: deploy-kit
-      annotations:
-        kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
     spec:
       type: ExternalName
       externalName: [a.target/]
@@ -3597,21 +3398,17 @@
 
 [comment The containers of a Process's pod whose image the lock records a version for, by name. /]
 [query private versioned(p : resolveddeployment::ResolvedProcess) : Sequence(String) =
-  (if p.imageVersion = null then Sequence{} else Sequence{p.instanceName()} endif)
+  (if p.imageVersion = null then Sequence{} else Sequence{p.name} endif)
     ->concat(p.sidecars->select(c | c.imageVersion <> null)->collect(c | c.name))
     ->concat(if p.vpn = null or p.vpn.imageVersion = null then Sequence{} else Sequence{'vpn'} endif)
     ->concat(if p.seeder = null or p.seeder.imageVersion = null then Sequence{} else Sequence{'seed'} endif)
     ->sortedBy(n | n) /]
 
 [query private versionOf(p : resolveddeployment::ResolvedProcess, n : String) : String =
-  if n = p.instanceName() then p.imageVersion
+  if n = p.name then p.imageVersion
   else if p.sidecars->exists(c | c.name = n) then p.sidecars->select(c | c.name = n)->first().imageVersion
   else if n = 'seed' and p.seeder <> null then p.seeder.imageVersion
   else p.vpn.imageVersion endif endif endif /]
-
-[comment The Process an Instance is of, or the Process itself. /]
-[query private instanceName(p : resolveddeployment::ResolvedProcess) : String =
-  if p.instance = null then p.name else p.instance endif /]
 
 [comment Whether the Process is a member of its Application's release gate, whose pods carry the label
   the Release Gate's policy admits. /]

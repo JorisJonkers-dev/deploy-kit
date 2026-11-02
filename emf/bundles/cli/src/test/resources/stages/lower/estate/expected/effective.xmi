@@ -396,7 +396,6 @@
         <command>/bin/coverage</command>
         <args>serve</args>
         <args>--verbose</args>
-        <rollback/>
       </processes>
       <processes startupBudget="60s" name="coverage-seed" lifecycle="prepare" image="coverage-seed" runtime="none">
         <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/app" fileMode="0400" path="secret/data/coverage-system/app">

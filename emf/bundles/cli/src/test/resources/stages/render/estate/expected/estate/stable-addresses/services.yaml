@@ -7,8 +7,6 @@ metadata:
   namespace: estate-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit
-  annotations:
-    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   type: ExternalName
   externalName: postgres.data-system.svc.cluster.local
@@ -20,8 +18,6 @@ metadata:
   namespace: estate-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit
-  annotations:
-    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   type: ExternalName
   externalName: rabbitmq.data-system.svc.cluster.local
@@ -33,8 +29,6 @@ metadata:
   namespace: estate-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit
-  annotations:
-    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   type: ExternalName
   externalName: valkey.data-system.svc.cluster.local
@@ -46,8 +40,6 @@ metadata:
   namespace: estate-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit
-  annotations:
-    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   type: ExternalName
   externalName: release-gate.delivery-system.svc.cluster.local
@@ -59,8 +51,6 @@ metadata:
   namespace: estate-system
   labels:
     app.kubernetes.io/managed-by: deploy-kit
-  annotations:
-    kustomize.toolkit.fluxcd.io/ssa: IfNotPresent
 spec:
   type: ExternalName
   externalName: stalwart.mail-system.svc.cluster.local
