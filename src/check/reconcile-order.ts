@@ -27,12 +27,14 @@ function reachable(
   from: string,
   follows: ReadonlyMap<string, ReadonlySet<string>>,
 ): Set<string> {
+  // Every unit a unit follows is a key: followsOf keeps only the units it holds.
+  const followed = (unit: string) => follows.get(unit) as ReadonlySet<string>;
   const seen = new Set<string>();
-  const queue = [...(follows.get(from) ?? [])];
+  const queue = [...followed(from)];
   for (let next = queue.shift(); next !== undefined; next = queue.shift()) {
     if (seen.has(next)) continue;
     seen.add(next);
-    queue.push(...(follows.get(next) ?? []));
+    queue.push(...followed(next));
   }
   return seen;
 }

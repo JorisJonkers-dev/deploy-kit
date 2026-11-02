@@ -366,7 +366,8 @@ const withMemberlist = (
   containers: spec.containers.map((container) => ({
     ...container,
     env: [
-      ...(container.env ?? []),
+      // Only the speaker joins memberlist, and its container always has env.
+      ...(container.env as NonNullable<typeof container.env>),
       {
         name: "METALLB_ML_BIND_ADDR",
         valueFrom: { fieldRef: { fieldPath: "status.podIP" } },
