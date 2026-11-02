@@ -11,7 +11,7 @@
   <pinnedinputs:AssetFile project="data" from="dashboards/rabbitmq.json" content="{&#xA;  &quot;__inputs&quot;: [&#xA;    {&#xA;      &quot;name&quot;: &quot;DS_PROMETHEUS&quot;,&#xA;      &quot;label&quot;: &quot;Prometheus&quot;,&#xA;      &quot;type&quot;: &quot;datasource&quot;,&#xA;      &quot;pluginId&quot;: &quot;prometheus&quot;&#xA;    }&#xA;  ],&#xA;  &quot;uid&quot;: &quot;rabbitmq&quot;,&#xA;  &quot;title&quot;: &quot;RabbitMQ&quot;,&#xA;  &quot;tags&quot;: [&quot;rabbitmq&quot;, &quot;messaging&quot;],&#xA;  &quot;editable&quot;: false,&#xA;  &quot;refresh&quot;: &quot;30s&quot;,&#xA;  &quot;time&quot;: { &quot;from&quot;: &quot;now-1h&quot;, &quot;to&quot;: &quot;now&quot; },&#xA;  &quot;panels&quot;: [&#xA;    {&#xA;      &quot;id&quot;: 1,&#xA;      &quot;title&quot;: &quot;Queue Messages (Ready)&quot;,&#xA;      &quot;type&quot;: &quot;timeseries&quot;,&#xA;      &quot;gridPos&quot;: { &quot;h&quot;: 8, &quot;w&quot;: 12, &quot;x&quot;: 0, &quot;y&quot;: 0 },&#xA;      &quot;datasource&quot;: { &quot;type&quot;: &quot;prometheus&quot;, &quot;uid&quot;: &quot;${DS_PROMETHEUS}&quot; },&#xA;      &quot;targets&quot;: [&#xA;        { &quot;expr&quot;: &quot;rabbitmq_queue_messages_ready&quot;, &quot;legendFormat&quot;: &quot;{{queue}} ready&quot; }&#xA;      ]&#xA;    }&#xA;  ],&#xA;  &quot;schemaVersion&quot;: 39&#xA;}&#xA;"/>
   <pinnedinputs:AssetFile project="mail" from="config/manifest.json" content="{&#xA;  &quot;domains&quot;: [{ &quot;name&quot;: &quot;jorisjonkers.dev&quot; }],&#xA;  &quot;accounts&quot;: [{ &quot;name&quot;: &quot;postmaster&quot;, &quot;domain&quot;: &quot;jorisjonkers.dev&quot; }]&#xA;}&#xA;"/>
   <pinnedinputs:AssetFile project="observability" from="rules/platform.yaml" content="# The platform's own alert rules, carried by the monitoring stack's Prometheus&#xA;# (spec/v1/10-project-intent.md#alert-rules). A rule's `severity` label picks&#xA;# the route the Platform document's monitoring block declares for it.&#xA;groups:&#xA;  - name: platform&#xA;    rules:&#xA;      - alert: JobFailed&#xA;        expr: kube_job_status_failed > 0&#xA;        for: 5m&#xA;        labels:&#xA;          severity: warning&#xA;        annotations:&#xA;          summary: &quot;Job {{ $labels.namespace }}/{{ $labels.job_name }} failed&quot;&#xA;      - alert: TargetDown&#xA;        expr: up == 0&#xA;        for: 10m&#xA;        labels:&#xA;          severity: critical&#xA;        annotations:&#xA;          summary: &quot;{{ $labels.job }} on {{ $labels.instance }} is down&quot;&#xA;  # The breadth case's group: a file is read as the YAML it is, so a number, a&#xA;  # boolean, a null and an empty mapping reach the PrometheusRule as written.&#xA;  - name: breadth&#xA;    interval: 1m&#xA;    limit: 10&#xA;    rules:&#xA;      - record: breadth:up:sum&#xA;        expr: |&#xA;          sum(up)&#xA;            by (job)&#xA;        labels: {}&#xA;        annotations: {paged: false, runbook: null, note: 'say &quot;up&quot;'}&#xA;">
-    <data xsi:type="pinnedinputs:DatumMap">
+    <rules xsi:type="pinnedinputs:DatumMap">
       <entries key="groups">
         <value xsi:type="pinnedinputs:DatumList">
           <items xsi:type="pinnedinputs:DatumMap">
@@ -114,7 +114,7 @@
           </items>
         </value>
       </entries>
-    </data>
+    </rules>
   </pinnedinputs:AssetFile>
   <pinnedinputs:ClusterState apiVersion="state.jorisjonkers.dev/v1" kind="ClusterState" schemaVersion="1.0.0" cluster="production" capturedAt="2026-09-30T00:00:00Z">
     <bindings claim="coverage-data" node="enschede-pi-1"/>
