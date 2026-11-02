@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  A small Project Intent, as the parser reads it from YAML: one Application whose
+  one Process keeps a ReadWriteOnce volume and declares an interrupted cutover.
+  It breaks no invariant of project-intent.ocl (emf/README.md, step 3). It is
+  spec/v1/examples/refusals/cutover-interrupted-over-rwo.project.yml, renamed.
+-->
+<projectintent:Project xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:projectintent="https://jorisjonkers.dev/deploy-kit/project-intent/1"
+    xsi:schemaLocation="https://jorisjonkers.dev/deploy-kit/project-intent/1 project-intent.ecore"
+    apiVersion="intent.jorisjonkers.dev/v1" kind="Project" schemaVersion="1.0.0" project="cache" owner="joris">
+  <applications id="cache">
+    <processes startupBudget="20s" cutover="interrupted" name="cache-store" image="cache-store" runtime="static">
+      <placement memory="256Mi" cpu="50m"/>
+      <provides key="redis" value="6379"/>
+      <probes xsi:type="projectintent:Probes">
+        <readiness xsi:type="projectintent:HttpProbe" path="/healthz/ready" port="6379"/>
+        <liveness xsi:type="projectintent:HttpProbe" path="/healthz/live" port="6379"/>
+      </probes>
+      <volumes claim="cache-data" mountAt="/data" size="1Gi"/>
+    </processes>
+  </applications>
+</projectintent:Project>
