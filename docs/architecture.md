@@ -315,12 +315,11 @@ Everything about that implementation, its build, its checks and its decisions,
 lives inside `emf/`. What lives here is the contract both implementations
 answer to, because the contract outlives the model-driven implementation.
 
-**The contract is suspended.** `emf/` is frozen at the tag `mde-task-3`, the
-commit handed in for MDE Task 3, until 1.0.0 is released. Until then a model
-change lands in TypeScript only: nothing requires `emf/` to agree with the
-compiler or the oracle files, and its build runs by hand only. After 1.0.0 one
-catch-up pull request brings `emf/` up to date and puts its build back in
-`Pipeline Complete`, and the contract below holds again.
+**The contract holds with a lag.** A model change lands in TypeScript and its
+oracle files first, and `emf/` catches up in a pull request of its own. Its
+build runs its tests and coverage gate on every change to `emf/`, and its
+mutation gate nightly; it is not in `Pipeline Complete`, so `emf/` may trail
+`main` between catch-ups, and its `OracleDistanceTest` reports how far.
 
 Neither implementation is generated from the other, and neither is the oracle
 for the other. Each is tested on its own against committed oracle files, and
