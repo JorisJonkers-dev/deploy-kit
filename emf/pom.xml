@@ -320,6 +320,37 @@
 
   <profiles>
     <!--
+      The benchmark (docs/benchmarks.md): `-Pbenchmark` runs the pipeline's
+      stages and both lowerings, QVT-Operational and the ATL port, and writes
+      their tables under bundles/cli/target/benchmark/. Without it every
+      benchmark suite is skipped, so the default build and its gates are as
+      they were. JaCoCo's agent and the JVM's assertions would both be timed,
+      so neither runs here, and no gate is checked.
+    -->
+    <profile>
+      <id>benchmark</id>
+      <properties>
+        <jacoco.skip>true</jacoco.skip>
+        <skipPitest>true</skipPitest>
+        <test>LoweringEquivalenceTest,LoweringBenchmarkTest,PipelineBenchmarkTest</test>
+        <surefire.failIfNoSpecifiedTests>false</surefire.failIfNoSpecifiedTests>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <enableAssertions>false</enableAssertions>
+              <systemPropertyVariables>
+                <emf.benchmark>true</emf.benchmark>
+              </systemPropertyVariables>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <!--
       A module holding META-INF/MANIFEST.MF is an Eclipse bundle Tycho builds
       against emf.target. Its dependencies are p2 bundles at the versions the
       target platform pins, so Maven's convergence rule has nothing to decide.

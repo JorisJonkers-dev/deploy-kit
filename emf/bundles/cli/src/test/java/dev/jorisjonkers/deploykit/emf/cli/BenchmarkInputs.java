@@ -17,7 +17,58 @@ import org.eclipse.emf.ecore.EObject;
  */
 final class BenchmarkInputs {
 
+    /** The real estate's Platform document and pinned inputs, which every estate union reads. */
+    private static final List<String> ESTATE_PINNED = List.of(
+            "estate/platform.intent.yml",
+            "estate/node-contract.yml",
+            "estate/images.lock.yml",
+            "estate/cluster-state.yml");
+
+    /**
+     * The estate's 24 Projects, in the order the scaling series adds them. The first twelve are the
+     * smallest union the checks accept: the Platform document names an Application of each, or another
+     * of the twelve depends on one. Every prefix from twelve on is accepted, each later Project depending
+     * only on Projects before it; a prefix shorter than twelve is read and lowered, never checked.
+     */
+    static final List<String> ESTATE_ORDER = List.of(
+            "arr",
+            "auth",
+            "data",
+            "delivery",
+            "edge",
+            "estate-dashboard",
+            "mail",
+            "observability",
+            "prowlarr",
+            "qbittorrent",
+            "secrets",
+            "utility",
+            "findability-explorer",
+            "grimoire",
+            "hindsight",
+            "home-portal",
+            "immich",
+            "jellyfin",
+            "jellyseerr",
+            "karakeep",
+            "n8n",
+            "outline",
+            "overleaf",
+            "tribelt");
+
+    /** The smallest estate union the checks accept. */
+    static final int ESTATE_CORE = 12;
+
     private BenchmarkInputs() {}
+
+    /** The estate's pinned inputs and its first {@code projects} Projects in {@link #ESTATE_ORDER}. */
+    static List<String> estate(int projects) {
+        List<String> documents = new ArrayList<>(ESTATE_PINNED);
+        for (String project : ESTATE_ORDER.subList(0, projects)) {
+            documents.add("estate/" + project + "/" + project + ".project.yml");
+        }
+        return documents;
+    }
 
     /** Every case {@link Outputs#RESOLVED} resolves, by name, with the documents it is read with. */
     static Map<String, Outputs.Resolving> cases() {

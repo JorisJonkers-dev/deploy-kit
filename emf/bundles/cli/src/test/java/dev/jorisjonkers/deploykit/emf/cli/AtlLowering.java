@@ -28,9 +28,10 @@ import org.eclipse.m2m.atl.emftvm.util.TimingData;
 
 /**
  * The lowering's ATL port, {@code benchmark/lower.atl}, run headless on EMFTVM: the benchmark's
- * second lowering, which no bundle ships (docs/benchmarks.md). It is compiled from source when an
- * environment is first asked for, as {@link dev.jorisjonkers.deploykit.emf.resolve.Lowering} parses
- * its QVTo on every call, and then reused.
+ * second lowering, which no bundle ships (docs/benchmarks.md). {@link #prepared()} compiles the
+ * source once and reuses the module, as {@link QvtoLowering} does the QVTo; {@link #once} compiles it
+ * for one call, as {@link dev.jorisjonkers.deploykit.emf.resolve.Lowering} parses its QVTo on every
+ * call.
  */
 final class AtlLowering {
 
@@ -47,9 +48,11 @@ final class AtlLowering {
         pool.registerMetaModel("PI", intent);
         pool.setModuleResolverFactory(() -> name -> compile());
         pool.loadModule(MODULE);
+        // The pool compiles and loads the module for the first environment it hands out.
+        pool.returnExecEnv(pool.getExecEnv());
     }
 
-    /** A lowering whose module is compiled once, on its first run, and reused by every run after. */
+    /** A lowering whose module is compiled and loaded once, here, and reused by every run after. */
     static AtlLowering prepared() {
         return new AtlLowering();
     }
