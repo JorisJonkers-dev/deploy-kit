@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: vault-policy-21f32d75adfe
+  name: vault-policy-27616ea716cd
   namespace: data-system
   labels:
     app.kubernetes.io/name: vault-policy
@@ -77,7 +77,7 @@ spec:
       volumes:
         - name: policies
           configMap:
-            name: vault-policy-21f32d75adfe
+            name: vault-policy-27616ea716cd
             items:
               - key: data-system-asset-sync.policy.json
                 path: data-system-asset-sync.policy.json
@@ -111,3 +111,5 @@ spec:
                 path: data-system-rabbitmq-backup.policy.json
               - key: data-system-rabbitmq-backup.role.json
                 path: data-system-rabbitmq-backup.role.json
+              - key: data-system.generated.json
+                path: data-system.generated.json

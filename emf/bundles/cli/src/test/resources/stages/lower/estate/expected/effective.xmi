@@ -467,6 +467,12 @@
         <scrape process="/3/@applications.0/@processes.0" surface="/3/@applications.0/@processes.0/@provides.1" path="/metrics"/>
       </observability>
       <processes startupBudget="60s" cutover="interrupted" name="postgres" image="postgres" runtime="none" engine="postgres">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/exporter" fileMode="0400" path="secret/data/data-system/exporter">
+          <rotation/>
+          <keys xsi:type="projectintent:GeneratedKey" name="datasource">
+            <generate adopt="secret/data/platform/postgres/exporter#datasource"/>
+          </keys>
+        </secrets>
         <secrets xsi:type="projectintent:KvGrant" path="secret/data/platform/postgres/exporter">
           <rotation/>
           <keys xsi:type="projectintent:PlainKey" name="datasource"/>
