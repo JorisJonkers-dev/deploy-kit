@@ -174,7 +174,6 @@ rule Process {
 		command <- s.command,
 		args <- s.args,
 		spawns <- s.spawns,
-		rollback <- s.rollback,
 		secrets <- thisModule.mergeGrants(thisModule.mergeGrants(s.secrets, s.app.secrets), s.prj.secrets)
 			->collect(g | g.copied()),
 		dependsOn <- thisModule.mergeEdges(thisModule.mergeEdges(s.dependsOn, s.app.dependsOn), s.prj.dependsOn)
@@ -205,11 +204,6 @@ rule Process {
 rule Parked {
 	from s : PI!Parked
 	to t : PI!Parked (reason <- s.reason)
-}
-
-rule Rollback {
-	from s : PI!Rollback
-	to t : PI!Rollback
 }
 
 rule Observability {
