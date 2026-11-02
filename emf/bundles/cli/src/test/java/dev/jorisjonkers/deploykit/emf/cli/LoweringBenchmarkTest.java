@@ -30,17 +30,15 @@ class LoweringBenchmarkTest {
 
     private static final List<Integer> SIZES = List.of(1, 4, 8, 12, 16, 20, 24);
 
+    /** How many times each lowering runs over every Project before a series is measured. */
+    private static final int WARM_ROUNDS = 40;
+
     @Test
     void perProjectWarm() {
         QvtoLowering qvto = QvtoLowering.prepared();
         AtlLowering atl = AtlLowering.prepared();
         Map<String, Project> lowered = BenchmarkInputs.lowered();
-        // Each transformation warmed on every Project first, so the first Project measured is not the one
-        // that warms the code every Project shares.
-        for (int i = 0; i < Benchmark.warmup(); i++) {
-            all(List.copyOf(lowered.values()), qvto::lower);
-            all(List.copyOf(lowered.values()), atl::lower);
-        }
+        warm(List.copyOf(lowered.values()), qvto, atl);
         List<List<String>> rows = new ArrayList<>();
         double qvtoTotal = 0;
         double atlTotal = 0;
@@ -73,11 +71,19 @@ class LoweringBenchmarkTest {
         AtlLowering atl = AtlLowering.prepared();
         List<Project> estate = BenchmarkInputs.projects(BenchmarkInputs.authored(
                 BenchmarkInputs.files(BenchmarkInputs.estate(BenchmarkInputs.ESTATE_ORDER.size()))));
-        List<List<String>> rows = new ArrayList<>();
+        warm(estate, qvto, atl);
+        // Every loaded-once series first, so none runs on the garbage a load per call leaves behind.
+        List<Benchmark.Series> byQvto = new ArrayList<>();
+        List<Benchmark.Series> byAtl = new ArrayList<>();
         for (int size : SIZES) {
             List<Project> projects = estate.subList(0, size);
-            Benchmark.Series byQvto = Benchmark.measure(() -> all(projects, qvto::lower));
-            Benchmark.Series byAtl = Benchmark.measure(() -> all(projects, atl::lower));
+            byQvto.add(Benchmark.measure(() -> all(projects, qvto::lower)));
+            byAtl.add(Benchmark.measure(() -> all(projects, atl::lower)));
+        }
+        List<List<String>> rows = new ArrayList<>();
+        for (int i = 0; i < SIZES.size(); i++) {
+            int size = SIZES.get(i);
+            List<Project> projects = estate.subList(0, size);
             Benchmark.Series shippedQvto = Benchmark.measure(() -> all(projects, Lowering::lower));
             Benchmark.Series onceAtl = Benchmark.measure(() -> all(projects, AtlLowering::once));
             rows.add(List.of(
@@ -85,9 +91,9 @@ class LoweringBenchmarkTest {
                     String.valueOf(projects.stream()
                             .mapToInt(LoweringBenchmarkTest::objects)
                             .sum()),
-                    byQvto.cell(),
-                    byAtl.cell(),
-                    ratio(byAtl.median(), byQvto.median()),
+                    byQvto.get(i).cell(),
+                    byAtl.get(i).cell(),
+                    ratio(byAtl.get(i).median(), byQvto.get(i).median()),
                     shippedQvto.cell(),
                     onceAtl.cell(),
                     ratio(onceAtl.median(), shippedQvto.median())));
@@ -191,6 +197,17 @@ class LoweringBenchmarkTest {
                         String.valueOf(count(atl, "^helper "))));
         Benchmark.report("lowering-sources.md", Benchmark.table(List.of("", "lower.qvto", "lower.atl"), rows));
         assertThat(code(atl)).isPositive();
+    }
+
+    /**
+     * Both lowerings run over {@code projects} {@link #WARM_ROUNDS} times before anything is measured: a
+     * lowering takes well under a millisecond, and the JIT settles only after some hundreds of them.
+     */
+    private static void warm(List<Project> projects, QvtoLowering qvto, AtlLowering atl) {
+        for (int i = 0; i < WARM_ROUNDS; i++) {
+            all(projects, qvto::lower);
+            all(projects, atl::lower);
+        }
     }
 
     private static List<?> all(List<Project> projects, Function<Project, ?> lowering) {

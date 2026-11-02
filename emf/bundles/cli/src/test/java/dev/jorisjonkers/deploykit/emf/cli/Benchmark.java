@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 
 /**
  * The benchmark's switch, its measuring and its report (docs/benchmarks.md). A series runs its task
- * {@link #warmup()} times unmeasured, then {@link #runs()} times measured, each run timed alone with
+ * {@link #warmup()} times unmeasured, collects the garbage, then runs it {@link #runs()} times measured, each run timed alone with
  * {@link System#nanoTime()}, and reports the median and the spread of the measured runs. A cold
  * sample is one run in a JVM started for it alone ({@link ColdRun}).
  */
@@ -58,6 +58,8 @@ final class Benchmark {
         for (int i = 0; i < warmup; i++) {
             sink = task.get();
         }
+        // The garbage of what ran before is collected now, not inside a measured run.
+        System.gc();
         long[] nanos = new long[runs];
         for (int i = 0; i < runs; i++) {
             long start = System.nanoTime();
