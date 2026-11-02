@@ -105,7 +105,7 @@ spec:
               drop:
                 - ALL
           volumeMounts:
-            - name: acme
+            - name: traefik-public-acme
               mountPath: /acme
             - name: writable-tmp
               mountPath: /tmp
@@ -133,9 +133,9 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 4
       volumes:
-        - name: acme
+        - name: traefik-public-acme
           persistentVolumeClaim:
-            claimName: acme
+            claimName: traefik-public-acme
         - name: writable-tmp
           emptyDir:
             sizeLimit: 64Mi

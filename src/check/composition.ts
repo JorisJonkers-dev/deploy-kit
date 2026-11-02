@@ -4,6 +4,7 @@
 // names the document it points into, because the object at fault can sit in
 // either.
 import {
+  acmeClaimOf,
   exposuresOf,
   LISTENER_PORTS,
   proxyProcessOf,
@@ -397,6 +398,50 @@ function proxyRefusals(
       }),
     ),
   );
+}
+
+/**
+ * An acme tier derives a claim on its proxy's Process, named for it, in the
+ * proxy's Project (spec/v1/14-platform-intent.md#tiers), so a volume the
+ * Project declares under that name would mount the proxy's ACME state.
+ */
+function acmeClaimRefusals(
+  platform: Named<PlatformIntentDocument>,
+  projects: readonly Named<ProjectIntentDocument>[],
+): Diagnostic[] {
+  return projects.flatMap(({ name, document }) => {
+    const derived = new Set(
+      document.applications.flatMap((application) =>
+        application.processes
+          .filter(({ name: process }) =>
+            tiersAnsweredBy(
+              platform.document,
+              document.project,
+              application,
+              process,
+            ).some(({ certificates }) => certificates === "acme"),
+          )
+          .map(({ name: process }) => acmeClaimOf(process)),
+      ),
+    );
+    return document.applications.flatMap((application, a) =>
+      application.processes.flatMap((process, p) =>
+        (process.volumes ?? []).flatMap((volume, v): Diagnostic[] =>
+          derived.has(volume.claim)
+            ? [
+                {
+                  code: "E_DUPLICATE_CLAIM",
+                  document: name,
+                  path: `/applications/${String(a)}/processes/${String(p)}/volumes/${String(v)}`,
+                  message: `the volume claiming ${volume.claim} reserves the claim an acme tier derives on its proxy's Process for the ACME state`,
+                  hint: "Rename the claim: `<process>-acme` is the acme tier's, on its proxy's Process.",
+                },
+              ]
+            : [],
+        ),
+      ),
+    );
+  });
 }
 
 /**
@@ -1256,6 +1301,7 @@ export function setDiagnostics(
     ...exhaustedRefusals(platform, projects),
     ...nodePortRefusals(platform, projects),
     ...proxyRefusals(platform, projects),
+    ...acmeClaimRefusals(platform, projects),
     ...projects.flatMap(({ name, document }) =>
       projectRefusals(document, platform.document, estate).map((refusal) => ({
         ...refusal,
