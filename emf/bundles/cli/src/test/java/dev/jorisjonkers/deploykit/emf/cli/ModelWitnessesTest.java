@@ -1573,4 +1573,14 @@ class ModelWitnessesTest {
                 .map(Diagnostic::path)
                 .toList();
     }
+
+    @Test
+    void anAcmeProxysPodReownsItsVolumeOnlyWhileItsRootDoesNotMatchAndNoOtherPodSaysSo() {
+        assertThat(rendered("edge", "apps/edge/traefik-public/workload.yaml"))
+                .contains("        fsGroup: 65532\n        fsGroupChangePolicy: OnRootMismatch\n");
+        assertThat(rendered("edge", "apps/edge/traefik-lan/workload.yaml")).doesNotContain("fsGroupChangePolicy");
+        assertThat(rendered("data", "apps/data/platform-postgres/workload.yaml"))
+                .contains("fsGroup: ")
+                .doesNotContain("fsGroupChangePolicy");
+    }
 }

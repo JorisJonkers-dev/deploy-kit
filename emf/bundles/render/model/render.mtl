@@ -1368,6 +1368,11 @@
   [if (p.volumes->notEmpty() and p.libraries->isEmpty())]
       fsGroup: [p.gid/]
   [/if]
+  [comment Traefik refuses ACME storage any group may read, and the kubelet adds group access to a
+    volume's files on every mount unless told not to. /]
+  [if (p.keepsAcmeState)]
+      fsGroupChangePolicy: OnRootMismatch
+  [/if]
   [if (p.libraries->notEmpty())]
       supplementalGroups:
     [for (g : Integer | p.libraries.gid->asOrderedSet()->sortedBy(x | x))]

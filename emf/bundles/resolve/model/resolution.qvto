@@ -1113,6 +1113,7 @@ mapping PI::Process::process(in app : EffectiveApplication, in prj : EffectivePr
 		} endif;
 	};
 	volumes := self.volumes->collect(v | v.resolvedFor(self))->union(edgeVolumesOf(self));
+	keepsAcmeState := edgeAcme(self);
 	libraries := self.libraries->collect(m | m.resolvedFor(prj));
 	-- A seeded Asset lands on a volume or a writable path through the seeder's init step.
 	assets := self.assets->collect(a | a.resolvedFor(self, prj));

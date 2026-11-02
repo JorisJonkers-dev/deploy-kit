@@ -22,7 +22,7 @@ name a real model row, it may not also be witnessed, and its count is stated
 beside the witness count, so the gate keeps its teeth while the work is
 outstanding.
 
-This list holds **87** witnesses, and **3** pending.
+This list holds **88** witnesses, and **3** pending.
 
 | id | JUnit test |
 |---|---|
@@ -113,6 +113,7 @@ This list holds **87** witnesses, and **3** pending.
 | REQ-164 | `ModelWitnessesTest#theMetricsStackScrapesK3sWhereTheBootstrapSetRecordsItAndAComponentItDoesNotRecordIsNotScraped` |
 | REQ-166 | `RenderedTreeTest#aRealEstateProjectIsItsCommittedOraclesByteForByte` |
 | REQ-168 | `ModelWitnessesTest#anAcmeTiersClaimIsNamedForItsProxysProcessAndAVolumeUnderItIsRefused` |
+| REQ-169 | `ModelWitnessesTest#anAcmeProxysPodReownsItsVolumeOnlyWhileItsRootDoesNotMatchAndNoOtherPodSaysSo` |
 
 ## Pending
 
