@@ -12,7 +12,7 @@ literal in that file that does the enforcing. `Ledgers.checkRules` in
 its literal, so a gate cannot be removed while its row stays. That the rule
 fires is shown once, by breaking it, in the pull request that adds it.
 
-This ledger holds **20** rules.
+This ledger holds **21** rules.
 
 | id | rule | enforcer | witness |
 |---|---|---|---|
@@ -36,3 +36,4 @@ This ledger holds **20** rules.
 | EMF-018 | Kotlin source is formatted with ktlint, checked in `verify` | `pom.xml` | `<ktlint><version>${ktlint.version}</version></ktlint>` |
 | EMF-019 | A stage's field coverage gaps are exactly its committed baseline, which only shrinks | `bundles/cli/src/test/java/dev/jorisjonkers/deploykit/emf/cli/FieldCoverageTest.java` | `aStagesGapsAreExactlyItsBaseline` |
 | EMF-020 | Every oracle comparison listed as passing matches the production implementation's oracle, and every one that matches is listed | `bundles/cli/src/test/java/dev/jorisjonkers/deploykit/emf/cli/OracleDistanceTest.java` | `passing, and not listed` |
+| EMF-021 | No class a module ships depends on EMF Compare, which the tests alone use | `tests/parity/src/test/kotlin/dev/jorisjonkers/deploykit/emf/parity/ArchitectureTest.kt` | `NO_MODULE_DEPENDS_ON_EMF_COMPARE` |

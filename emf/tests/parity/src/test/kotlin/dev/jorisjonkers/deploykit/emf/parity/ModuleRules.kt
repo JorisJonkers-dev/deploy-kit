@@ -4,6 +4,7 @@ import com.tngtech.archunit.core.domain.JavaClasses
 import com.tngtech.archunit.core.importer.Location
 import com.tngtech.archunit.junit.LocationProvider
 import com.tngtech.archunit.lang.ArchRule
+import com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses
 import com.tngtech.archunit.library.Architectures.layeredArchitecture
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices
 import java.nio.file.Files
@@ -49,6 +50,20 @@ object ModuleRules {
 
     /** EMF-011: no dependency cycle between modules. */
     fun acyclic(): ArchRule = slices().matching(ROOT + "(*)..").should().beFreeOfCycles()
+
+    /**
+     * EMF-021: no class a module ships depends on EMF Compare. It is the tests' model comparison
+     * (docs/adr/emf/0152-emf-compare-decides-and-explains-every-model-comparison.md), on the cli
+     * bundle's classpath through `additional.bundles` and never named in a manifest, so a shipped
+     * class could reach it at compile time and fail only where the bundle runs without it.
+     */
+    fun testsAloneCompare(): ArchRule =
+        noClasses()
+            .that()
+            .resideInAPackage(ROOT.removeSuffix(".") + "..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.eclipse.emf.compare..")
 
     /**
      * EMF-017: the modules the build wrote classes for that are not in `classes`. The two rules above
