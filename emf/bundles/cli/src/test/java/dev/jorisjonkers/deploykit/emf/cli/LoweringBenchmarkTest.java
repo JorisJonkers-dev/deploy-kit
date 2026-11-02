@@ -87,11 +87,14 @@ class LoweringBenchmarkTest {
                     byAtl.cell(),
                     ratio(byAtl.median(), byQvto.median()))));
         }
-        for (List<String> row : rows) {
-            List<Project> projects = estate.subList(0, Integer.parseInt(row.get(0)));
-            Benchmark.Series shippedQvto = Benchmark.measure(() -> all(projects, Lowering::lower));
-            Benchmark.Series onceAtl = Benchmark.measure(() -> all(projects, AtlLowering::once));
-            row.addAll(List.of(shippedQvto.cell(), onceAtl.cell(), ratio(onceAtl.median(), shippedQvto.median())));
+        for (int i = 0; i < SIZES.size(); i++) {
+            List<Project> projects = estate.subList(0, SIZES.get(i));
+            Benchmark.Series shipped = Benchmark.measure(() -> all(projects, project -> Lowering.lower(project)));
+            Benchmark.Series compiled = Benchmark.measure(() -> all(projects, project -> AtlLowering.once(project)));
+            String shippedCell = shipped.cell();
+            String compiledCell = compiled.cell();
+            String compiledRatio = ratio(compiled.median(), shipped.median());
+            rows.get(i).addAll(List.of(shippedCell, compiledCell, compiledRatio));
         }
         Benchmark.report(
                 "lowering-estate-scaling.md",
