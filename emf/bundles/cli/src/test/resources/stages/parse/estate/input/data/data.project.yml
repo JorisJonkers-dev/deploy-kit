@@ -239,6 +239,13 @@ applications:
         # Context advertises `secretsEncryption: true` --
         # E_SECRETS_AT_REST_REQUIRED (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md).
         secrets:
+          - path: secret/data/data-system/exporter
+            keys: [{ name: datasource, generate: { adopt: "secret/data/platform/postgres/exporter#datasource" } }]
+            access: read
+            delivery: file
+            mountAt: /run/secrets/exporter
+            fileMode: "0400"
+            rotation: {tolerates: restart}
           - path: secret/data/platform/postgres/exporter
             keys: [datasource]
             access: read

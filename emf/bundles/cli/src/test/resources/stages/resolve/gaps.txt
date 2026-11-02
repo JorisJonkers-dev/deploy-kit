@@ -21,7 +21,6 @@ GateMember.waitsFor is never set by a resolve case
 GateProvider is never instantiated by a resolve case
 GateProvider.application is never set by a resolve case
 GateProvider.process is never set by a resolve case
-Generate.adopt is never set in a resolve case's input
 IndexFile.namespace is never set by a resolve case
 PolicyController.cni is never used in a resolve case's input
 PolicyController.none is never used in a resolve case's input
@@ -35,8 +34,6 @@ RenderSource.url is never set by a resolve case
 ResolvedApplication.alertClass is never set by a resolve case
 ResolvedAsset.seedAt is never set by a resolve case
 ResolvedClient.backChannelLogoutUri is never set by a resolve case
-ResolvedGeneratedKey.adoptKey is never set by a resolve case
-ResolvedGeneratedKey.adoptPath is never set by a resolve case
 ResolvedPlacement.boundTo is never set by a resolve case
 ResolvedPlacement.from is never set by a resolve case
 ResolvedProcess.command is never set by a resolve case

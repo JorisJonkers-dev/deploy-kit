@@ -445,6 +445,7 @@ mapping GeneratedKey::copyFor(in owner : Process) : GeneratedKey {
 
 mapping Generate::copyFor(in owner : Process) : Generate {
 	if self.bytes <> null then bytes := self.bytes endif;
+	if self.adopt <> null then adopt := self.adopt endif;
 	if self.encoding <> KeyEncoding::absent then encoding := self.encoding endif;
 }
 
