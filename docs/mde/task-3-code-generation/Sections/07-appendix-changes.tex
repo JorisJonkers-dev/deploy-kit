@@ -16,14 +16,14 @@ model-driven implementation, not the model, form a group of their own. The
 change set was derived from the repository's git history rather than a
 comparison of complete models, so each row summarises a commit's effect.
 
-File sizes indicate the extent of the changes. As submitted, the Project Intent
-metamodel, which also holds the Platform Intent classes, has 137 classes and
-441 features, the Resolved Deployment metamodel 133 classes and 619 features,
-and the Pinned Inputs metamodel 15 classes and 67 features. The resolution
-transformation has 4276 lines, 10 mappings and 305 queries, and the lowering
+File sizes indicate the extent of the changes. The Project Intent
+metamodel, which also holds the Platform Intent classes, has 129 classes and
+419 features, the Resolved Deployment metamodel 133 classes and 594 features,
+and the Pinned Inputs metamodel 18 classes and 60 features. The resolution
+transformation has 4212 lines, 10 mappings and 300 queries, and the lowering
 has 473 lines and 54 mappings, compared with about 1700 and 340 lines in the
 Task~2 design section. The 134-line estate pass was removed. The Acceleo
-module has 3772 lines.
+module has 3607 lines.
 
 \subsection{Source Metamodel (Project Intent)}
 \label{sec:appendix-source}
@@ -69,7 +69,7 @@ Consumer addresses by Application Id & An edge names its provider by Application
 Unique claim reservation & An OCL constraint rejects a \texttt{claim} reserved by two volumes in one Project. & A Project's Processes share a namespace, so two volumes using one claim would silently share data. \\
 \hline
 \end{tabular}
-\caption{Changes to the Project Intent Metamodel Since Task~2: Reaching the Platform's Services; Secrets and Keys; Identity and Constraints}
+\caption{Changes to Access to the Platform's Services, Secrets and Keys, and Identity and Constraints in the Project Intent Metamodel Since Task~2}
 \label{tab:app-source}
 \end{table}
 
@@ -89,7 +89,7 @@ Capacity across nodes & A \texttt{Capacity} exception may specify \texttt{across
 Low port & A Process may listen below 1024. & The substrate binds any port without a capability, preserving the restricted posture. \\
 \hline
 \end{tabular}
-\caption{Changes to the Project Intent Metamodel Since Task~2: Process Forms and Their Constraints}
+\caption{Changes to Process Forms and Their Constraints in the Project Intent Metamodel Since Task~2}
 \label{tab:app-source-2}
 \end{table}
 
@@ -107,7 +107,7 @@ Client block & An \texttt{Application} gains a \texttt{client} block with the si
 Dashboards and alert rules & The \texttt{Application} declares its Grafana dashboards and alert rules. & Observation is declared alongside the observed Application. \\
 \hline
 \end{tabular}
-\caption{Changes to the Project Intent Metamodel Since Task~2: Exposure, Sign-in and Observability}
+\caption{Changes to Exposure, Sign-in and Observability in the Project Intent Metamodel Since Task~2}
 \label{tab:app-source-3}
 \end{table}
 
@@ -158,7 +158,7 @@ Libraries & \texttt{LibraryDeclaration} with \texttt{Library} entries: a directo
 Substrate pulls & The substrate's image pull is allowed within every derived deadline. & A deadline derived for another purpose must not cause an image pull to fail. \\
 \hline
 \end{tabular}
-\caption{Changes to the Platform Intent Since Task~2: Privileged Roles and Human Access; Engines; Resources Available to Processes}
+\caption{Changes to Privileged Roles and Human Access, Engines, and Resources Available to Processes in the Platform Intent Since Task~2}
 \label{tab:app-platform}
 \end{table}
 
@@ -177,7 +177,7 @@ L4 Addresses & Named L4 Addresses, each an IPv4 pool announced at one site. & A 
 Mesh enrolment & \texttt{mesh.enrolled} names the Projects in the ambient mesh. & Enrolment is the platform's decision, and a name no Project declares is rejected. \\
 \hline
 \end{tabular}
-\caption{Changes to the Platform Intent Since Task~2: Tiers, the Edge and the Mesh}
+\caption{Changes to Tiers, the Edge and the Mesh in the Platform Intent Since Task~2}
 \label{tab:app-platform-2}
 \end{table}
 
@@ -197,7 +197,7 @@ Off-cluster recipient & Each off-cluster copy is encrypted to a platform-named r
 DNS resolution & A DNS-serving Process resolves through the platform's upstream nameservers. & The resolver's upstream is a platform fact. \\
 \hline
 \end{tabular}
-\caption{Changes to the Platform Intent Since Task~2: Scheduling, Priority and the Foundation}
+\caption{Changes to Scheduling, Priority and the Foundation in the Platform Intent Since Task~2}
 \label{tab:app-platform-3}
 \end{table}
 
@@ -229,10 +229,10 @@ Version on every entry & Each images-lock entry gains \texttt{version}, a \textt
 Rejection of missing versions & The grammar accepts an entry without \texttt{version}; resolution rejects it as \texttt{E\_IMAGE\_VERSION\_MISSING}. & This identifies the model entry, whereas a grammar error would identify only the line. \\
 Root rejected & An image locked with uid 0 is rejected as \texttt{E\_IMAGE\_RUNS\_AS\_ROOT}. & The hardening posture requires a non-root uid, which a root image cannot supply. \\
 \multicolumn{3}{l}{\textit{ClusterState snapshot}} \\
-Backups removed & The snapshot's rollback-backup list and annotation are removed. & Rollback uses scheduled backups, so the snapshot no longer records an unused backup. \\
+Backups removed & The snapshot's rollback-backup list and annotation are removed. & The snapshot no longer records a backup nothing reads. \\
 \hline
 \end{tabular}
-\caption{Changes to the Pinned Inputs Since Task~2: Images Lock; ClusterState Snapshot}
+\caption{Changes to the Images Lock and the ClusterState Snapshot Since Task~2}
 \label{tab:app-pinned}
 \label{tab:app-pinned-2}
 \end{table}
@@ -274,7 +274,7 @@ Consumer label & A consuming Process has \texttt{consumes}, the label of each Su
 Stable Address & A resolved Stable Address holds its \texttt{name}, namespace, \texttt{target} and \texttt{port}. Each alias points to it through an \texttt{externalName}. & Consumers do not know where providers run, so relocating a provider changes one object. \\
 \hline
 \end{tabular}
-\caption{Changes to the Resolved Deployment Metamodel Since Task~2: Values Planned in the Project's Own Reconcile Unit; Consumer Admission and Stable Addresses}
+\caption{Changes to Values Planned in the Project's Own Reconcile Unit, Consumer Admission and Stable Addresses in the Resolved Deployment Metamodel Since Task~2}
 \label{tab:app-target}
 \end{table}
 
@@ -299,7 +299,7 @@ Priority and node agents & A Process's priority class and the node agents' pools
 Monitoring stack and default certificate & \texttt{ResolvedOperated} (with \texttt{OperatedAlertmanager} and \texttt{OperatedFlag}) records a Prometheus or Alertmanager the Prometheus operator runs; \texttt{GrafanaFile} with \texttt{ResolvedGrafana}, \texttt{K3sMonitorsFile} with \texttt{ResolvedK3sScrape}, and \texttt{TlsStoreFile} carry the Grafana instance, the scrapes of k3s and a tier's default certificate; \texttt{ResolvedMemberlist} the node speakers' shared key. & Each object is derived from a platform fact, so the templates only write it. \\
 \hline
 \end{tabular}
-\caption{Changes to the Resolved Deployment Metamodel Since Task~2: Workload Features; Process Forms and Tiers}
+\caption{Changes to Workload Features, Process Forms and Tiers in the Resolved Deployment Metamodel Since Task~2}
 \label{tab:app-target-2}
 \end{table}
 
@@ -355,7 +355,7 @@ Retries and placement & Policy and catalog Jobs retry until an attempt succeeds,
 Consumer label & Resolution gives each consuming Process the label of each Surface it reaches. The provider's policy admits the label from any namespace; the catalog Job holds its datastore's Surface label. & Adding a consumer re-renders only that consumer, leaving provider policies unchanged. \\
 \hline
 \end{tabular}
-\caption{Changes to the Transformations Since Task~2: Pipeline; Values Planned and Applied in the Project's Own Reconcile Unit; Consumer Admission by Label}
+\caption{Changes to the Pipeline, Values Planned and Applied in the Project's Own Reconcile Unit, and Consumer Admission by Label Since Task~2}
 \label{tab:app-transform}
 \end{table}
 
@@ -374,7 +374,7 @@ Secret Store connection & A datastore's Secret Store connection is named after i
 Images & Every locked image's version is read and written on its pods. Every derived deadline allows time for a pull. & Version is a pod fact; no deadline may prevent a pull scheduled by rendering. \\
 \hline
 \end{tabular}
-\caption{Changes to the Transformations Since Task~2: Resolution Rules}
+\caption{Changes to the Resolution Rules Since Task~2}
 \label{tab:app-transform-2}
 \end{table}
 
@@ -395,7 +395,7 @@ Choices derived outside templates & \texttt{middlewareOf} names each step and se
 Kind dispatch and failure & YAML kinds dispatch by type rather than a chain of type tests. Rendering writes files to a separate directory and moves them under the root only after all files are written. & A kind without a template fails the run; failure leaves the root unchanged. \\
 \hline
 \end{tabular}
-\caption{Changes to the Transformations Since Task~2: Rendering; Changes Specific to the Model-Driven Implementation}
+\caption{Changes to Rendering Since Task~2, and Changes Specific to the Model-Driven Implementation}
 \label{tab:app-transform-3}
 \end{table}
 
@@ -413,7 +413,7 @@ Process forms & Scheduled Processes render a CronJob forbidding overlap; parked 
 Release Gate decisions & The Release Gate decides whether to roll back a release it can no longer pass. & The observing gate decides whether a release can still pass. \\
 \hline
 \end{tabular}
-\caption{Changes to the Transformations Since Task~2: Stable Addresses; Process Forms and the Release Gate}
+\caption{Changes to Stable Addresses, Process Forms and the Release Gate Since Task~2}
 \label{tab:app-transform-4}
 \end{table}
 
@@ -431,7 +431,7 @@ Monitoring stack & Resolution derives the operator's objects for Prometheus and 
 Encryption and resolver & Off-cluster copies are encrypted to the platform's recipient; DNS-serving Processes use the upstream nameservers. & Rendering uses both platform facts as given. \\
 \hline
 \end{tabular}
-\caption{Changes to the Transformations Since Task~2: Platform Policies and Tiers}
+\caption{Changes to Platform Policies and Tiers Since Task~2}
 \label{tab:app-transform-5}
 \end{table}
 
@@ -439,6 +439,45 @@ Each change was made in the specification and in both implementations, without
 generating either implementation from the other. Committed oracle files hold
 both to the same result (Section~\ref{sec:evaluation}); this appendix only
 records the changes.
+
+\subsection{Performance, and QVT-Operational Against ATL}
+\label{sec:appendix-performance}
+
+Task~2 preferred QVT-Operational to ATL partly for execution cost. To test that
+claim, \path{emf/docs/benchmarks.md} times each stage and ports the lowering to ATL
+on EMFTVM 4.12. The port's output equals the QVT-Operational lowering's under
+\texttt{ModelDiff} for all 36 Project files of the examples (2564 objects; 51 of
+its 54 rules match an object). Times are medians with interquartile ranges over
+10 runs after 5 warm-up runs, on an Apple M4 Max with Java 21; cold times are 5
+fresh JVMs (Table~\ref{tab:app-perf}).
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.31\linewidth}>{\raggedright\arraybackslash}p{0.17\linewidth}>{\raggedright\arraybackslash}p{0.21\linewidth}>{\raggedright\arraybackslash}p{0.19\linewidth}}
+\hline
+\textbf{Lowering} & \textbf{QVT-Operational} & \textbf{ATL} & \textbf{ATL relative to QVT-Operational} \\
+\hline
+Source size & 365 lines, 54 mappings & 488 lines, 33 matched and 21 lazy rules & 1.34$\times$ the lines \\
+Lower 24 estate Projects (1703 objects), transformation loaded once & 7.6 ms [7.5--7.8 ms] & 8.9 ms [8.8--9.2 ms] & 1.17$\times$ the time \\
+Load and compile the transformation, warm JVM & 23 ms & 280 ms & 12.4$\times$ the time \\
+Cold JVM: load, then lower all 24 Projects & 487 ms & 911 ms & 1.87$\times$ the time \\
+\hline
+\end{tabular}
+\caption{The Lowering in QVT-Operational and in ATL}
+\label{tab:app-perf}
+\end{table}
+
+Executed, ATL takes 1.11 to 1.19 times as long at every estate size; both grow
+linearly. Neither difference matters to a run: checking the parsed documents (OCL,
+names, pinned inputs) is 55 to 63\% of a warm run, and a cold \texttt{minimal} run
+takes 3.8~s, 2.7~s of it read and check. Execution cost is therefore not a reason;
+the reason that holds is the resolution's, which reads the completed target to hash
+a release's revision and needs an explicit construction order, and was not ported.
+On the lowering, ATL needed 21 lazy rules for per-Process copies and 41 writes in
+imperative \texttt{do} blocks, as a binding cannot be conditional. The benchmark also
+found that the shipped lowering reloads its transformation for each Project (over
+95\% of its time), and that each resolution kept about 8.5~MB reachable.
 
 \section{The Production Implementation}
 \label{sec:appendix-production}
@@ -455,16 +494,11 @@ gained a rule, the model-driven implementation adopted it until both matched the
 oracles.
 
 This independence is partial: one author wrote both implementations, and the
-committed trees changed in the same commits as an implementation. A self-generated
-snapshot accepts defects present when it was taken; a shared expected tree exposes
-disagreements between implementations. Agreement rules out errors made by only one
-implementation, but cannot rule out a shared misreading of the specification.
-External checks address part of this remaining risk: schemas, profiles and clusters
-check Kubernetes requirements rather than the project's specification. Each check has
-limits: byte equality establishes expected text rather than correctness; schemas
-cannot establish that a \texttt{NetworkPolicy} permits the intended traffic; dry-runs
-reveal nothing about controller behaviour. The Pod Security check permits one named
-exception: the VPN sidecar.
+committed trees changed in the same commits as an implementation. Agreement rules
+out errors made by only one implementation, not a shared misreading of the
+specification; the external checks of Section~\ref{sec:evaluation} test Kubernetes'
+requirements rather than the specification. The Pod Security check permits one
+named exception: the VPN sidecar.
 % TODO(verify): confirm the review of committed trees was by the author alone
 
 % BIB: none needed in this section.
