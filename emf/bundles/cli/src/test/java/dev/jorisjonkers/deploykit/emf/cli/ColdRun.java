@@ -54,11 +54,11 @@ final class ColdRun {
                 switch (engine) {
                     case "qvto" -> {
                         QvtoLowering qvto = QvtoLowering.prepared();
-                        yield qvto::lower;
+                        yield project -> qvto.lower(project);
                     }
                     case "atl" -> {
                         AtlLowering atl = AtlLowering.prepared();
-                        yield atl::lower;
+                        yield project -> atl.lower(project);
                     }
                     default -> throw new IllegalArgumentException("no lowering " + engine);
                 };
@@ -128,7 +128,11 @@ final class ColdRun {
                 for (String line = out.readLine(); line != null; line = out.readLine()) {
                     if (line.startsWith(PREFIX)) {
                         String[] pair = line.substring(PREFIX.length()).split("=", 2);
-                        timed.put(pair[0], Long.parseLong(pair[1]));
+                        try {
+                            timed.put(pair[0], Long.parseLong(pair[1]));
+                        } catch (NumberFormatException e) {
+                            throw new IllegalStateException("not a timing: " + line, e);
+                        }
                     } else {
                         said.add(line);
                     }

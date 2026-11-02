@@ -173,7 +173,7 @@ final class Benchmark {
     /** A macOS kernel value, or what was asked when there is none to read. */
     private static String sysctl(String name) {
         try {
-            java.lang.Process sysctl = new ProcessBuilder("sysctl", "-n", name)
+            java.lang.Process sysctl = new ProcessBuilder("/usr/sbin/sysctl", "-n", name)
                     .redirectErrorStream(true)
                     .start();
             try (BufferedReader out =

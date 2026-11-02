@@ -73,30 +73,25 @@ class LoweringBenchmarkTest {
                 BenchmarkInputs.files(BenchmarkInputs.estate(BenchmarkInputs.ESTATE_ORDER.size()))));
         warm(estate, qvto, atl);
         // Every loaded-once series first, so none runs on the garbage a load per call leaves behind.
-        List<Benchmark.Series> byQvto = new ArrayList<>();
-        List<Benchmark.Series> byAtl = new ArrayList<>();
+        List<List<String>> rows = new ArrayList<>();
         for (int size : SIZES) {
             List<Project> projects = estate.subList(0, size);
-            byQvto.add(Benchmark.measure(() -> all(projects, qvto::lower)));
-            byAtl.add(Benchmark.measure(() -> all(projects, atl::lower)));
-        }
-        List<List<String>> rows = new ArrayList<>();
-        for (int i = 0; i < SIZES.size(); i++) {
-            int size = SIZES.get(i);
-            List<Project> projects = estate.subList(0, size);
-            Benchmark.Series shippedQvto = Benchmark.measure(() -> all(projects, Lowering::lower));
-            Benchmark.Series onceAtl = Benchmark.measure(() -> all(projects, AtlLowering::once));
-            rows.add(List.of(
+            Benchmark.Series byQvto = Benchmark.measure(() -> all(projects, project -> qvto.lower(project)));
+            Benchmark.Series byAtl = Benchmark.measure(() -> all(projects, project -> atl.lower(project)));
+            rows.add(new ArrayList<>(List.of(
                     String.valueOf(size),
                     String.valueOf(projects.stream()
                             .mapToInt(LoweringBenchmarkTest::objects)
                             .sum()),
-                    byQvto.get(i).cell(),
-                    byAtl.get(i).cell(),
-                    ratio(byAtl.get(i).median(), byQvto.get(i).median()),
-                    shippedQvto.cell(),
-                    onceAtl.cell(),
-                    ratio(onceAtl.median(), shippedQvto.median())));
+                    byQvto.cell(),
+                    byAtl.cell(),
+                    ratio(byAtl.median(), byQvto.median()))));
+        }
+        for (List<String> row : rows) {
+            List<Project> projects = estate.subList(0, Integer.parseInt(row.get(0)));
+            Benchmark.Series shippedQvto = Benchmark.measure(() -> all(projects, Lowering::lower));
+            Benchmark.Series onceAtl = Benchmark.measure(() -> all(projects, AtlLowering::once));
+            row.addAll(List.of(shippedQvto.cell(), onceAtl.cell(), ratio(onceAtl.median(), shippedQvto.median())));
         }
         Benchmark.report(
                 "lowering-estate-scaling.md",
@@ -205,8 +200,8 @@ class LoweringBenchmarkTest {
      */
     private static void warm(List<Project> projects, QvtoLowering qvto, AtlLowering atl) {
         for (int i = 0; i < WARM_ROUNDS; i++) {
-            all(projects, qvto::lower);
-            all(projects, atl::lower);
+            all(projects, project -> qvto.lower(project));
+            all(projects, project -> atl.lower(project));
         }
     }
 

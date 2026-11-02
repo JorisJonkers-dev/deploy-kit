@@ -24,6 +24,7 @@ import org.eclipse.m2m.atl.emftvm.Module;
 import org.eclipse.m2m.atl.emftvm.compiler.AtlToEmftvmCompiler;
 import org.eclipse.m2m.atl.emftvm.impl.resource.EMFTVMResourceFactoryImpl;
 import org.eclipse.m2m.atl.emftvm.util.ExecEnvPool;
+import org.eclipse.m2m.atl.emftvm.util.ModuleNotFoundException;
 import org.eclipse.m2m.atl.emftvm.util.TimingData;
 
 /**
@@ -46,7 +47,7 @@ final class AtlLowering {
         Metamodel intent = EmftvmFactory.eINSTANCE.createMetamodel();
         intent.setResource(ProjectIntentPackage.eINSTANCE.eResource());
         pool.registerMetaModel("PI", intent);
-        pool.setModuleResolverFactory(() -> name -> compile());
+        pool.setModuleResolverFactory(() -> AtlLowering::resolve);
         pool.loadModule(MODULE);
         // The pool compiles and loads the module for the first environment it hands out.
         pool.returnExecEnv(pool.getExecEnv());
@@ -60,6 +61,14 @@ final class AtlLowering {
     /** {@code project} lowered by a module compiled for this call alone: the shipped lowering's shape. */
     static EffectiveProject once(Project project) {
         return prepared().lower(project);
+    }
+
+    /** The one module this lowering loads, compiled; any other name is not one it has. */
+    private static Module resolve(String name) throws ModuleNotFoundException {
+        if (!MODULE.equals(name)) {
+            throw new ModuleNotFoundException("no module " + name);
+        }
+        return compile();
     }
 
     /**
