@@ -10,11 +10,14 @@ import dev.jorisjonkers.deploykit.emf.resolve.Resolution;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -49,6 +52,9 @@ class PipelineBenchmarkTest {
     /** The estate union sizes the read and lower series run at; from {@link BenchmarkInputs#ESTATE_CORE} on, every stage. */
     private static final List<Integer> SIZES = List.of(1, 4, 8, 12, 16, 20, 24);
 
+    /** The shipped resolutions {@link #theHeapASeriesOfShippedResolutionsKeeps} runs. */
+    private static final int SERIES = 40;
+
     /** The resolution every series runs, loaded on first use and then reused. */
     private static QvtoResolution resolution;
 
@@ -73,6 +79,55 @@ class PipelineBenchmarkTest {
                                         List.of("lower.qvto", lines("/lower.qvto"), lower.cell()),
                                         List.of("resolution.qvto", lines("/resolution.qvto"), resolve.cell()))));
         assertThat(resolve.median()).isPositive();
+    }
+
+    /**
+     * The heap a series of shipped resolutions leaves reachable: {@code minimal}'s {@code notes}
+     * resolved by {@link Resolution#resolve} {@link #SERIES} times in one JVM, the heap in use after a
+     * full collection read before and after, and the difference spread over the calls.
+     */
+    @Test
+    void theHeapASeriesOfShippedResolutionsKeeps() {
+        Prepared minimal = Prepared.of(
+                BenchmarkInputs.files(Outputs.RESOLVED.get("minimal").documents()));
+        Resolution.resolve(minimal.intent(), minimal.authored().pinned(), "notes", Outputs.INTEGRITY);
+        long before = reachable();
+        for (int i = 0; i < SERIES; i++) {
+            Resolution.resolve(minimal.intent(), minimal.authored().pinned(), "notes", Outputs.INTEGRITY);
+        }
+        long after = reachable();
+        double mib = 1024.0 * 1024.0;
+        Benchmark.report(
+                "resolution-heap.md",
+                Benchmark.environment()
+                        + "\n"
+                        + Benchmark.table(
+                                List.of(
+                                        "shipped resolutions",
+                                        "heap reachable before (MiB)",
+                                        "heap reachable after (MiB)",
+                                        "kept per call (MiB)"),
+                                List.of(List.of(
+                                        String.valueOf(SERIES),
+                                        String.format(Locale.ROOT, "%.1f", before / mib),
+                                        String.format(Locale.ROOT, "%.1f", after / mib),
+                                        String.format(Locale.ROOT, "%.2f", (after - before) / mib / SERIES)))));
+        assertThat(after).isPositive();
+    }
+
+    /** The heap in use once collections stop freeing anything: what is still reachable. */
+    private static long reachable() {
+        MemoryMXBean memory = ManagementFactory.getMemoryMXBean();
+        long used = Long.MAX_VALUE;
+        for (int i = 0; i < 10; i++) {
+            System.gc();
+            long now = memory.getHeapMemoryUsage().getUsed();
+            if (now >= used) {
+                return now;
+            }
+            used = now;
+        }
+        return used;
     }
 
     @Test
