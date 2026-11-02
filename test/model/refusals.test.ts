@@ -202,6 +202,20 @@ describe("a generated key that adopts a value", () => {
   });
 });
 
+describe("a Process's edges refused together", () => {
+  it("are refused in the order the document reads them", () => {
+    const text = DOCUMENT.replace(
+      "        cutover: interrupted\n",
+      "        cutover: interrupted\n        dependsOn:\n          - application: platform-postgres\n            surface: postgres\n            credentials: { delivery: env, rotation: { tolerates: reload } }\n          - application: platform-garage\n            surface: s3\n            buckets: [{ name: uploads, cors: [public] }]\n",
+    ).replace("GRANTS", "");
+
+    expect(refusalsOf(text).map(({ path }) => path)).toStrictEqual([
+      "/applications/0/processes/0/dependsOn/0/credentials/rotation",
+      "/applications/0/processes/0/dependsOn/1/buckets/0/cors/0",
+    ]);
+  });
+});
+
 describe("an edge's credential delivered to the environment", () => {
   const edge = (tolerates: string) =>
     DOCUMENT.replace(

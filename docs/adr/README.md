@@ -160,6 +160,7 @@ resolves without knowing which domain it lands in.
 | [0149](model/0149-grafanas-instance-and-data-sources-derive-from-the-monitoring-stack.md) | Grafana's instance, its admin credential and its data sources derive from the monitoring stack | open |
 | [0150](model/0150-k3s-is-scraped-where-the-bootstrap-set-records-its-metrics.md) | k3s is scraped where the bootstrap set records its metrics, as the metrics stack's own ServiceAccount | open |
 | [0119](model/0119-an-edge-names-its-buckets-and-the-stores-method-mints-each-projects-key.md) | An edge into an object store names its buckets, and the store's catalog method mints each project's key | open |
+| [0153](model/0153-a-bucket-a-browser-calls-names-the-exposures-it-admits.md) | A bucket a browser calls names the exposures it admits, and the store's catalog method sets its one CORS rule | open |
 | [0144](model/0144-the-device-plugin-names-each-card-by-its-index.md) | The device plugin names each card by its index, as the hosts' CDI specification does | open |
 | [0147](model/0147-the-speakers-find-each-other-by-memberlist-keyed-by-a-generated-key.md) | The speakers find each other by memberlist, keyed by a key the `node` Project's own Vault policy job generates | open |
 

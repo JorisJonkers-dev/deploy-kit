@@ -276,7 +276,10 @@ per consuming project: its **bucket key**, minted by the catalog method and
 written to `secret/data/<project>/<process>/s3`, and the buckets the key may
 use, each `<project>-<name>` for a name an edge's `buckets` gives. An edge
 naming buckets hands its consumer `endpoint`, `accessKeyId` and
-`secretAccessKey` ([chapter 16](spec/v1/16-dependencies.md#the-bucket-catalog)).
+`secretAccessKey` ([chapter 16](spec/v1/16-dependencies.md#the-bucket-catalog)). A bucket the
+consumer's pages call from a browser names the exposures whose origins it
+admits, and the catalog method sets its one CORS rule
+([chapter 16](spec/v1/16-dependencies.md#a-bucket-a-browser-calls)).
 
 **Migration policy**: the Platform document's runner image alias, deadline and
 resources, which every managed migration builds on

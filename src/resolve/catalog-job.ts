@@ -6,6 +6,8 @@
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import { type LockedImage, versionOf } from "../model/images-lock.ts";
 import {
+  bucketCorsOf,
+  bucketNameOf,
   bucketOf,
   dataRole,
   ownerRole,
@@ -90,30 +92,76 @@ interface Owner {
   readonly process: EffectiveProject["applications"][number]["processes"][number];
 }
 
-/** The projects whose Processes name buckets in one object store, with the buckets each names. */
+/** One project's share of an object store's catalog: its buckets, and the origins each admits. */
+interface BucketReader {
+  readonly project: string;
+  readonly buckets: readonly string[];
+  readonly cors: readonly {
+    readonly bucket: string;
+    readonly origins: readonly string[];
+  }[];
+}
+
+/**
+ * The origin an exposure's pages are served from: its tier's scheme and its
+ * host, as `${exposure:…#url}` reads it.
+ */
+function originOf(
+  set: PinnedSet,
+  exposure: NonNullable<Owner["application"]["exposure"]>[number],
+): string {
+  // A tier carries the exposure's audience, or E_NO_TIER_FOR_AUDIENCE refused it.
+  const tier = set.platform.tiers.find(({ audiences }) =>
+    audiences.includes(exposure.audience),
+  ) as PinnedSet["platform"]["tiers"][number];
+  return `${tier.listener === "tls" ? "https" : "http"}://${exposure.host}`;
+}
+
+/**
+ * The projects whose Processes name buckets in one object store, with the
+ * buckets each names and the origins each bucket admits cross-origin
+ * (spec/v1/16-dependencies.md#a-bucket-a-browser-calls).
+ */
 // A missing list and an empty one hold no edge, and no bucket, alike; and no
 // two readers share a project, so `<=` would order the same list.
 // Stryker disable ArrayDeclaration,EqualityOperator
 function bucketReadersOf(
   set: PinnedSet,
   { application }: Pick<Owner, "application">,
-): { readonly project: string; readonly buckets: readonly string[] }[] {
+): BucketReader[] {
   return set.projects
-    .map(({ project, applications }) => ({
-      project,
-      buckets: [
-        ...new Set(
-          applications
-            .flatMap(({ processes }) => processes)
-            .flatMap(({ dependsOn }) => dependsOn ?? [])
-            // Surfaces are unique in an Application, so it runs one store
-            // that provides the surface its catalog is applied over.
-            .filter((edge) => edge.application === application.id)
-            .flatMap((edge) => edge.buckets ?? [])
-            .map((name) => bucketOf(project, name)),
-        ),
-      ].sort(),
-    }))
+    .map(({ project, applications }): BucketReader => {
+      const origins = new Map<string, Set<string>>();
+      const buckets = new Set<string>();
+      for (const consumer of applications)
+        for (const edge of consumer.processes
+          .flatMap(({ dependsOn }) => dependsOn ?? [])
+          // Surfaces are unique in an Application, so it runs one store
+          // that provides the surface its catalog is applied over.
+          .filter((edge) => edge.application === application.id))
+          for (const entry of edge.buckets ?? []) {
+            const bucket = bucketOf(project, bucketNameOf(entry));
+            buckets.add(bucket);
+            for (const name of bucketCorsOf(entry)) {
+              // A `cors` entry names an exposure of the consuming
+              // Application, or E_UNKNOWN_CORS_EXPOSURE refused it.
+              const exposure = (consumer.exposure ?? []).find(
+                (candidate) => candidate.name === name,
+              ) as NonNullable<typeof consumer.exposure>[number];
+              const held = origins.get(bucket) ?? new Set<string>();
+              held.add(originOf(set, exposure));
+              origins.set(bucket, held);
+            }
+          }
+      return {
+        project,
+        buckets: [...buckets].sort(),
+        cors: [...origins.keys()].sort().map((bucket) => ({
+          bucket,
+          origins: [...(origins.get(bucket) as Set<string>)].sort(),
+        })),
+      };
+    })
     .filter(({ buckets }) => buckets.length > 0)
     .sort((a, b) => (a.project < b.project ? -1 : 1));
 }
@@ -132,10 +180,20 @@ function catalogOf(
     return {
       ...address,
       admin: { path, ...TOKEN_KEY },
-      keys: readers.map(({ project, buckets }) => ({
+      keys: readers.map(({ project, buckets, cors }) => ({
         name: project,
         path: bucketKeyOf(project, owner.process.name),
         buckets: [...buckets],
+        // Written only where some bucket admits an origin, so a catalog
+        // whose buckets no browser calls reads as it did before.
+        ...(cors.length === 0
+          ? {}
+          : {
+              cors: cors.map(({ bucket, origins }) => ({
+                bucket,
+                origins: [...origins],
+              })),
+            }),
       })),
     };
   }

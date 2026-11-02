@@ -1268,6 +1268,20 @@ const resolvedBucketCatalog = z
             name: text,
             path: text,
             buckets: z.array(text).min(1),
+            // The buckets of the key that admit an origin, each with every
+            // origin it admits; a bucket absent here admits none
+            // (spec/v1/16-dependencies.md#a-bucket-a-browser-calls).
+            cors: z
+              .array(
+                z
+                  .strictObject({
+                    bucket: text,
+                    origins: z.array(text).min(1),
+                  })
+                  .meta({ id: "CatalogBucketCors" }),
+              )
+              .min(1)
+              .exactOptional(),
           })
           .meta({ id: "CatalogKey" }),
       )

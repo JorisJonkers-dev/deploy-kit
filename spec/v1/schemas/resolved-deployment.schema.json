@@ -3629,12 +3629,41 @@
             "type": "string",
             "minLength": 1
           }
+        },
+        "cors": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CatalogBucketCors"
+          }
         }
       },
       "required": [
         "name",
         "path",
         "buckets"
+      ],
+      "additionalProperties": false
+    },
+    "CatalogBucketCors": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "type": "string",
+          "minLength": 1
+        },
+        "origins": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "bucket",
+        "origins"
       ],
       "additionalProperties": false
     },
