@@ -6,6 +6,7 @@ import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.junit.AnalyzeClasses
 import com.tngtech.archunit.junit.ArchTest
 import com.tngtech.archunit.lang.ArchRule
+import dev.jorisjonkers.deploykit.emf.cli.fixture.ComparingInMain
 import dev.jorisjonkers.deploykit.emf.cli.fixture.UpperReachingDown
 import dev.jorisjonkers.deploykit.emf.metamodel.fixture.LowerReachingUp
 import org.assertj.core.api.Assertions.assertThat
@@ -48,6 +49,13 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `the comparison rule fails on a module class reaching EMF Compare`() {
+        assertThatThrownBy { ModuleRules.testsAloneCompare().check(COMPARING) }
+            .isInstanceOf(AssertionError::class.java)
+            .hasMessageContaining("org.eclipse.emf.compare")
+    }
+
+    @Test
     fun `the import guard fails on an import holding no module`() {
         assertThat(ModuleRules.modulesMissingFrom(ClassFileImporter().importClasses()))
             .contains("metamodel", "syntax", "cli")
@@ -62,8 +70,15 @@ class ArchitectureTest {
         @JvmField
         val MODULES_HAVE_NO_CYCLES: ArchRule = ModuleRules.acyclic()
 
+        @ArchTest
+        @JvmField
+        val NO_MODULE_DEPENDS_ON_EMF_COMPARE: ArchRule = ModuleRules.testsAloneCompare()
+
         /** A metamodel class reaching up into cli, and the cli class reaching back down into it. */
         private val REACHING_UP: JavaClasses =
             ClassFileImporter().importClasses(LowerReachingUp::class.java, UpperReachingDown::class.java)
+
+        /** A cli class reaching into EMF Compare's package. */
+        private val COMPARING: JavaClasses = ClassFileImporter().importClasses(ComparingInMain::class.java)
     }
 }

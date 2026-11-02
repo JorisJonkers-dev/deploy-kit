@@ -36,6 +36,7 @@
           -->
           <excludedTestClasses>
             <param>dev.jorisjonkers.deploykit.emf.cli.ComparisonTest</param>
+            <param>dev.jorisjonkers.deploykit.emf.cli.ModelDiffTest</param>
             <param>dev.jorisjonkers.deploykit.emf.cli.StageTest</param>
             <param>dev.jorisjonkers.deploykit.emf.cli.FieldCoverageTest</param>
             <param>dev.jorisjonkers.deploykit.emf.cli.OracleDistanceTest</param>
