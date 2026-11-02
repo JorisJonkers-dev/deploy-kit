@@ -1,9 +1,8 @@
 // The Stable Addresses (spec/v1/16-dependencies.md#the-stable-address): one per
 // surface that an edge of the union names, or that a tier's forward-auth asks,
-// each naming where the surface's active Instance serves. A surface nothing
+// each naming the Service that serves the surface. A surface nothing
 // resolves derives none.
 import { servedOf, type Named } from "../model/aliases.ts";
-import type { ClusterStateDocument } from "../model/cluster-state.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
 import type { PlatformIntentDocument } from "../model/platform-intent.ts";
 import {
@@ -57,7 +56,6 @@ function namedOf(
 export function resolveStableAddresses(
   union: readonly EffectiveProject[],
   platform: PlatformIntentDocument,
-  clusterState?: ClusterStateDocument,
 ): ResolvedStableAddress[] {
   const named = namedOf(union, platform);
   const names = [...new Set(named.map(stableNameOf))].sort();
@@ -66,7 +64,7 @@ export function resolveStableAddresses(
     const [first] = naming as [NamedBy, ...NamedBy[]];
     // A provider the union does not hold is refused before resolution:
     // E_UNRESOLVED_APPLICATION, E_UNKNOWN_SURFACE.
-    const served = servedOf(first, union, platform, clusterState);
+    const served = servedOf(first, union, platform);
     return served === undefined || IP.test(served.host)
       ? []
       : [

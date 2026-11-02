@@ -1,7 +1,10 @@
 -- Document-level constraints of Project Intent (docs/adr/emf/0110). Each
 -- invariant is named after the diagnostic code it reports.
 
-import 'https://jorisjonkers.dev/deploy-kit/project-intent/1'
+-- The metamodel is imported as the file beside this one, not by its nsURI: in
+-- Eclipse, OCL > Load Document resolves an nsURI import as a URL to download, and
+-- the file is the one the examiner's editor already holds (emf/README.md, step 3).
+import 'project-intent.ecore'
 
 package projectintent
 

@@ -24,7 +24,7 @@ export const stableNameOf = ({ application, surface }: Surface): string =>
 export const stableHostOf = (named: Surface): string =>
   `${stableNameOf(named)}.${STABLE_NAMESPACE}.${CLUSTER_DOMAIN}`;
 
-/** A Stable Address resolved: its name, the active Instance it targets, and the surface's port. */
+/** A Stable Address resolved: its name, the Service it targets, and the surface's port. */
 export interface ResolvedStableAddress {
   readonly name: string;
   readonly target: string;

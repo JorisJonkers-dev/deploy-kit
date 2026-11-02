@@ -6,20 +6,14 @@ import static org.assertj.core.api.Assertions.tuple;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ClusterState;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.Disk;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.ImagesLock;
-import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.MoveStep;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.Node;
 import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.NodeContract;
-import dev.jorisjonkers.deploykit.emf.metamodel.pinnedinputs.PinnedInstance;
 import dev.jorisjonkers.deploykit.emf.metamodel.projectintent.Media;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /** The pinned inputs beside the Platform document, each read by the language its file name says. */
 class PinnedInputsTest {
@@ -105,34 +99,5 @@ class PinnedInputsTest {
         assertThat(state.getCapturedAt()).isEqualTo("2026-09-30T00:00:00Z");
         assertThat(state.getBindings()).isEmpty();
         assertThat(state.getPlacements()).isEmpty();
-        assertThat(state.getInstances()).isEmpty();
-    }
-
-    @Test
-    void aSnapshotPinsWhereEachInstanceRunsAndWhereAMoveInFlightTakesIt(@TempDir Path directory) throws IOException {
-        Path snapshot = directory.resolve("cluster-state.yml");
-        Files.writeString(
-                snapshot,
-                Files.readString(Examples.of("platform/cluster-state.yml"))
-                        + "instances:\n"
-                        + "  - application: platform-postgres\n"
-                        + "    instance: platform-postgres\n"
-                        + "    version: 16.4.0\n"
-                        + "    namespace: data-system\n"
-                        + "    node: enschede-t1000-1\n"
-                        + "    phase: lag\n"
-                        + "    target: { name: platform-postgres, version: 17.0.0, namespace: data-system }\n");
-        Resource resource = Pipeline.read(List.of(snapshot)).get(0);
-        assertThat(resource.getErrors()).isEmpty();
-        ClusterState state = (ClusterState) resource.getContents().get(0);
-
-        assertThat(state.getInstances())
-                .extracting(
-                        PinnedInstance::getApplication,
-                        PinnedInstance::getVersion,
-                        PinnedInstance::getNode,
-                        PinnedInstance::getPhase,
-                        instance -> instance.getTarget().getVersion())
-                .containsExactly(tuple("platform-postgres", "16.4.0", "enschede-t1000-1", MoveStep.LAG, "17.0.0"));
     }
 }

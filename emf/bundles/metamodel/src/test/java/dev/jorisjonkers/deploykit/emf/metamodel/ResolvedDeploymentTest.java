@@ -278,7 +278,6 @@ class ResolvedDeploymentTest {
                         "DashboardFile",
                         "SharedMiddlewareFile",
                         "StableAddressFile",
-                        "MoveFile",
                         "SourceFile",
                         "TlsStoreFile",
                         "GrafanaFile",

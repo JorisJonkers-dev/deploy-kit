@@ -145,11 +145,8 @@ class ResolutionTest {
                             Outputs.INTEGRITY)
                     .deployment();
             try (var oracles = java.nio.file.Files.list(Examples.of(example + "/expected"))) {
-                // A moving projection is the worked Move's, resolved from a set whose datastore
-                // declares its rollback, which the data-moving render case holds.
                 for (Path oracle : oracles.filter(
-                                file -> file.getFileName().toString().startsWith("resolved")
-                                        && !file.getFileName().toString().contains(".moving."))
+                                file -> file.getFileName().toString().startsWith("resolved"))
                         .toList()) {
                     String text = java.nio.file.Files.readString(oracle);
                     String id = field(text, "id");

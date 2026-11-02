@@ -34,7 +34,7 @@ answers the navigation question without a search.
 
 | artefact | lives in | graded in | how an examiner opens it |
 |---|---|---|---|
-| the Ecore metamodels (source, target and pinned inputs) and their OCL | `emf/bundles/metamodel` | Task 1 | imported in step 2; `model/skeleton.ecore` and `model/skeleton.ocl` open and validate as step 3 describes |
+| the Ecore metamodels (source, target and pinned inputs) and their OCL | `emf/bundles/metamodel` | Task 1 | imported in step 2; `model/project-intent.ocl` validates `model/cache.xmi` clean and refuses `model/cache-continuous.xmi`, as step 3 describes |
 | the Xtext grammars and generated editor | `emf/bundles/syntax` | Task 1 | imported in step 2; the generated editor reports OCL constraint violations while a source file is edited in it |
 | the QVTo transformations | `emf/bundles/resolve` | Task 2 | imported in step 2; `resolution.launch` runs the resolution on `minimal`, as step 4 describes |
 | the Acceleo templates | `emf/bundles/render` | Task 3 | imported in step 2; `render.launch` runs them, as step 4 describes |
@@ -70,11 +70,22 @@ and Acceleo 4 SDKs installed from the same release:
    are `eclipse-plugin` packaging, which m2e maps through the Tycho
    configurator: accept the connector if the importer offers to install one,
    and restart when it asks.
-3. In `dev.jorisjonkers.deploykit.emf.metamodel`, open `model/skeleton.ecore`.
-   Open `model/empty.xmi` with the Sample Reflective Ecore Model Editor, load
-   `model/skeleton.ocl` through **OCL > Load Document**, and validate: the
-   `skeletonHasAnApplication` invariant is reported. `model/notes.xmi`
-   validates clean.
+3. In `dev.jorisjonkers.deploykit.emf.metamodel`, open
+   `model/project-intent.ecore`, the Project Intent metamodel. Open
+   `model/cache.xmi` with the Sample Reflective Ecore Model Editor. It holds a
+   small Project, as the parser reads it from YAML. `model/cache-continuous.xmi`
+   is the same Project with one edit: its Process asks for a `continuous`
+   cutover over a ReadWriteOnce volume. Load `model/project-intent.ocl` into
+   each model's editor through **OCL > Load Document** (from the OCL Examples
+   and Editors SDK), one editor at a time. An invariant across documents ranges
+   over its editor's resources, so two Projects in one editor would each refuse
+   the other's name. Validated against the document, `cache.xmi` breaks
+   nothing, and `cache-continuous.xmi` breaks `E_CUTOVER_UNHONOURABLE` on its
+   Process and nothing else. `ProjectIntentOclTest`, which step 0's build runs,
+   holds both results. In Eclipse 2026-06 with OCL 6.24, the editor's
+   **Validate** after the load reports neither. The command's job disposes the
+   document it loaded before **Validate** runs, while the same loader kept open
+   over the editor's resources reports exactly that one invariant.
 4. Run `resolution.launch` in `dev.jorisjonkers.deploykit.emf.resolve` and
    `render.launch` in `dev.jorisjonkers.deploykit.emf.render` from **Run > Run
    Configurations**. They write under each project's `target/`. The resolution

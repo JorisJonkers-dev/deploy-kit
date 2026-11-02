@@ -1,9 +1,8 @@
 // The identities of one Application that hold a grant
 // (spec/v1/16-dependencies.md#what-a-grant-confers): each Process holding one,
 // each backup identity holding its destination's and its peer's credentials,
-// the migration identity holding its database's owner credential, and each
-// move identity holding its method's. The `vso`
-// and `vault-policy` adapters both read them, so neither derives them twice.
+// and the migration identity holding its database's owner credential. The
+// `vso` and `vault-policy` adapters both read them, so neither derives them twice.
 import type {
   ResolvedApplicationDocument,
   ResolvedProcess,
@@ -109,28 +108,12 @@ function processHolder(
       ];
 }
 
-/** A move identity holds the credential its engine's method logs in with. */
-const moveHolder = (
-  { move }: ResolvedProcess,
-  application: string,
-): Holder[] =>
-  move?.method === undefined
-    ? []
-    : [
-        {
-          identity: move.identity,
-          labels: apart(move.identity, application),
-          grants: [move.method.credential],
-        },
-      ];
-
 export const holdersOf = (
   application: ResolvedApplicationDocument,
 ): Holder[] => [
   ...application.processes.flatMap((process) => [
     ...processHolder(process, application.id),
     ...backupHolder(process, application.id),
-    ...moveHolder(process, application.id),
   ]),
   ...migrationHolder(application),
 ];

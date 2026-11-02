@@ -1,8 +1,6 @@
 // The name a consumer reaches its provider by (spec/v1/16-dependencies.md#the-alias):
 // the provider's Application Id, a Service in the consumer's own namespace
 // that names wherever the provider serves.
-import type { ClusterStateDocument } from "./cluster-state.ts";
-import { servingOf } from "./move.ts";
 import type { PlatformIntentDocument } from "./platform-intent.ts";
 import { homeOf, namespaceOf } from "./runtime-profiles.ts";
 import { stableHostOf } from "./stable-address.ts";
@@ -41,16 +39,11 @@ const CLUSTER_DOMAIN = "svc.cluster.local";
 
 const IP = /^[\d.]+$|:/;
 
-/**
- * Where the provider an edge names serves, in the union or in the platform's
- * register: for a Process ClusterState records an Instance of, where that
- * Instance serves.
- */
+/** Where the provider an edge names serves, in the union or in the platform's register. */
 export function servedOf(
   { application, surface }: Named,
   union: readonly Serving[],
   platform: Pick<PlatformIntentDocument, "providers">,
-  clusterState?: ClusterStateDocument,
 ): Served | undefined {
   for (const { project, applications } of union)
     for (const declared of applications)
@@ -59,12 +52,8 @@ export function servedOf(
           const port = process.provides?.[surface];
           if (port !== undefined) {
             const home = homeOf(project, process.name);
-            const serving =
-              clusterState === undefined
-                ? undefined
-                : servingOf(clusterState, application, process.name);
             return {
-              host: `${serving?.name ?? home.process}.${serving?.namespace ?? home.namespace}.${CLUSTER_DOMAIN}`,
+              host: `${home.process}.${home.namespace}.${CLUSTER_DOMAIN}`,
               port,
             };
           }

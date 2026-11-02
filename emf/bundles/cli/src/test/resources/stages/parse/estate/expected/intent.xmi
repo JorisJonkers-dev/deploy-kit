@@ -405,7 +405,6 @@
         <command>/bin/coverage</command>
         <args>serve</args>
         <args>--verbose</args>
-        <rollback/>
       </processes>
       <processes name="coverage-seed" lifecycle="prepare" image="coverage-seed" runtime="none">
         <placement memory="32Mi" cpu="5m"/>
@@ -1682,15 +1681,9 @@
       </irreplaceable>
     </durability>
     <engines>
-      <postgres backup="postgres-backup" surface="postgres" catalog="postgres-catalog">
-        <move image="postgres-move" reverse="never"/>
-      </postgres>
-      <rabbitmq backup="rabbitmq-backup" surface="management">
-        <move image="rabbitmq-move" breaksOn="minor" reverse="same-major"/>
-      </rabbitmq>
-      <valkey backup="valkey-backup" surface="redis">
-        <move image="valkey-move" breaksOn="minor"/>
-      </valkey>
+      <postgres backup="postgres-backup" surface="postgres" catalog="postgres-catalog"/>
+      <rabbitmq backup="rabbitmq-backup" surface="management"/>
+      <valkey backup="valkey-backup" surface="redis"/>
       <files backup="file-backup"/>
       <mongo backup="mongo-backup" surface="mongo"/>
       <s3 backup="file-backup" catalog="garage-catalog" catalogSurface="admin"/>
@@ -1708,7 +1701,6 @@
     <migration runner="liquibase-runner" deadline="10m" memory="256Mi" cpu="100m"/>
     <delivery machinery="/5/@applications.0 /5/@applications.1 /4/@applications.0 /4/@applications.1" gate="/4/@applications.1" reporter="/4/@applications.3">
       <analysis interval="30s" iterations="4" threshold="3" errorRate="1%" latency="500ms"/>
-      <move timeout="300s" retention="7d" memory="128Mi" cpu="100m"/>
     </delivery>
     <apiAccess holders="/4/@applications.0 /4/@applications.1 /4/@applications.2 /4/@applications.3 /5/@applications.2 /13/@applications.1 /11/@applications.1 /11/@applications.2 /11/@applications.3 /11/@applications.4 /11/@applications.9 /11/@applications.10 /0/@applications.1 /2/@applications.0" namespaceHolders="/0/@applications.2 /14/@applications.1">
       <server cidr="10.43.0.1/32" port="443"/>

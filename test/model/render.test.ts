@@ -194,62 +194,6 @@ describe("renderIntentSet", () => {
     );
   });
 
-  // REQ-113 (docs/requirements.md): platform-postgres moving from 16 to 17,
-  // the worked Move, renders its frozen source beside its target, its step
-  // Jobs and its move identity, and equals its committed tree.
-  it("renders platform-postgres moving from 16 to 17 to its committed tree, byte for byte", () => {
-    const result = renderIntentSet(
-      [
-        ...files({
-          "platform/cluster-state.yml": (body) =>
-            `${body}instances:\n  - {application: platform-postgres, instance: postgres, version: 16.4.0, namespace: data-system, node: enschede-t1000-1}\n`,
-          "data/data.project.yml": (body) =>
-            body.replace(
-              "      - name: postgres\n",
-              "      - name: postgres\n        rollback: forward-only # the worked Move: 16 to 17, which postgres's method cannot reverse\n",
-            ),
-        }),
-        ...KNOWLEDGE_PLATFORM.map((name) => ({ name, text: text(name) })),
-      ],
-      { ...OPTIONS, projects: ["data"] },
-    );
-    if (!result.ok)
-      throw new Error(
-        JSON.stringify(result.diagnostics.map(({ code }) => code)),
-      );
-    const prefix = "apps/data/platform-postgres/";
-    const tree = Object.fromEntries(
-      Object.entries(asTree(artifact(result.value, "data")))
-        .filter(([path]) => path.startsWith(prefix))
-        .map(([path, body]) => [path.slice(prefix.length), body]),
-    );
-
-    expect(tree).toStrictEqual(committed("data/moving"));
-  });
-
-  it("renders a Process ClusterState records under another name under it, its backups copying that Instance's claims", () => {
-    const tree = asTree(
-      artifact(
-        render(
-          {
-            "platform/cluster-state.yml": (body) =>
-              `${body}instances:\n  - {application: platform-postgres, instance: postgres, name: postgres-aaaaaaaaaaaa, version: 17.2.0, namespace: data-system, node: enschede-t1000-1}\n`,
-          },
-          ["data"],
-        ),
-        "data",
-      ),
-    );
-    const at = (file: string) =>
-      tree[`apps/data/platform-postgres/${file}`] ?? "";
-
-    expect(at("workload.yaml")).toContain("name: postgres-aaaaaaaaaaaa");
-    expect(at("pvc.yaml")).toContain("name: postgres-data-aaaaaaaaaaaa");
-    expect(at("backup.yaml")).toContain(
-      "claimName: postgres-data-aaaaaaaaaaaa",
-    );
-  });
-
   it("renders nothing estate-scoped for both but the platform's Human Grants, each holding its own routes", () => {
     expect(
       Object.keys(
@@ -1484,7 +1428,7 @@ describe("the database catalog", () => {
   it("renders nothing where the engine names no catalog method", () => {
     const noMethod = owned({
       [PLATFORM]: (document) =>
-        document.replace(", catalog: postgres-catalog,", ","),
+        document.replace(", catalog: postgres-catalog }", " }"),
     });
 
     expect(
@@ -2478,25 +2422,9 @@ describe("each container's software version", () => {
     ).toStrictEqual(["        image.jorisjonkers.dev/notes-api: 1.5.0"]);
   });
 
-  it("accepts any version on an engine whose platform entry names no move method", () => {
+  it("accepts any version an engine's image records", () => {
     const result = renderIntentSet(
-      files({
-        [LOCK]: versioned("postgres", "14-vectorchord0.4.3"),
-        "platform/platform.intent.yml": (document) =>
-          document.replace(
-            ", move: {image: postgres-move, breaksOn: major, reverse: never}",
-            "",
-          ),
-      }),
-      { ...OPTIONS, projects: ["data"] },
-    );
-
-    expect(result.ok).toBe(true);
-  });
-
-  it("accepts an engine's image whose version is major.minor.patch", () => {
-    const result = renderIntentSet(
-      files({ [LOCK]: versioned("postgres", "17.2.0") }),
+      files({ [LOCK]: versioned("postgres", "14-vectorchord0.4.3") }),
       { ...OPTIONS, projects: ["data"] },
     );
 
@@ -5034,7 +4962,7 @@ describe("the operator's objects", () => {
         ["observability"],
       ),
     ).toThrow(
-      "prometheus: a Process the operator runs that holds a sidecar, a seeded Asset, a VPN, a GPU, a library, an L4 Address, a spawn template, a Move or a command, is not rendered yet",
+      "prometheus: a Process the operator runs that holds a sidecar, a seeded Asset, a VPN, a GPU, a library, an L4 Address, a spawn template or a command, is not rendered yet",
     );
   });
 });
