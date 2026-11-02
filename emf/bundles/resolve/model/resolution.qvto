@@ -3905,7 +3905,7 @@ query obsRuleName(app : String, source : String) : String =
 query obsAlertRules(app : String, source : String, file : AssetFile) : ResolvedAlertRules =
 	object ResolvedAlertRules {
 		name := obsRuleName(app, source);
-		groups := file.data.oclAsType(IN::DatumMap).entries->select(e | e.key = 'groups')->first()
+		groups := file.rules.oclAsType(IN::DatumMap).entries->select(e | e.key = 'groups')->first()
 			.value.oclAsType(IN::DatumList).items->collect(d | d.copied());
 	};
 

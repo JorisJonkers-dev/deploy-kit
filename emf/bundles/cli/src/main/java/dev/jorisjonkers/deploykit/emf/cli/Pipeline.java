@@ -296,7 +296,7 @@ public final class Pipeline {
             assetFile.setFrom(from);
             assetFile.setContent(Files.readString(beside, StandardCharsets.UTF_8));
             if (rules.contains(from)) {
-                assetFile.setData(DataFile.read(assetFile.getContent()).orElse(null));
+                assetFile.setRules(DataFile.read(assetFile.getContent()).orElse(null));
             }
             read.add(assetFile);
         }
