@@ -239,6 +239,8 @@ applications:
         # Context advertises `secretsEncryption: true` --
         # E_SECRETS_AT_REST_REQUIRED (docs/adr/model/0030-secret-delivery-is-env-file-or-self.md).
         secrets:
+          # A generated key that adopts the exporter's existing value, so the
+          # lower, resolve and render stage cases carry an adopted location.
           - path: secret/data/data-system/exporter
             keys: [{ name: datasource, generate: { adopt: "secret/data/platform/postgres/exporter#datasource" } }]
             access: read

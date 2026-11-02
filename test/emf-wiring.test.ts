@@ -49,6 +49,35 @@ function mavenSteps(files: readonly Workflow[]): string[] {
   );
 }
 
+/** A command line that passes the `quick` profile: `-Pquick`, `-P quick`, a list naming it, or `--activate-profiles`. */
+const QUICK_PROFILE = /(?:-P\s*|--activate-profiles[=\s]+)(?:[\w-]+,)*quick\b/;
+
+/**
+ * Every place CI could pass the model-driven build's `quick` profile: a
+ * workflow that names it anywhere (a step's command, its `env:`, a
+ * `MAVEN_ARGS`), or the committed `emf/.mvn/maven.config`, which every build
+ * reads. The profile skips the coverage floor, PIT and the Spotless check for
+ * a local edit (emf/pom.xml), so CI passing it would skip the gates it exists
+ * to run.
+ */
+function quickProfileErrors(
+  files: readonly Workflow[],
+  root: string,
+): string[] {
+  const errors = files
+    .filter((file) => QUICK_PROFILE.test(file.text))
+    .map(
+      (file) =>
+        `${file.name} passes the quick profile to the model-driven build, which skips the gates CI runs`,
+    );
+  const config = join(root, "emf", ".mvn", "maven.config");
+  if (existsSync(config) && QUICK_PROFILE.test(readFileSync(config, "utf8")))
+    errors.push(
+      "emf/.mvn/maven.config passes the quick profile to every model-driven build, which skips the gates CI runs",
+    );
+  return errors;
+}
+
 /** Every problem with the Maven steps and the reactor under `root`. */
 function mavenWiringErrors(files: readonly Workflow[], root: string): string[] {
   const errors: string[] = [];
@@ -127,6 +156,64 @@ describe("the model-driven build CI runs is the build in the tree", () => {
     expect(mavenWiringErrors([], root)).toEqual([
       "emf/pom.xml names module gone, which is not on disk",
     ]);
+  });
+});
+
+describe("CI never passes the model-driven build's quick profile", () => {
+  it("passes over this repository's workflows and Maven configuration", () => {
+    expect(quickProfileErrors(workflows(), REPOSITORY)).toEqual([]);
+  });
+
+  it.each([
+    ["-Pquick", "./mvnw -B -ntp verify -Pquick"],
+    ["-P quick", "./mvnw -B -ntp -P quick verify"],
+    ["a list of profiles", "./mvnw -B -ntp verify -Pbenchmark,quick"],
+    ["--activate-profiles", "./mvnw -B -ntp verify --activate-profiles=quick"],
+  ])("fails a step that passes it with %s", (_, run) => {
+    const quick = workflow(
+      "ci.yml",
+      MAVEN_STEP.replace("./mvnw -B -ntp verify", run),
+    );
+
+    expect(quickProfileErrors([quick], temporary())).toEqual([
+      "ci.yml passes the quick profile to the model-driven build, which skips the gates CI runs",
+    ]);
+  });
+
+  it("fails a step that passes it through MAVEN_ARGS", () => {
+    const quick = workflow(
+      "ci.yml",
+      MAVEN_STEP.replace(
+        "        'run':",
+        "        'env':\n          'MAVEN_ARGS': '-Pquick'\n        'run':",
+      ),
+    );
+
+    expect(quickProfileErrors([quick], temporary())).toEqual([
+      "ci.yml passes the quick profile to the model-driven build, which skips the gates CI runs",
+    ]);
+  });
+
+  it("fails a committed Maven configuration that passes it", () => {
+    const root = temporary();
+    mkdirSync(join(root, "emf", ".mvn"), { recursive: true });
+    writeFileSync(join(root, "emf", ".mvn", "maven.config"), "-Pquick\n");
+
+    expect(quickProfileErrors([], root)).toEqual([
+      "emf/.mvn/maven.config passes the quick profile to every model-driven build, which skips the gates CI runs",
+    ]);
+  });
+
+  it("passes a step that names another profile", () => {
+    const benchmark = workflow(
+      "ci.yml",
+      MAVEN_STEP.replace(
+        "./mvnw -B -ntp verify",
+        "./mvnw -B -ntp verify -Pbenchmark -Dquickly=true",
+      ),
+    );
+
+    expect(quickProfileErrors([benchmark], temporary())).toEqual([]);
   });
 });
 

@@ -183,7 +183,7 @@ that will exercise it, and no code a chapter does not define is used in the
 tree; `npm run lint:codes` holds both
 ([0067](adr/architecture/0067-every-spec-error-code-is-proved-by-a-test.md)). A
 test exercises a code by naming it, in a TypeScript test or a refused case's
-committed `diagnostics.json`; the frozen `emf/` is out of its scope.
+committed `diagnostics.json`; `emf/` is out of its scope.
 
 The CLI renders diagnostics for a human by default, emits the array verbatim
 under `--json`, and maps failure classes to distinct exit statuses.
@@ -491,9 +491,10 @@ meaning share one CI job, `contracts`: all nine check a document against a
 rule rather than code against a graph.
 Boundaries runs alone as `architecture`, because it is the one gate that
 speaks for `docs/architecture.md` itself rather than for a document beside it.
-The model-driven build runs alone as `emf`, on its own JDK and Maven, by hand
-only (`workflow_dispatch`): frozen with `emf/`, it gates nothing and is
-deleted with it.
+The model-driven build runs alone as `emf`, on its own JDK and Maven: its
+tests and coverage gate on every change to `emf/` or the workflow, and its
+mutation gate nightly and on a dispatch. It is not in `Pipeline Complete`, so
+it gates nothing, and it is deleted with `emf/`.
 
 Every rule these gates enforce is written down once, with a greppable id, in
 the [rule ledger](architecture-rules.md)
