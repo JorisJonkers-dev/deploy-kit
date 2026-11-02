@@ -3,9 +3,10 @@
 --
 -- The lowering, ported from bundles/resolve/model/lower.qvto to ATL (EMFTVM) for
 -- the benchmark only (docs/benchmarks.md): it ships in no bundle, and the
--- pipeline runs the QVT-Operational lowering. Every rule names the QVTo mapping
--- it ports; the semantics are the same, and LoweringEquivalenceTest holds the
--- two outputs equal under EMF Compare on every example.
+-- pipeline runs the QVT-Operational lowering. A rule is named for the class
+-- whose QVTo mapping it ports; the semantics are the same, and
+-- LoweringEquivalenceTest holds the two outputs equal under EMF Compare on
+-- every example.
 --
 -- Two shapes of rule, because ATL ties a target to how its source is matched:
 --   * a matched rule where the source has exactly one image: the Project, its
