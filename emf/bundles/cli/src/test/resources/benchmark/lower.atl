@@ -1,0 +1,629 @@
+-- @atlcompiler emftvm
+-- @nsURI PI=https://jorisjonkers.dev/deploy-kit/project-intent/1
+--
+-- The lowering, ported from bundles/resolve/model/lower.qvto to ATL (EMFTVM) for
+-- the benchmark only (docs/benchmarks.md): it ships in no bundle, and the
+-- pipeline runs the QVT-Operational lowering. Every rule names the QVTo mapping
+-- it ports; the semantics are the same, and LoweringEquivalenceTest holds the
+-- two outputs equal under EMF Compare on every example.
+--
+-- Two shapes of rule, because ATL ties a target to how its source is matched:
+--   * a matched rule where the source has exactly one image: the Project, its
+--     Applications and Processes, and everything they own outright. References
+--     to a lowered Process or Surface then resolve through the default trace,
+--     with no ordering to get right (QVTo's `resolveone`);
+--   * a lazy rule where a shared declaration is copied once per Process that
+--     inherits it (QVTo's `copyFor(owner)`): a matched rule gives one target per
+--     source, and a Grant on the Project has one image per Process below it.
+--
+-- An unsettable feature is written only where the source states it. A binding
+-- is unconditional, and EMFTVM writes a null it is given, which marks such a
+-- feature set; so every conditional write sits in the rule's imperative `do`
+-- block instead.
+module lower;
+create OUT : PI from IN : PI;
+
+-- ------------------------------------------------------------------- helpers
+
+-- Whether the source states `feature`: QVTo's `states`, through EMFTVM's call
+-- of the Java method.
+helper context OclAny def: states(feature : String) : Boolean =
+	self.eIsSet(self.eClass().getEStructuralFeature(feature));
+
+helper context OclAny def: present : Boolean = not self.oclIsUndefined();
+
+-- EMFTVM reads an enumerator by its literal, not its name, and every `absent`
+-- literal is the empty string: the value reads as `#` followed by nothing, and
+-- `#absent` equals no value EMFTVM reads. So the comparison is with the text.
+helper context OclAny def: absent : Boolean = self.toString() = '#';
+
+helper context PI!Process def: app : PI!Application = self.refImmediateComposite();
+
+helper context PI!Process def: prj : PI!Project = self.app.refImmediateComposite();
+
+-- Lowest level first, which is what decides every merge below.
+helper context PI!Process def: levels : Sequence(PI!Placement) =
+	Sequence{self.placement, self.app.placement, self.prj.placement}->select(p | p.present);
+
+helper context PI!Process def: withArch : Sequence(PI!Placement) = self.levels->select(p | p.arch->notEmpty());
+helper context PI!Process def: withSite : Sequence(PI!Placement) = self.levels->select(p | p.site.present);
+helper context PI!Process def: withDisk : Sequence(PI!Placement) = self.levels->select(p | p.disk.present);
+helper context PI!Process def: withGpu : Sequence(PI!Placement) = self.levels->select(p | p.gpu.present);
+helper context PI!Process def: withCapabilities : Sequence(PI!Placement) =
+	self.levels->select(p | p.capabilities->notEmpty());
+
+helper context PI!Process def: budgets : Sequence(String) =
+	Sequence{self.startupBudget, self.app.startupBudget, self.prj.startupBudget}->select(b | b.present);
+
+helper context PI!Process def: cutovers : Sequence(PI!Cutover) =
+	Sequence{self.cutover, self.app.cutover, self.prj.cutover}->select(c | not c.absent);
+
+-- The entries of every file of one scope; no file varies by cluster.
+helper def: entriesIn(files : Sequence(PI!EnvFile)) : Sequence(PI!EnvVariable) =
+	files->collect(f | f.entries)->flatten();
+
+helper def: mergeEntries(own : Sequence(PI!EnvVariable), shared : Sequence(PI!EnvVariable)) : Sequence(PI!EnvVariable) =
+	own->union(shared->select(e | own->forAll(m | m.name <> e.name)));
+
+-- The derived read path is the identity, so a `kv` grant and a `database` grant
+-- never collide.
+helper def: sameGrant(one : PI!Grant, other : PI!Grant) : Boolean =
+	(one.oclIsKindOf(PI!KvGrant) and other.oclIsKindOf(PI!KvGrant) and one.path = other.path)
+	or (one.oclIsKindOf(PI!DatabaseGrant) and other.oclIsKindOf(PI!DatabaseGrant) and one.role = other.role)
+	or (one.oclIsKindOf(PI!TransitGrant) and other.oclIsKindOf(PI!TransitGrant) and one.key = other.key);
+
+helper def: mergeGrants(own : Sequence(PI!Grant), shared : Sequence(PI!Grant)) : Sequence(PI!Grant) =
+	own->union(shared->select(g | own->forAll(m | not thisModule.sameGrant(m, g))));
+
+-- `required` is excluded: the same edge declared twice is the same declaration.
+helper def: mergeEdges(own : Sequence(PI!DependencyEdge), shared : Sequence(PI!DependencyEdge)) : Sequence(PI!DependencyEdge) =
+	own->union(shared->select(e | own->forAll(m | m.application <> e.application or m.surface <> e.surface)));
+
+-- Two files cannot arrive at one path, so where an Asset lands is its identity.
+helper context PI!Asset def: landsAt : String = self.mountAt;
+helper context PI!SeededAsset def: landsAt : String = self.seedAt;
+
+helper def: mergeAssets(own : Sequence(PI!AssetDeclaration), shared : Sequence(PI!AssetDeclaration)) : Sequence(PI!AssetDeclaration) =
+	own->union(shared->select(a | own->forAll(m | m.landsAt <> a.landsAt)));
+
+-- A path is its own identity, so the union is the merge.
+helper def: mergePaths(own : Sequence(PI!WritablePathDeclaration), shared : Sequence(PI!WritablePathDeclaration)) : Sequence(PI!WritablePathDeclaration) =
+	own->union(shared->select(w | own->forAll(m | m.path <> w.path)));
+
+-- QVTo's `disjuncts`: a helper on each concrete type, which ATL dispatches on
+-- the runtime type, calls the lazy rule for it.
+helper context PI!KvGrant def: copied() : PI!Grant = thisModule.KvGrantCopy(self);
+helper context PI!DatabaseGrant def: copied() : PI!Grant = thisModule.DatabaseGrantCopy(self);
+helper context PI!TransitGrant def: copied() : PI!Grant = thisModule.TransitGrantCopy(self);
+helper context PI!PlainKey def: copied() : PI!KvKey = thisModule.PlainKeyCopy(self);
+helper context PI!GeneratedKey def: copied() : PI!KvKey = thisModule.GeneratedKeyCopy(self);
+helper context PI!OptionalKey def: copied() : PI!KvKey = thisModule.OptionalKeyCopy(self);
+helper context PI!Asset def: copied() : PI!AssetDeclaration = thisModule.AssetCopy(self);
+helper context PI!SeededAsset def: copied() : PI!AssetDeclaration = thisModule.SeededAssetCopy(self);
+helper context PI!PlainPath def: copied() : PI!WritablePathDeclaration = thisModule.PlainPathCopy(self);
+helper context PI!MemoryPath def: copied() : PI!WritablePathDeclaration = thisModule.MemoryPathCopy(self);
+helper context PI!EnvLiteral def: copied() : PI!EnvValue = thisModule.EnvLiteralCopy(self);
+helper context PI!Placeholder def: copied() : PI!EnvValue = thisModule.PlaceholderCopy(self);
+helper context PI!DependencyEdge def: copied() : PI!DependencyEdge = thisModule.DependencyEdgeCopy(self);
+
+-- ------------------------------------------------- matched rules: one image
+
+-- Project::lower. Nobody authors the Effective Intent, so the header stays behind.
+rule Project {
+	from s : PI!Project
+	to t : PI!EffectiveProject (
+		project <- s.project,
+		owner <- s.owner,
+		applications <- s.applications
+	)
+}
+
+-- Application::lower.
+rule Application {
+	from s : PI!Application
+	to t : PI!EffectiveApplication (
+		id <- s.id,
+		processes <- s.processes,
+		client <- s.client,
+		l4Exposure <- s.l4Exposure,
+		dashboards <- s.dashboards,
+		alertRules <- s.alertRules,
+		observability <- s.observability,
+		exposure <- s.exposure,
+		migration <- s.migration
+	)
+	do {
+		if (s.description.present) { t.description <- s.description; }
+	}
+}
+
+rule ManagedMigration {
+	from s : PI!ManagedMigration
+	to t : PI!ManagedMigration (changelog <- s.changelog)
+}
+
+rule SelfMigration {
+	from s : PI!SelfMigration
+	to t : PI!SelfMigration
+}
+
+rule NoMigration {
+	from s : PI!NoMigration
+	to t : PI!NoMigration
+}
+
+-- Process::lower.
+rule Process {
+	from s : PI!Process
+	to t : PI!Process (
+		name <- s.name,
+		lifecycle <- s.lifecycle,
+		image <- s.image,
+		runtime <- s.runtime,
+		provides <- s.provides,
+		sidecars <- s.sidecars,
+		probes <- s.probes,
+		volumes <- s.volumes,
+		replicas <- s.replicas,
+		api <- s.api,
+		egress <- s.egress,
+		vpn <- s.vpn,
+		libraries <- s.libraries,
+		parked <- s.parked,
+		command <- s.command,
+		args <- s.args,
+		spawns <- s.spawns,
+		rollback <- s.rollback,
+		secrets <- thisModule.mergeGrants(thisModule.mergeGrants(s.secrets, s.app.secrets), s.prj.secrets)
+			->collect(g | g.copied()),
+		dependsOn <- thisModule.mergeEdges(thisModule.mergeEdges(s.dependsOn, s.app.dependsOn), s.prj.dependsOn)
+			->collect(e | e.copied()),
+		assets <- thisModule.mergeAssets(thisModule.mergeAssets(s.assets, s.app.assets), s.prj.assets)
+			->collect(a | a.copied()),
+		writablePaths <- thisModule.mergePaths(thisModule.mergePaths(s.writablePaths, s.app.writablePaths), s.prj.writablePaths)
+			->collect(w | w.copied()),
+		-- The Process's one file, its entries extended by every scope above, or none.
+		env <- if s.env->union(s.app.env)->union(s.prj.env)->isEmpty() then Sequence{}
+			else Sequence{thisModule.EnvFileFor(s)} endif,
+		-- Key by key: each dimension from the lowest level that set it.
+		placement <- if s.levels->isEmpty() then OclUndefined else thisModule.PlacementFor(s) endif
+	)
+	do {
+		if (s.states('engine')) { t.engine <- s.engine; }
+		if (s.description.present) { t.description <- s.description; }
+		if (s.schedule.present) { t.schedule <- s.schedule; }
+		-- The single values, from the lowest level that declared one.
+		if (s.budgets->notEmpty()) { t.startupBudget <- s.budgets->first(); }
+		-- A prepare Process cuts over nothing, so a shared answer does not reach it.
+		if (s.lifecycle <> #prepare and s.lifecycle <> #scheduled and s.cutovers->notEmpty()) {
+			t.cutover <- s.cutovers->first();
+		}
+	}
+}
+
+rule Parked {
+	from s : PI!Parked
+	to t : PI!Parked (reason <- s.reason)
+}
+
+rule Rollback {
+	from s : PI!Rollback
+	to t : PI!Rollback
+}
+
+rule Observability {
+	from s : PI!Observability
+	to t : PI!Observability (scrape <- s.scrape)
+}
+
+rule Scrape {
+	from s : PI!Scrape
+	to t : PI!Scrape (
+		path <- s.path,
+		process <- s.process,
+		surface <- s.surface
+	)
+	do {
+		if (s.honorLabels.present) { t.honorLabels <- s.honorLabels; }
+	}
+}
+
+rule Exposure {
+	from s : PI!Exposure
+	to t : PI!Exposure (
+		name <- s.name,
+		host <- s.host,
+		audience <- s.audience,
+		routes <- s.routes
+	)
+	do {
+		if (s.states('contentPolicy')) { t.contentPolicy <- s.contentPolicy; }
+		if (s.proxied.present) { t.proxied <- s.proxied; }
+	}
+}
+
+rule Route {
+	from s : PI!Route
+	to t : PI!Route (
+		path <- s.path,
+		match <- s.match,
+		process <- s.process,
+		surface <- s.surface,
+		rateLimit <- s.rateLimit
+	)
+	do {
+		if (s.states('audience')) { t.audience <- s.audience; }
+		if (s.redirectTo.present) { t.redirectTo <- s.redirectTo; }
+	}
+}
+
+rule RateLimit {
+	from s : PI!RateLimit
+	to t : PI!RateLimit (requests <- s.requests, per <- s.per)
+}
+
+rule Surface {
+	from s : PI!Surface
+	to t : PI!Surface (key <- s.key, value <- s.value)
+}
+
+rule Sidecar {
+	from s : PI!Sidecar
+	to t : PI!Sidecar (
+		name <- s.name,
+		image <- s.image,
+		command <- s.command,
+		args <- s.args,
+		memory <- s.memory,
+		cpu <- s.cpu,
+		volumes <- s.volumes,
+		assets <- s.assets
+	)
+	do {
+		if (s."init".present) { t."init" <- s."init"; }
+	}
+}
+
+rule SidecarMount {
+	from s : PI!SidecarMount
+	to t : PI!SidecarMount (claim <- s.claim, mountAt <- s.mountAt)
+}
+
+rule SidecarAsset {
+	from s : PI!SidecarAsset
+	to t : PI!SidecarAsset ("from" <- s."from", mountAt <- s.mountAt)
+}
+
+-- A spawn template is the Process's own, so it is copied whole.
+rule SpawnTemplate {
+	from s : PI!SpawnTemplate
+	to t : PI!SpawnTemplate (
+		name <- s.name,
+		image <- s.image,
+		placement <- s.placement,
+		provides <- s.provides,
+		dependsOn <- s.dependsOn->collect(e | e.copied()),
+		egress <- s.egress
+	)
+}
+
+rule SpawnPlacement {
+	from s : PI!SpawnPlacement
+	to t : PI!SpawnPlacement (memory <- s.memory, cpu <- s.cpu)
+}
+
+rule Client {
+	from s : PI!Client
+	to t : PI!Client (
+		signIn <- s.signIn,
+		redirectPaths <- s.redirectPaths,
+		roles <- s.roles
+	)
+	do {
+		if (s.exposure.present) { t.exposure <- s.exposure; }
+		if (s.label.present) { t.label <- s.label; }
+		if (s.description.present) { t.description <- s.description; }
+		if (s.iconPath.present) { t.iconPath <- s.iconPath; }
+		if (s.launchPath.present) { t.launchPath <- s.launchPath; }
+		if (s.protectedPath.present) { t.protectedPath <- s.protectedPath; }
+		if (s.backChannelLogoutPath.present) { t.backChannelLogoutPath <- s.backChannelLogoutPath; }
+		if (s.states('credential')) { t.credential <- s.credential; }
+	}
+}
+
+-- The port's Process and surface are the lowered Process's, as a route's are.
+rule L4Exposure {
+	from s : PI!L4Exposure
+	to t : PI!L4Exposure (
+		address <- s.address,
+		port <- s.port,
+		protocol <- s.protocol,
+		process <- s.process,
+		surface <- s.surface
+	)
+}
+
+rule Dashboard {
+	from s : PI!Dashboard
+	to t : PI!Dashboard ("from" <- s."from")
+}
+
+rule AlertRules {
+	from s : PI!AlertRules
+	to t : PI!AlertRules ("from" <- s."from")
+}
+
+rule Volume {
+	from s : PI!Volume
+	to t : PI!Volume (claim <- s.claim, mountAt <- s.mountAt, durability <- s.durability)
+	do {
+		if (s.size.present) { t.size <- s.size; }
+	}
+}
+
+rule LibraryMount {
+	from s : PI!LibraryMount
+	to t : PI!LibraryMount ("library" <- s."library", mountAt <- s.mountAt, access <- s.access)
+	do {
+		if (s.subPath.present) { t.subPath <- s.subPath; }
+	}
+}
+
+rule Egress {
+	from s : PI!Egress
+	to t : PI!Egress ("to" <- s."to", reason <- s.reason)
+}
+
+rule VpnAttachment {
+	from s : PI!VpnAttachment
+	to t : PI!VpnAttachment (forwardedPort <- s.forwardedPort)
+}
+
+rule ApiAccess {
+	from s : PI!ApiAccess
+	to t : PI!ApiAccess (reason <- s.reason, rules <- s.rules)
+}
+
+rule ApiRule {
+	from s : PI!ApiRule
+	to t : PI!ApiRule (group <- s.group, objects <- s.objects, verbs <- s.verbs)
+	do {
+		if (s.states('scope')) { t.scope <- s.scope; }
+	}
+}
+
+rule Capacity {
+	from s : PI!Capacity
+	to t : PI!Capacity (count <- s.count, reason <- s.reason)
+	do {
+		if (s.states('across')) { t.across <- s.across; }
+	}
+}
+
+rule Probes {
+	from s : PI!Probes
+	to t : PI!Probes (readiness <- s.readiness, liveness <- s.liveness)
+}
+
+rule NoProbes {
+	from s : PI!NoProbes
+	to t : PI!NoProbes
+}
+
+rule HttpProbe {
+	from s : PI!HttpProbe
+	to t : PI!HttpProbe (path <- s.path, port <- s.port)
+}
+
+rule TcpProbe {
+	from s : PI!TcpProbe
+	to t : PI!TcpProbe (tcp <- s.tcp)
+}
+
+-- ------------------------------------------- lazy rules: one image per Process
+
+-- Process::lower's placement: each dimension from the lowest level that set
+-- it, the quantities from the Process and nowhere else.
+lazy rule PlacementFor {
+	from s : PI!Process
+	to t : PI!Placement (
+		arch <- if s.withArch->isEmpty() then Sequence{} else s.withArch->first().arch endif,
+		disk <- if s.withDisk->isEmpty() then OclUndefined
+			else thisModule.DiskRequestCopy(s.withDisk->first().disk) endif,
+		gpu <- if s.withGpu->isEmpty() then OclUndefined
+			else thisModule.GpuRequestCopy(s.withGpu->first().gpu) endif,
+		capabilities <- if s.withCapabilities->isEmpty() then Sequence{}
+			else s.withCapabilities->first().capabilities endif
+	)
+	do {
+		if (s.placement.present) {
+			if (s.placement.memory.present) { t.memory <- s.placement.memory; }
+			if (s.placement.cpu.present) { t.cpu <- s.placement.cpu; }
+		}
+		if (s.withSite->notEmpty()) { t.site <- s.withSite->first().site; }
+		-- A lazy rule with a `do` block answers its last statement, not its target.
+		t;
+	}
+}
+
+lazy rule DiskRequestCopy {
+	from s : PI!DiskRequest
+	to t : PI!DiskRequest (media <- s.media)
+}
+
+lazy rule GpuRequestCopy {
+	from s : PI!GpuRequest
+	to t : PI!GpuRequest ("class" <- s."class", memory <- s.memory, vendor <- s.vendor, model <- s.model)
+}
+
+-- Process::envFor.
+lazy rule EnvFileFor {
+	from s : PI!Process
+	to t : PI!EnvFile (
+		entries <- thisModule.mergeEntries(
+				thisModule.mergeEntries(thisModule.entriesIn(s.env), thisModule.entriesIn(s.app.env)),
+				thisModule.entriesIn(s.prj.env))
+			->collect(e | thisModule.EnvVariableCopy(e))
+	)
+}
+
+lazy rule EnvVariableCopy {
+	from s : PI!EnvVariable
+	to t : PI!EnvVariable (
+		name <- s.name,
+		value <- if s.value.present then s.value.copied() else OclUndefined endif
+	)
+}
+
+lazy rule EnvLiteralCopy {
+	from s : PI!EnvLiteral
+	to t : PI!EnvLiteral (text <- s.text)
+}
+
+lazy rule PlaceholderCopy {
+	from s : PI!Placeholder
+	to t : PI!Placeholder (kind <- s.kind, source <- s.source)
+	do {
+		if (s.states('suffix')) { t.suffix <- s.suffix; }
+		-- A lazy rule with a `do` block answers its last statement, not its target.
+		t;
+	}
+}
+
+lazy rule DependencyEdgeCopy {
+	from s : PI!DependencyEdge
+	to t : PI!DependencyEdge (
+		application <- s.application,
+		surface <- s.surface,
+		buckets <- s.buckets,
+		credentials <- if s.credentials.present then thisModule.CredentialsCopy(s.credentials) else OclUndefined endif
+	)
+	do {
+		if (s.required.present) { t.required <- s.required; }
+		-- A lazy rule with a `do` block answers its last statement, not its target.
+		t;
+	}
+}
+
+lazy rule CredentialsCopy {
+	from s : PI!Credentials
+	to t : PI!Credentials (
+		rotation <- if s.rotation.present then thisModule.RotationCopy(s.rotation) else OclUndefined endif
+	)
+	do {
+		if (s.states('delivery')) { t.delivery <- s.delivery; }
+		if (s.mountAt.present) { t.mountAt <- s.mountAt; }
+		if (s.fileMode.present) { t.fileMode <- s.fileMode; }
+		-- A lazy rule with a `do` block answers its last statement, not its target.
+		t;
+	}
+}
+
+lazy rule AssetCopy {
+	from s : PI!Asset
+	to t : PI!Asset ("from" <- s."from", mountAt <- s.mountAt)
+}
+
+lazy rule SeededAssetCopy {
+	from s : PI!SeededAsset
+	to t : PI!SeededAsset ("from" <- s."from", seedAt <- s.seedAt)
+}
+
+lazy rule PlainPathCopy {
+	from s : PI!PlainPath
+	to t : PI!PlainPath (path <- s.path)
+}
+
+lazy rule MemoryPathCopy {
+	from s : PI!MemoryPath
+	to t : PI!MemoryPath (path <- s.path, memory <- s.memory)
+}
+
+lazy rule KvGrantCopy {
+	from s : PI!KvGrant
+	to t : PI!KvGrant (
+		path <- s.path,
+		keys <- s.keys->collect(k | k.copied()),
+		access <- s.access,
+		delivery <- s.delivery,
+		rotation <- if s.rotation.present then thisModule.RotationCopy(s.rotation) else OclUndefined endif
+	)
+	do {
+		if (s.mountAt.present) { t.mountAt <- s.mountAt; }
+		if (s.fileMode.present) { t.fileMode <- s.fileMode; }
+		-- A lazy rule with a `do` block answers its last statement, not its target.
+		t;
+	}
+}
+
+lazy rule OptionalKeyCopy {
+	from s : PI!OptionalKey
+	to t : PI!OptionalKey (name <- s.name, optional <- s.optional)
+}
+
+lazy rule PlainKeyCopy {
+	from s : PI!PlainKey
+	to t : PI!PlainKey (name <- s.name)
+}
+
+lazy rule GeneratedKeyCopy {
+	from s : PI!GeneratedKey
+	to t : PI!GeneratedKey (
+		name <- s.name,
+		generate <- if s.generate.present then thisModule.GenerateCopy(s.generate) else OclUndefined endif
+	)
+}
+
+lazy rule GenerateCopy {
+	from s : PI!Generate
+	to t : PI!Generate
+	do {
+		if (s.bytes.present) { t.bytes <- s.bytes; }
+		if (not s.encoding.absent) { t.encoding <- s.encoding; }
+		-- A lazy rule with a `do` block answers its last statement, not its target.
+		t;
+	}
+}
+
+lazy rule DatabaseGrantCopy {
+	from s : PI!DatabaseGrant
+	to t : PI!DatabaseGrant (
+		engine <- s.engine,
+		role <- s.role,
+		delivery <- s.delivery,
+		rotation <- if s.rotation.present then thisModule.RotationCopy(s.rotation) else OclUndefined endif
+	)
+	do {
+		if (s.mountAt.present) { t.mountAt <- s.mountAt; }
+		if (s.fileMode.present) { t.fileMode <- s.fileMode; }
+		-- A lazy rule with a `do` block answers its last statement, not its target.
+		t;
+	}
+}
+
+lazy rule TransitGrantCopy {
+	from s : PI!TransitGrant
+	to t : PI!TransitGrant (
+		engine <- s.engine,
+		key <- s.key,
+		operations <- s.operations,
+		delivery <- s.delivery,
+		rotation <- if s.rotation.present then thisModule.RotationCopy(s.rotation) else OclUndefined endif
+	)
+	do {
+		if (s.mountAt.present) { t.mountAt <- s.mountAt; }
+		if (s.fileMode.present) { t.fileMode <- s.fileMode; }
+		-- A lazy rule with a `do` block answers its last statement, not its target.
+		t;
+	}
+}
+
+lazy rule RotationCopy {
+	from s : PI!Rotation
+	to t : PI!Rotation (tolerates <- s.tolerates)
+	do {
+		if (s.maxAge.present) { t.maxAge <- s.maxAge; }
+		-- A lazy rule with a `do` block answers its last statement, not its target.
+		t;
+	}
+}

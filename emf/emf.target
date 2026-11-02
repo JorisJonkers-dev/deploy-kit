@@ -27,6 +27,9 @@
       <unit id="org.eclipse.acceleo.aql" version="4.2.2"/>
       <unit id="org.eclipse.acceleo.query" version="8.1.2"/>
       <unit id="org.eclipse.emf.compare" version="3.5.3.202605071334"/>
+      <!-- Test scope only: the benchmark's ATL port of the lowering (docs/benchmarks.md). -->
+      <unit id="org.eclipse.m2m.atl.emftvm" version="4.12.0.v202505101449"/>
+      <unit id="org.eclipse.m2m.atl.emftvm.compiler" version="4.12.0.v202505101449"/>
     </location>
   </locations>
 </target>
