@@ -21,7 +21,7 @@ metamodel, which also holds the Platform Intent classes, has 129 classes and
 419 features, the Resolved Deployment metamodel 133 classes and 594 features,
 and the Pinned Inputs metamodel 18 classes and 60 features. The resolution
 transformation has 4212 lines, 10 mappings and 300 queries, and the lowering
-has 473 lines and 54 mappings, compared with about 1700 and 340 lines in the
+has 474 lines and 54 mappings, compared with about 1700 and 340 lines in the
 Task~2 design section. The 134-line estate pass was removed. The Acceleo
 module has 3607 lines.
 
@@ -474,10 +474,12 @@ names, pinned inputs) is 55 to 63\% of a warm run, and a cold \texttt{minimal} r
 takes 3.8~s, 2.7~s of it read and check. Execution cost is therefore not a reason;
 the reason that holds is the resolution's, which reads the completed target to hash
 a release's revision and needs an explicit construction order, and was not ported.
-On the lowering, ATL needed 21 lazy rules for per-Process copies and 41 writes in
+On the lowering, ATL needed 21 lazy rules for per-Process copies and 42 writes in
 imperative \texttt{do} blocks, as a binding cannot be conditional. The benchmark also
-found that the shipped lowering reloads its transformation for each Project (over
-95\% of its time), and that each resolution kept about 8.5~MB reachable.
+found that the shipped lowering reloaded its transformation for each Project (over
+95\% of its time), and that each resolution kept about 8~MiB reachable. Both now load
+once per JVM: lowering the 24 estate Projects fell from 174~ms to 7.8~ms, and a
+resolution keeps no heap where it kept 8.2~MiB.
 
 \section{The Production Implementation}
 \label{sec:appendix-production}
