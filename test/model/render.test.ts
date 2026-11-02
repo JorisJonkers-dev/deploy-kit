@@ -415,6 +415,8 @@ describe("renderIntentSet", () => {
       );
     });
 
+    // REQ-170 (docs/requirements.md): the job is handed where an adopted
+    // value comes from.
     it("is handed the location a generated key adopts its value from", () => {
       const adopting = (document: string) =>
         document.replace(

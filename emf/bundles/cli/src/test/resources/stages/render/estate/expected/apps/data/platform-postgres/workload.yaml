@@ -97,6 +97,9 @@ spec:
               mountPath: /var/run/postgresql
             - name: writable-tmp
               mountPath: /tmp
+            - name: secret-postgres-data-system-exporter
+              mountPath: /run/secrets
+              readOnly: true
           readinessProbe:
             tcpSocket:
               port: 5432
@@ -148,6 +151,9 @@ spec:
               mountPath: /var/run/postgresql
             - name: writable-tmp
               mountPath: /tmp
+            - name: secret-postgres-data-system-exporter
+              mountPath: /run/secrets
+              readOnly: true
       volumes:
         - name: postgres-data
           persistentVolumeClaim:
@@ -164,3 +170,10 @@ spec:
         - name: writable-tmp
           emptyDir:
             sizeLimit: 64Mi
+        - name: secret-postgres-data-system-exporter
+          secret:
+            secretName: postgres-data-system-exporter
+            items:
+              - key: datasource
+                path: exporter
+            defaultMode: 256
