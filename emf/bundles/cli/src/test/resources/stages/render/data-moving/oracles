@@ -3,6 +3,8 @@ apps/data/platform-postgres/configmap.yaml data/moving/configmap.yaml
 apps/data/platform-postgres/kustomization.yaml data/moving/kustomization.yaml
 apps/data/platform-postgres/move.yaml data/moving/move.yaml
 apps/data/platform-postgres/networkpolicy.yaml data/moving/networkpolicy.yaml
+apps/data/platform-postgres/postgres-catalog-networkpolicy.yaml data/moving/postgres-catalog-networkpolicy.yaml
+apps/data/platform-postgres/postgres-catalog.yaml data/moving/postgres-catalog.yaml
 apps/data/platform-postgres/pvc.yaml data/moving/pvc.yaml
 apps/data/platform-postgres/service.yaml data/moving/service.yaml
 apps/data/platform-postgres/serviceaccount.yaml data/moving/serviceaccount.yaml

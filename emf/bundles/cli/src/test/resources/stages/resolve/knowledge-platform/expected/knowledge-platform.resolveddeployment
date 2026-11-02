@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:cb2c62c87590614d3c01ff885ea0a78f5ae25ff8db6c7187217d7dd5ba6baf0d" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:d08b6a9a8a953416dbc803878592e253ead2a31c0e08c0a4281d0cc010a7e43f" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
     <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
     <inputDigests name="delivery" digest="sha256:31f4d21b3c877943fecd855a160f8e339bce5c46f1ba9264c6256d37c4124767"/>
@@ -11,7 +11,7 @@
     <inputDigests name="observability" digest="sha256:f7ec6c383e2497d91741dde32e1595d1124c5d66bdbe60305718bb13d0972ccd"/>
     <inputDigests name="secrets" digest="sha256:3acbc4e3ca72029cd9345e3a16303e3f76fe69336a4cdd8fcb9ac8f0d969913a"/>
     <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:975d4bbd89914bbe67b01b880727928432d42603ee46ceebc887537e6f5f2a90"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:ec8e6a7688be1e464bf7bb6255ee065cb33fe5571845e1a247a38febc3354aa6"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
     <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
@@ -416,17 +416,17 @@
     <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
     <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
     <catalog host="postgres.data-system.svc.cluster.local" port="5432" connection="postgres">
-      <admin path="secret/data/platform/postgres" user="postgres.user" password="postgres.password"/>
+      <admin path="secret/data/data/postgres/catalog" user="user" password="password"/>
       <databases name="knowledge-platform_db" owner="knowledge-platform-owner" data="knowledge-platform-data"/>
     </catalog>
     <consumes>platform-postgres.postgres</consumes>
     <egress rule="datastore" namespace="data-system" process="postgres" port="5432"/>
     <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
     <egress rule="cluster-dns" namespace="kube-system" port="53"/>
-    <policy path="secret/data/platform/postgres">
+    <policy path="secret/data/data/postgres/catalog">
       <allows>read</allows>
     </policy>
-    <policy path="secret/metadata/platform/postgres">
+    <policy path="secret/metadata/data/postgres/catalog">
       <allows>read</allows>
     </policy>
     <policy path="database/roles/knowledge-platform-owner">
@@ -446,7 +446,7 @@
     <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
     <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
     <catalog host="garage.data-system.svc.cluster.local" port="3903">
-      <admin path="secret/data/platform/garage" token="admin-token"/>
+      <admin path="secret/data/data/garage/catalog" token="token"/>
       <keys name="knowledge-platform" path="secret/data/knowledge-platform/garage/s3">
         <buckets>knowledge-platform-assets</buckets>
       </keys>
@@ -455,10 +455,10 @@
     <egress rule="datastore" namespace="data-system" process="garage" port="3903"/>
     <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
     <egress rule="cluster-dns" namespace="kube-system" port="53"/>
-    <policy path="secret/data/platform/garage">
+    <policy path="secret/data/data/garage/catalog">
       <allows>read</allows>
     </policy>
-    <policy path="secret/metadata/platform/garage">
+    <policy path="secret/metadata/data/garage/catalog">
       <allows>read</allows>
     </policy>
     <policy path="secret/data/knowledge-platform/garage/s3">
@@ -771,52 +771,6 @@
     <resources>configmap.yaml</resources>
     <resources>cronjob.yaml</resources>
     <resources>job.yaml</resources>
-    <resources>serviceaccount.yaml</resources>
-  </deliverables>
-  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/postgres-catalog.yaml" part="objects" name="postgres-catalog-d83cbeba5875" catalogJson="{&quot;admin&quot;:{&quot;password&quot;:&quot;postgres.password&quot;,&quot;path&quot;:&quot;secret/data/platform/postgres&quot;,&quot;user&quot;:&quot;postgres.user&quot;},&quot;connection&quot;:&quot;postgres&quot;,&quot;databases&quot;:[{&quot;data&quot;:&quot;knowledge-platform-data&quot;,&quot;name&quot;:&quot;knowledge-platform_db&quot;,&quot;owner&quot;:&quot;knowledge-platform-owner&quot;}],&quot;host&quot;:&quot;postgres.data-system.svc.cluster.local&quot;,&quot;port&quot;:5432}" job="/0/@catalogJobs.0"/>
-  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/postgres-catalog-networkpolicy.yaml" adapter="networking" part="networkpolicy" job="/0/@catalogJobs.0"/>
-  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/policies/data-system-postgres-catalog.policy.json" adapter="vault-policy" part="policy" job="/0/@catalogJobs.0"/>
-  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="estate/vso-secrets/policies/data-system-postgres-catalog.role.json" adapter="vault-policy" namespace="data-system" identity="postgres-catalog"/>
-  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/garage-catalog.yaml" part="objects" name="garage-catalog-1e2e72807623" catalogJson="{&quot;admin&quot;:{&quot;path&quot;:&quot;secret/data/platform/garage&quot;,&quot;token&quot;:&quot;admin-token&quot;},&quot;host&quot;:&quot;garage.data-system.svc.cluster.local&quot;,&quot;keys&quot;:[{&quot;buckets&quot;:[&quot;knowledge-platform-assets&quot;],&quot;name&quot;:&quot;knowledge-platform&quot;,&quot;path&quot;:&quot;secret/data/knowledge-platform/garage/s3&quot;}],&quot;port&quot;:3903}" job="/0/@catalogJobs.1"/>
-  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/garage-catalog-networkpolicy.yaml" adapter="networking" part="networkpolicy" job="/0/@catalogJobs.1"/>
-  <deliverables xsi:type="resolveddeployment:CatalogJobFile" path="estate/vso-secrets/policies/data-system-garage-catalog.policy.json" adapter="vault-policy" part="policy" job="/0/@catalogJobs.1"/>
-  <deliverables xsi:type="resolveddeployment:VaultRoleFile" path="estate/vso-secrets/policies/data-system-garage-catalog.role.json" adapter="vault-policy" namespace="data-system" identity="garage-catalog"/>
-  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/configmap.yaml" adapter="vault-policy" namespace="data-system" part="configmap" name="vault-policy-1971956a0616" job="/0/@policyJob">
-    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
-    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
-  </deliverables>
-  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/job.yaml" adapter="vault-policy" namespace="data-system" part="job" name="vault-policy-1971956a0616" job="/0/@policyJob">
-    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
-    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
-  </deliverables>
-  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/cronjob.yaml" adapter="vault-policy" namespace="data-system" part="cronjob" name="vault-policy-1971956a0616" job="/0/@policyJob">
-    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
-    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
-  </deliverables>
-  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/serviceaccount.yaml" adapter="vault-policy" namespace="data-system" part="serviceaccount" name="vault-policy-1971956a0616" job="/0/@policyJob">
-    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
-    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
-  </deliverables>
-  <deliverables xsi:type="resolveddeployment:PolicyJobFile" path="estate/vso-secrets/networkpolicy.yaml" adapter="networking" namespace="data-system" part="networkpolicy" name="vault-policy-1971956a0616" job="/0/@policyJob">
-    <documents file="data-system-garage-catalog.policy.json" json="{&quot;path&quot;:{&quot;secret/data/knowledge-platform/garage/s3&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/garage&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-garage-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;garage-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-garage-catalog&quot;]}"/>
-    <documents file="data-system-postgres-catalog.policy.json" json="{&quot;path&quot;:{&quot;database/roles/knowledge-platform-data&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;database/roles/knowledge-platform-owner&quot;:{&quot;capabilities&quot;:[&quot;create&quot;,&quot;read&quot;,&quot;update&quot;]},&quot;secret/data/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]},&quot;secret/metadata/platform/postgres&quot;:{&quot;capabilities&quot;:[&quot;read&quot;]}}}"/>
-    <documents file="data-system-postgres-catalog.role.json" json="{&quot;bound_service_account_names&quot;:[&quot;postgres-catalog&quot;],&quot;bound_service_account_namespaces&quot;:[&quot;data-system&quot;],&quot;token_policies&quot;:[&quot;data-system-postgres-catalog&quot;]}"/>
-  </deliverables>
-  <deliverables xsi:type="resolveddeployment:IndexFile" path="estate/vso-secrets/kustomization.yaml">
-    <resources>configmap.yaml</resources>
-    <resources>cronjob.yaml</resources>
-    <resources>garage-catalog.yaml</resources>
-    <resources>job.yaml</resources>
-    <resources>postgres-catalog.yaml</resources>
     <resources>serviceaccount.yaml</resources>
   </deliverables>
   <deliverables xsi:type="resolveddeployment:EventsFile" path="apps/knowledge-platform/rollout-events/alert.yaml" part="alert" project="knowledge-platform" events="/0/@events"/>

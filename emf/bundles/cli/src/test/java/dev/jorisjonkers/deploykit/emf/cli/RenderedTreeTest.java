@@ -139,24 +139,14 @@ class RenderedTreeTest {
     }
 
     /**
-     * The knowledge platform's set with the datastore's own project on the estate path: its catalog is
-     * applied from that project's unit, under the Job name the production implementation derives from
-     * the same catalog and method, and no estate-scoped unit applies it (issue #482).
+     * The knowledge platform's set rendered with the datastore's own project: its catalog is applied
+     * from that project's unit, under the Job name the production implementation derives from the
+     * same catalog and method (issue #482), signing in with the derived login.
      */
     @Test
-    void aDatastoreOnTheEstatePathAppliesItsCatalogFromItsOwnProject(@TempDir Path directory, @TempDir Path out)
-            throws IOException {
-        Path platform = Examples.write(
-                directory,
-                "platform.intent.yml",
-                Examples.read("platform/platform.intent.yml")
-                        .replace("legacy: [auth, data, knowledge, notes]", "legacy: [auth, knowledge, notes]")
-                        .replace(
-                                "estate: [agents, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]",
-                                "estate: [agents, data, delivery, edge, identity, knowledge-platform, mail, observability, secrets, utility]")
-                        .replaceAll("\n {2}serving:\n( {4}.*\n| {6}.*\n)+", "\n"));
+    void aDatastoreAppliesItsCatalogFromItsOwnProject(@TempDir Path out) throws IOException {
         List<Path> files = Outputs.KNOWLEDGE_PLATFORM_UNION.documents().stream()
-                .map(file -> file.equals("platform/platform.intent.yml") ? platform : Examples.of(file))
+                .map(Examples::of)
                 .toList();
 
         assertThat(Pipeline.render(files, List.of("data", "knowledge-platform"), Outputs.INTEGRITY, out))
@@ -173,7 +163,6 @@ class RenderedTreeTest {
                 .isRegularFile();
         assertThat(Files.readString(out.resolve(owned.resolve("kustomization.yaml"))))
                 .contains("  - postgres-catalog.yaml\n");
-        assertThat(out.resolve("estate/vso-secrets")).doesNotExist();
         assertThat(out.resolve("apps/data/vault-policy/policies/data-system-postgres-catalog.policy.json"))
                 .isRegularFile();
     }

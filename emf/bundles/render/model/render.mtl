@@ -533,6 +533,9 @@
         path: [d.scrapePath/]
         interval: [d.interval/]
         scrapeTimeout: [d.timeout/]
+  [if (d.process.application().scrape.honorLabels)]
+          honorLabels: true
+  [/if]
 [/template]
 
 [template private objects(d : resolveddeployment::SwitchoverFile)]
@@ -1364,6 +1367,11 @@
     its own, and an fsGroup would re-own the whole library. /]
   [if (p.volumes->notEmpty() and p.libraries->isEmpty())]
       fsGroup: [p.gid/]
+  [/if]
+  [comment Traefik refuses ACME storage any group may read, and the kubelet adds group access to a
+    volume's files on every mount unless told not to. /]
+  [if (p.keepsAcmeState)]
+      fsGroupChangePolicy: OnRootMismatch
   [/if]
   [if (p.libraries->notEmpty())]
       supplementalGroups:

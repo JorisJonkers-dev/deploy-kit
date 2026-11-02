@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:57207b5b75e6a73f3b85f5bc31ed3b467283e5c70b0bcab74a06e29ce33e2c47" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:6b06a7a04d8ccd1abb7069936018462adb80dee1170c947b550e86d3dcf3d2af" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
     <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
     <inputDigests name="delivery" digest="sha256:31f4d21b3c877943fecd855a160f8e339bce5c46f1ba9264c6256d37c4124767"/>
@@ -10,13 +10,13 @@
     <inputDigests name="observability" digest="sha256:f7ec6c383e2497d91741dde32e1595d1124c5d66bdbe60305718bb13d0972ccd"/>
     <inputDigests name="secrets" digest="sha256:3acbc4e3ca72029cd9345e3a16303e3f76fe69336a4cdd8fcb9ac8f0d969913a"/>
     <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:975d4bbd89914bbe67b01b880727928432d42603ee46ceebc887537e6f5f2a90"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:ec8e6a7688be1e464bf7bb6255ee065cb33fe5571845e1a247a38febc3354aa6"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
     <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
   </provenance>
-  <applications id="traefik-public" revision="sha256:5bc86d0e90eac1eed4fe59668b79b7c77f0c6c94b347584e3b278995f294b1e1" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
-    <processes name="traefik-public" identity="traefik-public" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" serving="traefik-public" servingLabel="app.kubernetes.io/instance" deadline="180s" replicas="1" memory="128Mi" cpu="50m" hardening="restricted" identityToken="true" component="none" priorityClass="platform-critical-app" home="/tmp">
+  <applications id="traefik-public" revision="sha256:9fe5c0ebe3dc9b2ed97ef3fe19f77cbf2e4a4d4250c38dc92c8c26f96e991235" project="edge" namespace="edge-system" reconcileUnit="/0/@reconcileUnits.0" secretStore="http://vault.secrets-system.svc.cluster.local:8200">
+    <processes name="traefik-public" identity="traefik-public" lifecycle="application" image="docker.io/library/traefik@sha256:1f3d5b7a9c2e4f6a8b0d1c3e5f7a9b2d4c6e8f0a1b3d5c7e9f2a4b6d8c0e1f3a" imageVersion="v3.3.4" uid="65532" gid="65532" cutover="continuous" switchover="rolling" serving="traefik-public" servingLabel="app.kubernetes.io/instance" deadline="180s" replicas="1" memory="128Mi" cpu="50m" hardening="restricted" identityToken="true" component="none" keepsAcmeState="true" priorityClass="platform-critical-app" home="/tmp">
       <api reason="the proxy reads every route of its tier and what each names, cluster-wide">
         <rules group="core">
           <objects>services</objects>
@@ -71,7 +71,7 @@
       <placement>
         <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
       </placement>
-      <volumes claim="acme" mountAt="/acme" size="16Mi"/>
+      <volumes claim="traefik-public-acme" mountAt="/acme" size="16Mi"/>
       <secrets path="secret/data/platform/cloudflare" access="read" delivery="env" destination="traefik-public-platform-cloudflare">
         <keys>CF_DNS_API_TOKEN</keys>
         <restartTargets>traefik-public</restartTargets>

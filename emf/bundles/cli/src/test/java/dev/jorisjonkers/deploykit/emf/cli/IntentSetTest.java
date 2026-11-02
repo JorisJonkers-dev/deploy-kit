@@ -364,4 +364,49 @@ class IntentSetTest {
                 .extracting(Diagnostic::code, Diagnostic::path)
                 .containsExactly(tuple("schema", "/applications/0/processes/0/libraries/0"));
     }
+
+    /**
+     * Projects whose units wait on each other are refused, each at its first Application that follows
+     * a unit on the cycle, rather than rendered as a deadlock: notes declares the public tier's proxy,
+     * so every Project routed on that tier follows it, and notes reaches the metrics stack's collector
+     * (spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+     */
+    @Test
+    void projectsWhoseUnitsWaitOnEachOtherAreRefusedAtTheApplicationThatClosesTheCycle(@TempDir Path directory) {
+        Path platform = Examples.write(
+                directory,
+                "platform.intent.yml",
+                Examples.read("platform/platform.intent.yml")
+                        .replaceAll("\\n *address: edge-frankfurt[^\\n]*", "")
+                        .replace("traefik: edge/traefik-public", "traefik: notes/notes"));
+        Path notes = Examples.write(
+                directory,
+                "notes.project.yml",
+                Examples.read("minimal/notes.project.yml").replace(ResolutionTest.REACHES, ResolutionTest.REACHED));
+        List<Path> files = WORKED.stream()
+                .map(file -> file.equals(WORKED.get(0))
+                        ? platform
+                        : file.endsWith("minimal/notes.project.yml") ? notes : file)
+                .toList();
+
+        assertThat(Pipeline.check(files))
+                .filteredOn(diagnostic -> diagnostic.code().equals("E_RECONCILE_CYCLE"))
+                .extracting(Diagnostic::document, Diagnostic::path)
+                .containsExactlyInAnyOrder(
+                        tuple("observability.project.yml", "/applications/5"),
+                        tuple("notes.project.yml", "/applications/0"));
+        // Optional, the edge orders nothing, and no unit waits on itself.
+        Path optional = Examples.write(
+                directory,
+                "notes.project.yml",
+                Examples.read("minimal/notes.project.yml")
+                        .replace(
+                                ResolutionTest.REACHES,
+                                ResolutionTest.REACHED.replace("surface: otlp }", "surface: otlp, required: false }")));
+        assertThat(Pipeline.check(files.stream()
+                        .map(file -> file.endsWith("notes.project.yml") ? optional : file)
+                        .toList()))
+                .extracting(Diagnostic::code)
+                .doesNotContain("E_RECONCILE_CYCLE");
+    }
 }

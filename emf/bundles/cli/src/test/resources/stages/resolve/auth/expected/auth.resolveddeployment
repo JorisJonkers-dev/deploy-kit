@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="ASCII"?>
 <resolveddeployment:ResolvedDeployment xmi:version="2.0" xmlns:xmi="http://www.omg.org/XMI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:resolveddeployment="https://jorisjonkers.dev/deploy-kit/resolved-deployment/1" apiVersion="resolved.jorisjonkers.dev/v1" kind="ResolvedDeployment">
-  <provenance renderHash="sha256:52ee8cbe76d7402fc09ff518c8908133456141947d15c4b0507bc67c56f0056c" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
+  <provenance renderHash="sha256:f563755b973960d0d98d8d773b9c6c9cfc3f187b74e6744db9e3431a1d3a3bc9" schemaPackageIntegrity="sha256:5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b5e6f7a8b">
     <inputDigests name="agents" digest="sha256:ae951235e0264277013bfa856b2523e04dd4cd76eadf62d0d8277d80f16e3bc3"/>
     <inputDigests name="auth" digest="sha256:8c18c46f2cd0a837bd12620b7a43c3768e945501983c5de8ecc0dfa94adce99b"/>
     <inputDigests name="data" digest="sha256:a061c065259e600ab225df242ebd9a0fe601a0eb02247c5f87aa718144cb764b"/>
@@ -11,7 +11,7 @@
     <inputDigests name="observability" digest="sha256:f7ec6c383e2497d91741dde32e1595d1124c5d66bdbe60305718bb13d0972ccd"/>
     <inputDigests name="secrets" digest="sha256:3acbc4e3ca72029cd9345e3a16303e3f76fe69336a4cdd8fcb9ac8f0d969913a"/>
     <inputDigests name="utility" digest="sha256:01ca1c0bc10ff8103c82adbe5aef7adcc82a5e92efbec7e12abe2086f1fd1ee8"/>
-    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:0a3b5a6a518bcf74f21eb9e36373281f687649f35bb59b64abecd985d43d9be8"/>
+    <inputDigests input="platform-intent" name="jorisjonkers.dev" digest="sha256:6410bede90d778e23440616a5fe95a1d3fa140c39141a4434c859054097e17f1"/>
     <inputDigests input="node-contract" name="production" digest="sha256:fca4a95a8fe6158bd2f4f73b48c416c5a2e5892ed8727d91b046666abebd5e11"/>
     <inputDigests input="images-lock" name="estate" digest="sha256:3dd298f954b1fb30cadd5f2bdcf48cd688f16382429a253fdfd3086c35b32625"/>
     <inputDigests input="cluster-state" name="production" digest="sha256:3d79e6d048f4209938fa9ca9ac1feba8ba1c34f0741546419605eab8468df06b"/>
@@ -174,6 +174,36 @@
     <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
     <egress rule="cluster-dns" namespace="kube-system" port="53"/>
   </policyJob>
+  <catalogJobs identity="postgres-catalog" namespace="data-system" image="ghcr.io/jorisjonkers-dev/delivery/postgres-catalog@sha256:7e9a1c3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c" imageVersion="1.0.0" uid="65532" gid="65532" role="data-system-postgres-catalog" address="http://vault.secrets-system.svc.cluster.local:8200" memory="64Mi" cpu="10m" deadline="120s">
+    <eligibleNodes>enschede-t1000-1</eligibleNodes>
+    <eligibleNodes>enschede-rx7900xtx-1</eligibleNodes>
+    <eligibleNodes>enschede-gtx-960m-1</eligibleNodes>
+    <eligibleNodes>frankfurt-contabo-1</eligibleNodes>
+    <catalog host="postgres.data-system.svc.cluster.local" port="5432" connection="postgres">
+      <admin path="secret/data/data/postgres/catalog" user="user" password="password"/>
+      <databases name="auth_db" owner="auth-owner" data="auth-data"/>
+    </catalog>
+    <consumes>platform-postgres.postgres</consumes>
+    <egress rule="datastore" namespace="data-system" process="postgres" port="5432"/>
+    <egress rule="secret-store" namespace="secrets-system" process="vault" port="8200"/>
+    <egress rule="cluster-dns" namespace="kube-system" port="53"/>
+    <policy path="secret/data/data/postgres/catalog">
+      <allows>read</allows>
+    </policy>
+    <policy path="secret/metadata/data/postgres/catalog">
+      <allows>read</allows>
+    </policy>
+    <policy path="database/roles/auth-owner">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+    <policy path="database/roles/auth-data">
+      <allows>create</allows>
+      <allows>read</allows>
+      <allows>update</allows>
+    </policy>
+  </catalogJobs>
   <events namespace="flux-system" address="http://reporter.delivery-system.svc.cluster.local:8080/flux"/>
   <deliverables xsi:type="resolveddeployment:NamespaceFile" path="apps/auth/namespace.yaml" namespace="auth-system"/>
   <deliverables xsi:type="resolveddeployment:IndexFile" path="apps/auth/kustomization.yaml">

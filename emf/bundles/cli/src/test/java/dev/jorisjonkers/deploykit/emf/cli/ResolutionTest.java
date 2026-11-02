@@ -218,4 +218,54 @@ class ResolutionTest {
                         "secrets.resolveddeployment", List.of(expected("secrets")), List.of(resolved.deployment())))
                 .isEmpty();
     }
+
+    /**
+     * The Secret Store's own Project follows nothing: every unit holding a grant follows it, so a
+     * store routed through another Project's proxy and reaching another Project would close a cycle
+     * (deploy-kit#780, spec/v1/20-resolved-deployment.md#the-reconcile-unit).
+     */
+    @Test
+    void theSecretStoresOwnProjectFollowsNothingThoughItIsRoutedAndReachesAnotherProject(@TempDir Path directory)
+            throws IOException {
+        Path platform = Examples.write(
+                directory,
+                "platform.intent.yml",
+                Examples.read("platform/platform.intent.yml")
+                        .replace("secretStore: secrets/vault", "secretStore: notes/notes"));
+        Path notes = Examples.write(
+                directory,
+                "notes.project.yml",
+                Examples.read("minimal/notes.project.yml").replace(REACHES, REACHED));
+        List<Path> files = MINIMAL_SET.stream()
+                .map(file -> file.equals("platform/platform.intent.yml")
+                        ? platform
+                        : file.equals("minimal/notes.project.yml") ? notes : Examples.of(file))
+                .toList();
+
+        Resolved resolved = Pipeline.resolve(files, "notes", Outputs.INTEGRITY);
+
+        assertThat(resolved.diagnostics()).isEmpty();
+        assertThat(resolved.deployment().getReconcileUnits())
+                .extracting(unit -> unit.getName())
+                .containsExactly("apps-notes");
+        // The same edge, under the worked store, is a unit notes follows.
+        assertThat(Pipeline.resolve(
+                                MINIMAL_SET.stream()
+                                        .map(file ->
+                                                file.equals("minimal/notes.project.yml") ? notes : Examples.of(file))
+                                        .toList(),
+                                "notes",
+                                Outputs.INTEGRITY)
+                        .deployment()
+                        .getReconcileUnits())
+                .extracting(unit -> unit.getName())
+                .containsExactly("apps-notes", "apps-edge", "apps-observability");
+    }
+
+    /** notes-api's ports, after which a required edge into the metrics stack's collector is written. */
+    static final String REACHES =
+            "        provides:\n          http: 8080 # the image's own port; any port binds (chapter 14)\n";
+
+    static final String REACHED =
+            REACHES + "        dependsOn:\n          - { application: otel-collector, surface: otlp }\n";
 }

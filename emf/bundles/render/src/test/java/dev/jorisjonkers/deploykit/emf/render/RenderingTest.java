@@ -57,7 +57,7 @@ class RenderingTest {
     void aGeneratedKeyCarriesTheLocationItAdoptsItsValueFrom(@TempDir Path out) throws IOException {
         ResolvedDeploymentFactory model = ResolvedDeploymentFactory.eINSTANCE;
         GeneratedKeysFile keys = model.createGeneratedKeysFile();
-        keys.setPath("estate/vso-secrets/policies/tribelt-system.generated.json");
+        keys.setPath("apps/tribelt/vault-policy/policies/tribelt-system.generated.json");
         keys.setAdapter(AdapterName.VAULT_POLICY);
         for (String name : List.of("session_key", "visitor_hmac_key")) {
             ResolvedGeneratedKey key = model.createResolvedGeneratedKey();
@@ -74,7 +74,7 @@ class RenderingTest {
 
         Rendering.render(List.of(deployment), out);
 
-        assertThat(Files.readString(out.resolve("estate/vso-secrets/policies/tribelt-system.generated.json")))
+        assertThat(Files.readString(out.resolve("apps/tribelt/vault-policy/policies/tribelt-system.generated.json")))
                 .isEqualTo("""
                         {
                           "keys": [
