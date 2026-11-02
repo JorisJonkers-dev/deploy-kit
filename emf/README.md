@@ -23,6 +23,7 @@ oracle files under `spec/v1/examples/` that both are tested against, separately.
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | the structure: toolchain, modules, how each stage meets the contract |
 | [docs/adr/README.md](docs/adr/README.md) | the decisions that shaped it, and the register |
+| [docs/benchmarks.md](docs/benchmarks.md) | how long each stage takes, and the lowering in QVTo against an ATL port of it |
 
 ## Where each artefact lives
 
