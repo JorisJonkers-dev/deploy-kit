@@ -22,6 +22,14 @@
         <artifactId>pitest-maven</artifactId>
         <configuration>
           <!--
+            Only this bundle's classes. The parent's emf.* pattern would also have
+            coverage instrument the other bundles' classes on the test classpath,
+            and ASM does not finish instrumenting the generated ANTLR lexers.
+          -->
+          <targetClasses>
+            <param>dev.jorisjonkers.deploykit.emf.cli.*</param>
+          </targetClasses>
+          <!--
             Registering the OCL language is a one-off for the JVM, so a second
             test in the same JVM hides the removal of the call. The mutation is
             equivalent here rather than uncovered.

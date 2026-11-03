@@ -124,6 +124,19 @@ class OutputsTest {
     }
 
     @Test
+    void aRefusedSetIsCheckedWithItsImagesLock(@TempDir Path root) throws IOException {
+        Path examples = root.resolve("examples");
+        Path out = root.resolve("out");
+        refused(examples, "image-runs-as-root");
+
+        Outputs.write(examples, out);
+
+        // Only the lock says the image runs as root, so the refusal needs the lock read with the set.
+        assertThat(read(out.resolve("refusals/image-runs-as-root/diagnostics.json")))
+                .contains("E_IMAGE_RUNS_AS_ROOT");
+    }
+
+    @Test
     void aResolutionCaseLeavesItsEdgesItsModelAndTheExtentsItWasResolvedFrom(@TempDir Path root) throws IOException {
         Path examples = root.resolve("examples");
         Path out = root.resolve("out");
