@@ -88,6 +88,10 @@ context Rotation
 			else oclContainer().oclAsType(Grant).delivery <> Delivery::env endif)
 
 context KvGrant
+	-- A grant delivers its key to a file only with the file and the mode it lands at.
+	inv schema:
+		delivery = Delivery::file implies (mountAt <> null and fileMode <> null)
+
 	-- Custody creates and deletes paths at runtime, and a renewal tier holds no
 	-- capability on its path: neither has anything to project.
 	inv E_ILLEGAL_DELIVERY_FOR_ACCESS:

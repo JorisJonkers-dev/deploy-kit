@@ -199,6 +199,7 @@ class OracleDistanceTest {
             "schema-refusal egress-with-range",
             "schema-refusal egress-without-reason",
             "schema-refusal every-offending-value",
+            "schema-refusal grant-file-without-mode",
             "schema-refusal human-grant-in-a-namespace",
             "schema-refusal human-grant-role-outside-vocabulary",
             "schema-refusal human-grant-to-a-user",
