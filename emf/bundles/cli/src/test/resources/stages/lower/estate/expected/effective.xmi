@@ -344,14 +344,20 @@
           <operations>decrypt</operations>
           <operations>verify</operations>
         </secrets>
-        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/app" fileMode="0400" path="secret/data/coverage-system/app">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/session" fileMode="0400" path="secret/data/coverage-system/session">
           <rotation/>
           <keys xsi:type="projectintent:GeneratedKey" name="session">
             <generate bytes="32" encoding="base64"/>
           </keys>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/cookie" fileMode="0400" path="secret/data/coverage-system/cookie">
+          <rotation/>
           <keys xsi:type="projectintent:GeneratedKey" name="cookie">
             <generate bytes="16" encoding="base64url"/>
           </keys>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/salt" fileMode="0400" path="secret/data/coverage-system/salt">
+          <rotation/>
           <keys xsi:type="projectintent:GeneratedKey" name="salt">
             <generate encoding="hex"/>
           </keys>
@@ -398,14 +404,20 @@
         <args>--verbose</args>
       </processes>
       <processes startupBudget="60s" name="coverage-seed" lifecycle="prepare" image="coverage-seed" runtime="none">
-        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/app" fileMode="0400" path="secret/data/coverage-system/app">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/session" fileMode="0400" path="secret/data/coverage-system/session">
           <rotation/>
           <keys xsi:type="projectintent:GeneratedKey" name="session">
             <generate bytes="32" encoding="base64"/>
           </keys>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/cookie" fileMode="0400" path="secret/data/coverage-system/cookie">
+          <rotation/>
           <keys xsi:type="projectintent:GeneratedKey" name="cookie">
             <generate bytes="16" encoding="base64url"/>
           </keys>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/salt" fileMode="0400" path="secret/data/coverage-system/salt">
+          <rotation/>
           <keys xsi:type="projectintent:GeneratedKey" name="salt">
             <generate encoding="hex"/>
           </keys>
@@ -427,14 +439,20 @@
         <placement memory="32Mi" cpu="5m" site="enschede"/>
       </processes>
       <processes startupBudget="60s" cutover="interrupted" name="coverage-job" lifecycle="job" image="coverage-job" runtime="none">
-        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/app" fileMode="0400" path="secret/data/coverage-system/app">
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/session" fileMode="0400" path="secret/data/coverage-system/session">
           <rotation/>
           <keys xsi:type="projectintent:GeneratedKey" name="session">
             <generate bytes="32" encoding="base64"/>
           </keys>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/cookie" fileMode="0400" path="secret/data/coverage-system/cookie">
+          <rotation/>
           <keys xsi:type="projectintent:GeneratedKey" name="cookie">
             <generate bytes="16" encoding="base64url"/>
           </keys>
+        </secrets>
+        <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/salt" fileMode="0400" path="secret/data/coverage-system/salt">
+          <rotation/>
           <keys xsi:type="projectintent:GeneratedKey" name="salt">
             <generate encoding="hex"/>
           </keys>

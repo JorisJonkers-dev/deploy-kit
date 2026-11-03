@@ -88,9 +88,9 @@ context Rotation
 			else oclContainer().oclAsType(Grant).delivery <> Delivery::env endif)
 
 context KvGrant
-	-- A grant delivers its key to a file only with the file and the mode it lands at.
+	-- A grant delivers to a file only one key, with the file and the mode it lands at.
 	inv schema:
-		delivery = Delivery::file implies (mountAt <> null and fileMode <> null)
+		delivery = Delivery::file implies (mountAt <> null and fileMode <> null and keys->size() = 1)
 
 	-- Custody creates and deletes paths at runtime, and a renewal tier holds no
 	-- capability on its path: neither has anything to project.
@@ -258,6 +258,10 @@ context LibraryDeclaration
 		gid > 0 and path.matches('(/(?![.][.]?(/|$))[^/]+)+')
 
 context Grant
+	-- A file lands below a directory other than `/`, which the render mounts whole.
+	inv schema__mountAt:
+		mountAt = null or mountAt.matches('(/(?![.][.]?(/|$))[^/\\s]+){2,}')
+
 	-- A secret written into the cluster is readable on disk unless the platform
 	-- encrypts secrets at rest.
 	inv E_SECRETS_AT_REST_REQUIRED:
@@ -594,6 +598,10 @@ context Credentials
 	-- username and password files land at.
 	inv schema:
 		delivery = Delivery::file implies (mountAt <> null and fileMode <> null)
+
+	-- A directory other than `/`, which a mount would cover entirely.
+	inv schema__mountAt:
+		mountAt = null or mountAt.matches('(/(?![.][.]?(/|$))[^/\\s]+)+')
 
 	-- Only an edge to a database derives a credential to rotate.
 	inv E_CREDENTIALS_WITHOUT_DATABASE:
