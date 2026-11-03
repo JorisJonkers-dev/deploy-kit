@@ -139,7 +139,7 @@
         },
         "mountAt": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^(?:\\/(?!\\.\\.?(?:\\/|$))[^\\/\\s]+){2,}$"
         },
         "fileMode": {
           "type": "string",
@@ -274,7 +274,7 @@
         },
         "mountAt": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^(?:\\/(?!\\.\\.?(?:\\/|$))[^\\/\\s]+){2,}$"
         },
         "fileMode": {
           "type": "string",
@@ -320,7 +320,7 @@
         },
         "mountAt": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^(?:\\/(?!\\.\\.?(?:\\/|$))[^\\/\\s]+){2,}$"
         },
         "fileMode": {
           "type": "string",
@@ -396,7 +396,7 @@
         },
         "mountAt": {
           "type": "string",
-          "minLength": 1
+          "pattern": "^(?:\\/(?!\\.\\.?(?:\\/|$))[^\\/\\s]+)+$"
         },
         "fileMode": {
           "type": "string",

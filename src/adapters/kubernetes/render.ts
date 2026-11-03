@@ -111,7 +111,8 @@ function notYet(process: ResolvedProcess): void {
     );
   // A file grant is one file: of several keys, which would land in it is not
   // decided, and neither is a file with no mode, or no absolute directory to
-  // mount: `/` itself would be covered entirely.
+  // mount: `/` itself would be covered entirely. Check refuses each of these
+  // (formDiagnostics and the `mountAt` pattern); the render still stops.
   if (
     filesOf(process)
       .filter(isKv)

@@ -143,9 +143,9 @@ the value breaks:
 |---|---|
 | a field the model does not have | that field, one diagnostic per unknown field: `/applications/0/stateful`, never the object holding it |
 | a required field that is absent | where the field would be: `/applications/0/id` |
-| its type, a closed vocabulary or a constant, a pattern, a length or a bound | the value itself |
+| its type, a closed vocabulary or a constant, a pattern, a length or a bound | the value itself: a `mountAt` that is relative, or the place a mount would cover `/` with, is `/applications/0/processes/0/secrets/0/mountAt` |
 | a choice of shapes (`probes` is `none` or a block; a grant is one of three) that it matches none of | the value itself, once; nothing inside it is reported, because which shape it was meant to have is not known |
-| a field one value of another requires (an edge's credential or a `kv` grant delivered `file` needs `mountAt` and `fileMode`) | the object that holds both: `/applications/0/processes/0/dependsOn/0/credentials`, `/applications/0/processes/0/secrets/0` |
+| a field one value of another requires (an edge's credential or a `kv` grant delivered `file` needs `mountAt` and `fileMode`, and the grant no more than one key) | the object that holds both: `/applications/0/processes/0/dependsOn/0/credentials`, `/applications/0/processes/0/secrets/0` |
 
 A value inside one that is already refused is not examined: a Process written
 as a string is one refusal at the Process, not one per field it lacks. The
@@ -2471,7 +2471,7 @@ defaults to `kv`, so every grant written before this rule stays valid.
 | `key` | `transit` | yes | The transit key name. |
 | `operations` | `transit` | yes | A closed set: `sign`, `verify`, `encrypt`, `decrypt`, `rotate`, `read`. Each maps to exactly one Vault path. |
 | `delivery` | all | yes | `env` \| `file` \| `self`; a `transit` or `database` grant is `self` only (`E_NON_KV_DELIVERY`). |
-| `mountAt`, `fileMode` | `kv` | with `delivery: file` | Where the projected file lands, and its mode. Delivered `file` without both, the grant is refused with `schema` at the grant: there is no default mode. |
+| `mountAt`, `fileMode` | `kv` | with `delivery: file` | Where the projected file lands, and its mode. Delivered `file` without both, or with more than one key in `keys`, the grant is refused with `schema` at the grant: there is no default mode, and of several keys which would land in the one file is not decided. `mountAt` is an absolute file path below a directory other than `/`, since that directory is what is mounted: no segment is empty, `.` or `..`, or holds whitespace, and it ends in no `/`. |
 | `rotation` | all | yes | `tolerates: restart` \| `reload`, plus an optional `maxAge`. |
 
 **Every grant derives a read path**, and that derived path (not the declared
@@ -3152,7 +3152,9 @@ coordinates, `username` and `password`, which an env file reads as
 an edge that delivers its credential no other way hands neither
 (`E_UNRESOLVED_PLACEHOLDER`). Delivered `file`, the login lands as two files,
 `username` and `password`, in the directory `mountAt` at `fileMode`, and an
-edge that says `file` without both is refused:
+edge that says `file` without both is refused. `mountAt` is an absolute
+directory other than `/`, which a mount would cover entirely, with the same
+segments as a grant's:
 
 ```yaml
 credentials:
