@@ -6,17 +6,15 @@ in the Task~3 pipeline, organised by artefact. The baseline is the Task~2
 submission's metamodel appendix and design section. These describe three
 QVT-Operational transformations (lowering, resolution and the estate pass
 over the Resolved Deployments) and the Task~1-to-Task~2 metamodel changes.
-Each subsection contains tables with one row per change, identifying the
-affected classes and features and briefly explaining the reason.
+Each table row identifies a change, its affected classes and features, and its reason.
 
-The model was refined as it was applied to production: deploying the real
-estate surfaced cases the model had to express, and the changes below came from
-those cases. The tables group them by theme; changes that concern only the
-model-driven implementation, not the model, form a group of their own. The
+Production deployment revealed cases requiring model changes. The tables group
+these changes by theme. Changes specific to the model-driven implementation
+form a separate group. The
 change set was derived from the repository's git history rather than a
 comparison of complete models, so each row summarises a commit's effect.
 
-File sizes indicate the extent of the changes. The Project Intent
+The Project Intent
 metamodel, which also holds the Platform Intent classes, has 129 classes and
 419 features, the Resolved Deployment metamodel 133 classes and 594 features,
 and the Pinned Inputs metamodel 18 classes and 60 features. The resolution
@@ -33,7 +31,7 @@ Figure~\ref{fig:mm-source} shows its Project Intent part. Changes fall into five
 themes: how a \texttt{Process} reaches platform services, how it receives secrets,
 the identity and placement constraints checked by the model, further forms of
 \texttt{Process}, and the exposure, sign-in and observation of an
-\texttt{Application}. The Platform Intent classes live in
+\texttt{Application}. The Platform Intent classes are in
 the same \path{project-intent.ecore} file, and Section~\ref{sec:appendix-platform}
 covers them separately.
 
@@ -44,8 +42,7 @@ covers them separately.
 \label{fig:mm-source}
 \end{figure}
 
-These changes keep authored documents small. Each new field records a choice
-the author must make or a reason the model could not infer. No field is added
+These changes keep authored documents small. Each new field records a required author choice or a reason the model cannot infer. No field is added
 where a platform fact already determines its value.
 
 \begin{table}[!htbp]
@@ -58,11 +55,11 @@ where a platform fact already determines its value.
 \multicolumn{3}{l}{\textit{Reaching the platform's services}} \\
 Process VPN attachment & \texttt{Process} gains \texttt{vpn}, a \texttt{VpnAttachment} holding one \texttt{forwardedPort}. Its image, credential and resource quantities come from Platform Intent. & The author specifies only the forwarded port, without tunnel details. \\
 Internet egress & \texttt{Process} gains \texttt{egress}, containing \texttt{to} entries of \texttt{EgressTarget} and a required \texttt{reason}. & Default deny remains the rule; each exception has a declared reason for review. \\
-Library mount & \texttt{Process} gains \texttt{libraries}: \texttt{LibraryMount} (\texttt{library}, \texttt{mountAt}, \texttt{subPath}) with a \texttt{LibraryAccess}. & A library is a directory on one node. The mount names it and requests access, which is checked against the grant. \\
+Library mount & \texttt{Process} gains \texttt{libraries}: \texttt{LibraryMount} (\texttt{library}, \texttt{mountAt}, \texttt{subPath}) with a \texttt{LibraryAccess}. & A library is a directory on one node. The mount identifies it and requests access, checked against the grant. \\
 GPU placement & Placement gains a structured \texttt{gpu} with a vendor and model. & One declaration selects and requests a card, so the request is derived without repetition. \\
 \multicolumn{3}{l}{\textit{Secrets and keys}} \\
-Declared secret keys & The flat key list becomes \texttt{KvKey}, a \texttt{name} with either \texttt{PlainKey} or \texttt{GeneratedKey}. \texttt{GeneratedKey} holds \texttt{generate}: \texttt{bytes} and an \texttt{encoding} of \texttt{KeyEncoding}. & A platform-generated key is declared by its shape; its value never enters the model. \\
-Credential delivery & A grant's delivery target gains \texttt{mountAt} and \texttt{fileMode}, allowing an edge's credential to be delivered as a file with its own mode, alongside environment delivery. & A Process may require file delivery; the file's location and mode form part of the contract. \\
+Declared secret keys & The flat key list becomes \texttt{KvKey}, a \texttt{name} with either \texttt{PlainKey} or \texttt{GeneratedKey}. \texttt{GeneratedKey} holds \texttt{generate}: \texttt{bytes} and an \texttt{encoding} of \texttt{KeyEncoding}. & A platform-generated key's format is declared; its value never enters the model. \\
+Credential delivery & A grant's delivery target gains \texttt{mountAt} and \texttt{fileMode}, allowing an edge's credential to be delivered as a file with its own mode, alongside environment delivery. OCL rejects a file grant without both, with more than one key, or with a \texttt{mountAt} that is relative or directly in \texttt{/}. & A Process may need file delivery; the file's location and mode are part of the contract. Such a grant once passed validation but made rendering fail. \\
 Transit read & A transit grant may declare \texttt{read}, covering the key's public part. & A JWKS endpoint needs only the public part. \\
 \multicolumn{3}{l}{\textit{Identity and constraints}} \\
 Consumer addresses by Application Id & An edge names its provider by Application Id, checked by the \texttt{DependencyEdges} descriptor and an OCL constraint. & Consumer configuration depends only on the Id, never on a namespace or Project. \\
@@ -80,7 +77,7 @@ Unique claim reservation & An OCL constraint rejects a \texttt{claim} reserved b
 \hline
 \textbf{Change} & \textbf{What changed} & \textbf{Why} \\
 \hline
-Command and memory-backed paths & A Process and a sidecar may declare \texttt{command} and \texttt{args}, lists of literal words replacing the image's entrypoint and arguments; a writable path may be \texttt{\{path, memory\}}. & Image startup concerns only its Process, so words cannot contain placeholders; memory-backed paths count towards that Process's memory. \\
+Command and memory-backed paths & A Process and a sidecar may declare \texttt{command} and \texttt{args}, lists of literal words replacing the image's entrypoint and arguments; a writable path may be \texttt{\{path, memory\}}. & Startup is specific to the Process, so words cannot contain placeholders; memory-backed paths count towards that Process's memory. \\
 API access scope & \texttt{ApiRule} is scoped to the Process's namespace or the cluster. A Process can access the Kubernetes API without a rule when its declaration suffices. & Access is declared at the required scope and no wider. \\
 Spawn templates & A Process may create pods only from a declared spawn template. & Dynamic workloads are restricted to declared shapes. \\
 Sidecar volumes and init & A \texttt{Sidecar} mounts the named Process volumes and may run before the main container as an init step. & A sidecar needs access to its data, with execution order declared. \\
@@ -111,8 +108,7 @@ Dashboards and alert rules & The \texttt{Application} declares its Grafana dashb
 \label{tab:app-source-3}
 \end{table}
 
-The OCL constraints also changed substantially. The constraints above are among
-them, and each new form of \texttt{Process} brought its own constraints into
+The OCL constraints also changed substantially. These include those listed above; each new form of \texttt{Process} added constraints to
 \path{project-intent.ocl}.
 
 \subsection{Platform Intent}
@@ -134,7 +130,7 @@ Its metamodel is the Platform part of \path{project-intent.ecore}; its grammar i
 
 Platform Intent changed in two ways. First, the eight privileged-role fields
 now name both a Project and an Application, breaking compatibility with every
-document that sets them. Second, it gained policies previously held in
+document that sets them. Second, it gained policies from
 transformations or Project files: the VPN image, GPU resource names, library
 grants and each engine's catalog method.
 
@@ -150,7 +146,7 @@ Roles name their Project & The eight fields giving an \texttt{Application} a pri
 Human grants & \texttt{humanGrants}: each entry contains a \texttt{group} (as seen by the API server), one of four built-in cluster roles, and a \texttt{reason}. & The platform decides who administers the cluster, so grants belong to no Application. \\
 \multicolumn{3}{l}{\textit{Engines}} \\
 Catalog method & An engine entry names a \texttt{catalog} method: an image that applies a catalog through the engine's Surface, with its user and sign-in. & Applying a database catalog writes to a live datastore using a privileged identity. The platform specifies each engine's method; the transformation only plans the Job. \\
-New engines & \texttt{mongo} joins the engine vocabulary, and \texttt{s3} gains a bucket catalog method. & No catalog is derived for a store without databases; object-store keys and buckets are derived from edges. \\
+New engines & \texttt{mongo} is now an engine, and \texttt{s3} gains a bucket catalog method. & No catalog is derived for a store without databases; object-store keys and buckets are derived from edges. \\
 \multicolumn{3}{l}{\textit{Resources available to Processes}} \\
 VPN policy & \texttt{VpnPolicy}: an image, a credential, \texttt{memory} and \texttt{cpu}, and \texttt{VpnSetting} key-value entries. & The tunnel's image and settings are platform facts that no Project should set. \\
 GPU vendors & \texttt{GpuVendor} with \texttt{GpuVendorPolicy}: a \texttt{resource} name and a \texttt{runtimeClass}. & The resource name and runtime class belong to the driver the platform runs. \\
@@ -171,10 +167,10 @@ Substrate pulls & The substrate's image pull is allowed within every derived dea
 \hline
 Tier forward auth & A tier's \texttt{forwardAuth} names a provider Application, its responding Surface and the path. & The endpoint follows the provider's Process, so moving the provider updates the edge's target. \\
 Tier certificates and addresses & A tier gains an L4 Address and its own certificate; a Route takes its TLS from its tier. & Each tier is a proxy with its own entry point and certificate. \\
-Tier DNS and ingress class & A tier declares \texttt{dns} (\texttt{target}, \texttt{proxied}) and an ingress class. & Routes carry the annotations required by public records and the selected proxy. \\
+Tier DNS and ingress class & A tier declares \texttt{dns} (\texttt{target}, \texttt{proxied}) and an ingress class. & Routes include annotations required by public records and the selected proxy. \\
 Default certificate & A tier that issues no certificate names a Secret Store path in \texttt{certificateFrom}. & Every proxy serves that certificate to a Route naming none of its own. \\
 L4 Addresses & Named L4 Addresses, each an IPv4 pool announced at one site. & A raw Surface needs a platform-owned address. \\
-Mesh enrolment & \texttt{mesh.enrolled} names the Projects in the ambient mesh. & Enrolment is the platform's decision, and a name no Project declares is rejected. \\
+Mesh enrolment & \texttt{mesh.enrolled} names the Projects in the ambient mesh. & The platform decides enrolment; an undeclared Project name is rejected. \\
 \hline
 \end{tabular}
 \caption{Changes to Tiers, the Edge and the Mesh in the Platform Intent Since Task~2}
@@ -191,7 +187,7 @@ Mesh enrolment & \texttt{mesh.enrolled} names the Projects in the ambient mesh. 
 Flux metrics & The bootstrap set's Flux entry records the port and path where its controllers serve metrics. & Flux serves all Projects and belongs to none, so the platform records how to reach it. \\
 k3s metrics and monitoring stores & The bootstrap set's \texttt{k3s} entry (\texttt{K3sInstall}, \texttt{K3sMetrics}) records where the kubelet, the API server and the cluster DNS serve metrics; \texttt{Monitoring} gains \texttt{stores}, the Loki, Tempo and Pyroscope Applications Grafana reads. & The cluster's own components and Grafana's data sources belong to no Project, so the platform records them. \\
 Priority classes & Two classes, \texttt{data} and \texttt{critical}, and a list of critical Applications. & Priority is derived from the Process rather than authored by it. \\
-Node agents & Node agents are derived from node facts and pools. & Agents follow existing nodes without a duplicated list. \\
+Node agents & Node agents are derived from node facts and pools. & Agents are derived from nodes without another list. \\
 Foundation and bootstrap set & The remaining foundation and its bootstrap set are declared. & The platform specifies what a cluster needs before any Project runs. \\
 Off-cluster recipient & Each off-cluster copy is encrypted to a platform-named recipient. & Only the holder of the recipient's key may read the copy. \\
 DNS resolution & A DNS-serving Process resolves through the platform's upstream nameservers. & The resolver's upstream is a platform fact. \\
@@ -229,7 +225,7 @@ Version on every entry & Each images-lock entry gains \texttt{version}, a \textt
 Rejection of missing versions & The grammar accepts an entry without \texttt{version}; resolution rejects it as \texttt{E\_IMAGE\_VERSION\_MISSING}. & This identifies the model entry, whereas a grammar error would identify only the line. \\
 Root rejected & An image locked with uid 0 is rejected as \texttt{E\_IMAGE\_RUNS\_AS\_ROOT}. & The hardening posture requires a non-root uid, which a root image cannot supply. \\
 \multicolumn{3}{l}{\textit{ClusterState snapshot}} \\
-Backups removed & The snapshot's rollback-backup list and annotation are removed. & The snapshot no longer records a backup nothing reads. \\
+Backups removed & The snapshot's rollback-backup list and annotation are removed. & The snapshot no longer records unused backups. \\
 \hline
 \end{tabular}
 \caption{Changes to the Images Lock and the ClusterState Snapshot Since Task~2}
@@ -237,9 +233,9 @@ Backups removed & The snapshot's rollback-backup list and annotation are removed
 \label{tab:app-pinned-2}
 \end{table}
 
-Output remains a function of the pinned inputs. A fact about the running cluster
-therefore enters as a new pinned value, rather than a live-cluster read. Section~\ref{sec:design} covers the snapshot rules and the reason the node
-contract records capacity; they are not repeated here.
+Output remains a function of the pinned inputs. Facts about the running cluster
+enter as new pinned values, rather than direct cluster queries. Section~\ref{sec:design} explains the snapshot rules and why the node
+contract records capacity.
 
 \subsection{Target Metamodel (Resolved Deployment)}
 \label{sec:appendix-target}
@@ -271,7 +267,7 @@ Catalog Job & \texttt{ResolvedCatalogJob} (\texttt{identity}, \texttt{namespace}
 Generated keys & \texttt{GeneratedKeysFile} is rendered as JSON by the policy Job. & The policy Job reads generated values from a file written during rendering. \\
 \multicolumn{3}{l}{\textit{Consumer admission and Stable Addresses}} \\
 Consumer label & A consuming Process has \texttt{consumes}, the label of each Surface it reaches; the provider's policy admits that label. & Only the new consumer is re-rendered, since the provider's policy already admits the label. \\
-Stable Address & A resolved Stable Address holds its \texttt{name}, namespace, \texttt{target} and \texttt{port}. Each alias points to it through an \texttt{externalName}. & Consumers do not know where providers run, so relocating a provider changes one object. \\
+Stable Address & A resolved Stable Address holds its \texttt{name}, namespace, \texttt{target} and \texttt{port}. Each alias points to it through an \texttt{externalName}. & Consumers omit provider locations; relocating a provider changes one object. \\
 \hline
 \end{tabular}
 \caption{Changes to Values Planned in the Project's Own Reconcile Unit, Consumer Admission and Stable Addresses in the Resolved Deployment Metamodel Since Task~2}
@@ -296,7 +292,7 @@ Command, memory-backed paths and Flux metrics & \texttt{ResolvedProcess} and \te
 Process forms & \texttt{scheduled} (a CronJob), \texttt{parked}, \texttt{across} anti-affinity, \texttt{spawn} templates and the sidecar's \texttt{init} step. & Each form renders a different workload, and the target records which one it is. \\
 Tier entries & The forward-auth endpoint, the Route's redirect Middleware, ingress class and DNS annotations, L4 Service, Client object and human-grant ClusterRoleBinding. & Each entry represents a tier or grant fact in Platform Intent. \\
 Priority and node agents & A Process's priority class and the node agents' pools. & Priority is derived; agents are derived from node facts. \\
-Monitoring stack and default certificate & \texttt{ResolvedOperated} (with \texttt{OperatedAlertmanager} and \texttt{OperatedFlag}) records a Prometheus or Alertmanager the Prometheus operator runs; \texttt{GrafanaFile} with \texttt{ResolvedGrafana}, \texttt{K3sMonitorsFile} with \texttt{ResolvedK3sScrape}, and \texttt{TlsStoreFile} carry the Grafana instance, the scrapes of k3s and a tier's default certificate; \texttt{ResolvedMemberlist} the node speakers' shared key. & Each object is derived from a platform fact, so the templates only write it. \\
+Monitoring stack and default certificate & \texttt{ResolvedOperated} (with \texttt{OperatedAlertmanager} and \texttt{OperatedFlag}) records a Prometheus or Alertmanager run by the Prometheus operator. \texttt{GrafanaFile} with \texttt{ResolvedGrafana}, \texttt{K3sMonitorsFile} with \texttt{ResolvedK3sScrape}, and \texttt{TlsStoreFile} record the Grafana instance, k3s scrapes and a tier's default certificate. \texttt{ResolvedMemberlist} records node speakers' shared key. & Each object is derived from a platform fact, so the templates only write it. \\
 \hline
 \end{tabular}
 \caption{Changes to Workload Features, Process Forms and Tiers in the Resolved Deployment Metamodel Since Task~2}
@@ -310,7 +306,7 @@ Monitoring stack and default certificate & \texttt{ResolvedOperated} (with \text
 \hline
 \textbf{Change} & \textbf{What changed} & \textbf{Why} \\
 \hline
-Capabilities, names and suffix & \texttt{VaultPolicyFile.paths} and \texttt{ResolvedCatalogJob.policy} record each path and its capabilities; \texttt{MiddlewareStep} gains \texttt{name} and \texttt{namespace}; \texttt{ResolvedProcess} gains \texttt{serving} and \texttt{servingLabel} (Table~\ref{tab:moved-choices}). The rendered trees keep their bytes, save one redirect step's name (Section~\ref{sec:m2t-queries}). & A value chosen in a template lies beyond model-level tests. \\
+Capabilities, names and suffix & \texttt{VaultPolicyFile.paths} and \texttt{ResolvedCatalogJob.policy} record each path and its capabilities; \texttt{MiddlewareStep} gains \texttt{name} and \texttt{namespace}; \texttt{ResolvedProcess} gains \texttt{serving} and \texttt{servingLabel} (Table~\ref{tab:moved-choices}). Rendered bytes are unchanged except for one redirect step's name (Section~\ref{sec:m2t-queries}). & Model-level tests cannot check a template-derived value. \\
 \hline
 \end{tabular}
 \caption{Changes to the Resolved Deployment Metamodel Specific to the Model-Driven Implementation}
@@ -324,15 +320,13 @@ version and catalog identity from the model without deriving them.
 \subsection{The Transformations}
 \label{sec:appendix-transformations}
 
-The pipeline changed from Task~2's lowering, resolution and estate pass over
-several Resolved Deployments, followed by rendering, to lower, resolve and
-render. The estate pass was removed; resolution now plans its values per
-Project. Its ADR, \path{emf/docs/adr/emf/0076-qvto-derives-the-resolved-deployment.md},
+Task~2 used lowering, resolution, an estate pass over several Resolved Deployments,
+and rendering. The pipeline now lowers, resolves and renders. Resolution plans
+the removed estate pass's values per Project. Its ADR, \path{emf/docs/adr/emf/0076-qvto-derives-the-resolved-deployment.md},
 was rewritten in place rather than amended, recording the current decision.
-It rests on the rule that a Project owns every object it delivers
+It follows the rule that a Project owns every object it delivers
 (\path{docs/adr/model/0116-a-project-owns-every-object-it-delivers.md}).
-The record accepts the cost: values needed by several Projects are planned
-separately by each.
+The record accepts that each Project plans shared values separately.
 
 
 \begin{table}[!htbp]
@@ -350,7 +344,7 @@ Rollout events & Resolution plans a Flux provider and alert per Project, in Flux
 Catalog Job & A datastore's catalog Job, ConfigMap, CronJob and policy are planned into its Project's output, under the Application running it. & The Reconcile Unit that starts the datastore applies its catalog without waiting for another Reconcile Unit. \\
 Routes & Each Exposure's Route is written into its Application's directory and applied by its Project's Reconcile Unit, after the Reconcile Unit of the Project declaring the tier's proxy. & A Route depends on its named proxy; the Reconcile Unit graph specifies the order. \\
 Job names and recreation & A catalog or policy Job is named by the digest of its inputs and pod template. If only rendering changed the template, the Job is marked for recreation. & Job templates are immutable, so a rendering change retaining the name would stall the Reconcile Unit. \\
-Retries and placement & Policy and catalog Jobs retry until an attempt succeeds, with a deadline per attempt, and avoid nodes with SD cards. & A slow disk must not make a slow start permanently fail the Job. \\
+Retries and placement & Policy and catalog Jobs retry until an attempt succeeds, with a deadline per attempt, and avoid nodes with SD cards. & Slow disk startup must not permanently fail the Job. \\
 \multicolumn{3}{l}{\textit{Consumer admission by label}} \\
 Consumer label & Resolution gives each consuming Process the label of each Surface it reaches. The provider's policy admits the label from any namespace; the catalog Job holds its datastore's Surface label. & Adding a consumer re-renders only that consumer, leaving provider policies unchanged. \\
 \hline
@@ -366,10 +360,10 @@ Consumer label & Resolution gives each consuming Process the label of each Surfa
 \hline
 \textbf{Change} & \textbf{What changed} & \textbf{Why} \\
 \hline
-Generated keys & The Vault policy Job generates each declared key and rejects generated paths escaping its Project's prefix. & The Job owning the path writes the generated value. \\
+Generated keys & The Vault policy Job generates each declared key and rejects generated paths outside its Project's prefix. & The Job owning the path writes the generated value. \\
 VPN and library & Each attached Process receives its own VPN credential; library mounts are resolved against the library's node. & Credentials are not shared between Processes, and mounts need their node's path. \\
 File backups & A file backup runs as the Process owning the volume. & The backup reads the volume using its owner's identity. \\
-Edges and ordering & A \texttt{required: false} edge imposes no Reconcile Unit ordering. A gated member starts only after its required stop-start Processes in the same Project. & Optional edges are not dependencies; a gate must not start before what it gates. \\
+Edges and ordering & A \texttt{required: false} edge imposes no Reconcile Unit ordering. A gated member starts only after its required stop-start Processes in the same Project. & Optional edges impose no ordering; a gate must wait for its required Processes. \\
 Secret Store connection & A datastore's Secret Store connection is named after its Process, not its engine. & Two datastores of one engine must not share a connection. \\
 Images & Every locked image's version is read and written on its pods. Every derived deadline allows time for a pull. & Version is a pod fact; no deadline may prevent a pull scheduled by rendering. \\
 \hline
@@ -388,10 +382,10 @@ Images & Every locked image's version is read and written on its pods. Every der
 \multicolumn{3}{l}{\textit{Rendering}} \\
 Restricted posture & The restricted posture sets \texttt{allowPrivilegeEscalation} to false on every container. & Pod Security's restricted profile requires this; otherwise, a setuid binary could escalate privileges. \\
 Grant sync objects & A removed grant's sync objects outlive the release removing it. & A running Process may still read the synced secret during rollout, so these objects must outlive the release. \\
-Writable paths & Every sidecar mounts the Process's writable paths. & A sidecar that reads the Process's writes must see them. \\
+Writable paths & Every sidecar mounts the Process's writable paths. & A sidecar must access files written by the Process. \\
 Rate limit and VPN templates & A Route's rate limit renders as a separate Middleware; a dedicated template renders a Process's VPN container. & Each is a separate object required by the proxy or pod. \\
 \multicolumn{3}{l}{\textit{Specific to the model-driven implementation}} \\
-Choices derived outside templates & \texttt{middlewareOf} names each step and sets its namespace; \texttt{servesFromPrimary} sets the serving Deployment and its label; \texttt{allowedPaths} and \texttt{ResolvedCatalog::policy} build each policy's paths, also used to write the policy Job's documents. Seven queries leave \texttt{render.mtl}: \texttt{allowsAt}, \texttt{policyPaths}, \texttt{catalogAllows}, \texttt{catalogPaths}, \texttt{middlewareName}, \texttt{rateLimitName} and \texttt{listed}. & Template choices were tested only through bytes. Derived values are model features covered by resolution tests; the policy Job and template read one list rather than deriving it separately. \\
+Choices derived outside templates & \texttt{middlewareOf} sets each step's name and namespace; \texttt{servesFromPrimary} sets the serving Deployment and its label; \texttt{allowedPaths} and \texttt{ResolvedCatalog::policy} build policy paths also used to write the policy Job's documents. Seven queries are removed from \texttt{render.mtl}: \texttt{allowsAt}, \texttt{policyPaths}, \texttt{catalogAllows}, \texttt{catalogPaths}, \texttt{middlewareName}, \texttt{rateLimitName} and \texttt{listed}. & Only byte comparison tested template choices. Derived values are model features covered by resolution tests; the policy Job and template read one list rather than deriving it separately. \\
 Kind dispatch and failure & YAML kinds dispatch by type rather than a chain of type tests. Rendering writes files to a separate directory and moves them under the root only after all files are written. & A kind without a template fails the run; failure leaves the root unchanged. \\
 \hline
 \end{tabular}
@@ -409,8 +403,8 @@ Kind dispatch and failure & YAML kinds dispatch by type rather than a chain of t
 \multicolumn{3}{l}{\textit{Stable Addresses}} \\
 Stable Address & Each Surface named by an edge or a tier's forward auth receives a derived Stable Address, rendered as one \texttt{ExternalName} Service. Aliases point to it. & Relocating a provider changes one object, without changing consumer configuration. \\
 \multicolumn{3}{l}{\textit{Process forms and the Release Gate}} \\
-Process forms & Scheduled Processes render a CronJob forbidding overlap; parked Processes retain claims; replicas spread across nodes; spawn templates bound the pods a Process creates. & The Process declaration fixes each form's behaviour, rather than a rendering flag. \\
-Release Gate decisions & The Release Gate decides whether to roll back a release it can no longer pass. & The observing gate decides whether a release can still pass. \\
+Process forms & Scheduled Processes render a CronJob forbidding overlap; parked Processes retain claims; replicas spread across nodes; spawn templates limit the pods a Process creates. & The Process declaration fixes each form's behaviour, rather than a rendering flag. \\
+Release Gate decisions & The Release Gate decides whether to roll back a release unable to pass. & The gate uses observations to decide if releases can pass. \\
 \hline
 \end{tabular}
 \caption{Changes to Stable Addresses, Process Forms and the Release Gate Since Task~2}
@@ -427,7 +421,7 @@ Release Gate decisions & The Release Gate decides whether to roll back a release
 Flux metrics and metrics egress & The metrics stack's Project renders one PodMonitor for Flux in its own namespace; egress is derived to every declared scrape port and Flux's port. A memory-backed path adds its size to the Process's request, limit and eligibility. & The monitor and egress follow declared facts without manual specification. \\
 Human grants & Each grant renders one ClusterRoleBinding from its role to its group, named for both. & Grants belong to no Project, so rendering or removing a Project cannot remove them. \\
 Tiers & The tier entry determines its proxy configuration, forward-auth Middleware, shared Middlewares, Route TLS and DNS annotations. & A Route reaches exactly one proxy, selected by its audience. \\
-Monitoring stack & Resolution derives the operator's objects for Prometheus and Alertmanager, the Grafana instance, the scrapes of k3s with their token and read access, and each tier's default TLS store. & Each follows a Platform Intent fact rather than a Project's declaration. \\
+Monitoring stack & Resolution derives the operator's objects for Prometheus and Alertmanager, the Grafana instance, k3s scrapes with their token and read access, and each tier's default TLS store. & Each follows a Platform Intent fact rather than a Project's declaration. \\
 Encryption and resolver & Off-cluster copies are encrypted to the platform's recipient; DNS-serving Processes use the upstream nameservers. & Rendering uses both platform facts as given. \\
 \hline
 \end{tabular}
@@ -435,20 +429,19 @@ Encryption and resolver & Off-cluster copies are encrypted to the platform's rec
 \label{tab:app-transform-5}
 \end{table}
 
-Each change was made in the specification and in both implementations, without
-generating either implementation from the other. Committed oracle files hold
-both to the same result (Section~\ref{sec:evaluation}); this appendix only
-records the changes.
+Each change was made in the specification and both independently written
+implementations. Committed oracle files require both to produce the same
+result (Section~\ref{sec:evaluation}).
 
 \subsection{Performance, and QVT-Operational Against ATL}
 \label{sec:appendix-performance}
 
-Task~2 preferred QVT-Operational to ATL partly for execution cost. To test that
-claim, \path{emf/docs/benchmarks.md} times each stage and ports the lowering to ATL
+Task~2 partly justified QVT-Operational over ATL by execution speed.
+\path{emf/docs/benchmarks.md} times each stage and tests an ATL lowering port
 on EMFTVM 4.12. The port's output equals the QVT-Operational lowering's under
-\texttt{ModelDiff} for all 36 Project files of the examples (2564 objects; 51 of
+\texttt{ModelDiff} for all 36 example Project files (2564 objects; 51 of
 its 54 rules match an object). Times are medians with interquartile ranges over
-10 runs after 5 warm-up runs, on an Apple M4 Max with Java 21; cold times are 5
+10 runs after 5 warm-up runs, on an Apple M4 Max with Java 21; cold timings use 5
 fresh JVMs (Table~\ref{tab:app-perf}).
 
 \begin{table}[!htbp]
@@ -458,7 +451,7 @@ fresh JVMs (Table~\ref{tab:app-perf}).
 \hline
 \textbf{Lowering} & \textbf{QVT-Operational} & \textbf{ATL} & \textbf{ATL relative to QVT-Operational} \\
 \hline
-Source size & 365 lines, 54 mappings & 488 lines, 33 matched and 21 lazy rules & 1.34$\times$ the lines \\
+Source size & 366 lines of code, 54 mappings & 489 lines of code, 33 matched and 21 lazy rules & 1.34$\times$ the lines \\
 Lower 24 estate Projects (1703 objects), transformation loaded once & 7.6 ms [7.5--7.8 ms] & 8.9 ms [8.8--9.2 ms] & 1.17$\times$ the time \\
 Load and compile the transformation, warm JVM & 23 ms & 280 ms & 12.4$\times$ the time \\
 Cold JVM: load, then lower all 24 Projects & 487 ms & 911 ms & 1.87$\times$ the time \\
@@ -468,30 +461,35 @@ Cold JVM: load, then lower all 24 Projects & 487 ms & 911 ms & 1.87$\times$ the 
 \label{tab:app-perf}
 \end{table}
 
-Executed, ATL takes 1.11 to 1.19 times as long at every estate size; both grow
-linearly. Neither difference matters to a run: checking the parsed documents (OCL,
-names, pinned inputs) is 55 to 63\% of a warm run, and a cold \texttt{minimal} run
-takes 3.8~s, 2.7~s of it read and check. Execution cost is therefore not a reason;
-the reason that holds is the resolution's, which reads the completed target to hash
-a release's revision and needs an explicit construction order, and was not ported.
-On the lowering, ATL needed 21 lazy rules for per-Process copies and 42 writes in
-imperative \texttt{do} blocks, as a binding cannot be conditional. The benchmark also
-found that the shipped lowering reloaded its transformation for each Project (over
-95\% of its time), and that each resolution kept about 8~MiB reachable. Both now load
-once per JVM: lowering the 24 estate Projects fell from 174~ms to 7.8~ms, and a
-resolution keeps no heap where it kept 8.2~MiB.
+ATL takes 1.11 to 1.19 times as long at every estate size; both
+scale linearly. These differences barely affect a run: checking parsed
+documents (OCL, names, pinned inputs) takes 55 to 63\% of a warm run. A cold
+\texttt{minimal} run takes 3.8~s, including 2.7~s for reading and checking. Speed does not justify QVT-Operational. Resolution favours QVT-Operational: it reads the completed target to hash a
+release's revision and needs an explicit construction order. It was not ported. In lowering, ATL required
+21 lazy rules for per-Process copies and 42 writes in imperative \texttt{do} blocks
+because bindings cannot be conditional. The benchmark also found that the shipped
+lowering reloaded its transformation for each Project (over 95\% of its time).
+Each resolution retained about 8~MiB. Both transformations now load once per JVM:
+lowering the 24 estate Projects fell from 174~ms to 7.8~ms, and resolution retains
+no heap instead of 8.2~MiB.
 
-\section{The Production Implementation}
+\section{The Production Implementation (Supplementary)}
 \label{sec:appendix-production}
+
+This supplementary appendix records the oracles' source and how the model reaches
+production. It is outside the Task~3 work and hand-in archive; the report does not
+depend on it.
+
+\subsection{The Source of the Oracles}
+\label{sec:appendix-oracles}
 
 The production implementation, in TypeScript under \path{src/}, compiles the same
 model for production use. It renders the same cases, and
 \path{test/model/render.test.ts} compares its output with the same committed files.
 Its serialiser writes YAML with \texttt{version: "1.1"}
-(\path{src/infrastructure/serializer.ts}), the rule the templates' quoting follows
+(\path{src/infrastructure/serializer.ts}); the templates use the same quoting rules
 (Section~\ref{sec:design}). The repository forbids generating either implementation
-from the other, and regenerating an oracle in CI. Where the two disagreed, the
-difference was a defect in one of them: each time the production implementation
+from the other, and regenerating an oracle in CI. Disagreement indicated a defect in one implementation: each time the production implementation
 gained a rule, the model-driven implementation adopted it until both matched the
 oracles.
 
@@ -501,6 +499,45 @@ out errors made by only one implementation, not a shared misreading of the
 specification; the external checks of Section~\ref{sec:evaluation} test Kubernetes'
 requirements rather than the specification. The Pod Security check permits one
 named exception: the VPN sidecar.
-% TODO(verify): confirm the review of committed trees was by the author alone
 
-% BIB: none needed in this section.
+\subsection{From a Change to Production, Now and Next}
+\label{sec:appendix-delivery}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth, keepaspectratio]{Figures/delivery-paths}
+\caption{Delivery Today, as Designed in estate-kit, and Its Likely Future Direction}
+\label{fig:delivery-paths}
+\end{figure}
+
+Figure~\ref{fig:delivery-paths} shows three paths from a merged change to a serving
+release. \textbf{Today} (\path{spec/v1/55-delivery.md}), delivery uses a pull model. A
+Project's CI validates its Intent and pins its images. Composition renders the
+estate once and publishes each Project's share as one signed OCI artefact,
+named by digest. A deployment is a commit changing the Project's digest pin in the estate
+repository. Its history is the deployment log. Flux pulls
+the artefact, verifies its signature and applies it, and Flagger switches
+traffic once the Release Gate allows it. Nothing pushes to the cluster.
+
+\textbf{Designed} is the accepted design of estate-kit, the repository that
+succeeds deploy-kit (Section~\ref{sec:outlook}). Project CI builds each image
+once and registers its digests. A Rust deploy service composes the estate. It dry-runs each change on the API
+server twice, on the release pull request and before updating a tag, using a
+read-only identity. It signs the output through Vault Transit and updates the
+Project's Environment tag,
+\texttt{render/<project>:<env>}, under a Writer Lease. It re-reads the tag after
+writing because the registry offers no compare-and-swap. Flux remains the one
+applier, and the Release Gate answers Flagger from cluster state.
+
+\textbf{Likely future direction} comes from a research note in estate-kit
+(\path{docs/research/decomposition.md}); it is not a decision. CI on any forge
+(a code-hosting platform: GitHub, Forgejo or Tangled) contacts a Conductor through
+one interface with an adapter per forge. CI keeps an event stream open until the
+rollout serves traffic, is held or is refused. A self-hosted OCI registry stores
+the output. An Applier in its own process replaces Flux: it pulls the rendered output by
+digest, verifies it, applies it in ordered steps (definitions and namespaces,
+secrets and grants, migrations, workloads, routes) and reports each object's
+status. Flagger remains a step driven by the Applier.
+
+All three paths retain the model and its oracles. The Resolved Deployment records
+every decision; the applier and transport of rendered files change.

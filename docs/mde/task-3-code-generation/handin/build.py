@@ -2,7 +2,8 @@
 
 After the emf build README.md names, writes task-3-code-generation.zip, or with `--dir [PATH]`
 the same tree as a folder. `--pdf PATH` names the report (default ../main.pdf) and `--spec-rev
-REV` the revision the oracles are taken from (default HEAD, the checked-out tree). See README.md.
+REV` the revision the oracles are taken from (default HEAD, the checked-out tree), and `--evidence
+DIR` the load evidence copied in as evidence/ (default evidence/ beside this script). See README.md.
 """
 import io, os, re, shutil, subprocess, sys, tarfile, tempfile, zipfile
 import xml.etree.ElementTree as ET
@@ -25,6 +26,9 @@ PDF = os.path.abspath(option('--pdf', os.path.join(HERE, '..', 'main.pdf')))
 # The oracles are taken from the checked-out commit by default, the one emf/ is level with;
 # --spec-rev pairs emf/ as it stands with spec/v1 as it stood at another revision.
 SPEC_REV = option('--spec-rev', 'HEAD')
+# The load evidence: the schema, profile and dry-run logs and the Eclipse check's report and
+# screenshots, each taken from an unpacked archive after its build.sh.
+EVIDENCE = os.path.abspath(option('--evidence', os.path.join(HERE, 'evidence')))
 LIB = f'{R}/emf/target/lib'
 
 ROOT = os.path.join(tempfile.mkdtemp(), 'hand-in')
@@ -189,6 +193,8 @@ copy(f'{HERE}/hand-in-README.md', f'{ROOT}/README.md')
 for script in ['build.sh', 'build.cmd']:
     copy(f'{HERE}/scripts/{script}', f'{ROOT}/{script}')
 os.chmod(f'{ROOT}/build.sh', 0o755)
+assert os.path.isdir(EVIDENCE), f'{EVIDENCE} is missing; the archive README promises evidence/'
+copy(EVIDENCE, f'{ROOT}/evidence')
 
 if '--dir' in sys.argv:
     i = sys.argv.index('--dir')
@@ -203,7 +209,7 @@ z = os.path.join(HERE, f'{PROJECT}.zip')
 entries = sorted(os.path.join(root, f) for root, _, files in os.walk(ROOT) for f in files)
 with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as zf:
     for full in entries:
-        info = zipfile.ZipInfo(os.path.relpath(full, ROOT).replace(os.sep, '/'), date_time=(2026, 10, 30, 0, 0, 0))
+        info = zipfile.ZipInfo(os.path.relpath(full, ROOT).replace(os.sep, '/'), date_time=(2026, 11, 3, 0, 0, 0))
         info.external_attr = (os.stat(full).st_mode & 0o777) << 16
         info.compress_type = zipfile.ZIP_DEFLATED
         with open(full, 'rb') as f:

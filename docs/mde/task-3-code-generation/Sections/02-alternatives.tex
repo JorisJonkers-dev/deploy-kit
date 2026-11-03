@@ -35,42 +35,42 @@ information from different levels.
 \label{sec:shape-stages}
 
 Three typed steps replace a single transformation from source to Resolved Deployment.
-A single transformation was rejected because it obscures the source of faults: each
-intermediate model has an oracle that identifies which step produced a fault.
+A single transformation was rejected because it obscures the source of faults.
+Each intermediate model has an oracle that identifies the faulty step.
 Rendering reads only the Resolved Deployment and therefore only writes text.
 
 \subsubsection{Removing the Estate Pass}
 \label{sec:shape-estate}
 
 The Task~2 pipeline had a third transformation over every Resolved Deployment. It
-was removed because each Project owns and alone writes every object it delivers
-(decision record 0116 under \path{docs/adr/model/}). Keeping it
-would break the delivery guarantee that publishing an unrelated change deploys nothing: one
-policy Job held every Project's grants, so one change re-ran it for all, and one
-fault left seven Projects not ready. Every generated file now belongs to
+was removed because each Project owns and is the sole writer of every object it delivers
+(decision record 0116 under \path{docs/adr/model/}). Keeping the pass
+would break the guarantee that publishing an unrelated change deploys nothing. Its
+single policy Job held every Project's grants. Any change re-ran it for all Projects;
+one fault left seven Projects not ready. Every generated file now belongs to
 one Project's Resolved Deployment, so no template merges output across Projects.
 
 \subsubsection{Kubernetes Objects and Custom Resources as the Target}
 \label{sec:shape-target}
 
-The target consists of Kubernetes API objects and custom resources for Flux,
+The target is Kubernetes API objects and custom resources for Flux,
 Flagger, the Vault Secrets Operator, Traefik and the Prometheus Operator. Flux is
-the only applier, and it pulls the render by digest
+the only applier and pulls the rendered output by digest
 (\url{docs/adr/model/0050-delivery-is-part-of-the-model.md}). A push path from CI
 was rejected because it would require a deployment credential outside the cluster. Helm
-or Kustomize templating was rejected because no abstract model could express its
-constraints (Task~1 report). Each generated file represents an object that the API
-server validates; the load stage checks this validation.
+and Kustomize templating were rejected because no abstract model could express their
+constraints (Task~1 report). Each generated file is an object the API server
+validates, and the load stage runs that validation.
 
 \subsubsection{One Rendering Run for All Projects}
 \label{sec:shape-union}
 
-Each Project is resolved separately using the union of all Projects, and rendering
-runs once over the resulting set. Resolution from a Project's own documents alone
+Each Project is resolved using the union of all Projects; rendering runs once
+over the resulting set. Resolution from a Project's own documents alone
 was rejected because it cannot account for cross-Project facts: a provider's address,
 admission of a consumer by label, or rejection when a provider removes a Surface named by a consumer
-(\url{spec/v1/40-composition.md}). The cost is that one Project's change can alter
-another's output through names. A test checks that unrelated Projects' output remains unchanged.
+(\url{spec/v1/40-composition.md}). One Project's change can therefore alter
+another's output through references by name. A test checks that unrelated Projects' output is unchanged.
 
 \subsection{The Model-to-Text Step}
 \label{sec:m2t-choices}
@@ -82,7 +82,7 @@ Rendering is the only step that writes text. Its output must match the committed
 \label{sec:m2t-language}
 
 The assignment prescribes Acceleo, which also meets three technical criteria.
-Acceleo~4 has a standalone API, allowing one Java class to run the module without an IDE, as in CI.
+Acceleo~4 has a standalone API: one Java class runs the module without an IDE, as in CI.
 Its whitespace rules give templates exact control over the output bytes. Queries use
 Acceleo Query Language (AQL) expressions over the Ecore model; the templates
 are interpreted rather than compiled to Java.
@@ -100,9 +100,9 @@ The alternative is a serialiser: a visitor writes typed objects through a YAML l
 and a JSON encoder. The model-driven implementation uses templates without a subsequent
 formatting pass.
 
-The criterion is that one reviewed artefact determines the output bytes. A template
-directly specifies the file layout, so a difference from the oracle points to a
-visible template line. A serialiser delegates key order and quoting to library
+One reviewed artefact must determine the output bytes. A template specifies the
+file layout, so a difference from the oracle identifies a template line.
+A serialiser delegates key order and quoting to library
 defaults; a formatting pass adds a second tool whose version affects the bytes.
 Comparing parsed documents would not check the headers, ordering or quoting
 specified by the committed trees.
@@ -116,9 +116,9 @@ target syntax still has to be written.
 control of the header line or key order without a custom formatter.
 \end{itemize}
 
-The cost is manual whitespace control: the template must specify every layout byte
+Whitespace must be controlled manually: the template specifies every layout byte
 (Section~\ref{sec:m2t-fragments}). The template also writes the key order of the
-Vault JSON documents, which have no header. A string is double-quoted when a YAML implicit resolver would read it as
+Vault JSON documents, with no header. A string is double-quoted if a YAML implicit resolver would read it as
 a null, a boolean, a number or a timestamp, or when it ends in a colon or contains
 ``\texttt{: }''.
 
@@ -129,8 +129,8 @@ MOFM2T lets a module import others and extend or override their templates. This 
 useful when a generator varies by platform. Here there is one target and no
 variant to override; shared templates (label set, peer selector, consumer
 label) serve nearly every kind. Splitting by kind would require imports throughout;
-one module retains a single namespace. The cost is a large file navigated by template name:
-3607 lines holding 109 templates and 41 queries.
+one module keeps a single namespace. The single file has 3607 lines,
+109 templates and 41 queries, located by template name.
 
 YAML generation calls one overloaded \texttt{objects} template, which Acceleo resolves by the Deliverable's
 runtime type (a polymorphic template in the course's terms). It replaced a chain
@@ -142,9 +142,9 @@ only the header. A kind without a template now causes the run to fail.
 
 No template derives a value absent from the model. Platform decisions are made in the
 QVT-Operational transformations and recorded in the Resolved Deployment, so a
-missing derivation produces a missing or different file. This preserves release identity:
-a release's revision is computed from the Application's canonical JSON, so a value
-derived in a template would fall outside that identity.
+missing derivation produces a missing or different file. A release's revision is
+computed from the Application's canonical JSON. A value derived in a template
+would be excluded from that identity.
 
 Templates handle only target-syntax formatting. A duration becomes whole seconds,
 precedence becomes a Traefik priority of 1000 minus the precedence, and a match
@@ -180,10 +180,3 @@ Derivation & Queries in templates & Model holds values & Identity covers values 
 
 Section~\ref{sec:evaluation} discusses the remaining limitations and
 Section~\ref{sec:reflection} the decisions that were reversed.
-
-% BIB: \bibitem{mofm2t} Object Management Group. \emph{MOF Model to Text
-%   Transformation Language (MOFM2T)}, version 1.0, 2008.
-%   \url{https://www.omg.org/spec/MOFM2T/1.0/}.
-% BIB: \bibitem{egl} The Epsilon Generation Language, part of the Eclipse Epsilon
-%   project. \url{https://eclipse.dev/epsilon/}. TODO(verify): the authors and
-%   venue from the proceedings the course material cites under Task~3.

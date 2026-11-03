@@ -21,6 +21,10 @@ implementation and run the transformation on each example, and two folders:
   `RenderModel` that renders the committed `emf/models/minimal.resolveddeployment`
   under the project's `target/render/`.
 
+`evidence/` holds what `scripts/dry-run.sh` printed and what `scripts/eclipse-check.sh` wrote
+(`report.txt` and `screenshots/`), both run on the unpacked archive after its `build.sh`;
+`build.py` copies it into the archive as `evidence/`, or the directory `--evidence DIR` names.
+
 `hand-in-README.md`, copied into the archive as `README.md`, says how to import
 the projects into Eclipse and how to run the transformation and the tests from
 the command line and from Eclipse.
