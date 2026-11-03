@@ -79,7 +79,7 @@ Deliverable at the model's assigned path; it computes no paths.
 The private template \texttt{document} chooses the format: JSON for the three Vault
 kinds and the catalog method's policy part, YAML for everything else. YAML generation
 calls \texttt{objects} on the Deliverable; Acceleo selects the overload for its
-runtime type, with one overload for each of the 38 YAML kinds.
+runtime type, with one overload for each of the 37 YAML kinds.
 
 Resolution defines the path plan; templates only follow it. Each Project has
 a namespace file and an index for \path{apps/<project>/}; each
@@ -87,13 +87,10 @@ Application has one file per family, with no file for a family containing no obj
 No index lists policy files or Vault documents, because the
 Vault policy Job reads them from its own ConfigMap
 (\path{spec/v1/30-deliverables.md}).
-% TODO(verify): the claim that the ConfigMap is the only object applying the Vault
-% documents is read from the path plan's description in emf/docs/architecture.md and
-% spec/v1/30-deliverables.md; the full set of applying objects was not traced.
 
 \textbf{Several Resolved Deployments, one owner per file.} A Project owns every file in
-its directory, so indexes are not shared and each lists only its own Deliverable's
-resources (Example~\ref{lst:index}). The composed minimal and data cases match the
+its directory, so indexes are not shared and each lists only its own Project's
+files (Example~\ref{lst:index}). The composed minimal and data cases match the
 two committed trees file for file (Section~\ref{sec:evaluation}).
 
 \begin{lstlisting}[style=report, language=acceleo, caption={An Index Lists Its Own Directory}, label={lst:index}]
@@ -125,7 +122,7 @@ The module supports 40 Deliverable kinds in nine families
 (Table~\ref{tab:kinds}). Each YAML family uses an \texttt{objects}
 template overloaded on its receiver type. Acceleo selects the overload by runtime type
 rather than string comparison: these are polymorphic templates in the course's sense.
-A kind with no overload causes evaluation and the run to fail. The module previously
+A kind with no overload fails evaluation, and with it the run. The module previously
 dispatched through 22 type tests with no \texttt{else}, so a kind without a branch
 would silently produce only a header line. Type dispatch closes this gap and is 50 lines shorter.
 
@@ -179,10 +176,8 @@ The module's comments cite the chapter defining each rule:
     as \texttt{PathPrefix}.
   \item \textbf{Migration Jobs.} They are created suspended and named for their
     revision's tag. Only the Release Gate (the check that releases a migration)
-    changes their suspension.
+    changes their suspension (\path{spec/v1/55-delivery.md}).
 \end{itemize}
-% TODO(verify): the suspended-Job rule spells the Release Gate contract of spec/v1,
-% not a single model value; confirm the chapter that fixes it.
 
 \subsection{Shared Templates and the Whitespace Rules}
 \label{sec:m2t-fragments}
@@ -225,8 +220,8 @@ on the call column.
 \texttt{- }, and the caller does not write the dash: a dash before the call would be
 repeated before every line, making each line a separate item.
 
-Whitespace is therefore a template concern (Section~\ref{sec:whitespace}). In return,
-the layout is visible in the template and checked without an intervening formatter.
+Whitespace is therefore a template concern (Section~\ref{sec:whitespace}), and the
+layout is visible in the template, with no formatter in between.
 
 \subsection{Writing YAML and JSON}
 \label{sec:m2t-spelling}
@@ -251,9 +246,8 @@ ending on a space. The edge's Content Security Policy, which ends in \texttt{htt
 is quoted in the committed tree.
 
 The double-quoted form does not escape its content, so a quote or backslash in a
-value would break the line. The model's value rules are intended to exclude these characters.
-% TODO(verify): identify the constraint that excludes quotes and backslashes from
-% scalar values.
+value would break the line. Names and versions exclude both by pattern; an environment literal does
+not, so a quoted one holding either would break, and no example holds one.
 
 \textbf{Block scalars.} An Asset is a file a Project ships as configuration. Its
 ConfigMap holds the text as a block scalar, and its name contains a digest of the
@@ -266,32 +260,28 @@ write it (Example~\ref{lst:block}).
   if content.endsWith('\n\n') then '|+' else if content.endsWith('\n') then '|' else '|-' endif endif /]
 
 [query private blockOf(content : String, indent : String) : String =
-  (if content.endsWith('\n') then content.substring(1, content.size() - 1) else content endif)
+  (if content.endsWith('\n') and not content.endsWith('\n\n')
+     then content.substring(1, content.size() - 1) else content endif)
     .replaceAll('(?m)^(?=.)', indent) /]
 \end{lstlisting}
 
 The indicator preserves trailing line breaks: one newline gives \texttt{|}
-(clip), two give \texttt{|+} (keep), none give \texttt{|-} (strip). The body drops one
-trailing newline, supplied by the block's own clipping, and indents every non-empty
-line by four spaces; blank lines stay blank.
-% TODO(verify): the substring arithmetic in blockOf uses OCL's one-based, inclusive
-% substring. The committed trees agree with that reading, but the AQL reference was not
-% consulted.
+(clip), two give \texttt{|+} (keep), none give \texttt{|-} (strip). Under clip the body
+drops its one trailing newline, which the block restores; AQL's \texttt{substring} is one-based
+and inclusive, as in OCL. Every non-empty line is indented by four spaces; blank lines stay blank.
 
 \textbf{Key order.} Key order follows the template text. The API reads
 objects as maps, but the Acceleo~4 decision requires byte equality
 (decision record 0077 under \path{emf/docs/adr/}).
 
 \textbf{Vault documents as JSON.} A policy document has one \texttt{path}
-member, with a \texttt{capabilities} list per path. A Kubernetes auth role
+object, holding a \texttt{capabilities} list for each path. A Kubernetes auth role
 has three lists containing one name each. The \texttt{json} templates pretty-print
 these documents with two spaces per level, using the margin rule, and escape list brackets
 with \texttt{['['/]}. The policy also appears as canonical one-line JSON
 in the Vault policy Job's ConfigMap, written during resolution and covered
 by the digest in the ConfigMap's name. Templates do not check that the two agree;
-parity comparison checks this only for committed cases.
-% TODO(verify): confirm that the pretty-printed policy and the canonical document are
-% generated from one value in the resolution, and not spelled separately.
+parity comparison checks this only for committed cases. Both come from one \texttt{VaultPolicyFile}.
 A generated-key document is the only JSON file built by concatenation: the \texttt{entry}
 query returns one key as an object, and \texttt{json} separates the entries with
 commas. The concatenation writes keys, paths and encodings without escaping, which is
@@ -373,12 +363,3 @@ and namespace, so the template needs no conditional choice. The module previousl
 chose them by the step's kind, with a query for each name (Table~\ref{tab:moved-choices}). The port
 is looked up by the Surface's name among the Process's Surfaces, so the file states the
 port the Process declares.
-
-% BIB: \bibitem{yaml11} The YAML Language Development Team. \emph{YAML Ain't Markup
-% Language (YAML) Version 1.1}, the type repository for the implicit types of YAML 1.1.
-% \url{https://yaml.org/type/}. TODO(verify): the visit date and the exact page.
-% BIB: \bibitem{acceleo4} Eclipse Foundation. \emph{Acceleo 4: Acceleo Query Language
-% and the MOFM2T standalone API}. TODO(verify): the URL of the Acceleo 4 documentation
-% the report should cite.
-% BIB: \bibitem{ocl24} Object Management Group. \emph{Object Constraint Language},
-% version 2.4, 2014. TODO(verify): the edition, for the one-based substring convention.

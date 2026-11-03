@@ -1,0 +1,19 @@
+== Schema and Pod Security (generated)
+data: schema: Summary: 95 resources found in 68 files - Valid: 95, Invalid: 0, Errors: 0, Skipped: 0
+data: Pod Security restricted: no finding in 13 pod templates
+edge: schema: Summary: 48 resources found in 38 files - Valid: 48, Invalid: 0, Errors: 0, Skipped: 0
+edge: Pod Security restricted: no finding in 5 pod templates
+minimal: schema: Summary: 22 resources found in 19 files - Valid: 22, Invalid: 0, Errors: 0, Skipped: 0
+minimal: Pod Security restricted: no finding in 1 pod templates
+== Cluster: k3s v1.36.5+k3s1 in dk-evidence-k3s
+CRDs: 24 installed
+Namespaces created: data-system edge-system flux-system notes-system
+== Server dry-run (generated)
+data: indexed objects accepted: 72/72 (apps/data 69/69, estate/human-grants 1/1, estate/priority-classes 2/2)
+data: objects no index lists, accepted file by file: 12/12 (12 NetworkPolicy)
+edge: indexed objects accepted: 35/35 (apps/edge 32/32, estate/human-grants 1/1, estate/priority-classes 2/2)
+edge: objects no index lists, accepted file by file: 5/5 (5 NetworkPolicy)
+minimal: indexed objects accepted: 15/15 (apps/notes 12/12, estate/human-grants 1/1, estate/priority-classes 2/2)
+minimal: objects no index lists, accepted file by file: 2/2 (2 NetworkPolicy)
+== 37 s; every check passed
+dry-run exit 0

@@ -1,0 +1,59 @@
+hand-in: WORK/hand-in
+Eclipse: 4.40.0.20260604-0652, Java 21.0.11
+
+1. Preferences an examiner sets: a JDK 21 for JavaSE-21, Maven settings
+JavaSE-21 -> JDKS/corretto-21.0.10/Contents/Home
+Maven user settings: WORK/maven-settings.xml
+
+2. Target platform: implementation/emf/emf.target, set active before the import
+resolved: 0 OK, bundles: 183
+active target: file://WORK/hand-in/implementation/emf/emf.target, load: Status OK: unknown code=0 OK
+
+3. Import: the Eclipse project, then implementation/emf as existing Maven projects
+imported task-3-code-generation from WORK/hand-in/task-3-code-generation
+  dev.jorisjonkers.deploykit.emf.cli
+  dev.jorisjonkers.deploykit.emf.metamodel
+  dev.jorisjonkers.deploykit.emf.parity
+  dev.jorisjonkers.deploykit.emf.render
+  dev.jorisjonkers.deploykit.emf.resolve
+  dev.jorisjonkers.deploykit.emf.syntax
+  emf-parent
+  task-3-code-generation
+
+4. Problems after the build
+after import: 0 errors (0 Java), warnings by type: {}
+
+5. Editors
+resolved-deployment.ecore: opened in org.eclipse.emf.ecore.presentation.EcoreEditorID (resolved-deployment.ecore)
+notes.resolveddeployment: opened in org.eclipse.emf.ecore.presentation.ReflectiveEditorID (notes.resolveddeployment)
+model editor holds platform:/resource/task-3-code-generation/examples/minimal/notes.resolveddeployment: 0 load errors, root ResolvedDeployment, Validate: OK
+
+6. Validation: the metamodel and every example model, loaded through their schemaLocation
+model/resolved-deployment.ecore: 0 load errors, 1419 objects, root EPackage (Ecore), Validate: OK
+examples/minimal/notes.resolveddeployment: 0 load errors, 78 objects, root ResolvedDeployment (resolved-deployment.ecore), Validate: OK
+examples/data/data.resolveddeployment: 0 load errors, 344 objects, root ResolvedDeployment (resolved-deployment.ecore), Validate: OK
+examples/edge/edge.resolveddeployment: 0 load errors, 155 objects, root ResolvedDeployment (resolved-deployment.ecore), Validate: OK
+
+7. Launches
+  render minimal ran 3 s
+render minimal.launch: exit 0, 19 files in generated/, equal to expected/ byte for byte
+  render data ran 3 s
+render data.launch: exit 0, 80 files in generated/, equal to expected/ byte for byte
+  render edge ran 2 s
+render edge.launch: exit 0, 40 files in generated/, equal to expected/ byte for byte
+  render ran 26 s
+render.launch: exit 0, 15 files in target/render/apps/notes/, equal to the committed tree byte for byte
+  test implementation ran 1838 s
+test implementation.launch: exit 0, 48 surefire reports: 781 tests, 0 failed, 10 skipped
+
+8. Problems after the launches
+after the launches: 0 errors (0 Java), warnings by type: {}
+
+9. The Acceleo editor: render.mtl in the render plug-in project
+  (stopped waiting for jobs: [Synchronizing AcceleoWorkspace[file:WORK/workspace]])
+render.mtl: opened in org.eclipse.ui.genericeditor.GenericEditor (render.mtl)
+KNOWN ISSUE: Acceleo's language server deadlocked after render.mtl opened:
+    Worker-12: Synchronizing AcceleoWorkspace[file:WORK/workspace] at org.eclipse.acceleo.aql.ls.services.workspace.AcceleoWorkspace.addResource(AcceleoWorkspace.java:86)
+    pool-57-thread-1 at org.eclipse.acceleo.aql.ide.ui.EclipseAcceleoLanguageServerContext.getProject(EclipseAcceleoLanguageServerContext.java:146)
+
+RESULT: PASS

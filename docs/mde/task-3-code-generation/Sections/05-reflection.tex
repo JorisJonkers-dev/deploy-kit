@@ -7,11 +7,10 @@ and the project's phases on one timeline, beside the commits per day.
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.78\linewidth, keepaspectratio]{Figures/timeline}
+\includegraphics[width=0.7\linewidth, keepaspectratio]{Figures/timeline}
 \caption{Project Timeline}
 \label{fig:timeline}
 \end{figure}
-% TODO(verify): Figure 5 (Figures/timeline) must start phase 1 on 14 September (first commit under emf/) and show the Task 1 presentation on 8 October.
 
 \subsection{How the Project Changed Over Time}
 \label{sec:timeline-narrative}
@@ -67,15 +66,13 @@ Maven with Tycho runs every EMF tool without an IDE, using one dated Eclipse rel
 A walking skeleton, metamodel, OCL file and template each ran through its own tool
 before substantive content was added. When the Acceleo module arrived on
 1 October, subsequent failures therefore concerned content.
-% TODO(verify): "every stage run" assumes the CI job runs the full pipeline under mvn verify; confirm against emf/pom.xml.
 
 \subsubsection{Output Tested Against a Live Cluster}
 \label{sec:went-cluster}
 
 Applying generated files to a real cluster exposed faults beyond parsers and unit
-tests: an immutable Deployment selector, Jobs requiring recreation, and an omitted
-Pod Security control. This motivated the server dry-run in Section~\ref{sec:levels}.
-% TODO(verify): each cluster fault was found on the cluster rather than in review; the commit subjects support the claim but not the mechanism.
+tests, such as an immutable Deployment selector and Jobs that had to be recreated.
+This motivated the server dry-run in Section~\ref{sec:levels}.
 
 \subsection{What Could Have Been Better}
 \label{sec:could-better}
@@ -84,7 +81,7 @@ Pod Security control. This motivated the server dry-run in Section~\ref{sec:leve
 \label{sec:late-structure}
 
 The Task 2 report describes three transformations; the estate pass was removed
-four days after it was rewritten, so the report is a snapshot of a pipeline that
+four days after that report described it, so the report is a snapshot of a pipeline that
 no longer exists. The appendix records the difference, but the structure should
 have been fixed at the Task 2 deadline, with later structural decisions recorded
 as changes.
@@ -102,10 +99,10 @@ concerned output appearance, not transformation semantics.
 \subsubsection{Scope}
 \label{sec:scope}
 
-The scope was too large for one course. Between 14 September and 2 November, the
-repository received 391 commits across the specification, the production
-implementation and \path{emf/}, a second implementation of the whole compiler,
-and keeping the two level doubled every change. A smaller scope would
+The scope was too large for one course. Between 14 September and 3 November, the
+repository received 404 commits across the specification, the production
+implementation and \path{emf/}, a second implementation of the whole compiler.
+Keeping the two implementations level doubled the cost of every change. A smaller scope would
 have kept the parity, decision records and headless build, held the model at its
 Task 1 scope and documented later features as deferred.
 
@@ -134,14 +131,12 @@ independently of the template.
 
 Typing each stage's model catches errors earlier and makes each stage
 replaceable: the estate pass was removed without changing the parser or the
-renderer. The cost is that each metamodel changes when its stage does.
+renderer. Each metamodel, in turn, changes whenever its stage does.
 
 \subsubsection{The Cost of Running MDE Tools Without an IDE}
 \label{sec:headless-cost}
 
 Most of the effort in model-driven tooling went into running it rather than modelling.
 The module's POM changed in at least ten commits, and the indentation rule was established
-experimentally. Build configuration and documented tool behaviour therefore deserve
-at least as much attention as metamodels.
+experimentally. The build took more of the project than the metamodels did.
 
-% TODO(verify): the Task 0 approval date is recorded only as "September"; confirm the exact date from the course's Canvas record before the hand-in.

@@ -5,7 +5,7 @@ The project converts short authored documents into files that a cluster's GitOps
 controller applies. Each Application's repository holds one \texttt{Project
 Intent} document, which states what its \texttt{Application}s need: their
 \texttt{Process}es, limits, ports, dependencies and external Routes. One
-\texttt{Platform Intent} document states what is shared across the estate (the Projects and the shared platform). Three read-only
+\texttt{Platform Intent} document states the platform the Projects share. Three read-only
 inputs are pinned by digest: the node contract, the images lock and a
 \texttt{ClusterState} snapshot. The output is the \emph{Deliverable Set}:
 Kubernetes objects, custom resources for Flux, Flagger and the Vault Secrets
@@ -46,15 +46,12 @@ correct syntax, but does not establish that the decisions were correct.
 \subsection{Changes Since Task~2}
 \label{sec:since-task2}
 
-The model was refined as it was applied to production: deploying the real
-estate surfaced cases the model had to express, and the changes came from those
-cases. The estate pass, a third transformation over all Resolved Deployments,
-was removed. The migration from the previous setup, fleet-infra with its own
-DSL, was partly manual; what exists only because of it, chiefly moving data
-between Instances (a Move), stems from the old deployment method rather than the
-DSL, and is left out of the DSL and of this report.
-Section~\ref{sec:appendix} lists each change with its reason.
-% TODO(verify): confirm this summary against the appendix once it is complete.
+Deploying the real estate surfaced cases the model had to express, and the model
+changed to express them. The estate pass, a third transformation over all Resolved
+Deployments, was removed. The migration from fleet-infra, the previous setup with its
+own DSL, was partly manual. Moving data between Instances (a Move) existed only for
+that migration, so the model and this report leave it out.
+Appendix~\ref{sec:appendix} lists each change with its reason.
 
 \subsection{Roadmap}
 \label{sec:roadmap}
@@ -64,6 +61,4 @@ describes rendering (Figures~\ref{fig:m2t-structure} and~\ref{fig:worked-example
 Section~\ref{sec:evaluation} reports the parity and load evidence
 (Figure~\ref{fig:evidence}); Section~\ref{sec:reflection} reflects on the three
 tasks (Figure~\ref{fig:timeline}); Section~\ref{sec:outlook} looks beyond the
-course.
-
-% BIB: none needed in this section.
+course. Appendix~\ref{sec:appendix-production}, supplementary, covers the production implementation.

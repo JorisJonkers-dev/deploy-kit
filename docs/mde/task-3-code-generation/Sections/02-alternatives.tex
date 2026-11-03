@@ -44,9 +44,9 @@ Rendering reads only the Resolved Deployment and therefore only writes text.
 
 The Task~2 pipeline had a third transformation over every Resolved Deployment. It
 was removed because each Project owns and alone writes every object it delivers
-(decision record 0116 under \path{docs/adr/model/}). Keeping it
-would break the delivery guarantee that publishing an unrelated change deploys nothing: one
-policy Job held every Project's grants, so one change re-ran it for all, and one
+(decision record 0116 under \path{docs/adr/model/}). Keeping the pass
+would break the delivery guarantee that publishing an unrelated change deploys nothing: its one
+policy Job held every Project's grants, so any change re-ran that Job for all of them, and one
 fault left seven Projects not ready. Every generated file now belongs to
 one Project's Resolved Deployment, so no template merges output across Projects.
 
@@ -58,9 +58,9 @@ Flagger, the Vault Secrets Operator, Traefik and the Prometheus Operator. Flux i
 the only applier, and it pulls the render by digest
 (\url{docs/adr/model/0050-delivery-is-part-of-the-model.md}). A push path from CI
 was rejected because it would require a deployment credential outside the cluster. Helm
-or Kustomize templating was rejected because no abstract model could express its
-constraints (Task~1 report). Each generated file represents an object that the API
-server validates; the load stage checks this validation.
+and Kustomize templating were rejected because no abstract model could express their
+constraints (Task~1 report). Each generated file is an object the API server
+validates, and the load stage runs that validation.
 
 \subsubsection{One Rendering Run for All Projects}
 \label{sec:shape-union}
@@ -69,7 +69,7 @@ Each Project is resolved separately using the union of all Projects, and renderi
 runs once over the resulting set. Resolution from a Project's own documents alone
 was rejected because it cannot account for cross-Project facts: a provider's address,
 admission of a consumer by label, or rejection when a provider removes a Surface named by a consumer
-(\url{spec/v1/40-composition.md}). The cost is that one Project's change can alter
+(\url{spec/v1/40-composition.md}). One Project's change can therefore alter
 another's output through names. A test checks that unrelated Projects' output remains unchanged.
 
 \subsection{The Model-to-Text Step}
@@ -129,7 +129,7 @@ MOFM2T lets a module import others and extend or override their templates. This 
 useful when a generator varies by platform. Here there is one target and no
 variant to override; shared templates (label set, peer selector, consumer
 label) serve nearly every kind. Splitting by kind would require imports throughout;
-one module retains a single namespace. The cost is a large file navigated by template name:
+one module retains a single namespace. The module is one large file, navigated by template name:
 3607 lines holding 109 templates and 41 queries.
 
 YAML generation calls one overloaded \texttt{objects} template, which Acceleo resolves by the Deliverable's
@@ -180,10 +180,3 @@ Derivation & Queries in templates & Model holds values & Identity covers values 
 
 Section~\ref{sec:evaluation} discusses the remaining limitations and
 Section~\ref{sec:reflection} the decisions that were reversed.
-
-% BIB: \bibitem{mofm2t} Object Management Group. \emph{MOF Model to Text
-%   Transformation Language (MOFM2T)}, version 1.0, 2008.
-%   \url{https://www.omg.org/spec/MOFM2T/1.0/}.
-% BIB: \bibitem{egl} The Epsilon Generation Language, part of the Eclipse Epsilon
-%   project. \url{https://eclipse.dev/epsilon/}. TODO(verify): the authors and
-%   venue from the proceedings the course material cites under Task~3.

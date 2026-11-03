@@ -13,6 +13,11 @@ Joris Jonkers (s1829157), Model Driven Engineering, University of Twente.
   transformation, with the example files their tests read. The transformation
   is `implementation/emf/bundles/render/model/render.mtl` (Acceleo 4), in the
   plug-in project `dev.jorisjonkers.deploykit.emf.render`.
+- `evidence/`: what loading the generated code produced, taken from this
+  archive after `build.sh`: `dry-run.txt`, the schema (kubeconform), Pod
+  Security and Kubernetes server dry-run results per example, and
+  `eclipse/report.txt` with `eclipse/screenshots/`, the projects imported,
+  built, validated and run in Eclipse Modeling Tools.
 
 In `task-3-code-generation/`:
 
@@ -41,7 +46,7 @@ With JDK 21 (`JAVA_HOME` set to it), from the archive root:
 ./build.sh          # Windows: build.cmd
 ```
 
-This builds the implementation and runs its tests (about 650, including the
+This builds the implementation and runs its tests (781, including the
 stage tests that run the transformation on 18 cases), then runs `render.mtl`
 on each example's model, writes the generated files to `output/<example>/`,
 and compares them with `examples/<example>/expected/`. It prints one `OK` line

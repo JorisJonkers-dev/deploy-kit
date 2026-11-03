@@ -62,7 +62,7 @@ Library mount & \texttt{Process} gains \texttt{libraries}: \texttt{LibraryMount}
 GPU placement & Placement gains a structured \texttt{gpu} with a vendor and model. & One declaration selects and requests a card, so the request is derived without repetition. \\
 \multicolumn{3}{l}{\textit{Secrets and keys}} \\
 Declared secret keys & The flat key list becomes \texttt{KvKey}, a \texttt{name} with either \texttt{PlainKey} or \texttt{GeneratedKey}. \texttt{GeneratedKey} holds \texttt{generate}: \texttt{bytes} and an \texttt{encoding} of \texttt{KeyEncoding}. & A platform-generated key is declared by its shape; its value never enters the model. \\
-Credential delivery & A grant's delivery target gains \texttt{mountAt} and \texttt{fileMode}, allowing an edge's credential to be delivered as a file with its own mode, alongside environment delivery. & A Process may require file delivery; the file's location and mode form part of the contract. \\
+Credential delivery & A grant's delivery target gains \texttt{mountAt} and \texttt{fileMode}, allowing an edge's credential to be delivered as a file with its own mode, alongside environment delivery. OCL refuses a file grant without both, with more than one key, or with a \texttt{mountAt} that is relative or directly in \texttt{/}. & A Process may require file delivery; the file's location and mode form part of the contract. Such a grant once passed the checks and stopped the render. \\
 Transit read & A transit grant may declare \texttt{read}, covering the key's public part. & A JWKS endpoint needs only the public part. \\
 \multicolumn{3}{l}{\textit{Identity and constraints}} \\
 Consumer addresses by Application Id & An edge names its provider by Application Id, checked by the \texttt{DependencyEdges} descriptor and an OCL constraint. & Consumer configuration depends only on the Id, never on a namespace or Project. \\
@@ -458,7 +458,7 @@ fresh JVMs (Table~\ref{tab:app-perf}).
 \hline
 \textbf{Lowering} & \textbf{QVT-Operational} & \textbf{ATL} & \textbf{ATL relative to QVT-Operational} \\
 \hline
-Source size & 365 lines, 54 mappings & 488 lines, 33 matched and 21 lazy rules & 1.34$\times$ the lines \\
+Source size & 366 lines of code, 54 mappings & 489 lines of code, 33 matched and 21 lazy rules & 1.34$\times$ the lines \\
 Lower 24 estate Projects (1703 objects), transformation loaded once & 7.6 ms [7.5--7.8 ms] & 8.9 ms [8.8--9.2 ms] & 1.17$\times$ the time \\
 Load and compile the transformation, warm JVM & 23 ms & 280 ms & 12.4$\times$ the time \\
 Cold JVM: load, then lower all 24 Projects & 487 ms & 911 ms & 1.87$\times$ the time \\
@@ -481,8 +481,15 @@ found that the shipped lowering reloaded its transformation for each Project (ov
 once per JVM: lowering the 24 estate Projects fell from 174~ms to 7.8~ms, and a
 resolution keeps no heap where it kept 8.2~MiB.
 
-\section{The Production Implementation}
+\section{The Production Implementation (Supplementary)}
 \label{sec:appendix-production}
+
+This appendix is supplementary. It is not part of the Task~3 work, the hand-in
+archive holds none of it, and the report does not depend on it. It records where
+the oracles come from and how the model reaches production.
+
+\subsection{The Source of the Oracles}
+\label{sec:appendix-oracles}
 
 The production implementation, in TypeScript under \path{src/}, compiles the same
 model for production use. It renders the same cases, and
@@ -501,6 +508,45 @@ out errors made by only one implementation, not a shared misreading of the
 specification; the external checks of Section~\ref{sec:evaluation} test Kubernetes'
 requirements rather than the specification. The Pod Security check permits one
 named exception: the VPN sidecar.
-% TODO(verify): confirm the review of committed trees was by the author alone
 
-% BIB: none needed in this section.
+\subsection{From a Change to Production, Now and Next}
+\label{sec:appendix-delivery}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\linewidth, keepaspectratio]{Figures/delivery-paths}
+\caption{Delivery Today, as Designed in estate-kit, and Its Likely Future Direction}
+\label{fig:delivery-paths}
+\end{figure}
+
+Figure~\ref{fig:delivery-paths} shows three paths from a merged change to a serving
+release. \textbf{Today} (\path{spec/v1/55-delivery.md}), delivery is pull. A
+Project's CI validates its Intent and pins its images. Composition renders the
+estate once and publishes each Project's share as one signed OCI artifact,
+named by digest. A deploy is a commit to the estate repository that moves the
+Project's digest pin, so that repository's history is the deploy log. Flux pulls
+the artifact, verifies its signature and applies it, and Flagger switches
+traffic once the Release Gate allows it. Nothing pushes to the cluster.
+
+\textbf{Designed} is the accepted design of estate-kit, the repository that
+succeeds deploy-kit (Section~\ref{sec:outlook}). Project CI builds each image
+once and registers its digests. A Rust deploy service composes the estate and
+dry-runs each change on the API server twice, on the release pull request and
+again before any tag moves, as an identity that cannot write. It signs the render
+through Vault Transit and moves the Project's Environment tag,
+\texttt{render/<project>:<env>}, under a Writer Lease; it re-reads the tag after
+the write, because the registry offers no compare-and-swap. Flux remains the one
+applier, and the Release Gate answers Flagger from cluster state.
+
+\textbf{Likely future direction} comes from a research note in estate-kit
+(\path{docs/research/decomposition.md}); it is not a decision. CI on any forge
+reaches a Conductor through a Forge port and keeps an event stream open until
+the rollout serves, is held or is refused. The render moves to a self-hosted OCI
+registry. An Applier in its own process replaces Flux: it pulls the render by
+digest, verifies it, applies it in ordered steps (definitions and namespaces,
+secrets and grants, migrations, workloads, routes) and reports each object's
+status. Flagger stays, driven by the Applier as one step.
+
+In every path the model and its oracles are unchanged: the Resolved Deployment
+fixes every decision, and only the applier and the transport around the
+rendered files change.

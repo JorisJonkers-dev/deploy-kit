@@ -7,9 +7,8 @@
 \caption{Checks from Generated Files to the Cluster}
 \label{fig:evidence}
 \end{figure}
-% TODO(verify): Figure 4 (Figures/evidence) must show the same four levels as Table 7: template seam, CLI file interface, external schema and profile, API server.
 
-The evaluation asks whether each transformation writes the intended model or text and whether external consumers accept the result. Committed expected files answer the first question; schema validation, a security profile and an API server address the second. Figure~\ref{fig:evidence} shows these checks along the path to the cluster.
+The evaluation asks whether each transformation writes the intended model or text and whether external consumers accept the result. Committed expected files answer the first question; schema validation, a security profile and an API server address the second. Figure~\ref{fig:evidence} shows the checks on the rendered trees, levels 2 to 4 of Table~\ref{tab:checks}, along the path to the cluster.
 
 \subsection{Testing Strategy}
 \label{sec:testing-strategy}
@@ -26,7 +25,7 @@ output is compared with and the defects it can expose. Passing one check does no
 \hline
 Stage tests (\texttt{StageTest}) & 1. Stage seam & Committed expected files of each stage, each the next stage's input & A wrong value in any stage's output, named by its path \\
 Field coverage (\texttt{FieldCoverageTest}) & 1. Stage seam & Every feature, literal and kind the metamodels declare & A feature no case exercises \\
-Behaviour witnesses & 1. Stage seam & 87 model rows of the behaviour ledger & A model behaviour without a test \\
+Behaviour witnesses & 1. Stage seam & 88 model rows of the behaviour ledger & A model behaviour without a test \\
 Seam tests (\texttt{RenderingTest}) & 1. Template seam & Expected text written in the test & A wrong header, path or key order; a template that does not parse; files left by a failed run \\
 Composed union parity (\texttt{ParityTest}) & 2. CLI file interface & Committed trees of \texttt{minimal}, \texttt{data} and the platform's share & Any changed byte; a missing or extra file \\
 Per-Project output (\texttt{RenderedTreeTest}) & 2. CLI file interface & Committed trees of \texttt{minimal}, \texttt{data} and \texttt{delivery} & A file written into another Project's output \\
@@ -53,24 +52,24 @@ two stages cannot drift apart. A render case's expected files are copies of the 
 oracles, held to them byte for byte. \texttt{FieldCoverageTest} holds each stage's cases
 to every feature, enumeration literal and template dispatch its metamodels declare; the
 gaps left are listed per stage in \path{gaps.txt}, a baseline that may only shrink.
-Each of 87 model behaviours of the behaviour ledger has a JUnit witness, and one
+Each of 88 model behaviours of the behaviour ledger has a JUnit witness, and one
 more is pending (\path{emf/docs/witnesses.md}). Every build enforces 100\% line and
-branch coverage (JaCoCo) per module, a nightly build a 100\% mutation score (PIT);
-the suite has 786 tests.
+branch coverage (JaCoCo) per module, and a nightly build a 100\% mutation score (PIT),
+which one surviving mutant in the resolve module's Java currently fails; the suite has 797 tests, 781 in the hand-in, which leaves out the ledger tests.
 
 \textbf{Seam and file interface.} The seam tests in \path{emf/bundles/render} exercise
 \texttt{Rendering} without the pipeline. A template that does not parse must fail with Acceleo's diagnostic. A template that fails halfway (\path{halfway.mtl}) must leave the output root unchanged, as the sibling \path{.partial} directory guarantees. A deliberately unindented module
 (\path{unindented.mtl}) is the negative case for the indentation rule of
 Section~\ref{sec:design}.
-\texttt{ParityTest} in \path{emf/tests/parity} runs the whole pipeline through its
-command-line file interface
+\texttt{ParityTest} in \path{emf/tests/parity} runs the whole pipeline through
+files only, as a command-line tool would
 (\path{emf/docs/adr/emf/0080-parity-crosses-the-cli-file-interface.md}) and checks that
 the composed union contains exactly the committed files, each identical byte for byte.
 \texttt{RenderedTreeTest} checks that each Project's output matches its own committed
 tree, that a second run writes the same bytes, and that a set containing an invalid
 document (\texttt{surface: grpc}, rejected with \texttt{E\_UNKNOWN\_SURFACE}) produces no
 files. \texttt{OracleDistanceTest} measures every oracle's distance from what the
-pipeline writes and holds 180 comparisons on an allowlist to an exact match.
+pipeline writes and holds 185 comparisons on an allowlist to an exact match.
 
 \textbf{External consumers.} \path{scripts/lint-manifests.ts} runs kubeconform 0.6.7 with
 \texttt{-kubernetes-version 1.36.5} and \texttt{-strict} against the default
@@ -95,7 +94,7 @@ Every intermediate model and every output is structured data, so \texttt{Compari
 compares parsed content first and bytes last. JSON is read with Jackson, YAML with
 SnakeYAML's YAML~1.1 reader on both sides, as Kubernetes reads it, so a quoted
 \texttt{"on"} and a plain \texttt{on} still differ by type. XMI is loaded into EMF and
-compared by EMF Compare 3.3. The models carry no identifiers, so the test-only
+compared by EMF Compare 3.5.3. The models carry no identifiers, so the test-only
 \texttt{ModelDiff} pairs list items by a natural key (\texttt{name}, \texttt{id},
 \texttt{path} or a similar attribute unique among siblings, else a composite key) and
 labels a pair found by similarity alone. Every difference is a path, with a list item named by its key:
@@ -117,10 +116,11 @@ change the first Project's bytes; \texttt{edge} is compared separately.
 \label{sec:results}
 
 Table~\ref{tab:results} reports each check for each case. The schema, profile and dry-run
-results were obtained on 2026-10-31 from the generated tree. Units differ by row:
+results were obtained on 2026-11-03 from the generated tree. Units differ by row:
 output counts refer to files; schema counts refer to resources (several may share
 a file, and \path{kustomization.yaml} files count); dry-run counts
-refer to objects; both include the platform's share. The profile check covers 19 pod templates; only parity reads the Vault JSON files.
+refer to objects; the schema and dry-run counts include the platform's share. The union holds
+\texttt{minimal}'s and \texttt{data}'s files, so levels 3 and 4 run per case. The profile check covers 19 pod templates; only parity reads the Vault JSON files.
 
 \begin{table}[!htbp]
 \centering
@@ -144,7 +144,7 @@ Server dry-run, network policies & 2/2 & 12/12 & -- & 5/5 \\
 \label{tab:results}
 \end{table}
 
-The API server issued two warnings for \texttt{edge}'s public Traefik \texttt{Deployment}: two entry points are each declared twice. This reflects a modelling choice rather than a defect.
+The API server issued two warnings for \texttt{edge}'s public Traefik \texttt{Deployment}: two entry points are each declared twice. The warnings follow from a modelling choice, not a defect.
 Appendix~\ref{sec:appendix-performance} times each stage and compares the lowering with a port to ATL.
 
 \subsection{Defects Found}
@@ -166,7 +166,7 @@ Most rendering defects were found by running the output rather than by byte comp
 \subsection{Limitations}
 \label{sec:limitations}
 
-\paragraph{Template coverage.} Comparisons provide no evidence about kinds absent from the compared trees; the render stage's baseline names each one.
+\paragraph{Template coverage.} Every kind appears in a compared tree, but nine features are set by no render case, among them a sidecar's \texttt{command} and a disruption budget, and no case renders a StatefulSet; the render stage's baseline lists each.
 Acceleo template coverage is not measured: the gates do not reach templates, and no
 tool reports which branches the cases exercise. A one-character change to the Namespace
 template's \texttt{managed-by} label failed 14 of 25 stage cases and 5 of 9 rendered-tree
@@ -184,5 +184,4 @@ Flux's ordering, pruning or release gating.
 verify, tests and the coverage gate, on every commit that changes \path{emf/} or the
 workflow; other changes skip it. The mutation gate takes too long for every change and runs
 nightly instead. A Maven
-wrapper update once broke the Tycho build unnoticed while it ran only on request: an
-implementation stays level with shared oracles only while every change runs its build.
+wrapper update once broke the Tycho build unnoticed, because the build then ran only on request.
