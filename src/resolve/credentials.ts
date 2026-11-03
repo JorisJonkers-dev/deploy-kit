@@ -56,7 +56,7 @@ export function resolveCredentials(
       ...(delivery === "self"
         ? {}
         : { destination: destinationOf(process.name, path) }),
-      // ruleDiagnostics refused a file credential without both.
+      // formDiagnostics refused a file credential without both.
       ...(delivery === "file"
         ? {
             mountAt: edge.credentials?.mountAt as string,

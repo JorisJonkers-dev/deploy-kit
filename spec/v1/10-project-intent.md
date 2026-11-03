@@ -145,7 +145,7 @@ the value breaks:
 | a required field that is absent | where the field would be: `/applications/0/id` |
 | its type, a closed vocabulary or a constant, a pattern, a length or a bound | the value itself |
 | a choice of shapes (`probes` is `none` or a block; a grant is one of three) that it matches none of | the value itself, once; nothing inside it is reported, because which shape it was meant to have is not known |
-| a field one value of another requires (an edge's credential delivered `file` needs `mountAt` and `fileMode`) | the object that holds both: `/applications/0/processes/0/dependsOn/0/credentials` |
+| a field one value of another requires (an edge's credential or a `kv` grant delivered `file` needs `mountAt` and `fileMode`) | the object that holds both: `/applications/0/processes/0/dependsOn/0/credentials`, `/applications/0/processes/0/secrets/0` |
 
 A value inside one that is already refused is not examined: a Process written
 as a string is one refusal at the Process, not one per field it lacks. The
@@ -2471,7 +2471,7 @@ defaults to `kv`, so every grant written before this rule stays valid.
 | `key` | `transit` | yes | The transit key name. |
 | `operations` | `transit` | yes | A closed set: `sign`, `verify`, `encrypt`, `decrypt`, `rotate`, `read`. Each maps to exactly one Vault path. |
 | `delivery` | all | yes | `env` \| `file` \| `self`; a `transit` or `database` grant is `self` only (`E_NON_KV_DELIVERY`). |
-| `mountAt`, `fileMode` | `file` only | Where the projected file lands, and its mode. |
+| `mountAt`, `fileMode` | `kv` | with `delivery: file` | Where the projected file lands, and its mode. Delivered `file` without both, the grant is refused with `schema` at the grant: there is no default mode. |
 | `rotation` | all | yes | `tolerates: restart` \| `reload`, plus an optional `maxAge`. |
 
 **Every grant derives a read path**, and that derived path (not the declared

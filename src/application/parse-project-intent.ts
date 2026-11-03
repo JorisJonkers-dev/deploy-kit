@@ -1,4 +1,4 @@
-import { projectDiagnostics } from "../check/project.ts";
+import { formDiagnostics, projectDiagnostics } from "../check/project.ts";
 import { lowerProject } from "../lower/project.ts";
 import type { Result } from "../model/diagnostic.ts";
 import type { EffectiveProject } from "../model/effective-intent.ts";
@@ -27,6 +27,8 @@ export function parseProjectIntent(
   if (!scoped.ok) return scoped;
   const document = readProjectIntent(read.value);
   if (!document.ok) return document;
+  const form = formDiagnostics(document.value);
+  if (form.length > 0) return { ok: false, diagnostics: form };
   const refusals = projectDiagnostics(document.value, scoped.value);
   if (refusals.length > 0) return { ok: false, diagnostics: refusals };
   return {

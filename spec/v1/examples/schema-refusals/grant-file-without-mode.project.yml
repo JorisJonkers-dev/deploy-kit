@@ -1,0 +1,37 @@
+# REFUSED: schema, a kv grant delivered to a file with no mode
+#
+# Delivered `file`, a kv grant's one key lands as the file `mountAt` at
+# `fileMode` (spec/v1/10-project-intent.md#secrets). Without a mode there is
+# none to give the file, and the model names no default, so the grant is
+# refused before any rule runs, as an edge's credential is.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: grant-file
+    processes:
+      - name: grant-file-api
+        lifecycle: application
+        image: grant-file-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          # `file` at `mountAt`, with no `fileMode`.
+          - path: secret/data/refusals/token
+            keys: [token]
+            access: read
+            delivery: file
+            mountAt: /run/secrets/token
+            rotation: { tolerates: restart }

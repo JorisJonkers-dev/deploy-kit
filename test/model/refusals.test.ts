@@ -297,6 +297,82 @@ describe("an edge's credential delivered to the environment", () => {
   });
 });
 
+describe("a kv grant delivered to a file", () => {
+  const grant = (fields: string): string =>
+    withApplicationGrant(
+      `      - { path: secret/data/refusals/batch, keys: [token], access: read, delivery: file, ${fields}rotation: { tolerates: restart } }\n`,
+    );
+
+  it("is delivered to a file only with the file and the mode its key lands at", () => {
+    const result = parseProjectIntent(grant(""));
+
+    expect(result.ok ? [] : result.diagnostics).toStrictEqual([
+      {
+        code: "schema",
+        path: "/applications/0/secrets/0",
+        message:
+          "a grant delivers its key to a file only with `mountAt` and `fileMode`",
+        hint: "Name the file its key lands at, and its mode.",
+      },
+    ]);
+  });
+
+  it.each([
+    ["a file but no mode", "mountAt: /run/secrets/token, "],
+    ["a mode but no file", 'fileMode: "0400", '],
+  ])("is refused with %s", (_, fields) => {
+    expect(refusalsOf(grant(fields))).toStrictEqual([
+      { code: "schema", path: "/applications/0/secrets/0" },
+    ]);
+  });
+
+  it("is accepted with a file and a mode", () => {
+    expect(
+      refusalsOf(grant('mountAt: /run/secrets/token, fileMode: "0400", ')),
+    ).toStrictEqual([]);
+  });
+
+  // A file refused for its form reaches no rule
+  // (spec/v1/10-project-intent.md#reading-a-file).
+  it("is refused before any rule runs, even one its access breaks", () => {
+    expect(
+      refusalsOf(grant("").replace("access: read", "access: custody")),
+    ).toStrictEqual([{ code: "schema", path: "/applications/0/secrets/0" }]);
+  });
+
+  it("is refused alone beside a grant a rule refuses", () => {
+    const reloading =
+      "      - { path: secret/data/refusals/other, keys: [key], access: read, delivery: env, rotation: { tolerates: reload } }\n";
+    expect(
+      refusalsOf(
+        withApplicationGrant(
+          `      - { path: secret/data/refusals/batch, keys: [token], access: read, delivery: file, rotation: { tolerates: restart } }\n${reloading}`,
+        ),
+      ),
+    ).toStrictEqual([{ code: "schema", path: "/applications/0/secrets/0" }]);
+  });
+});
+
+describe("an edge's credential delivered to a file without a mode", () => {
+  it("is refused alone beside a grant a rule refuses", () => {
+    expect(
+      refusalsOf(
+        withApplicationGrant(
+          "      - { path: secret/data/refusals/other, keys: [key], access: read, delivery: env, rotation: { tolerates: reload } }\n",
+        ).replace(
+          "        cutover: interrupted\n",
+          "        cutover: interrupted\n        dependsOn:\n          - application: platform-postgres\n            surface: postgres\n            credentials: { delivery: file, mountAt: /run/secrets/database, rotation: { tolerates: restart } }\n",
+        ),
+      ),
+    ).toStrictEqual([
+      {
+        code: "schema",
+        path: "/applications/0/processes/0/dependsOn/0/credentials",
+      },
+    ]);
+  });
+});
+
 describe("internet egress", () => {
   const egress = (value: string): string =>
     DOCUMENT.replace("GRANTS", "").replace(
@@ -344,7 +420,7 @@ describe("the access by delivery matrix", () => {
     ["custody", "env"],
     ["custody", "file"],
   ])("refuses access %s delivered as %s", (access, delivery) => {
-    const grant = `      - path: secret/data/batch\n        keys: [password]\n        access: ${access}\n        delivery: ${delivery}\n        mountAt: /run/secrets/password\n        rotation: { tolerates: restart }\n`;
+    const grant = `      - path: secret/data/batch\n        keys: [password]\n        access: ${access}\n        delivery: ${delivery}\n        mountAt: /run/secrets/password\n        fileMode: "0400"\n        rotation: { tolerates: restart }\n`;
 
     expect(refusalsOf(withApplicationGrant(grant))).toStrictEqual([
       {
@@ -360,7 +436,7 @@ describe("the access by delivery matrix", () => {
     ["self-renew", "self"],
     ["self-roll", "file"],
   ])("accepts access %s delivered as %s", (access, delivery) => {
-    const grant = `      - path: secret/data/batch\n        keys: [password]\n        access: ${access}\n        delivery: ${delivery}\n        mountAt: /run/secrets/password\n        rotation: { tolerates: restart }\n`;
+    const grant = `      - path: secret/data/batch\n        keys: [password]\n        access: ${access}\n        delivery: ${delivery}\n        mountAt: /run/secrets/password\n        fileMode: "0400"\n        rotation: { tolerates: restart }\n`;
 
     expect(refusalsOf(withApplicationGrant(grant))).toStrictEqual([]);
   });
