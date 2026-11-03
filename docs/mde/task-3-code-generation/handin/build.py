@@ -103,7 +103,9 @@ for f in git('ls-files', '-z', 'emf').decode().split('\0'):
     if f and not f.startswith(OMIT):
         copy(f'{R}/{f}', f'{IMPL}/{f}')
 os.chmod(f'{IMPL}/emf/mvnw', 0o755)
-SPEC = ['spec/v1/examples', 'spec/v1/schemas/project-intent.schema.json', 'spec/v1/schemas/platform-intent.schema.json']
+# The specification whole: its chapters and diagrams, which the report cites, and the examples and
+# schemas the tests read.
+SPEC = ['spec/v1']
 with tarfile.open(fileobj=io.BytesIO(git('archive', '--format=tar', SPEC_REV, *SPEC))) as tar:
     for member in tar.getmembers():
         if member.isfile():

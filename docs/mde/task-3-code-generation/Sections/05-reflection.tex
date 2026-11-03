@@ -30,14 +30,14 @@ but left the build order open. Priorities shifted through seven phases.
 \item 19 to 22 October: the estate pass was removed (Section~\ref{sec:shape-estate});
   the second presentation was on 22 October.
 \item 22 to 30 October: the model was refined in production and reached release
-  1.0.0; the model-driven implementation adopted each change. In October, the
+  1.0.0; the EMF implementation adopted each change. In October, the
   repository received 292 commits, 181 of which touched \path{spec/v1}.
-\item 31 October to 2 November, after the deadline: EMF Compare handled every model
+\item 31 October to 3 November, after the deadline: EMF Compare handled every model
   comparison, a benchmark with an ATL port of the lowering answered the Task~2
   feedback (Appendix~\ref{sec:appendix-performance}), and the Move was removed.
 \end{itemize}
 Three factors drove these shifts: deadlines three weeks apart and then two, cases
-found in production, and oracle changes the model-driven implementation had to
+found in production, and oracle changes the EMF implementation had to
 follow.
 
 \subsection{What Went Well}
@@ -54,8 +54,8 @@ evidence.
 \subsubsection{Specification and Decisions Before the Reports}
 \label{sec:went-spec}
 
-The normative model and the decision records were written before the reports, so
-a report could cite the record justifying each decision. The rendered tree of
+The normative specification was written before the reports, so each report could
+cite the rule a decision implements. The rendered tree of
 \texttt{minimal} was committed on 8 September, three weeks before the first
 Acceleo template, so it specified the expected output independently of the templates.
 
@@ -81,9 +81,13 @@ This motivated the server dry-run in Section~\ref{sec:levels}.
 \label{sec:late-structure}
 
 The Task 2 report describes three transformations; the estate pass was removed
-four days after the report, which therefore describes an obsolete pipeline. The appendix records the difference, but the structure should
-have been fixed at the Task 2 deadline, with later structural decisions recorded
-as changes.
+four days after the report, which therefore describes an obsolete pipeline. The estate
+pass was itself a shortcut: it was added on 4 October to get values shared across
+Projects working before the deadline, and it put every Project's grants in one policy
+Job. Rushing it in set the project back. It was rewritten for the Task 2 report and
+then removed, and replacing it with per-Project ownership cost more work than
+designing that ownership properly at the start would have. The structure should have
+been fixed at the Task 2 deadline, with later structural decisions recorded as changes.
 
 \subsubsection{Acceleo's Whitespace Rules}
 \label{sec:whitespace}
@@ -102,7 +106,7 @@ The scope was too large for one course. Between 14 September and 3 November, the
 repository received 404 commits across the specification, the production
 implementation and \path{emf/}, a second implementation of the compiler.
 Keeping the implementations consistent doubled the work per change. A smaller scope would
-have retained parity, decision records and the headless build, limited the model to
+have retained parity, the specification and the headless build, limited the model to
 Task 1 and documented later features as deferred.
 
 \subsubsection{Structural Comparison Came Late}
@@ -130,12 +134,12 @@ independently of the template.
 
 Typing each stage's model catches errors earlier and makes each stage
 replaceable: the estate pass was removed without changing the parser or the
-renderer. Each metamodel changes whenever its stage does.
-
-\subsubsection{The Cost of Running MDE Tools Without an IDE}
-\label{sec:headless-cost}
-
-Most of the effort in model-driven tooling went into running it rather than modelling.
-The module's POM changed in at least ten commits, and the indentation rule was established
-experimentally. The build required more work than the metamodels.
+renderer. A fixed metamodel also lets work on both sides of a stage proceed in
+parallel. A stage's test case can start from a hand-written model of its input, so
+templates were tested against a Resolved Deployment the resolution could not yet
+produce. Each side needs only the contract, not the other side's code, so separate
+people could each own a stage and know they are done when their side matches the
+committed model at the seam. The two implementations of the compiler worked the same
+way, against shared oracle files. The price is that each metamodel changes whenever
+its stage does, and a change at a seam affects the work on both sides.
 

@@ -13,8 +13,9 @@ implementation and run the transformation on each example, and two folders:
   editor resolves a module's metamodel through the classpath of the Java project
   holding it, so outside the render plug-in project every type in it shows as
   unresolved;
-- `implementation/`, the tracked `emf/` modules with `spec/v1/examples/` and the
-  two intent schemas `FieldCoverageTest` reads, so `./mvnw verify` runs there.
+- `implementation/`, the tracked `emf/` modules with the whole of `spec/v1/`: the
+  chapters and diagrams the report cites, and the examples and schemas the tests
+  read, so `./mvnw verify` runs there.
   It leaves out what only governs this repository (`emf/docs/`, `emf/scripts/`,
   `emf/README.md` and the ledger test that reads them). The render plug-in
   project keeps its `render.launch`, a Java application launch of
@@ -30,7 +31,7 @@ the projects into Eclipse and how to run the transformation and the tests from
 the command line and from Eclipse.
 
 **The oracles come from the checked-out commit.** `build.py` takes `emf/` from
-the working tree and `spec/v1/examples/` and the two schemas from `HEAD`, the
+the working tree and `spec/v1/` from `HEAD`, the
 commit `emf/` is level with; `--spec-rev REV` takes them from another revision
 instead.
 
