@@ -209,7 +209,7 @@ z = os.path.join(HERE, f'{PROJECT}.zip')
 entries = sorted(os.path.join(root, f) for root, _, files in os.walk(ROOT) for f in files)
 with zipfile.ZipFile(z, 'w', zipfile.ZIP_DEFLATED) as zf:
     for full in entries:
-        info = zipfile.ZipInfo(os.path.relpath(full, ROOT).replace(os.sep, '/'), date_time=(2026, 10, 30, 0, 0, 0))
+        info = zipfile.ZipInfo(os.path.relpath(full, ROOT).replace(os.sep, '/'), date_time=(2026, 11, 3, 0, 0, 0))
         info.external_attr = (os.stat(full).st_mode & 0o777) << 16
         info.compress_type = zipfile.ZIP_DEFLATED
         with open(full, 'rb') as f:

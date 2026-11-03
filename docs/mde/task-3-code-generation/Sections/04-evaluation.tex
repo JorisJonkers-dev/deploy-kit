@@ -144,7 +144,6 @@ Server dry-run, network policies & 2/2 & 12/12 & -- & 5/5 \\
 \label{tab:results}
 \end{table}
 
-The API server issued two warnings for \texttt{edge}'s public Traefik \texttt{Deployment}: two entry points are each declared twice. The warnings follow from a modelling choice, not a defect.
 Appendix~\ref{sec:appendix-performance} times each stage and compares the lowering with a port to ATL.
 
 \subsection{Defects Found}
@@ -166,7 +165,7 @@ Most rendering defects were found by running the output rather than by byte comp
 \subsection{Limitations}
 \label{sec:limitations}
 
-\paragraph{Template coverage.} Every kind appears in a compared tree, but nine features are set by no render case, among them a sidecar's \texttt{command} and a disruption budget, and no case renders a StatefulSet; the render stage's baseline lists each.
+\paragraph{Template coverage.} Every Deliverable kind appears in a compared tree. Within them, nine features are set by no render case, among them a sidecar's \texttt{command} and a disruption budget, and no Process runs as a StatefulSet; the render stage's baseline lists each.
 Acceleo template coverage is not measured: the gates do not reach templates, and no
 tool reports which branches the cases exercise. A one-character change to the Namespace
 template's \texttt{managed-by} label failed 14 of 25 stage cases and 5 of 9 rendered-tree
