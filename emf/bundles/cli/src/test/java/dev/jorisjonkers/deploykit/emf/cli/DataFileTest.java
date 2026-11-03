@@ -54,6 +54,9 @@ class DataFileTest {
                 Arguments.of("", "null"),
                 Arguments.of("# only\n", "null"),
                 Arguments.of("a: x\r\nb: y\r\n", "{\"a\":\"x\",\"b\":\"y\"}"),
+                // A quoted key may have spaces before its colon; a # inside a plain key opens no comment.
+                Arguments.of("\"a\" : 1\n", "{\"a\":1}"),
+                Arguments.of("a# b: c\n", "{\"a# b\":\"c\"}"),
                 // Quoted keys and scalars, and their escapes.
                 Arguments.of(
                         "\"a b\": 'it''s'\n'c': \"\\\"\\\\\\/\\n\\t\\r\\b\\f\\0\\ \\u0041\"\n",

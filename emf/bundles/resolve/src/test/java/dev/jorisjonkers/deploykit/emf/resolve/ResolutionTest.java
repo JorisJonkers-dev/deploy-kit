@@ -24,6 +24,8 @@ import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ReconcileUnit
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedApplication;
 import dev.jorisjonkers.deploykit.emf.metamodel.resolveddeployment.ResolvedDeployment;
 import java.util.List;
+import org.eclipse.emf.common.util.BasicDiagnostic;
+import org.eclipse.emf.common.util.Diagnostic;
 import org.eclipse.emf.ecore.EObject;
 import org.junit.jupiter.api.Test;
 
@@ -199,5 +201,16 @@ class ResolutionTest {
         assertThatThrownBy(() -> Resolution.resolve(List.of(project, platform()), pinned(), "jobs", INTEGRITY))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("config/absent.conf: an Asset whose file is not beside its project");
+    }
+
+    @Test
+    void aRunThatFailsSaysWhyThroughEachOfItsChildren() {
+        // A transformation that does not compile reports only in its children, which no input can provoke.
+        BasicDiagnostic run = new BasicDiagnostic(Diagnostic.ERROR, "qvto", 0, "compilation failed", null);
+        run.add(new BasicDiagnostic(Diagnostic.ERROR, "qvto", 0, "unknown operation planned()", null));
+
+        assertThat(Resolution.failure("jobs", run))
+                .startsWith("jobs did not resolve: ")
+                .endsWith("\n  unknown operation planned()");
     }
 }

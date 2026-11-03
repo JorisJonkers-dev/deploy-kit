@@ -70,7 +70,7 @@ final class OperatedChecks {
         List<Diagnostic> refusals = new ArrayList<>();
         // A role no project file of the set declares links to nothing, and is refused for that.
         if (role.eIsProxy() || role.getProcesses().size() != 1) {
-            return refusals;
+            return List.of();
         }
         Process process = role.getProcesses().get(0);
         String document = projects.get((Project) role.eContainer());
