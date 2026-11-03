@@ -1,0 +1,56 @@
+# REFUSED: schema, a kv grant's file outside a directory it may mount
+#
+# Delivered `file`, a kv grant's key lands as the file `mountAt`, and the
+# render mounts the directory that holds it, so a refreshed value reaches the
+# file (spec/v1/30-deliverables.md). `mountAt` is therefore an absolute file
+# path below a directory other than `/`: a file directly in `/` would mount the
+# whole filesystem, a relative path has no directory to mount, and a trailing
+# slash names no file. Each is refused at its `mountAt`.
+
+apiVersion: intent.jorisjonkers.dev/v1
+kind: Project
+schemaVersion: 1.0.0
+project: refusals
+owner: joris
+applications:
+  - id: grant-place
+    processes:
+      - name: grant-place-api
+        lifecycle: application
+        image: grant-place-api
+        runtime: node
+        provides:
+          http: 8080
+        placement:
+          memory: 128Mi
+          cpu: 25m
+        probes:
+          readiness: { path: /healthz/ready, port: 8080 }
+          liveness: { path: /healthz/live, port: 8080 }
+        startupBudget: 20s
+        cutover: continuous
+        secrets:
+          # A file directly in `/`.
+          - path: secret/data/refusals/root
+            keys: [token]
+            access: read
+            delivery: file
+            mountAt: /token
+            fileMode: "0400"
+            rotation: { tolerates: restart }
+          # A relative path.
+          - path: secret/data/refusals/relative
+            keys: [token]
+            access: read
+            delivery: file
+            mountAt: run/secrets/token
+            fileMode: "0400"
+            rotation: { tolerates: restart }
+          # A directory, not a file.
+          - path: secret/data/refusals/directory
+            keys: [token]
+            access: read
+            delivery: file
+            mountAt: /run/secrets/
+            fileMode: "0400"
+            rotation: { tolerates: restart }

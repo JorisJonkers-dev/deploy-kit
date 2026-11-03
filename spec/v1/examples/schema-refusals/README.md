@@ -25,6 +25,9 @@ the chapter's table says the refusal lands at.
 | [`rate-limit-period-in-milliseconds.project.yml`](rate-limit-period-in-milliseconds.project.yml) | a route's `rateLimit` over `500ms` | the value |
 | [`credentials-file-without-mount.project.yml`](credentials-file-without-mount.project.yml) | an edge's credential delivered `file` with no `mountAt` or `fileMode` | the edge's `credentials` |
 | [`grant-file-without-mode.project.yml`](grant-file-without-mode.project.yml) | a `kv` grant delivered `file` with `mountAt` and no `fileMode` | the grant |
+| [`grant-file-several-keys.project.yml`](grant-file-several-keys.project.yml) | a `kv` grant delivered `file` with two keys | the grant |
+| [`grant-file-outside-a-directory.project.yml`](grant-file-outside-a-directory.project.yml) | three `kv` grants delivered `file`: one directly in `/`, one at a relative path, one at a path ending in `/` | each `mountAt` |
+| [`credentials-file-at-root.project.yml`](credentials-file-at-root.project.yml) | an edge's credential delivered `file` into `/` | the credential's `mountAt` |
 | [`platform-unknown-field/`](platform-unknown-field/) | a Platform document with a field the model does not have | the field |
 | [`human-grant-to-a-user/`](human-grant-to-a-user/) | a Human Grant naming a `user` instead of a `group` | the field, and where `group` would be |
 | [`human-grant-in-a-namespace/`](human-grant-in-a-namespace/) | a Human Grant scoped to a `namespace` | the field |

@@ -311,8 +311,8 @@ describe("a kv grant delivered to a file", () => {
         code: "schema",
         path: "/applications/0/secrets/0",
         message:
-          "a grant delivers its key to a file only with `mountAt` and `fileMode`",
-        hint: "Name the file its key lands at, and its mode.",
+          "a grant delivers to a file only one key, with `mountAt` and `fileMode`",
+        hint: "Name the one key, the file it lands at, and its mode.",
       },
     ]);
   });
@@ -323,6 +323,30 @@ describe("a kv grant delivered to a file", () => {
   ])("is refused with %s", (_, fields) => {
     expect(refusalsOf(grant(fields))).toStrictEqual([
       { code: "schema", path: "/applications/0/secrets/0" },
+    ]);
+  });
+
+  it("is refused with two keys, of which only one could land in the file", () => {
+    expect(
+      refusalsOf(
+        grant('mountAt: /run/secrets/token, fileMode: "0400", ').replace(
+          "keys: [token]",
+          "keys: [token, refresh]",
+        ),
+      ),
+    ).toStrictEqual([{ code: "schema", path: "/applications/0/secrets/0" }]);
+  });
+
+  it.each([
+    ["directly in /", "/token"],
+    ["at a relative path", "run/secrets/token"],
+    ["at a directory", "/run/secrets/"],
+    ["below a parent segment", "/run/../token"],
+  ])("is refused at its place %s", (_, place) => {
+    expect(
+      refusalsOf(grant(`mountAt: ${place}, fileMode: "0400", `)),
+    ).toStrictEqual([
+      { code: "schema", path: "/applications/0/secrets/0/mountAt" },
     ]);
   });
 

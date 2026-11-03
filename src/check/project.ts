@@ -823,14 +823,16 @@ const grantFormRefusals = (
   // A missing list and an empty one hold no grant alike.
   // Stryker disable next-line ArrayDeclaration
   (grants ?? []).flatMap((grant, index): Refusal[] =>
-    "access" in grant && lacksFile(grant)
+    // A file holds one key: of several, which would land in it is not decided.
+    "access" in grant &&
+    (lacksFile(grant) || (grant.delivery === "file" && grant.keys.length !== 1))
       ? [
           {
             code: "schema",
             path: `${at}/secrets/${index}`,
             message:
-              "a grant delivers its key to a file only with `mountAt` and `fileMode`",
-            hint: "Name the file its key lands at, and its mode.",
+              "a grant delivers to a file only one key, with `mountAt` and `fileMode`",
+            hint: "Name the one key, the file it lands at, and its mode.",
           },
         ]
       : [],

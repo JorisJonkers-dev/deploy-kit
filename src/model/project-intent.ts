@@ -107,11 +107,19 @@ const rotation = z
   })
   .meta({ id: "Rotation" });
 
+// A path in the container, segment by segment from `/`: none empty, `.` or
+// `..`, none holding whitespace, and no trailing slash.
+const SEGMENT = String.raw`\/(?!\.\.?(?:\/|$))[^\/\s]+`;
+// A file below a directory other than `/`, which the render mounts whole.
+const filePath = z.string().regex(new RegExp(`^(?:${SEGMENT}){2,}$`));
+// A directory other than `/`, which a mount would cover entirely.
+const directoryPath = z.string().regex(new RegExp(`^(?:${SEGMENT})+$`));
+
 const grantDelivery = {
   delivery: delivery,
   // Where a grant delivered `file` lands, and its mode, both required then
   // (formDiagnostics).
-  mountAt: text.exactOptional(),
+  mountAt: filePath.exactOptional(),
   fileMode: text.exactOptional(),
   rotation,
 };
@@ -247,7 +255,7 @@ const credentials = z
     delivery: delivery.exactOptional(),
     // Delivered to a file: the directory its `username` and `password` land
     // in, and their mode, both required then (formDiagnostics).
-    mountAt: text.exactOptional(),
+    mountAt: directoryPath.exactOptional(),
     fileMode: text.exactOptional(),
     rotation: rotation,
   })
