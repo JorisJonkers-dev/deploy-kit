@@ -58,6 +58,7 @@ describe("the schema refusal fixtures", () => {
       "egress-with-range",
       "egress-without-reason",
       "every-offending-value",
+      "grant-file-without-mode",
       "human-grant-in-a-namespace",
       "human-grant-role-outside-vocabulary",
       "human-grant-to-a-user",

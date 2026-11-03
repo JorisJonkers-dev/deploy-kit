@@ -31,10 +31,12 @@ applications:
             access: read
             delivery: file
             mountAt: /run/secrets/app
+            fileMode: "0400"
             rotation: { tolerates: restart }
           - path: secret/data/platform/session
             keys: [session_key]
             access: read
             delivery: file
             mountAt: /run/secrets/app
+            fileMode: "0400"
             rotation: { tolerates: restart }

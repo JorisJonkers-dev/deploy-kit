@@ -24,6 +24,7 @@ the chapter's table says the refusal lands at.
 | [`rate-limit-of-no-requests.project.yml`](rate-limit-of-no-requests.project.yml) | a route's `rateLimit` allowing `0` requests | the value |
 | [`rate-limit-period-in-milliseconds.project.yml`](rate-limit-period-in-milliseconds.project.yml) | a route's `rateLimit` over `500ms` | the value |
 | [`credentials-file-without-mount.project.yml`](credentials-file-without-mount.project.yml) | an edge's credential delivered `file` with no `mountAt` or `fileMode` | the edge's `credentials` |
+| [`grant-file-without-mode.project.yml`](grant-file-without-mode.project.yml) | a `kv` grant delivered `file` with `mountAt` and no `fileMode` | the grant |
 | [`platform-unknown-field/`](platform-unknown-field/) | a Platform document with a field the model does not have | the field |
 | [`human-grant-to-a-user/`](human-grant-to-a-user/) | a Human Grant naming a `user` instead of a `group` | the field, and where `group` would be |
 | [`human-grant-in-a-namespace/`](human-grant-in-a-namespace/) | a Human Grant scoped to a `namespace` | the field |

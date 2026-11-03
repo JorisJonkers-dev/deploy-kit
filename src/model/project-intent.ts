@@ -109,6 +109,8 @@ const rotation = z
 
 const grantDelivery = {
   delivery: delivery,
+  // Where a grant delivered `file` lands, and its mode, both required then
+  // (formDiagnostics).
   mountAt: text.exactOptional(),
   fileMode: text.exactOptional(),
   rotation,
@@ -244,7 +246,7 @@ const credentials = z
   .strictObject({
     delivery: delivery.exactOptional(),
     // Delivered to a file: the directory its `username` and `password` land
-    // in, and their mode, both required then (ruleDiagnostics).
+    // in, and their mode, both required then (formDiagnostics).
     mountAt: text.exactOptional(),
     fileMode: text.exactOptional(),
     rotation: rotation,

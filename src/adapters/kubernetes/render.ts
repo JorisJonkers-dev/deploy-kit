@@ -145,7 +145,7 @@ const filesOf = (process: ResolvedProcess): FileGrant[] =>
     (grant): grant is FileGrant => isSynced(grant) && grant.delivery === "file",
   );
 
-/** Where a file grant's files land; notYet and ruleDiagnostics refused one without it. */
+/** Where a file grant's files land; notYet and formDiagnostics refused one without it. */
 const placeOf = (grant: FileGrant): string => grant.mountAt as string;
 
 /** The directory a file lands in, empty for a file directly in `/`. */

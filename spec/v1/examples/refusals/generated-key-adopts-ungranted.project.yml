@@ -31,4 +31,5 @@ applications:
             access: read
             delivery: file
             mountAt: /run/secrets/app
+            fileMode: "0400"
             rotation: { tolerates: restart }

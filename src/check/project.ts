@@ -789,20 +789,6 @@ function credentialRefusals(
   // Stryker disable next-line ArrayDeclaration
   return (edges ?? []).flatMap((edge, e): Refusal[] => {
     const at_ = `${at}/dependsOn/${e}/credentials`;
-    if (
-      edge.credentials?.delivery === "file" &&
-      (edge.credentials.mountAt === undefined ||
-        edge.credentials.fileMode === undefined)
-    )
-      return [
-        {
-          code: "schema",
-          path: at_,
-          message:
-            "an edge delivers its credential to a file only with `mountAt` and `fileMode`",
-          hint: "Name the directory its `username` and `password` files land in, and their mode.",
-        },
-      ];
     return edge.credentials?.delivery === "env" &&
       edge.credentials.rotation.tolerates === "reload"
       ? [
@@ -816,6 +802,78 @@ function credentialRefusals(
         ]
       : [];
   });
+}
+
+// -- Form (spec/v1/10-project-intent.md#reading-a-file). A field one value of
+// another requires is the document's form, not a rule: refused with `schema`,
+// and a document refused here reaches no rule.
+
+/** Delivered to a file, a grant and an edge's credential each need `mountAt` and `fileMode`. */
+const lacksFile = (
+  holder:
+    { delivery?: string; mountAt?: string; fileMode?: string } | undefined,
+): boolean =>
+  holder?.delivery === "file" &&
+  (holder.mountAt === undefined || holder.fileMode === undefined);
+
+const grantFormRefusals = (
+  grants: readonly Grant[] | undefined,
+  at: string,
+): Refusal[] =>
+  // A missing list and an empty one hold no grant alike.
+  // Stryker disable next-line ArrayDeclaration
+  (grants ?? []).flatMap((grant, index): Refusal[] =>
+    "access" in grant && lacksFile(grant)
+      ? [
+          {
+            code: "schema",
+            path: `${at}/secrets/${index}`,
+            message:
+              "a grant delivers its key to a file only with `mountAt` and `fileMode`",
+            hint: "Name the file its key lands at, and its mode.",
+          },
+        ]
+      : [],
+  );
+
+const credentialFormRefusals = (
+  edges: readonly DependencyEdge[] | undefined,
+  at: string,
+): Refusal[] =>
+  // A missing list and an empty one hold no edge alike.
+  // Stryker disable next-line ArrayDeclaration
+  (edges ?? []).flatMap((edge, e): Refusal[] =>
+    lacksFile(edge.credentials)
+      ? [
+          {
+            code: "schema",
+            path: `${at}/dependsOn/${e}/credentials`,
+            message:
+              "an edge delivers its credential to a file only with `mountAt` and `fileMode`",
+            hint: "Name the directory its `username` and `password` files land in, and their mode.",
+          },
+        ]
+      : [],
+  );
+
+/** Every field this document lacks that another of its values requires. */
+export function formDiagnostics(
+  document: ProjectIntentDocument,
+): readonly Diagnostic[] {
+  const levels = [
+    { at: "", of: document },
+    ...document.applications.flatMap((application, a) => [
+      { at: `/applications/${a}`, of: application },
+      ...application.processes.map((process, p) => ({
+        at: `/applications/${a}/processes/${p}`,
+        of: process,
+      })),
+    ]),
+  ];
+  return levels.flatMap(({ at, of }) => [
+    ...grantFormRefusals(of.secrets, at),
+    ...credentialFormRefusals(of.dependsOn, at),
+  ]);
 }
 
 /** Every rule this document breaks, in the order the document reads. */
