@@ -334,14 +334,20 @@
     </env>
     <placement site="enschede"/>
     <applications startupBudget="60s" id="coverage-api" description="Reads every key the other projects leave out">
-      <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/app" fileMode="0400" path="secret/data/coverage-system/app">
+      <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/session" fileMode="0400" path="secret/data/coverage-system/session">
         <rotation/>
         <keys xsi:type="projectintent:GeneratedKey" name="session">
           <generate bytes="32" encoding="base64"/>
         </keys>
+      </secrets>
+      <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/cookie" fileMode="0400" path="secret/data/coverage-system/cookie">
+        <rotation/>
         <keys xsi:type="projectintent:GeneratedKey" name="cookie">
           <generate bytes="16" encoding="base64url"/>
         </keys>
+      </secrets>
+      <secrets xsi:type="projectintent:KvGrant" delivery="file" mountAt="/run/secrets/salt" fileMode="0400" path="secret/data/coverage-system/salt">
+        <rotation/>
         <keys xsi:type="projectintent:GeneratedKey" name="salt">
           <generate encoding="hex"/>
         </keys>

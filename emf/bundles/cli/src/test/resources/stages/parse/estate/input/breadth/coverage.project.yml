@@ -22,17 +22,31 @@ applications:
     dependsOn:
       - { application: platform-valkey, surface: redis, required: false }
     secrets:
-      - path: secret/data/coverage-system/app
+      - path: secret/data/coverage-system/session
         keys:
           - name: session
             generate: { bytes: 32, encoding: base64 }
+        access: read
+        delivery: file
+        mountAt: /run/secrets/session
+        fileMode: "0400"
+        rotation: { tolerates: restart }
+      - path: secret/data/coverage-system/cookie
+        keys:
           - name: cookie
             generate: { bytes: 16, encoding: base64url }
+        access: read
+        delivery: file
+        mountAt: /run/secrets/cookie
+        fileMode: "0400"
+        rotation: { tolerates: restart }
+      - path: secret/data/coverage-system/salt
+        keys:
           - name: salt
             generate: { encoding: hex }
         access: read
         delivery: file
-        mountAt: /run/secrets/app
+        mountAt: /run/secrets/salt
         fileMode: "0400"
         rotation: { tolerates: restart }
     client:
