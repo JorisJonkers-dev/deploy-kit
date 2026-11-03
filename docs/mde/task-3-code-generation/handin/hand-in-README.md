@@ -12,7 +12,10 @@ Joris Jonkers (s1829157), Model Driven Engineering, University of Twente.
 - `implementation/`: the Eclipse/Maven projects that hold and run the
   transformation, with the example files their tests read. The transformation
   is `implementation/emf/bundles/render/model/render.mtl` (Acceleo 4), in the
-  plug-in project `dev.jorisjonkers.deploykit.emf.render`.
+  plug-in project `dev.jorisjonkers.deploykit.emf.render`. The specification
+  the report cites is `implementation/spec/v1/`: its chapters (`*.md`) define
+  the model, and `examples/` holds the oracles the generated files are
+  compared with.
 - `evidence/`: what loading the generated code produced, taken from this
   archive after `build.sh`: `dry-run.txt`, the schema (kubeconform), Pod
   Security and Kubernetes server dry-run results per example, and
@@ -46,7 +49,7 @@ With JDK 21 (`JAVA_HOME` set to it), from the archive root:
 ./build.sh          # Windows: build.cmd
 ```
 
-This builds the implementation and runs its tests (781, including the
+This builds the implementation and runs its tests (785, including the
 stage tests that run the transformation on 18 cases), then runs `render.mtl`
 on each example's model, writes the generated files to `output/<example>/`,
 and compares them with `examples/<example>/expected/`. It prints one `OK` line
@@ -94,6 +97,11 @@ JDK 21.
 
 After the import, the Problems view shows no errors: Eclipse does not run the
 EMF and Xtext code generators itself, and reads the Java `build.sh` generated.
+In two of four automated checks of this archive, Eclipse instead left the render
+plug-in unresolved: the cli project then reports `The import
+dev.jorisjonkers.deploykit.emf.render cannot be resolved` and the render
+plug-in's `render.launch` stops at once. Importing again into a new workspace
+cleared it each time; the command-line build is not affected.
 **test implementation** starts with `clean`, which also removes the jars the
 **render <example>** launches use; run `build.sh` again before those.
 

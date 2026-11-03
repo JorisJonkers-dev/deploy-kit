@@ -15,8 +15,8 @@
 \end{figure}
 
 Figure~\ref{fig:m2t-structure} shows the model-to-text step: a main
-template, one template family per Deliverable kind, the shared templates those
-families use, and the Java class \texttt{Rendering} that loads and runs the module.
+template, one template family per Deliverable kind, and the Java class
+\texttt{Rendering} that loads and runs the module.
 Section~\ref{sec:m2t-choices} justifies the choice of Acceleo~4. The module,
 \path{emf/bundles/render/model/render.mtl}, reads the Resolved Deployment produced
 by the preceding transformations. Section~\ref{sec:m2t-example} traces one Route from
@@ -55,8 +55,7 @@ diagnostics and writes nothing. Otherwise, it lowers and resolves each Project a
 \texttt{Rendering.render(deployments, root)} once. The pipeline has no command-line interface; it runs
 in the Maven build of \path{emf/}, where \texttt{RenderedTreeTest} compares each
 rendered file with the committed \texttt{rendered/} tree. The parity suite uses
-the same entry point exclusively through files
-(\path{emf/docs/adr/emf/0080-parity-crosses-the-cli-file-interface.md}).
+the same entry point exclusively through files.
 In Eclipse, \texttt{render.launch} (class \texttt{RenderModel}) and the hand-in's launch
 configurations render one model file through \texttt{Rendering.render}.
 
@@ -252,7 +251,7 @@ literals permit them. Quoted literals containing either would fail; the examples
 \textbf{Block scalars.} An Asset is a file a Project ships as configuration. Its
 ConfigMap holds the text as a block scalar, and its name contains a digest of the
 content, so an edit produces a new immutable object
-(\path{docs/adr/model/0014-file-shaped-configuration-is-an-asset.md}). Two queries
+(\path{spec/v1/30-deliverables.md}). Two queries
 write it (Example~\ref{lst:block}).
 
 \begin{lstlisting}[style=report, language=acceleo, caption={The Block Scalar Queries}, label={lst:block}]
@@ -271,8 +270,7 @@ removes the trailing newline, which the block restores. AQL's \texttt{substring}
 and inclusive, as in OCL. Every non-empty line is indented by four spaces; blank lines stay blank.
 
 \textbf{Key order.} Key order follows the template text. The API reads
-objects as maps, but the Acceleo~4 decision requires byte equality
-(decision record 0077 under \path{emf/docs/adr/}).
+objects as maps, but the oracles require byte equality.
 
 \textbf{Vault documents as JSON.} A policy document has one \texttt{path}
 object, holding a \texttt{capabilities} list for each path. A Kubernetes auth role

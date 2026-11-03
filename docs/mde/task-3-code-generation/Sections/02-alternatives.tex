@@ -24,8 +24,7 @@ reject it.
 
 Intent is authored in one file per Project, plus one Platform Intent for facts that
 must be unique across the estate
-(\url{docs/adr/model/0009-intent-is-authored-one-file-per-project.md},
-\url{docs/adr/model/0045-platform-intent-is-the-second-authored-document.md}). One
+(\path{spec/v1/10-project-intent.md}, \path{spec/v1/14-platform-intent.md}). One
 file per Application was rejected because each fact needs a single source: the same
 OpenTelemetry variables would otherwise be repeated for three Processes. Lowering
 merges shared declarations onto each Process, so templates need not combine
@@ -44,7 +43,7 @@ Rendering reads only the Resolved Deployment and therefore only writes text.
 
 The Task~2 pipeline had a third transformation over every Resolved Deployment. It
 was removed because each Project owns and is the sole writer of every object it delivers
-(decision record 0116 under \path{docs/adr/model/}). Keeping the pass
+(\path{spec/v1/20-resolved-deployment.md}). Keeping the pass
 would break the guarantee that publishing an unrelated change deploys nothing. Its
 single policy Job held every Project's grants. Any change re-ran it for all Projects;
 one fault left seven Projects not ready. Every generated file now belongs to
@@ -56,7 +55,7 @@ one Project's Resolved Deployment, so no template merges output across Projects.
 The target is Kubernetes API objects and custom resources for Flux,
 Flagger, the Vault Secrets Operator, Traefik and the Prometheus Operator. Flux is
 the only applier and pulls the rendered output by digest
-(\url{docs/adr/model/0050-delivery-is-part-of-the-model.md}). A push path from CI
+(\path{spec/v1/55-delivery.md}). A push path from CI
 was rejected because it would require a deployment credential outside the cluster. Helm
 and Kustomize templating were rejected because no abstract model could express their
 constraints (Task~1 report). Each generated file is an object the API server
@@ -97,7 +96,7 @@ claimed beyond the constructs the module uses.
 \label{sec:m2t-templates}
 
 The alternative is a serialiser: a visitor writes typed objects through a YAML library
-and a JSON encoder. The model-driven implementation uses templates without a subsequent
+and a JSON encoder. The EMF implementation uses templates without a subsequent
 formatting pass.
 
 One reviewed artefact must determine the output bytes. A template specifies the

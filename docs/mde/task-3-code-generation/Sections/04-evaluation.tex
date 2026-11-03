@@ -32,8 +32,8 @@ Composed union parity (\texttt{ParityTest}) & 2. CLI file interface & Committed 
 Per-Project output (\texttt{RenderedTreeTest}) & 2. CLI file interface & Committed trees of \texttt{minimal}, \texttt{data} and \texttt{delivery} & A file written into another Project's output \\
 Determinism and rejection (\texttt{RenderedTreeTest}) & 2. CLI file interface & A second run; a set the checks reject & Varying output; a partial tree on rejection \\
 Oracle distance (\texttt{OracleDistanceTest}) & 2. Pipeline & Every oracle under \path{spec/v1/examples/} & An oracle on the allowlist that no longer matches \\
-Schema (\path{lint:manifests}, kubeconform) & 3. External definition & Kubernetes 1.36.5 schemas, the datreeio CRD catalogue, the \texttt{Client} schema & Unknown or missing fields, wrong types \\
-Pod Security (\path{scripts/lib/pod-security.ts}) & 3. External definition & Pod Security \texttt{restricted} plus a read-only root filesystem & A pod template that drops a privilege control \\
+Schema (kubeconform) & 3. External definition & Kubernetes 1.36.5 schemas, the datreeio CRD catalogue, the \texttt{Client} schema & Unknown or missing fields, wrong types \\
+Pod Security profile & 3. External definition & Pod Security \texttt{restricted} plus a read-only root filesystem & A pod template that drops a privilege control \\
 Server dry-run (k3s cluster) & 4. API server & Admission by a cluster at the production control plane's version & Objects accepted by the schema but rejected by the cluster \\
 \hline
 \end{tabular}
@@ -54,18 +54,16 @@ oracles, compared with them byte for byte. \texttt{FieldCoverageTest} requires e
 stage's cases to cover every feature, enumeration literal and template dispatch its
 metamodels declare; the gaps left are listed per stage in \path{gaps.txt}, a baseline that may only shrink.
 Each of 88 model behaviours of the behaviour ledger has a JUnit witness, and one
-more is pending (\path{emf/docs/witnesses.md}). Every build enforces 100\% line and
-branch coverage (JaCoCo) per module. A nightly build requires a 100\% mutation score (PIT);
-one surviving mutant in the resolve module's Java currently fails it. The suite has
-797 tests, 781 in the hand-in, which omits tests checking the ledgers against the repository.
+more is pending. Every build enforces 100\% line and
+branch coverage (JaCoCo) per module. A nightly build requires a 100\% mutation score (PIT), which every module reaches. The suite has
+801 tests, 785 in the hand-in, which omits tests checking the ledgers against the repository.
 
 \textbf{Seam and file interface.} Seam tests in \path{emf/bundles/render} exercise
 \texttt{Rendering} without the pipeline. A template that does not parse must fail with Acceleo's diagnostic. A template that fails halfway (\path{halfway.mtl}) must leave the output root unchanged; files go first to the sibling \path{.partial} directory. An unindented module
 (\path{unindented.mtl}) is the negative case for the indentation rule of
 Section~\ref{sec:design}.
 \texttt{ParityTest} in \path{emf/tests/parity} runs the whole pipeline through
-files only, as a command-line tool would
-(\path{emf/docs/adr/emf/0080-parity-crosses-the-cli-file-interface.md}) and checks that
+files only, as a command-line tool would, and checks that
 the composed union contains exactly the committed files, each identical byte for byte.
 \texttt{RenderedTreeTest} checks that each Project's output matches its own committed
 tree, that a second run writes the same bytes, and that a set containing an invalid
@@ -73,21 +71,20 @@ document (\texttt{surface: grpc}, rejected with \texttt{E\_UNKNOWN\_SURFACE}) pr
 files. \texttt{OracleDistanceTest} measures every oracle's distance from what the
 pipeline writes and requires 185 allowlisted comparisons to match exactly.
 
-\textbf{External consumers.} \path{scripts/lint-manifests.ts} runs kubeconform 0.6.7 with
+\textbf{External consumers.} The repository's manifest check runs kubeconform 0.6.7 with
 \texttt{-kubernetes-version 1.36.5} and \texttt{-strict} against the default
 schemas, the datreeio CRD catalogue and the repository's \texttt{Client} schema,
 and checks every pod template against Pod Security's \texttt{restricted} profile;
-both checks have negative fixtures. \path{handin/scripts/dry-run.sh}, run as
-\texttt{dry-run.sh output "" generated}, applies these checks to the generated tree in about ten seconds. It then starts a disposable k3s cluster at v1.36.5, the production control plane's version. It installs pinned CRDs for every non-core kind, creates the named namespaces and applies each Project's output and the platform's share with \texttt{-{}-dry-run=server}. Network policies are absent from indexes and are applied file by file.
+both checks have negative fixtures. A dry-run script applies these checks to the generated tree in about ten seconds. It then starts a disposable k3s cluster at v1.36.5, the production control plane's version. It installs pinned CRDs for every non-core kind, creates the named namespaces and applies each Project's output and the platform's share with \texttt{-{}-dry-run=server}. Network policies are absent from indexes and are applied file by file.
 
 \subsubsection{Oracles and Their Independence}
 \label{sec:oracles}
 
 A committed file is an \emph{oracle} here: the expected output a result is compared
-against. The oracles under \path{spec/v1/examples/} are produced by
-the production implementation; the model-driven implementation must match them, and
-its tests refuse to rewrite them. Appendix~\ref{sec:appendix-production} discusses that
-implementation and the limits of this independence.
+against. The EMF implementation must match the oracles under \path{spec/v1/examples/},
+and its tests refuse to rewrite them. A second implementation, in TypeScript and used
+in production, is held to the same files and produced them;
+Appendix~\ref{sec:appendix-production} discusses it and the limits of this independence.
 
 \subsubsection{Comparison: Content First, Bytes Last}
 \label{sec:compare-alt}
@@ -117,7 +114,7 @@ as a composed union of 95 files. Adding a second Project must leave the first Pr
 \label{sec:results}
 
 Table~\ref{tab:results} reports checks per case. The schema, profile and dry-run
-results were obtained on 2026-11-03 from the generated tree. Units differ by row:
+results were obtained on 2026-11-03 from the generated tree; the hand-in's \path{evidence/} holds their logs. Units differ by row:
 output counts refer to files; schema counts refer to resources (several may share
 a file, and \path{kustomization.yaml} files count); dry-run counts
 refer to objects; the schema and dry-run counts include the platform's share. The union includes
@@ -177,7 +174,7 @@ CRD catalogue commit, while production worker nodes run 1.35.2. A field ignored 
 1.35 kubelet would therefore pass validation.
 
 \paragraph{Fresh-cluster dry-run.} This cannot detect defects involving immutable fields; no controllers run and no network policies are enforced. The
-model-driven implementation does not apply objects, so these checks do not exercise
+EMF implementation does not apply objects, so these checks do not exercise
 Flux's ordering, pruning or release gating.
 
 \paragraph{When the build runs.} The \texttt{Model-driven build} job runs the Maven
