@@ -1,11 +1,11 @@
 \section{Introduction}
 \label{sec:introduction}
 
-The project converts short authored documents into files that a cluster's GitOps
+The project converts short source documents into files that a cluster's GitOps
 controller applies. Each Application's repository holds one \texttt{Project
 Intent} document, which states what its \texttt{Application}s need: their
 \texttt{Process}es, limits, ports, dependencies and external Routes. One
-\texttt{Platform Intent} document states the platform the Projects share. Three read-only
+\texttt{Platform Intent} document describes the shared platform. Three read-only
 inputs are pinned by digest: the node contract, the images lock and a
 \texttt{ClusterState} snapshot. The output is the \emph{Deliverable Set}:
 Kubernetes objects, custom resources for Flux, Flagger and the Vault Secrets
@@ -14,7 +14,7 @@ Operator, and Vault configuration documents. Only Flux applies that set.
 The authored documents state requirements and facts rather than mechanisms. The
 derived \texttt{Resolved Deployment} records every platform decision. The
 Deliverable Set serialises those decisions without making further choices
-(\path{spec/v1/00-overview.md}). The final transformation only writes the target syntax.
+(\path{spec/v1/00-overview.md}). Rendering only writes the target syntax.
 
 \subsection{The Pipeline}
 \label{sec:pipeline}
@@ -34,8 +34,8 @@ each \texttt{Project} using the lowered models of every \texttt{Project}, the
 Platform Intent and the pinned inputs. It produces one Resolved Deployment with a
 path plan that assigns each Deliverable to a file. If resolution cannot derive a value,
 the run stops. The Acceleo templates then run once over the set of Resolved Deployments.
-Finally, the load stage checks the written files against pinned schemas, the Pod
-Security \texttt{restricted} profile and a server-side dry run on a throwaway k3s
+Finally, the load stage checks written files against pinned schemas, the Pod
+Security \texttt{restricted} profile and a server-side dry run on a disposable k3s
 cluster (Section~\ref{sec:evaluation}).
 
 Only resolution makes decisions; its oracle (the committed expected
@@ -46,8 +46,7 @@ correct syntax, but does not establish that the decisions were correct.
 \subsection{Changes Since Task~2}
 \label{sec:since-task2}
 
-Deploying the real estate surfaced cases the model had to express, and the model
-changed to express them. The estate pass, a third transformation over all Resolved
+Deploying the real estate required changes to the model. The estate pass, a third transformation over all Resolved
 Deployments, was removed. The migration from fleet-infra, the previous setup with its
 own DSL, was partly manual. Moving data between Instances (a Move) existed only for
 that migration, so the model and this report leave it out.
@@ -56,9 +55,9 @@ Appendix~\ref{sec:appendix} lists each change with its reason.
 \subsection{Roadmap}
 \label{sec:roadmap}
 
-Section~\ref{sec:alternatives} sets out the choices; Section~\ref{sec:design}
-describes rendering (Figures~\ref{fig:m2t-structure} and~\ref{fig:worked-example});
+Section~\ref{sec:alternatives} lists the choices; Section~\ref{sec:design}
+covers rendering (Figures~\ref{fig:m2t-structure} and~\ref{fig:worked-example});
 Section~\ref{sec:evaluation} reports the parity and load evidence
-(Figure~\ref{fig:evidence}); Section~\ref{sec:reflection} reflects on the three
+(Figure~\ref{fig:evidence}); Section~\ref{sec:reflection} reviews the three
 tasks (Figure~\ref{fig:timeline}); Section~\ref{sec:outlook} looks beyond the
-course. Appendix~\ref{sec:appendix-production}, supplementary, covers the production implementation.
+course. The supplementary Appendix~\ref{sec:appendix-production} covers the production implementation.

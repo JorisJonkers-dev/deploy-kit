@@ -2,8 +2,8 @@
 \label{sec:reflection}
 
 The project ran from the Task 0 proposal in September to this submission, which
-slipped past the 30 October deadline. Figure~\ref{fig:timeline} places the three tasks, both presentations
-and the project's phases on one timeline, beside the commits per day.
+was after the 30 October deadline. Figure~\ref{fig:timeline} places the three tasks, both presentations
+and the phases on one timeline, alongside the commits per day.
 
 \begin{figure}[!htbp]
 \centering
@@ -15,7 +15,7 @@ and the project's phases on one timeline, beside the commits per day.
 \subsection{How the Project Changed Over Time}
 \label{sec:timeline-narrative}
 
-The proposal fixed a closed set of inputs, an intermediate Resolved Deployment, a
+The proposal specified a closed set of inputs, an intermediate Resolved Deployment, a
 generated Deliverable Set and two implementations tested against the same examples,
 but left the build order open. Priorities shifted through seven phases.
 \begin{itemize}
@@ -32,12 +32,12 @@ but left the build order open. Priorities shifted through seven phases.
 \item 22 to 30 October: the model was refined in production and reached release
   1.0.0; the model-driven implementation adopted each change. In October, the
   repository received 292 commits, 181 of which touched \path{spec/v1}.
-\item 31 October to 2 November, past the deadline: EMF Compare took over every model
+\item 31 October to 2 November, after the deadline: EMF Compare handled every model
   comparison, a benchmark with an ATL port of the lowering answered the Task~2
-  feedback (Appendix~\ref{sec:appendix-performance}), and the Move left the model.
+  feedback (Appendix~\ref{sec:appendix-performance}), and the Move was removed.
 \end{itemize}
 Three factors drove these shifts: deadlines three weeks apart and then two, cases
-surfaced in production, and oracle changes the model-driven implementation had to
+found in production, and oracle changes the model-driven implementation had to
 follow.
 
 \subsection{What Went Well}
@@ -46,8 +46,8 @@ follow.
 \subsubsection{Oracle Parity Across Two Implementations}
 \label{sec:went-parity}
 
-Both implementations are held to the same committed oracles, and neither is
-generated from the other, so they converged on the same behaviour
+The two independently written implementations must match the same committed
+oracles, so both produced the same behaviour
 (Appendix~\ref{sec:appendix-production}). Section~\ref{sec:oracles} explains the limits of this
 evidence.
 
@@ -63,7 +63,7 @@ Acceleo template, so it specified the expected output independently of the templ
 \label{sec:went-headless}
 
 Maven with Tycho runs every EMF tool without an IDE, using one dated Eclipse release.
-A walking skeleton, metamodel, OCL file and template each ran through its own tool
+A minimal pipeline, metamodel, OCL file and template each ran through its own tool
 before substantive content was added. When the Acceleo module arrived on
 1 October, subsequent failures therefore concerned content.
 
@@ -81,8 +81,7 @@ This motivated the server dry-run in Section~\ref{sec:levels}.
 \label{sec:late-structure}
 
 The Task 2 report describes three transformations; the estate pass was removed
-four days after that report described it, so the report is a snapshot of a pipeline that
-no longer exists. The appendix records the difference, but the structure should
+four days after the report, which therefore describes an obsolete pipeline. The appendix records the difference, but the structure should
 have been fixed at the Task 2 deadline, with later structural decisions recorded
 as changes.
 
@@ -101,10 +100,10 @@ concerned output appearance, not transformation semantics.
 
 The scope was too large for one course. Between 14 September and 3 November, the
 repository received 404 commits across the specification, the production
-implementation and \path{emf/}, a second implementation of the whole compiler.
-Keeping the two implementations level doubled the cost of every change. A smaller scope would
-have kept the parity, decision records and headless build, held the model at its
-Task 1 scope and documented later features as deferred.
+implementation and \path{emf/}, a second implementation of the compiler.
+Keeping the implementations consistent doubled the work per change. A smaller scope would
+have retained parity, decision records and the headless build, limited the model to
+Task 1 and documented later features as deferred.
 
 \subsubsection{Structural Comparison Came Late}
 \label{sec:byte-cost}
@@ -112,8 +111,8 @@ Task 1 scope and documented later features as deferred.
 For most of the project, output was compared only as bytes: a line diff across
 several hundred lines does not distinguish missing keys, extra keys and wrong values.
 The structured comparison of Section~\ref{sec:compare-alt}, with EMF Compare for
-models, names each difference's path. Adopted from the start, with each stage tested
-on its own, it would have named the stage and field at fault and saved much debugging.
+models, reports each difference's path. Using it from the start and testing each stage
+separately would have identified the faulty stage and field and reduced debugging.
 
 \subsection{What Was Learned}
 \label{sec:learned}
@@ -131,12 +130,12 @@ independently of the template.
 
 Typing each stage's model catches errors earlier and makes each stage
 replaceable: the estate pass was removed without changing the parser or the
-renderer. Each metamodel, in turn, changes whenever its stage does.
+renderer. Each metamodel changes whenever its stage does.
 
 \subsubsection{The Cost of Running MDE Tools Without an IDE}
 \label{sec:headless-cost}
 
 Most of the effort in model-driven tooling went into running it rather than modelling.
 The module's POM changed in at least ten commits, and the indentation rule was established
-experimentally. The build took more of the project than the metamodels did.
+experimentally. The build required more work than the metamodels.
 

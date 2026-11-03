@@ -22,23 +22,23 @@ Section~\ref{sec:m2t-choices} justifies the choice of Acceleo~4. The module,
 by the preceding transformations. Section~\ref{sec:m2t-example} traces one Route from
 model to file (Figure~\ref{fig:worked-example}).
 
-The design applies four course concepts. Dispatch by kind uses polymorphic templates
+The design uses four course concepts. Dispatch by kind uses polymorphic templates
 (Section~\ref{sec:m2t-kinds}). Every run regenerates every file in full, so no
-protected areas are needed. Each stage is tested on its own against committed files,
-and the output is held byte for byte to committed oracle files (reference trees that
-both implementations must match; Section~\ref{sec:levels}), so no trace blocks map
-text back to model elements. The JSON templates use text-explicit escape
+protected areas are needed. Each stage is tested separately against committed files.
+Output is compared byte for byte with committed oracle files (reference trees both
+implementations must match; Section~\ref{sec:levels}). No trace blocks map
+text to model elements. The JSON templates use text-explicit escape
 (\texttt{['['/]}) to write a literal bracket.
 
 \subsection{Interface: Input, Output and Entry Point}
 \label{sec:m2t-interface}
 
-\textbf{Input.} The step reads one Resolved Deployment for each Project in the run,
-each containing a \texttt{deliverables} list of the files the Project delivers.
-Lowering and resolution run for each Project in turn; \texttt{Rendering} copies the
+\textbf{Input.} The step reads one Resolved Deployment per Project,
+each containing a \texttt{deliverables} list of that Project's files.
+Lowering and resolution run for each Project in sequence; \texttt{Rendering} copies the
 results into one model for a single rendering run. Templates read no files,
-environment variables or system clock: all other inputs are consumed beforehand
-and represented as model features.
+environment variables or the system clock. Earlier stages consume all other inputs
+and store them as model features.
 Each Deliverable has a \texttt{path} relative to the output root, assigned by the
 resolution stage. The metamodel has 40 concrete Deliverable kinds
 (\path{emf/bundles/metamodel/model/resolved-deployment.ecore}), each with a template
@@ -51,7 +51,7 @@ header.
 
 \textbf{Entry point.} The pipeline's entry point is \texttt{Pipeline.render} in the CLI bundle. It
 checks every input document. If validation rejects the set, it returns
-diagnostics and writes nothing; otherwise, it lowers and resolves each Project and calls
+diagnostics and writes nothing. Otherwise, it lowers and resolves each Project and calls
 \texttt{Rendering.render(deployments, root)} once. The pipeline has no command-line interface; it runs
 in the Maven build of \path{emf/}, where \texttt{RenderedTreeTest} compares each
 rendered file with the committed \texttt{rendered/} tree. The parity suite uses
@@ -122,9 +122,9 @@ The module supports 40 Deliverable kinds in nine families
 (Table~\ref{tab:kinds}). Each YAML family uses an \texttt{objects}
 template overloaded on its receiver type. Acceleo selects the overload by runtime type
 rather than string comparison: these are polymorphic templates in the course's sense.
-A kind with no overload fails evaluation, and with it the run. The module previously
+A kind with no overload causes evaluation and the run to fail. The module previously
 dispatched through 22 type tests with no \texttt{else}, so a kind without a branch
-would silently produce only a header line. Type dispatch closes this gap and is 50 lines shorter.
+would silently produce only a header line. With type dispatch, such a kind fails the run, in 50 fewer lines.
 
 \begin{table}[!htbp]
 \centering
@@ -153,11 +153,11 @@ are exceptions: the \texttt{part} attribute assigns each of their five objects t
 separate file, so each is planned and pruned as a separate Deliverable.
 
 \phantomsection\label{sec:m2t-gaps}
-Everything added since Task~2 followed the same sequence: a metamodel
+Each addition since Task~2 required a metamodel
 kind or feature, its derivation in resolution, a template, and a committed file for
 byte comparison. Features of existing kinds include Route annotations (facts about the
 Route's tier) and the fourth Canary webhook, \texttt{rollback}, through which the
-Release Gate decides whether to roll back a release it can no longer pass. Each new
+Release Gate decides whether to roll back a release that can no longer pass. Each new
 kind received one \texttt{objects} overload; the edge's shared Middlewares, for
 example, are named by Routes through \texttt{MiddlewareStep.name}.
 
@@ -220,8 +220,8 @@ on the call column.
 \texttt{- }, and the caller does not write the dash: a dash before the call would be
 repeated before every line, making each line a separate item.
 
-Whitespace is therefore a template concern (Section~\ref{sec:whitespace}), and the
-layout is visible in the template, with no formatter in between.
+Templates control whitespace (Section~\ref{sec:whitespace}) and specify
+the layout directly, without a formatter.
 
 \subsection{Writing YAML and JSON}
 \label{sec:m2t-spelling}
@@ -236,18 +236,18 @@ match the whole value and cover the empty string, tilde, null, the boolean words
 (\texttt{y}, \texttt{yes}, \texttt{on} and their opposites), integers in every
 YAML~1.1 base, floats and timestamps.
 YAML~1.1 rules are deliberate: Kubernetes tooling decodes through
-\texttt{sigs.k8s.io/yaml}, which follows YAML~1.1 implicit types, and the oracles are
-written under the same rules.
-A value such as \texttt{on} would reach the API server as a boolean if written as a plain scalar;
-unnecessary quoting costs only bytes. The string \texttt{50} is written \texttt{"50"}.
-Values a YAML reader would misread are also quoted: those opening on an indicator
-character, containing \texttt{:~} or \texttt{~\#}, ending in a colon, or opening or
-ending on a space. The edge's Content Security Policy, which ends in \texttt{https:},
+\texttt{sigs.k8s.io/yaml}, which follows YAML~1.1 implicit types, and the oracles follow
+the same rules.
+A value such as \texttt{on} would reach the API server as a boolean if written as a plain scalar.
+Unneeded quotes add bytes. The string \texttt{50} is written \texttt{"50"}.
+Values a YAML reader would misread are also quoted: those starting with an indicator
+character, containing \texttt{:~} or \texttt{~\#}, ending in a colon, or starting or
+ending with a space. The edge's Content Security Policy, which ends in \texttt{https:},
 is quoted in the committed tree.
 
-The double-quoted form does not escape its content, so a quote or backslash in a
-value would break the line. Names and versions exclude both by pattern; an environment literal does
-not, so a quoted one holding either would break, and no example holds one.
+The double-quoted form does not escape content. A quote or backslash in a value
+would make the line invalid. Name and version patterns exclude both; environment
+literals permit them. Quoted literals containing either would fail; the examples contain none.
 
 \textbf{Block scalars.} An Asset is a file a Project ships as configuration. Its
 ConfigMap holds the text as a block scalar, and its name contains a digest of the
@@ -266,8 +266,8 @@ write it (Example~\ref{lst:block}).
 \end{lstlisting}
 
 The indicator preserves trailing line breaks: one newline gives \texttt{|}
-(clip), two give \texttt{|+} (keep), none give \texttt{|-} (strip). Under clip the body
-drops its one trailing newline, which the block restores; AQL's \texttt{substring} is one-based
+(clip), two give \texttt{|+} (keep), none give \texttt{|-} (strip). Under clip the query
+removes the trailing newline, which the block restores. AQL's \texttt{substring} is one-based
 and inclusive, as in OCL. Every non-empty line is indented by four spaces; blank lines stay blank.
 
 \textbf{Key order.} Key order follows the template text. The API reads
@@ -285,7 +285,7 @@ parity comparison checks this only for committed cases. Both come from one \text
 A generated-key document is the only JSON file built by concatenation: the \texttt{entry}
 query returns one key as an object, and \texttt{json} separates the entries with
 commas. The concatenation writes keys, paths and encodings without escaping, which is
-safe only while the model restricts them to characters that need none.
+safe only while the model permits no characters requiring escaping.
 
 \subsection{Queries: Formatting and Selection}
 \label{sec:m2t-queries}
@@ -295,7 +295,7 @@ queries were removed because they chose values, and the
 choices are now represented by model features: \texttt{allowsAt}, \texttt{policyPaths},
 \texttt{catalogAllows}, \texttt{catalogPaths}, \texttt{middlewareName},
 \texttt{rateLimitName} and \texttt{listed}. \texttt{serving} became \texttt{servingOf}.
-Table~\ref{tab:moved-choices} lists the five choices behind them.
+Table~\ref{tab:moved-choices} lists the five choices they made.
 
 The remaining queries derive no model values. Formatting queries read one
 value and return a string or a number (\texttt{seconds}, \texttt{octal},
@@ -309,7 +309,7 @@ and \texttt{probed} for a container's optional sections); the module's comments 
 The per-kind rules above (including \texttt{switchover} and \texttt{servingLabel})
 specify how the target format represents model values without deriving them.
 
-Each of the five choices produced a value beyond the reach of model-level tests.
+Model-level tests could not check the values produced by these five choices.
 These values are now derived once during resolution and only written by templates.
 The trees remained identical byte for byte, except that a redirect step previously
 named as a security profile by \texttt{middlewareName} is now named for its Route, as
@@ -343,9 +343,9 @@ The Java class \texttt{Rendering} is the only Java in the step. It copies the Re
 Deployments into a fresh resource, loads the module from the class path, and runs the
 standalone generator in a \texttt{.partial} directory beside the output root. If Acceleo
 reports a diagnostic other than OK, the class throws an \texttt{IllegalStateException} whose message begins
-\texttt{the rendering did not complete} and includes Acceleo's text. Files move under the root
-only after success, so a failed run leaves the root unchanged. A template that fails to
-parse or evaluate therefore cannot silently produce an incomplete tree, as it previously could.
+\texttt{the rendering did not complete} and includes Acceleo's text. The class moves files under the root
+only after success. A failed run leaves the root unchanged; a template parsing or
+evaluation failure previously could silently produce an incomplete tree.
 
 \subsection{Worked Example: One Route from Model to File}
 \label{sec:m2t-example}
@@ -358,7 +358,7 @@ prefix and reaching the Process \texttt{notes-api} on its \texttt{http} Surface
 authored, and only \texttt{exact} would be written as \texttt{Path} instead of
 \texttt{PathPrefix}. Resolution assigns precedence 1; the template writes
 \texttt{priority: 999} by the arithmetic \texttt{1000 - r.precedence}, so that the
-smallest precedence has the highest priority. The middleware step carries its name
+smallest precedence has the highest priority. The middleware step records its name
 and namespace, so the template needs no conditional choice. The module previously
 chose them by the step's kind, with a query for each name (Table~\ref{tab:moved-choices}). The port
 is looked up by the Surface's name among the Process's Surfaces, so the file states the
