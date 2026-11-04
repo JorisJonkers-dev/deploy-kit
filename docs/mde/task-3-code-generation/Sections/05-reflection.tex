@@ -7,7 +7,7 @@ and the phases on one timeline, alongside the commits per day.
 
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.7\linewidth, keepaspectratio]{Figures/timeline}
+\includegraphics[width=0.64\linewidth, keepaspectratio]{Figures/timeline}
 \caption{Project Timeline}
 \label{fig:timeline}
 \end{figure}
@@ -46,8 +46,8 @@ follow.
 \subsubsection{Oracle Parity Across Two Implementations}
 \label{sec:went-parity}
 
-The two independently written implementations must match the same committed
-oracles, so both produced the same behaviour
+Both independently written implementations match the same committed
+oracles, so both produce the same behaviour on those cases
 (Appendix~\ref{sec:appendix-production}). Section~\ref{sec:oracles} explains the limits of this
 evidence.
 
@@ -95,7 +95,7 @@ been fixed at the Task 2 deadline, with later structural decisions recorded as c
 Byte comparison directed much of the template work towards presentation. Acceleo 4 strips
 a margin from each block-body line; a call repeats the text preceding it on the
 line before every output line, so shared templates are written without
-indentation (Section~\ref{sec:design}). The \texttt{GENERATED} header, key order
+indentation (Section~\ref{sec:m2t-fragments}). The \texttt{GENERATED} header, key order
 and quoting rule were template decisions made to match the oracle. The effort
 concerned output appearance, not transformation semantics.
 
@@ -103,8 +103,8 @@ concerned output appearance, not transformation semantics.
 \label{sec:scope}
 
 The scope was too large for one course. Between 14 September and 3 November, the
-repository received 404 commits across the specification, the production
-implementation and \path{emf/}, a second implementation of the compiler.
+repository received 404 commits across the specification, the EMF
+implementation in \path{emf/} and the TypeScript production implementation.
 Keeping the implementations consistent doubled the work per change. A smaller scope would
 have retained parity, the specification and the headless build, limited the model to
 Task 1 and documented later features as deferred.
