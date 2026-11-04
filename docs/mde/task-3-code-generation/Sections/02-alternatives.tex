@@ -118,8 +118,8 @@ control of the header line or key order without a custom formatter.
 Whitespace must be controlled manually: the template specifies every layout byte
 (Section~\ref{sec:m2t-fragments}). The template also writes the key order of the
 Vault JSON documents, with no header. A string is double-quoted if a YAML implicit resolver would read it as
-a null, a boolean, a number or a timestamp, or when it ends in a colon or contains
-``\texttt{: }''.
+a null, a boolean, a number or a timestamp, or if a plain scalar cannot hold it
+(Section~\ref{sec:m2t-spelling}).
 
 \subsubsection{Template Structure: One Module with Dispatch by Type}
 \label{sec:m2t-structure}
