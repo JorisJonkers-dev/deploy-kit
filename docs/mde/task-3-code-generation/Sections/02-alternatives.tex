@@ -6,11 +6,11 @@ Table~\ref{tab:choices} summarises every decision below.
 \subsection{Constraints Set by the Course}
 \label{sec:fixed}
 
-The course requires Ecore metamodels, QVT-Operational or ATL for model-to-model
+The course requires Ecore metamodels, QVT-Operational~\cite{qvt} or ATL~\cite{atl} for model-to-model
 transformation, Acceleo for model-to-text generation, Eclipse/EMF projects in the archive,
 and a generated artefact loaded in a tool (here, the Kubernetes API server). The project
 defines its own domain, target and source syntax. OCL cannot hash canonical bytes, so
-one Java library computes only that digest. Maven with Tycho builds the projects
+one Java class computes only that digest. Maven with Tycho builds the projects
 without an IDE; an examiner can also run the generator from Eclipse.
 
 \subsection{Overview of the Design Decisions}
@@ -36,7 +36,7 @@ information from different levels.
 Three typed steps replace a single transformation from source to Resolved Deployment.
 A single transformation was rejected because it obscures the source of faults.
 Each intermediate model has an oracle that identifies the faulty step.
-Rendering reads only the Resolved Deployment and therefore only writes text.
+Rendering reads only the Resolved Deployment and only writes text.
 
 \subsubsection{Removing the Estate Pass}
 \label{sec:shape-estate}
@@ -58,7 +58,7 @@ the only applier and pulls the rendered output by digest
 (\path{spec/v1/55-delivery.md}). A push path from CI
 was rejected because it would require a deployment credential outside the cluster. Helm
 and Kustomize templating were rejected because no abstract model could express their
-constraints (Task~1 report). Each generated file is an object the API server
+constraints (Task~1 report). Each generated Kubernetes file is an object the API server
 validates, and the load stage runs that validation.
 
 \subsubsection{One Rendering Run for All Projects}
@@ -88,7 +88,7 @@ are interpreted rather than compiled to Java.
 
 The Epsilon Generation Language (EGL)~\cite{egl} also runs standalone over Ecore
 and would meet the first two criteria; the assignment settles the choice. Xtend is a
-separate JVM language that compiles to Java, not the template language of Xtext.
+general-purpose JVM language that compiles to Java, not a dedicated model-to-text language.
 Acceleo implements the OMG standard MOFM2T~\cite{mofm2t}; no conformance is
 claimed beyond the constructs the module uses.
 
@@ -133,8 +133,7 @@ one module keeps a single namespace. The single file has 3607 lines,
 
 YAML generation calls one overloaded \texttt{objects} template, which Acceleo resolves by the Deliverable's
 runtime type (a polymorphic template in the course's terms). It replaced a chain
-of 22 type tests with no \texttt{else}, where a kind without a branch produced
-only the header. A kind without a template now causes the run to fail.
+of 22 type tests with no \texttt{else} (Section~\ref{sec:m2t-kinds}).
 
 \subsubsection{Templates Use Only Values Present in the Model}
 \label{sec:m2t-decides}

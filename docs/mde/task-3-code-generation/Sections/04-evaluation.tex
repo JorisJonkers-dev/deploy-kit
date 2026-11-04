@@ -61,7 +61,7 @@ branch coverage (JaCoCo) per module. A nightly build requires a 100\% mutation s
 \textbf{Seam and file interface.} Seam tests in \path{emf/bundles/render} exercise
 \texttt{Rendering} without the pipeline. A template that does not parse must fail with Acceleo's diagnostic. A template that fails halfway (\path{halfway.mtl}) must leave the output root unchanged; files go first to the sibling \path{.partial} directory. An unindented module
 (\path{unindented.mtl}) is the negative case for the indentation rule of
-Section~\ref{sec:design}.
+Section~\ref{sec:m2t-fragments}.
 \texttt{ParityTest} in \path{emf/tests/parity} runs the whole pipeline through
 files only, as a command-line tool would, and checks that
 the composed union contains exactly the committed files, each identical byte for byte.
@@ -75,7 +75,7 @@ pipeline writes and requires 185 allowlisted comparisons to match exactly.
 \texttt{-kubernetes-version 1.36.5} and \texttt{-strict} against the default
 schemas, the datreeio CRD catalogue and the repository's \texttt{Client} schema,
 and checks every pod template against Pod Security's \texttt{restricted} profile;
-both checks have negative fixtures. A dry-run script applies these checks to the generated tree in about ten seconds. It then starts a disposable k3s cluster at v1.36.5, the production control plane's version. It installs pinned CRDs for every non-core kind, creates the named namespaces and applies each Project's output and the platform's share with \texttt{-{}-dry-run=server}. Network policies are absent from indexes and are applied file by file.
+both checks have negative fixtures. A dry-run script applies these checks to the generated tree. It then starts a disposable k3s cluster at v1.36.5, the production control plane's version. It installs pinned CRDs for every non-core kind, creates the named namespaces and applies each Project's output and the platform's share with \texttt{-{}-dry-run=server}. Network policies are absent from indexes and are applied file by file.
 
 \subsubsection{Oracles and Their Independence}
 \label{sec:oracles}
@@ -90,8 +90,7 @@ Appendix~\ref{sec:appendix-production} discusses it and the limits of this indep
 \label{sec:compare-alt}
 
 Every intermediate model and every output is structured data, so \texttt{Comparison}
-compares parsed content first and bytes last. JSON is read with Jackson, YAML with
-SnakeYAML's YAML~1.1 reader on both sides, as Kubernetes reads it, so a quoted
+compares parsed content first and bytes last. JSON is read with Jackson, YAML with SnakeYAML's YAML~1.1 reader on both sides, with the YAML~1.1 types Kubernetes uses, so a quoted
 \texttt{"on"} and a plain \texttt{on} still differ by type. XMI is loaded into EMF and
 compared by EMF Compare 3.5.3. The models have no identifiers, so the test-only
 \texttt{ModelDiff} pairs list items by a natural key (\texttt{name}, \texttt{id},
@@ -117,8 +116,8 @@ Table~\ref{tab:results} reports checks per case. The schema, profile and dry-run
 results were obtained on 2026-11-03 from the generated tree; the hand-in's \path{evidence/} holds their logs. Units differ by row:
 output counts refer to files; schema counts refer to resources (several may share
 a file, and \path{kustomization.yaml} files count); dry-run counts
-refer to objects; the schema and dry-run counts include the platform's share. The union includes
-\texttt{minimal}'s and \texttt{data}'s files, so levels 3 and 4 run per case. The profile check covers 19 pod templates; only parity reads the Vault JSON files.
+refer to objects; the schema and dry-run counts include the platform's share. Levels 3 and 4 run on
+each case's own tree with the platform's share. The profile check covers 19 pod templates; only parity reads the Vault JSON files.
 
 \begin{table}[!htbp]
 \centering
@@ -154,8 +153,8 @@ Most rendering defects were found by running the output rather than by byte comp
 \item A Job's name did not reflect its pod template, so the cluster rejected it: found only on a cluster.
 \item Eligible nodes were derived but not rendered: found by reading the adapter;
   parity catches it now.
-\item A space in an authored path created a second Release Gate entry, the
-  condition per Reconcile Unit that blocks a rollout: found by review; validation now rejects it.
+\item A space in an authored path created a second Release Gate entry for its
+  Reconcile Unit: found by review; validation now rejects it.
 \item An optional edge between Projects made two Reconcile Units, the units Flux
   reconciles in order, wait for each other: found in use; no example declares such an edge.
 \end{itemize}
@@ -166,8 +165,7 @@ Most rendering defects were found by running the output rather than by byte comp
 \paragraph{Template coverage.} Every Deliverable kind appears in a compared tree. Nine features are unset in all render cases, including a sidecar's \texttt{command} and a disruption budget. No Process runs as a StatefulSet; the render stage's baseline lists each gap.
 Acceleo template coverage is not measured: coverage gates exclude templates, and no
 tool reports which branches the cases exercise. A one-character change to the Namespace
-template's \texttt{managed-by} label failed 14 of 25 stage cases and 5 of 9 rendered-tree
-tests, each naming the file. A change to a kind absent from compared trees would pass.
+template's \texttt{managed-by} label failed, at the time, 14 of 25 stage cases and 5 of 9 rendered-tree tests, each naming its file. A change to a kind absent from compared trees would pass.
 
 \paragraph{Version pins.} Schema validation is pinned to Kubernetes 1.36.5 and one
 CRD catalogue commit, while production worker nodes run 1.35.2. A field ignored by a

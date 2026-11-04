@@ -2,7 +2,7 @@
 \label{sec:introduction}
 
 The project converts short source documents into files that a cluster's GitOps
-controller applies. Each Application's repository holds one \texttt{Project
+controller applies. Each Project is described by one \texttt{Project
 Intent} document, which states what its \texttt{Application}s need: their
 \texttt{Process}es, limits, ports, dependencies and external Routes. One
 \texttt{Platform Intent} document describes the shared platform. Three read-only
@@ -46,7 +46,7 @@ correct syntax, but does not establish that the decisions were correct.
 \subsection{Changes Since Task~2}
 \label{sec:since-task2}
 
-Deploying the real estate required changes to the model. The estate pass, a third transformation over all Resolved
+Deploying the estate required changes to the model. The estate pass, a third transformation over all Resolved
 Deployments, was removed. The migration from fleet-infra, the previous setup with its
 own DSL, was partly manual. Moving data between Instances (a Move) existed only for
 that migration, so the model and this report leave it out.

@@ -108,7 +108,7 @@ Dashboards and alert rules & The \texttt{Application} declares its Grafana dashb
 \label{tab:app-source-3}
 \end{table}
 
-The OCL constraints also changed substantially. These include those listed above; each new form of \texttt{Process} added constraints to
+The OCL constraints also changed substantially. The constraints above are among them; each new form of \texttt{Process} added constraints to
 \path{project-intent.ocl}.
 
 \subsection{Platform Intent}
@@ -130,8 +130,7 @@ Its metamodel is the Platform part of \path{project-intent.ecore}; its grammar i
 
 Platform Intent changed in two ways. First, the eight privileged-role fields
 now name both a Project and an Application, breaking compatibility with every
-document that sets them. Second, it gained policies from
-transformations or Project files: the VPN image, GPU resource names, library
+document that sets them. Second, policies moved into it from transformations and Project files: the VPN image, GPU resource names, library
 grants and each engine's catalog method.
 
 \begin{table}[!htbp]
@@ -234,8 +233,8 @@ Backups removed & The snapshot's rollback-backup list and annotation are removed
 \end{table}
 
 Output remains a function of the pinned inputs. Facts about the running cluster
-enter as new pinned values, rather than direct cluster queries. Section~\ref{sec:design} explains the snapshot rules and why the node
-contract records capacity.
+enter as new pinned values, rather than direct cluster queries. \path{spec/v1/20-resolved-deployment.md} gives the snapshot rules, and
+\path{spec/v1/60-setup.md} why the node contract records capacity.
 
 \subsection{Target Metamodel (Resolved Deployment)}
 \label{sec:appendix-target}
@@ -434,8 +433,7 @@ result (Section~\ref{sec:evaluation}).
 \subsection{Performance, and QVT-Operational Against ATL}
 \label{sec:appendix-performance}
 
-Task~2 partly justified QVT-Operational over ATL by execution speed. That
-reason carried more weight than it deserves: the compiler is being ported to a
+Task~2 partly justified QVT-Operational over ATL by execution speed. That reason carried more weight than it deserved: the compiler is being ported to a
 general-purpose language (Section~\ref{sec:outlook}), so these figures answer the Task~2
 feedback rather than a need of the EMF implementation.
 A benchmark suite in the cli bundle times each stage and tests an ATL lowering port

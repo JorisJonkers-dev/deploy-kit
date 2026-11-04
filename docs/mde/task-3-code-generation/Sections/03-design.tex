@@ -24,11 +24,10 @@ model to file (Figure~\ref{fig:worked-example}).
 
 The design uses four course concepts. Dispatch by kind uses polymorphic templates
 (Section~\ref{sec:m2t-kinds}). Every run regenerates every file in full, so no
-protected areas are needed. Each stage is tested separately against committed files.
-Output is compared byte for byte with committed oracle files (reference trees both
-implementations must match; Section~\ref{sec:levels}). No trace blocks map
-text to model elements. The JSON templates use text-explicit escape
-(\texttt{['['/]}) to write a literal bracket.
+protected areas are needed. Output is compared byte for byte with committed oracle
+files (reference trees both implementations must match; Section~\ref{sec:levels}),
+so no trace blocks map text to model elements. The JSON templates use text-explicit
+escape (\texttt{['['/]}) to write a literal bracket.
 
 \subsection{Interface: Input, Output and Entry Point}
 \label{sec:m2t-interface}
@@ -54,8 +53,7 @@ checks every input document. If validation rejects the set, it returns
 diagnostics and writes nothing. Otherwise, it lowers and resolves each Project and calls
 \texttt{Rendering.render(deployments, root)} once. The pipeline has no command-line interface; it runs
 in the Maven build of \path{emf/}, where \texttt{RenderedTreeTest} compares each
-rendered file with the committed \texttt{rendered/} tree. The parity suite uses
-the same entry point exclusively through files.
+rendered file with the committed \texttt{rendered/} tree. The parity suite reaches the same entry point only through files.
 In Eclipse, \texttt{render.launch} (class \texttt{RenderModel}) and the hand-in's launch
 configurations render one model file through \texttt{Rendering.render}.
 
@@ -82,7 +80,7 @@ runtime type, with one overload for each of the 37 YAML kinds.
 
 Resolution defines the path plan; templates only follow it. Each Project has
 a namespace file and an index for \path{apps/<project>/}; each
-Application has one file per family, with no file for a family containing no objects.
+Application has a directory with one file per kind of object it renders.
 No index lists policy files or Vault documents, because the
 Vault policy Job reads them from its own ConfigMap
 (\path{spec/v1/30-deliverables.md}).
@@ -106,7 +104,7 @@ two committed trees file for file (Section~\ref{sec:evaluation}).
 
 Sorting by value makes indexes independent of Deliverable order. The module
 previously collected indexes through \texttt{allInstances()}; this was removed with the
-estate pass (Section~\ref{sec:shape}).
+estate pass (Section~\ref{sec:shape-estate}).
 
 Two Deliverables assigned the same path would silently overwrite the earlier file;
 templates cannot detect this. The pipeline therefore checks the plan before rendering
@@ -118,12 +116,11 @@ or Vault name with two owners, reporting \texttt{E\_PATH\_COLLISION}
 \label{sec:m2t-kinds}
 
 The module supports 40 Deliverable kinds in nine families
-(Table~\ref{tab:kinds}). Each YAML family uses an \texttt{objects}
-template overloaded on its receiver type. Acceleo selects the overload by runtime type
+(Table~\ref{tab:kinds}). Each YAML kind has its own overload of an \texttt{objects} template. Acceleo selects the overload by runtime type
 rather than string comparison: these are polymorphic templates in the course's sense.
 A kind with no overload causes evaluation and the run to fail. The module previously
 dispatched through 22 type tests with no \texttt{else}, so a kind without a branch
-would silently produce only a header line. With type dispatch, such a kind fails the run, in 50 fewer lines.
+would silently produce only a header line. With type dispatch, such a kind fails the run, and the module is 50 lines shorter.
 
 \begin{table}[!htbp]
 \centering
@@ -147,8 +144,8 @@ Vault documents (JSON) & \texttt{VaultPolicyFile}, \texttt{VaultRoleFile}, \text
 \label{tab:kinds}
 \end{table}
 
-A Deliverable represents a file rather than an object. Policy Jobs and catalog methods
-are exceptions: the \texttt{part} attribute assigns each of their five objects to a
+A Deliverable represents a file rather than an object. Policy Jobs, catalog methods and node agents
+are exceptions: the \texttt{part} attribute assigns each of their objects to a
 separate file, so each is planned and pruned as a separate Deliverable.
 
 \phantomsection\label{sec:m2t-gaps}
@@ -157,8 +154,7 @@ kind or feature, its derivation in resolution, a template, and a committed file 
 byte comparison. Features of existing kinds include Route annotations (facts about the
 Route's tier) and the fourth Canary webhook, \texttt{rollback}, through which the
 Release Gate decides whether to roll back a release that can no longer pass. Each new
-kind received one \texttt{objects} overload; the edge's shared Middlewares, for
-example, are named by Routes through \texttt{MiddlewareStep.name}.
+kind received one \texttt{objects} overload; the \texttt{edge} example's shared Middlewares, for example, are named by Routes through \texttt{MiddlewareStep.name}.
 
 Templates derive no values, but specify how the target format represents them.
 The module's comments cite the chapter defining each rule:
@@ -168,13 +164,13 @@ The module's comments cite the chapter defining each rule:
     one and no unavailable pods, because Flagger starts the new version beside the old.
     Rolling uses a surge of zero and one unavailable pod, because a proxy using a host
     port cannot run two copies. Stop-start uses \texttt{Recreate}.
-  \item \textbf{Disruption budget.} The selector is the resolution's \texttt{servingLabel}
-    for a blue-green Process, naming the Deployment managed by Flagger
+  \item \textbf{Disruption budget.} For a blue-green Process, the selector is the resolution's
+    \texttt{servingLabel}, which names the Deployment Flagger manages
     (\texttt{serving}); otherwise, it selects the Process's own pods.
   \item \textbf{Route match.} \texttt{exact} is written as \texttt{Path}; every other match
     as \texttt{PathPrefix}.
   \item \textbf{Migration Jobs.} They are created suspended and named for their
-    revision's tag. Only the Release Gate (the check that releases a migration)
+    revision's tag. Only the Release Gate, which decides when a release may proceed,
     changes their suspension (\path{spec/v1/55-delivery.md}).
 \end{itemize}
 
@@ -184,7 +180,7 @@ The module's comments cite the chapter defining each rule:
 A shared template has multiple callers, such as the template for a Process's metadata
 or label set. It is written once at the left margin; callers determine its placement.
 Three whitespace rules apply. MOFM2T \S 8.4 defines what templates write at the start
-and end of a line. Acceleo~4 adds two behaviours used by the module.
+and end of a line. Acceleo~4 adds two behaviours used by the module~\cite{acceleo}.
 
 \textbf{The indentation margin (Acceleo~4).} Each block (the template, each \texttt{if}, each
 \texttt{for}) adds two indentation spaces that Acceleo omits from the output. A line
@@ -196,22 +192,24 @@ no body margin must fail with an Acceleo parsing error
 \textbf{The call column (Acceleo~4).} A call repeats the text preceding it on the
 line before every output line, so a shared template need not know where it will
 appear. In Example~\ref{lst:labels}, \texttt{metadata} calls
-\texttt{labels} at column two of its own output, and \texttt{labels} calls
-\texttt{labelSet} at column zero, so the five label lines appear at column four of the
-Deployment. The label set is written at the margin; its output indentation depends
-on the call column.
+\texttt{labels} at column two of its own output, and \texttt{labels} writes its five
+lines at column zero, so they appear at column four of the Deployment. The labels are
+written at the margin; their output indentation depends on the call column.
 
-\begin{lstlisting}[style=report, language=acceleo, caption={The Label Shared Templates}, label={lst:labels}]
-[template private labels(p : resolveddeployment::ResolvedProcess)]
-  [p.name.labelSet(p.component, p.application().id)/]
+\begin{lstlisting}[style=report, language=acceleo, caption={The Metadata and Label Shared Templates}, label={lst:labels}]
+[template private metadata(p : resolveddeployment::ResolvedProcess)]
+  name: [p.name/]
+  namespace: [p.application().namespace/]
+  labels:
+    [p.labels()/]
 [/template]
 
-[template private labelSet(name : String, component : String, application : String)]
-  app.kubernetes.io/name: [name/]
-  app.kubernetes.io/instance: [name/]
-  app.kubernetes.io/part-of: [application/]
+[template private labels(p : resolveddeployment::ResolvedProcess)]
+  app.kubernetes.io/name: [p.name/]
+  app.kubernetes.io/instance: [p.name/]
+  app.kubernetes.io/part-of: [p.application().id/]
   app.kubernetes.io/managed-by: deploy-kit
-  app.kubernetes.io/component: [component/]
+  app.kubernetes.io/component: [p.component/]
 [/template]
 \end{lstlisting}
 
@@ -229,24 +227,23 @@ the layout directly, without a formatter.
 written once per file by \texttt{document}. A JSON document has no header, because
 a comment would make it invalid for the Vault job.
 
-\textbf{Quoting.} A string is written as a plain scalar unless the \texttt{scalar} query
-matches an implicit-type pattern; matches are double-quoted. The patterns
+\textbf{Quoting.} A string is written as a plain scalar unless the \texttt{scalar} query finds that it matches an implicit-type pattern; then it is double-quoted. The patterns
 match the whole value and cover the empty string, tilde, null, the boolean words
 (\texttt{y}, \texttt{yes}, \texttt{on} and their opposites), integers in every
 YAML~1.1 base, floats and timestamps.
 YAML~1.1 rules are deliberate: Kubernetes tooling decodes through
-\texttt{sigs.k8s.io/yaml}, which follows YAML~1.1 implicit types, and the oracles follow
+\texttt{sigs.k8s.io/yaml}, which follows YAML~1.1 implicit types~\cite{yaml11}, and the oracles follow
 the same rules.
 A value such as \texttt{on} would reach the API server as a boolean if written as a plain scalar.
 Unneeded quotes add bytes. The string \texttt{50} is written \texttt{"50"}.
 Values a YAML reader would misread are also quoted: those starting with an indicator
 character, containing \texttt{:~} or \texttt{~\#}, ending in a colon, or starting or
-ending with a space. The edge's Content Security Policy, which ends in \texttt{https:},
+ending with a space. The \texttt{edge} example's Content Security Policy, which ends in \texttt{https:},
 is quoted in the committed tree.
 
 The double-quoted form does not escape content. A quote or backslash in a value
 would make the line invalid. Name and version patterns exclude both; environment
-literals permit them. Quoted literals containing either would fail; the examples contain none.
+literals permit them. A quoted literal containing either would fail; the examples contain none.
 
 \textbf{Block scalars.} An Asset is a file a Project ships as configuration. Its
 ConfigMap holds the text as a block scalar, and its name contains a digest of the
@@ -295,11 +292,9 @@ choices are now represented by model features: \texttt{allowsAt}, \texttt{policy
 \texttt{rateLimitName} and \texttt{listed}. \texttt{serving} became \texttt{servingOf}.
 Table~\ref{tab:moved-choices} lists the five choices they made.
 
-The remaining queries derive no model values. Formatting queries read one
-value and return a string or a number (\texttt{seconds}, \texttt{octal},
+The remaining queries derive no model values. Formatting queries read one value and return a string or a number (such as \texttt{seconds}, \texttt{octal},
 \texttt{fileOf}, \texttt{directoryOf}, \texttt{writableOf}, \texttt{scalar},
-\texttt{chomping}, \texttt{blockOf}, \texttt{entry}). Selection queries determine
-which objects a template visits and their order (\texttt{application},
+\texttt{chomping}, \texttt{blockOf}, \texttt{entry}). Selection queries determine which objects a template visits and their order (such as \texttt{application},
 \texttt{routed}, \texttt{paths}, \texttt{hostnames}, \texttt{backups},
 \texttt{backupRanges}, \texttt{files}, \texttt{destinationOf}, \texttt{versioned},
 \texttt{versionOf}, \texttt{servingOf}, \texttt{operatedOf}, and \texttt{holdsEnv}, \texttt{mounts}
@@ -337,7 +332,7 @@ Section~\ref{sec:appendix-transformations}.
 \subsection{The Java Class and Failure Handling}
 \label{sec:m2t-java}
 
-The Java class \texttt{Rendering} is the only Java in the step. It copies the Resolved
+The Java class \texttt{Rendering} runs the step; \texttt{RenderModel} only calls it from Eclipse. It copies the Resolved
 Deployments into a fresh resource, loads the module from the class path, and runs the
 standalone generator in a \texttt{.partial} directory beside the output root. If Acceleo
 reports a diagnostic other than OK, the class throws an \texttt{IllegalStateException} whose message begins
