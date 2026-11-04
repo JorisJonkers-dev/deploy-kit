@@ -58,7 +58,7 @@ the only applier and pulls the rendered output by digest
 (\path{spec/v1/55-delivery.md}). A push path from CI
 was rejected because it would require a deployment credential outside the cluster. Helm
 and Kustomize templating were rejected because no abstract model could express their
-constraints (Task~1 report). Each generated Kubernetes file is an object the API server
+constraints (Task~1 report). Each generated Kubernetes file holds objects the API server
 validates, and the load stage runs that validation.
 
 \subsubsection{One Rendering Run for All Projects}
@@ -87,7 +87,7 @@ Acceleo Query Language (AQL) expressions over the Ecore model; the templates
 are interpreted rather than compiled to Java.
 
 The Epsilon Generation Language (EGL)~\cite{egl} also runs standalone over Ecore
-and would meet the first two criteria; the assignment settles the choice. Xtend is a
+and would meet the first two criteria; the assignment settles the choice. Xtend, in which Xtext's generators are written, is a
 general-purpose JVM language that compiles to Java, not a dedicated model-to-text language.
 Acceleo implements the OMG standard MOFM2T~\cite{mofm2t}; no conformance is
 claimed beyond the constructs the module uses.

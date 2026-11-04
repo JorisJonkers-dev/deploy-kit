@@ -80,7 +80,7 @@ runtime type, with one overload for each of the 37 YAML kinds.
 
 Resolution defines the path plan; templates only follow it. Each Project has
 a namespace file and an index for \path{apps/<project>/}; each
-Application has a directory with one file per kind of object it renders.
+Application has a directory holding its object files.
 No index lists policy files or Vault documents, because the
 Vault policy Job reads them from its own ConfigMap
 (\path{spec/v1/30-deliverables.md}).
