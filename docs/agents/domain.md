@@ -38,8 +38,6 @@ documentation when exploring it. Single context, one layout, no
 │       ├── model/            ← v1 model decisions, point at spec/v1
 │       ├── architecture/     ← compiler decisions, point at docs/architecture.md
 │       └── deferred/         ← co-testing and retired delivery, not linted
-└── emf/                       ← a second implementation, with its own
-                                  docs/adr/ numbered from the same sequence
 ```
 
 ## Use the glossary's vocabulary

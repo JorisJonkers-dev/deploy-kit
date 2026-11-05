@@ -1,8 +1,8 @@
 // The composed union to every project's projections
 // (spec/v1/20-resolved-deployment.md): each Application's element, published
 // with the provenance every render from these inputs shares, and each
-// project's resolved dependency edges, the part of resolution both
-// implementations meet at (docs/architecture.md#the-parity-contract).
+// project's resolved dependency edges, resolution's committed contract
+// (docs/architecture.md#the-oracles).
 import type { Hasher } from "../model/hasher.ts";
 import type {
   InputDigest,

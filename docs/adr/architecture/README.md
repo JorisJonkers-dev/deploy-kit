@@ -16,8 +16,6 @@ Numbers come from the one estate-wide sequence; the register is
 [`../README.md`](../README.md). The scope boundary is stated in
 [chapter 00](../../../spec/v1/00-overview.md#programme-scope).
 
-The records here bind the TypeScript tree. The model-driven implementation
-under `emf/` decides its own structure in
-[`emf/docs/adr/`](../../../emf/docs/adr/README.md), and
-[0068](0068-two-implementations-meet-at-the-parity-table.md) is the contract
-between the two.
+The records here bind the TypeScript tree:
+[`docs/architecture.md#the-oracles`](../../architecture.md#the-oracles) is the
+contract between them.

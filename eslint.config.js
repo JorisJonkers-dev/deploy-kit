@@ -19,8 +19,6 @@ export default defineConfig(
       "node_modules/**",
       "reports/**",
       ".stryker-tmp/**",
-      // Maven build output from the model-driven implementation under emf/.
-      "**/target/**",
       // What `deploy-kit generate identity` writes for a worked example, in an
       // application's language: an oracle, not this repository's source.
       "spec/v1/examples/**/generated/**",

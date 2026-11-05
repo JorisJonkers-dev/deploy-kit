@@ -34,8 +34,9 @@ the chapter's table says the refusal lands at.
 | [`human-grant-role-outside-vocabulary/`](human-grant-role-outside-vocabulary/) | a Human Grant of a role outside the built-in four | the value |
 | [`human-grant-without-reason/`](human-grant-without-reason/) | a Human Grant with no `reason` | where the field would be |
 
-These oracles bind the production implementation only
-([the parity contract](../../../../docs/architecture.md#the-parity-contract)):
-the model-driven implementation reads a file through a grammar, which refuses
-the token rather than naming the field. `test/schema-refusals.test.ts`
-runs each case.
+A file the reader refuses, outside the YAML subset or against the schema, is
+refused with the code `schema` at the place
+[chapter 10](../../../../spec/v1/10-project-intent.md#what-a-schema-refusal-reports)
+fixes
+([the oracles](../../../../docs/architecture.md#the-oracles)).
+`test/schema-refusals.test.ts` runs each case.

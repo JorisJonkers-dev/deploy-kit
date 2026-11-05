@@ -1,11 +1,8 @@
-// The rules one authored document answers on its own: the counterpart of the
-// Complete OCL invariants the model-driven implementation evaluates, and the
-// same refusals at the same places. Each carries the code the specification
-// gives it and the JSON Pointer of the object it refuses
-// (docs/architecture.md#the-parity-contract), which is the object an invariant
-// takes as its context. A rule that needs more than one document belongs to
-// composition.ts, not here. The env files beside a project file are checked
-// here too, because they are part of what one project authors.
+// The rules one authored document answers on its own. Each carries the code
+// the specification gives it and the JSON Pointer of the object it refuses
+// (docs/architecture.md#the-oracles). A rule that needs more than one document
+// belongs to composition.ts, not here. The env files beside a project file are
+// checked here too, because they are part of what one project authors.
 import type { Diagnostic, RefusalCode } from "../model/diagnostic.ts";
 import type { EnvScope, ScopedEnv } from "../model/env.ts";
 import type {

@@ -9,9 +9,7 @@ rests-on: ["0001"]
 
 # Tests run in-process on Vitest, and the tooling is TypeScript that Node runs directly
 
-This decision covers the repository root. The model-driven implementation
-under `emf/` is tested with JUnit through Maven, inside `emf/`
-([0068](0068-two-implementations-meet-at-the-parity-table.md)).
+This decision covers the repository root.
 
 ## Rests on
 Every gate this repository runs can be exercised in-process by one test runner

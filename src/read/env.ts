@@ -1,7 +1,7 @@
 // The dotenv subset chapter 10 fixes, read into the model
 // (spec/v1/10-project-intent.md#the-dotenv-subset-that-is-read). A reader
-// rather than a grammar, for the reason
-// emf/docs/adr/emf/0082-the-env-files-are-read-not-parsed-by-xtext.md records.
+// rather than a grammar: the file is data the pipeline reads, not syntax the
+// grammar owns, so an env file cannot make a document fail to parse.
 import type { Diagnostic, Result } from "../model/diagnostic.ts";
 import type {
   EnvVariable,

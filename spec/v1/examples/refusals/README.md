@@ -100,8 +100,8 @@ one defect so the refusal has a single cause.
 
 Every refused fixture carries a committed `<name>.diagnostics.json` beside it:
 the set of `(code, path)` pairs the model emits, where the path is the RFC 6901
-JSON Pointer of the object refused. Both implementations are held to that file
-([the parity contract](../../../../docs/architecture.md#the-parity-contract)),
+JSON Pointer of the object refused. The compiler is held to that file
+([the oracles](../../../../docs/architecture.md#the-oracles)),
 and it replaces the `expect:` header these fixtures used to carry.
 
 A value outside a closed vocabulary, and every other defect the schema or the

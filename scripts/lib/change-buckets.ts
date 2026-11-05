@@ -63,44 +63,12 @@ const ROOT_TOOLING_FILES = new Set([
   "renovate.json",
 ]);
 
-// emf/ (docs/adr/emf/0107) is the coursework's own Java build: its own
-// decision register, docs, source, tests and Maven/Tycho plumbing, deleted
-// with the directory at the course's sunset. It gets the same nine buckets
-// as the rest of the tree, checked in the same specific-before-general
-// order, rather than a tenth bucket of its own.
-const EMF_PRODUCTION_EXTENSIONS = [
-  ".java",
-  ".xtext",
-  ".mwe2",
-  ".ecore",
-  ".ocl",
-  ".genmodel",
-  ".xmi",
-  ".mtl",
-  ".qvto",
-];
-
-function bucketOfEmfPath(rest: string): Bucket {
-  if (rest.startsWith("docs/adr/")) return "decision records";
-  if (rest.startsWith("docs/") || rest === "README.md") return "documentation";
-  if (rest.startsWith("scripts/")) return "tooling";
-  if (rest.includes("/src/test/") || rest.endsWith("Test.java")) return "tests";
-  if (EMF_PRODUCTION_EXTENSIONS.some((extension) => rest.endsWith(extension)))
-    return "production code";
-  // Everything else is Maven/Tycho/PDE plumbing: pom.xml, mvnw, .mvn/,
-  // .java-version, plugin.xml, plugin.properties, build.properties,
-  // META-INF/MANIFEST.MF, the target platform, a launch configuration.
-  return "tooling";
-}
-
 /**
  * The bucket `path` (relative to the repository root, forward-slashed)
  * belongs to, or `null` when no rule claims it.
  */
 export function bucketOf(path: string): Bucket | null {
   if (path.startsWith(".github/")) return "CI";
-  if (path.startsWith("emf/"))
-    return bucketOfEmfPath(path.slice("emf/".length));
 
   // No generator exists yet (docs/adr/README.md, issue #21): nothing in the
   // tracked tree matches this today, and the rule is here so the first

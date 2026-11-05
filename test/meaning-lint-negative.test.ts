@@ -149,10 +149,9 @@ describe("lintMeaning", () => {
     });
   });
 
-  it("ignores docs/mde, CHANGELOG.md and the emf/ tree", () => {
+  it("ignores docs/mde and CHANGELOG.md", () => {
     const root = fixture({
       "docs/mde/paper.md": "Service Intent, verbatim coursework text.\n",
-      "emf/docs/rules.md": "Service Intent, frozen at mde-task-3.\n",
       "CHANGELOG.md": "* mentions Service Intent, release-please owns this\n",
     });
     expect(lintMeaning(root).errors).toStrictEqual([]);
