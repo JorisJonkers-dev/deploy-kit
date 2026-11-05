@@ -40,9 +40,7 @@ export function lintLinks(root: string): LinkLintResult {
     },
   )
     .split("\0")
-    // emf/ catches up with the TypeScript side after it, so its links into
-    // that side may trail; they are not checked. Links into it are.
-    .filter((file) => file !== "" && !file.startsWith("emf/"));
+    .filter((file) => file !== "");
 
   const anchorCache = new Map<string, Set<string>>();
   const anchorsOf = (path: string, text: string): Set<string> => {

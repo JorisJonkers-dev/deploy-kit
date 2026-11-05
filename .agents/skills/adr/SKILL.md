@@ -18,13 +18,11 @@ pointing at it.
    `docs/adr/architecture/` for a decision about the compiler's own structure
    (its `normative:` pointer names a `docs/architecture.md` or
    `docs/architecture-rules.md` heading); `docs/adr/deferred/` only for
-   delivery or co-testing direction work, never for a v1 decision. While
-   `emf/` exists, a Java-side decision goes to `emf/docs/adr/` instead, using
-   the same numbering sequence.
-2. **Take the next number.** Check `docs/adr/README.md`'s register **and**
-   `emf/docs/adr/README.md`'s, even when writing to the root register: the
-   sequence is estate-wide and a number already used in either register is
-   the fastest way to fail the register-integrity check.
+   delivery or co-testing direction work, never for a v1 decision.
+2. **Take the next number.** Check `docs/adr/README.md`'s register: the
+   sequence is estate-wide, a number already used in it is never taken again,
+   and the next number is the highest the register holds plus one (which is
+   the fastest way to fail the register-integrity check).
 3. **Write the frontmatter.** `tier: premise` (a falsifiable claim, no
    `rests-on`) or `tier: decision` (names only premises in `rests-on`, never
    another decision: a decision-to-decision dependency is prose, in `## Why`,
@@ -38,7 +36,7 @@ pointing at it.
    here: that belongs in the chapter the `normative:` pointer names, and this
    record links to it instead.
 5. **Add the register row**, in the numeric position its section of
-   `docs/adr/README.md` (or `emf/docs/adr/README.md`) already sorts by, with
+   `docs/adr/README.md` already sorts by, with
    the title and claim matching the file exactly.
 6. **Cite it correctly everywhere else you touch.** Never a bare `ADR-NNNN`
    or bare number: always a Markdown link. A decision that changes is

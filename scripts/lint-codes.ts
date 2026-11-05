@@ -28,10 +28,9 @@ const CHAPTER = /^spec\/v1\/\d\d-[^/]+\.md$/;
 // typechecked: it holds every code a chapter defines, and no other.
 export const CLOSED = "src/model/diagnostic.ts";
 const EXERCISING = [/^test\//, /\.diagnostics\.json$/];
-// Model changes land in TypeScript first and emf/ catches up later, so its
-// codes neither exercise nor are checked.
+// Docs and working notes name codes as history or as plans, not as code the
+// compiler defines.
 const OUT_OF_SCOPE = [
-  /^emf\//,
   /^docs\/mde\//,
   /^docs\/adr\/deferred\//,
   /^review\//,

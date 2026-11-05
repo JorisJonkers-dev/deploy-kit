@@ -28,7 +28,7 @@ Application under a role's id and that Application receives the role: its
 Process admitted to the API, its surface asked by a Canary, or its address
 handed out as the collector or the Secret Store.
 **Settled by:** the negative fixture per role in `test/model/intent-set.test.ts`
-and the matching linking test in `emf/`, each refusing the reference as
+and the matching linking test, each refusing the reference as
 unlinked when the named Project does not declare the Application.
 
 ## Why

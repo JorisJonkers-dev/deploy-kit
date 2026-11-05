@@ -116,5 +116,3 @@ exist under paths only some Processes hold.
   touching one, paid by the lowering, which grows one mapping per family.
 - The Effective Intent has no schema version and no digest; the pinned-input
   chain runs from the authored documents ([0006](0006-pinned-inputs.md)).
-- Both implementations carry a lowering, held equal by the Effective Intent
-  oracle ([0068](../architecture/0068-two-implementations-meet-at-the-parity-table.md)).

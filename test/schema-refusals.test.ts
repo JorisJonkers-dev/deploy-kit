@@ -3,10 +3,10 @@
 // Pointers its committed diagnostics oracle names
 // (spec/v1/10-project-intent.md#reading-a-file).
 //
-// These oracles bind the production implementation only
-// (docs/architecture.md#the-parity-contract): the model-driven implementation's
-// front end is a grammar, which refuses a token rather than naming the field.
-// So the test sits outside test/model/, whose rows each need a witness there.
+// A file the reader refuses, outside the YAML subset or against the schema,
+// is refused with the code `schema` at the JSON Pointers its committed
+// diagnostics oracle names (docs/architecture.md#the-oracles). The test sits
+// outside test/model/, whose rows take the model's own behaviour.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, sep } from "node:path";
 import { describe, expect, it } from "vitest";

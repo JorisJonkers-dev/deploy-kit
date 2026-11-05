@@ -1,6 +1,6 @@
 # Paths CodeQL does not analyse. Build output and generated sources are not
-# code anyone wrote here; the model-driven build (emf/) generates Java from its
-# genmodel and Xtext grammar into target/ and src-gen/.
+# code anyone wrote here; generated code lands in target/, src-gen/ and
+# xtend-gen/.
 'name': 'deploy-kit CodeQL'
 
 'paths-ignore':

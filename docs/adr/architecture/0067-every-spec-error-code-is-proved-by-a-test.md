@@ -44,9 +44,7 @@ exercising, so the two implementations meet this rule on the same codes.
 
 ## Reversibility
 Undo cost today: deleting one gate and its test. Becomes irreversible once:
-never; the constraint parity test
-([0068](0068-two-implementations-meet-at-the-parity-table.md)) reads the same
-codes.
+never; the tests that name a code read the same codes.
 
 ## Consequences
 - A change that adds a code to a chapter adds a test or a pending entry. Paid by

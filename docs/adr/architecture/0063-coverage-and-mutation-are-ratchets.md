@@ -178,6 +178,6 @@ Undo cost today: numbers in two config files. Becomes irreversible once: never.
 - One top-level statement is the smallest share a shard takes, so a change that
   re-tests every mutant of one large statement waits on that statement.
 - A pull request passes the gate without a shard running; so does a push that
-  changes only documents, the release files or `emf/`.
+  changes only documents or the release files.
 - A mutant can sit undetected on `main` for up to a week when only a fixture,
   a test helper or a dependency changed. The weekly issue is where it surfaces.

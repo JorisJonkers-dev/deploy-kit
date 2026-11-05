@@ -34,10 +34,8 @@ const REPOSITORY = join(import.meta.dirname, "..");
 
 // Never scanned, the same exclusions the em-dash ban uses: docs/mde holds
 // third-party coursework kept verbatim, and CHANGELOG.md is release-please's.
-// emf/ catches up with model changes after TypeScript does, so its prose may
-// trail a rename and is not scanned.
 const EXCLUDE = new Set(["CHANGELOG.md"]);
-const EXCLUDE_PREFIXES = ["docs/mde/", "emf/"];
+const EXCLUDE_PREFIXES = ["docs/mde/"];
 
 function inScope(rel: string): boolean {
   return (

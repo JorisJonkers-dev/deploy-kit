@@ -129,18 +129,6 @@ describe("the link lint", () => {
     );
     expect(lintLinks(root)).toStrictEqual({ files: 1, errors: [] });
   });
-
-  it("skips the emf/ tree as a source, and still checks links into it", () => {
-    const root = repository({
-      "README.md": "# Root\n\nSee [it](emf/README.md#gone).\n",
-      "emf/README.md": "# Emf\n\nSee [it](../spec/ch.md#the-old-name).\n",
-      "spec/ch.md": "# Chapter\n",
-    });
-    expect(lintLinks(root)).toStrictEqual({
-      files: 2,
-      errors: ["README.md: anchor #gone not found in emf/README.md"],
-    });
-  });
 });
 
 describe("the command", () => {

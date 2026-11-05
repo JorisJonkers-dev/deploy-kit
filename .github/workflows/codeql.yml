@@ -1,8 +1,7 @@
-# CodeQL static analysis: JavaScript, TypeScript, the workflow logic, and the
-# model-driven implementation's Java under emf/.
+# CodeQL static analysis: JavaScript, TypeScript, and the workflow logic.
 #
-# Every language is analysed without a build (`build-mode: none`), so Tycho and
-# p2 resolution can never break the scan. Generated sources and build output
+# Every language is analysed without a build (`build-mode: none`), so builds
+# can never break the scan. Generated sources and build output
 # are ignored through .github/codeql/codeql-config.yml.
 #
 # A gate, not a report. ci.yml calls this workflow on every pull request and on
@@ -37,7 +36,6 @@
         'include':
           - 'language': 'javascript-typescript'
           - 'language': 'actions'
-          - 'language': 'java-kotlin'
 
     'steps':
       - 'uses': 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' # v7.0.1

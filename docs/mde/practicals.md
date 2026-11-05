@@ -5,7 +5,7 @@ assignment page states it. They are exercises and are separate from the
 project: each is a one-point `.zip` upload. They matter here because each one
 walks through a tool the project uses. Session 5 is the QVT Operational tooling
 that Task 2 is built with, session 6 the Acceleo 4 tooling of Task 3, and
-sessions 1 and 3 are the Ecore and Xtext workflow behind [`emf/`](../../emf/).
+sessions 1 and 3 are the Ecore and Xtext workflow behind [`emf/`](https://github.com/JorisJonkers-dev/mde-project).
 
 The project's own tasks are in [`assignment.md`](assignment.md). The lecture
 each session follows, and its slides, recording and reading, are indexed in

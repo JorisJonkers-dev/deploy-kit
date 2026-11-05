@@ -1,9 +1,0 @@
-ControllerKind.statefulSet is never used in a render case's input
-IndexFile.namespace is never set in a render case's input
-ResolvedClient.backChannelLogoutUri is never set in a render case's input
-ResolvedPlacement.boundTo is never set in a render case's input
-ResolvedPlacement.from is never set in a render case's input
-ResolvedProcess.command is never set in a render case's input
-ResolvedSidecar.arguments is never set in a render case's input
-ResolvedSidecar.command is never set in a render case's input
-WorkloadFile.disruptionBudget is never set in a render case's input

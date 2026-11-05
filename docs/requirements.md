@@ -28,7 +28,7 @@ files. Each file holds the same three-column table.
 
 | file | what goes there |
 |---|---|
-| [`repository.md`](requirements/repository.md) | this repository's own tree: decision records, links, documents, module boundaries, the test harness, coverage, the ledgers, specification codes, the `emf/` wiring |
+| [`repository.md`](requirements/repository.md) | this repository's own tree: decision records, links, documents, module boundaries, the test harness, coverage, the ledgers, specification codes |
 | [`pipeline.md`](requirements/pipeline.md) | a pull request, a push to `main` or a release: titles and commits, the pull request report, release candidates, the published package, mutation testing |
 | [`intent.md`](requirements/intent.md) | the authored documents before resolution: parsing, the metamodel and its JSON Schemas, refusals, env files, Shared Intent, canonical oracle JSON |
 | [`resolution.md`](requirements/resolution.md) | layer 2 as a whole: the Resolved Deployment, Application revisions, Aliases and Stable Addresses, the foundation, the render of the composed union |

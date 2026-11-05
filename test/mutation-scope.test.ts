@@ -52,7 +52,6 @@ describe("whether a change reaches the mutation gate", () => {
           ".release-please-manifest.json",
           "docs/adr/architecture/0063-coverage-and-mutation-are-ratchets.md",
           "spec/v1/10-project-intent.md",
-          "emf/pom.xml",
           "scripts/lint-adrs.ts",
           "scripts/lib/pr-comment.ts",
           ".github/workflows/release.yml",

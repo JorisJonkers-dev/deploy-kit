@@ -92,5 +92,3 @@ move: a day. Becomes irreversible once: an out-of-tree adapter imports a
   fixture, and one new row forbids a step importing another step.
 - `docs/architecture.md#layers` and `#ports` are rewritten to the chain in the
   same slice.
-- The model-driven implementation shares the mapping names and nothing else
-  ([0068](0068-two-implementations-meet-at-the-parity-table.md)).

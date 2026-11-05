@@ -1,6 +1,6 @@
-// The descriptor the parity contract fixes: every class of the source
+// The descriptor the oracle contract fixes: every class of the source
 // metamodel with its features, and every closed vocabulary with its literals
-// (docs/architecture.md#the-parity-contract). It is built from the Zod schemas
+// (docs/architecture.md#the-oracles). It is built from the Zod schemas
 // through Zod's own JSON Schema, and normalised into the contract's shape,
 // which is neither format's.
 import { z } from "zod";

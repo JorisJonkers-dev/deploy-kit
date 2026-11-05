@@ -183,7 +183,7 @@ that will exercise it, and no code a chapter does not define is used in the
 tree; `npm run lint:codes` holds both
 ([0067](adr/architecture/0067-every-spec-error-code-is-proved-by-a-test.md)). A
 test exercises a code by naming it, in a TypeScript test or a refused case's
-committed `diagnostics.json`; `emf/` is out of its scope.
+committed `diagnostics.json`.
 
 The CLI renders diagnostics for a human by default, emits the array verbatim
 under `--json`, and maps failure classes to distinct exit statuses.
@@ -194,8 +194,7 @@ A file a tool derives from another committed file is committed too, and CI
 regenerates it and fails on a diff, from the pull request that brings its
 generator: the JSON Schema derived from the metamodel, and the diagnostic
 catalogue. A reader sees the artifact without running anything, and a change
-to the source cannot land without the artifact that depends on it
-([0068](adr/architecture/0068-two-implementations-meet-at-the-parity-table.md)).
+to the source cannot land without the artifact that depends on it.
 
 An oracle file is the opposite. The rendered example trees, `intent.json`,
 `resolved.json`, `dependencies.json`, `diagnostics.json` and the descriptor are
@@ -302,59 +301,38 @@ CRD schemas, so a file that parses but cannot apply fails the build.
 Every gate carries negative fixtures. A check that has only ever run against a
 clean tree is untested: nothing proves it would fail.
 
-## The parity contract
+## The oracles
 
-This compiler has two implementations. The TypeScript code under `src/` is the
-**production implementation**. The model-driven engineering course this
-repository is coursework for requires Ecore, Xtext, OCL, QVT-Operational and
-Acceleo, so a **model-driven implementation** in Java lives under
-[`emf/`](../emf/README.md)
-until its sunset condition holds
-([0068](adr/architecture/0068-two-implementations-meet-at-the-parity-table.md)).
-Everything about that implementation, its build, its checks and its decisions,
-lives inside `emf/`. What lives here is the contract both implementations
-answer to, because the contract outlives the model-driven implementation.
+The compiler is tested against committed oracle files, one per boundary a run
+crosses. The implementation is never its own oracle: a test compares a run
+against the committed file, and a change to the source cannot land quietly
+redesigning what a stage writes.
 
-**The contract holds with a lag.** A model change lands in TypeScript and its
-oracle files first, and `emf/` catches up in a pull request of its own. Its
-build runs its tests and coverage gate on every change to `emf/`, and its
-mutation gate nightly; it is not in `Pipeline Complete`, so `emf/` may trail
-`main` between catch-ups, and its `OracleDistanceTest` reports how far.
+The project proposal names what an oracle covers: validation, dependency
+resolution, errors and generated resources.
 
-Neither implementation is generated from the other, and neither is the oracle
-for the other. Each is tested on its own against committed oracle files, and
-agreement between the two follows from both agreeing with the oracle.
+| oracle | where | compared as |
+|---|---|---|
+| the parsed Project Intent (validation) | `spec/v1/examples/<case>/expected/intent.json` | canonical JSON, byte for byte |
+| the diagnostics of a refused case (errors) | `<input>.diagnostics.json` beside the refused input, or the refused set of documents, in `refusals/` or `negative/` | a set of `(code, document, path)` triples |
+| the resolved dependency edges (dependency resolution) | `spec/v1/examples/<case>/expected/dependencies.json` | canonical JSON, byte for byte |
+| the Deliverable Set (generated resources) | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte |
+| the source metamodel's **authored** structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte |
+| the Effective Intent (the lowering) | `spec/v1/examples/<case>/expected/effective.json` | canonical JSON, byte for byte |
+| the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte |
+| the diagnostics of a file the reader refuses (code `schema`) | `<input>.diagnostics.json` beside the refused input, in `schema-refusals/` | a set of `(code, document, path)` triples |
 
-The two are compared on what the project proposal names: validation, dependency
-resolution, errors and generated resources. They are not required to agree on
-anything else. In particular their intermediate models differ: the production
-implementation keeps the Resolved Deployment and the typed object model its
-adapters build as two things, while the model-driven implementation has one
-target metamodel holding both, because a model-to-text template reads one model.
-
-| oracle | where | compared as | binds |
-|---|---|---|---|
-| the parsed Project Intent (validation) | `spec/v1/examples/<case>/expected/intent.json` | canonical JSON, byte for byte | both |
-| the diagnostics of a refused case (errors) | `<input>.diagnostics.json` beside the refused input, or the refused set of documents, in `refusals/` or `negative/` | a set of `(code, document, path)` triples | both |
-| the resolved dependency edges (dependency resolution) | `spec/v1/examples/<case>/expected/dependencies.json` | canonical JSON, byte for byte | both |
-| the Deliverable Set (generated resources) | `spec/v1/examples/<case>/rendered/` | the existing golden tree, byte for byte | both |
-| the source metamodel's **authored** structure | `spec/v1/examples/expected/descriptor.json` | canonical JSON, byte for byte | both |
-| the Effective Intent (the lowering) | `spec/v1/examples/<case>/expected/effective.json` | canonical JSON, byte for byte | both |
-| the Resolved Deployment | `spec/v1/examples/<case>/expected/resolved.json` | canonical JSON, byte for byte | production only |
-| the diagnostics of a file the reader refuses (code `schema`) | `<input>.diagnostics.json` beside the refused input, in `schema-refusals/` | a set of `(code, document, path)` triples | production only |
-
-**A schema refusal binds the production implementation only.** The
-model-driven implementation reads a file through a grammar, which refuses a
-token where the production reader names the field the token belongs to, so the
-two agree on the code and not on the place
+**A schema refusal reports a different place than a model refusal would.** The
+reader names the field the token belongs to, where a refusing grammar would
+point at the token
 ([chapter 10](../spec/v1/10-project-intent.md#what-a-schema-refusal-reports)
 fixes the place). The refused cases a rule answers, in `refusals/` and
-`negative/`, bind both.
+`negative/`, bind the model's own behaviour exactly.
 
 **The dependency edges** are, per Application, every dependency edge after
 resolution: the consumer, the provider Application and Surface, the address the
 consumer is given, and the policy peers that allow the connection. It is the
-part of resolution both implementations must agree on before either renders.
+part of resolution that must settle before the render runs.
 The file is an object with one `applications` entry per Application, each an
 `id` and its `edges`; an Application with no dependency carries an empty list.
 The edge's own fields are fixed by the first case that has one.
@@ -363,23 +341,21 @@ The edge's own fields are fixed by the first case that has one.
 ([chapter 10](../spec/v1/10-project-intent.md#the-effective-intent)): the
 authored document and the env files beside it, merged onto the Processes that
 hold them. It is the one oracle that covers the env files at all, because they
-are not part of the document `intent.json` fixes, and it is where the two
-implementations' readers meet.
+are not part of the document `intent.json` fixes.
 
 **The descriptor fixes the authored shape**, which is every class a document
 holds. `env` is the one feature it leaves out of a class: an env file is a
 directory beside the document rather than a key in it, so its own classes are
-listed and the feature that would carry them is not. A shape a transformation writes and nobody authors is left out of it: the
-Effective Intent's Project and Application are the two today
-([0012](adr/model/0012-shared-intent-descends-and-is-lowered.md)), and what holds
-them equal is the same thing that holds every other stage equal, the oracles
-downstream of the lowering. An implementation that declared a lowered class where
-the other did not would still render the same tree or fail the rendered oracle.
+listed and the feature that would carry them is not. A shape a transformation
+writes and nobody authors is left out of it: the Effective Intent's Project and
+Application are the two today
+([0012](adr/model/0012-shared-intent-descends-and-is-lowered.md)), and what
+holds them equal is the same thing that holds every other stage equal, the
+oracles downstream of the lowering.
 
-**The canonical writers** are `src/infrastructure/canonical-json.ts` and
-`emf/bundles/metamodel`'s `CanonicalJson`, held to the same cases. An oracle file is exactly
-its canonical text, with no final newline, and a test fails any committed oracle
-that is not byte-identical to its own canonicalisation.
+**The canonical writer** is `src/infrastructure/canonical-json.ts`. An oracle
+file is exactly its canonical text, with no final newline, and a test fails any
+committed oracle that is not byte-identical to its own canonicalisation.
 
 **Canonical JSON** is RFC 8785 (JSON Canonicalization Scheme): keys sorted,
 numbers in their shortest form, no insignificant whitespace. An absent
@@ -399,44 +375,35 @@ refused single file names itself.
 **The descriptor** lists every class of the source metamodel (Project Intent
 and the Platform Intent it is resolved against) with its features, each
 feature's type and multiplicity, and every closed vocabulary with its literals.
-Target structures are compared through what they generate, not structurally.
-The TypeScript side builds it from the Zod schemas with Zod's native
-`z.toJSONSchema()` and a normaliser; the descriptor's shape is fixed here, not
-by either source format:
+The descriptor's shape is fixed here, not by the format that produces it:
 
 - `classes`, sorted by name. Each carries its `name` and its `features`, sorted
   by name; a class the language writes as one word carries that word as
   `scalar`.
 - A **feature** carries its `name`, the `types` it admits sorted by name,
   whether it is `required`, whether it holds `many` values, whether it is a
-  `map` keyed by string, and whether it is a `reference`: a name the document
-  writes that links to a model element, whose one type is the element's class.
-  A map also names what one of its entries is, as `entry`, so a reference can
-  point at a map's entries. A type is a class name, a vocabulary name, or one of
-  `string`, `int` and `boolean`.
+  `map` keyed by string, and whether it is a
+  `reference`: a name the document writes that links to a model element, whose
+  one type is the element's class. A map also names what one of its entries is,
+  as `entry`, so a reference can point at a map's entries. A type is a class
+  name, a vocabulary name, or one of `string`, `int` and `boolean`.
 - A union is not a class: a feature whose value may be one of several classes
-  names them all, so an abstract class on one side and a union on the other
-  describe the same model.
+  names them all, so an abstract class and a union on one side describe the
+  same model.
 - `vocabularies`, sorted by name, each with its `literals` in the order the
   model declares them.
 
-**Constraint parity is checked by code, not kept in a ledger.** Every model
-constraint is named by the diagnostic code it emits: the Complete OCL invariant
-carries the code as its name, and the TypeScript check is one function per code
-with the same name. A parity test lists every code three ways (the invariant,
-the check, and the refused fixture whose diagnostics name it) and fails on any
-gap ([0068](adr/architecture/0068-two-implementations-meet-at-the-parity-table.md)).
+**Every model constraint is named by the diagnostic code it emits**, and the
+check for a code is one function carrying the code's name, so a code's
+enforcement is findable from the code alone.
 
 **Behaviour rows.** A row of the [behaviour ledger](requirements.md) whose
-behaviour is the model's own (parse, validate, resolve, render) is proved in
-both implementations. The row names the TypeScript test; the model-driven witness
-for the same id is listed inside `emf/`, and `emf/`'s own gate fails when a model
-row has no witness there.
+behaviour is the model's own (parse, validate, resolve, render) is proved by
+the test the row names.
 
-**Whichever implementation lands a case first commits its reviewed oracle,
-and the other matches it.** The first oracles are written by hand: `minimal`'s
-parsed intent and dependency edges, and `minimal`'s and `knowledge`'s
-`resolved.json` beside the metamodel that gives them a shape.
+A case arrives with its reviewed oracle, written by hand: `minimal`'s parsed
+intent and dependency edges, and `minimal`'s and `knowledge`'s `resolved.json`
+beside the metamodel that gives them a shape.
 
 A `resolved.json` is held to the chapter as well as to the metamodel.
 [Chapter 20](../spec/v1/20-resolved-deployment.md#worked-example-knowledges-projection)'s
@@ -446,15 +413,15 @@ value. The chapter is the readable half and the oracle is the complete one;
 neither may say something the other contradicts.
 
 An oracle file changes in the pull request that changes the behaviour it
-records, and the TypeScript implementation goes red until it is fixed. CI
-never regenerates an oracle file from either implementation: a tool may write a
-candidate, and the committed file is the reviewed copy of it. A
-case without every oracle file is not yet a parity case, and the ledger that
-lists cases says so rather than skipping it silently.
+records, and the implementation goes red until it is fixed. CI never
+regenerates an oracle file: a tool may write a candidate, and the committed
+file is the reviewed copy of it. A case without every oracle file it needs is
+not yet a complete case, and the ledger that lists cases says so rather than
+skipping it silently.
 
 ## Gates
 
-Twenty gates hold the structure, and each exists because its absence has already
+Nineteen gates hold the structure, and each exists because its absence has already
 cost something in the generation this compiler replaces. Gates are grouped
 into CI jobs, aggregated by one required check that fails when any gate job fails,
 is cancelled, or is skipped
@@ -483,18 +450,13 @@ proves the two never drift apart.
 | package contents | `node scripts/check-package-contents.ts` | `npm pack` shipping a file outside `docs/adr/`, `spec/` and the JavaScript under `dist/`, the boundary the package's `files` field states but does not enforce on its own |
 | actionlint | a pinned `actionlint` binary | invalid workflow syntax, an undefined `${{ }}` expression, a shellcheck finding inside a `run:` step |
 | secret scan | `npm run lint:secrets` | a committed secret matching the default ruleset, or this repository's own allowlist entries |
-| code scanning | CodeQL, called from `ci.yml` as the `codeql` job | any finding, of any severity, in JavaScript, TypeScript, workflow logic or the Java under `emf/`; a wrong one is filtered in `.github/codeql/codeql-config.yml` with its reason |
-| model-driven build | `./mvnw -B -ntp verify` in `emf/` | every gate the [model-driven implementation](../emf/docs/architecture.md#gates) holds itself to: toolchain versions, compiler warnings, tests, coverage and mutation floors, formatting |
+| code scanning | CodeQL, called from `ci.yml` as the `codeql` job | any finding, of any severity, in JavaScript, TypeScript or the workflow logic; a wrong one is filtered in `.github/codeql/codeql-config.yml` with its reason |
 
 Decisions, links, manifests, requirements, rules, codes, docs, agents and
 meaning share one CI job, `contracts`: all nine check a document against a
 rule rather than code against a graph.
 Boundaries runs alone as `architecture`, because it is the one gate that
 speaks for `docs/architecture.md` itself rather than for a document beside it.
-The model-driven build runs alone as `emf`, on its own JDK and Maven: its
-tests and coverage gate on every change to `emf/` or the workflow, and its
-mutation gate nightly and on a dispatch. It is not in `Pipeline Complete`, so
-it gates nothing, and it is deleted with `emf/`.
 
 Every rule these gates enforce is written down once, with a greppable id, in
 the [rule ledger](architecture-rules.md)

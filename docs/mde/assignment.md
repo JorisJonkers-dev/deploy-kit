@@ -120,7 +120,7 @@ settle doubts. The report must stand on its own, carry the four parts above in
 roughly those proportions, and discuss limitations and reflect on the choices.
 
 Mirror: [`task-1-metamodelling/`](task-1-metamodelling/). The Ecore files are
-under [`emf/bundles/metamodel/model/`](../../emf/bundles/metamodel/model/); the
+under [`emf/bundles/metamodel/model/`](https://github.com/JorisJonkers-dev/mde-project/tree/main/bundles/metamodel/model); the
 hand-in zip is built by
 [`task-1-metamodelling/handin/build.py`](task-1-metamodelling/handin/build.py).
 

@@ -27,11 +27,8 @@ and *layer 3* for its members.
 **Metamodel**: the definition of the language a model is written in, and
 nothing else. A metamodel is a model whose instances are models, so the word is
 never used for a layer, a document, an abstraction level or the pipeline as a
-whole. The production implementation declares its languages as Zod schemas in
-`src/model/`;
-the model-driven implementation under `emf/` has two hand-written Ecore
-metamodels, a source and a target, and generates the Deliverable Set as files
-with no metamodel of its own. One word, `metamodel`, unhyphenated.
+whole. The implementation declares its languages as Zod schemas in
+`src/model/`. One word, `metamodel`, unhyphenated.
 
 **Project Intent**: layer 1. What a project's repository authors by hand:
 requirements, never mechanisms. Two kinds of file, a project file and one env file
@@ -789,10 +786,6 @@ for a DNS name, an ADR decision domain, and the core ring of the compiler's
 hexagon.
 
 **Bootstrap.** The bootstrap set and the bootstrap order, and nothing else.
-The first build of the model-driven implementation under `emf/` is the **EMF
-scaffold** (its Maven build, gates and CI job, with no EMF dependency), and its
-first change that depends on the modelling tools is the **walking skeleton**,
-which proves each tool runs headless.
 
 **Config.** Avoid. Env files carry *configuration*; the platform's facts and
 policies are *Platform Intent*; an Application's authored document is *Project Intent*.

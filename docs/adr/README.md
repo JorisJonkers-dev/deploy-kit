@@ -35,10 +35,6 @@ resolves without knowing which domain it lands in.
 | [`architecture/`](architecture/README.md) | the compiler's own structure: layering, the trace, the error model, gates | `docs/architecture.md`, `docs/architecture-rules.md` | yes |
 | [`deferred/`](deferred/README.md) | co-testing and multi-cluster estates, parked | sections the chapters deliberately lack | no |
 
-The model-driven implementation keeps its records at
-[`emf/docs/adr/`](../../emf/docs/adr/README.md), numbered from the same sequence
-and linted by the same script with `emf` as its root.
-
 
 ## Premises
 
@@ -209,7 +205,6 @@ Decisions about the compiler's own structure, not about the model; see
 | [0065](architecture/0065-a-behaviour-ledger-names-what-a-test-proves.md) | A behaviour ledger names every guarantee and the test that proves it, and a meta test holds the two together | settled |
 | [0066](architecture/0066-every-enforced-rule-has-an-id-a-row-and-a-fixture.md) | Every enforced rule has an id, a ledger row and a fixture that proves it fires, and a rule not enforced yet says so with a reason | settled |
 | [0067](architecture/0067-every-spec-error-code-is-proved-by-a-test.md) | Every error code the specification defines is proved by a test, or pending on the ticket that will prove it | settled |
-| [0068](architecture/0068-two-implementations-meet-at-the-parity-table.md) | Two hand-written implementations meet at the oracles the parity table lists, each tree keeps its own rule for generated files, and constraint parity is checked by code | open |
 | [0088](architecture/0088-the-committed-schemas-and-their-corpus-are-the-contract.md) | The committed JSON Schemas and their accept/refuse corpus are the contract, and byte equality only proves the generator's output is committed | settled |
 | [0089](architecture/0089-the-package-ships-the-command-built-when-it-is-packed.md) | The package ships the command, built to JavaScript when it is packed, and the repository still runs its TypeScript directly | settled |
 

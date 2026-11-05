@@ -84,26 +84,6 @@ describe("codeErrors", () => {
     });
   });
 
-  it("neither counts nor checks the emf/ tree", () => {
-    const result = codeErrors(
-      {
-        "spec/v1/10-intent.md": chapter(ALPHA),
-        "emf/tests/parity/src/test/java/X.java": ALPHA,
-        "emf/bundles/metamodel/model/x.ocl": BETA,
-      },
-      [],
-    );
-
-    expect(result).toStrictEqual({
-      defined: 1,
-      exercised: 0,
-      pending: 0,
-      errors: [
-        `${ALPHA}: defined by the specification, exercised by no test, and not pending`,
-      ],
-    });
-  });
-
   it("fails a pending code once a test exercises it, naming the file", () => {
     const result = codeErrors(
       { "spec/v1/10-intent.md": chapter(ALPHA), "test/a.test.ts": ALPHA },
