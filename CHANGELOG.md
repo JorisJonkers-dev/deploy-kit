@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.10.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.10.0...v1.10.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **check:** refuse a file grant of several keys, or a mountAt the render cannot mount ([#846](https://github.com/JorisJonkers-dev/deploy-kit/issues/846)) ([428a53a](https://github.com/JorisJonkers-dev/deploy-kit/commit/428a53a09e77a000ba3271d09f0cdf0a452d24d0)), closes [#841](https://github.com/JorisJonkers-dev/deploy-kit/issues/841)
+* **check:** refuse a file grant without mountAt or fileMode ([#839](https://github.com/JorisJonkers-dev/deploy-kit/issues/839)) ([d6133fc](https://github.com/JorisJonkers-dev/deploy-kit/commit/d6133fca42e5357d8b3f35f8dfa15eecb19fd167)), closes [#838](https://github.com/JorisJonkers-dev/deploy-kit/issues/838)
+* **emf:** keep a generated key's adopt through the lowering ([#829](https://github.com/JorisJonkers-dev/deploy-kit/issues/829)) ([aea27c6](https://github.com/JorisJonkers-dev/deploy-kit/commit/aea27c60ef88a51ab1b7c975012c2f45387a6e74)), closes [#823](https://github.com/JorisJonkers-dev/deploy-kit/issues/823)
+* **emf:** kill the surviving mutants, and let the cli mutation run finish ([#851](https://github.com/JorisJonkers-dev/deploy-kit/issues/851)) ([c60dbb9](https://github.com/JorisJonkers-dev/deploy-kit/commit/c60dbb9c657bd031025698b25bd4bc76b44f0e5c)), closes [#850](https://github.com/JorisJonkers-dev/deploy-kit/issues/850)
+* **emf:** refuse a file grant of several keys, or a mountAt the render cannot mount ([#848](https://github.com/JorisJonkers-dev/deploy-kit/issues/848)) ([b7d29b9](https://github.com/JorisJonkers-dev/deploy-kit/commit/b7d29b9601da04d33cc8e37451f16c94e9ef8c38)), closes [#843](https://github.com/JorisJonkers-dev/deploy-kit/issues/843)
+* **emf:** refuse a file grant without mountAt or fileMode ([#840](https://github.com/JorisJonkers-dev/deploy-kit/issues/840)) ([12e2118](https://github.com/JorisJonkers-dev/deploy-kit/commit/12e2118fc6f4ba5f44e64f66c84b3ba4a2bf18f3)), closes [#838](https://github.com/JorisJonkers-dev/deploy-kit/issues/838)
+
 ## [1.10.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.9.3...v1.10.0) (2026-11-02)
 
 
