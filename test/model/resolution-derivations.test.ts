@@ -3,6 +3,7 @@
 // through the use-case with the worked foundation and pinned inputs.
 import { datastoreOf } from "../../src/resolve/database.ts";
 import { edgesOfProject, resolveEdge } from "../../src/resolve/dependencies.ts";
+import { reconcileCycles } from "../../src/check/reconcile-order.ts";
 import type { EffectiveProject } from "../../src/model/effective-intent.ts";
 import type { PlatformIntentDocument } from "../../src/model/platform-intent.ts";
 import { backedUp, dumpedSurfaceOf } from "../../src/model/backup.ts";
@@ -2373,7 +2374,11 @@ describe("a Process that seeds an Asset", () => {
     );
     expect(codesOf(unlocked)).toStrictEqual(["E_UNLOCKED_IMAGE"]);
     expect(unlocked.ok ? [] : unlocked.diagnostics).toMatchObject([
-      { path: "/seeder/image" },
+      {
+        path: "/seeder/image",
+        message: "the images lock holds no entry for busybox",
+        hint: "Lock the alias, or name one the images lock holds.",
+      },
     ]);
   });
 
@@ -5785,5 +5790,105 @@ describe("a writable path held in memory", () => {
 ${serving("notes-api", "        writablePaths: [{ path: /dev/shm, memory: 1Gi }]\n")}`),
       ),
     ).toContain("E_SHARED_DECLARATION_DUPLICATED");
+  });
+});
+
+// Mutants main's full mutation run found no test for (#817).
+describe("what main's mutation run found untested", () => {
+  const project = (
+    name: string,
+    applications: readonly (readonly string[] | undefined)[],
+  ) => ({
+    project: name,
+    applications: applications.map((reconcileAfter, index) => ({
+      id: `${name}-${String(index)}`,
+      ...(reconcileAfter === undefined ? {} : { reconcileAfter }),
+    })),
+  });
+
+  it("names every other unit on a cycle of three, and the Application that closes it", () => {
+    const refusals = reconcileCycles(
+      [
+        project("a", [undefined, ["apps-x"], ["apps-b"]]),
+        project("b", [["apps-c"]]),
+        project("c", [["apps-a"]]),
+        project("x", []),
+      ] as never,
+      (name) => `${name}.project.yml`,
+    );
+
+    expect(
+      refusals.find(({ document }) => document === "a.project.yml"),
+    ).toMatchObject({
+      path: "/applications/2",
+      message:
+        "apps-a follows apps-b, apps-c, which follow apps-a again, so no unit on the cycle applies first",
+      involves: ["b.project.yml", "c.project.yml"],
+    });
+  });
+
+  it("keeps the reason a tier's proxy gives for its own API access", () => {
+    const result = projects(one(serving("notes-api")), {
+      platform: (platform) =>
+        platform.replace("holders: [", "holders: [edge/traefik-public, "),
+      foundation: (name, text) =>
+        name === "edge/edge.project.yml"
+          ? text.replace(
+              "        writablePaths: [/tmp]\n",
+              "        writablePaths: [/tmp]\n        api: { reason: the proxy also reads its own secrets }\n",
+            )
+          : text,
+    });
+    const proxy = projectNamed(result, "edge")
+      .applications.flatMap(({ processes }) => processes)
+      .find(({ name }) => name === "traefik-public");
+
+    expect(proxy?.api?.reason).toBe("the proxy also reads its own secrets");
+  });
+
+  it("reads both halves of a tier's certificate from the Secret Store", () => {
+    const result = projects(one(serving("notes-api")), {
+      platform: (platform) =>
+        platform.replace(
+          "listener: plain\n    certificates: none",
+          "listener: tls\n    certificates: none\n    certificateFrom: secret/data/platform/tls/wildcard",
+        ),
+      foundation: (name, text) =>
+        name === "edge/edge.project.yml"
+          ? text.replace(
+              "          web: 8000\n          admin: 8080",
+              "          web: 8000\n          websecure: 8443\n          admin: 8080",
+            )
+          : text,
+    });
+    const grant = projectNamed(result, "edge")
+      .applications.flatMap(({ processes }) => processes)
+      .find(({ name }) => name === "traefik-lan")
+      ?.secrets?.find(
+        (secret) =>
+          "path" in secret &&
+          secret.path === "secret/data/platform/tls/wildcard",
+      );
+
+    expect(grant).toMatchObject({ keys: ["tls.crt", "tls.key"] });
+  });
+
+  it("refuses the Alertmanager a platform with no Secret Store names, at its Application", () => {
+    const result = resolve(one(serving("notes-api")), {
+      // A tier that issues its certificates through acme needs the store too.
+      platform: (platform) =>
+        platform
+          .replace("secretStore: secrets/vault\n", "")
+          .replace("certificates: acme", "certificates: none"),
+    });
+
+    expect(
+      (result.ok ? [] : result.diagnostics)
+        .filter(
+          ({ code, document }) =>
+            code === "E_NO_SECRET_STORE" && document === OBSERVABILITY,
+        )
+        .map(({ path }) => path),
+    ).toContain("/applications/11");
   });
 });
