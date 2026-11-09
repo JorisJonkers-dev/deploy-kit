@@ -30,6 +30,11 @@
         'with':
           'fetch-depth': '0'
 
+      - 'uses': 'JorisJonkers-dev/github-workflows/actions/setup-package-proxy@f8f0a5ae583913de18143bbbbe0db9ecab970435' # v0.45.0
+        'with':
+          'token': '${{ secrets.PACKAGES_PROXY_TOKEN }}'
+          'require-package-proxy': true
+
       - 'uses': 'actions/setup-node@820762786026740c76f36085b0efc47a31fe5020' # v7.0.0
         'with':
           'node-version-file': '.nvmrc'
