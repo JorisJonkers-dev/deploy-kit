@@ -84,7 +84,7 @@ The parked co-testing work, and the push design delivery retired, are in
 ## Local checks
 
 ```bash
-nvm use             # Node 24.21.0, pinned in .nvmrc
+nvm use             # Node 24.22.2, pinned in .nvmrc
 npm ci
 npm run verify      # lint, format, typecheck, ADR contract, tests + coverage
 ```
