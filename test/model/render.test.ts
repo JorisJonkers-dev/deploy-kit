@@ -1860,6 +1860,132 @@ describe("the bucket catalog", () => {
     expect(policy("hindsight-worker")).toStrictEqual([]);
   });
 
+  // spec/v1/16-dependencies.md#a-bucket-a-browser-calls
+  const CORS_EDGE =
+    "          - { application: platform-garage, surface: s3, buckets: [assets] }\n";
+  const withCors = (
+    buckets: string,
+  ): Readonly<Record<string, (document: string) => string>> => ({
+    [KP]: (document: string) =>
+      document.replace(
+        CORS_EDGE,
+        `          - { application: platform-garage, surface: s3, buckets: ${buckets} }\n`,
+      ),
+  });
+
+  it("lists each bucket a browser calls with the origin of every exposure it names", () => {
+    expect(
+      catalogIn(
+        owned(withCors("[{ name: assets, cors: [public] }, litestream]")),
+        OWNED,
+      ),
+    ).toMatchObject({
+      keys: [
+        {
+          name: "knowledge-platform",
+          buckets: [
+            "knowledge-platform-assets",
+            "knowledge-platform-litestream",
+          ],
+          cors: [
+            {
+              bucket: "knowledge-platform-assets",
+              origins: ["https://karakeep.jorisjonkers.dev"],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it("admits every origin two edges of one project give a bucket, once each and in order", () => {
+    const keys = catalogIn(
+      owned({
+        [KP]: (document) =>
+          document
+            .replace(
+              CORS_EDGE,
+              "          - { application: platform-garage, surface: s3, buckets: [{ name: assets, cors: [public] }] }\n",
+            )
+            .replace(
+              "          - { application: hindsight-embedding, surface: embeddings }\n",
+              "          - { application: hindsight-embedding, surface: embeddings }\n          - { application: platform-garage, surface: s3, buckets: [{ name: assets, cors: [console, api, console] }] }\n",
+            ),
+      }),
+      OWNED,
+    ) as { keys: { cors?: unknown }[] };
+
+    expect(keys.keys[0]?.cors).toStrictEqual([
+      {
+        bucket: "knowledge-platform-assets",
+        origins: [
+          "https://karakeep.jorisjonkers.dev",
+          "https://memory-api.jorisjonkers.dev",
+          "https://memory.jorisjonkers.dev",
+        ],
+      },
+    ]);
+  });
+
+  it("lists no cors for a key none of whose buckets a browser calls", () => {
+    const keys = catalogIn(owned(), OWNED) as { keys: object[] };
+
+    expect(keys.keys[0]).not.toHaveProperty("cors");
+  });
+
+  it("refuses a cors entry that names no exposure of the consuming Application", () => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({
+        name,
+        text: (
+          withCors("[{ name: assets, cors: [admin] }]")[name] ??
+          ((same: string) => same)
+        )(text(name)),
+      })),
+      { ...OPTIONS, projects: ["data", "knowledge-platform"] },
+    );
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics
+            .filter(({ code }) => code === "E_UNKNOWN_CORS_EXPOSURE")
+            .map(({ path }) => path),
+    ).toStrictEqual([
+      expect.stringMatching(/\/dependsOn\/0\/buckets\/0\/cors\/0$/),
+    ]);
+  });
+
+  it("refuses a cors entry above the Application where an Application beneath it declares no such exposure", () => {
+    const result = renderIntentSet(
+      [
+        ...SET.filter((name) => !name.startsWith("minimal/")),
+        ...KNOWLEDGE_PLATFORM,
+      ].map((name) => ({
+        name,
+        text:
+          name === KP
+            ? text(name).replace(
+                "owner: joris\n",
+                "owner: joris\ndependsOn:\n  - { application: platform-garage, surface: s3, buckets: [{ name: shared, cors: [public] }] }\n",
+              )
+            : text(name),
+      })),
+      { ...OPTIONS, projects: ["data", "knowledge-platform"] },
+    );
+
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics
+            .filter(({ code }) => code === "E_UNKNOWN_CORS_EXPOSURE")
+            .map(({ path }) => path),
+    ).toStrictEqual(["/dependsOn/0/buckets/0/cors/0"]);
+  });
+
   it("is applied by no method where the engine names none", () => {
     const garage = (
       edits: Readonly<Record<string, (text: string) => string>>,

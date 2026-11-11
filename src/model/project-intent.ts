@@ -266,13 +266,24 @@ const credentials = z
 // is a valid S3 bucket name.
 export const BUCKET_NAME = /^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$/;
 
+// A bucket an edge names: its name alone, or its name and the exposures of the
+// consuming Application whose pages may call it cross-origin
+// (spec/v1/16-dependencies.md#a-bucket-a-browser-calls).
+const bucketName = z.string().regex(BUCKET_NAME);
+const bucket = z.union([
+  bucketName,
+  z
+    .strictObject({ name: bucketName, cors: z.array(text).min(1) })
+    .meta({ id: "CrossOriginBucket" }),
+]);
+
 const dependencyEdge = z
   .strictObject({
     application: text,
     surface: text,
     required: z.boolean().exactOptional(),
     credentials: credentials.exactOptional(),
-    buckets: z.array(z.string().regex(BUCKET_NAME)).min(1).exactOptional(),
+    buckets: z.array(bucket).min(1).exactOptional(),
   })
   .meta({ id: "DependencyEdge" });
 

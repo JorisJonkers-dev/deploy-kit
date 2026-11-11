@@ -377,8 +377,15 @@
           "minItems": 1,
           "type": "array",
           "items": {
-            "type": "string",
-            "pattern": "^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$"
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$"
+              },
+              {
+                "$ref": "#/$defs/CrossOriginBucket"
+              }
+            ]
           }
         }
       },
@@ -408,6 +415,28 @@
       },
       "required": [
         "rotation"
+      ],
+      "additionalProperties": false
+    },
+    "CrossOriginBucket": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?$"
+        },
+        "cors": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "name",
+        "cors"
       ],
       "additionalProperties": false
     },

@@ -23,7 +23,7 @@ dependsOn:
 | `application` | yes | An Application Id, the only referencable identity ([0010](../../docs/adr/model/0010-flat-application-identity.md)). It must resolve in the composed union: `E_UNRESOLVED_APPLICATION`. |
 | `surface` | yes | One surface declared by one of that Application's Processes. The port is written once, by the provider, and never restated by a consumer: `E_UNKNOWN_SURFACE` where the name matches nothing. |
 | `required` | no | Defaults to `true`. |
-| `buckets` | no | The buckets the consumer uses in an object store, each a name of up to 32 lower-case letters, digits and hyphens that begins and ends with a letter or a digit ([The bucket catalog](#the-bucket-catalog)). On an edge whose surface no `s3` Process provides it derives nothing, and is `E_BUCKETS_WITHOUT_OBJECT_STORE`. |
+| `buckets` | no | The buckets the consumer uses in an object store, each a name of up to 32 lower-case letters, digits and hyphens that begins and ends with a letter or a digit ([The bucket catalog](#the-bucket-catalog)), or `{name, cors}` for one the consumer's pages call from a browser ([A bucket a browser calls](#a-bucket-a-browser-calls)). On an edge whose surface no `s3` Process provides it derives nothing, and is `E_BUCKETS_WITHOUT_OBJECT_STORE`. |
 
 **`provides` moved to the Process; the edge did not.** A port is a property of
 a process, so surfaces are declared by the Process that listens
@@ -289,6 +289,51 @@ bucket, all three are `E_UNRESOLVED_PLACEHOLDER`.
 A bucket the platform owns rather than a consumer, such as one whose name is a public website's hostname, is not
 a catalog entry: no edge names it.
 
+### A bucket a browser calls
+
+Most consumers reach their buckets from their own Processes alone. One whose
+pages upload to a bucket, or read from it, straight from the browser needs the
+store to answer those pages cross-origin, and says so on the bucket itself
+([0153](../../docs/adr/model/0153-a-bucket-a-browser-calls-names-the-exposures-it-admits.md)):
+
+```yaml
+dependsOn:
+  - application: platform-garage
+    surface: s3
+    buckets:
+      - {name: uploads, cors: [public]}
+```
+
+`cors` names one or more exposures of the consuming Application, by `name`.
+Each admits one origin: the exposure's tier's scheme and its host, as
+`${exposure:<application>.<name>#url}` reads it. A bucket written by its name
+alone admits none. A bucket two edges of one project name admits every origin
+either gives.
+
+**The rule is fixed, and only the origins are authored.** Every bucket that
+admits an origin carries one CORS rule: those origins, the methods `GET`,
+`HEAD`, `POST` and `PUT`, any request header, `ETag` exposed, and a preflight
+cached for 3600 seconds. The methods are what a browser needs to post or put an
+upload and to read it back. `DELETE` is never among them: a page deletes
+through its own application, never straight from the browser.
+
+**CORS grants no access.** The bucket stays private, and every request still
+needs a signature the store checks. The rule only lets the named origin's pages
+read the answers the store already gives a signed request.
+
+**The catalog states each bucket's rule exactly.** A key's buckets that admit
+an origin are listed in its `cors`, each with every origin it admits, in bucket
+and origin order. A bucket of the key absent from that list admits none, and
+the method removes any rule the store holds on it, so a `cors` taken off an
+edge leaves no origin behind.
+
+| condition | error |
+|---|---|
+| a `cors` entry names no exposure of the consuming Application; on an edge declared above the Application, of any Application beneath it | `E_UNKNOWN_CORS_EXPOSURE` |
+
+`E_UNKNOWN_CORS_EXPOSURE` is scoped to a single document and refused as soon
+as the fragment is read: an Application's exposures are its own.
+
 ### Applying the catalog
 
 The catalog is applied in the cluster by its engine's method
@@ -318,7 +363,7 @@ applying it does not bring up:
 
 | object | holds |
 |---|---|
-| the catalog | one JSON document: the datastore's `host` and `port`, the Secret Store's database `connection` its roles issue through, named after the datastore's Process, so two datastores of one engine never share one, the `admin` login's `path`, `user` and `password` keys, and the `databases`, each a `name`, an `owner` and a `data` role, in name order; or, for an object store, its `host` and `port` on the surface the catalog is applied over, the `admin` login's `path` and `token` key, and the `keys`, each a `name`, the `path` the key is written to and its `buckets`, in name order |
+| the catalog | one JSON document: the datastore's `host` and `port`, the Secret Store's database `connection` its roles issue through, named after the datastore's Process, so two datastores of one engine never share one, the `admin` login's `path`, `user` and `password` keys, and the `databases`, each a `name`, an `owner` and a `data` role, in name order; or, for an object store, its `host` and `port` on the surface the catalog is applied over, the `admin` login's `path` and `token` key, and the `keys`, each a `name`, the `path` the key is written to, its `buckets` and, where any admits an origin, its `cors`, in name order |
 | the identity's Vault policy and auth role | `read` on the admin login's document and its metadata, and `create`, `read` and `update` on `database/roles/<role>` for each role the catalog names, or on each key's `path`, written by the Vault policy job like every identity's |
 | a `ConfigMap`, a `Job` and an hourly `CronJob` | the method image, as the user the lock records, handed the catalog; the policy job's requests, deadline and eligible nodes, and its retries, spelled as its Job and CronJob are ([chapter 30](30-deliverables.md#vault-configuration-is-rendered-not-applied)); named `<process>-catalog-<12 hex>`, the digest of the catalog with what the pod runs with, so a changed catalog or method is a new Job, and marked for the applier to recreate it where only the render changed its template. Its pods carry the [consumer label](#the-consumer-label) of the datastore's surface, which the datastore's policy admits |
 
@@ -352,6 +397,9 @@ catalog names:
    key named after the project and writes its id and secret there.
 2. It creates each of the key's buckets where it is absent.
 3. It grants the key read and write on each of its buckets.
+4. It sets each of the key's buckets' CORS rule to the one its `cors` derives,
+   or removes the rule from a bucket that admits no origin, where the store
+   holds anything else, and reads the rule back.
 
 It never deletes a bucket, a key or a grant, and a run applied twice changes
 nothing the second time.

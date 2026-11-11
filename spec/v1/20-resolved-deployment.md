@@ -1342,7 +1342,7 @@ own Vault role:
 | `catalog.connection` | derived | a database catalog's: the engine's name, the Secret Store's database connection |
 | `catalog.admin` | platform-assigned | `secret/data/<project>/<process>/catalog`, keys `user` and `password`, or `token` for an object store |
 | `catalog.databases` | derived | a database catalog's: for each project an edge of which reaches the datastore, in name order: `<project>_db`, `<project>-owner`, `<project>-data` |
-| `catalog.keys` | derived | a bucket catalog's: for each project an edge of which names buckets in the store, in name order: its `name`, the project; its `path`, `secret/data/<project>/<process>/s3`; and its `buckets`, `<project>-<name>` for each name its edges give, in name order ([chapter 16](16-dependencies.md#the-bucket-catalog)) |
+| `catalog.keys` | derived | a bucket catalog's: for each project an edge of which names buckets in the store, in name order: its `name`, the project; its `path`, `secret/data/<project>/<process>/s3`; its `buckets`, `<project>-<name>` for each name its edges give, in name order; and, where any of them admits an origin, its `cors`: each such `bucket` with its `origins`, in bucket and origin order ([chapter 16](16-dependencies.md#a-bucket-a-browser-calls)) |
 | `consumes` | derived | the surface the catalog is applied over, as the [consumer label](16-dependencies.md#the-consumer-label) the method's pods carry names it, which the datastore's policy admits |
 | `egress` | derived | the datastore on its surface, the Secret Store on its `http` surface, and the cluster's DNS |
 
@@ -1837,6 +1837,10 @@ classDiagram
         +string path
         +string[] buckets
     }
+    class CatalogBucketCors {
+        +string bucket
+        +string[] origins
+    }
     class ResolvedEvents {
         +Namespace namespace
         +string address
@@ -2235,6 +2239,7 @@ classDiagram
     ResolvedCatalogJob "1" *-- "1" ResolvedBucketCatalog : catalog
     ResolvedBucketCatalog "1" *-- "1" CatalogAdminToken : admin
     ResolvedBucketCatalog "1" *-- "1..*" CatalogKey : keys
+    CatalogKey "1" *-- "0..*" CatalogBucketCors : cors
     ResolvedDeployment "1" *-- "0..1" ResolvedEvents : events
     ResolvedDeployment "1" *-- "1..*" ResolvedApplication : applications
     Provenance "1" *-- "1..*" InputDigest : inputDigests

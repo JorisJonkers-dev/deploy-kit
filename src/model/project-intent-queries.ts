@@ -206,6 +206,21 @@ export const bucketStoreOf = (
 export const bucketOf = (project: string, name: string): string =>
   `${project}-${name}`;
 
+/** One bucket entry of an edge. */
+export type BucketEntry = NonNullable<DependencyEdge["buckets"]>[number];
+
+/** The name a bucket entry gives, whichever form it is written in. */
+export const bucketNameOf = (entry: BucketEntry): string =>
+  typeof entry === "string" ? entry : entry.name;
+
+/**
+ * The exposures of the consuming Application whose pages may call a bucket
+ * cross-origin (spec/v1/16-dependencies.md#a-bucket-a-browser-calls): none for
+ * a bucket written by its name alone.
+ */
+export const bucketCorsOf = (entry: BucketEntry): readonly string[] =>
+  typeof entry === "string" ? [] : entry.cors;
+
 /** The role that may change a project's schema, which only its migration holds. */
 export const ownerRole = (project: string): string => `${project}-owner`;
 

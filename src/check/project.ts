@@ -14,6 +14,8 @@ import type {
   SharedIntent as Level,
 } from "../model/project-intent.ts";
 import {
+  bucketCorsOf,
+  bucketNameOf,
   clientExposure,
   routeFor,
   declared,
@@ -875,6 +877,38 @@ export function formDiagnostics(
   ]);
 }
 
+/**
+ * Every `cors` entry of a bucket that names no exposure of the Application whose
+ * pages would call it (spec/v1/16-dependencies.md#a-bucket-a-browser-calls).
+ * An edge declared above the Application holds for every Application beneath
+ * it, so each of them is checked against its own exposures.
+ */
+function corsRefusals(
+  edges: readonly DependencyEdge[] | undefined,
+  applications: readonly Application[],
+  at: string,
+): Refusal[] {
+  const refusals: Refusal[] = [];
+  // A missing list and an empty one hold no edge alike.
+  // Stryker disable next-line ArrayDeclaration
+  for (const [e, edge] of (edges ?? []).entries())
+    for (const [b, entry] of (edge.buckets ?? []).entries())
+      for (const [c, name] of bucketCorsOf(entry).entries()) {
+        const lacking = applications.find(
+          ({ exposure }) =>
+            !(exposure ?? []).some((candidate) => candidate.name === name),
+        );
+        if (lacking !== undefined)
+          refusals.push({
+            code: "E_UNKNOWN_CORS_EXPOSURE",
+            path: `${at}/dependsOn/${String(e)}/buckets/${String(b)}/cors/${String(c)}`,
+            message: `${lacking.id} declares no exposure named ${name}, so no origin of its pages can call ${bucketNameOf(entry)}`,
+            hint: "Name an exposure of the Application whose pages call the bucket, or write the bucket by its name alone.",
+          });
+      }
+  return refusals;
+}
+
 /** Every rule this document breaks, in the order the document reads. */
 export function ruleDiagnostics(
   document: ProjectIntentDocument,
@@ -908,14 +942,25 @@ export function ruleDiagnostics(
       ]),
     ]),
     ...credentialRefusals(document.dependsOn, ""),
+    ...corsRefusals(document.dependsOn, document.applications, ""),
     ...document.applications.flatMap((application, a) => [
       ...credentialRefusals(application.dependsOn, `/applications/${a}`),
-      ...application.processes.flatMap((process, p) =>
-        credentialRefusals(
+      ...corsRefusals(
+        application.dependsOn,
+        [application],
+        `/applications/${a}`,
+      ),
+      ...application.processes.flatMap((process, p) => [
+        ...credentialRefusals(
           process.dependsOn,
           `/applications/${a}/processes/${p}`,
         ),
-      ),
+        ...corsRefusals(
+          process.dependsOn,
+          [application],
+          `/applications/${a}/processes/${p}`,
+        ),
+      ]),
     ]),
     ...migrationOwnerRefusals(document),
     ...duplicateClaimRefusals(document),
