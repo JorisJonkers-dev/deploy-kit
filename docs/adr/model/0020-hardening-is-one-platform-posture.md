@@ -75,6 +75,13 @@ A fresh `local-path` directory is root-owned, so a non-root pod with no
 to resolve a digest, so it reads the user too. An init container that chowns the
 volume would need root on every stateful Process.
 
+**Privilege escalation is closed, not implied.** Non-root with every capability
+dropped still lets a setuid binary in the image raise its process to uid 0;
+`allowPrivilegeEscalation: false` sets `no_new_privs` and closes that. It is
+also one of the controls Kubernetes' own `restricted` Pod Security Standard
+requires, so a posture under that name without it would be refused by a
+namespace enforcing the standard.
+
 **The render settles it.** Whether an image starts under the posture is found at
 apply, and the answer is the image; until it changes, the Process stays on the
 old path.
