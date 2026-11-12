@@ -83,7 +83,7 @@ table does not name, so a new gate cannot go undocumented.
 | `publish:rc` | publishes a release candidate from a pull request (CI only) |
 | `format` | Prettier, applied |
 | `format:check` | Prettier, checked only |
-| `build` | emits the command as JavaScript under `dist/`, from `src/` alone; run before every pack and publish |
+| `build` | emits the command as JavaScript under dist/, from `src/` alone; run before every pack and publish |
 | `typecheck` | `tsc --noEmit` |
 | `test` | the suite, no coverage enforced: the fast local loop |
 | `test:coverage` | the suite, with the coverage ratchet enforced |
@@ -92,7 +92,7 @@ table does not name, so a new gate cannot go undocumented.
 
 ## Testing strategy
 
-Normative in [`docs/architecture.md#testing`](docs/architecture.md#testing).
+Normative in [`docs/architecture.md`](docs/architecture.md#testing).
 Four seams carry the suite once the compiler lands: the use-cases, the adapter
 port, the rendered tree, and the CLI. Every gate, including the ones that hold
 this repository's own documents rather than code, carries a negative fixture:
@@ -110,7 +110,7 @@ ESLint's `strictTypeChecked` preset plus this repository's own rules (no
 `any`, no `I`-prefixed interface, no floating promise, no fixed sleep in a
 test, and the rest of the `toolchain` and `tests` families in the rule
 ledger), Prettier for formatting, and the layer boundaries in
-[`docs/architecture.md#layers`](docs/architecture.md#layers) enforced on the
+[`docs/architecture.md`](docs/architecture.md#layers) enforced on the
 module graph rather than by review. `CONTEXT.md` is the naming authority: a
 type, a folder or a diagnostic that names a model concept uses the word
 `CONTEXT.md` defines, unchanged.
@@ -223,7 +223,7 @@ both. See [`docs/agents/domain.md`](docs/agents/domain.md).
   as the spec change it justifies; git history is the change log.
   `npm run lint:adrs` refuses `superseded-by` and amendment notes.
 - **Cross-repository references.** Written in full
-  (`JorisJonkers-dev/workspace#45`), never bare (`workspace#45`), the same
+  (JorisJonkers-dev/workspace#45), never bare (workspace#45), the same
   rule `docs/agents/issue-tracker.md` states for the issue tracker.
 - **Opening a pull request.** Use the `pr-composer` skill: draft, get the
   maintainer's approval, then open. Conventional-commit title, no agent
@@ -251,7 +251,7 @@ both. See [`docs/agents/domain.md`](docs/agents/domain.md).
 `docs/mde/` holds a university course's reports, frozen as delivered: one
 directory per task, plus [`docs/mde/README.md`](docs/mde/README.md), which
 says which directory mirrors which task. The course's own assignment text
-(`assignment.md`, `practicals.md`) and the course-material submodule are
+(assignment.md, practicals.md) and the course-material submodule are
 retired later, on #354, once the grade is recorded.
 
 `deploy-config-schema` is the repository this one replaced. `deploy-kit`
@@ -260,13 +260,13 @@ history, never as a source of truth.
 
 The course's own hand-outs (the lecture decks, the background reading and the
 index over them) are **not in this repository**. They are third-party works, so
-they live in the private repository `JorisJonkers-dev/mde-course-material`,
+they live in the private repository JorisJonkers-dev/mde-course-material,
 mounted as a submodule at `docs/mde/course-material/`. With access,
 `git submodule update --init docs/mde/course-material` fetches them; without it
 the directory is empty, and nothing here depends on it. No gate reads the
 submodule, and CI does not initialise it.
 
-Once initialised, **start from `docs/mde/course-material/INDEX.md`**, the one
+Once initialised, **start from docs/mde/course-material/INDEX.md (in the submodule)**, the one
 entry point for the whole course. It lays out the course week by week, gives
 each lecture's slides, recording, reading and practical session, links each task
 to its brief, its report and what to read for it, and says which document covers
