@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.11.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.10.1...v1.11.0) (2026-11-13)
+
+
+### Features
+
+* **model:** let a bucket a browser calls admit its Application's exposures ([#860](https://github.com/JorisJonkers-dev/deploy-kit/issues/860)) ([a7de3c0](https://github.com/JorisJonkers-dev/deploy-kit/commit/a7de3c00bf9308a9b40e2109f07fc56a31ca72f4)), closes [#836](https://github.com/JorisJonkers-dev/deploy-kit/issues/836)
+
+
+### Bug Fixes
+
+* **hygiene:** never cancel a run of the required hygiene checks ([#869](https://github.com/JorisJonkers-dev/deploy-kit/issues/869)) ([f0e2b6f](https://github.com/JorisJonkers-dev/deploy-kit/commit/f0e2b6fb4ea1b2ab68a56d3893be469e63fcc258))
+
 ## [1.10.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.10.0...v1.10.1) (2026-11-09)
 
 
