@@ -1580,6 +1580,9 @@
         "internetEgress": {
           "$ref": "#/$defs/InternetEgress"
         },
+        "egressProxy": {
+          "$ref": "#/$defs/ResolvedEgressProxy"
+        },
         "readiness": {
           "$ref": "#/$defs/ResolvedProbe"
         },
@@ -2255,6 +2258,48 @@
       },
       "required": [
         "reason"
+      ],
+      "additionalProperties": false
+    },
+    "ResolvedEgressProxy": {
+      "type": "object",
+      "properties": {
+        "for": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "hosts": {
+          "minItems": 1,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "host": {
+                "type": "string",
+                "minLength": 1
+              },
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              }
+            },
+            "required": [
+              "host",
+              "port"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "for",
+        "reason",
+        "hosts"
       ],
       "additionalProperties": false
     },
@@ -3222,7 +3267,8 @@
         "metrics-stack",
         "backup",
         "flux-events",
-        "release-gate"
+        "release-gate",
+        "egress-client"
       ]
     },
     "GateMembersPeer": {

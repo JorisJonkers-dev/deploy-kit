@@ -20,7 +20,11 @@ render-only: the tree is complete and reviewable, and promotion waits on the
 choice of a CNI whose policy stage can observe without dropping
 ([chapter 16](../../../spec/v1/16-dependencies.md#audit-before-enforce)). The
 candidate is Cilium, to be evaluated
-([chapter 60](../../../spec/v1/60-setup.md#cni)).
+([chapter 60](../../../spec/v1/60-setup.md#cni)). One exception holds the
+stage's line: the policy of a Process that narrows its egress to named hosts,
+and of its proxy, is applied
+([0154](0154-a-process-narrowed-to-named-hosts-is-forced-through-its-own-proxy-and-its-policy-is-applied.md)),
+because a declaration to be held to hosts is enforced or it is nothing.
 
 ## Rests on
 
@@ -92,11 +96,14 @@ the gate's policy would make each new gated Application re-render the delivery
 Project; admitting every pod the model manages would let the gate reach
 datastores it never asks.
 
-**Whether a delivered render applies the policy set is open.** Flux applies each
-Project's share of the render ([0050](0050-delivery-is-part-of-the-model.md)),
-and a policy file listed in an applied kustomization is enforced on first sync.
-Keeping the set out of every applied kustomization until promotion is the
-proposal awaiting the maintainer's decision.
+**Whether a delivered render applies the policy set is decided file by file.**
+Flux applies each Project's share of the render
+([0050](0050-delivery-is-part-of-the-model.md)), and a policy file listed in an
+applied kustomization is enforced on first sync, because the estate's flannel
+runs k3s's embedded policy controller, which enforces every policy it is shown.
+The set stays out of every applied kustomization until promotion, except for the
+host-narrowed pair, whose declaration asks to be enforced
+([0154](0154-a-process-narrowed-to-named-hosts-is-forced-through-its-own-proxy-and-its-policy-is-applied.md)).
 
 ## Alternatives
 

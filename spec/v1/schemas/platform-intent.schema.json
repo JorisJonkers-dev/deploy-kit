@@ -87,6 +87,9 @@
         "seeder": {
           "$ref": "#/$defs/Seeder"
         },
+        "egressProxy": {
+          "$ref": "#/$defs/EgressProxy"
+        },
         "providers": {
           "minItems": 1,
           "type": "array",
@@ -1185,6 +1188,29 @@
       "additionalProperties": false
     },
     "Seeder": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "memory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "image",
+        "memory",
+        "cpu"
+      ],
+      "additionalProperties": false
+    },
+    "EgressProxy": {
       "type": "object",
       "properties": {
         "image": {

@@ -3,6 +3,7 @@
 // allow set and the baseline admit, and per backup identity the policy its
 // backup plan admits, every peer and every port read off the projection.
 import type { ResolvedProject } from "../../model/resolution.ts";
+import { portsOfHosts } from "../../model/egress-proxy.ts";
 import { SPAWN_LABEL } from "../../model/spawn-label.ts";
 import { FLUX_CONTROLLERS } from "../../model/platform-intent.ts";
 import type {
@@ -252,6 +253,17 @@ function policyOf(
     process.internetEgress === undefined
       ? []
       : [{ to: [{ ipBlock: { cidr: ANY_IPV4, except: [...NOT_PUBLIC] } }] }];
+  // A proxy reaches public IPv4 on the ports of the hosts it admits, and no
+  // other: the allowlist is the proxy's, the ports are the policy's.
+  const proxied =
+    process.egressProxy === undefined
+      ? []
+      : [
+          {
+            to: [{ ipBlock: { cidr: ANY_IPV4, except: [...NOT_PUBLIC] } }],
+            ports: portsOfHosts(process.egressProxy.hosts).map(tcp),
+          },
+        ];
   return {
     apiVersion: "networking.k8s.io/v1",
     kind: "NetworkPolicy",
@@ -271,6 +283,7 @@ function policyOf(
         ...upstream,
         ...api,
         ...internet,
+        ...proxied,
       ],
     },
   };
@@ -483,6 +496,20 @@ function migrationPoliciesOf(
   ];
 }
 
+/**
+ * The Processes whose policy is enforced rather than rendered only
+ * (spec/v1/16-dependencies.md#host-narrowed-egress): a Process narrowed to
+ * named hosts is held to them by its policy and nothing else, so a policy that
+ * is not loaded would leave it with the whole internet, and its proxy's is the
+ * other half of the same rule.
+ */
+const enforcedOf = (application: ResolvedApplicationDocument): Set<string> =>
+  new Set(
+    application.processes.flatMap(({ name, egressProxy }) =>
+      egressProxy === undefined ? [] : [name, egressProxy.for],
+    ),
+  );
+
 export function renderNetworking(project: ResolvedProject): Deliverable[] {
   const namespace = namespaceOf(project.project);
   const denyAll: NetworkPolicy = {
@@ -500,12 +527,17 @@ export function renderNetworking(project: ResolvedProject): Deliverable[] {
       adapter: ADAPTER,
       objects: [denyAll],
     },
-    ...project.applications.map((application): Deliverable => ({
-      path: `${applicationDirectory(project.project, application.id)}/networkpolicy.yaml`,
-      adapter: ADAPTER,
-      objects: [
+    ...project.applications.flatMap((application): Deliverable[] => {
+      const enforced = enforcedOf(application);
+      const directory = applicationDirectory(project.project, application.id);
+      const held = application.processes.filter(({ name }) =>
+        enforced.has(name),
+      );
+      const rendered = [
         ...application.processes.flatMap((process) => [
-          policyOf(process, application),
+          ...(enforced.has(process.name)
+            ? []
+            : [policyOf(process, application)]),
           // A Process that makes no pod has no template to police.
           // Stryker disable next-line ArrayDeclaration
           ...(process.spawns ?? []).map((spawn) =>
@@ -514,7 +546,30 @@ export function renderNetworking(project: ResolvedProject): Deliverable[] {
           ...backupPoliciesOf(process, application),
         ]),
         ...migrationPoliciesOf(application),
-      ],
-    })),
+      ];
+      return [
+        ...(rendered.length === 0
+          ? []
+          : [
+              {
+                path: `${directory}/networkpolicy.yaml`,
+                adapter: ADAPTER,
+                objects: rendered,
+              },
+            ]),
+        ...(held.length === 0
+          ? []
+          : [
+              {
+                path: `${directory}/${ENFORCED_POLICY}`,
+                adapter: ADAPTER,
+                objects: held.map((process) => policyOf(process, application)),
+              },
+            ]),
+      ];
+    }),
   ];
 }
+
+/** The file of the policies a kustomization applies: the others stay render-only. */
+export const ENFORCED_POLICY = "egress-policy.yaml";

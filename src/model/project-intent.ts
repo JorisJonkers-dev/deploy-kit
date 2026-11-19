@@ -375,6 +375,23 @@ const egress = z
   })
   .meta({ id: "Egress" });
 
+// A name a Process may reach beyond the cluster, and the one port it reaches it
+// on (spec/v1/16-dependencies.md#host-narrowed-egress): a lower-case public DNS
+// name, never a wildcard, an address or a cluster name, so the allowlist the
+// proxy enforces names exactly the hosts the author wrote.
+const egressHost = z
+  .strictObject({ host: hostname, port })
+  .meta({ id: "EgressHost" });
+
+// Egress narrowed to named hosts: the Process reaches the cluster through its
+// edges and these hosts through a proxy of its own, and nothing else.
+const hostEgress = z
+  .strictObject({
+    hosts: z.array(egressHost).min(1),
+    reason: text,
+  })
+  .meta({ id: "HostEgress" });
+
 // A Process whose traffic leaves through the platform's VPN
 // (spec/v1/10-project-intent.md#vpn-attachment), and whether it receives the
 // port the provider forwards to it.
@@ -454,7 +471,7 @@ const process = z
     libraries: z.array(libraryMount).min(1).exactOptional(),
     replicas: capacity.exactOptional(),
     api: apiAccess.exactOptional(),
-    egress: egress.exactOptional(),
+    egress: z.union([egress, hostEgress]).exactOptional(),
     vpn: vpnAttachment.exactOptional(),
     spawns: z.array(spawnTemplate).min(1).exactOptional(),
     ...sharedIntent,

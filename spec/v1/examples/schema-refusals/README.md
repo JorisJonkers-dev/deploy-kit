@@ -16,8 +16,8 @@ the chapter's table says the refusal lands at.
 | [`every-offending-value.project.yml`](every-offending-value.project.yml) | three unrelated defects in one file | every one of them |
 | [`outside-yaml-subset.project.yml`](outside-yaml-subset.project.yml) | an anchor, an alias and an explicit tag | the root, once |
 | [`two-documents.project.yml`](two-documents.project.yml) | two YAML documents in one file | the root, once |
-| [`egress-without-reason.project.yml`](egress-without-reason.project.yml) | internet egress with no `reason` | where the field would be |
-| [`egress-outside-vocabulary.project.yml`](egress-outside-vocabulary.project.yml) | `egress.to` outside its closed vocabulary | the value |
+| [`egress-without-reason.project.yml`](egress-without-reason.project.yml) | internet egress with no `reason` | the `egress` value, once: it matches neither form |
+| [`egress-outside-vocabulary.project.yml`](egress-outside-vocabulary.project.yml) | `egress.to` outside its closed vocabulary | the `egress` value, once: it matches neither form |
 | [`egress-with-range.project.yml`](egress-with-range.project.yml) | internet egress with an authored range | the field |
 | [`schedule-malformed.project.yml`](schedule-malformed.project.yml) | a `schedule` that is not five cron fields | the value |
 | [`rate-limit-without-period.project.yml`](rate-limit-without-period.project.yml) | a route's `rateLimit` with no `per` | where the field would be |

@@ -400,6 +400,13 @@ const seeder = z
   .strictObject({ image: text, memory: text, cpu: text })
   .meta({ id: "Seeder" });
 
+// The proxy a Process whose egress is narrowed to named hosts is forced through
+// (spec/v1/14-platform-intent.md#the-egress-proxy): an allowlisting forward
+// proxy, pinned in the images lock, with what each Process's proxy requests.
+const egressProxy = z
+  .strictObject({ image: text, memory: text, cpu: text })
+  .meta({ id: "EgressProxy" });
+
 // Who may hold Kubernetes API access, and where the API answers
 // (spec/v1/14-platform-intent.md#kubernetes-api-access): the Applications whose
 // Processes may declare `api`, and the ranges an egress policy admits for it.
@@ -777,6 +784,7 @@ export const platformIntent = z
     apiAccess: apiAccessPolicy.exactOptional(),
     policyJob: vaultPolicyJob.exactOptional(),
     seeder: seeder.exactOptional(),
+    egressProxy: egressProxy.exactOptional(),
     providers: z.array(provider).min(1).exactOptional(),
     libraries: z
       .record(text, libraryDeclaration)

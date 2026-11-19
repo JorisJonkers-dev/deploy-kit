@@ -5,6 +5,7 @@
 import { dashboardUidOf } from "../model/dashboards.ts";
 import { ruleGroupsOf } from "../model/alert-rules.ts";
 import { destinationOf } from "./secrets.ts";
+import { deriveEgressProxy } from "./egress-proxy.ts";
 import { deriveProxy } from "./tier-proxy.ts";
 import { exposuresOf } from "../model/tier-proxy.ts";
 import type {
@@ -438,6 +439,8 @@ const readinessOf = (process: EffectiveProcess): Probe | undefined =>
 interface Resolved {
   readonly process: EffectiveProcess;
   readonly resolved: ResolvedProcess;
+  /** The proxy its host-narrowed egress is forced through, where it has one. */
+  readonly proxy?: ResolvedProcess | undefined;
 }
 
 type Provider = NonNullable<ReleaseGate["members"][number]["waitsFor"]>[number];
@@ -631,7 +634,7 @@ export function resolveApplication(
     const nameservers = exposures.some(({ port }) => port === DNS_PORT)
       ? context.platform.substrate.upstreamNameservers
       : undefined;
-    const base = resolveProcess(process, {
+    const processContext: ProcessContext = {
       ...context,
       machinery,
       migratesItself: application.migration === "self",
@@ -641,7 +644,15 @@ export function resolveApplication(
         ...receiverGrantsOf(process, application, context),
       ],
       held: l4HoldOf(exposures, context.platform),
-    });
+    };
+    const base = resolveProcess(process, processContext);
+    // A Process narrowed to named hosts is forced through a proxy of its own.
+    const egressProxy = deriveEgressProxy(
+      process,
+      base,
+      application,
+      processContext,
+    );
     // A blue-green Process that publishes readiness is a gate member, and
     // admits the gate's own requests.
     const member =
@@ -653,8 +664,12 @@ export function resolveApplication(
     const datasources = datasourcesOf(base, application, context);
     return {
       process,
+      proxy: egressProxy?.proxy,
       resolved: {
         ...base,
+        ...(egressProxy === undefined
+          ? {}
+          : { dependencies: [...(base.dependencies ?? []), egressProxy.edge] }),
         ...(datasources === undefined
           ? {}
           : { assets: [...(base.assets ?? []), datasources] }),
@@ -664,6 +679,7 @@ export function resolveApplication(
         ...withEnvironment(base, [
           ...derived.environment,
           ...admin.environment,
+          ...(egressProxy?.environment ?? []),
         ]),
         ...(ingress.length === 0 ? {} : { ingress }),
         egress: [
@@ -676,7 +692,11 @@ export function resolveApplication(
       },
     };
   });
-  const processes = pairs.map(({ resolved }) => resolved);
+  // Each proxy follows the Processes the Application declares.
+  const processes = [
+    ...pairs.map(({ resolved }) => resolved),
+    ...pairs.flatMap(({ proxy }) => (proxy === undefined ? [] : [proxy])),
+  ];
   const exposure =
     application.exposure === undefined
       ? undefined

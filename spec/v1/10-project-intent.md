@@ -799,6 +799,35 @@ A Process that reaches public addresses no edge names declares
 is written. What it derives, and the fixed ranges it never reaches, are
 [chapter 16](16-dependencies.md#internet-egress)'s.
 
+### Host-narrowed egress
+
+A Process that reaches a few named hosts, and no other address beyond its
+edges, names them instead
+([0154](../../docs/adr/model/0154-a-process-narrowed-to-named-hosts-is-forced-through-its-own-proxy-and-its-policy-is-applied.md)):
+
+```yaml
+egress:
+  reason: Hermes reads the pull requests it reviews.
+  hosts:
+    - { host: api.github.com, port: 443 }
+    - { host: github.com, port: 443 }
+```
+
+`hosts` holds at least one entry, each a `host` and the one `port` it is
+reached on. A `host` is a lower-case public DNS name of at least two labels:
+never a wildcard, an address, or a name inside the cluster domain, so the
+allowlist names exactly what its author wrote. `reason` is required, as it is
+for `to: internet`, and the two forms are never written together. The Process
+declares nothing else: the proxy it is forced through, its policy and the
+variables that point its clients at it derive
+([chapter 16](16-dependencies.md#host-narrowed-egress)).
+
+| condition | error |
+|---|---|
+| a Process narrows its egress to hosts, and the Platform document names no `egressProxy` | `E_NO_EGRESS_PROXY` |
+| a Process narrows its egress to hosts and attaches to the VPN, whose tunnel leaves the pod outside the proxy | `E_EGRESS_WITH_VPN` |
+| a Process of the Application already holds the name its proxy derives, `<process>-egress` | `E_DUPLICATE_PROCESS_NAME` |
+
 ### VPN attachment
 
 A Process whose traffic must leave through the platform's VPN declares it
