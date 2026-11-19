@@ -96,6 +96,8 @@ other resolves and every policy one asks for the other offers:
 | a Process mounts a library that grants its project nothing, or mounts it `write` where the grant is `read` | `E_LIBRARY_NOT_GRANTED` |
 | a Process attaches to a VPN and `vpn` is absent | `E_NO_VPN_POLICY` |
 | a Process seeds an Asset and `seeder` is absent | `E_NO_SEEDER` |
+| a Process narrows its egress to named hosts and `egressProxy` is absent | `E_NO_EGRESS_PROXY` |
+| `egressProxy` names an image the images lock does not hold | `E_UNLOCKED_IMAGE` |
 | a Node Agent the node contract or the pools derive has no entry in `nodeAgents` | `E_NO_NODE_AGENT_POLICY` |
 | a grant delivered as `env` or `file` where `secretsEncryption` is false | `E_SECRETS_AT_REST_REQUIRED` |
 | a name in `delivery.machinery` names no Application its Project declares | `E_UNKNOWN_MACHINERY` |
@@ -183,7 +185,7 @@ substrate:
 | `kubernetesVersion` | schema validation of every rendered object; [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)'s evaluation |
 | `datastore`, `serverCount` | the restore rehearsal; every decision resting on [0002](../../docs/adr/model/0002-kubernetes-is-the-substrate-for-one-applier.md) |
 | `secretsEncryption` | `E_SECRETS_AT_REST_REQUIRED` ([0030](../../docs/adr/model/0030-secret-delivery-is-env-file-or-self.md)) |
-| `cni`, `networkPolicyController` | whether a non-enforcing policy stage exists ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)) |
+| `cni`, `networkPolicyController` | whether a non-enforcing policy stage exists ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)); the controller enforces every policy a kustomization lists, and matches pods and addresses, never names ([host-narrowed egress](16-dependencies.md#host-narrowed-egress)) |
 | `imagePull` | every derived deadline ([chapter 20](20-resolved-deployment.md#derived-mechanics)): a Process's progress deadline, a `prepare` Process's run deadline and so the Release Gate's, each with this on top, rounded up to a whole second, because each runs from before the image is on the node. It is the longest an image pull takes on the slowest node a pod may land on, measured, not a margin; optional, and a substrate that states none allows nothing for a pull ([0105](../../docs/adr/model/0105-every-derived-deadline-allows-the-substrates-image-pull.md)) |
 | `clusterDns` | the DNS baseline every egress policy carries ([chapter 16](16-dependencies.md#the-baseline)): the substrate runs the cluster's DNS, so where it runs is a fact about the substrate rather than a declared Application |
 | `upstreamNameservers` | a Process that serves DNS ([chapter 10](10-project-intent.md#l4-exposure)): it resolves through these addresses, never the cluster's DNS, which may be down in the outage it serves through. Optional, but a set holding such a Process with none named is `E_NO_UPSTREAM_NAMESERVERS`. A node's own resolver is not this: DHCP and the LAN's resolver own it |
@@ -1427,6 +1429,32 @@ can copy a file, and every Project's step runs it:
 The step runs under the one posture, as the Process's own user, so the file it
 writes is the Process's. The block is optional: a platform that names none
 admits no seeded Asset, and one is `E_NO_SEEDER`.
+
+## The egress proxy
+
+```yaml
+egressProxy:
+  image: squid
+  memory: 64Mi
+  cpu: 50m
+```
+
+The proxy every Process that narrows its egress to named hosts is forced
+through ([chapter 10](10-project-intent.md#host-narrowed-egress),
+[0154](../../docs/adr/model/0154-a-process-narrowed-to-named-hosts-is-forced-through-its-own-proxy-and-its-policy-is-applied.md)).
+One Process of its own runs it for each such Process, so the image serves every
+Project and the platform names and pins it:
+
+- **`image`** is an alias the images lock holds, `E_UNLOCKED_IMAGE` otherwise.
+  It must provide `squid` on its path, run as the lock's `uid` and `gid`, and
+  start with a read-only root filesystem and `/tmp` writable. Its multi-arch
+  index serves a Process on any node.
+- **`memory`** and **`cpu`** are what each proxy's one container requests.
+
+The block is optional: a platform that names none admits no host-narrowed
+egress, and one is `E_NO_EGRESS_PROXY`. Only the proxy's allow rules and its
+policy enforce the hosts, so the proxy is the one component of the estate whose
+image a host-narrowed Process's security rests on.
 
 ## The Secret Store
 

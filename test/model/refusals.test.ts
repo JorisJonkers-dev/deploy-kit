@@ -427,11 +427,7 @@ describe("internet egress", () => {
   });
 
   it.each([
-    [
-      "no reason",
-      "{ to: internet }",
-      "/applications/0/processes/0/egress/reason",
-    ],
+    ["no reason", "{ to: internet }", "/applications/0/processes/0/egress"],
     [
       "an empty reason",
       '{ to: internet, reason: "" }',
@@ -440,7 +436,7 @@ describe("internet egress", () => {
     [
       "a destination outside the vocabulary",
       "{ to: lan, reason: x }",
-      "/applications/0/processes/0/egress/to",
+      "/applications/0/processes/0/egress",
     ],
     [
       "an authored range",
@@ -449,6 +445,51 @@ describe("internet egress", () => {
     ],
   ])("is refused with %s", (_, value, path) => {
     expect(refusalsOf(egress(value))).toStrictEqual([{ code: "schema", path }]);
+  });
+});
+
+// REQ-172 (docs/requirements.md): egress narrowed to named hosts is a closed
+// form: public DNS names and ports, a reason, and nothing an address or a
+// pattern could widen it by.
+describe("host-narrowed egress", () => {
+  const egress = (value: string): string =>
+    DOCUMENT.replace("GRANTS", "").replace(
+      "        cutover: interrupted\n",
+      `        cutover: interrupted\n        egress: ${value}\n`,
+    );
+  const hosts = (...host: string[]): string =>
+    `{ reason: reads pull requests, hosts: [${host
+      .map((name) => `{ host: "${name}", port: 443 }`)
+      .join(", ")}] }`;
+
+  it("is accepted with a reason and hosts that are public names", () => {
+    expect(
+      refusalsOf(egress(hosts("api.github.com", "github.com"))),
+    ).toStrictEqual([]);
+  });
+
+  it.each([
+    ["a wildcard", hosts("*.github.com")],
+    ["an upper-case name", hosts("API.github.com")],
+    ["an IPv4 address", hosts("203.0.113.7")],
+    ["a name with no dot", hosts("localhost")],
+    ["a cluster name", hosts("litellm.litellm-system.svc")],
+    ["a name inside the cluster domain", hosts("vault.svc.cluster.local")],
+    ["no host", "{ reason: x, hosts: [] }"],
+    ["no reason", "{ hosts: [{ host: api.github.com, port: 443 }] }"],
+    ["a host with no port", "{ reason: x, hosts: [{ host: api.github.com }] }"],
+    [
+      "a port out of range",
+      "{ reason: x, hosts: [{ host: api.github.com, port: 0 }] }",
+    ],
+    [
+      "both forms at once",
+      "{ to: internet, reason: x, hosts: [{ host: api.github.com, port: 443 }] }",
+    ],
+  ])("is refused with %s", (_, value) => {
+    expect(refusalsOf(egress(value))).toStrictEqual([
+      { code: "schema", path: expect.stringContaining("/egress") as string },
+    ]);
   });
 });
 

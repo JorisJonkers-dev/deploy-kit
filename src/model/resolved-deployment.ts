@@ -71,6 +71,7 @@ export const INGRESS_RULES = [
   "backup",
   "flux-events",
   "release-gate",
+  "egress-client",
 ] as const;
 
 /**
@@ -346,6 +347,17 @@ const resolvedApiRule = z
 const internetEgress = z
   .strictObject({ reason: text })
   .meta({ id: "InternetEgress" });
+
+// Where a Process is the proxy another Process is forced through
+// (spec/v1/16-dependencies.md#host-narrowed-egress): that Process, the reason
+// it gave, and the hosts and ports the proxy admits and its policy reaches.
+const resolvedEgressProxy = z
+  .strictObject({
+    for: text,
+    reason: text,
+    hosts: z.array(z.strictObject({ host: text, port })).min(1),
+  })
+  .meta({ id: "ResolvedEgressProxy" });
 
 const resolvedApiAccess = z
   .strictObject({
@@ -753,6 +765,7 @@ const resolvedProcess = stated(
     identityToken: z.boolean(),
     api: resolvedApiAccess.exactOptional(),
     internetEgress: internetEgress.exactOptional(),
+    egressProxy: resolvedEgressProxy.exactOptional(),
     readiness: resolvedProbe.exactOptional(),
     liveness: resolvedProbe.exactOptional(),
     startup: startupProbe.exactOptional(),

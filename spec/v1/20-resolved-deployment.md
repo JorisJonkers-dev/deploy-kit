@@ -844,6 +844,21 @@ the lock records one, and its `memory` and `cpu`
 as any Asset is, its content-hashed `name` and its `content`, with its `seedAt`
 in place of a `mountAt`. A Process that seeds nothing carries no `seeder`.
 
+### The egress proxy
+
+A Process that narrows its egress to named hosts
+([chapter 10](10-project-intent.md#host-narrowed-egress)) resolves with no
+`internetEgress`, and the Application resolves one more Process beside it: its
+proxy, `<process>-egress`, on the Platform document's `egressProxy` image
+([chapter 14](14-platform-intent.md#the-egress-proxy)), pinned by digest like
+any Process's. The proxy is resolved as every Process is, with a `proxy` surface
+on 3128 and the allowlist as its one Asset; it carries an `egressProxy` naming
+the Process it serves, the reason that Process gave and the hosts it admits. The
+Process gains an edge to the proxy's `proxy` surface and the proxy variables
+([chapter 16](16-dependencies.md#host-narrowed-egress)). The proxy is no gate
+member and routes nothing: it switches stop-start. A Process that narrows
+nothing resolves no proxy.
+
 ### A replica set member finds itself
 
 A `mongo` runs as a replica set, because its consumers' transactions and change
@@ -2039,6 +2054,10 @@ classDiagram
     class InternetEgress {
         +string reason
     }
+    class ResolvedEgressProxy {
+        +string for
+        +string reason
+    }
     class ResolvedPlacement {
         +NodeName[] eligibleNodes
         +NodeName boundTo
@@ -2295,6 +2314,7 @@ classDiagram
     ResolvedProcess "1" *-- "0..*" EgressPeer : egress
     ResolvedProcess "1" *-- "0..1" GateMembersPeer : egress
     ResolvedProcess "1" *-- "0..1" InternetEgress : internetEgress
+    ResolvedProcess "1" *-- "0..1" ResolvedEgressProxy : egressProxy
     ResolvedVolume "1" *-- "0..1" BackupPlan : backup
     ResolvedProcess "1" *-- "0..1" ResolvedApiAccess : api
     ResolvedApiAccess "1" *-- "0..*" ResolvedApiRule : rules

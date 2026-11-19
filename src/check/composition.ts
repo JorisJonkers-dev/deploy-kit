@@ -11,6 +11,7 @@ import {
   tierExposuresOf,
   tiersAnsweredBy,
 } from "../model/tier-proxy.ts";
+import { egressProxyName } from "../model/egress-proxy.ts";
 import { catalogSurfaceOf, dumpedSurfaceOf } from "../model/backup.ts";
 import type { Diagnostic } from "../model/diagnostic.ts";
 import {
@@ -874,6 +875,35 @@ function projectRefusals(
           message: `${process.name} attaches to a VPN, and the platform runs none`,
           hint: "Declare the VPN in the Platform document's `vpn`, or drop the attachment.",
         });
+      // A Process narrowed to named hosts is forced through the platform's
+      // proxy, which a tunnel to a public endpoint would bypass.
+      if (process.egress !== undefined && "hosts" in process.egress) {
+        if (platform.egressProxy === undefined)
+          refusals.push({
+            code: "E_NO_EGRESS_PROXY",
+            path: `${processAt}/egress`,
+            message: `${process.name} narrows its egress to named hosts, and the platform names no egress proxy`,
+            hint: "Name the proxy in the Platform document's `egressProxy`, or declare `egress: {to: internet}`.",
+          });
+        if (
+          application.processes.some(
+            ({ name }) => name === egressProxyName(process.name),
+          )
+        )
+          refusals.push({
+            code: "E_DUPLICATE_PROCESS_NAME",
+            path: `${processAt}/egress`,
+            message: `${process.name} derives a proxy named ${egressProxyName(process.name)}, which another Process of ${application.id} already holds`,
+            hint: "Rename the Process that holds the proxy's name.",
+          });
+        if (process.vpn !== undefined)
+          refusals.push({
+            code: "E_EGRESS_WITH_VPN",
+            path: `${processAt}/egress`,
+            message: `${process.name} narrows its egress to named hosts and attaches to the VPN, whose tunnel leaves the pod outside the proxy`,
+            hint: "Drop the host-narrowed `egress`, or the VPN attachment.",
+          });
+      }
       refusals.push(
         ...seedRefusals(
           process,

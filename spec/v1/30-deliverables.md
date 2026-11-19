@@ -409,7 +409,12 @@ each Application's directory beside its `namespace.yaml`. **No kustomization
 lists a `networkpolicy.yaml`** while chapter 16's stage is render-only
 ([Audit before enforce](16-dependencies.md#audit-before-enforce)): the policy set
 is in the artifact, reviewed and signed with everything else, and applied by
-nothing, and none lists a Vault document, which is no Kubernetes object.
+nothing. The one exception is an Application's `egress-policy.yaml`
+(`networking`), written only where a Process narrows its egress to named hosts:
+it holds that Process's policy and its proxy's, which are not in the
+`networkpolicy.yaml` beside it, and its kustomization lists it
+([Host-narrowed egress](16-dependencies.md#host-narrowed-egress)). No
+kustomization lists a Vault document either, which is no Kubernetes object.
 
 Everything under `apps/<project>/` is that Project's share, whatever the
 Project is named, and everything under `estate/` is estate-scoped, so it is
@@ -470,6 +475,7 @@ spells only what the projection holds:
 | a Process's `nameservers` | `networking` | one egress rule in the Process's own policy, after its peers, to an `ipBlock` of each address as a `/32`, on UDP and TCP port 53 |
 | a held `api`'s `server` | `networking` | one egress rule per range in the Process's own policy, after its peers, to an `ipBlock` of its `cidr` on its port over TCP |
 | a Process's `egress: {to: internet}` | `networking` | one egress rule in the Process's own policy, after the API's ranges, to an `ipBlock` of `0.0.0.0/0` except `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10`, `169.254.0.0/16` and `127.0.0.0/8`, in that order, on every port ([chapter 16](16-dependencies.md#internet-egress)) |
+| a Process's `egress: {hosts}` | `kubernetes`, `networking` | a proxy Process, `<process>-egress`, with its Deployment, Service and allowlist ConfigMap (`kubernetes`), the Process's proxy variables, and the Process's policy and the proxy's in `egress-policy.yaml` (`networking`): the Process reaches the proxy on 3128, the proxy reaches public IPv4 on the declared ports |
 | a backup plan's `egress` and `destinations` | `networking` | one `NetworkPolicy` per backup identity, named for it, beside its Process's in the Application's `networkpolicy.yaml`, selecting the identity's `instance`; `policyTypes` both and no ingress rule, so nothing reaches it; one egress rule per peer as above, and one per destination range, to an `ipBlock` of its `cidr` on its port over TCP. A Process with several backed-up volumes has one identity and so one policy, admitting what any of its backup plans names, each peer and each range once |
 | `scrape` of a `blue-green` Process | `prometheus` | a `PodMonitor` in the Application's namespace, `jobLabel` the `instance` label, the scrape's surface, path, interval and timeout |
 | `scrape` of a `stop-start` or `rolling` Process | `prometheus` | a `ServiceMonitor` over the Process's own `Service`, with the same selection and endpoint |

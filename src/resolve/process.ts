@@ -64,6 +64,7 @@ import {
   SPAWN_RULES,
   spawnEnvironmentOf,
 } from "./spawns.ts";
+import { isHostEgress } from "../model/egress-proxy.ts";
 import { resolveLibraries } from "./libraries.ts";
 import {
   destinationOf,
@@ -707,11 +708,15 @@ export function resolveProcess(
             ).server,
           },
         }),
+    // A Process narrowed to hosts reaches none beyond its proxy, which the
+    // Application's resolution derives.
     ...(process.egress === undefined
       ? process.vpn === undefined
         ? {}
         : { internetEgress: { reason: TUNNEL_REASON } }
-      : { internetEgress: { reason: process.egress.reason } }),
+      : isHostEgress(process.egress)
+        ? {}
+        : { internetEgress: { reason: process.egress.reason } }),
     ...probesOf(process, context.platform),
     placement,
     ...(volumes.length === 0 ? {} : { volumes }),

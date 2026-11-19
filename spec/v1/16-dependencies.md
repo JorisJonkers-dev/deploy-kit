@@ -928,13 +928,48 @@ Two limits follow from the substrate, not the model:
   not cover the node's own address.
 
 A `to` outside the vocabulary, a missing or empty `reason`, and any authored
-range are refused by the schema (`schema`), at the field.
+range are refused by the schema (`schema`): at the `egress` value where it
+matches neither form of [egress](#host-narrowed-egress), and at the unknown
+field where it names one.
 
 A Process attached to the VPN derives the same rule without declaring it,
 because the tunnel's endpoint is a public address
 ([chapter 10](10-project-intent.md#vpn-attachment)); its reason says so. The
 Process's own traffic is the VPN container's to route, and a policy cannot see
 inside the tunnel: what leaves the pod is the tunnel, to the provider.
+
+### Host-narrowed egress
+
+A Process that reaches a few named hosts declares them, with a reason
+([chapter 10](10-project-intent.md#host-narrowed-egress)), and is held to them
+by the network and not by its own good behaviour. A NetworkPolicy matches
+addresses, never names, and the estate's CNI is flannel with k3s's embedded
+policy controller, which has no policy by name
+([chapter 14](14-platform-intent.md#substrate-facts)). So the Process is forced
+through a proxy that does match names:
+
+| derived | is |
+|---|---|
+| a proxy, `<process>-egress` | a Process of the same Application on the Platform document's `egressProxy` image, serving `proxy` on 3128, with the allowlist as its one Asset: an `allow` rule per host and port, a refusal of any request that names an address, and a final denial of everything else ([chapter 14](14-platform-intent.md#the-egress-proxy)) |
+| an edge, from the Process to the proxy | its policy's only route out of the cluster beyond the edges the author declared |
+| the Process's variables | `HTTPS_PROXY`, `HTTP_PROXY` and their lower-case spellings name the proxy; `NO_PROXY` and `no_proxy` keep the cluster's own names and every host its edges reach off it |
+| the proxy's policy | ingress from the Process alone on 3128; egress to the cluster's DNS and to public IPv4, less the fixed ranges of [internet egress](#internet-egress), on the ports of the declared hosts only |
+
+The Process's own policy carries no rule to a public address, so a client that
+ignores the variables has nowhere to go: its connection is dropped by the
+policy, not refused by the proxy. A host is named in a request the proxy reads,
+so a connection to an address, or to a name not declared, is denied by the proxy
+and a port not declared is denied by both. The Process keeps the cluster's DNS,
+the baseline every policy carries, and resolving a name there is not a request
+to it.
+
+These two policies, the Process's and its proxy's, are **applied**, not only
+rendered: they are written to `egress-policy.yaml`, which the Application's
+kustomization lists, while the rest of the policy set stays render-only
+([Audit before enforce](#audit-before-enforce)). Rendering them alone would
+leave the Process with every address it reached before, which is the one outcome
+the declaration exists to prevent. The file holds those two policies and no
+other: every other policy of the Application stays where it was.
 
 ### Audit before enforce
 
@@ -949,13 +984,16 @@ had picked a CNI. It becomes satisfiable only through a CNI carrying a
 non-enforcing policy stage ([chapter 60](60-setup.md#cni),
 [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)).
 
-**Render-only is the v1 stage**
+**Render-only is the v1 stage, with one exception**
 ([0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)). The
 `networking` adapter emits the complete policy set and the tree is diffed in
 review; nothing loads it until [0035](../../docs/adr/model/0035-network-policy-is-default-deny-and-render-only.md)
 picks a CNI with a non-enforcing stage. What v1 owes is the policies, and
 promoting them is a rollout decision waiting on a premise nobody has settled,
-so an unpicked CNI does not block the render.
+so an unpicked CNI does not block the render. The exception is the policy of a
+Process that narrows its egress to named hosts, and of its proxy: those are
+applied ([Host-narrowed egress](#host-narrowed-egress)), because their owner
+asked to be held to them, and a set not applied holds nothing.
 
 | stage | what runs | exit criterion |
 |---|---|---|

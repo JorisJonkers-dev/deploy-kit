@@ -284,6 +284,25 @@ const seederRefusals = (set: PinnedSet, platform: string): Diagnostic[] => {
       ];
 };
 
+/** The egress proxy, where the platform names one, is an image the lock holds. */
+const egressProxyRefusals = (
+  set: PinnedSet,
+  platform: string,
+): Diagnostic[] => {
+  const image = set.platform.egressProxy?.image;
+  return image === undefined || Object.hasOwn(set.imagesLock.images, image)
+    ? []
+    : [
+        {
+          code: "E_UNLOCKED_IMAGE",
+          document: platform,
+          path: "/egressProxy/image",
+          message: `the images lock holds no entry for ${image}`,
+          hint: "Lock the alias, or name one the images lock holds.",
+        },
+      ];
+};
+
 /**
  * Each Node Agent the node contract and the pools derive has its catalog entry,
  * and the GPU agents a runtime class (spec/v1/14-platform-intent.md#node-agents):
@@ -423,6 +442,7 @@ export const pinnedDiagnostics = (
   ...methodRefusals(set, platform),
   ...vpnRefusals(set, platform),
   ...seederRefusals(set, platform),
+  ...egressProxyRefusals(set, platform),
   ...nodeAgentRefusals(set, platform),
   ...policyJobRefusals(set, platform),
   ...located.flatMap((project) => processRefusals(set, project)),
