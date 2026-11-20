@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.11.0...v1.12.0) (2026-11-20)
+
+
+### Features
+
+* **egress:** narrow a Process's egress to named hosts, enforced through a proxy ([#875](https://github.com/JorisJonkers-dev/deploy-kit/issues/875)) ([66a8bfb](https://github.com/JorisJonkers-dev/deploy-kit/commit/66a8bfb22c4166d35f5decbaf01a32494c09d812))
+
 ## [1.11.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.10.1...v1.11.0) (2026-11-13)
 
 
