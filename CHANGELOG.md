@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.12.0...v1.12.1) (2026-11-25)
+
+
+### Bug Fixes
+
+* **deps:** resolve the lockfile from the public npm registry again ([#878](https://github.com/JorisJonkers-dev/deploy-kit/issues/878)) ([0bd368a](https://github.com/JorisJonkers-dev/deploy-kit/commit/0bd368aa2793a846972a1e568005b145e7280cf6))
+
 ## [1.12.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.11.0...v1.12.0) (2026-11-20)
 
 
