@@ -409,13 +409,12 @@ describe("how a Process switches, and how long it may take", () => {
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }
         startupBudget: 30s
-        cutover: interrupted
 `),
     );
 
     expect(job.switchover).toBeUndefined();
     expect(job.readiness).toBeUndefined();
-    expect(job.cutover).toBe("interrupted");
+    expect(job.cutover).toBeUndefined();
   });
 
   it("gives a serving Process three budgets and a prepare Process one, and the gate the slowest", () => {
@@ -792,7 +791,6 @@ ${serving("notes-api")}`,
         runtime: node
         placement: { memory: 64Mi, cpu: 10m }
         startupBudget: 30s
-        cutover: interrupted
 `),
       ).environment?.map(({ name }) => name),
     ).toStrictEqual([
@@ -1165,7 +1163,6 @@ ${serving("notes-api", `        dependsOn:\n${edges}`)}  - id: notes-worker
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }
         startupBudget: 20s
-        cutover: interrupted
 ${serving("notes-worker").replace("provides: { http: 8080 }", "provides: { jobs: 7000 }")}`;
 
   it("orders a unit after another project's only through a required edge", () => {
@@ -1962,7 +1959,7 @@ describe("what a grant derives", () => {
   it("finds the Secret Store's http surface on whichever of its Processes provides it", () => {
     const secrets = text("secrets/secrets.project.yml").replace(
       "    processes:\n",
-      "    processes:\n      - name: vault-agent\n        lifecycle: job\n        image: vault\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        startupBudget: 20s\n        cutover: interrupted\n",
+      "    processes:\n      - name: vault-agent\n        lifecycle: job\n        image: vault\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        startupBudget: 20s\n",
     );
     const result = resolveIntentSet(
       [
@@ -3017,7 +3014,7 @@ describe("the profiles that inject, and the collector they are handed", () => {
   it("finds the collector's otlp surface on whichever of its Processes provides it", () => {
     const observability = unsigned(text(OBSERVABILITY)).replace(
       "    processes:\n",
-      "    processes:\n      - name: otel-sidekick\n        lifecycle: job\n        image: otel-collector\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        startupBudget: 20s\n        cutover: interrupted\n",
+      "    processes:\n      - name: otel-sidekick\n        lifecycle: job\n        image: otel-collector\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        startupBudget: 20s\n",
     );
     const result = resolveIntentSet(
       [
@@ -3527,7 +3524,6 @@ ${serving("notes-api")}`,
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }
         startupBudget: 30s
-        cutover: interrupted
 `),
       ).surfaces,
     ).toBeUndefined();
@@ -4418,26 +4414,6 @@ describe("what a member waits for in its own Project", () => {
         providers: [{ application: "notes-cache", process: "notes-cache" }],
       },
     ]);
-  });
-
-  it("does not wait for a job that provides the surface, since it serves nothing it starts", () => {
-    expect(
-      waitsFor(
-        consumer(
-          serving(
-            "notes-api",
-            edges("{ application: notes-cache, surface: http }"),
-          ),
-        ) +
-          sibling(
-            "notes-cache",
-            stopping("notes-cache").replace(
-              "lifecycle: application",
-              "lifecycle: job",
-            ),
-          ),
-      ),
-    ).toStrictEqual([{ process: "notes-api", providers: undefined }]);
   });
 
   it("waits for a provider once however many of its surfaces it reaches, and names providers in order", () => {

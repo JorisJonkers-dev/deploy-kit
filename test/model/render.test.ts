@@ -2287,6 +2287,81 @@ describe("a scheduled Process", () => {
     );
   });
 
+  // A job Process is the scheduled one's pod run once, after the new version is live.
+  const asJob = (document: string) =>
+    document.replace(
+      / {8}lifecycle: scheduled\n {8}schedule: "[^"]*"[^\n]*\n/,
+      "        lifecycle: job\n        startupBudget: 90s\n",
+    );
+  const jobTree = () => tree({ "data/data.project.yml": asJob });
+
+  it("renders a job Process as a Job named by the revision, created once, with a small retry and its budget as deadline", () => {
+    const [job] = objects(jobTree()[`${SYNC}/workload.yaml`]);
+    const spec = job?.["spec"] as {
+      backoffLimit: number;
+      activeDeadlineSeconds: number;
+      ttlSecondsAfterFinished?: number;
+      template: { spec: Record<string, unknown> };
+    };
+    const metadata = job?.["metadata"] as {
+      name: string;
+      annotations: Record<string, string>;
+    };
+
+    expect(job?.["kind"]).toBe("Job");
+    expect(metadata.name).toMatch(/^asset-sync-[0-9a-f]{12}$/);
+    expect(metadata.annotations).toStrictEqual({
+      "kustomize.toolkit.fluxcd.io/ssa": "IfNotPresent",
+    });
+    expect(spec.backoffLimit).toBe(1);
+    // The 90 second budget, and the substrate's image pull on top.
+    expect(spec.activeDeadlineSeconds).toBe(210);
+    expect(spec.ttlSecondsAfterFinished).toBeUndefined();
+    expect(spec.template.spec["restartPolicy"]).toBe("Never");
+  });
+
+  it("names a new revision's Job anew, and an unchanged revision's the same", () => {
+    const nameOf = (
+      edits: Readonly<Record<string, (text: string) => string>>,
+    ) =>
+      (
+        objects(tree(edits)[`${SYNC}/workload.yaml`])[0]?.["metadata"] as {
+          name: string;
+        }
+      ).name;
+    const job = { "data/data.project.yml": asJob };
+
+    expect(nameOf(job)).toBe(nameOf(job));
+    expect(
+      nameOf({
+        "data/data.project.yml": (document) =>
+          asJob(document).replace(
+            "          memory: 64Mi\n          cpu: 25m",
+            "          memory: 96Mi\n          cpu: 25m",
+          ),
+      }),
+    ).not.toBe(nameOf(job));
+  });
+
+  it("runs the pod a scheduled Process runs, with its identity, placement, posture and grant", () => {
+    const podOf = (body: string | undefined) => {
+      const [workload] = objects(body);
+      const spec = workload?.["spec"] as {
+        jobTemplate?: { spec: { template: { spec: Record<string, unknown> } } };
+        template?: { spec: Record<string, unknown> };
+      };
+      return { ...(spec.jobTemplate?.spec.template ?? spec.template)?.spec };
+    };
+    const { restartPolicy: _scheduled, ...scheduled } = podOf(
+      tree()[`${SYNC}/workload.yaml`],
+    );
+    const { restartPolicy: _job, ...job } = podOf(
+      jobTree()[`${SYNC}/workload.yaml`],
+    );
+
+    expect(job).toStrictEqual(scheduled);
+  });
+
   it("restarts nothing when its grant's value changes", () => {
     const synced = objects(tree()[`${SYNC}/vso.yaml`]).find(
       ({ kind }) => kind === "VaultStaticSecret",

@@ -218,7 +218,7 @@ and each may be declared at the **Project** header, on an **Application**, or on
 | `assets` | the file is mounted into, or seeded for, every Process below the level | [Assets](#assets) |
 | `writablePaths` | every Process below the level may write the path | [Writable paths are declared, not exempted](#writable-paths-are-declared-not-exempted) |
 | `placement` | every Process below the level requires those node dimensions | [Placement](#placement) |
-| `cutover` | every Process below the level cuts over that way, except a prepare Process, which cuts over nothing | [Cutover is declared, not promised](#cutover-is-declared-not-promised) |
+| `cutover` | every Process below the level cuts over that way, except a prepare or job Process, which cuts over nothing | [Cutover is declared, not promised](#cutover-is-declared-not-promised) |
 | `startupBudget` | every Process below the level gets that budget | [Rollout](#rollout) |
 
 Nothing else is shared. `id`, `observability` and `exposure` are the Application's
@@ -639,12 +639,13 @@ Vault role are called (chapter 16).
 never a digest here.
 
 `lifecycle` is `application`, `job`, `prepare` or `scheduled`. Not `deployment` /
-`statefulset` / `job`, because those are mechanisms; the object kind derives from
-`lifecycle` alone, a `Deployment` for an `application` Process and a `CronJob`
-for a `scheduled` one. A volume never changes the kind: a Process that holds one
+`statefulset`, because those are mechanisms; the object kind derives from
+`lifecycle` alone, a `Deployment` for an `application` Process, a `Job` for a
+`job` one and a `CronJob` for a `scheduled` one. A volume never changes the kind: a Process that holds one
 is a `Deployment` like any other, and no Process is a `StatefulSet`. `prepare` is forward-only setup that runs before the
-Application's new version starts ([Prepare Processes](#prepare-processes)), and
-`scheduled` runs to completion at each slot of its own `schedule`
+Application's new version starts ([Prepare Processes](#prepare-processes)),
+`job` runs once per revision after the new version is applied
+([Job Processes](#job-processes)), and `scheduled` runs to completion at each slot of its own `schedule`
 ([Scheduled Processes](#scheduled-processes)).
 
 `runtime` selects the Runtime Profile: `jvm`, `python`, `node`, `static`, `none`.
@@ -3027,8 +3028,8 @@ same runtime cold start.
 
 ### Cutover is declared, not promised
 
-`cutover` is **required on every Process** but a prepare one
-([Prepare Processes](#prepare-processes)) and has **no default**. Required is
+`cutover` is **required on every Process** but a prepare or job one
+([Prepare Processes](#prepare-processes), [Job Processes](#job-processes)) and has **no default**. Required is
 not the same as written on the Process: the answer may be given once, at the
 project header or on the Application, and it is then the answer for every Process
 below ([Shared intent](#shared-intent)). What is refused is a Process with no
@@ -3239,6 +3240,50 @@ them, and nothing undoes it.
   and cuts over nothing, so `provides`, `probes`, `replicas` and a `cutover` of its
   own are `E_PREPARE_PROCESS_SERVES`. A `cutover` shared from above does not
   reach it, and it is not required to have one.
+
+## Job Processes
+
+```yaml
+processes:
+  - name: report-warmup
+    lifecycle: job           # runs once per Application revision, after the new version is applied
+    image: report-warmup
+    runtime: none
+    placement: {memory: 128Mi, cpu: 50m}
+    startupBudget: 300s      # for a job Process: the run deadline
+```
+
+A `job` Process **runs to completion once per Application revision, after the
+new version is applied**: a cache warm-up, a reindex, a notification of the
+release. Contrast a prepare Process, which runs before the new version and
+holds the release
+([0155](../../docs/adr/model/0155-a-job-process-runs-once-per-revision-after-the-new-version-and-never-holds-the-release.md)).
+
+- **When it runs.** The render writes one Kubernetes `Job` per job Process,
+  named `<process>-<tag>`, the tag the first 12 hex digits of the Application
+  revision ([chapter 55](55-delivery.md#failure-and-undo)). A new revision is a
+  new name, so a new Job runs; an unchanged revision is the same Job, which the
+  applier creates once and never updates (`kustomize.toolkit.fluxcd.io/ssa:
+  IfNotPresent`), so it does not run again. The Job starts **when the revision
+  is applied, in parallel with the new version's rollout**: delivery has no
+  mechanical "after promotion" step ([chapter 55](55-delivery.md#release-order)),
+  so a job Process must tolerate the old version still serving. The Job of an
+  earlier revision is pruned when the render no longer holds it.
+- **Its failure never holds the release.** The release does not wait for it, and
+  nothing is rolled back or undone when it fails: the failure is the Job's own
+  status and its pod's events, and nothing else reads it. It is retried once
+  within its revision (`backoffLimit: 1`), `restartPolicy: Never`.
+- **Its deadline** is its `startupBudget`, derived as a prepare Process's is
+  (see [Prepare Processes](#prepare-processes)), as the Job's
+  `activeDeadlineSeconds`.
+- **It is a Process like any other** in everything but how it runs: its image
+  digest, env, grants, edges, egress policy and placement are the pod any
+  Process gets, the same pod a scheduled Process runs.
+- **What it cannot declare.** It listens on nothing, has no readiness, runs once
+  and cuts over nothing, so `provides`, `probes`, `replicas` and a `cutover` of
+  its own are `E_JOB_PROCESS_SERVES`, and a `schedule` is
+  `E_SCHEDULE_UNSCHEDULED`. A `cutover` shared from above does not reach it, and
+  it is not required to have one.
 
 ## Parked Processes
 

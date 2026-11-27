@@ -209,6 +209,7 @@ function completenessRefusals(
 
 /** What a Process that runs to completion phrases its refusal as. */
 const COMPLETES = {
+  job: "a job Process runs to completion once the new version is live",
   prepare: "a prepare Process runs to completion before the new version starts",
   scheduled: "a scheduled Process runs to completion at each slot",
 } as const satisfies Record<keyof typeof RUNS_TO_COMPLETION, string>;

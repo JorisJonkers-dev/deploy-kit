@@ -167,7 +167,7 @@ function document(
         processes: [
           {
             name: "w",
-            lifecycle: "job",
+            lifecycle: "application",
             image: "w",
             runtime: "none",
             ...process,
@@ -359,7 +359,7 @@ owner: o
 `;
 const PROCESS = `    processes:
       - name: w
-        lifecycle: job
+        lifecycle: application
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
@@ -663,7 +663,7 @@ describe("what a refusal says", () => {
 
   it("names the quantities the merge did not produce", () => {
     const refusal = only(
-      `${HEADER}applications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: job\n        image: w\n        runtime: none\n        cutover: interrupted\n`,
+      `${HEADER}applications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: application\n        image: w\n        runtime: none\n        cutover: interrupted\n`,
     );
 
     expect(refusal?.message).toBe(
@@ -689,7 +689,7 @@ describe("what a refusal says", () => {
 
   it("says which Process no level answers the cutover question for", () => {
     const refusal = only(
-      `${HEADER}applications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: job\n        image: w\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n`,
+      `${HEADER}applications:\n  - id: a\n    processes:\n      - name: w\n        lifecycle: application\n        image: w\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n`,
     );
 
     expect(refusal?.message).toBe(
@@ -787,7 +787,7 @@ describe("a refusal that reads the effective answer, not the written one", () =>
   });
 
   it("does not count a job, or a member no level answers, as a second answer", () => {
-    const withJob = `${HEADER}applications:\n  - id: a\n    processes:\n      - name: a\n        lifecycle: application\n        image: a\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        cutover: continuous\n      - name: j\n        lifecycle: job\n        image: j\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        cutover: interrupted\n`;
+    const withJob = `${HEADER}applications:\n  - id: a\n    processes:\n      - name: a\n        lifecycle: application\n        image: a\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        cutover: continuous\n      - name: j\n        lifecycle: job\n        image: j\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n`;
     const unanswered = `${HEADER}applications:\n  - id: a\n    processes:\n      - name: a\n        lifecycle: application\n        image: a\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n        cutover: continuous\n      - name: b\n        lifecycle: application\n        image: b\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n`;
 
     expect(refusals(withJob)).toStrictEqual([]);
@@ -842,6 +842,29 @@ describe("a refusal that reads the effective answer, not the written one", () =>
     ]);
   });
 
+  it("asks a job Process for no cutover, and names what a serving one has when it writes one", () => {
+    const run = `      - name: report\n        lifecycle: job\n        image: report\n        runtime: none\n        placement: {memory: 64Mi, cpu: 10m}\n`;
+    const alone = `${HEADER}applications:\n  - id: a\n    processes:\n${run}`;
+    const serving = `${HEADER}applications:\n  - id: a\n    processes:\n${run}        provides: {http: 8080}\n        replicas: {count: 2, reason: r}\n        cutover: continuous\n`;
+    const scheduled = `${alone}        schedule: "0 3 * * *"\n`;
+
+    expect(refusals(alone)).toStrictEqual([]);
+    expect(refusals(scheduled)).toStrictEqual([
+      ["E_SCHEDULE_UNSCHEDULED", "/applications/0/processes/0/schedule"],
+    ]);
+    const result = parseProjectIntent(serving);
+    expect(
+      result.ok
+        ? []
+        : result.diagnostics.map(({ code, message }) => [code, message]),
+    ).toStrictEqual([
+      [
+        "E_JOB_PROCESS_SERVES",
+        "a job Process runs to completion once the new version is live, and declares provides, replicas, cutover, which only a serving Process has",
+      ],
+    ]);
+  });
+
   // REQ-0NN (docs/requirements.md): a scheduled Process names its schedule,
   // serves nothing, and no shared cutover reaches it.
   describe("a scheduled Process", () => {
@@ -887,7 +910,7 @@ describe("a refusal that reads the effective answer, not the written one", () =>
     it("refuses a schedule on a Process of every other lifecycle, at the schedule", () => {
       for (const [lifecycle, cutover] of [
         ["application", "        cutover: interrupted\n"],
-        ["job", "        cutover: interrupted\n"],
+        ["job", ""],
         ["prepare", ""],
       ] as const)
         expect(

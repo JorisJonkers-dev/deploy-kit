@@ -90,7 +90,7 @@ applications:
   - id: batch
 GRANTS    processes:
       - name: worker
-        lifecycle: job
+        lifecycle: application
         image: worker
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }
@@ -776,7 +776,7 @@ applications:
   - id: store
     processes:
       - name: store
-        lifecycle: job
+        lifecycle: application
         image: store
         runtime: none
         engine: files
@@ -821,7 +821,7 @@ ${volumes
 
   it("is reserved by no Process that declares no volume", () => {
     const process = (name: string): string =>
-      `      - name: ${name}\n        lifecycle: job\n        image: ${name}\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        cutover: interrupted\n`;
+      `      - name: ${name}\n        lifecycle: application\n        image: ${name}\n        runtime: none\n        placement: { memory: 64Mi, cpu: 10m }\n        cutover: interrupted\n`;
     expect(
       refusalsOf(
         DOCUMENT.replace("GRANTS", "").replace(
@@ -886,6 +886,7 @@ describe("the refusal fixtures", () => {
       "generated-key-written-elsewhere",
       "illegal-delivery-for-access",
       "image-runs-as-root",
+      "job-process-serves",
       "l4-address-exhausted",
       "library-not-granted",
       "migration-owner-duplicated",
@@ -951,7 +952,7 @@ describe("the refusal fixtures", () => {
       "unknown-tier-proxy",
       "unresolved-placeholder",
     ]);
-    expect(refused).toHaveLength(97);
+    expect(refused).toHaveLength(98);
     expect(
       fixtures.length - refused.length,
       "the five accepted counterparts carry no oracle",

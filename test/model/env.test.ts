@@ -254,7 +254,7 @@ applications:
   - id: a
     processes:
       - name: w
-        lifecycle: job
+        lifecycle: application
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
@@ -310,7 +310,7 @@ describe("the scope a directory names, against the document beside it", () => {
     const document = `${DOCUMENT}  - id: b
     processes:
       - name: v
-        lifecycle: job
+        lifecycle: application
         image: v
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
@@ -479,7 +479,7 @@ applications:
   - id: one
     processes:
       - name: one-api
-        lifecycle: job
+        lifecycle: application
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
@@ -487,7 +487,7 @@ applications:
   - id: two
     processes:
       - name: two-api
-        lifecycle: job
+        lifecycle: application
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
@@ -582,7 +582,7 @@ applications:
   - id: one
     processes:
       - name: one-api
-        lifecycle: job
+        lifecycle: application
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
@@ -590,7 +590,7 @@ applications:
   - id: two
     processes:
       - name: two-api
-        lifecycle: job
+        lifecycle: application
         image: w
         runtime: none
         placement: {memory: 64Mi, cpu: 10m}
