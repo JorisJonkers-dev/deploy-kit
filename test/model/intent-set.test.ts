@@ -751,7 +751,7 @@ applications:
       - {name: edge-proxy, lifecycle: application, image: t, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted}
 `;
   const process = (name: string, lifecycle: string, cutover: string): string =>
-    `      - {name: ${name}, lifecycle: ${lifecycle}, image: ${name}, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: ${cutover}, probes: {readiness: {tcp: 1}}}\n`;
+    `      - {name: ${name}, lifecycle: ${lifecycle}, image: ${name}, runtime: none, placement: {memory: 1Mi, cpu: 1m}${lifecycle === "job" ? "" : `, cutover: ${cutover}, probes: {readiness: {tcp: 1}}`}}\n`;
   const check = (processes: string) =>
     refusalsOf([
       platform,
@@ -832,21 +832,26 @@ describe("the gated migration rule across documents", () => {
         platform,
         api(
           (text) =>
-            `${continuous(text).trimEnd()}\n      - {name: once, lifecycle: job, image: api, runtime: none, placement: {memory: 1Mi, cpu: 1m}, cutover: interrupted}\n`,
+            `${continuous(text).trimEnd()}\n      - {name: once, lifecycle: job, image: api, runtime: none, placement: {memory: 1Mi, cpu: 1m}}\n`,
         ),
       ]),
     ).toStrictEqual([]);
   });
 
-  it("counts no job: a continuous one switches nothing, so the changelog beside it is still ungated", () => {
+  it("counts no job: it switches nothing, so the changelog beside it is still ungated", () => {
     expect(
       refusalsOf([
         platform,
         api((text) =>
-          continuous(text).replace(
-            "      - name: api\n        lifecycle: application",
-            "      - name: api\n        lifecycle: job",
-          ),
+          text
+            .replace(
+              "      - name: api\n        lifecycle: application",
+              "      - name: api\n        lifecycle: job",
+            )
+            .replace(
+              "startupBudget: 20s\n        cutover: interrupted",
+              "startupBudget: 20s",
+            ),
         ),
       ]),
     ).toStrictEqual(REFUSED);

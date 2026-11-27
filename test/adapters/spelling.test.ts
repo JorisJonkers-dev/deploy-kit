@@ -177,9 +177,9 @@ describe("the kubernetes adapter", () => {
 
   it("stops at a Process it does not spell yet, rather than rendering it wrongly", () => {
     expect(() =>
-      renderKubernetes(edited(undefined, () => ({ lifecycle: "job" }))),
+      renderKubernetes(edited(undefined, () => ({ lifecycle: "prepare" }))),
     ).toThrow(
-      "notes-api: a job Process that switches blue-green is not rendered yet",
+      "notes-api: a prepare Process that switches blue-green is not rendered yet",
     );
     expect(() =>
       renderKubernetes(

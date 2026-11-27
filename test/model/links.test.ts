@@ -13,7 +13,7 @@ applications:
   - id: batch
 GRANTS    processes:
       - name: worker
-        lifecycle: job
+        lifecycle: application
         image: worker
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }

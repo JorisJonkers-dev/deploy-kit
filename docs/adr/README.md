@@ -124,6 +124,7 @@ resolves without knowing which domain it lands in.
 | [0034](model/0034-cluster-state-is-a-pinned-input.md) | The ClusterState snapshot is a pinned, digested input holding PV bindings and current placements, and node capacity is a node-contract fact | open |
 | [0035](model/0035-network-policy-is-default-deny-and-render-only.md) | Network policy is default-deny, derived from the edge set by one `networking` adapter, rendered but not promoted until a CNI with an audit stage is chosen | open |
 | [0154](model/0154-a-process-narrowed-to-named-hosts-is-forced-through-its-own-proxy-and-its-policy-is-applied.md) | A Process narrowed to named hosts is forced through its own proxy, and its policy is applied | open |
+| [0155](model/0155-a-job-process-runs-once-per-revision-after-the-new-version-and-never-holds-the-release.md) | A job Process runs once per revision after the new version is applied, and never holds the release | open |
 | [0036](model/0036-path-authority-is-layer-2.md) | An adapter writes its own paths through one set of shared directory helpers, and the render refuses a path claimed twice | settled |
 | [0105](model/0105-every-derived-deadline-allows-the-substrates-image-pull.md) | Every derived deadline allows the substrate's image pull, which the Platform document states once | open |
 | [0106](model/0106-a-gpu-request-is-derived-from-placement.md) | A GPU request is derived from the placement that selects the card, and the Platform document names each vendor's resource and runtime class | open |

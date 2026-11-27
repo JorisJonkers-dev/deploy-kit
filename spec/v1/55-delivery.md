@@ -671,6 +671,13 @@ A step that fails holds the release: the next step never starts and the old
 version keeps serving. What is undone afterwards, and only the migration ever
 is, is [Failure and undo](#failure-and-undo)'s.
 
+**A job Process is no step.** A `lifecycle: job` Process
+([chapter 10](10-project-intent.md#job-processes)) is rendered as a Job named by
+the Application revision, and starts when Flux applies the revision, in parallel
+with the new version's rollout: no mechanism orders it after promotion, so it
+tolerates the old version still serving. Nothing waits for it, and its failure
+holds and undoes nothing.
+
 **Between the Applications of one Project, a release orders one thing.** The
 Applications of a Project share its Reconcile Unit, so Flux applies them
 together, and the unit's ordering

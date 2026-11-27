@@ -26,6 +26,7 @@ import type {
   Container,
   CronJob,
   Deployment,
+  Job,
   EnvVar,
   Kustomization,
   Labels,
@@ -61,6 +62,7 @@ import {
 } from "../shared/holders.ts";
 import {
   applicationLabels,
+  CREATED_ONCE,
   consumerLabelsOf,
   MEMBER_LABEL,
   instanceOf,
@@ -73,6 +75,7 @@ import { nodeAffinityOf } from "../shared/placement.ts";
 import { notSupported } from "../../model/internal-failure.ts";
 import { clusterNameOf, namespaceOf } from "../../model/runtime-profiles.ts";
 import { CLIENT_API_VERSION } from "../../model/platform-intent.ts";
+import { tagOf } from "../../model/revision.ts";
 import { VPN_DIRECTORY } from "../../model/vpn.ts";
 import { below } from "../../model/project-intent-queries.ts";
 
@@ -96,10 +99,14 @@ export const NEVER_PRUNED = { "kustomize.toolkit.fluxcd.io/prune": "disabled" };
 const BACKUP_SOURCE = "/data";
 export const BACKUP_TARGET = "/backup";
 
+/** How many times a job Process is retried within its revision. */
+const JOB_BACKOFF_LIMIT = 1;
+
 /** A family this adapter does not spell yet stops the render rather than leaving it out. */
 function notYet(process: ResolvedProcess): void {
   if (
     process.lifecycle !== "scheduled" &&
+    process.lifecycle !== "job" &&
     (process.lifecycle !== "application" || process.switchover === undefined)
   )
     throw notSupported(
@@ -925,14 +932,42 @@ function cronJobOf(
   };
 }
 
+/**
+ * A job Process's Job (spec/v1/10-project-intent.md#job-processes): named by
+ * the Application revision's tag, so a new revision creates a new Job and an
+ * unchanged one never runs it again; created once, never updated; run once
+ * within its deadline and never retried in a way that matters to the release.
+ */
+function jobOf(
+  process: ResolvedProcess,
+  application: ResolvedApplicationDocument,
+): Job {
+  return {
+    apiVersion: "batch/v1",
+    kind: "Job",
+    metadata: {
+      name: `${process.name}-${tagOf(application.revision)}`,
+      namespace: application.namespace,
+      labels: labelsOf(process, application.id),
+      annotations: CREATED_ONCE,
+    },
+    spec: {
+      backoffLimit: JOB_BACKOFF_LIMIT,
+      activeDeadlineSeconds: wholeSeconds(process.deadline),
+      template: podTemplateOf(process, application, "Never"),
+    },
+  };
+}
+
 /** The controller that runs a Process, by its lifecycle. */
 const workloadOf = (
   process: ResolvedProcess,
   application: ResolvedApplicationDocument,
-): Deployment | CronJob =>
-  process.lifecycle === "scheduled"
-    ? cronJobOf(process, application)
-    : deploymentOf(process, application);
+): Deployment | CronJob | Job => {
+  if (process.lifecycle === "scheduled") return cronJobOf(process, application);
+  if (process.lifecycle === "job") return jobOf(process, application);
+  return deploymentOf(process, application);
+};
 
 /** The Service a Process Flagger does not switch is reached by; Flagger generates a blue-green one's. */
 const serviceOf = (

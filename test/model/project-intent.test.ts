@@ -30,7 +30,7 @@ owner: o
 `;
 
 const PROCESS = `      - name: worker
-        lifecycle: job
+        lifecycle: application
         image: worker
         runtime: none
         placement: { memory: 64Mi, cpu: 10m }
@@ -233,7 +233,7 @@ describe("parseProjectIntent", () => {
           processes: [
             {
               name: "worker",
-              lifecycle: "job",
+              lifecycle: "application",
               image: "worker",
               runtime: "none",
               placement: { memory: "64Mi", cpu: "10m" },

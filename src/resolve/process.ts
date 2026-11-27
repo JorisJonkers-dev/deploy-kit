@@ -203,7 +203,7 @@ const scheduleOf = (
 
 /**
  * `progressDeadlineSeconds`: three budgets, floored to a whole second, or for
- * a prepare Process the budget itself, rounded up so it is never cut short;
+ * a prepare or job Process the budget itself, rounded up so it is never cut short;
  * either way with the substrate's image pull on top, since the deadline runs
  * from before the image is on the node.
  */
@@ -218,7 +218,7 @@ function deadlineOf(
   if (process.startupBudget === undefined) return UNBUDGETED_DEADLINE + pull;
   const budget = seconds(process.startupBudget);
   return (
-    (process.lifecycle === "prepare"
+    (process.lifecycle === "prepare" || process.lifecycle === "job"
       ? Math.ceil(budget)
       : Math.floor(budget * 3)) + pull
   );

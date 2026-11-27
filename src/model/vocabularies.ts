@@ -104,6 +104,7 @@ export type Lifecycle = (typeof LIFECYCLES)[number];
  * reaches it. Each has its own refusal for what only a serving Process has.
  */
 export const RUNS_TO_COMPLETION = {
+  job: "E_JOB_PROCESS_SERVES",
   prepare: "E_PREPARE_PROCESS_SERVES",
   scheduled: "E_SCHEDULED_PROCESS_SERVES",
 } as const satisfies Partial<Record<Lifecycle, string>>;
