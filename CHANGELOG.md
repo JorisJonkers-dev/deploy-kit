@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.0](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.12.2...v1.13.0) (2026-11-27)
+
+
+### Features
+
+* **model:** render lifecycle: job Processes as a Job per Application revision ([#881](https://github.com/JorisJonkers-dev/deploy-kit/issues/881)) ([a891d9f](https://github.com/JorisJonkers-dev/deploy-kit/commit/a891d9fe28bcb4ba9fe47f8969060620332d1360))
+
 ## [1.12.2](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.12.1...v1.12.2) (2026-11-27)
 
 
