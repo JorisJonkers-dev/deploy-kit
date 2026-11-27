@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.2](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.12.1...v1.12.2) (2026-11-27)
+
+
+### Bug Fixes
+
+* **ci:** cancel superseded runs and skip label events ([#871](https://github.com/JorisJonkers-dev/deploy-kit/issues/871)) ([0707fce](https://github.com/JorisJonkers-dev/deploy-kit/commit/0707fce9e8d3f93cb0e8f1e3f94b34d5c977bfa7))
+
 ## [1.12.1](https://github.com/JorisJonkers-dev/deploy-kit/compare/v1.12.0...v1.12.1) (2026-11-25)
 
 
